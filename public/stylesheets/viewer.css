@@ -1,0 +1,219 @@
+html, body {
+    height: 100vh;
+    margin: 0;
+}
+
+header {
+    background-color: #222222;
+}
+
+header * {
+    padding: 0 5px;
+}
+
+#navbar {
+    background-color: #222222;
+    display: flex;
+    height: 45px;
+    justify-content: flex-end;
+    text-align: center; /* Center the text */
+    padding: 0 10px; /* Add some padding */
+    text-decoration: none; /* Remove underline*/
+}
+
+#navbar .btn {
+    height: 100%;
+    background-color: #222222;
+    color: white; /* Add a text color */
+}
+
+#navbar .btn:hover {
+    background-color: #333333;
+    color: white; /* Add a text color */
+}
+
+html {
+    /* Set border-box as the global default */
+    box-sizing: border-box;
+}
+
+*, *:before, *:after {
+    /* Allow each element to override */
+    box-sizing: inherit;
+}
+
+main {
+    height: calc(100vh - 90px);
+    display: flex;
+    margin: 0 0;
+}
+
+#content {
+    flex: 80%;
+    background-color: #E5F2F2;
+}
+
+.overflow {
+    overflow: auto;
+}
+
+#reading-list-container {
+    flex: 20%;
+    background-color: #d6e3e3;
+}
+
+#cb-btn-container {
+    display: flex;
+}
+
+#cb-btn-container .btn {
+    background-color: #5f5f5f;
+    color: white; /* Add a text color */
+    border: none; /* Remove borders */
+    padding: 14px 28px; /* Add some padding */
+}
+
+#cb-btn-container .btn:hover {
+    background-color: darkgray;
+}
+
+#cb-btn-container .btn.checked {
+    background-color: #2d2d2d;
+}
+
+#cb-btn-container .btn.checked:hover {
+    background-color: #3a3a3a;
+}
+
+.btn {
+    color: white; /* Add a text color */
+    cursor: pointer;
+    border: none; /* Remove borders */
+    height: 100%;
+    padding: 0 28px; /* Add some padding */
+}
+
+#list-data {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#list-data td, #list-data th {
+    border: 1px solid #ddd;
+    padding: 8px;
+    height: 40px;
+}
+
+#list-data tr:nth-child(even) {
+    background-color: #d5e2e2;
+}
+
+#list-data tr:hover {
+    background-color: #c7d4d4;
+}
+
+#list-data th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #4189b7;
+    color: white;
+}
+
+.select-container {
+    position: relative;
+    font-family: Arial, serif;
+}
+
+.select-container select {
+    display: none; /*hide original SELECT element:*/
+}
+
+.select-selected {
+    background-color: #4189b7;
+}
+
+/*style the arrow inside the select element:*/
+.select-selected:after {
+    position: absolute;
+    content: "";
+    top: 14px;
+    right: 10px;
+    width: 0;
+    height: 0;
+    border: 6px solid;
+    border-color: #fff transparent transparent transparent;
+}
+
+/*point the arrow upwards when the select box is open (active):*/
+.select-selected.select-arrow-active:after {
+    border-color: transparent transparent #fff transparent;
+    top: 7px;
+}
+
+/*style the items (options), including the selected item:*/
+.select-items div, .select-selected {
+    color: #ffffff;
+    padding: 8px 16px;
+    border: 1px solid;
+    border-color: transparent transparent rgba(0, 0, 0, 0.1) transparent;
+    cursor: pointer;
+}
+
+/*style items (options):*/
+.select-items {
+    position: absolute;
+    background-color: #4189b7;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 99;
+}
+
+.hidden {
+    display: none;
+}
+
+.select-items div:hover, .same-as-selected {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center; /* horizontal centering */
+    align-items: center; /* vertical centering */
+}
+
+.right {
+    float: right;
+}
+
+.left {
+    float: left;
+}
+
+.title {
+    font-size: 20px;
+    padding: 20px 0;
+}
+
+nav > * {
+    color: #E5F2F2;
+}
+
+#reading-lists {
+    list-style: none;
+}
+
+footer {
+    background-color: lightslategrey;
+    color: whitesmoke;
+    height: 45px;
+}
+
+/* Responsive layout - when the screen is less than 700px wide, make the two columns stack on top of each other instead of next to each other */
+@media screen and (max-width: 700px) {
+    main, footer {
+        flex-direction: column;
+    }
+}

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Enterprise</title>
+    <link rel="stylesheet" href="stylesheets/viewer.css">
+    <link rel="stylesheet" href="stylesheets/popup_form.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<header>
+    <nav id="navbar">
+        <button id="register" class="btn hidden">Register</button>
+        <button id="login" class="btn hidden">Login</button>
+        <button id="logout" class="btn hidden">Log out</button>
+        <button id="settings" class="btn hidden">
+            <img alt="Settings" src="images/config_icon.png">
+        </button>
+        <div class="login modal hidden">
+            <div class="modal-header">
+                <span>Login</span>
+                <button class="close" type="button" title="Close">
+                    <span>×</span>
+                </button>
+            </div>
+            <form>
+                <div class="input-mail">
+                    <label for="mail">E-Mail:</label>
+                    <input type="text" name="mail" title="E-Mail" required autocomplete="mail"
+                           placeholder="example@mail.com"
+                           pattern="[^@]+@[^@]+\.[^@]{2,6}">
+                </div>
+                <div class="input-psw">
+                    <label for="pw">Password:</label>
+                    <input type="text" name="pw" title="Password" required>
+                </div>
+                <div class="button">
+                    <button class="finish" type="button">Login</button>
+                </div>
+                <div class="lost">
+                    Forgot your password?
+                </div>
+            </form>
+        </div>
+        <div class="register modal hidden">
+            <div class="modal-header">
+                <span>Register</span>
+                <button class="close" type="button" title="Close">
+                    <span>×</span>
+                </button>
+            </div>
+            <form>
+                <div class="input-mail">
+                    <label for="mail">E-Mail:</label>
+                    <input id="mail" type="text" name="mail" title="E-Mail" required autocomplete="mail"
+                           placeholder="example@mail.com"
+                           pattern="[^@]+@[^@]+\.[^@]{2,6}">
+                </div>
+                <div class="input-psw">
+                    <label for="pw">Password:</label>
+                    <input type="password" name="pw" title="Password" required>
+                </div>
+                <div class="input-psw-repeat">
+                    <label for="pw-repeat">Repeat Password:</label>
+                    <input type="password" name="pw-repeat" title="Password" required>
+                </div>
+                <div class="button">
+                    <button class="finish" type="button">Register</button>
+                </div>
+                <div class="error"></div>
+            </form>
+        </div>
+    </nav>
+</header>
+<main>
+    <div id="reading-list-container" class="overflow">
+        <div class="flex-center title">Reading Lists</div>
+        <div class="select-container">
+            <select id="sorter" title="Sorting after">
+                <option value="0">Sort Reading Lists</option>
+                <option value="1">Alphabetical A-z</option>
+                <option value="2">Alphabetical Z-a</option>
+                <option value="3">Source A-z</option>
+                <option value="4">Source Z-a</option>
+            </select>
+        </div>
+        <ul id="reading-lists">
+
+        </ul>
+    </div>
+    <div id="content" class="overflow">
+        <div class="filter-container">
+            <div id="cb-btn-container">
+                <button class="btn all reset" name="all" type="reset">All</button>
+                <button class="btn" name="name" type="button">Name</button>
+                <button class="btn" name="progress" type="button">Progress</button>
+                <button class="btn" name="latest" type="button">Latest</button>
+            </div>
+        </div>
+        <table id="list-data">
+            <thead>
+            <tr>
+            </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+</main>
+<footer class="flex-center">
+    <span>Disclaimer</span>
+    <span>Copyright © 2018</span>
+</footer>
+<script type="text/javascript" src="js/viewer.js"></script>
+</body>
+</html>
