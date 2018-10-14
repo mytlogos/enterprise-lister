@@ -1,0 +1,6 @@
+.idea/
+data.json
+node_modules/
+request.json
+response.json
+user.json

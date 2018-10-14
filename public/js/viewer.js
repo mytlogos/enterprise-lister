@@ -2,26 +2,6 @@ let logged_in;
 //todo login mechanism, check if it was already logged in before
 change_login_state(false);
 
-browser.runtime.onMessage.addListener(msg => {
-    if (msg.user) {
-        if (msg.user.logged_in !== undefined) {
-            if (msg.user.logged_in) {
-                change_login_state(true);
-                return Promise.resolve({user: {data: "unknown"}});
-            } else {
-                change_login_state(false);
-            }
-        }
-
-        if (msg.user.data) {
-            if (logged_in) {
-                TableManager.add_data(msg.user.data);
-            }
-            //todo if data is sent even though user is not logged in, do sth?
-        }
-    }
-});
-
 const optimizedResize = (function () {
 
     let callbacks = [],
@@ -251,46 +231,96 @@ const ListManager = {
 //listen to window resize and loaded events
 optimizedResize.add(() => TableManager.fill_empty());
 window.addEventListener("DOMContentLoaded", () => TableManager.fill_empty());
+window.addEventListener("message", msg => {
+    //accept only messages from this window and location
+    if (msg.source && msg.source !== window || msg.origin && msg.origin !== window.location.href) {
+        return
+    }
 
-browser.runtime.sendMessage({user: {logged_in: "unknown"}})
-    .then(logged_in => {
-        if (logged_in) {
-            change_login_state(true);
-            return browser.runtime.sendMessage({user: {data: "unknown"}});
-        } else {
-            change_login_state(false);
+    function check(data, attr, success, fail) {
+        if (data[attr] !== undefined) {
+            if (data[attr]) {
+                success();
+            } else {
+                fail();
+            }
         }
-    })
-    .then(msg => {
-        console.log(msg);
-        if (!empty(msg.user.data) && logged_in) {
-            TableManager.add_data(msg.user.data);
+    }
+
+    let data = msg.data;
+    if (!data) {
+        return
+    }
+    if (data.user) {
+        let user = data.user;
+
+        check(user, "logged_in", () => change_login_state(true), () => change_login_state(false));
+        check(user, "login", login_succeeded, login_failed);
+        check(user, "register", register_succeeded, register_failed);
+
+        if (user.logout) {
+            _logout(user.logout.success);
         }
-    }).catch(error => console.log(`error in checking for login state: ${error}`));
+    }
+
+    if (data.data) {
+        if (!empty(msg.data) && logged_in) {
+            TableManager.add_data(msg.data);
+        }
+        //todo if data is sent even though user is not logged in, do sth?
+    }
+    // noinspection JSUnresolvedVariable
+    if (data.lists && logged_in) {
+        ListManager.add(data.lists);
+    }
+});
+
+function login_succeeded() {
+    document.querySelector(".login.modal").classList.add("hidden");
+    document.querySelector(".login.modal .input-psw input").value = "";
+    document.querySelector(".login.modal .input-mail input").value = "";
+}
+
+function login_failed() {
+    let mail_input = document.querySelector(".login.modal .input-mail input");
+    let psw_input = document.querySelector(".login.modal .input-psw input");
+    console.log("failed login")
+    //todo implement on fail
+}
+
+function register_succeeded() {
+    document.querySelector(".register.modal").classList.add("hidden");
+    document.querySelector(".register.modal .input-psw input").value = "";
+    document.querySelector(".register.modal .input-psw-repeat input").value = "";
+    document.querySelector(".register.modal .input-mail input").value = "";
+}
+
+function register_failed() {
+    let mail_input = document.querySelector(".register.modal .input-mail input");
+    let psw_input = document.querySelector(".register.modal .input-psw input");
+    let psw_repeat_input = document.querySelector(".register.modal .input-psw-repeat input");
+    console.log("failed register")
+    //todo implement on fail
+}
 
 function login() {
     //need to be logged out to login
     if (logged_in) {
         return
     }
-    let mail_input = document.querySelector(".login.modal .input-mail");
-    let psw_input = document.querySelector(".login.modal .input-psw");
+    let mail_input = document.querySelector(".login.modal .input-mail input");
+    let psw_input = document.querySelector(".login.modal .input-psw input");
 
-    browser.runtime.sendMessage({
+    let msg = {
         user: {
             login: {
                 mail: mail_input.value,
                 pw: psw_input.value
             }
         }
-    }).then(() => {
-        document.querySelector(".login.modal").classList.add("hidden");
-        mail_input.value = "";
-        psw_input.value = "";
-    }).catch(error => {
-        //todo show login error
-        console.log(`error logging in ${error}`)
-    });
+    };
+    console.log(msg);
+    sendMessage(msg);
 }
 
 function register() {
@@ -298,29 +328,31 @@ function register() {
     if (logged_in) {
         return
     }
-    let mail_input = document.querySelector(".register.modal .input-mail");
-    let psw_input = document.querySelector(".register.modal .input-psw");
-    let psw_repeat_input = document.querySelector(".register.modal .input-psw-repeat");
+    let mail_input = document.querySelector(".register.modal .input-mail input");
+    let psw_input = document.querySelector(".register.modal .input-psw input");
+    let psw_repeat_input = document.querySelector(".register.modal .input-psw-repeat input");
 
     if (psw_input.value === psw_repeat_input.value) {
-        browser.runtime.sendMessage({
+        sendMessage({
             user: {
                 register: {
                     mail: mail_input.value,
                     pw: psw_input.value
                 }
             }
-        }).then(() => {
-            document.querySelector(".register.modal").classList.add("hidden");
-            mail_input.value = "";
-            psw_input.value = "";
-            psw_repeat_input.value = "";
-        }).catch(error => {
-            //todo show login error
-            console.log(`error registering ${error}`)
         });
     } else {
         //todo show incorrect password
+    }
+}
+
+function _logout(logged_out) {
+    TableManager.clear();
+    ListManager.clear();
+    change_login_state(false);
+
+    if (!logged_out) {
+        //todo show error msg, but still clear data?
     }
 }
 
@@ -329,19 +361,12 @@ function logout() {
     if (!logged_in) {
         return
     }
-    browser.runtime.sendMessage({user: {logout: true}})
-        .then(logged_out => {
-            TableManager.clear();
-            ListManager.clear();
-            change_login_state(false);
+    sendMessage({user: {logout: true}});
+}
 
-            if (!logged_out) {
-                //todo show error msg, but still clear data?
-            }
-        })
-        .catch(error => {
-            console.log(`error logging out ${error}`)
-        })
+
+function sendMessage(msg) {
+    window.postMessage(msg, window.location.href);
 }
 
 function change_login_state(new_state) {
@@ -364,6 +389,35 @@ function change_login_state(new_state) {
         document.getElementById("logout").classList.add("hidden");
     }
 }
+
+(function enable_modality() {
+    let modals = document.querySelectorAll(".modal");
+    modals.forEach(value => {
+        let closeBtn = value.querySelector(".close");
+
+        window.addEventListener("click", evt => {
+            // noinspection JSCheckFunctionSignatures
+            if (!value.contains(evt.target) && !value.classList.contains("hidden")) {
+                value.classList.add("hidden");
+                evt.stopImmediatePropagation();
+            }
+        }, {capture: true});
+        closeBtn.addEventListener('click', () => value.classList.add("hidden"));
+    });
+
+    document
+        .getElementById("register")
+        .addEventListener("click", () => document.querySelector(".register.modal").classList.remove("hidden"));
+
+    document
+        .getElementById("login")
+        .addEventListener("click", () => document.querySelector(".login.modal").classList.remove("hidden"));
+
+    document.getElementById("logout").addEventListener("click", logout);
+
+    document.querySelector(".login.modal .finish").addEventListener("click", login);
+    document.querySelector(".register.modal .finish").addEventListener("click", register)
+})();
 
 (function enable_filter_buttons() {
     let container = document.getElementById("cb-btn-container");
@@ -411,35 +465,6 @@ function change_login_state(new_state) {
         }
     });
     all_btn.click();
-})();
-
-(function enable_modality() {
-    let modals = document.querySelectorAll(".modal");
-    modals.forEach(value => {
-        let closeBtn = value.querySelector(".close");
-
-        window.addEventListener("click", evt => {
-            // noinspection JSCheckFunctionSignatures
-            if (!value.contains(evt.target) && !value.classList.contains("hidden")) {
-                value.classList.add("hidden");
-                evt.stopImmediatePropagation();
-            }
-        }, {capture: true});
-        closeBtn.addEventListener('click', () => value.classList.add("hidden"));
-    });
-
-    document
-        .getElementById("register")
-        .addEventListener("click", () => document.querySelector(".register.modal").classList.remove("hidden"));
-
-    document
-        .getElementById("login")
-        .addEventListener("click", () => document.querySelector(".login.modal").classList.remove("hidden"));
-
-    document.getElementById("logout").addEventListener("click", logout);
-
-    document.querySelector(".login.modal .finish").addEventListener("click", login);
-    document.querySelector(".register.modal .finish").addEventListener("click", register)
 })();
 
 (function enable_custom_drop_menu() {
@@ -532,6 +557,7 @@ function indexOf(element) {
 }
 
 function empty(param) {
+    // noinspection EqualityComparisonWithCoercionJS
     if (param == false || param == undefined) {
         return true;
     }
