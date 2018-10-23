@@ -1,5 +1,5 @@
 let logged_in;
-//todo login mechanism, check if it was already logged in before
+//todo loginUser mechanism, check if it was already logged in before
 change_login_state(false);
 
 const optimizedResize = (function () {
@@ -258,8 +258,8 @@ window.addEventListener("message", msg => {
         check(user, "login", login_succeeded, login_failed);
         check(user, "register", register_succeeded, register_failed);
 
-        if (user.logout) {
-            _logout(user.logout.success);
+        if (user._logout) {
+            _logout(user._logout.success);
         }
     }
 
@@ -304,7 +304,7 @@ function register_failed() {
 }
 
 function login() {
-    //need to be logged out to login
+    //need to be logged out to loginUser
     if (logged_in) {
         return
     }
@@ -313,7 +313,7 @@ function login() {
 
     let msg = {
         user: {
-            login: {
+            loginUser: {
                 mail: mail_input.value,
                 pw: psw_input.value
             }
@@ -324,7 +324,7 @@ function login() {
 }
 
 function register() {
-    //need to be logged out to login
+    //need to be logged out to loginUser
     if (logged_in) {
         return
     }
@@ -361,7 +361,7 @@ function logout() {
     if (!logged_in) {
         return
     }
-    sendMessage({user: {logout: true}});
+    sendMessage({user: {logoutUser: true}});
 }
 
 
@@ -380,13 +380,13 @@ function change_login_state(new_state) {
         document.getElementById("login").classList.add("hidden");
 
         document.getElementById("settings").classList.remove("hidden");
-        document.getElementById("logout").classList.remove("hidden");
+        document.getElementById("logoutUser").classList.remove("hidden");
     } else {
         document.getElementById("register").classList.remove("hidden");
         document.getElementById("login").classList.remove("hidden");
 
         document.getElementById("settings").classList.add("hidden");
-        document.getElementById("logout").classList.add("hidden");
+        document.getElementById("logoutUser").classList.add("hidden");
     }
 }
 
@@ -413,7 +413,7 @@ function change_login_state(new_state) {
         .getElementById("login")
         .addEventListener("click", () => document.querySelector(".login.modal").classList.remove("hidden"));
 
-    document.getElementById("logout").addEventListener("click", logout);
+    document.getElementById("logoutUser").addEventListener("click", logout);
 
     document.querySelector(".login.modal .finish").addEventListener("click", login);
     document.querySelector(".register.modal .finish").addEventListener("click", register)

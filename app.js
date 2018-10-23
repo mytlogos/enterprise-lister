@@ -76,10 +76,10 @@ function initServer(server) {
         let connection = request.accept(null, request.origin);
         console.log(`${new Date()} Connection of ${request.origin} from ${request.remoteAddress} accepted.`);
 
-        connection.on('message', message => enterprise.wsMessage(message, connection));
+        con.on('message', message => enterprise.wsMessage(message, con));
 
-        connection.on('close', function (reasonCode, description) {
-            console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
+        con.on('close', function (reasonCode, description) {
+            console.log((new Date()) + ' Peer ' + con.remoteAddress + ' disconnected.');
         });
 
     });

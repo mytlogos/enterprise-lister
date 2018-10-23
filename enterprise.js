@@ -1,4 +1,4 @@
-const Storage = {};
+const Storage = require("./database");
 
 const Enterprise = {
 
@@ -20,6 +20,5 @@ const Enterprise = {
             con.sendUTF(msg.utf8Data);
         }
     }
-
 };
 module.exports = Enterprise;
