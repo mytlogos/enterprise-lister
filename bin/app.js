@@ -5,31 +5,29 @@ const logger = require('morgan');
 const compression = require('compression');
 //helps by preventing some known http vulnerabilities by setting http headers appropriately
 const helmet = require('helmet');
+
+const api = require("./api");
 const enterprise = require('./enterprise');
 
 const app = express();
+exports.app = app;
 
+const parentDirName = path.dirname(__dirname);
 
 app.use(logger('dev'));
 app.use(helmet());
 app.use(compression());
 //only accept json as req body
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(parentDirName, 'public')));
+
 
 // noinspection JSUnresolvedFunction
-app.get("/api", (req, res, next) => {
-    //only accept api calls which have a json body and json content type
-    if (req.body !== {} && req.is("json")) {
-        enterprise.httpMessage(req.body, res);
-    } else {
-        next();
-    }
-});
+app.use("/api", api);
 
 // noinspection JSUnresolvedFunction
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, path.join('public', 'viewer.html')));
+    res.sendFile(path.join(parentDirName, path.join('public', 'viewer.html')));
 });
 
 // catch 404 and forward to error handler
@@ -50,10 +48,9 @@ app.use(function (err, req, res) {
 
 const WebSocketServer = require("websocket").server;
 
-
 let wsServer;
 
-function initServer(server) {
+exports.initWSServer = function initWSServer(server) {
     wsServer = new WebSocketServer({
         httpServer: server,
         // You should not use autoAcceptConnections for production
@@ -76,20 +73,15 @@ function initServer(server) {
         let connection = request.accept(null, request.origin);
         console.log(`${new Date()} Connection of ${request.origin} from ${request.remoteAddress} accepted.`);
 
-        con.on('message', message => enterprise.wsMessage(message, con));
-
-        con.on('close', function (reasonCode, description) {
-            console.log((new Date()) + ' Peer ' + con.remoteAddress + ' disconnected.');
+        connection.on('message', message => enterprise.wsMessage(message, con));
+        connection.on('close', function (reasonCode, description) {
+            console.log((new Date()) + ' Peer ' + connection.remoteAddress + ' disconnected.');
         });
-
     });
-}
-
+};
 
 //todo does it redirect automatically to https when http was typed?
 //todo what options does https need
 //todo what is with tls, cloudflare?
 
 //todo at the end or at the beginning?
-exports.app = app;
-exports.initServer = initServer;

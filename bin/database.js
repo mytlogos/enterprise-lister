@@ -8,7 +8,6 @@ const randomUuid = require('uuid/v4');
 const ShaHash = {
     tag: "sha512",
 
-
     /**
      *
      * @param {number} saltLength
@@ -100,12 +99,18 @@ const _verifyPassword = function (password, hash, alg, salt) {
 const StandardHash = BcryptHash;
 
 const database = "enterprise";
+
 const Errors = {
     USER_EXISTS_ALREADY: 0x1,
     INVALID_INPUT: 0x2,
     INVALID_DATA: 0x4,
     USER_DOES_NOT_EXIST: 0x8,
     CORRUPT_DATA: 0x10,
+    UNKNOWN: 0x20,
+    INVALID_MESSAGE: 0x40,
+    INVALID_SESSION: 0x80,
+    DOES_NOT_EXIST: 0x100,
+    UNSUCCESSFUL: 0x200,
 };
 
 /**
@@ -162,6 +167,7 @@ const Errors = {
  *
  * @property {string} uuid
  * @property {string} name
+ * @property {string} session
  * @property {Array<ExternalUser>} external_user
  * @property {Array<List>} lists
  */
@@ -384,7 +390,7 @@ const Storage = {
      * @param {string} userName
      * @param {string} password
      * @param {string} ip
-     * @return {Promise<{session: string, uuid: string}>}
+     * @return {Promise<User>}
      */
     loginUser(userName, password, ip) {
         return inContext(true, context => context.loginUser(userName, password, ip));
@@ -397,7 +403,7 @@ const Storage = {
      * the session key of the user for the ip.
      *
      * @param {string} ip
-     * @return {Promise<{session?: string, uuid?: string}>}
+     * @return {Promise<User|boolean>}
      */
     userLoginStatus(ip) {
         return inContext(true, context => context.userLoginStatus(ip));
@@ -452,16 +458,6 @@ const Storage = {
     },
 
     /**
-     * Returns a user with their associated lists and external user from the storage.
-     *
-     * @param uuid
-     * @return {Promise<User>}
-     */
-    getUser(uuid) {
-        return inContext(true, context => context.getUser(uuid));
-    },
-
-    /**
      * Adds a list to the storage and
      * links it to the user of the uuid.
      *
@@ -469,7 +465,7 @@ const Storage = {
      * @param {Object} list - list to add
      * @param {string} list.name - name of the list
      * @param {number} list.medium - media flags for the list
-     * @return {Promise<{id: number}>}
+     * @return {Promise<List>}
      */
     addList(uuid, list) {
         return inContext(true, context => context.addList(uuid, list));
@@ -489,22 +485,21 @@ const Storage = {
     /**
      * Updates the properties of a list.
      *
-     * @param {string} uuid
-     * @param {number} id
      * @param {List} list
      */
-    updateList(uuid, id, list) {
-        return inContext(true, context => context.updateList(uuid, id, list));
+    updateList(list) {
+        return inContext(true, context => context.updateList(list));
     },
 
     /**
      * Deletes a list irreversibly.
      *
      * @param {number} list_id
+     * @param {string} uuid
      * @return {Promise<boolean>}
      */
-    deleteList(list_id) {
-        return inContext(true, context => context.deleteList(list_id));
+    deleteList(list_id, uuid) {
+        return inContext(true, context => context.deleteList(list_id, uuid));
     },
 
     /**
@@ -903,7 +898,7 @@ class QueryContext {
      * @param {string} userName
      * @param {string} password
      * @param {string} ip
-     * @return {Promise<{session: string, uuid: string}>}
+     * @return {Promise<User>}
      */
     register(userName, password, ip) {
         if (!userName || !password) {
@@ -939,7 +934,7 @@ class QueryContext {
      * @param {string} userName
      * @param {string} password
      * @param {string} ip
-     * @return {Promise<{session: string, uuid: string}>}
+     * @return {Promise<User>}
      */
     loginUser(userName, password, ip) {
         if (!userName || !password) {
@@ -970,15 +965,20 @@ class QueryContext {
                         const session = randomUuid();
                         let date = new Date().toISOString();
 
-                        return this._query(
-                            "INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);",
-                            [uuid, ip, session, date]
-                        ).then(() => {
-                            return {uuid, session}
-                        });
+                        return this
+                            ._query(
+                                "INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);",
+                                [uuid, ip, session, date]
+                            )
+                            .then(() => this.getUser(uuid))
+                            .then(user => {
+                                user.session = session;
+                                return user;
+                            });
                     });
             });
     }
+
 
     /**
      * Checks if for the given ip any user is logged in.
@@ -987,18 +987,26 @@ class QueryContext {
      * the session key of the user for the ip.
      *
      * @param {string} ip
-     * @return {Promise<{session?: string, uuid?: string}>}
+     * @return {Promise<User|boolean>}
      */
     userLoginStatus(ip) {
         return this
             ._query("SELECT * FROM user_log WHERE ip = ?;", ip)
             .then(result => {
-                if (!result.length) {
-                    return {};
-                }
                 let sessionRecord = result[0];
-                return sessionRecord.session_key &&
-                    {uuid: sessionRecord.user_uuid, session: sessionRecord.session_key}
+
+                if (!sessionRecord) {
+                    return false;
+                }
+
+                let session = sessionRecord.session_key;
+                if (session) {
+                    return this.getUser(sessionRecord.user_uuid).then(user => {
+                        user.session = session;
+                        return user;
+                    })
+                }
+                return false;
             });
     }
 
@@ -1173,6 +1181,7 @@ class QueryContext {
                 }
                 return {
                     id: result.insertId,
+                    items: [],
                     name,
                     medium
                 };
@@ -1184,12 +1193,14 @@ class QueryContext {
      * the list_id.
      *
      * @param {number} list_id
-     * @return {Promise<List>}
+     * @return {Promise<Array<Medium>>}
      */
     getList(list_id) {
         return this
-            ._query("SELECT * FROM reading_list WHERE id = ?", list_id)
-            .then(result => this.createShallowList(result[0]));
+            ._query("SELECT * FROM reading_list WHERE id = ?;", list_id)
+            .then(result => this.createShallowList(result[0]))
+            //todo this seems really inefficient
+            .then(list => Promise.all(list.items.map(value => this.getMedium(value))));
     }
 
 
@@ -1240,11 +1251,19 @@ class QueryContext {
      * Deletes a list irreversibly.
      *
      * @param {number} list_id
+     * @param {string} uuid
      * @return {Promise<boolean>}
      */
-    deleteList(list_id) {
+    deleteList(list_id, uuid) {
         return this
-        //first remove all links between a list and their media
+            ._query("SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?", [list_id, uuid])
+            //first check if such a list does exist for the given user
+            .then(result => {
+                if (!result.length) {
+                    return Promise.reject(Errors.DOES_NOT_EXIST);
+                }
+            })
+            //first remove all links between a list and their media
             ._delete("list_medium", "list_id", list_id)
             //lastly delete the list itself
             .then(() => this._delete("reading_list", "id", list_id));
@@ -1922,5 +1941,16 @@ class QueryContext {
  * @param {Array<*>} values
  */
 
-module.exports = Storage;
+module.exports.Storage = Storage;
+module.exports.Errors = Errors;
+
+module.exports.isError = function (error) {
+    for (let key of Object.keys(Errors)) {
+        if (Errors[key] === error) {
+            return true;
+        }
+    }
+    return false;
+};
+
 Storage.inContext = inContext;

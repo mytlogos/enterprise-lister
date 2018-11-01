@@ -3,15 +3,16 @@
 /**
  * Module dependencies.
  */
-const app = require('../app').app;
-const initWebSocket = require('../app').initServer;
+const app = require('./app').app;
+const initWebSocket = require('./app').initWSServer;
 const debug = require('debug')('enterprise-lister:server');
 const createServer = require('http').createServer;
 
 /**
  * Get port from environment and store in Express.
  */
-const port = 80;
+//todo change back to 80
+const port = 3000;
 app.set('port', port);
 
 /**
@@ -38,7 +39,7 @@ function onError(error) {
         throw error;
     }
 
-    var bind = typeof port === 'string'
+    let bind = typeof port === 'string'
         ? 'Pipe ' + port
         : 'Port ' + port;
 
@@ -61,9 +62,9 @@ function onError(error) {
  * Event listener for HTTP server "listening" event.
  */
 function onListening() {
-    let addr = server.address();
-    let bind = typeof addr === 'string'
-        ? 'pipe ' + addr
-        : 'port ' + addr.port;
+    let address = server.address();
+    let bind = typeof address === 'string'
+        ? 'pipe ' + address
+        : 'port ' + address.port;
     debug('Listening on ' + bind);
 }

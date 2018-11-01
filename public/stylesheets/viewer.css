@@ -3,6 +3,11 @@ html, body {
     margin: 0;
 }
 
+html * {
+    /*border: none; !* Remove borders *!*/
+    margin: 0;
+}
+
 header {
     background-color: #222222;
 }
@@ -19,6 +24,11 @@ header * {
     text-align: center; /* Center the text */
     padding: 0 10px; /* Add some padding */
     text-decoration: none; /* Remove underline*/
+    align-items: center; /* center children */
+}
+
+#navbar * {
+    padding: 0 15px;
 }
 
 #navbar .btn {
@@ -62,6 +72,28 @@ main {
     background-color: #d6e3e3;
 }
 
+#reading-lists {
+    list-style: none;
+    padding: 0;
+}
+
+#reading-lists li {
+    padding: 10px 10px;
+}
+
+#reading-lists li:hover {
+    background-color: #929f9f;
+}
+
+#reading-lists li.active{
+    background-color: #41709d;
+    color: #e4e4e4;
+}
+
+#reading-lists li.active:hover{
+    background-color: #549bd7;
+}
+
 #cb-btn-container {
     display: flex;
 }
@@ -69,7 +101,6 @@ main {
 #cb-btn-container .btn {
     background-color: #5f5f5f;
     color: white; /* Add a text color */
-    border: none; /* Remove borders */
     padding: 14px 28px; /* Add some padding */
 }
 
@@ -199,10 +230,6 @@ main {
 
 nav > * {
     color: #E5F2F2;
-}
-
-#reading-lists {
-    list-style: none;
 }
 
 footer {

@@ -76,7 +76,8 @@ function testList() {
     let list = {name: "Reading", medium: 1};
     let updated = {name: "Paused", medium: 2};
 
-    return Storage.addList(uuid, list).then(id => {
+    return Storage.addList(uuid, list).then(storage_list => {
+        let id = storage_list.id;
         assert.strictEqual(isFinite(id), true);
         assert.strictEqual(id >= 0, true);
 

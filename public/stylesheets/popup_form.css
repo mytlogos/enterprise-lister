@@ -55,6 +55,15 @@
     border-bottom: 1px solid #b3b3b3;
 }
 
+.modal input[type=checkbox] {
+    width: 20px;
+}
+
+.modal span label {
+    width: 75px;
+    padding: 0 5px;
+}
+
 .modal input:focus {
     /* To give a little highlight on active elements */
     border-color: #000;
