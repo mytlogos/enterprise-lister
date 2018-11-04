@@ -24,6 +24,8 @@ const Enterprise = {
             console.log('Received Message: ' + msg.utf8Data);
             response.sendUTF(msg.utf8Data);
         }
+
+        response
     },
 };
 module.exports = Enterprise;

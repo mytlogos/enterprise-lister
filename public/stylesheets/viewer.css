@@ -58,6 +58,21 @@ main {
     margin: 0 0;
 }
 
+ul {
+    list-style-type: none; /* Remove bullets */
+    padding: 0; /* Remove padding */
+    margin: 0; /* Remove margins */
+}
+
+ul li {
+    border: 1px solid #cfcfcf; /* Add a thin border to each list item */
+    border-left: none;
+    border-right: none;
+    margin-top: -1px; /* Prevent double borders */
+    background-color: #f6f6f6; /* Add a grey background color */
+    padding: 12px; /* Add some padding */
+}
+
 #content {
     flex: 80%;
     background-color: #E5F2F2;
@@ -78,6 +93,7 @@ main {
 }
 
 #reading-lists li {
+    background-color: #d6e3e3;
     padding: 10px 10px;
 }
 
