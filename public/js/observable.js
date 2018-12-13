@@ -24,7 +24,10 @@ function Observable(target = {}) {
 
             if (propListener) {
                 let oldValue = target[p];
-                propListener.forEach(listener => listener(oldValue, value));
+
+                if (oldValue !== value) {
+                    propListener.forEach(listener => listener(oldValue, value));
+                }
             }
 
             target[p] = value;

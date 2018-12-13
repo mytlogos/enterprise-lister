@@ -30,7 +30,7 @@ module.exports.logout = function logout(req, res) {
  * @param {function} route.put
  * @param {function} route.delete
  */
-module.exports.addListRoute = route => {
+module.exports.addListApi = route => {
     route.get((req, res) => {
         let {listId} = req.body;
         sendResult(res, Storage.getList(listId));
@@ -89,6 +89,90 @@ module.exports.addListMediumRoute = function addListMediumRoute(route) {
  * @param {function} route.put
  * @param {function} route.delete
  */
+module.exports.addPartRoute = function addPartRoute(route) {
+    //todo implement this episode route
+};
+
+/**
+ *
+ * @param {Route} route
+ * @param {function} route.get
+ * @param {function} route.post
+ * @param {function} route.put
+ * @param {function} route.delete
+ */
+module.exports.addEpisodeRoute = function addEpisodeRoute(route) {
+    //todo implement this episode route
+};
+
+/**
+ *
+ * @param {Route} route
+ * @param {function} route.get
+ * @param {function} route.post
+ * @param {function} route.put
+ * @param {function} route.delete
+ */
+module.exports.addExternalListRoute = function addExternalListRoute(route) {
+    //todo implement this episode route
+};
+
+/**
+ *
+ * @param {Route} route
+ * @param {function} route.get
+ * @param {function} route.post
+ * @param {function} route.put
+ * @param {function} route.delete
+ */
+module.exports.addExternalListMediumApi = function addExternalListMediumApi(route) {
+    //todo implement this episode route
+};
+
+/**
+ *
+ * @param {Route} route
+ * @param {function} route.get
+ * @param {function} route.post
+ * @param {function} route.put
+ * @param {function} route.delete
+ */
+module.exports.addExternalUserApi = function addExternalUserApi(route) {
+    //todo implement this episode route
+};
+
+/**
+ *
+ * @param {Router} router
+ * @param {function} router.get
+ * @param {function} router.post
+ * @param {function} router.put
+ * @param {function} router.delete
+ */
+module.exports.addUserApi = function addEpisodeRoute(router) {
+    //todo implement this router
+};
+
+/**
+ *
+ * @param {Router} router
+ * @param {function} router.get
+ * @param {function} router.post
+ * @param {function} router.put
+ * @param {function} router.delete
+ */
+module.exports.addProgressRoute = function addProgressRoute(router) {
+    //todo implement this route
+};
+
+/**
+ *
+ * @param {Route} route
+ * @param {function} route.get
+ * @param {function} route.post
+ * @param {function} route.put
+ * @param {function} route.delete
+ */
 module.exports.addMediumRoute = function addMediumRoute(route) {
     route.get((req, res) => {
         let {mediumId} = req.body;
@@ -102,6 +186,10 @@ module.exports.addMediumRoute = function addMediumRoute(route) {
         let {medium} = req.body;
         sendResult(res, Storage.updateMedium(medium));
     });
+};
+
+module.exports.addSuggestionsRoute = function getLists(req, res) {
+    //todo implement suggestions api for auto complete
 };
 
 module.exports.getLists = function getLists(req, res) {

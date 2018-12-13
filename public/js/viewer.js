@@ -33,14 +33,9 @@ const optimizedResize = (function () {
 
     // run the actual callbacks
     function runCallbacks() {
-
-        callbacks.forEach(function (callback) {
-            callback();
-        });
-
+        callbacks.forEach(callback => callback());
         running = false;
     }
-
 
     return {
         // public method to add additional callback

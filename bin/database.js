@@ -88,6 +88,7 @@ const _verifyPassword = function (password, hash, alg, salt) {
     return hashAlgorithm.equals(password, hash, salt);
 };
 
+// noinspection JSValidateTypes
 /**
  *
  * @type {{

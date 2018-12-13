@@ -5,8 +5,8 @@ const logger = require('morgan');
 const compression = require('compression');
 //helps by preventing some known http vulnerabilities by setting http headers appropriately
 const helmet = require('helmet');
-
-const api = require("./api");
+//own router
+const apiRouter = require("./api");
 const enterprise = require('./enterprise');
 
 const app = express();
@@ -21,9 +21,8 @@ app.use(compression());
 app.use(express.json());
 app.use(express.static(path.join(parentDirName, 'public')));
 
-
 // noinspection JSUnresolvedFunction
-app.use("/api", api);
+app.use("/api", apiRouter());
 
 // noinspection JSUnresolvedFunction
 app.get("/", (req, res) => {
@@ -83,5 +82,3 @@ exports.initWSServer = function initWSServer(server) {
 //todo does it redirect automatically to https when http was typed?
 //todo what options does https need
 //todo what is with tls, cloudflare?
-
-//todo at the end or at the beginning?

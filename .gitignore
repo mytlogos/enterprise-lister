@@ -4,3 +4,7 @@ node_modules/
 request.json
 response.json
 user.json
+bin/testyStuff.js
+public/favicon.ico
+*.uxf
+*.bat
