@@ -90,7 +90,22 @@ module.exports.addListMediumRoute = function addListMediumRoute(route) {
  * @param {function} route.delete
  */
 module.exports.addPartRoute = function addPartRoute(route) {
-    //todo implement this episode route
+    route.get((req, res) => {
+        let {mediumId} = req.body;
+        sendResult(res, Storage.getParts(mediumId));
+    });
+    route.post((req, res) => {
+        let {part, mediumId} = req.body;
+        sendResult(res, Storage.addPart(mediumId, part));
+    });
+    route.put((req, res) => {
+        let {part} = req.body;
+        sendResult(res, Storage.updatePart(part));
+    });
+    route.delete((req, res) => {
+        let {partId} = req.body;
+        sendResult(res, Storage.deletePart(partId));
+    });
 };
 
 /**
@@ -102,7 +117,22 @@ module.exports.addPartRoute = function addPartRoute(route) {
  * @param {function} route.delete
  */
 module.exports.addEpisodeRoute = function addEpisodeRoute(route) {
-    //todo implement this episode route
+    route.get((req, res) => {
+        let {episodeId} = req.body;
+        sendResult(res, Storage.getEpisode(episodeId));
+    });
+    route.post((req, res) => {
+        let {medium, partId} = req.body;
+        sendResult(res, Storage.addEpisode(partId, medium));
+    });
+    route.put((req, res) => {
+        let {episode} = req.body;
+        sendResult(res, Storage.updateEpisode(episode));
+    });
+    route.delete((req, res) => {
+        let {episodeId} = req.body;
+        sendResult(res, Storage.deletePart(episodeId));
+    });
 };
 
 /**
@@ -114,19 +144,22 @@ module.exports.addEpisodeRoute = function addEpisodeRoute(route) {
  * @param {function} route.delete
  */
 module.exports.addExternalListRoute = function addExternalListRoute(route) {
-    //todo implement this episode route
-};
-
-/**
- *
- * @param {Route} route
- * @param {function} route.get
- * @param {function} route.post
- * @param {function} route.put
- * @param {function} route.delete
- */
-module.exports.addExternalListMediumApi = function addExternalListMediumApi(route) {
-    //todo implement this episode route
+    route.get((req, res) => {
+        let {externalListId} = req.body;
+        sendResult(res, Storage.getExternalList(externalListId));
+    });
+    route.post((req, res) => {
+        let {uuid, externalList} = req.body;
+        sendResult(res, Storage.addExternalList(uuid, externalList));
+    });
+    route.put((req, res) => {
+        let {externalList} = req.body;
+        sendResult(res, Storage.updateList(externalList));
+    });
+    route.delete((req, res) => {
+        let {externalListId, uuid} = req.body;
+        sendResult(res, Storage.deleteList(externalListId, uuid));
+    });
 };
 
 /**
@@ -138,7 +171,18 @@ module.exports.addExternalListMediumApi = function addExternalListMediumApi(rout
  * @param {function} route.delete
  */
 module.exports.addExternalUserApi = function addExternalUserApi(route) {
-    //todo implement this episode route
+    route.get((req, res) => {
+        let {externalUuid} = req.body;
+        sendResult(res, Storage.getExternalUser(externalUuid));
+    });
+    route.post((req, res) => {
+        let {uuid, externalUser} = req.body;
+        sendResult(res, Storage.addExternalUser(uuid, externalUser));
+    });
+    route.delete((req, res) => {
+        let {externalUuid} = req.body;
+        sendResult(res, Storage.deleteExternalUser(externalUuid));
+    });
 };
 
 /**
@@ -150,7 +194,14 @@ module.exports.addExternalUserApi = function addExternalUserApi(route) {
  * @param {function} router.delete
  */
 module.exports.addUserApi = function addEpisodeRoute(router) {
-    //todo implement this router
+    router.put((req, res) => {
+        let {uuid, user} = req.body;
+        sendResult(res, Storage.updateUser(uuid, user));
+    });
+    router.delete((req, res) => {
+        let {uuid} = req.body;
+        sendResult(res, Storage.deleteUser(uuid));
+    });
 };
 
 /**
@@ -162,7 +213,22 @@ module.exports.addUserApi = function addEpisodeRoute(router) {
  * @param {function} router.delete
  */
 module.exports.addProgressRoute = function addProgressRoute(router) {
-    //todo implement this route
+    router.get((req, res) => {
+        let {uuid, episodeId} = req.body;
+        sendResult(res, Storage.getProgress(uuid, episodeId));
+    });
+    router.post((req, res) => {
+        let {uuid, episode_id, progress} = req.body;
+        sendResult(res, Storage.addProgress(uuid, episode_id, progress));
+    });
+    router.put((req, res) => {
+        let {uuid, episode_id, progress} = req.body;
+        sendResult(res, Storage.updateProgress(uuid, episode_id, progress));
+    });
+    router.delete((req, res) => {
+        let {uuid, episode_id} = req.body;
+        sendResult(res, Storage.removeProgress(uuid, episode_id));
+    });
 };
 
 /**

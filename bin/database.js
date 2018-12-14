@@ -447,18 +447,6 @@ const Storage = {
     },
 
     /**
-     * Verifies the password the user of
-     * the given uuid.
-     *
-     * @param {status} uuid
-     * @param {string} password
-     * @return {Promise<boolean>}
-     */
-    verifyPassword(uuid, password) {
-        return inContext(true, context => context.verifyPassword(uuid, password));
-    },
-
-    /**
      * Adds a list to the storage and
      * links it to the user of the uuid.
      *
@@ -521,7 +509,7 @@ const Storage = {
      * @return {Promise<Medium>}
      */
     addMedium(title, medium) {
-        return inContext(true, context => context.addMedium(medium, title));
+        return inContext(true, context => context.addMedium(title, medium));
     },
 
     /**
@@ -736,17 +724,6 @@ const Storage = {
     },
 
     /**
-     * Gets an array of all lists of an user.
-     *
-     * @param {string} uuid
-     * @return {Promise<Array<ExternalList>>}
-     */
-    getExternalUserLists(uuid) {
-        return inContext(true, context => context.getExternalUserLists(uuid));
-    },
-
-
-    /**
      * Adds a medium to an external list in the storage.
      *
      * @param {number} list_id
@@ -761,45 +738,46 @@ const Storage = {
      * Add progress of an user in regard to an episode to the storage.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} episode_id
      * @param {number} progress
      * @return {Promise<boolean>}
      */
-    addProgress(uuid, medium_id, progress) {
-        return inContext(true, context => context.addProgress(uuid, medium_id, progress));
+    addProgress(uuid, episode_id, progress) {
+        return inContext(true, context => context.addProgress(uuid, episode_id, progress));
     },
 
     /**
      * Removes progress of an user in regard to an episode.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} episodeId
      * @return {Promise<boolean>}
      */
-    removeProgress(uuid, medium_id) {
-        return inContext(true, context => context.removeProgress(uuid, medium_id));
+    removeProgress(uuid, episodeId) {
+        return inContext(true, context => context.removeProgress(uuid, episodeId));
     },
 
     /**
      * Get the progress of an user in regard to an episode.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} episode_id
      * @return {Promise<boolean>}
      */
-    getProgress(uuid, medium_id) {
-        return inContext(true, context => context.getProgress(uuid, medium_id));
+    getProgress(uuid, episode_id) {
+        return inContext(true, context => context.getProgress(uuid, episode_id));
     },
 
     /**
      * Updates the progress of an user in regard to an episode.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} mediumId
+     * @param {number} progress
      * @return {Promise<boolean>}
      */
-    updateProgress(uuid, medium_id) {
-        return inContext(true, context => context.updateProgress(uuid, medium_id));
+    updateProgress(uuid, mediumId, progress) {
+        return inContext(true, context => context.updateProgress(uuid, mediumId, progress));
     },
 
     showUser() {
@@ -881,7 +859,8 @@ class QueryContext {
      * @return {Promise<boolean>}
      */
     databaseExists() {
-        return this._query("SHOW DATABASES;")
+        return this
+            ._query("SHOW DATABASES;")
             .then(result => result.find(data => data.Database === database) !== undefined)
     }
 
@@ -1082,36 +1061,42 @@ class QueryContext {
      * Returns a boolean whether data was updated or not.
      *
      * @param {string} uuid
-     * @param {{name?: string, newPassword?: string}} user
+     * @param {{name?: string, newPassword?: string, password?: string}} user
      * @return {Promise<boolean>}
      */
     updateUser(uuid, user) {
-        return this._update("user", "uuid", uuid, (updates, values) => {
-            if (user.name) {
-                updates.push("name = ?");
-                values.push(user.name);
-            }
+        return Promise
+            .resolve(user.newPassword && user.password && this.verifyPassword(uuid, user.password))
+            .then(() =>
+                this._update("user", "uuid", uuid, (updates, values) => {
+                    if (user.name) {
+                        updates.push("name = ?");
+                        values.push(user.name);
+                    }
 
-            if (user.newPassword) {
-                let {salt, hash} = StandardHash.hash(password);
+                    if (user.newPassword) {
+                        if (!user.password) {
+                            return Promise.reject(Errors.INVALID_INPUT);
+                        }
+                        let {salt, hash} = StandardHash.hash(user.newPassword);
 
-                updates.push("alg = ?");
-                values.push(StandardHash.tag);
+                        updates.push("alg = ?");
+                        values.push(StandardHash.tag);
 
-                updates.push("salt = ?");
-                values.push(salt);
+                        updates.push("salt = ?");
+                        values.push(salt);
 
-                updates.push("password = ?");
-                values.push(hash);
-            }
-        });
+                        updates.push("password = ?");
+                        values.push(hash);
+                    }
+                }));
     }
 
     /**
      * Verifies the password the user of
      * the given uuid.
      *
-     * @param {status} uuid
+     * @param {string} uuid
      * @param {string} password
      * @return {Promise<boolean>}
      */
@@ -1528,15 +1513,19 @@ class QueryContext {
      *
      * @param {boolean} external
      * @param {number} list_id
-     * @param {number} medium_id
+     * @param {number} id
+     * @param {number} medium
+     * @param {string} title
      * @return {Promise<boolean>}
      */
     addItemToList(external, list_id, {id, medium, title}) {
         let table = external ? "external_list_medium" : "list_medium";
-        let promise = Promise.resolve();
+        let promise;
 
         if (id == null) {
-            promise = this.addMedium(medium, title).then(insertId => id = insertId);
+            promise = this.addMedium(title, medium).then(insertId => id = insertId.id);
+        } else {
+            promise = Promise.resolve();
         }
 
         return promise.then(() => this
@@ -1803,22 +1792,21 @@ class QueryContext {
      * Add progress of an user in regard to an episode to the storage.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} episode_id
      * @param {number} progress
      * @return {Promise<boolean>}
      */
-    addProgress(uuid, medium_id, progress) {
-        if (!Number.isInteger(progress)) {
+    addProgress(uuid, episode_id, progress) {
+        if (!Number.isInteger(progress + episode_id)) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
-        //todo
         return this
-            .removeProgress(uuid, medium_id)
+            .removeProgress(uuid, episode_id)
             .then(() => this._query(
                 "INSERT INTO user_episode " +
-                "(user_uuid, medium_id, progress) " +
+                "(user_uuid, episode_id, progress) " +
                 "VALUES (?,?,?);",
-                [uuid, medium_id, progress])
+                [uuid, episode_id, progress])
             )
             .then(result => result.affectedRows > 0);
     }
@@ -1827,16 +1815,16 @@ class QueryContext {
      * Removes progress of an user in regard to an episode.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} episodeId
      * @return {Promise<boolean>}
      */
-    removeProgress(uuid, medium_id) {
+    removeProgress(uuid, episodeId) {
         return this
             ._query(
                 "DELETE FROM user_episode " +
                 "WHERE user_uuid = ? " +
-                "AND medium_id = ?",
-                [uuid, medium_id]
+                "AND episode_id = ?",
+                [uuid, episodeId]
             )
             .then(result => result.affectedRows > 0);
     }
@@ -1845,16 +1833,16 @@ class QueryContext {
      * Get the progress of an user in regard to an episode.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} episodeId
      * @return {Promise<number>}
      */
-    getProgress(uuid, medium_id) {
+    getProgress(uuid, episodeId) {
         return this
             ._query(
                 "SELECT * FROM user_episode " +
                 "WHERE user_uuid = ? " +
-                "AND medium_id = ?",
-                [uuid, medium_id]
+                "AND episode_id = ?",
+                [uuid, episodeId]
             )
             .then(result => result[0].progress)
     }
@@ -1863,13 +1851,13 @@ class QueryContext {
      * Updates the progress of an user in regard to an episode.
      *
      * @param {string} uuid
-     * @param {number} medium_id
+     * @param {number} episodeId
      * @param {number} progress
      * @return {Promise<boolean>}
      */
-    updateProgress(uuid, medium_id, progress) {
-        //todo for now its essentially the same, but somehow do it better maybe?
-        return this.addProgress(uuid, medium_id, progress);
+    updateProgress(uuid, episodeId, progress) {
+        //todo for now its the same as calling addProgress, but somehow do it better maybe?
+        return this.addProgress(uuid, episodeId, progress);
     }
 
     /**

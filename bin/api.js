@@ -81,21 +81,7 @@ function externalUserRouter() {
     const router = Router();
 
     UserApi.addExternalUserApi(router);
-    router.use("/externalList", externalListRouter());
-
-    return router;
-}
-
-/**
- * Creates the ExternalList API Router.
- *
- * @return {Router} router of the medium api
- */
-function externalListRouter() {
-    const router = Router();
-
-    UserApi.addExternalListRoute(router);
-    UserApi.addExternalListMediumApi(router.route("/medium"));
+    UserApi.addExternalListRoute(router.route("/externalList"));
 
     return router;
 }
