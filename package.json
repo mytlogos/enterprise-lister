@@ -1,35 +1,107 @@
 {
-  "name": "enterprise-lister",
+  "name": "enterprise-other",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
-  },
-  "engines": {
-    "node": "10.8.0"
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "test:e2e": "vue-cli-service test:e2e",
+    "test:unit": "vue-cli-service test:unit",
+    "build:live": "nodemon --watch 'server/**/*.ts' --exec ts-node ./server/bin/start.ts",
+    "buildServer": "tsc -p server/tsconfig.json"
   },
   "dependencies": {
-    "ava": "^0.25.0",
+    "@types/cheerio": "^0.22.10",
+    "@types/compression": "0.0.36",
+    "@types/express": "^4.16.1",
+    "@types/helmet": "0.0.42",
+    "@types/http-errors": "^1.6.1",
+    "@types/morgan": "^1.7.35",
     "bcrypt-nodejs": "0.0.3",
-    "browserify": "^16.2.3",
+    "cheerio": "^1.0.0-rc.2",
     "compression": "^1.7.3",
     "cookie-parser": "~1.4.3",
     "debug": "^4.1.0",
-    "express": "~4.16.0",
-    "helmet": "^3.13.0",
-    "http-errors": "~1.6.2",
-    "morgan": "~1.9.0",
+    "dotenv": "^6.2.0",
+    "express": "^4.16.4",
+    "feedparser-promised": "^2.0.0",
+    "helmet": "^3.15.0",
+    "http-errors": "^1.7.1",
+    "morgan": "^1.9.1",
     "mysql": "latest",
-    "observable-array": "0.0.4",
     "promise-mysql": "^3.3.1",
-    "pug": "2.0.0-beta11",
+    "request-promise-native": "^1.0.5",
+    "tough-cookie": "latest",
+    "ts-node": "^8.0.2",
     "uuid": "^3.3.2",
+    "vue": "^2.5.21",
+    "vue-class-component": "^6.0.0",
+    "vue-ctk-date-time-picker": "^2.0.6",
+    "vue-observe-visibility": "^0.4.3",
+    "vue-property-decorator": "^7.0.0",
+    "vue-router": "^3.0.1",
+    "vuex": "^3.0.1",
     "websocket": "^1.0.28"
   },
   "devDependencies": {
-    "chai": "^4.2.0",
-    "chai-as-promised": "^7.1.1",
-    "mocha": "^5.2.0",
-    "validator": "^10.8.0"
+    "@types/bcrypt-nodejs": "0.0.30",
+    "@types/debug": "0.0.31",
+    "@types/dotenv": "^6.1.0",
+    "@types/jest": "^23.1.4",
+    "@types/request-promise-native": "^1.0.15",
+    "@types/uuid": "^3.4.4",
+    "@types/websocket": "0.0.40",
+    "@vue/cli-plugin-babel": "^3.3.0",
+    "@vue/cli-plugin-e2e-cypress": "^3.3.0",
+    "@vue/cli-plugin-typescript": "^3.3.0",
+    "@vue/cli-plugin-unit-jest": "^3.4.0",
+    "@vue/cli-service": "^3.3.0",
+    "@vue/test-utils": "^1.0.0-beta.20",
+    "babel-core": "7.0.0-bridge.0",
+    "nodemon": "^1.18.9",
+    "ts-jest": "^23.0.0",
+    "typescript": "^3.0.0",
+    "vue-template-compiler": "^2.5.21"
+  },
+  "postcss": {
+    "plugins": {
+      "autoprefixer": {}
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 8"
+  ],
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "jsx",
+      "json",
+      "vue",
+      "ts",
+      "tsx"
+    ],
+    "transform": {
+      "^.+\\.vue$": "vue-jest",
+      ".+\\.(css|styl|less|sass|scss|svg|png|jpg|ttf|woff|woff2)$": "jest-transform-stub",
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "snapshotSerializers": [
+      "jest-serializer-vue"
+    ],
+    "testMatch": [
+      "**/tests/unit/**/*.spec.(js|jsx|ts|tsx)|**/__tests__/*.(js|jsx|ts|tsx)"
+    ],
+    "testURL": "http://localhost/",
+    "globals": {
+      "ts-jest": {
+        "babelConfig": true
+      }
+    }
   }
 }
