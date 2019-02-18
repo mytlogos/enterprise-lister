@@ -296,7 +296,13 @@ const app: App = new Vue({
         onBusEvent("get:news", (data) => this.loadNews(data));
         onBusEvent("read:news", (data) => this.markReadNews(data));
 
-
+        onBusEvent("append:media", (media) => {
+            if (Array.isArray(media)) {
+                user.addMedium(...media);
+            } else {
+                user.addMedium(media);
+            }
+        });
         onBusEvent("reset:modal", () => this.closeModal());
 
         optimizedResize.add(() => emitBusEvent("window:resize"));
@@ -406,7 +412,6 @@ const app: App = new Vue({
         WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
         this.loginState();
         this.sendPeriodicData();
-        // generateData(100, this.media, 20, this.lists, (mI, lI) => mI % 2);
     },
     methods: {
         closeModal() {

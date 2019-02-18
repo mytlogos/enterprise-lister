@@ -6,10 +6,10 @@
                     v-bind:show-releases="showReleases"
                     v-bind:show-settings="showSettings"></app-header>
         <main>
-            <router-view :lists="lists"
+            <router-view :lists="allLists"
                          :news="news"
                          :columns="columns"
-                         :media="media"
+                         :media="displayMedia"
                          :externalUser="externalUser"></router-view>
         </main>
     </div>
@@ -17,12 +17,14 @@
 
 <script>
     import appHeader from "./components/app-header";
-    import {onBusEvent} from "./bus";
+    import {emitBusEvent, onBusEvent} from "./bus";
     import {HttpClient} from "./Httpclient";
     import addListModal from "./components/modal/add-list-modal";
     import addMediumModal from "./components/modal/add-list-modal";
     import loginModal from "./components/modal/add-list-modal";
     import registerModal from "./components/modal/add-list-modal";
+
+    let loadingMedia = [];
 
     export default {
         components: {
@@ -130,11 +132,8 @@
                     // load missing media
                     HttpClient.getMedia(missingMedia)
                         .then((media) => {
-                            if (Array.isArray(media)) {
-                                user.addMedium(...media);
-                            } else {
-                                user.addMedium(media);
-                            }
+                            emitBusEvent("append:media", media);
+
                             // filter out the now loaded media
                             loadingMedia = loadingMedia.filter((value) => {
                                 return Array.isArray(media) ?
