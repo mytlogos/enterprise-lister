@@ -18,7 +18,7 @@
                 <tbody>
                 <tr v-for="(item, index) in displayNews" @dblclick.left="openNews(item.link)"
                     v-observe-visibility="{
-                        callback: (visible)=> markRead(visible, item, index),
+                        callback: (visible)=> markNewsRead(visible, item, index),
                         throttle: 300,
                         intersection: {
                             threshold: 1.0,
@@ -36,6 +36,7 @@
 <script>
     // todo unread news should fade out slowly (more like that a marker slowly disappears)
     // todo user should be able to mark all news as read
+    // todo replace vue picker with date and time input
     import {emitBusEvent, onBusEvent} from "../bus";
     import readingList from "../components/reading-list";
     // noinspection NpmUsedModulesInstalled

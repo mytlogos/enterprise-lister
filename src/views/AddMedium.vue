@@ -69,6 +69,7 @@
 
     export default {
         components: {modal},
+
         data() {
             return {
                 mediaTypes: [
@@ -112,6 +113,9 @@
             show: Boolean,
             error: String,
             lists: Array,
+        },
+        mounted() {
+            console.log("mounted");
         },
 
         methods: {

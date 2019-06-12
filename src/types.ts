@@ -1,17 +1,3 @@
-export interface ExternalUser {
-    uuid: string;
-    readonly lists: ExternalList[];
-}
-
-export interface ExternalList {
-    name: ExternalList;
-    uuid: string;
-    items: any;
-    id: any;
-    external: boolean;
-    show: boolean;
-}
-
 export interface Medium {
     id: number;
 }
@@ -26,28 +12,97 @@ export interface TransferMedium {
 export interface TransferList {
     listId: any;
     id: number;
-    name: ExternalList | undefined;
+    name: string | undefined;
     external: any;
 }
 
 export interface List {
-    name: ExternalList;
+    name: string;
     id: number;
     external: boolean;
     show: boolean;
     items: number[];
 }
 
-export interface News {
-    id: any;
-    date: Date;
+export interface SimpleMedium {
+    id?: number;
+    countryOfOrigin?: string;
+    languageOfOrigin?: string;
+    author?: string;
+    title: string;
+    medium: number;
+    artist?: string;
+    lang?: string;
+    stateOrigin?: number;
+    stateTL?: number;
+    series?: string;
+    universe?: string;
+
+    [key: string]: any;
 }
 
+export interface Medium extends SimpleMedium {
+    parts?: number[];
+    latestReleased: number[];
+    currentRead: number;
+    unreadEpisodes: number[];
+}
+
+export interface Part {
+    id: number;
+    title?: string;
+    totalIndex: number;
+    partialIndex?: number;
+    episodes: Episode[];
+}
+
+export interface Episode {
+    id: number;
+    partId?: number;
+    title?: string;
+    totalIndex: number;
+    partialIndex?: number;
+    url: string;
+    releaseDate: Date;
+}
 
 export interface User {
-    lists: any;
-    externalUser: any;
-    session: string;
     uuid: string;
     name: string;
+    session: string;
+    externalUser: ExternalUser[];
+    lists: List[];
+}
+
+export interface ExternalList {
+    uuid?: string;
+    id: number;
+    name: string;
+    medium: number;
+    url: string;
+    items: number[];
+    external: boolean;
+    show: boolean;
+}
+
+export interface ExternalUser {
+    uuid: string;
+    identifier: string;
+    type: number;
+    readonly lists: ExternalList[];
+    lastScrape?: Date;
+    cookies?: string | null;
+}
+
+export interface News {
+    title: string;
+    link: string;
+    date: Date;
+    id?: number;
+    read?: boolean;
+}
+
+export interface Synonyms {
+    mediumId: number;
+    synonym: string | string[];
 }

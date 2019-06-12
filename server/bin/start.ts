@@ -4,12 +4,15 @@ import debug from "debug";
 import {createServer, Server} from "http";
 import env from "./env";
 // start storage (connect to database)
-import {startStorage} from "./database";
+import {startStorage} from "./database/database";
 // start crawler (setup and start running)
 import {startCrawler} from "./crawlerStart";
+import os from "os";
 
 const port = env.port;
+// first start storage
 startStorage();
+// then start crawler, as crawler depends on storage
 startCrawler();
 const debugMessenger = debug("enterprise-lister:server");
 
@@ -66,8 +69,13 @@ function onError(error: any) {
  */
 function onListening() {
     const address = server.address();
-    const bind = typeof address === "string"
-        ? "pipe " + address
-        : "port " + address.port;
-    debugMessenger("Listening on " + bind);
+    if (address != null) {
+        const bind = typeof address === "string"
+            ? "pipe " + address
+            : "port " + address.port;
+
+        const networkInterfaces = os.networkInterfaces();
+        const foundIpInterface = networkInterfaces.Ethernet.find((value) => value.family === "IPv4");
+        debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
+    }
 }

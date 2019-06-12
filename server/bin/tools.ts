@@ -1,3 +1,10 @@
+import logger from "./logger";
+import {MultiSingle} from "./types";
+import {TocEpisode, TocPart} from "./externals/types";
+import crypt from "crypto";
+import crypto from "crypto";
+import bcrypt from "bcrypt-nodejs";
+
 export function remove<T>(array: T[], item: T): boolean {
     const index = array.indexOf(item);
     if (index < 0) {
@@ -7,7 +14,9 @@ export function remove<T>(array: T[], item: T): boolean {
     return true;
 }
 
-export function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: (value: T, index: number) => void, start = 0) {
+export type ArrayCallback<T> = (value: T, index: number) => void;
+
+export function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: ArrayCallback<T>, start = 0): void {
     for (let i = start; i < arrayLike.length; i++) {
         callback(arrayLike[i], i);
     }
@@ -15,10 +24,13 @@ export function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: (value: T
 
 type multiSingleCallback<T, R> = (value: T, index?: number, last?: boolean) => R;
 
-export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): Promise<R | R[]> {
+export function promiseMultiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>): Promise<R>;
+export function promiseMultiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): Promise<R[]>;
+
+export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): Promise<MultiSingle<R>> {
     if (Array.isArray(item)) {
-        const max = item.length - 1;
-        return Promise.all(item.map((value, index) => Promise.resolve(cb(value, index, index < max))));
+        const maxIndex = item.length - 1;
+        return Promise.all(item.map((value: T, index) => Promise.resolve(cb(value, index, index < maxIndex))));
     }
     return new Promise((resolve, reject) => {
         try {
@@ -29,15 +41,18 @@ export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<
     });
 }
 
+export function multiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>): R;
+export function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): R[];
+
 export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): R | R[] {
     if (Array.isArray(item)) {
-        const max = item.length - 1;
-        return item.map((value, index) => cb(value, index, index < max));
+        const maxIndex = item.length - 1;
+        return item.map((value, index) => cb(value, index, index < maxIndex));
     }
     return cb(item);
 }
 
-export function addMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean) {
+export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
             array.push(...item);
@@ -47,7 +62,7 @@ export function addMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean
     }
 }
 
-export function removeMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean) {
+export function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
             item.forEach((value) => remove(array, value));
@@ -66,25 +81,291 @@ export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
 }
 
 
-export function unique<T>(array: ArrayLike<T>, isEqualCb: (value: T, other: T) => boolean) {
+export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) => boolean): T[] {
     const uniques: T[] = [];
-    forEachArrayLike(array, (value, index) => {
-        const notUnique = some(array, (otherValue) => isEqualCb(value, otherValue), index + 1);
 
-        if (notUnique) {
-            return;
-        }
-        uniques.push(value);
-    });
+    if (isEqualCb) {
+        forEachArrayLike(array, (value, index) => {
+            const notUnique = some(array, (otherValue) => isEqualCb(value, otherValue), index + 1);
+
+            if (notUnique) {
+                return;
+            }
+            uniques.push(value);
+        });
+    } else {
+        const set = new Set();
+        forEachArrayLike(array, (value) => set.add(value));
+        uniques.push(...set);
+    }
     return uniques;
 }
 
+export function isTocEpisode(tocContent: any): tocContent is TocEpisode {
+    return tocContent.url;
+}
 
-export function some<T>(array: ArrayLike<T>, predicate: (value: T, index: number) => boolean, start: number): boolean {
+export function isTocPart(tocContent: any): tocContent is TocPart {
+    return tocContent.episodes;
+}
+
+
+export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: number): boolean {
     for (let i = start; i < array.length; i++) {
         if (predicate(array[i], i)) {
             return true;
         }
     }
     return false;
+}
+
+export function equalsIgnoreCase(s1: string, s2: string) {
+    return s1.localeCompare(s2, undefined, {sensitivity: "base"}) === 0;
+}
+
+export function countOccurrence<T>(array: T[]): Map<T, number> {
+    const occurrenceMap: Map<T, number> = new Map();
+    for (const value of array) {
+        let counted = occurrenceMap.get(value);
+
+        if (!counted) {
+            counted = 0;
+        }
+        occurrenceMap.set(value, counted + 1);
+    }
+    return occurrenceMap;
+}
+
+export type Predicate<T> = (value: T, index: number) => boolean;
+
+export function count<T>(array: T[], condition: Predicate<T>): number {
+    let countNumber = 0;
+    for (let i = 0; i < array.length; i++) {
+        if (condition(array[i], i)) {
+            countNumber++;
+        }
+    }
+    return countNumber;
+}
+
+export type Comparator<T> = (previous: T, current: T) => number;
+
+export function max<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined {
+    if (!array.length) {
+        return;
+    }
+    // @ts-ignore
+    const comparatorFunction: Comparator<T> = isString(comparator)
+        // @ts-ignore
+        ? (previousValue: T, currentValue: T) => previousValue[comparator] - currentValue[comparator]
+        : comparator;
+
+    return array.reduce((previousValue, currentValue) => {
+        return comparatorFunction(previousValue, currentValue) < 0 ? currentValue : previousValue;
+    });
+}
+
+export function maxValue<T>(array: T[]): T | undefined {
+    if (!array.length) {
+        return;
+    }
+    return array.reduce((previousValue, currentValue) => {
+        return previousValue < currentValue ? currentValue : previousValue;
+    });
+}
+
+export function minValue<T>(array: T[]): T | undefined {
+    if (!array.length) {
+        return;
+    }
+    return array.reduce((previousValue, currentValue) => {
+        return previousValue > currentValue ? currentValue : previousValue;
+    });
+}
+
+export function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined {
+    if (!array.length) {
+        return;
+    }
+    // @ts-ignore
+    const comparatorFunction: Comparator<T> = isString(comparator)
+        // @ts-ignore
+        ? (previousValue: T, currentValue: T) => previousValue[comparator] - currentValue[comparator]
+        : comparator;
+
+    return array.reduce((previousValue, currentValue) => {
+        return comparatorFunction(previousValue, currentValue) < 0 ? previousValue : currentValue;
+    });
+}
+
+export function relativeToAbsoluteTime(relative: string): Date | null {
+    const exec = /\s*(\d+)\s+(\w+)\s+(ago)\s*/i.exec(relative);
+    if (!exec) {
+        return null;
+    }
+    const [, value, unit] = exec;
+    const absolute = new Date();
+    const timeValue = Number(value);
+
+    if (Number.isNaN(timeValue)) {
+        logger.warn(`'${value}' is not a number`);
+        return null;
+    }
+
+    if (/^(s|secs?|seconds?)$/.test(unit)) {
+        absolute.setSeconds(absolute.getSeconds() - timeValue);
+
+    } else if (/^(mins?|minutes?)$/.test(unit)) {
+        absolute.setMinutes(absolute.getMinutes() - timeValue);
+
+    } else if (/^(hours?|hr)$/.test(unit)) {
+        absolute.setHours(absolute.getHours() - timeValue);
+
+    } else if (/^(days?)$/.test(unit)) {
+        absolute.setDate(absolute.getDate() - timeValue);
+
+    } else if (/^(weeks?)$/.test(unit)) {
+        absolute.setDate(absolute.getDate() - 7 * timeValue);
+
+    } else if (/^(months?)$/.test(unit)) {
+        absolute.setMonth(absolute.getMonth() - timeValue);
+
+    } else if (/^(years?)$/.test(unit)) {
+        absolute.setFullYear(absolute.getFullYear() - timeValue);
+
+    } else {
+        logger.info(`unknown time unit: '${unit}'`);
+        return null;
+    }
+    return absolute;
+}
+
+export function delay(timeout = 1000): Promise<void> {
+    return new Promise((resolve) => {
+        setTimeout(() => resolve(), timeout);
+    });
+}
+
+export function isString(value: any): value is string {
+    return Object.prototype.toString.call(value) === "[object String]";
+}
+
+export function stringToNumberList(s: string): number[] {
+    return s
+        .split(/[[\],]/)
+        .map((value: any) => Number(value))
+        .filter((value: number) => !Number.isNaN(value) && value);
+}
+
+interface Hash {
+    salt?: string;
+    hash: string;
+}
+
+export interface Hasher {
+    tag: string;
+
+    hash(text: string, saltLength?: number): Hash;
+
+    equals(text: string, hash: string, salt: string): boolean;
+}
+
+interface ShaHasher extends Hasher {
+    innerHash(text: string, salt: string): string;
+}
+
+const ShaHash: ShaHasher = {
+    tag: "sha512",
+
+    /**
+     *
+     * @param {number} saltLength
+     * @param {string} text
+     * @return {{salt: string, hash: string}}
+     */
+    hash(text: string, saltLength: number = 20): { salt: string, hash: string } {
+        const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
+            .toString("hex") // convert to hexadecimal format
+            .slice(0, saltLength); // return required number of characters */
+        return {salt, hash: this.innerHash(text, salt)};
+    },
+
+    innerHash(text, salt) {
+        const hash = crypt.createHash("sha512");
+        hash.update(salt + text);
+        return hash.digest("hex");
+    },
+
+
+    /**
+     * Checks whether the text hashes to the same hash.
+     */
+    equals(text, hash, salt) {
+        return this.innerHash(text, salt) === hash;
+    },
+};
+export const Md5Hash: Hasher = {
+    tag: "md5",
+
+    hash(text: string) {
+        const newsHash = crypto
+            .createHash("md5")
+            .update(text)
+            .digest("hex");
+        return {hash: newsHash};
+    },
+
+    /**
+     * Checks whether the text hashes to the same hash.
+     */
+    equals(text, hash) {
+        return this.hash(text).hash === hash;
+    },
+};
+export const BcryptHash: Hasher = {
+    tag: "bcrypt",
+
+    hash(text) {
+        return {salt: undefined, hash: bcrypt.hashSync(text)};
+    },
+
+    /**
+     * Checks whether the text hashes to the same hash.
+     *
+     * @param {string} text
+     * @param {string} hash
+     * @return boolean
+     */
+    equals(text, hash) {
+        return bcrypt.compareSync(text, hash);
+    },
+};
+export const Hashes: Hasher[] = [ShaHash, BcryptHash];
+
+export enum Errors {
+    USER_EXISTS_ALREADY = "USER_EXISTS_ALREADY",
+    INVALID_INPUT = "INVALID_INPUT",
+    INVALID_DATA = "INVALID_DATA",
+    USER_DOES_NOT_EXIST = "USER_DOES_NOT_EXIST",
+    CORRUPT_DATA = "CORRUPT_DATA",
+    UNKNOWN = "UNKNOWN",
+    INVALID_MESSAGE = "INVALID_MESSAGE",
+    INVALID_SESSION = "INVALID_SESSION",
+    DOES_NOT_EXIST = "DOES_NOT_EXIST",
+    UNSUCCESSFUL = "UNSUCCESSFUL",
+}
+
+export const isError = (error: any) => {
+    return Object.values(Errors).includes(error);
+};
+
+export enum MediaType {
+    TEXT = 0x1,
+    AUDIO = 0x2,
+    VIDEO = 0x4,
+    IMAGE = 0x8
+}
+
+export function allTypes() {
+    return Object.values(MediaType).reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
 }

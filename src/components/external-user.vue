@@ -85,7 +85,7 @@
                 this.markDelete = item.uuid;
                 this.confirm.text = "Are you sure you want to delete" + item.identifier
                     + "\nof " + item.host.name + " from this site?";
-                this.confirm.show = true;
+                Plato.show = true;
             },
             deleteItem() {
                 if (!this.markDelete) {
@@ -159,8 +159,8 @@
 
         mounted() {
             onBusEvent("reset:modal", () => {
-                this.add.show = false;
-                this.confirm.show = false;
+                Plato.show = false;
+                Plato.show = false;
                 this.confirm.text = "";
                 this.markDelete = null;
             });

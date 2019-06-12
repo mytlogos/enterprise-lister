@@ -1,16 +1,16 @@
 import request from "request-promise-native";
 import cheerio from "cheerio";
 import url from "url";
-import {Errors, MediaType} from "../database";
-import {unique} from "../tools";
+import {Errors, MediaType, unique} from "../tools";
 import {queueRequest} from "./queueManager";
 import CookieJar from "tough-cookie";
+import {Hook} from "./types";
 
 class NovelUpdates implements ListManager {
 
     public static scrapeListRow(i: number, tableData: Cheerio) {
         const link = tableData.eq(i).children("a").first();
-        return {text: link.text(), link: link.attr("href")};
+        return {text: link.text().trim(), link: link.attr("href")};
     }
 
     public jar: any;
@@ -47,7 +47,7 @@ class NovelUpdates implements ListManager {
         const listElement = $(".l-content #cssmenu ul li");
 
         if (!listElement.length) {
-            return Promise.reject(Errors.INVALID_SESSION);
+            return Promise.reject(new Error(Errors.INVALID_SESSION));
         }
 
         const lists = [];
@@ -60,9 +60,9 @@ class NovelUpdates implements ListManager {
             link = url.resolve(this.baseURI, link);
 
             const list: ScrapeList = {
-                name: element.text(),
+                name: element.text().trim(),
                 link,
-                medium: MediaType.Text,
+                medium: MediaType.TEXT,
                 media: [],
             };
 
@@ -123,15 +123,15 @@ class NovelUpdates implements ListManager {
         const $ = await this.loadCheerio(link);
         const synonyms = $("#editassociated").contents();
 
-        const lang = $("#showlang").text();
+        const lang = $("#showlang").text().trim();
         const authors = $("#showauthors a");
         const artists = $("#showartists a");
-        const statusCOO = $("#editstatus").text();
+        const statusCOO = $("#editstatus").text().trim();
 
         medium.synonyms = [];
 
         for (let i = 0; i < synonyms.length; i += 2) {
-            const synonym = synonyms.eq(i).text();
+            const synonym = synonyms.eq(i).text().trim();
             medium.synonyms.push(synonym);
         }
 
@@ -146,7 +146,7 @@ class NovelUpdates implements ListManager {
                 const authorElement = authors.eq(i);
                 const author = {
                     link: authorElement.attr("href"),
-                    name: authorElement.text(),
+                    name: authorElement.text().trim(),
                 };
                 medium.authors.push(author);
             }
@@ -158,7 +158,7 @@ class NovelUpdates implements ListManager {
                 const artistElement = artists.eq(i);
                 const artist = {
                     link: artistElement.attr("href"),
-                    name: artistElement.text(),
+                    name: artistElement.text().trim(),
                 };
                 medium.artists.push(artist);
             }
@@ -168,7 +168,7 @@ class NovelUpdates implements ListManager {
         if (!medium.latest) {
             medium.latest = NovelUpdates.scrapeListRow(3, tableData);
         }
-        medium.latest.date = tableData.first().text();
+        medium.latest.date = tableData.first().text().trim();
     }
 
 
@@ -205,7 +205,7 @@ class NovelUpdates implements ListManager {
      * @return {Promise<CheerioStatic>}
      */
     public loadCheerio(link: string): Promise<CheerioStatic> {
-        return queueRequest(this.baseURI, () => this.defaults.get(link))
+        return queueRequest(link, {url: link}, this.defaults)
             .then((body: string) => cheerio.load(body));
     }
 
@@ -274,6 +274,9 @@ export interface ScrapeMedium {
     artists?: Array<{ name: string, link: string }>;
 }
 
+export function getListManagerHooks(): Hook[] {
+    return [{redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/}];
+}
 
 export interface ListManager {
     test(credentials: { identifier: string, password: string }): Promise<boolean>;

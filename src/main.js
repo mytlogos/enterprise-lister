@@ -3,9 +3,9 @@ import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";
 import { events, WSClient } from "./WebsocketClient";
-import { emitBusEvent, onBusEvent } from "@/bus";
+import { emitBusEvent, onBusEvent } from "./bus";
 import { optimizedResize } from "./init";
-import { HttpClient } from "@/Httpclient";
+import { HttpClient } from "./Httpclient";
 Vue.config.devtools = true;
 Vue.use(VueObserveVisibility);
 const user = {
@@ -206,6 +206,7 @@ const app = new Vue({
         onBusEvent("do:login", (data) => this.login(data));
         onBusEvent("do:logout", () => this.logout());
         onBusEvent("open:add-medium", () => this.addMediumModal.show = true);
+        onBusEvent("open:medium", (data) => this.openMedium(data));
         onBusEvent("add:medium", (data) => this.addMedium(data));
         onBusEvent("edit:medium", (data) => this.editMedium(data));
         onBusEvent("delete:medium", (data) => this.deleteMedium(data));
@@ -218,41 +219,27 @@ const app = new Vue({
         onBusEvent("do:settings", (data) => this.changeSettings(data));
         onBusEvent("get:news", (data) => this.loadNews(data));
         onBusEvent("read:news", (data) => this.markReadNews(data));
+        onBusEvent("append:media", (media) => {
+            if (Array.isArray(media)) {
+                user.addMedium(...media);
+            }
+            else {
+                user.addMedium(media);
+            }
+        });
         onBusEvent("reset:modal", () => this.closeModal());
         optimizedResize.add(() => emitBusEvent("window:resize"));
         // @ts-ignore
         HttpClient.user = user;
-        WSClient.addEventListener(events.ADD, (value) => {
-            if (value.items) {
-                value.items.forEach((item) => {
-                    let list;
-                    if (item.external) {
-                        list = user.externalUser
-                            .flatMap((externalUser) => externalUser.lists)
-                            .find((externalList) => externalList.id === item.listId);
-                    }
-                    else {
-                        list = user.lists.find((internalList) => internalList.id === item.listId);
-                    }
-                    if (!list) {
-                        return;
-                    }
-                    list.items.push(item.mediumId);
-                });
-            }
-            if (value.externalList) {
-                value.externalList.forEach((list) => {
-                    for (const externalUser of user.externalUser) {
-                        if (list.uuid === externalUser.uuid
-                            && !externalUser.lists.find((externalList) => externalList.id === list.id)) {
-                            externalUser.lists.push(list);
-                            break;
-                        }
-                    }
-                });
-            }
-        });
-        WSClient.addEventListener(events.DELETE, (value) => {
+        WSClient.addEventListener(events.ADD, (value) => this.processAddEvent(value));
+        WSClient.addEventListener(events.DELETE, (value) => this.processDeleteEvent(value));
+        WSClient.addEventListener(events.UPDATE, (value) => this.processUpdateEvent(value));
+        WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
+        this.loginState();
+        this.sendPeriodicData();
+    },
+    methods: {
+        processDeleteEvent(value) {
             if (value.items) {
                 value.items.forEach((item) => {
                     let list;
@@ -277,7 +264,8 @@ const app = new Vue({
             if (value.externalList) {
                 value.externalList.forEach((id) => {
                     for (const externalUser of user.externalUser) {
-                        const index = externalUser.lists.findIndex((externalList) => externalList.id === id);
+                        const index = externalUser.lists
+                            .findIndex((externalList) => externalList.id === id);
                         if (index < 0) {
                             continue;
                         }
@@ -287,8 +275,8 @@ const app = new Vue({
                 });
             }
             console.log(value);
-        });
-        WSClient.addEventListener(events.UPDATE, (value) => {
+        },
+        processUpdateEvent(value) {
             if (value.lists) {
                 value.lists.forEach((item) => {
                     if (item.external) {
@@ -308,13 +296,38 @@ const app = new Vue({
                 });
             }
             console.log(value);
-        });
-        WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
-        this.loginState();
-        this.sendPeriodicData();
-        // generateData(100, this.media, 20, this.lists, (mI, lI) => mI % 2);
-    },
-    methods: {
+        },
+        processAddEvent(value) {
+            if (value.items) {
+                value.items.forEach((item) => {
+                    let list;
+                    if (item.external) {
+                        list = user.externalUser
+                            .flatMap((externalUser) => externalUser.lists)
+                            .find((externalList) => externalList.id === item.listId);
+                    }
+                    else {
+                        list = user.lists.find((internalList) => internalList.id === item.listId);
+                    }
+                    if (!list) {
+                        return;
+                    }
+                    list.items.push(item.mediumId);
+                });
+            }
+            if (value.externalList) {
+                value.externalList.forEach((list) => {
+                    for (const externalUser of user.externalUser) {
+                        if (list.uuid === externalUser.uuid
+                            && !externalUser.lists
+                                .find((externalList) => externalList.id === list.id)) {
+                            externalUser.lists.push(list);
+                            break;
+                        }
+                    }
+                });
+            }
+        },
         closeModal() {
             this.resetModal(this.loginModal);
             this.resetModal(this.registerModal);
@@ -443,6 +456,10 @@ const app = new Vue({
                 .catch((error) => this.errorModal.error = String(error));
             // todo implement logout
         },
+        openMedium(id) {
+            // todo implement this
+            console.log(id);
+        },
         addMedium(data) {
             if (!data.title) {
                 this.addMediumModal.error = "Missing title";
@@ -549,6 +566,7 @@ const app = new Vue({
         },
     },
 });
+// todo rework news, add the read property to news item itself instead of asking for it
 // todo login mechanism, check if it was already logged in before
 // todo give a reason for any rejects
 //# sourceMappingURL=main.js.map

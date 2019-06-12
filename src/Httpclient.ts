@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import {ExternalUser, List, Medium, News, User} from "@/types";
+import {ExternalUser, List, Medium, News, User} from "./types";
 
 const Methods = {
     post: "POST",
