@@ -1,26 +1,35 @@
 import mySql, {Connection} from "promise-mysql";
-import crypt from "crypto";
-import bcrypt from "bcrypt-nodejs";
-import {multiSingle, promiseMultiSingle} from "./tools";
-import uuidGenerator from "uuid/v1";
-import sessionGenerator from "uuid/v4";
-import env from "./env";
 import {
     Episode,
+    EpisodeRelease,
     ExternalList,
     ExternalUser,
+    Invalidation,
     LikeMedium,
+    LikeMediumQuery,
     List,
     Medium,
     MetaResult,
+    MultiSingle,
     News,
     Part,
+    ProgressResult,
+    ReadEpisode,
     Result,
     ScrapeItem,
+    SimpleEpisode,
+    SimpleMedium,
     Synonyms,
+    TocSearchMedium,
     User
-} from "./types";
-
+} from "../types";
+import uuidGenerator from "uuid/v1";
+import sessionGenerator from "uuid/v4";
+import {allTypes, BcryptHash, Errors, Hasher, Hashes, MediaType, multiSingle, promiseMultiSingle} from "../tools";
+import logger from "../logger";
+import {StateProcessor} from "./databaseValidator";
+import {Tables} from "./databaseSchema";
+import * as validate from "validate.js";
 
 /**
  * Escapes the Characters for an Like with the '|' char.
@@ -31,12 +40,20 @@ function escapeLike(s: string,
                         noBoundaries = false,
                         noRightBoundary = false,
                         noLeftBoundary = false
+                    }: {
+                        singleQuotes?: boolean,
+                        noBoundaries?: boolean,
+                        noRightBoundary?: boolean,
+                        noLeftBoundary?: boolean
                     } = {}): string {
 
+    if (!s) {
+        return "";
+    }
     s = s.replace(/([%_])/g, "|$1");
 
     if (singleQuotes) {
-        s = s.replace(/[´`']/g, "_");
+        s = s.replace(/[`´'‘]/g, "_");
     }
     if (noBoundaries) {
         s = "%" + s + "%";
@@ -47,73 +64,6 @@ function escapeLike(s: string,
     }
     return s;
 }
-
-interface Hash {
-    salt?: string;
-    hash: string;
-}
-
-interface Hasher {
-    tag: string;
-
-    hash(text: string, saltLength?: number): Hash;
-
-    equals(text: string, hash: string, salt: string): boolean;
-}
-
-interface ShaHasher extends Hasher {
-    innerHash(text: string, salt: string): string;
-}
-
-const ShaHash: ShaHasher = {
-    tag: "sha512",
-
-    /**
-     *
-     * @param {number} saltLength
-     * @param {string} text
-     * @return {{salt: string, hash: string}}
-     */
-    hash(text: string, saltLength: number = 20): { salt: string, hash: string } {
-        const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
-            .toString("hex") // convert to hexadecimal format
-            .slice(0, saltLength); // return required number of characters */
-        return {salt, hash: this.innerHash(text, salt)};
-    },
-
-    innerHash(text, salt) {
-        const hash = crypt.createHash("sha512");
-        hash.update(salt + text);
-        return hash.digest("hex");
-    },
-
-
-    /**
-     * Checks whether the text hashes to the same hash.
-     */
-    equals(text, hash, salt) {
-        return this.innerHash(text, salt) === hash;
-    },
-};
-const BcryptHash: Hasher = {
-    tag: "bcrypt",
-
-    hash(text) {
-        return {salt: undefined, hash: bcrypt.hashSync(text)};
-    },
-
-    /**
-     * Checks whether the text hashes to the same hash.
-     *
-     * @param {string} text
-     * @param {string} hash
-     * @return boolean
-     */
-    equals(text, hash) {
-        return bcrypt.compareSync(text, hash);
-    },
-};
-const Hashes: Hasher[] = [ShaHash, BcryptHash];
 
 /**
  * Checks whether the password equals to the given hash
@@ -139,801 +89,25 @@ const verifyPassword = (password: string, hash: string, alg: string, salt: strin
 };
 
 const StandardHash: Hasher = BcryptHash;
-
 const database = "enterprise";
-
-interface Errors {
-    USER_EXISTS_ALREADY: number;
-    INVALID_INPUT: number;
-    INVALID_DATA: number;
-    USER_DOES_NOT_EXIST: number;
-    CORRUPT_DATA: number;
-    UNKNOWN: number;
-    INVALID_MESSAGE: number;
-    INVALID_SESSION: number;
-    DOES_NOT_EXIST: number;
-    UNSUCCESSFUL: number;
-
-    [key: string]: number;
-}
-
-export const Errors: Errors = {
-    USER_EXISTS_ALREADY: 0x1,
-    INVALID_INPUT: 0x2,
-    INVALID_DATA: 0x4,
-    USER_DOES_NOT_EXIST: 0x8,
-    CORRUPT_DATA: 0x10,
-    UNKNOWN: 0x20,
-    INVALID_MESSAGE: 0x40,
-    INVALID_SESSION: 0x80,
-    DOES_NOT_EXIST: 0x100,
-    UNSUCCESSFUL: 0x200,
-};
-
-interface ResultKeys {
-    novel: number;
-    volume: number;
-    volIndex: number;
-    chapter: number;
-    chapIndex: number;
-}
-
-const ResultKeys: ResultKeys = {
-    novel: 0x1,
-    volume: 0x2,
-    volIndex: 0x4,
-    chapter: 0x8,
-    chapIndex: 0x10,
-};
-
-interface MediaType {
-    TEXT: number;
-    AUDIO: number;
-    VIDEO: number;
-    IMAGE: number;
-
-    [key: string]: number;
-}
-
-export const MediaType: MediaType = {
-    TEXT: 0x1,
-    AUDIO: 0x2,
-    VIDEO: 0x4,
-    IMAGE: 0x8,
-};
-
-function allTypes() {
-    let types = 0;
-    for (const key of Object.keys(MediaType)) {
-        types |= MediaType[key];
-    }
-    return types;
-}
-
-
-/**
- * Creates the context for QueryContext, to
- * query a single connection sequentially.
- */
-export async function inContext<T>(callback: (context: QueryContext) => Promise<T>, transaction = true,
-                                   allowDatabase = true) {
-    if (!running) {
-        // if inContext is called without Storage being active
-        return Promise.reject("Not started");
-    }
-    if (startPromise) {
-        await startPromise;
-    }
-    const con = await pool.getConnection();
-    const context = new QueryContext(con);
-
-    // don't use database if it is explicitly disallowed
-    if (allowDatabase) {
-        await context.useDatabase();
-    }
-    let result;
-    try {
-        // if transaction, start it
-        if (transaction) {
-            await context.startTransaction();
-        }
-        // let callback run with context
-        result = await callback(context);
-
-        // if transaction and no error till now, commit it and return result
-        if (transaction) {
-            await context.commit();
-        }
-    } catch (e) {
-        // if it could not be commit due to error, roll back and rethrow error
-        if (transaction) {
-            // if there is a transaction first rollback and then throw error
-            await context.rollback();
-        }
-        throw e;
-    } finally {
-        // release connection into the pool
-        await pool.releaseConnection(con);
-    }
-    return result;
-}
-
-
-const pool = mySql.createPool({
-    connectionLimit: env.dbConLimit,
-    host: env.dbHost,
-    user: env.dbUser,
-    password: env.dbPassword,
-    bigNumberStrings: true,
-});
 const standardListName = "Standard";
-
-interface Tables {
-    [key: string]: string;
-}
-
-const Tables: Tables = {
-    lists:
-        "name VARCHAR(200) NOT NULL UNIQUE," +
-        "uuid VARCHAR(200) NOT NULL," +
-        "salt VARCHAR(200)," +
-        "password VARCHAR(200) NOT NULL," +
-        "alg VARCHAR(100) NOT NULL," +
-        "PRIMARY KEY(uuid)",
-    external_user:
-        "name VARCHAR(200) NOT NULL," +
-        "uuid VARCHAR(200) NOT NULL," +
-        "local_uuid VARCHAR(200) NOT NULL," +
-        "service INT NOT NULL," +
-        "cookies TEXT," +
-        "last_scrape DATETIME," +
-        "PRIMARY KEY(uuid)," +
-        "FOREIGN KEY(local_uuid) REFERENCES user(uuid)",
-    user_log:
-        "user_uuid VARCHAR(255) NOT NULL," +
-        "ip VARCHAR(255)," +
-        "session_key VARCHAR(255)," +
-        "acquisition_date VARCHAR(40)," +
-        "PRIMARY KEY(session_key)," +
-        "FOREIGN KEY(user_uuid) REFERENCES user(uuid)",
-    reading_list:
-        "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
-        "name VARCHAR(200) NOT NULL," +
-        "user_uuid VARCHAR(200) NOT NULL," +
-        "medium INT NOT NULL," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(user_uuid) REFERENCES user(uuid)",
-    external_reading_list:
-        "id INT UNSIGNED NOT NULL AUTO_INCREMENT, " +
-        "name VARCHAR(200) NOT NULL," +
-        "user_uuid VARCHAR(200) NOT NULL," +
-        "medium INT NOT NULL," +
-        "url VARCHAR(200) NOT NULL," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(user_uuid) REFERENCES external_user(uuid)",
-    medium:
-        "id INT UNSIGNED NOT NULL AUTO_INCREMENT, " +
-        "countryOfOrigin VARCHAR(200)," +
-        "languageOfOrigin VARCHAR(200)," +
-        "author VARCHAR(200)," +
-        "artist VARCHAR(200)," +
-        "title VARCHAR(200) NOT NULL," +
-        "medium INT NOT NULL," +
-        "lang VARCHAR(200)," +
-        "stateOrigin INT," +
-        "stateTL INT," +
-        "series VARCHAR(200)," +
-        "universe VARCHAR(200)," +
-        "PRIMARY KEY(id)",
-    medium_synonyms:
-        "medium_id INT UNSIGNED, " +
-        "synonym VARCHAR(200) NOT NULL, " +
-        "PRIMARY KEY(medium_id, synonym), " +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    list_medium:
-        "list_id INT UNSIGNED NOT NULL," +
-        "medium_id INT UNSIGNED NOT NULL," +
-        "PRIMARY KEY(list_id, medium_id)," +
-        "FOREIGN KEY(list_id) REFERENCES reading_list(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    external_list_medium:
-        "list_id INT UNSIGNED NOT NULL," +
-        "medium_id INT UNSIGNED NOT NULL," +
-        "PRIMARY KEY(list_id, medium_id)," +
-        "FOREIGN KEY(list_id) REFERENCES external_reading_list(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    part:
-        "id INT UNSIGNED NOT NULL AUTO_INCREMENT, " +
-        "medium_id INT UNSIGNED NOT NULL, " +
-        "title VARCHAR(200)," +
-        "totalIndex INT NOT NULL," +
-        "partialIndex INT," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    episode:
-        "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
-        "part_id INT UNSIGNED NOT NULL," +
-        "title VARCHAR(200)," +
-        "totalIndex INT NOT NULL," +
-        "partialIndex INT," +
-        "url TEXT NOT NULL," +
-        "releaseDate DATETIME NOT NULL," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(part_id) REFERENCES part(id)",
-    user_episode:
-        "user_uuid VARCHAR(200) NOT NULL," +
-        "episode_id INT UNSIGNED NOT NULL," +
-        "progress FLOAT UNSIGNED NOT NULL," +
-        "PRIMARY KEY(user_uuid, episode_id)," +
-        "FOREIGN KEY(user_uuid) REFERENCES user(uuid)," +
-        "FOREIGN KEY(episode_id) REFERENCES episode(id)",
-    scrape_board:
-        "link TEXT NOT NULL," +
-        "last_date DATETIME NOT NULL," +
-        "type INT UNSIGNED NOT NULL," +
-        "uuid VARCHAR(200)," +
-        "medium_id INT UNSIGNED," +
-        "PRIMARY KEY(link(767))," +
-        "FOREIGN KEY(uuid) REFERENCES external_user(uuid)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    news_board:
-        "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
-        "title TEXT NOT NULL," +
-        "link VARCHAR(700) UNIQUE NOT NULL," +
-        "date DATETIME NOT NULL",
-    news_user:
-        "news_id INT UNSIGNED NOT NULL, " +
-        "user_id VARCHAR(200) NOT NULL, " +
-        "FOREIGN KEY (user_id) REFERENCES user(uuid), " +
-        "FOREIGN KEY (news_id) REFERENCES news_board(id), " +
-        "PRIMARY KEY (news_id, user_id)",
-    news_medium:
-        "news_id INT UNSIGNED NOT NULL, " +
-        "medium_id INT UNSIGNED NOT NULL, " +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)," +
-        "FOREIGN KEY(news_id) REFERENCES news_board(id)",
-    meta_corrections:
-        "link TEXT NOT NULL," +
-        "replaced TEXT NOT NULL," +
-        "startIndex INT UNSIGNED NOT NULL," +
-        "endIndex INT UNSIGNED NOT NULL," +
-        "fieldKey INT UNSIGNED NOT NULL," +
-        "PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)",
-};
-let errorAtStart = false;
-let running = false;
-
-/**
- * @type {Promise<Storage>|void}
- */
-let startPromise: Promise<void> | null;
-
-/**
- * Checks the database for incorrect structure
- * and tries to correct these.
- */
-function start(): void {
-    if (!running) {
-        running = true;
-        startPromise = inContext((context) => context.start(), true, false)
-            .catch((error) => {
-                console.log(error);
-                errorAtStart = true;
-            });
-    }
-}
-
-export const Storage = {
-
-    /**
-     * Closes the Storage.
-     *
-     * @return {Promise<void>}
-     */
-    stop(): Promise<void> {
-        running = false;
-        startPromise = null;
-        return Promise.resolve(pool.end());
-    },
-
-    /**
-     * Registers an User if the userName is free.
-     * Returns a Error Code if userName is already
-     * in use.
-     *
-     * If it succeeded, it tries to log the user in
-     * immediately.
-     *
-     * Returns the uuid of the user
-     * and the session key for the ip.
-     *
-     * @return {Promise<{session: string, uuid: string}>}
-     */
-    register(userName: string, password: string, ip: string): Promise<{ session: string, uuid: string }> {
-        return inContext((context) => context.register(userName, password, ip));
-    },
-
-    /**
-     * Logs a user in.
-     *
-     * Returns the uuid of the user
-     * and the session key for the ip.
-     *
-     * @return {Promise<User>}
-     */
-    loginUser(userName: string, password: string, ip: string): Promise<User> {
-        return inContext((context) => context.loginUser(userName, password, ip));
-    },
-
-    /**
-     * Checks if for the given ip any user is logged in.
-     *
-     * Returns the uuid of the logged in user and
-     * the session key of the user for the ip.
-     *
-     * @return {Promise<User|null>}
-     */
-    userLoginStatus(ip: string): Promise<User | null> {
-        return inContext((context) => context.userLoginStatus(ip));
-    },
-
-    /**
-     * Logs a user out.
-     *
-     * @return {Promise<boolean>}
-     */
-    logoutUser(uuid: string, ip: string): Promise<boolean> {
-        return inContext((context) => context.logoutUser(uuid, ip));
-    },
-
-    /**
-     * Deletes the whole account of an user
-     * with all associated data.
-     *
-     * Is irreversible.
-     *
-     * @return {Promise<boolean>}
-     */
-    deleteUser(uuid: string): Promise<boolean> {
-        return inContext((context) => context.deleteUser(uuid));
-    },
-
-    /**
-     * Updates the direct data of an user,
-     * like name or password.
-     *
-     * @return {Promise<boolean>}
-     */
-    updateUser(uuid: string, user: { name?: string, newPassword?: string, password?: string }): Promise<boolean> {
-        return inContext((context) => context.updateUser(uuid, user));
-    },
-
-    /**
-     * Adds a list to the storage and
-     * links it to the user of the uuid.
-     *
-     * @return {Promise<List>}
-     */
-    addList(uuid: string, list: { name: string, medium: number }): Promise<List> {
-        return inContext((context) => context.addList(uuid, list));
-    },
-
-    /**
-     * Returns all mediums of a list with
-     * the list_id.
-     *
-     * @return {Promise<{list: List, media: Array<Medium>}>}
-     */
-    getList(listId: number): Promise<{ list: List, media: Medium[] }> {
-        return inContext((context) => context.getList(listId));
-    },
-
-    /**
-     * Updates the properties of a list.
-     */
-    updateList(list: List): Promise<boolean> {
-        return inContext((context) => context.updateList(list));
-    },
-
-    /**
-     * Deletes a list irreversibly.
-     */
-    deleteList(listId: number, uuid: string): Promise<boolean> {
-        return inContext((context) => context.deleteList(listId, uuid));
-    },
-
-    /**
-     * Returns all available lists for the given user.
-     *
-     * @return {Promise<Array<List>>}
-     */
-    getUserLists(uuid: string): Promise<List[]> {
-        return inContext((context) => context.getUserLists(uuid));
-    },
-
-    /**
-     * Adds a medium to the storage.
-     *
-     * @return {Promise<Medium>}
-     */
-    addMedium(medium: Medium, uuid?: string): Promise<Medium> {
-        return inContext((context) => context.addMedium(medium, uuid));
-    },
-
-    /**
-     * Gets one or multiple media from the storage.
-     */
-    getMedium(id: number | number[]): Promise<Medium | Medium[]> {
-        return inContext((context) => context.getMedium(id));
-    },
-
-    /**
-     * Gets one or multiple media from the storage, which are like the input.
-     */
-    getLikeMedium(likeMedia: { title: string, link: string } | Array<{ title: string, link: string }>)
-        : Promise<LikeMedium | LikeMedium[]> {
-
-        return inContext((context) => context.getLikeMedium(likeMedia));
-    },
-
-    /**
-     * Updates a medium from the storage.
-     */
-    updateMedium(medium: Medium): Promise<boolean> {
-        return inContext((context) => context.updateMedium(medium));
-    },
-
-    /**
-     */
-    addSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
-        // todo implement this
-        return inContext((context) => context.addSynonyms(synonyms));
-    },
-
-    /**
-     *
-     */
-    removeSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
-        // todo implement this
-        return inContext((context) => context.removeSynonyms(synonyms));
-    },
-
-    /**
-     *
-     */
-    getSynonyms(mediumId: number | number[]): Promise<Array<{ mediumId: number, synonym: string[] }>> {
-        // todo implement this
-        return inContext((context) => context.getSynonyms(mediumId));
-    },
-
-    /**
-     * Returns all parts of an medium.
-     */
-    getParts(mediumId: number): Promise<Part[]> {
-        return inContext((context) => context.getParts(mediumId));
-    },
-
-    /**
-     * Adds a part of an medium to the storage.
-     */
-    addPart(mediumId: number, part: Part): Promise<Part> {
-        return inContext((context) => context.addPart(mediumId, part));
-    },
-
-    /**
-     * Updates a part.
-     */
-    updatePart(part: Part): Promise<boolean> {
-        return inContext((context) => context.updatePart(part));
-    },
-
-    /**
-     * Deletes a part from the storage.
-     */
-    deletePart(id: number): Promise<boolean> {
-        return inContext((context) => context.deletePart(id));
-    },
-
-    /**
-     * Adds a episode of a part to the storage.
-     */
-    addEpisode(partId: number, episode: Episode): Promise<Episode> {
-        return inContext((context) => context.addEpisode(partId, episode));
-    },
-
-    /**
-     * Updates an episode from the storage.
-     */
-    updateEpisode(episode: Episode): Promise<boolean> {
-        return inContext((context) => context.updateEpisode(episode));
-    },
-
-    /**
-     * Gets an episode from the storage.
-     */
-    getEpisode(id: number): Promise<Episode> {
-        return inContext((context) => context.getEpisode(id));
-    },
-
-    /**
-     * Deletes an episode from the storage irreversibly.
-     */
-    deleteEpisode(id: number): Promise<boolean> {
-        return inContext((context) => context.deleteEpisode(id));
-    },
-
-    /**
-     * Adds a medium to a list.
-     */
-    addItemToList(listId: number, mediumId: number): Promise<boolean> {
-        return inContext((context) => context.addItemToList(false, {listId, id: mediumId}));
-    },
-
-    /**
-     * Moves a medium from an old list to a new list.
-     */
-    moveMedium(oldListId: number, newListId: number, mediumId: number): Promise<boolean> {
-        return inContext((context) => context.moveMedium(newListId, mediumId, oldListId));
-    },
-
-    /**
-     * Removes an item from a list.
-     */
-    removeMedium(listId: number, mediumId: number): Promise<boolean> {
-        return inContext((context) => context.removeMedium(listId, mediumId));
-    },
-
-    /**
-     * Adds an external user of an user to the storage.
-     */
-    addExternalUser(localUuid: string, externalUser: ExternalUser): Promise<ExternalUser> {
-        return inContext((context) => context.addExternalUser(localUuid, externalUser));
-    },
-
-    /**
-     * Deletes an external user from the storage.
-     */
-    deleteExternalUser(externalUuid: string): Promise<boolean> {
-        return inContext((context) => context.deleteExternalUser(externalUuid));
-
-    },
-
-    /**
-     * Gets an external user.
-     */
-    getExternalUser(uuid: string): Promise<ExternalUser> {
-        return inContext((context) => context.getExternalUser(uuid));
-    },
-
-    /**
-     * Gets an external user with cookies, without items.
-     */
-    getExternalUserWithCookies(uuid: string)
-        : Promise<{ userUuid: string, type: number, uuid: string, cookies: string }> {
-
-        return inContext((context) => context.getExternalUserWithCookies(uuid));
-    },
-
-    /**
-     *
-     */
-    getScrapeExternalUser(): Promise<Array<{ userUuid: string, type: number, uuid: string, cookies: string }>> {
-        return inContext((context) => context.getScrapeExternalUser());
-    },
-
-    /**
-     * Updates an external user.
-     */
-    updateExternalUser(externalUser: ExternalUser): Promise<boolean> {
-        return inContext((context) => context.updateExternalUser(externalUser));
-    },
-
-    /**
-     * Adds an external list of an user to the storage.
-     */
-    addExternalList(userUuid: string, externalList: ExternalList): Promise<ExternalList> {
-        return inContext((context) => context.addExternalList(userUuid, externalList));
-    },
-
-    /**
-     * Updates an external list.
-     */
-    updateExternalList(externalList: ExternalList): Promise<boolean> {
-        return inContext((context) => context.updateExternalList(externalList));
-    },
-
-    /**
-     * Removes one or multiple externalLists from the given user.
-     */
-    removeExternalList(uuid: string, externalListId: number | number[]): Promise<boolean> {
-        return inContext((context) => context.removeExternalList(uuid, externalListId));
-    },
-
-    /**
-     * Gets an external list from the storage.
-     */
-    getExternalList(id: number): Promise<ExternalList> {
-        return inContext((context) => context.getExternalList(id));
-    },
-
-    /**
-     * Gets all external lists from the externalUser from the storage.
-     */
-    getExternalLists(uuid: string): Promise<ExternalList[]> {
-        return inContext((context) => context.getExternalUserLists(uuid));
-    },
-
-    /**
-     * Adds a medium to an external list in the storage.
-     */
-    addItemToExternalList(listId: number, mediumId: number): Promise<boolean> {
-        return inContext((context) => context.addItemToList(true, {listId, id: mediumId}));
-    },
-
-    /**
-     * Removes a medium from an external list in the storage.
-     */
-    removeItemFromExternalList(listId: number, mediumId: number): Promise<boolean> {
-        return inContext((context) => context.removeMedium(listId, mediumId, true));
-    },
-
-    /**
-     * Add progress of an user in regard to an episode to the storage.
-     */
-    addProgress(uuid: string, episodeId: number, progress: number): Promise<boolean> {
-        return inContext((context) => context.addProgress(uuid, episodeId, progress));
-    },
-
-    /**
-     * Removes progress of an user in regard to an episode.
-     */
-    removeProgress(uuid: string, episodeId: number): Promise<boolean> {
-        return inContext((context) => context.removeProgress(uuid, episodeId));
-    },
-
-    /**
-     * Get the progress of an user in regard to an episode.
-     */
-    getProgress(uuid: string, episodeId: number): Promise<number> {
-        return inContext((context) => context.getProgress(uuid, episodeId));
-    },
-
-    /**
-     * Updates the progress of an user in regard to an episode.
-     */
-    updateProgress(uuid: string, mediumId: number, progress: number): Promise<boolean> {
-        return inContext((context) => context.updateProgress(uuid, mediumId, progress));
-    },
-
-
-    /**
-     * Inserts a News item into the Storage.
-     * Returns a News item with id if insert was successful.
-     * Returns undefined (or an Array with undefined)
-     * if insert was not successful (meaning it was an duplicate).
-     */
-    addNews(news: News | News[]): Promise<News | undefined | Array<News | undefined>> {
-        return inContext((context) => context.addNews(news));
-    },
-
-    /**
-     *
-     */
-    getNews({uuid, since, till}: { uuid: string, since: Date | undefined, till: Date | undefined }): Promise<News[]> {
-        return inContext((context) => context.getNews(since, till, uuid));
-    },
-
-    /**
-     *
-     */
-    deleteOldNews(): Promise<boolean> {
-        return inContext((context) => context.deleteOldNews());
-    },
-
-    /**
-     *
-     * @param result
-     */
-    processResult(result: Result): Promise<MetaResult | MetaResult[]> {
-        return inContext((context) => context.processResult(result));
-    },
-
-    /**
-     *
-     * @param result
-     */
-    saveResult(result: Result): Promise<boolean> {
-        return inContext((context) => context.saveResult(result));
-    },
-
-    /**
-     *
-     */
-    addScrape(scrape: ScrapeItem | ScrapeItem[]): Promise<boolean> {
-        return inContext((context) => context.addScrape(scrape));
-    },
-
-    /**
-     *
-     */
-    getScrapes(): Promise<ScrapeItem[]> {
-        return inContext((context) => context.getScrapes());
-    },
-
-
-    /**
-     *
-     */
-    removeScrape(link: string): Promise<boolean> {
-        return inContext((context) => context.removeScrape(link));
-    },
-
-    /**
-     *
-     */
-    showUser(): Promise<User[]> {
-        return inContext((context) => context.showUser());
-    },
-
-
-    /**
-     *
-     */
-    linkNewsToMedium(): Promise<boolean> {
-        return inContext((context) => context.linkNewsToMedium());
-    },
-
-
-    /**
-     *
-     */
-    linkNewsToEpisode(news: News[]): Promise<boolean> {
-        return inContext((context) => context.linkNewsToEpisode(news));
-    },
-
-
-    /**
-     * Marks these news as read for the given user.
-     */
-    markNewsRead(uuid: string, news: number[]): Promise<boolean> {
-        return inContext((context) => context.markRead(uuid, news));
-    },
-
-    /**
-     * Marks these news as read for the given user.
-     */
-    markEpisodeRead(uuid: string, result: Result): Promise<void> {
-        return inContext((context) => context.markEpisodeRead(uuid, result));
-    },
-
-    /**
-     * Marks these news as read for the given user.
-     */
-    checkUnread(uuid: string): Promise<number> {
-        return inContext((context) => context.checkUnread(uuid));
-    },
-
-    /**
-     *
-     */
-    removeLinkNewsToMedium(newsId: number, mediumId: number): Promise<boolean> {
-        return inContext((context) => context.removeLinkNewsToMedium(newsId, mediumId));
-    },
-
-    clear(): Promise<boolean> {
-        return inContext((context) => context.clearAll(), false, false);
-    },
-};
 
 /**
  * A Class for consecutive queries on the same connection.
  */
-class QueryContext {
-
+export class QueryContext {
     public con: Connection;
+
+// todo use this more
+    private uuid: string | undefined;
 
     constructor(con: Connection) {
         this.con = con;
+    }
+
+    public setUuid(uuid?: string): this {
+        this.uuid = uuid;
+        return this;
     }
 
     /**
@@ -996,6 +170,22 @@ class QueryContext {
         return databases.find((data: { Database: string }) => data.Database === database) != null;
     }
 
+    public createDatabase(): Promise<void> {
+        return this._query(`CREATE DATABASE ${database};`);
+    }
+
+    public getTables(): Promise<any[]> {
+        return this._query("SHOW TABLES;");
+    }
+
+    public createTable(table: string, columns: string[]) {
+        return this._query(`CREATE TABLE ${mySql.escapeId(table)} (${columns.join(", ")});`);
+    }
+
+    public dropTable() {
+        return this._query("SHOW TABLES;");
+    }
+
     /**
      * Registers an User if the userName is free.
      * Returns a Error Code if userName is already
@@ -1009,12 +199,12 @@ class QueryContext {
      */
     public async register(userName: string, password: string, ip: string): Promise<User> {
         if (!userName || !password) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         const user = await this._query(`SELECT * FROM user WHERE name = ?;`, userName);
         // if there is a result in array, userName is not new, so abort
         if (user.length) {
-            return Promise.reject(Errors.USER_EXISTS_ALREADY);
+            return Promise.reject(new Error(Errors.USER_EXISTS_ALREADY));
         }
         // if userName is new, proceed to register
         const id = uuidGenerator();
@@ -1041,21 +231,21 @@ class QueryContext {
      */
     public async loginUser(userName: string, password: string, ip: string): Promise<User> {
         if (!userName || !password) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         const result = await this._query("SELECT * FROM user WHERE name = ?;", userName);
 
         if (!result.length) {
-            return Promise.reject(Errors.USER_DOES_NOT_EXIST);
+            return Promise.reject(new Error(Errors.USER_DOES_NOT_EXIST));
         } else if (result.length !== 1) {
-            return Promise.reject(Errors.CORRUPT_DATA);
+            return Promise.reject(new Error(Errors.CORRUPT_DATA));
         }
 
         const user = result[0];
         const uuid = user.uuid;
 
         if (!verifyPassword(password, user.password, user.alg, user.salt)) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         // if there exists a session already for that device, remove it
         await this._delete("user_log", {column: "ip", value: ip});
@@ -1069,7 +259,7 @@ class QueryContext {
             [uuid, ip, session, date],
         );
 
-        return this.getUser(uuid, session);
+        return this._getUser(uuid, session);
     }
 
 
@@ -1091,7 +281,7 @@ class QueryContext {
         const session = sessionRecord.session_key;
 
         if (session) {
-            return this.getUser(sessionRecord.user_uuid, session);
+            return this._getUser(sessionRecord.user_uuid, session);
         }
         return null;
     }
@@ -1154,6 +344,8 @@ class QueryContext {
 
         // delete user itself
         // todo check if delete was successful, what if not?
+        //  in case the deletion was unsuccessful, just 'ban' any further access to that account
+        //  and delete it manually?
         return this._delete("user", {column: "uuid", value: uuid});
     }
 
@@ -1177,7 +369,7 @@ class QueryContext {
 
             if (user.newPassword) {
                 if (!user.password) {
-                    return Promise.reject(Errors.INVALID_INPUT);
+                    return Promise.reject(new Error(Errors.INVALID_INPUT));
                 }
                 const {salt, hash} = StandardHash.hash(user.newPassword);
 
@@ -1224,6 +416,7 @@ class QueryContext {
             items: [],
             name,
             medium,
+            userUuid: uuid,
         };
     }
 
@@ -1231,24 +424,37 @@ class QueryContext {
      * Returns all mediums of a list with
      * the list_id.
      */
-    public async getList(listId: number): Promise<{ list: List, media: Medium[] }> {
-        const result = await this._query("SELECT * FROM reading_list WHERE id = ?;", listId);
-        const list = await this.createShallowList(result[0]);
+    public async getList(listId: number | number[], media: number[], uuid: string):
+        Promise<{ list: List[] | List, media: Medium[] }> {
 
-        // todo this seems really inefficient
-        // todo look at this again, may be an error!
-
-        const media = await this.getMedium(list.items);
+        const toLoadMedia: Set<number> = new Set();
 
         // @ts-ignore
-        return {list, media};
+        const lists: List | List[] = await promiseMultiSingle(listId, async (id: number) => {
+            const result = await this._query("SELECT * FROM reading_list WHERE id = ?;", id);
+            const list = await this.createShallowList(result[0]);
+
+            for (const itemId of list.items) {
+                if (!media.includes(itemId)) {
+                    toLoadMedia.add(itemId);
+                }
+            }
+            return list;
+        });
+
+        const loadedMedia = await this.getMedium([...toLoadMedia], uuid);
+
+        return {list: lists, media: loadedMedia};
     }
 
 
     /**
      * Recreates a list from storage.
      */
-    public async createShallowList(storageList: { id: number, name: string, medium: number }): Promise<List> {
+    public async createShallowList(storageList:
+                                       { id: number, name: string, medium: number, user_uuid: string },
+    ): Promise<List> {
+
         if (!storageList.name) {
             // @ts-ignore
             throw Error(Errors.INVALID_INPUT);
@@ -1259,6 +465,7 @@ class QueryContext {
             name: storageList.name,
             medium: storageList.medium,
             id: storageList.id,
+            userUuid: storageList.user_uuid,
         };
 
         const result = await this._query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
@@ -1271,6 +478,9 @@ class QueryContext {
      * Updates the properties of a list.
      */
     public async updateList(list: List): Promise<boolean> {
+        if (!list.userUuid) {
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
+        }
         return this._update("reading_list", "id", list.id, (updates, values) => {
             if (list.name) {
                 updates.push("name = ?");
@@ -1295,7 +505,7 @@ class QueryContext {
 
         // first check if such a list does exist for the given user
         if (!result.length) {
-            return Promise.reject(Errors.DOES_NOT_EXIST);
+            return Promise.reject(new Error(Errors.DOES_NOT_EXIST));
         }
         // first remove all links between a list and their media
         await this._delete("list_medium", {column: "list_id", value: listId});
@@ -1321,9 +531,9 @@ class QueryContext {
     /**
      * Adds a medium to the storage.
      */
-    public async addMedium(medium: Medium, uuid?: string): Promise<Medium> {
+    public async addMedium(medium: SimpleMedium, uuid?: string): Promise<SimpleMedium> {
         if (!medium || !medium.medium || !medium.title) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         const result = await this._query(
             "INSERT INTO medium(medium, title) VALUES (?,?);",
@@ -1332,7 +542,21 @@ class QueryContext {
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
-        const newMedium = {...medium, id: result.insertId};
+
+        await this.addPart(
+            result.insertId,
+            {
+                totalIndex: -1,
+                episodes: [],
+                id: 0,
+                mediumId: result.insertId
+            }
+        );
+
+        const newMedium = {
+            ...medium,
+            id: result.insertId,
+        };
 
         // if it should be added to an list, do it right away
         if (uuid) {
@@ -1343,13 +567,54 @@ class QueryContext {
     }
 
     /**
-     * Gets one or multiple media from the storage.
+     *
      */
-    public getMedium(id: number | number[]): Promise<Medium | Medium[]> {
+    public async getLatestReleases(mediumId: number): Promise<SimpleEpisode[]> {
+        const resultArray: any[] = await this._query(
+            "SELECT episode.* FROM episode_release " +
+            "INNER JOIN episode ON episode.id=episode_release.episode_id " +
+            "INNER JOIN part ON part.id=episode.part_id  " +
+            "WHERE medium_id=? " +
+            "GROUP BY episode_id " +
+            "ORDER BY episode.totalIndex DESC, episode.partialIndex DESC " +
+            "LIMIT 5;",
+            mediumId
+        );
         // @ts-ignore
-        return promiseMultiSingle(id, async (value: number) => {
-            let result = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, value);
-            result = result[0];
+        return Promise.all(Array.prototype.map.call(resultArray, async (rawEpisode) => {
+            const releases = await this.getReleases(rawEpisode.id);
+            return {
+                id: rawEpisode.id,
+                partialIndex: rawEpisode.partialIndex,
+                partId: rawEpisode.part_id,
+                totalIndex: rawEpisode.totalIndex,
+                releases
+            };
+        }));
+    }
+
+    public async getReleases(episodeId: number): Promise<EpisodeRelease[]> {
+        const resultArray: any[] = await this._query(
+            "SELECT * FROM episode_release WHERE episode_id=?",
+            episodeId
+        );
+        // @ts-ignore
+        return Array.prototype.map.call(resultArray, (value: any): EpisodeRelease => {
+            return {
+                episodeId: value.episode_id,
+                sourceType: value.source_type,
+                releaseDate: value.releaseDate,
+                url: value.url,
+                title: value.title
+            };
+        });
+    }
+
+    public getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]> {
+        // @ts-ignore
+        return promiseMultiSingle(id, async (mediumId) => {
+            const resultArray: any[] = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
+            const result = resultArray[0];
             return {
                 id: result.id,
                 countryOfOrigin: result.countryOfOrigin,
@@ -1363,27 +628,99 @@ class QueryContext {
                 stateTL: result.stateTL,
                 series: result.series,
                 universe: result.universe,
-                parts: [],
             };
         });
     }
 
+    public async getTocSearchMedium(id: number): Promise<TocSearchMedium> {
+        const resultArray: any[] = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, id);
+        const result = resultArray[0];
+        const synonyms: Synonyms[] = await this.getSynonyms(id);
+
+        return {
+            mediumId: result.id,
+            title: result.title,
+            synonyms: (synonyms[0] && synonyms[0].synonym) as string[] || []
+        };
+    }
+
+    public getMedium(id: number, uuid: string): Promise<Medium>;
+    public getMedium(id: number[], uuid: string): Promise<Medium[]>;
+
     /**
      * Gets one or multiple media from the storage.
      */
-    public getLikeMedium(likeMedia: { title: string, link: string } | Array<{ title: string, link: string }>)
+    public getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]> {
+        // @ts-ignore
+        return promiseMultiSingle(id, async (mediumId: number) => {
+            let result = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
+            result = result[0];
+
+            const latestReleasesResult = await this.getLatestReleases(mediumId);
+
+            const currentReadResult = await this._query(
+                "SELECT * FROM " +
+                "(SELECT * FROM user_episode " +
+                "WHERE episode_id IN (SELECT id from episode " +
+                "WHERE part_id IN (SELECT id FROM part " +
+                "WHERE medium_id=?))) as user_episode " +
+                "INNER JOIN episode ON user_episode.episode_id=episode.id " +
+                "WHERE user_uuid=? " +
+                "ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1",
+                [mediumId, uuid]
+            );
+            const unReadResult = await this._query(
+                "SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
+                "AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) " +
+                "ORDER BY totalIndex DESC, partialIndex DESC;",
+                [mediumId, uuid]
+            );
+            const partsResult = await this._query("SELECT id FROM part WHERE medium_id=?;", mediumId);
+
+            return {
+                id: result.id,
+                countryOfOrigin: result.countryOfOrigin,
+                languageOfOrigin: result.languageOfOrigin,
+                author: result.author,
+                title: result.title,
+                medium: result.medium,
+                artist: result.artist,
+                lang: result.lang,
+                stateOrigin: result.stateOrigin,
+                stateTL: result.stateTL,
+                series: result.series,
+                universe: result.universe,
+                parts: Array.from(partsResult).map((packet: any) => packet.id),
+                currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
+                latestReleases: latestReleasesResult.map((packet: any) => packet.id),
+                unreadEpisodes: unReadResult.map((packet: any) => packet.id),
+            };
+        });
+    }
+
+    public getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
+    public getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;
+
+    /**
+     * Gets one or multiple media from the storage.
+     */
+    public getLikeMedium(likeMedia: LikeMediumQuery | LikeMediumQuery[])
         : Promise<LikeMedium | LikeMedium[]> {
 
         // @ts-ignore
-        return promiseMultiSingle(likeMedia, async (value) => {
+        return promiseMultiSingle(likeMedia, async (value: LikeMediumQuery) => {
             const escapedLinkQuery = escapeLike(value.link, {noRightBoundary: true});
+            const escapedTitle = escapeLike(value.title, {singleQuotes: true});
 
-            const result = await this._query(
-                "SELECT id FROM medium WHERE title = ? OR id IN " +
+            let result: any[] = await this._query(
+                "SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
                 "(SELECT medium_id FROM scrape_board WHERE medium_id IS NOT NULL AND link LIKE ?);",
-                [value.title, escapedLinkQuery]);
+                [escapedTitle, escapedLinkQuery]);
 
-            return result.length && {
+            if (value.type != null) {
+                result = Array.prototype.filter.call(result, (medium: any) => medium.medium === value.type);
+            }
+            return {
                 medium: result[0],
                 title: value.title,
                 link: value.link,
@@ -1394,7 +731,7 @@ class QueryContext {
     /**
      * Updates a medium from the storage.
      */
-    public updateMedium(medium: Medium): Promise<boolean> {
+    public updateMedium(medium: SimpleMedium): Promise<boolean> {
         return this._update("medium", "id", medium.id, (updates, values) => {
             for (const key of Object.keys(medium)) {
                 if (key === "synonyms" || key === "id") {
@@ -1415,19 +752,99 @@ class QueryContext {
     /**
      * Returns all parts of an medium.
      */
-    public async getParts(mediumId: number): Promise<Part[]> {
-        // select all parts from a medium
-        const result = await this._query("SELECT * FROM medium_part WHERE medium_id =?;", mediumId);
-
+    public async getMediumParts(mediumId: number, uuid?: string): Promise<Part[]> {
+        const parts: any[] = await this._query("SELECT * FROM part WHERE medium_id = ?", mediumId);
         // recreate shallow parts
         // @ts-ignore
-        return Promise.all(result.map(async (value: any) => {
-            const part: any = await this._query("SELECT * FROM part WHERE id = ?", value.part_id);
+        return Promise.all(parts.map(async (value: any) => {
+            // query episodes of part and return part
+            const episodes = await this._query("SELECT id FROM episode WHERE part_id = ?", value.id);
+
+            if (uuid) {
+                value.episodes = await Promise.all(episodes.map((episode: any) => this.getEpisode(episode.id, uuid)));
+            } else {
+                value.episodes = episodes;
+            }
+            return {
+                id: value.id,
+                totalIndex: value.totalIndex,
+                partialIndex: value.partialIndex,
+                title: value.title,
+                episodes: value.episodes,
+                mediumId: value.medium_id,
+            };
+        }));
+    }
+
+    /**
+     * Returns all parts of an medium with specific totalIndex.
+     * If there is no such part, it returns an object with only the totalIndex as property.
+     */
+    public getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]> {
+        // @ts-ignore
+        return promiseMultiSingle(index, async (totalIndex) => {
+            const parts: any[] = await this._query(
+                "SELECT * FROM part WHERE medium_id = ? AND totalIndex=?",
+                [mediumId, totalIndex]
+            );
+            const value = parts[0];
+
+            if (!value || !value.id) {
+                return {totalIndex};
+            }
+            // query episodes of part and return part
+            const episodes = await this._query(
+                "SELECT id, totalIndex FROM episode WHERE part_id = ?",
+                value.id
+            );
+
+            if (uuid) {
+                value.episodes = await Promise.all(
+                    episodes.map(
+                        (episode: any) => this.getEpisode(episode.id, uuid)
+                    )
+                );
+            } else {
+                await Promise.all(Array.prototype.map.call(episodes, (episode: any) => {
+                    return this.getReleases(episode.id).then((releases) => episode.releases = releases);
+                }));
+                value.episodes = episodes;
+            }
+            return {
+                id: value.id,
+                totalIndex: value.totalIndex,
+                partialIndex: value.partialIndex,
+                title: value.title,
+                episodes: value.episodes,
+                mediumId: value.medium_id,
+            };
+        });
+    }
+
+    public getParts(partId: number, uuid: string): Promise<Part>;
+    public getParts(partId: number[], uuid: string): Promise<Part[]>;
+
+    /**
+     * Returns all parts of an medium.
+     */
+    public getParts(partId: number | number[], uuid: string): Promise<Part[] | Part> {
+        // @ts-ignore
+        return promiseMultiSingle(partId, async (value): Promise<Part> => {
+            const partArray: any[] = await this._query("SELECT * FROM part WHERE id = ?", value);
+            const part = partArray[0];
             // query episodes of part and return part
             const episodes = await this._query("SELECT id FROM episode WHERE part_id = ?", part.id);
-            part.episodes = [...episodes.map((episode: any) => episode.id)];
-            return part;
-        }));
+            part.episodes = await Promise.all(episodes.map((episode: any) => this.getEpisode(episode.id, uuid)));
+
+            return {
+                id: part.id,
+                totalIndex: part.totalIndex,
+                partialIndex: part.partialIndex,
+                title: part.title,
+                episodes: part.episodes,
+                mediumId: part.medium_id,
+            };
+        });
     }
 
     /**
@@ -1439,16 +856,26 @@ class QueryContext {
             [mediumId, part.title, part.totalIndex, part.partialIndex],
         );
 
-        if (!Number.isInteger(result.insertId)) {
-            throw Error(`invalid ID ${result.insertId}`);
+        const partId = result.insertId;
+
+        if (!Number.isInteger(partId)) {
+            throw Error(`invalid ID ${partId}`);
         }
-        // todo add episodes
+        let episodes: Episode[];
+
+        if (part.episodes && part.episodes.length) {
+            // @ts-ignore
+            episodes = await Promise.all(part.episodes.map((value) => this.addEpisode(partId, value)));
+        } else {
+            episodes = [];
+        }
         return {
-            id: result.insertId,
+            mediumId,
+            id: partId,
             title: part.title,
             partialIndex: part.partialIndex,
             totalIndex: part.totalIndex,
-            episodes: [],
+            episodes,
         };
     }
 
@@ -1486,56 +913,183 @@ class QueryContext {
         return false;
     }
 
+    public addRelease(episodeId: number, releases: EpisodeRelease): Promise<EpisodeRelease>;
+    public addRelease(episodeId: number, releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+
+    public async addRelease(episodeId: number, releases: EpisodeRelease | EpisodeRelease[]):
+        Promise<EpisodeRelease | EpisodeRelease[]> {
+
+        // @ts-ignore
+        return promiseMultiSingle(releases, (release: EpisodeRelease) => {
+            release.episodeId = episodeId;
+            return this._query("INSERT IGNORE INTO episode_release " +
+                "(episode_id, title, url, source_type, releaseDate) " +
+                "VALUES (?,?,?,?,?);",
+                [
+                    episodeId,
+                    release.title,
+                    release.url,
+                    release.sourceType,
+                    release.releaseDate
+                ]
+            ).then(() => release);
+        });
+    }
+
+    public getSourcedReleases(sourceType: string, mediumId: number):
+        Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
+        return this._query(
+            "SELECT url, episode_release.title FROM episode_release " +
+            "INNER JOIN episode ON episode.id=episode_release.episode_id " +
+            "INNER JOIN part ON part.id=episode.part_id " +
+            "WHERE source_type=? AND medium_id=?;",
+            [sourceType, mediumId]
+        ).then((resultArray) => resultArray.map((value: any) => {
+            value.sourceType = sourceType;
+            value.mediumId = mediumId;
+            return value;
+        }));
+    }
+
+    public updateRelease(episodeId: number, releases: MultiSingle<EpisodeRelease>): Promise<void> {
+        // @ts-ignore
+        return promiseMultiSingle(releases, async (value: EpisodeRelease): Promise<void> => {
+            if (value.episodeId) {
+                await this._update(
+                    "episode_release",
+                    "episode_id",
+                    episodeId,
+                    (updates, values) => {
+                        if (value.title) {
+                            updates.push("title=?");
+                            values.push(value.title);
+                        }
+                        if (value.url) {
+                            updates.push("url=?");
+                            values.push(value.url);
+                        }
+                        if (value.releaseDate) {
+                            updates.push("releaseDate=?");
+                            values.push(value.releaseDate);
+                        }
+                        if (value.sourceType) {
+                            updates.push("source_type=?");
+                            values.push(value.sourceType);
+                        }
+                    }
+                );
+            } else if (value.sourceType) {
+                await this._query(
+                    "UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?",
+                    [value.url, value.sourceType, value.url, value.title]
+                );
+            }
+        });
+    }
+
     /**
      * Adds a episode of a part to the storage.
      */
-    public async addEpisode(partId: number, episode: Episode): Promise<Episode> {
-        const result = await this._query(
-            "INSERT INTO episode " +
-            "(part_id, title, totalIndex, partialIndex, url, releaseDate) " +
-            "VALUES (?,?,?,?,?,?);",
-            [partId, episode.title, episode.totalIndex, episode.partialIndex, episode.url, episode.releaseDate]
-        );
-        if (!Number.isInteger(result.insertId)) {
-            throw Error(`invalid ID ${result.insertId}`);
-        }
+    public addEpisode(partId: number, episodes: MultiSingle<SimpleEpisode>): Promise<MultiSingle<Episode>> {
+        // @ts-ignore
+        return promiseMultiSingle(episodes, async (episode: SimpleEpisode) => {
+            const result = await this._query(
+                "INSERT INTO episode " +
+                "(part_id, totalIndex, partialIndex) " +
+                "VALUES (?,?,?);",
+                [partId, episode.totalIndex, episode.partialIndex]
+            );
+            const insertId = result.insertId;
+            if (!Number.isInteger(insertId)) {
+                throw Error(`invalid ID ${insertId}`);
+            }
 
-        return {
-            id: result.insertId,
-            partId,
-            title: episode.title,
-            partialIndex: episode.partialIndex,
-            totalIndex: episode.totalIndex,
-            url: episode.url,
-            releaseDate: episode.releaseDate,
-        };
+            const releases: EpisodeRelease[] = episode.releases && episode.releases.length
+                ? await this.addRelease(insertId, episode.releases)
+                : [];
+
+            return {
+                id: insertId,
+                partId,
+                partialIndex: episode.partialIndex,
+                totalIndex: episode.totalIndex,
+                releases,
+                progress: 0,
+                readDate: null,
+            };
+
+        });
     }
+
+    public getEpisode(id: number, uuid: string): Promise<Episode>;
+    public getEpisode(id: number[], uuid: string): Promise<Episode[]>;
 
     /**
      * Gets an episode from the storage.
      */
-    public async getEpisode(id: number): Promise<Episode> {
-        const result = await this._query("SELECT * FROM episode WHERE id = ?;", id);
-        return result[0];
+    public getEpisode(id: number | number[], uuid: string): Promise<Episode | Episode[]> {
+        // @ts-ignore
+        return promiseMultiSingle(id, async (episodeId: number): Episode => {
+            const episodePromise = this._query("SELECT * FROM episode WHERE id = ?;", episodeId);
+            const userEpisodePromise = this._query(
+                "SELECT * FROM user_episode WHERE episode_id=? AND user_uuid=?",
+                [episodeId, uuid]
+            );
+            const releases = await this.getReleases(episodeId);
+            const [episode] = await episodePromise;
+            const [userEpisode] = await userEpisodePromise;
+
+            if (!episode) {
+                return null;
+            }
+            return {
+                progress: userEpisode ? userEpisode.progress : 0,
+                readDate: userEpisode ? userEpisode.read_date : null,
+                id: episodeId,
+                partialIndex: episode.partialIndex,
+                partId: episode.part_id,
+                totalIndex: episode.totalIndex,
+                releases,
+            };
+        });
+    }
+
+    public getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
+        // @ts-ignore
+        return promiseMultiSingle(index, async (totalIndex: number): SimpleEpisode => {
+            if (Number.isNaN(totalIndex)) {
+                throw Error(Errors.INVALID_INPUT);
+            }
+            const episodes: any[] = await this._query(
+                "SELECT * FROM episode WHERE part_id = ? AND totalIndex=?",
+                [partId, totalIndex]
+            );
+            const value = episodes[0];
+
+            if (!value || !value.id) {
+                return {totalIndex};
+            }
+
+            const releases = await this.getReleases(value.id);
+
+            return {
+                id: value.id,
+                partId,
+                totalIndex: value.totalIndex,
+                partialIndex: value.partialIndex,
+                releases
+            };
+        });
     }
 
     /**
      * Updates an episode from the storage.
      */
-    public async updateEpisode(episode: Episode): Promise<boolean> {
+    public async updateEpisode(episode: SimpleEpisode): Promise<boolean> {
         return this._update("episode", "id", episode.id, (updates, values) => {
             if (episode.partId) {
                 updates.push("part_id = ?");
                 values.push(episode.partId);
-            }
-
-            if (episode.title) {
-                updates.push("title = ?");
-                values.push(episode.title);
-            } else { // noinspection JSValidateTypes
-                if (episode.title === null) {
-                    updates.push("title = NULL");
-                }
             }
 
             if (episode.partialIndex) {
@@ -1556,6 +1110,7 @@ class QueryContext {
     public async deleteEpisode(id: number): Promise<boolean> {
         // remove episode from progress first
         await this._delete("user_episode", {column: "episode_id", value: id});
+        await this._delete("episode_release", {column: "episode_id", value: id});
         // lastly remove episode itself
         return this._delete("episode", {column: "id", value: id});
     }
@@ -1638,8 +1193,9 @@ class QueryContext {
         );
 
         if (!result.affectedRows) {
-            return Promise.reject(Errors.UNKNOWN);
+            return Promise.reject(new Error(Errors.UNKNOWN));
         }
+        externalUser.localUuid = localUuid;
         return externalUser;
     }
 
@@ -1668,9 +1224,9 @@ class QueryContext {
     /**
      * Gets an external user.
      */
-    public async getExternalUser(uuid: string): Promise<ExternalUser> {
-        const value = await this._query("SELECT * FROM external_user WHERE uuid = ?;", uuid);
-        return this.createShallowExternalUser(value[0]);
+    public async getExternalUser(externalUuid: string): Promise<ExternalUser> {
+        const resultArray: any[] = await this._query("SELECT * FROM external_user WHERE uuid = ?;", externalUuid);
+        return this.createShallowExternalUser(resultArray[0]);
     }
 
     /**
@@ -1715,14 +1271,16 @@ class QueryContext {
      *  Creates a ExternalUser with
      *  shallow lists.
      */
-    public async createShallowExternalUser(storageUser: { name: string, uuid: string, service: number }):
-        Promise<ExternalUser> {
+    public async createShallowExternalUser(storageUser: {
+        name: string, uuid: string, service: number, local_uuid: string
+    }): Promise<ExternalUser> {
 
         const externalUser: ExternalUser = {
             identifier: storageUser.name,
             uuid: storageUser.uuid,
             type: storageUser.service,
             lists: [],
+            localUuid: storageUser.local_uuid,
         };
         externalUser.lists = await this.getExternalUserLists(externalUser.uuid);
         return externalUser;
@@ -1871,16 +1429,26 @@ class QueryContext {
     /**
      * Add progress of an user in regard to an episode to the storage.
      */
-    public async addProgress(uuid: string, episodeId: number, progress: number): Promise<boolean> {
-        if (!Number.isInteger(progress + episodeId)) {
-            return Promise.reject(Errors.INVALID_INPUT);
+    public async addProgress(uuid: string, episodeId: number, progress: number, readDate: Date | null)
+        : Promise<boolean> {
+
+        // noinspection SuspiciousTypeOfGuard
+        if (typeof episodeId !== "number" || typeof progress !== "number") {
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
+        }
+        const progressArray: any[] = await this._query(
+            "SELECT progress FROM user_episode WHERE user_uuid=? AND episode_id=?",
+            [uuid, episodeId]
+        );
+        if (progressArray[0] && progressArray[0].progress === 1) {
+            return true;
         }
         await this.removeProgress(uuid, episodeId);
         const result = await this._query(
             "INSERT INTO user_episode " +
-            "(user_uuid, episode_id, progress) " +
-            "VALUES (?,?,?);",
-            [uuid, episodeId, progress],
+            "(user_uuid, episode_id, progress, read_date) " +
+            "VALUES (?,?,?,?);",
+            [uuid, episodeId, progress, readDate],
         );
         return result.affectedRows > 0;
     }
@@ -1903,6 +1471,27 @@ class QueryContext {
     }
 
     /**
+     * Sets the progress of an user in regard to an episode with one or multiple progressResult objects.
+     */
+    public setProgress(uuid: string, progressResult: ProgressResult | ProgressResult[]): Promise<void> {
+        // @ts-ignore
+        return promiseMultiSingle(progressResult, async (value: ProgressResult) => {
+            const resultArray: any[] = await this._query(
+                "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
+                [value.novel, value.chapter, value.chapIndex]
+            );
+            const episodeId: number | undefined = resultArray[0] && resultArray[0].episode_id;
+
+            if (episodeId == null) {
+                const msg = `could not find an episode for '${value.novel}', '${value.chapter}', '${value.chapIndex}'`;
+                logger.info(msg);
+                return;
+            }
+            await this.addProgress(uuid, episodeId, value.progress, value.readDate);
+        });
+    }
+
+    /**
      * Get the progress of an user in regard to an episode.
      */
     public async getProgress(uuid: string, episodeId: number): Promise<number> {
@@ -1920,9 +1509,9 @@ class QueryContext {
     /**
      * Updates the progress of an user in regard to an episode.
      */
-    public updateProgress(uuid: string, episodeId: number, progress: number): Promise<boolean> {
+    public updateProgress(uuid: string, episodeId: number, progress: number, readDate: Date | null): Promise<boolean> {
         // todo for now its the same as calling addProgress, but somehow do it better maybe?
-        return this.addProgress(uuid, episodeId, progress);
+        return this.addProgress(uuid, episodeId, progress, readDate);
     }
 
     /**
@@ -1935,9 +1524,14 @@ class QueryContext {
      * @return {Promise<News|undefined|Array<News|undefined>>}
      */
     public async addNews(news: News | News[]): Promise<News | undefined | Array<News | undefined>> {
-        return promiseMultiSingle(news, async (value) => {
-            if (!value.link || !value.title || !value.date) {
-                return Promise.reject(Errors.INVALID_INPUT);
+        // @ts-ignore
+        return promiseMultiSingle(news, async (value: News) => {
+            // an empty link may be the result of a faulty link (e.g. a link which leads to 404 error)
+            if (!value.link) {
+                return;
+            }
+            if (!value.title || !value.date) {
+                return Promise.reject(new Error(Errors.INVALID_INPUT));
             }
             let result = await this._query(
                 "INSERT IGNORE INTO news_board (title, link, date) VALUES (?,?,?);",
@@ -1955,37 +1549,80 @@ class QueryContext {
 
     }
 
+    public getLatestNews(domain: string): Promise<News[]> {
+        return this._query(
+            "SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10",
+            domain
+        );
+    }
+
     /**
      *
      */
-    public async getNews(since: Date | undefined, till = new Date(), uuid: string): Promise<News[]> {
-        // todo query looks horrible, replace it with something better?
-        const query = "SELECT * FROM news_board " +
-            // where date between since and till
-            `WHERE ${since ? "? < date AND " : ""} ? > date AND id IN ` +
-            "(SELECT news_id FROM news_medium WHERE medium_id IN" +
-            // and news id from either an medium in user list or external list
-            "(SELECT medium_id FROM list_medium WHERE list_id IN " +
-            "(SELECT id FROM reading_list WHERE user_uuid = ?) " +
-            "UNION SELECT medium_id FROM external_list_medium WHERE list_id IN " +
-            "(SELECT id from external_reading_list WHERE user_uuid IN " +
-            "(SELECT uuid FROM external_user WHERE local_uuid = ?))))" +
-            "ORDER BY date DESC LIMIT 100";
+    public async getNews(uuid: string, since?: Date, till?: Date, newsIds?: number[]): Promise<News[]> {
+        let parameter: Array<Date | string> | string;
+        let query: string;
 
-        const parameter = [till, uuid, uuid];
-        if (since) {
-            parameter.unshift(since);
+        if (newsIds) {
+            query = "SELECT * FROM news_board " +
+                "LEFT JOIN (SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) " +
+                "as news_user ON news_user.news_id=news_board.id " +
+                "WHERE id IN (";
+            if (!newsIds.length) {
+                return [];
+            }
+            if (newsIds.some((newsId) => !Number.isInteger(newsId))) {
+                return [];
+            }
+            query = query + newsIds.join(", ") + ");";
+            parameter = uuid;
+        } else {
+            // todo query looks horrible, replace it with something better?
+            // a time based query
+            query = "SELECT * FROM news_board " +
+                "LEFT JOIN (SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) " +
+                "as news_user ON news_user.news_id=news_board.id " +
+                // where date between since and till
+                `WHERE ${since ? "? < date AND " : ""} ? > date AND id IN ` +
+                "(SELECT news_id FROM news_medium WHERE medium_id IN" +
+                // and news id from either an medium in user list or external list
+                "(SELECT medium_id FROM list_medium WHERE list_id IN " +
+                "(SELECT id FROM reading_list WHERE user_uuid = ?) " +
+                "UNION SELECT medium_id FROM external_list_medium WHERE list_id IN " +
+                "(SELECT id from external_reading_list WHERE user_uuid IN " +
+                "(SELECT uuid FROM external_user WHERE local_uuid = ?))))" +
+                "ORDER BY date DESC LIMIT 100";
+
+            if (!till) {
+                till = new Date();
+            }
+            parameter = [till, uuid, uuid];
+            if (since) {
+                parameter.unshift(since);
+            }
+            parameter.unshift(uuid);
+
         }
-        return this._query(query, parameter);
+        const newsResult: any[] = await this._query(query, parameter);
+
+        return Array.from(newsResult).map((value): News => {
+            return {
+                title: value.title,
+                date: value.date,
+                link: value.link,
+                id: value.id,
+                read: Boolean(value.read_news),
+            };
+        });
     }
 
     /**
      *
      */
     public async deleteOldNews(): Promise<boolean> {
-        await this._query("DELETE FROM news_medium WHERE medium_id IN " +
-            "(SELECT FROM news_board WHERE date < NOW() - 30);");
-        const result = await this._query("DELETE FROM news_board WHERE date < NOW() - 30;");
+        await this._query("DELETE FROM news_medium WHERE news_id IN " +
+            "(SELECT news_id FROM news_board WHERE date < NOW() - INTERVAL 30 DAY);");
+        const result = await this._query("DELETE FROM news_board WHERE date < NOW() - INTERVAL 30 DAY;");
         return result.affectedRows > 0;
     }
 
@@ -1993,7 +1630,8 @@ class QueryContext {
      *
      */
     public async addScrape(scrape: ScrapeItem | ScrapeItem[]): Promise<boolean> {
-        await promiseMultiSingle(scrape, (item) => {
+        // @ts-ignore
+        await promiseMultiSingle(scrape, (item: ScrapeItem) => {
             return this._query("INSERT INTO scrape_board " +
                 "(link, type, last_date, uuid, medium_id) VALUES (?,?,?,?,?);",
                 [
@@ -2027,7 +1665,7 @@ class QueryContext {
     /**
      *
      */
-    public async removeScrape(link: string): Promise<boolean> {
+    public removeScrape(link: string): Promise<boolean> {
         return this._delete("scrape_board", {column: "link", value: link});
     }
 
@@ -2037,7 +1675,7 @@ class QueryContext {
     public async linkNewsToMedium(): Promise<boolean> {
         // todo maybe implement this with a trigger
         const result = await this._query(
-            "INSERT INTO enterprise.news_medium (medium_id, news_id)" +
+            "INSERT IGNORE INTO news_medium (medium_id, news_id)" +
             "SELECT medium.id, news_board.id FROM medium,news_board " +
             "WHERE locate(medium.title, news_board.title) > 0",
         );
@@ -2046,7 +1684,8 @@ class QueryContext {
 
     public linkNewsToEpisode(news: News[]): Promise<boolean> {
         return Promise.all(news.map((value) => {
-            this._query("");
+            // todo implement this if needed
+            // this._query("");
         })).then(() => true);
     }
 
@@ -2092,7 +1731,7 @@ class QueryContext {
         const teaserMatcher = /\(?teaser\)?$|(\s+$)/i;
 
         // @ts-ignore
-        return promiseMultiSingle(result.result, async (value) => {
+        return promiseMultiSingle(result.result, async (value: MetaResult) => {
             // todo what if it is not a serial medium but only an article? should it even save such things?
             if (!value.novel
                 || (!value.chapIndex && !value.chapter)
@@ -2100,6 +1739,19 @@ class QueryContext {
                 || (value.chapter && value.chapter.match(teaserMatcher))) {
                 return;
             }
+
+            const resultArray: any[] = await this._query(
+                "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?);",
+                [value.novel, value.chapter, value.chapIndex]
+            );
+            // if a similar/same result was mapped to an episode before, get episode_id and update read
+            if (resultArray[0] && resultArray[0].episode_id != null) {
+                return this._query(
+                    "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
+                    [uuid, resultArray[0].episode_id]
+                );
+            }
+
             const escapedNovel = escapeLike(value.novel, {singleQuotes: true, noBoundaries: true});
             const media: Array<{ title: string, id: number, synonym?: string }> = await this._query(
                 "SELECT title, id,synonym FROM medium " +
@@ -2121,23 +1773,23 @@ class QueryContext {
             // if there is either an volume or volIndex in result
             // search or add the given volume to link the episode to the part/volume
             let volumeTitle = value.volume;
-            if (value.volIndex || volumeTitle) {
+            // if there is no volume yet, with the given volumeTitle or index, add one
+            let volIndex = Number(value.volIndex);
+
+            if (volIndex || volumeTitle) {
                 // todo: do i need to convert volIndex from a string to a number for the query?
                 const volumeArray: Array<{ id: number; }> = await this._query(
                     "SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)",
                     [bestMedium.id, volumeTitle && escapeLike(volumeTitle, {
                         singleQuotes: true,
                         noBoundaries: true
-                    }), value.volIndex]);
+                    }), volIndex]);
 
                 const volume = volumeArray[0];
 
                 if (volume) {
                     volumeId = volume.id;
                 } else {
-                    // if there is no volume yet, with the given volumeTitle or index, add one
-                    let volIndex = Number(value.volIndex);
-
                     if (Number.isNaN(volIndex)) {
                         const lowestIndexArray: Array<{ totalIndex: number }> = await this._query(
                             "SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?",
@@ -2167,18 +1819,17 @@ class QueryContext {
                 const volume = volumeArray[0];
 
                 if (!volume) {
-                    const insertedPart = await this._query(
-                        "INSERT INTO part (medium_id,title, totalIndex) VALUES (?,?,?);",
-                        [bestMedium.id, "Non Indexed Volume", -1]
-                    );
-                    volumeId = insertedPart.insertId;
+                    volumeId = (await this.createStandardPart(bestMedium.id)).id;
                 } else {
                     volumeId = volume.id;
                 }
             }
 
             const episodeSelectArray: Array<{ id: number, part_id: number, link: string }> = await this._query(
-                "SELECT id, part_id, url FROM episode WHERE title LIKE ? OR totalIndex=?",
+                "SELECT id, part_id, url FROM episode " +
+                "LEFT JOIN episode_release " +
+                "ON episode.id=episode_release.episode_id " +
+                "WHERE title LIKE ? OR totalIndex=?",
                 [value.chapter && escapeLike(value.chapter, {
                     noBoundaries: true,
                     singleQuotes: true
@@ -2209,50 +1860,160 @@ class QueryContext {
                     chapter = "Chapter " + episodeIndex;
                 }
 
-                // @ts-ignore
                 const episode = await this.addEpisode(volumeId, {
-                    title: chapter,
+                    id: 0,
+                    partId: volumeId,
                     totalIndex: episodeIndex,
-                    url: result.url,
-                    releaseDate: new Date(),
+                    releases: [{
+                        title: chapter,
+                        url: result.url,
+                        releaseDate: new Date(),
+                        // todo get source type
+                        sourceType: "",
+                        episodeId: 0
+                    }],
                 });
+                // @ts-ignore
                 episodeId = episode.id;
             }
 
             // now after setting the storage up, so that all data is 'consistent' with this result,
             // mark the episode as read
-            // fixme: for now the progress is set to 1, because the tracker is malfunctioning,
             // normally the progress should be updated by messages of the tracker
             // it should be inserted only, if there does not exist any progress
+            await this
+                ._query(
+                    "INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);",
+                    [uuid, episodeId]
+                );
             await this._query(
-                "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,1);",
-                [uuid, episodeId]
+                "INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
+                "VALUES (?,?,?,?,?,?);",
+                [value.novel, value.chapter, value.chapIndex, value.volume, value.volIndex, episodeId]
             );
+        });
+    }
+
+    public createStandardPart(mediumId: number): Promise<Part> {
+        const partName = "Non Indexed Volume";
+        return this._query(
+            "INSERT IGNORE INTO part (medium_id,title, totalIndex) VALUES (?,?,?);",
+            [mediumId, partName, -1]
+        ).then((value): Part => {
+            return {
+                totalIndex: -1,
+                title: partName,
+                id: value.insertId,
+                mediumId,
+                episodes: []
+            };
         });
     }
 
     /**
      *
      */
-    public async checkUnread(uuid: string): Promise<number> {
-        const result = await this._query("SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN " +
-            "(SELECT news_id FROM news_user WHERE user_id = ?);", uuid);
+    public async checkUnreadNewsCount(uuid: string): Promise<number> {
+        const result = await this._query(
+            "SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN " +
+            "(SELECT news_id FROM news_user WHERE user_id = ?);",
+            uuid
+        );
         return result[0].count;
     }
 
-    public getSynonyms(mediumId: number | number[]): Promise<Array<{ mediumId: number, synonym: string[] }>> {
-        // todo implement
-        throw new Error("Method not implemented.");
+    /**
+     *
+     */
+    public checkUnreadNews(uuid: string): Promise<number[]> {
+        return this._query(
+            "SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);",
+            uuid
+        );
+    }
+
+    public getSynonyms(mediumId: number | number[]): Promise<Synonyms[]> {
+        // @ts-ignore
+        return promiseMultiSingle(mediumId, async (value): Synonyms => {
+            const synonymResult: any[] = await this._query(
+                "SELECT synonym FROM medium_synonyms WHERE medium_id=?;",
+                value
+            );
+            return {
+                mediumId: value,
+                synonym: synonymResult.map((result) => result.synonym)
+            };
+        });
     }
 
     public removeSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
-        // todo implement
-        throw new Error("Method not implemented.");
+        // @ts-ignore
+        return promiseMultiSingle(synonyms, (value: Synonyms) => {
+            return promiseMultiSingle(value.synonym, (item) => {
+                return this._delete("medium_synonyms",
+                    {
+                        column: "synonym",
+                        value: item
+                    },
+                    {
+                        column: "medium_id",
+                        value: value.mediumId
+                    });
+            });
+        }).then(() => true);
     }
 
     public addSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
-        // todo implement
-        throw new Error("Method not implemented.");
+        // @ts-ignore
+        return promiseMultiSingle(synonyms, (value: Synonyms) => {
+            return promiseMultiSingle(value.synonym, (item) => {
+                return this._query(
+                    "INSERT IGNORE INTO medium_synonyms (medium_id, synonym) VALUES (?,?)",
+                    [value.mediumId, item]
+                );
+            });
+        }).then(() => true);
+    }
+
+    public addToc(mediumId: number, link: string): Promise<void> {
+        return this._query(
+            "INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)",
+            [mediumId, link]
+        );
+    }
+
+    public async getToc(mediumId: number): Promise<string[]> {
+        const resultArray: any[] = await this._query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
+        return resultArray.map((value) => value.link).filter((value) => value);
+    }
+
+    public getAllTocs(): Promise<Array<{ link?: string, id: number }>> {
+        return this._query(
+            "SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id"
+        );
+    }
+
+    public async getChapterIndices(mediumId: number): Promise<number[]> {
+        const result: any[] = await this._query(
+            "SELECT (episode.totalIndex + COALESCE(episode.partialIndex,0)) as combinedIndex FROM episode " +
+            "INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?",
+            mediumId
+        );
+        return result
+            .map((value) => Number(value.combinedIndex))
+            .filter((value) => value);
+    }
+
+    public async getAllChapterLinks(mediumId: number): Promise<string[]> {
+        const result: any[] = await this._query(
+            "SELECT url FROM episode " +
+            "INNER JOIN episode_release ON episode.id=episode_release.episode_id " +
+            "INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?",
+            mediumId
+        );
+        return result
+            .map((value) => value.url)
+            .filter((value) => value);
     }
 
     /**
@@ -2270,21 +2031,28 @@ class QueryContext {
         return exists && this._query(`DROP DATABASE ${database};`);
     }
 
+
     public processResult(result: Result): Promise<MetaResult | MetaResult[]> {
         if (!result.preliminary) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         // @ts-ignore
-        return promiseMultiSingle(result.result, async (value) => {
+        return promiseMultiSingle(result.result, async (value: MetaResult) => {
+            const resultArray: any[] = await this._query(
+                "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
+                [value.novel, value.chapter, value.chapIndex]
+            );
+            if (resultArray[0] && resultArray[0].episode_id != null) {
+                return null;
+            }
             // todo implement
             return value;
         });
     }
 
-
     public saveResult(result: Result): Promise<boolean> {
         if (!result.preliminary) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         // @ts-ignore
         return promiseMultiSingle(result.result, async (value) => {
@@ -2298,47 +2066,168 @@ class QueryContext {
         });
     }
 
+    public async getUnreadChapter(uuid: string): Promise<number[]> {
+        const resultArray = await this._query(
+            "SELECT id FROM episode WHERE id NOT IN " +
+            "(SELECT episode_id FROM user_episode WHERE progress < 1 AND user_uuid=?);",
+            uuid
+        );
+        return Array.from(resultArray).map((value: any) => value.id);
+    }
+
+    public async getReadToday(uuid: string): Promise<ReadEpisode[]> {
+        const resultArray = await this._query(
+            "SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;",
+            uuid
+        );
+        return Array.from(resultArray).map((value: any): ReadEpisode => {
+            return {
+                episodeId: value.episode_id,
+                readDate: value.read_date,
+                progress: value.progress,
+            };
+        });
+    }
+
+    public async getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }> {
+        if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
+            return Promise.reject(Errors.INVALID_INPUT);
+        }
+        const query: any[] = await this._query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
+        return {
+            link,
+            key,
+            values: query.map((value) => value.value).filter((value) => value)
+        };
+    }
+
+    public async updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void> {
+        if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
+            return Promise.reject(Errors.INVALID_INPUT);
+        }
+        await this.removePageInfo(link, key, toDeleteValues);
+
+        await Promise.all(values.map((value) => {
+            if (!value || !validate.isString(value)) {
+                throw Errors.INVALID_INPUT;
+            }
+            return this._query("INSERT INTO page_info (link, key, value) VALUES(?,?,?)", [link, key, value]);
+        }));
+    }
+
+    public async removePageInfo(link: string, key?: string, toDeleteValues?: string[]): Promise<void> {
+        if (!validate.isString(link) || !link || (key && !validate.isString(key))) {
+            return Promise.reject(Errors.INVALID_INPUT);
+        }
+        if (key) {
+            if (toDeleteValues) {
+                await Promise.all(toDeleteValues.map((value) => {
+                    if (!value || !validate.isString(value)) {
+                        throw Errors.INVALID_INPUT;
+                    }
+                    return this._query(
+                        "DELETE FROM page_info WHERE link=? AND keyString=? AND value=?",
+                        [link, key, value]
+                    );
+                }));
+            } else {
+                await this._query("DELETE FROM page_info WHERE link=? AND keyString=?", [link, key]);
+            }
+        } else {
+            await this._query("DELETE FROM page_info WHERE link=?", link);
+        }
+    }
+
+    public async addInvalidation(value: string[]): Promise<void> {
+        // fixme: this could be a potential security issue, due to executing unvalidated queries
+        await Promise.all(value.map((query) => this._query(query)));
+    }
+
+    public async getInvalidated(uuid: string): Promise<Invalidation[]> {
+        // fixme throws an error at this line for 'syntax error'
+        const result: any[] = await this._query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
+       /* await this._query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+            console.log(reason);
+            logger.error(reason);
+        });*/
+        return Array.from(result).map((value: any): Invalidation => {
+            return {
+                externalListId: value.external_list_id,
+                externalUuid: value.external_uuid,
+                mediumId: value.medium_id,
+                partId: value.part_id,
+                episodeId: value.episode_id,
+                userUuid: value.user_uuid,
+                listId: value.list_id,
+                newsId: value.news_id,
+                uuid,
+            };
+        });
+    }
+
     /**
      * Returns a user with their associated lists and external user from the storage.
      */
-    private async getUser(uuid: string, session: string): Promise<User> {
+    private _getUser(uuid: string, session: string): Promise<User> {
         if (!uuid) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         const user: User = {
             externalUser: [],
             lists: [],
             name: "",
             uuid: "",
+            readToday: [],
+            unreadChapter: [],
+            unreadNews: [],
             session,
         };
         // query for user
-        let result = await this._query("SELECT * FROM user WHERE uuid = ?;", uuid);
-        // add user metadata
-        result = result[0];
-        user.name = result.name;
-        user.uuid = uuid;
+        const userPromise = this._query("SELECT * FROM user WHERE uuid = ?;", uuid)
+            .then((value: any[]) => {
+                // add user metadata
+                user.name = value[0].name;
+                user.uuid = uuid;
+            });
 
-        if (!user.name) {
-            return Promise.reject(Errors.CORRUPT_DATA);
-        }
         // query for user reading lists
-        const lists = await this.getUserLists(uuid);
-        // add local user reading lists
-        user.lists.push(...lists);
+        const listsPromise = this
+            .getUserLists(uuid)
+            .then((value: any[]) => {
+                // add local user reading lists
+                user.lists.push(...value);
+            });
 
         // select external user of user
-        const allExternalUser = await this._query("SELECT * FROM external_user WHERE local_uuid = ?;", uuid);
+        const allExternalUserPromise = this
+            ._query("SELECT * FROM external_user WHERE local_uuid = ?;", uuid)
+            .then((allExternalUser: any[]) => {
+                // add external_user and add their respective external reading lists
+                return Promise.all(allExternalUser.map((value: any) => this
+                    .createShallowExternalUser(value)
+                    .then((externalUser) => user.externalUser.push(externalUser))));
+            });
 
-        // add external_user and add their respective external reading lists
-        await Promise.all(allExternalUser.map((value: any) => this
-            .createShallowExternalUser(value)
-            .then((externalUser) => user.externalUser.push(externalUser))));
+        const unReadNewsPromise = this
+            .checkUnreadNews(uuid)
+            .then((value) => user.unreadNews.push(...value));
+
+        const unReadChapterPromise = this
+            .getUnreadChapter(uuid)
+            .then((value) => user.unreadChapter.push(...value));
+
+        const readTodayPromise = this
+            .getReadToday(uuid)
+            .then((value) => user.readToday.push(...value));
 
         // return user result
-        return user;
+        return Promise
+            .all([
+                userPromise, listsPromise, allExternalUserPromise,
+                unReadNewsPromise, unReadChapterPromise, readTodayPromise
+            ])
+            .then(() => user);
     }
-
 
     /**
      * Deletes one or multiple entries from one specific table,
@@ -2346,11 +2235,12 @@ class QueryContext {
      */
     private async _delete(table: string, ...condition: Array<{ column: string, value: any }>): Promise<boolean> {
         if (!condition || (Array.isArray(condition) && !condition.length)) {
-            return Promise.reject(Errors.INVALID_INPUT);
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         let query = `DELETE FROM ${mySql.escapeId(table)} WHERE `;
         const values: any[] = [];
-        multiSingle(condition, (value, _, next) => {
+
+        multiSingle(condition, (value: any, _, next) => {
             query += `${mySql.escapeId(value.column)} = ?`;
             if (next) {
                 query += " AND ";
@@ -2395,21 +2285,11 @@ class QueryContext {
      * @param parameter
      * @private
      */
-    private async _query(query: string, parameter?: any | any[]) {
-        return this.con.query(query, parameter);
+    private _query(query: string, parameter?: any | any[]): Promise<any> {
+        // return Promise.resolve()
+        return StateProcessor
+            .validateQuery(query, parameter)
+            .then(() => this.con.query(query, parameter))
+            .then((value) => StateProcessor.addSql(query, parameter, value, this.uuid));
     }
 }
-
-/**
- *
- */
-export const startStorage = () => start();
-
-export const isError = (error: any) => {
-    for (const key of Object.keys(Errors)) {
-        if (Errors[key] === error) {
-            return true;
-        }
-    }
-    return false;
-};

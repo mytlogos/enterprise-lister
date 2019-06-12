@@ -1,4 +1,4 @@
-export interface Medium {
+export interface SimpleMedium {
     id?: number;
     countryOfOrigin?: string;
     languageOfOrigin?: string;
@@ -11,12 +11,25 @@ export interface Medium {
     stateTL?: number;
     series?: string;
     universe?: string;
-    parts?: Part[];
 
     [key: string]: any;
 }
 
+export interface Medium extends SimpleMedium {
+    parts?: number[];
+    latestReleased: number[];
+    currentRead: number;
+    unreadEpisodes: number[];
+}
+
+export interface TocSearchMedium {
+    mediumId: number;
+    title: string;
+    synonyms: string[];
+}
+
 export interface Part {
+    mediumId: number;
     id: number;
     title?: string;
     totalIndex: number;
@@ -24,17 +37,29 @@ export interface Part {
     episodes: Episode[];
 }
 
-export interface Episode {
+export interface SimpleEpisode {
     id: number;
-    partId?: number;
-    title?: string;
+    partId: number;
     totalIndex: number;
     partialIndex?: number;
+    releases: EpisodeRelease[];
+}
+
+export interface Episode extends SimpleEpisode {
+    progress: number;
+    readDate: Date | null;
+}
+
+export interface EpisodeRelease {
+    episodeId: number;
+    title: string;
     url: string;
     releaseDate: Date;
+    sourceType: string;
 }
 
 export interface List {
+    userUuid: string;
     id: number;
     name: string;
     medium: number;
@@ -45,6 +70,9 @@ export interface User {
     uuid: string;
     name: string;
     session: string;
+    unreadNews: number[];
+    unreadChapter: number[];
+    readToday: ReadEpisode[];
     externalUser: ExternalUser[];
     lists: List[];
 }
@@ -56,10 +84,10 @@ export interface ExternalList {
     medium: number;
     url: string;
     items: number[];
-
 }
 
 export interface ExternalUser {
+    localUuid: string;
     uuid: string;
     identifier: string;
     type: number;
@@ -73,6 +101,12 @@ export interface News {
     link: string;
     date: Date;
     id?: number;
+    read?: boolean;
+}
+
+export interface Synonyms {
+    mediumId: number;
+    synonym: MultiSingle<string>;
 }
 
 export interface ScrapeItem {
@@ -84,9 +118,15 @@ export interface ScrapeItem {
 }
 
 export interface LikeMedium {
-    medium: Medium;
+    medium?: SimpleMedium;
     title: string;
     link: string;
+}
+
+export interface LikeMediumQuery {
+    title: string;
+    link: string;
+    type?: number;
 }
 
 export interface MetaResult {
@@ -100,13 +140,33 @@ export interface MetaResult {
 }
 
 export interface Result {
-    result: MetaResult | MetaResult[];
+    result: MultiSingle<MetaResult>;
     preliminary?: boolean;
     accept?: boolean;
     url: string;
 }
 
-export interface Synonyms {
-    mediumId: number;
-    synonym: string | string[];
+export interface ProgressResult extends MetaResult {
+    progress: number;
+    readDate: Date;
+}
+
+export type MultiSingle<T> = T | T[];
+
+export interface ReadEpisode {
+    episodeId: number;
+    readDate: Date;
+    progress: number;
+}
+
+export interface Invalidation {
+    mediumId?: number;
+    partId?: number;
+    episodeId?: number;
+    uuid: string | null;
+    userUuid?: boolean;
+    externalUuid?: string;
+    externalListId?: number;
+    listId?: number;
+    newsId?: number;
 }

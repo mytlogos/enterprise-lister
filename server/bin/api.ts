@@ -1,4 +1,4 @@
-import {Handler, Request, Response, Router} from "express";
+import {Request, Response, Router} from "express";
 import * as UserApi from "./userMiddleware";
 import {NextFunction} from "express-serve-static-core";
 
@@ -31,12 +31,15 @@ function userRouter(): Router {
     // after this middleware should be protected with this now
     router.use(UserApi.authenticate);
 
-    // @ts-ignore
-    UserApi.addUserApi(router);
+    UserApi.addUserApi(router.route(""));
 
     router.post("/logout", UserApi.logout);
     router.get("/lists", UserApi.getLists);
     router.get("/news", UserApi.getNews);
+    router.get("/invalidated", UserApi.getInvalidated);
+    router.post("/bookmarked", UserApi.addBookmarked);
+    router.post("/toc", UserApi.addToc);
+    router.get("/download", UserApi.downloadEpisode);
 
     router.use("/medium", mediumRouter());
     router.use("/list", listRouter());
@@ -54,15 +57,13 @@ function listRouter(): Router {
     const router = Router();
 
     UserApi.addListMediumRoute(router.route("/medium"));
-    // @ts-ignore
-    UserApi.addListApi(router);
+    UserApi.addListApi(router.route(""));
 
     return router;
 }
 
 function processRouter(): Router {
     const router = Router();
-    router.use(stopper);
     router.post("/result", UserApi.processResult);
     return router;
 }
@@ -76,8 +77,6 @@ function mediumRouter(): Router {
 
     router.use("/part", partRouter());
 
-    // router does not route correctly if i use get etc.
-    // on router directly, need to use empty route for that?
     UserApi.addMediumApi(router.route(""));
     UserApi.addProgressRoute(router.route("/progress"));
 
@@ -90,11 +89,8 @@ function mediumRouter(): Router {
  */
 function partRouter(): Router {
     const router = Router();
-
-    // @ts-ignore
-    UserApi.addPartRoute(router);
     UserApi.addEpisodeRoute(router.route("/episode"));
-
+    UserApi.addPartRoute(router.route(""));
     return router;
 }
 

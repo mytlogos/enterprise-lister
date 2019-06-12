@@ -9,9 +9,10 @@ import helmet from "helmet";
 import {apiRouter} from "./api";
 import {requestHandler as wsRequestHandler} from "./websocketManager";
 import {blockRequests} from "./timer";
-// fixme this import could be a bug
 import {server as WebSocketServer} from "websocket";
 import {Server} from "http";
+import emojiStrip from "emoji-strip";
+import {isString} from "./tools";
 
 export const app = express();
 
@@ -21,15 +22,28 @@ app.use(blockRequests);
 app.use(logger("dev"));
 app.use(helmet());
 app.use(compression());
+
+// remove any emoji, dont need it and it can mess up my database
+app.use((req, res, next) => {
+    if (req.body && isString(req.body)) {
+        req.body = emojiStrip(req.body);
+    }
+    next();
+});
 // only accept json as req body
 app.use(express.json());
-app.use(express.static(path.join(parentDirName, "dist")));
 
 app.use("/api", apiRouter());
+app.use(express.static(path.join(parentDirName, "dist")));
 
-// noinspection JSUnresolvedFunction
 app.get("/", (req, res) => {
     res.sendFile(path.join(parentDirName, path.join("dist", "index.html")));
+});
+
+app.use((req: Request, res: Response) => {
+    if (!req.path.startsWith("/api")) {
+        res.redirect(`/?redirect=${req.path}`);
+    }
 });
 
 // catch 404 and forward to error handler
@@ -41,12 +55,12 @@ app.use((req, res, next) => {
 app.use((err: HttpError, req: Request, res: Response) => {
     // set locals, only providing error in development
     res.locals.message = err.message;
-    // noinspection JSUnresolvedFunction
     res.locals.error = req.app.get("env") === "development" ? err : {};
 
     // render the error page
     res.sendStatus(err.status || 500);
 });
+
 
 let wsServer;
 

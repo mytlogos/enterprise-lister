@@ -1,6 +1,9 @@
-import {Errors, isError as isErrorCode, Storage} from "./database";
+import {Storage} from "./database/database";
 import {factory} from "./externals/listManager";
 import {Handler, IRoute, Request, Response} from "express";
+import logger from "./logger";
+import {add as addDependant, downloadEpisodes} from "./externals/scraper";
+import {Errors, isError, isString, stringToNumberList} from "./tools";
 
 type RouteMiddleWare = (route: IRoute) => void;
 
@@ -18,23 +21,93 @@ export const checkLogin: Handler = (req, res) => {
 
 export const login: Handler = (req, res) => {
     const {userName, pw} = req.body;
+
+    if (!userName || !pw) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    }
     sendResult(res, Storage.loginUser(userName, pw, req.ip));
 };
 
 export const register: Handler = (req, res) => {
     const {userName, pw} = req.body;
+
+    if (!userName || !pw) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    }
     sendResult(res, Storage.register(userName, pw, req.ip));
 };
 
 export const logout: Handler = (req, res) => {
     const {uuid} = req.body;
+    if (!uuid) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    }
     sendResult(res, Storage.logoutUser(uuid, req.ip));
 };
+
+export const getInvalidated: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    if (!uuid) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    }
+    sendResult(res, Storage.getInvalidated(uuid));
+};
+
+export const addBookmarked: Handler = (req, res) => {
+    const {uuid, bookmarked} = req.body;
+    const protocol = /^https?:\/\//;
+
+    if (bookmarked && bookmarked.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
+        addDependant({
+            oneTimeToc: bookmarked.map((url: string) => {
+                return {url, uuid};
+            })
+        });
+        sendResult(res, Promise.resolve(true));
+    } else {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    }
+};
+
+export const addToc: Handler = (req, res) => {
+    const {uuid, toc, mediumId} = req.body;
+    const protocol = /^https?:\/\//;
+
+    if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
+        addDependant({
+            oneTimeToc: {url: toc, uuid, mediumId}
+        });
+        sendResult(res, Promise.resolve(true));
+    } else {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    }
+};
+
+export const downloadEpisode: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    const stringEpisode = extractQueryParam(req, "episode");
+    const episodes: number[] = stringToNumberList(stringEpisode);
+
+    sendResult(
+        res,
+        Storage
+            .getEpisode(episodes, uuid)
+            .then((fullEpisodes) => downloadEpisodes(fullEpisodes.filter((value) => value))));
+};
+
 // fixme an error showed that req.query.something does not assign on first call, only on second???
 export const addListApi: RouteMiddleWare = (route) => {
     route.get((req, res) => {
-        const listId = extractQueryParam(req, "listId");
-        sendResult(res, Storage.getList(listId));
+        let listId = extractQueryParam(req, "listId");
+        const uuid = extractQueryParam(req, "uuid");
+        let media = extractQueryParam(req, "media");
+
+        if (isString(listId)) {
+            listId = stringToNumberList(listId);
+        }
+        media = stringToNumberList(media);
+
+        sendResult(res, Storage.getList(listId, media, uuid));
     });
     route.post((req, res) => {
         const {uuid, list: list} = req.body;
@@ -53,65 +126,78 @@ export const addListApi: RouteMiddleWare = (route) => {
 export const addListMediumRoute: RouteMiddleWare = (route) => {
     route.get((req, res) => {
         const listId = extractQueryParam(req, "listId");
+        const uuid = extractQueryParam(req, "uuid");
         let media = extractQueryParam(req, "media");
-        media = media.split(",");
-        media = req.query.media.split(",").map((value: any) => Number(value));
+        media = stringToNumberList(media);
 
-        const listPromise = Storage
-            .getList(listId)
-            .then((obj) => obj.media.filter((value) => media.includes(value.id)));
-
-        sendResult(res, listPromise);
+        sendResult(res, Storage.getList(listId, media, uuid));
     });
     route.post((req, res) => {
-        const {listId, mediumId} = req.body;
-        sendResult(res, Storage.addItemToList(listId, mediumId));
+        const {listId, mediumId, uuid} = req.body;
+        sendResult(res, Storage.addItemToList(listId, mediumId, uuid));
     });
     route.put((req, res) => {
-        const {oldListId, newListId, mediumId} = req.body;
-        sendResult(res, Storage.moveMedium(oldListId, newListId, mediumId));
+        const {oldListId, newListId, mediumId, uuid} = req.body;
+        sendResult(res, Storage.moveMedium(oldListId, newListId, mediumId, uuid));
     });
     route.delete((req, res) => {
-        const {listId, mediumId} = req.body;
-        sendResult(res, Storage.removeMedium(listId, mediumId));
+        const {listId, mediumId, uuid} = req.body;
+        sendResult(res, Storage.removeMedium(listId, mediumId, uuid));
     });
 };
 
 export const addPartRoute: RouteMiddleWare = (route) => {
     route.get((req, res) => {
         const mediumId = extractQueryParam(req, "mediumId");
-        sendResult(res, Storage.getParts(mediumId));
+        const uuid = extractQueryParam(req, "uuid");
+
+        if (mediumId == null) {
+            let partId = extractQueryParam(req, "partId");
+            // if it is a string, it is likely a list of partIds was send
+            if (isString(partId)) {
+                partId = stringToNumberList(partId);
+            }
+            sendResult(res, Storage.getParts(partId, uuid));
+        } else {
+            sendResult(res, Storage.getMediumParts(mediumId, uuid));
+        }
     });
     route.post((req, res) => {
-        const {part, mediumId} = req.body;
-        sendResult(res, Storage.addPart(mediumId, part));
+        const {part, mediumId, uuid} = req.body;
+        sendResult(res, Storage.addPart(mediumId, part, uuid));
     });
     route.put((req, res) => {
-        const {part} = req.body;
-        sendResult(res, Storage.updatePart(part));
+        const {part, uuid} = req.body;
+        sendResult(res, Storage.updatePart(part, uuid));
     });
     route.delete((req, res) => {
-        const {partId} = req.body;
-        sendResult(res, Storage.deletePart(partId));
+        const {partId, uuid} = req.body;
+        sendResult(res, Storage.deletePart(partId, uuid));
     });
 };
 
 export const addEpisodeRoute: RouteMiddleWare = (route) => {
     route.get((req, res) => {
-        const episodeId = extractQueryParam(req, "episodeId");
-        sendResult(res, Storage.getEpisode(episodeId));
+        let episodeId = extractQueryParam(req, "episodeId");
+        const uuid = extractQueryParam(req, "uuid");
+
+        // if it is a string, it is likely a list of episodeIds was send
+        if (isString(episodeId)) {
+            episodeId = stringToNumberList(episodeId);
+        }
+        sendResult(res, Storage.getEpisode(episodeId, uuid));
     });
     route.post((req, res) => {
-        const {medium, partId} = req.body;
-        sendResult(res, Storage.addEpisode(partId, medium));
+        const {episode, partId, uuid} = req.body;
+        sendResult(res, Storage.addEpisode(partId, episode, uuid));
     });
     route.put((req, res) => {
-        const {episode} = req.body;
-        sendResult(res, Storage.updateEpisode(episode));
+        const {episode, uuid} = req.body;
+        sendResult(res, Storage.updateEpisode(episode, uuid));
     });
     route.delete((req, res) => {
-        const {episodeId} = req.body;
-        sendResult(res, Storage.deletePart(episodeId));
+        const {episodeId, uuid} = req.body;
+        sendResult(res, Storage.deletePart(episodeId, uuid));
     });
 };
 
@@ -128,7 +214,7 @@ export const addExternalUserApi: RouteMiddleWare = (route) => {
             const valid = await listManager.test({identifier: externalUser.identifier, password: externalUser.pwd});
 
             if (!valid) {
-                return Promise.reject(Errors.INVALID_DATA);
+                return Promise.reject(new Error(Errors.INVALID_DATA));
             }
             delete externalUser.pwd;
             externalUser.cookies = listManager.stringifyCookies();
@@ -137,8 +223,8 @@ export const addExternalUserApi: RouteMiddleWare = (route) => {
         });
     });
     route.delete((req, res) => {
-        const {externalUuid} = req.body;
-        sendResult(res, Storage.deleteExternalUser(externalUuid));
+        const {externalUuid, uuid} = req.body;
+        sendResult(res, Storage.deleteExternalUser(externalUuid, uuid));
     });
 };
 
@@ -161,11 +247,25 @@ export const addProgressRoute: RouteMiddleWare = (router) => {
     });
     router.post((req, res) => {
         const {uuid, episode_id, progress} = req.body;
-        sendResult(res, Storage.addProgress(uuid, episode_id, progress));
+        try {
+            const readDate = req.body.readDate ? new Date(req.body.readDate) : null;
+            sendResult(res, Storage.addProgress(uuid, episode_id, progress, readDate));
+        } catch (e) {
+            console.log(e);
+            logger.error(e);
+            sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        }
     });
     router.put((req, res) => {
         const {uuid, episode_id, progress} = req.body;
-        sendResult(res, Storage.updateProgress(uuid, episode_id, progress));
+        try {
+            const readDate = req.body.readDate ? new Date(req.body.readDate) : null;
+            sendResult(res, Storage.updateProgress(uuid, episode_id, progress, readDate));
+        } catch (e) {
+            console.log(e);
+            logger.error(e);
+            sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        }
     });
     router.delete((req, res) => {
         const {uuid, episode_id} = req.body;
@@ -176,18 +276,20 @@ export const addProgressRoute: RouteMiddleWare = (router) => {
 export const addMediumApi: RouteMiddleWare = (route) => {
     route.get((req, res) => {
         let mediumId = extractQueryParam(req, "mediumId");
+        const uuid = extractQueryParam(req, "uuid");
+
         if (!Number.isInteger(mediumId)) {
-            mediumId = mediumId.split(",").map((value: any) => Number(value));
+            mediumId = stringToNumberList(mediumId);
         }
-        sendResult(res, Storage.getMedium(mediumId));
+        sendResult(res, Storage.getMedium(mediumId, uuid));
     });
     route.post((req, res) => {
         const {uuid, medium} = req.body;
         sendResult(res, Storage.addMedium(medium, uuid));
     });
     route.put((req, res) => {
-        const {medium} = req.body;
-        sendResult(res, Storage.updateMedium(medium));
+        const {medium, uuid} = req.body;
+        sendResult(res, Storage.updateMedium(medium, uuid));
     });
 };
 
@@ -204,11 +306,19 @@ export const getNews: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     let from = extractQueryParam(req, "from");
     let to = extractQueryParam(req, "to");
+    let newsIds = extractQueryParam(req, "newsId");
 
-    from = !from || from === "null" ? undefined : new Date(from);
-    to = !to || to === "null" ? undefined : new Date(to);
+    // if newsIds is specified, send only these news
+    if (isString(newsIds)) {
+        newsIds = stringToNumberList(newsIds);
+        sendResult(res, Storage.getNews({uuid, newsIds}));
+    } else {
+        // else send it based on time
+        from = !from || from === "null" ? undefined : new Date(from);
+        to = !to || to === "null" ? undefined : new Date(to);
 
-    sendResult(res, Storage.getNews({uuid, since: from, till: to}));
+        sendResult(res, Storage.getNews({uuid, since: from, till: to}));
+    }
 };
 
 export const authenticate: Handler = (req, res, next) => {
@@ -228,17 +338,25 @@ export const authenticate: Handler = (req, res, next) => {
                 res.status(400).json({error: Errors.INVALID_SESSION});
             }
         })
-        .catch((error) => res.status(500).json({error: isErrorCode(error) ? error : Errors.INVALID_MESSAGE}));
+        .catch((error) => {
+            res.status(500).json({error: isError(error) ? error : Errors.INVALID_MESSAGE});
+            logger.error(error);
+        });
 };
 
 function sendResult(res: Response, promise: Promise<any>) {
     promise
-        .then((result) => res.json(result))
+        .then((result) => {
+            res.json(result);
+        })
         .catch((error) => {
-            const errorCode = isErrorCode(error);
+            const errorCode = isError(error);
             res
                 .status(errorCode ? 400 : 500)
                 .json({error: errorCode ? error : Errors.INVALID_MESSAGE});
+
+            console.log(error);
+            logger.error(error);
         });
 }
 

@@ -6,7 +6,8 @@
                 <router-link to="addMedium" tag="button" class="btn">Add Medium</router-link>
                 <router-link to="addList" tag="button" class="btn">Add List</router-link>
                 <router-link to="news" tag="button" class="btn">News</router-link>
-                <router-link to="/" tag="button" class="btn">Lists</router-link>
+                <router-link to="readHistory" tag="button" class="btn">Read History</router-link>
+                <router-link to="list" tag="button" class="btn">Lists</router-link>
                 <router-link to="settings" tag="button" class="btn">
                     <img alt="Settings" src="../assets/config_icon.png">
                 </router-link>

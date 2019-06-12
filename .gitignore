@@ -36,6 +36,7 @@ build/Release
 
 # Dependency directories
 node_modules/
+exampleData/
 dist/
 server/dist
 binJs/

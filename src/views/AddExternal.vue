@@ -1,5 +1,5 @@
 <template>
-    <modal @finish="sendForm()" v-bind:error="error" v-bind:show="show">
+    <modal @finish="sendForm()" v-bind:error="error">
         <template slot="title">Login</template>
         <template slot="input">
             <label>

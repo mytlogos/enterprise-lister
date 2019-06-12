@@ -3,10 +3,10 @@ import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";
 import {events, WSClient} from "./WebsocketClient";
-import {emitBusEvent, onBusEvent} from "@/bus";
+import {emitBusEvent, onBusEvent} from "./bus";
 import {optimizedResize} from "./init";
-import {ExternalList, ExternalUser, List, Medium, News, TransferList, TransferMedium, User} from "@/types";
-import {HttpClient} from "@/Httpclient";
+import {ExternalList, ExternalUser, List, Medium, News, TransferList, TransferMedium, User} from "./types";
+import {HttpClient} from "./Httpclient";
 
 Vue.config.devtools = true;
 Vue.use(VueObserveVisibility);
@@ -138,7 +138,7 @@ const user = {
         }
         this.media.splice(index, 1);
         this.lists.forEach((value) => {
-            const listIndex = value.items.findIndex((itemId) => itemId === id);
+            const listIndex = value.items.findIndex((itemId: number) => itemId === id);
 
             if (listIndex >= 0) {
                 value.items.splice(listIndex, 1);
@@ -272,30 +272,38 @@ const app: App = new Vue({
 
     mounted() {
         onBusEvent("open:register", () => this.registerModal.show = true);
-        onBusEvent("do:register", (data) => this.register(data));
+        onBusEvent("do:register", (data: any) => this.register(data));
 
         onBusEvent("open:login", () => this.loginModal.show = true);
-        onBusEvent("do:login", (data) => this.login(data));
+        onBusEvent("do:login", (data: any) => this.login(data));
         onBusEvent("do:logout", () => this.logout());
 
         onBusEvent("open:add-medium", () => this.addMediumModal.show = true);
-        onBusEvent("add:medium", (data) => this.addMedium(data));
-        onBusEvent("edit:medium", (data) => this.editMedium(data));
-        onBusEvent("delete:medium", (data) => this.deleteMedium(data));
+        onBusEvent("open:medium", (data: any) => this.openMedium(data));
+        onBusEvent("add:medium", (data: any) => this.addMedium(data));
+        onBusEvent("edit:medium", (data: any) => this.editMedium(data));
+        onBusEvent("delete:medium", (data: number) => this.deleteMedium(data));
 
         onBusEvent("open:add-list", () => this.addListModal.show = true);
-        onBusEvent("add:list", (data) => this.addList(data));
-        onBusEvent("delete:list", (data) => this.deleteList(data));
+        onBusEvent("add:list", (data: any) => this.addList(data));
+        onBusEvent("delete:list", (data: number) => this.deleteList(data));
 
-        onBusEvent("add:externalUser", (data) => this.addExternalUser(data));
-        onBusEvent("delete:externalUser", (data) => this.deleteExternalUser(data));
-        onBusEvent("refresh:externalUser", (data) => this.refreshExternalUser(data));
+        onBusEvent("add:externalUser", (data: any) => this.addExternalUser(data));
+        onBusEvent("delete:externalUser", (data: string) => this.deleteExternalUser(data));
+        onBusEvent("refresh:externalUser", (data: string) => this.refreshExternalUser(data));
 
-        onBusEvent("do:settings", (data) => this.changeSettings(data));
+        onBusEvent("do:settings", (data: any) => this.changeSettings(data));
 
-        onBusEvent("get:news", (data) => this.loadNews(data));
-        onBusEvent("read:news", (data) => this.markReadNews(data));
+        onBusEvent("get:news", (data: any) => this.loadNews(data));
+        onBusEvent("read:news", (data: number) => this.markReadNews(data));
 
+        onBusEvent("append:media", (media: Medium | Medium[]) => {
+            if (Array.isArray(media)) {
+                user.addMedium(...media);
+            } else {
+                user.addMedium(media);
+            }
+        });
 
         onBusEvent("reset:modal", () => this.closeModal());
 
@@ -304,41 +312,16 @@ const app: App = new Vue({
         // @ts-ignore
         HttpClient.user = user;
 
-        WSClient.addEventListener(events.ADD, (value) => {
-            if (value.items) {
-                value.items.forEach((item: TransferMedium) => {
-                    let list;
-                    if (item.external) {
-                        list = user.externalUser
-                            .flatMap((externalUser) => externalUser.lists)
-                            .find((externalList: ExternalList) => externalList.id === item.listId);
+        WSClient.addEventListener(events.ADD, (value) => this.processAddEvent(value));
+        WSClient.addEventListener(events.DELETE, (value) => this.processDeleteEvent(value));
+        WSClient.addEventListener(events.UPDATE, (value) => this.processUpdateEvent(value));
+        WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
 
-                    } else {
-                        list = user.lists.find((internalList) => internalList.id === item.listId);
-                    }
-                    if (!list) {
-                        return;
-                    }
-                    list.items.push(item.mediumId);
-                });
-            }
-            if (value.externalList) {
-                value.externalList.forEach((list: ExternalList) => {
-
-                    for (const externalUser of user.externalUser) {
-                        if (list.uuid === externalUser.uuid
-                            && !externalUser.lists.find((externalList) => externalList.id === list.id)) {
-
-                            externalUser.lists.push(list);
-                            break;
-                        }
-                    }
-                });
-
-            }
-        });
-
-        WSClient.addEventListener(events.DELETE, (value) => {
+        this.loginState();
+        this.sendPeriodicData();
+    },
+    methods: {
+        processDeleteEvent(value: any) {
             if (value.items) {
                 value.items.forEach((item: TransferMedium) => {
                     let list;
@@ -365,7 +348,8 @@ const app: App = new Vue({
                 value.externalList.forEach((id: number) => {
                     for (const externalUser of user.externalUser) {
 
-                        const index = externalUser.lists.findIndex((externalList) => externalList.id === id);
+                        const index = externalUser.lists
+                            .findIndex((externalList: ExternalList) => externalList.id === id);
 
                         if (index < 0) {
                             continue;
@@ -378,9 +362,9 @@ const app: App = new Vue({
 
             }
             console.log(value);
-        });
+        },
 
-        WSClient.addEventListener(events.UPDATE, (value) => {
+        processUpdateEvent(value: any) {
             if (value.lists) {
                 value.lists.forEach((item: TransferList) => {
                     if (item.external) {
@@ -401,14 +385,44 @@ const app: App = new Vue({
                 });
             }
             console.log(value);
-        });
+        },
 
-        WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
-        this.loginState();
-        this.sendPeriodicData();
-        // generateData(100, this.media, 20, this.lists, (mI, lI) => mI % 2);
-    },
-    methods: {
+        processAddEvent(value: any) {
+            if (value.items) {
+                value.items.forEach((item: TransferMedium) => {
+                    let list;
+                    if (item.external) {
+                        list = user.externalUser
+                            .flatMap((externalUser) => externalUser.lists)
+                            .find((externalList: ExternalList) => externalList.id === item.listId);
+
+                    } else {
+                        list = user.lists.find((internalList) => internalList.id === item.listId);
+                    }
+                    if (!list) {
+                        return;
+                    }
+                    list.items.push(item.mediumId);
+                });
+            }
+            if (value.externalList) {
+                value.externalList.forEach((list: ExternalList) => {
+
+                    for (const externalUser of user.externalUser) {
+                        if (list.uuid === externalUser.uuid
+                            && !externalUser.lists
+                                .find((externalList: ExternalList) => externalList.id === list.id)) {
+
+                            externalUser.lists.push(list);
+                            break;
+                        }
+                    }
+                });
+
+            }
+
+        },
+
         closeModal() {
             this.resetModal(this.loginModal);
             this.resetModal(this.registerModal);
@@ -437,7 +451,7 @@ const app: App = new Vue({
             }
             HttpClient
                 .isLoggedIn()
-                .then((newUser) => {
+                .then((newUser: User) => {
                     if (!this.loggedIn && newUser) {
                         this.setUser(newUser);
                     } else {
@@ -456,11 +470,11 @@ const app: App = new Vue({
                 // fixme modal does not close after successful login
                 HttpClient
                     .login(data.user, data.pw)
-                    .then((newUser) => {
+                    .then((newUser: User) => {
                         this.setUser(newUser);
                         this.resetModal(this.loginModal);
                     })
-                    .catch((error) => this.loginModal.error = String(error));
+                    .catch((error: any) => this.loginModal.error = String(error));
             }
         },
 
@@ -476,11 +490,11 @@ const app: App = new Vue({
             } else {
                 HttpClient
                     .register(data.user, data.pw, data.pwRepeat)
-                    .then((newUser) => {
+                    .then((newUser: User) => {
                         this.setUser(newUser);
                         this.resetModal(this.registerModal);
                     })
-                    .catch((error) => this.registerModal.error = String(error));
+                    .catch((error: any) => this.registerModal.error = String(error));
             }
         },
 
@@ -492,8 +506,8 @@ const app: App = new Vue({
             } else {
                 HttpClient
                     .addExternalUser(data)
-                    .then((externalUser) => user.pushExternalUser(externalUser))
-                    .catch((error) => emitBusEvent("error:add:externalUser", String(error)));
+                    .then((externalUser: ExternalUser) => user.pushExternalUser(externalUser))
+                    .catch((error: any) => emitBusEvent("error:add:externalUser", String(error)));
 
             }
         },
@@ -507,7 +521,7 @@ const app: App = new Vue({
             HttpClient
                 .deleteExternalUser(uuid)
                 .then(() => user.deleteExternalUser(uuid))
-                .catch((error) => console.log(error));
+                .catch((error: any) => console.log(error));
         },
 
         refreshExternalUser(uuid: string) {
@@ -532,15 +546,20 @@ const app: App = new Vue({
         logout() {
             HttpClient
                 .logout()
-                .then((loggedOut) => {
+                .then((loggedOut: any) => {
                     user.clear();
 
                     if (!loggedOut) {
                         this.errorModal.error = "An error occurred while logging out";
                     }
                 })
-                .catch((error) => this.errorModal.error = String(error));
+                .catch((error: any) => this.errorModal.error = String(error));
             // todo implement logout
+        },
+
+        openMedium(id: number) {
+            // todo implement this
+            console.log(id);
         },
 
         addMedium(data: { title: string, type: number }) {
@@ -650,5 +669,6 @@ const app: App = new Vue({
     },
 });
 
+// todo rework news, add the read property to news item itself instead of asking for it
 // todo login mechanism, check if it was already logged in before
 // todo give a reason for any rejects

@@ -20,6 +20,7 @@
         <table>
             <thead>
             <tr>
+                <th :class="{ narrow: !data.length}">No.</th>
                 <th :class="{ active: sortProp === column.prop }" @click="sortBy(column.prop)" v-for="column in columns"
                     v-show="column.show">
                     {{ column.name }}
@@ -28,7 +29,11 @@
             </tr>
             </thead>
             <tbody>
-            <tr :key="entry.id" v-for="(entry, index) in filteredData">
+            <tr :key="entry.id" v-for="(entry, index) in filteredData"
+                @click.ctrl="openMedium(entry.id)"
+                @keyup.enter.ctrl="openMedium(marked.id)">
+                <td :class="{marked: marked.id != null && marked.id === entry.id}">{{entry.id != null ? index+1: ""}}
+                </td>
                 <td :class="{marked: marked.id != null && marked.id === entry.id}"
                     @click="mark(entry,index, column.prop)"
                     @dblclick="startEdit(entry, column.prop)"
@@ -49,6 +54,8 @@
 <script>
     import {emitBusEvent, onBusEvent} from "../bus";
     import deleteModal from "./modal/delete-modal";
+
+    // fixme user can edit empty rows
 
     const Move = {
         LEFT: 0x1,
@@ -92,6 +99,13 @@
             filterKey: String
         },
         methods: {
+            openMedium(mediumId) {
+                if (mediumId == null) {
+                    return;
+                }
+                emitBusEvent("open:medium", id);
+            },
+
             deleteData(id) {
                 emitBusEvent("delete:medium", id);
             },
@@ -130,7 +144,7 @@
             },
 
             showAll() {
-                this.columns.forEach((value) => value.show = true);
+                this.columns.forEach((value) => Plato.show = true);
             },
 
             selectCell(direction) {
@@ -213,7 +227,7 @@
                         name: entry.title,
                         type: "medium"
                     };
-                    this.deleteModal.show = true;
+                    Plato.show = true;
                 } else if (event.key === "Tab") {
                     if (this.editCell.id == null) {
                         return;
@@ -243,7 +257,7 @@
                             .some((key) => String(row[key]).toLowerCase().indexOf(filterKey) > -1));
                 }
                 if (sortKey) {
-                    data = data.sort((a, b) => {
+                    data.sort((a, b) => {
                         a = a[sortKey];
                         b = b[sortKey];
                         if (a === b) {
@@ -328,6 +342,14 @@
 </script>
 
 <style scoped>
+    .narrow {
+        width: 20px;
+    }
+
+    td + td {
+        border-left: #bdbdbd 1px solid;
+    }
+
     .arrow {
         display: inline-block;
         vertical-align: middle;

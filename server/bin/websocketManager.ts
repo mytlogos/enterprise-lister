@@ -1,8 +1,9 @@
-import {Storage} from "./database";
+import {Storage} from "./database/database";
 import {add as addDependant} from "./externals/scraper";
 import {getElseSet} from "./tools";
 import {connection, IMessage, request} from "websocket";
-import {News} from "./types";
+import {MultiSingle, News} from "./types";
+import logger from "./logger";
 
 
 interface Connection {
@@ -64,9 +65,12 @@ function wsMessage(msg: IMessage, conObject: Connection, ipObject: IpObject): vo
         }
         if (conObject.extension) {
             Storage
-                .checkUnread(conObject.uuid)
+                .checkUnreadNews(conObject.uuid)
                 .then((unread) => conObject.connection.sendUTF(JSON.stringify({unread})))
-                .catch(console.log);
+                .catch((error) => {
+                    console.log(error);
+                    logger.error(error);
+                });
         }
         return;
     }
@@ -76,23 +80,32 @@ function wsMessage(msg: IMessage, conObject: Connection, ipObject: IpObject): vo
             Storage
                 .getExternalUserWithCookies(jsonMsg.refresh.externalUuid)
                 .then((externalUser) => addDependant({oneTimeUser: externalUser}))
-                .catch(console.log);
+                .catch((error) => {
+                    console.log(error);
+                    logger.error(error);
+                });
         }
     }
     if (jsonMsg.read) {
         if (jsonMsg.read.news) {
             Storage
                 .markNewsRead(conObject.uuid, jsonMsg.read.news)
-                .catch(console.log)
+                .catch((error) => {
+                    console.log(error);
+                    logger.error(error);
+                })
                 .finally(() => {
                     if (!conObject.extension && ipObject.extension && ipObject.extension.verified) {
                         // fixme the number of unread news and reachable news does not seem to match
                         // (maybe unreachable news are too old?) see 'Storage.getNews'
                         Storage
-                            .checkUnread(conObject.uuid)
+                            .checkUnreadNews(conObject.uuid)
                             // @ts-ignore
                             .then((unread) => ipObject.extension.connection.sendUTF(JSON.stringify({unread})))
-                            .catch(console.log);
+                            .catch((error) => {
+                                console.log(error);
+                                logger.error(error);
+                            });
                     }
                 });
         }
@@ -100,9 +113,20 @@ function wsMessage(msg: IMessage, conObject: Connection, ipObject: IpObject): vo
     if (jsonMsg.result) {
         Storage
             .markEpisodeRead(conObject.uuid, jsonMsg)
-            .catch(console.log);
+            .catch((error) => {
+                console.log(error);
+                logger.error(error);
+            });
     }
-    console.log("From: ", conObject.uuid, "Message: ", jsonMsg);
+    if (jsonMsg.progress) {
+        Storage
+            .setProgress(conObject.uuid, jsonMsg.progress)
+            .catch((error) => {
+                console.log(error);
+                logger.error(error);
+            });
+    }
+    logger.info("From: ", conObject.uuid, "Message: ", jsonMsg);
 }
 
 /**
@@ -110,52 +134,89 @@ function wsMessage(msg: IMessage, conObject: Connection, ipObject: IpObject): vo
  *
  * @param req
  */
-export const requestHandler = async (req: request) => {
-    const uuidObj = await originIsAllowed(req);
-    if (!uuidObj) {
-        // Make sure we only accept requests from an allowed origin
-        req.reject();
-        console.log(`${new Date()} Connection from origin ${req.origin} rejected.`);
-        return;
-    }
+export const requestHandler = (req: request) => wsRequestHandler(req).catch((reason) => {
+    console.log(reason);
+    logger.error(reason);
+});
 
-    const con: connection = req.accept(undefined, req.origin);
-    console.log(`${new Date()} Connection of ${req.origin} from ${req.remoteAddress} accepted.`);
+async function wsRequestHandler(req: request) {
+    try {
+        const uuidObj = await originIsAllowed(req);
+        if (!uuidObj) {
+            // Make sure we only accept requests from an allowed origin
+            req.reject();
+            logger.info(`${new Date()} Connection from origin ${req.origin} rejected.`);
+            return;
+        }
 
-    const ipMap = getElseSet(connections, uuidObj.uuid, () => new Map());
+        const con: connection = req.accept(undefined, req.origin);
+        logger.info(`${new Date()} Connection of ${req.origin} from ${req.remoteAddress} accepted.`);
 
-    let ipObject: IpObject;
+        const ipMap: Map<string, IpObject> = getElseSet(connections, uuidObj.uuid, () => new Map());
 
-    if (ipMap.has(req.remoteAddress)) {
-        ipObject = ipMap.get(req.remoteAddress);
+        const ipObjectValue: IpObject | undefined = ipMap.get(req.remoteAddress);
+        let ipObject: IpObject;
+
+        if (ipObjectValue) {
+            ipObject = ipObjectValue;
+            if (uuidObj.extension) {
+                if (ipObject.extension) {
+                    if (uuidObj.extension) {
+                        // if it tries to build up another connection, shoot it down
+                        req.reject();
+                        return;
+                    }
+                    ipObject.extension.connection.close();
+                    ipObject.extension.verified = false;
+                }
+            } else if (ipObject.site) {
+                if (!uuidObj.extension) {
+                    // if it tries to build up another connection, shoot it down
+                    req.reject();
+                    return;
+                }
+                ipObject.site.connection.close();
+                ipObject.site.verified = false;
+            }
+        } else {
+            ipObject = {};
+        }
+
+        const conObj = {connection: con, verified: false, uuid: uuidObj.uuid, extension: uuidObj.extension};
 
         if (uuidObj.extension) {
-            if (ipObject.extension) {
-                ipObject.extension.connection.close();
-                ipObject.extension.verified = false;
-            }
-        } else if (ipObject.site) {
-            ipObject.site.connection.close();
-            ipObject.site.verified = false;
+            ipObject.extension = conObj;
+        } else {
+            ipObject.site = conObj;
         }
-    } else {
-        ipObject = {};
+        ipMap.set(req.remoteAddress, ipObject);
+
+        con.on("message", (message) => {
+            try {
+                wsMessage(message, conObj, ipObject);
+            } catch (e) {
+                logger.error(e);
+                console.log(e);
+            }
+        });
+        con.on("close", (reasonCode, description) => {
+            if (uuidObj.extension) {
+                if (ipObject.extension && ipObject.extension.connection === con) {
+                    ipObject.extension = undefined;
+                }
+            } else if (ipObject.site && ipObject.site.connection === con) {
+                ipObject.site = undefined;
+            }
+            if (!ipObject.site && !ipObject.extension) {
+                ipMap.delete(uuidObj.uuid);
+            }
+            logger.info((new Date()) + " Peer " + con.remoteAddress + " disconnected.");
+        });
+    } catch (e) {
+        console.log(e);
+        logger.error(e);
     }
-
-    const conObj = {connection: con, verified: false, uuid: uuidObj.uuid, extension: uuidObj.extension};
-
-    if (uuidObj.extension) {
-        ipObject.extension = conObj;
-    } else {
-        ipObject.site = conObj;
-    }
-    ipMap.set(req.remoteAddress, ipObject);
-
-    con.on("message", (message) => wsMessage(message, conObj, ipObject));
-    con.on("close", (reasonCode, description) => {
-        console.log((new Date()) + " Peer " + con.remoteAddress + " disconnected.");
-    });
-};
+}
 
 /**
  * Sends a message to the websocket connection of the user.
@@ -167,7 +228,7 @@ export function sendMessage(uuid: string, msg: object, extension = false, exclud
     const data = JSON.stringify(msg);
     const ipMap = connections.get(uuid);
 
-    // todo for now an connection ignores all message until it is verified, make a messageQueue?
+    // todo for now an connection ignores all messages until it is verified, make a messageQueue?
     if (!ipMap || !ipMap.size) {
         console.error("Got no Connections for user: " + uuid);
         return;
@@ -179,11 +240,11 @@ export function sendMessage(uuid: string, msg: object, extension = false, exclud
         const conObject = entry[1];
 
         if (conObject.site && conObject.site.verified) {
-            console.log("sending to site: ", uuid, msg);
+            logger.info("sending to site: " + JSON.stringify(uuid) + JSON.stringify(msg));
             conObject.site.connection.sendUTF(data);
         }
         if (conObject.extension && conObject.extension.verified) {
-            console.log("sending to extension: ", uuid, msg);
+            logger.info("sending to extension: " + JSON.stringify(uuid) + JSON.stringify(msg));
             conObject.extension.connection.sendUTF(data);
         }
     }
@@ -193,7 +254,7 @@ export function sendMessage(uuid: string, msg: object, extension = false, exclud
  * Sends a news message to all websocket connections
  * whose users the news are relevant for.
  */
-export function broadCastNews(msg: News | News[]): void {
+export function broadCastNews(msg: MultiSingle<News>): void {
     if (!msg || (Array.isArray(msg) && !msg.length)) {
         return;
     }
@@ -207,12 +268,15 @@ export function broadCastNews(msg: News | News[]): void {
             }
             if (conObject.extension && conObject.extension.verified) {
                 Storage
-                    .checkUnread(conObject.extension.uuid)
+                    .checkUnreadNews(conObject.extension.uuid)
                     .then((unread) => {
                         const unreadData = JSON.stringify({unread});
                         conObject.extension.connection.sendUTF(unreadData);
                     })
-                    .catch(console.log);
+                    .catch((error) => {
+                        console.log(error);
+                        logger.error(error);
+                    });
             }
         }
     }

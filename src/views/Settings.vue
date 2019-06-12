@@ -8,7 +8,7 @@
                        :multi="false"></list-comp>
         </div>
         <div class="page">
-            <external-user v-if="show === 0" v-bind:user="user"></external-user>
+            <external-user v-if="show === 0" v-bind:user="externalUser"></external-user>
         </div>
     </div>
 </template>
@@ -26,6 +26,7 @@
         data() {
             return {
                 lists: [
+                    // todo get options from server
                     {name: "External", id: 0, show: false}
                 ],
                 filter: "",

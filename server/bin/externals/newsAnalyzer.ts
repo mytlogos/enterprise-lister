@@ -1,8 +1,8 @@
-import request from "request-promise-native";
 import cheerio from "cheerio";
+import {queueRequest} from "./queueManager";
 
 async function loadBody(link: string): Promise<string> {
-    return request.get(link);
+    return queueRequest(link);
 }
 
 export const analyze = async ({link, body}: { link?: string, body?: string }) => {
