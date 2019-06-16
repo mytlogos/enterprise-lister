@@ -7,9 +7,9 @@ import compression from "compression";
 import helmet from "helmet";
 // own router
 import {apiRouter} from "./api";
-import {blockRequests} from "./timer";
+import {blockRequests} from "../timer";
 import emojiStrip from "emoji-strip";
-import {isString} from "./tools";
+import {isString} from "../tools";
 
 export const app = express();
 

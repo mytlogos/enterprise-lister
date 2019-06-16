@@ -2146,10 +2146,10 @@ export class QueryContext {
     public async getInvalidated(uuid: string): Promise<Invalidation[]> {
         // fixme throws an error at this line for 'syntax error'
         const result: any[] = await this._query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-       /* await this._query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+        await this._query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
             console.log(reason);
             logger.error(reason);
-        });*/
+        });
         return Array.from(result).map((value: any): Invalidation => {
             return {
                 externalListId: value.external_list_id,

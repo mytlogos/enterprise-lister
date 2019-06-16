@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "pm2": "pm2 start",
+    "pm2:refresh": "pm2 restart ecosystem.config.js --update-env",
     "start": "node server/dist/start.js",
     "start:server": "node server/dist/start.js",
     "serve": "vue-cli-service serve",
@@ -10,7 +12,7 @@
     "lint": "vue-cli-service lint",
     "test:e2e": "vue-cli-service test:e2e",
     "test:unit": "vue-cli-service test:unit",
-    "build:live": "nodemon --watch 'server/**/*.ts' --exec ts-node ./server/bin/start.ts",
+    "build:live": "nodemon --watch 'server/**/*.ts' --exec ts-node server/bin/startServer.ts",
     "buildServer": "tsc -p server/tsconfig.json"
   },
   "dependencies": {

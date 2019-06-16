@@ -1,19 +1,16 @@
 #!/usr/bin/env node
-import {app, initWSServer as initWebSocket} from "./app";
+import {app} from "./app";
 import debug from "debug";
 import {createServer, Server} from "http";
 import env from "./env";
 // start storage (connect to database)
 import {startStorage} from "./database/database";
 // start crawler (setup and start running)
-import {startCrawler} from "./crawlerStart";
 import os from "os";
 
-const port = env.port;
+const port = env.port || process.env.port;
 // first start storage
 startStorage();
-// then start crawler, as crawler depends on storage
-startCrawler();
 const debugMessenger = debug("enterprise-lister:server");
 
 /**
@@ -33,9 +30,6 @@ const server: Server = createServer(app);
 server.listen(port);
 server.on("error", onError);
 server.on("listening", onListening);
-
-// initiate WebSocketServer
-initWebSocket(server);
 
 /**
  * Event listener for HTTP server "error" event.

@@ -1,6 +1,6 @@
 import * as scraper from "./externals/scraper";
 import {Storage} from "./database/database";
-import {broadCastNews, sendMessage} from "./websocketManager";
+import {sendMessage} from "./websocketManager";
 import {Errors, getElseSet, isTocEpisode, isTocPart, Md5Hash, multiSingle} from "./tools";
 import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {Episode, ExternalList, LikeMedium, News, Part, SimpleEpisode, SimpleMedium} from "./types";
@@ -52,9 +52,6 @@ async function notifyUser({link, rawNews}: { link: string, rawNews: News[] }): P
     }
     // set news to medium
     await Storage.linkNewsToMedium();
-    // broadcast news to online user
-    // @ts-ignore
-    broadCastNews(news);
 }
 
 function extractNewsMeta() {
