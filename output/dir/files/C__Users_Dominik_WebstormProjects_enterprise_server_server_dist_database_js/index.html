@@ -1,0 +1,2100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - C:/Users/Dominik/WebstormProjects/enterprise-server/server/dist/database.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>C:/Users/Dominik/WebstormProjects/enterprise-server/server/dist/database.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">74.49</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">1983</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">97.30</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">18.10</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">&quot;use strict&quot;;
+Object.defineProperty(exports, &quot;__esModule&quot;, { value: true });
+const tslib_1 = require(&quot;tslib&quot;);
+const promise_mysql_1 = tslib_1.__importDefault(require(&quot;promise-mysql&quot;));
+const crypto_1 = tslib_1.__importDefault(require(&quot;crypto&quot;));
+const bcrypt_nodejs_1 = tslib_1.__importDefault(require(&quot;bcrypt-nodejs&quot;));
+const tools_1 = require(&quot;./tools&quot;);
+const v1_1 = tslib_1.__importDefault(require(&quot;uuid/v1&quot;));
+const v4_1 = tslib_1.__importDefault(require(&quot;uuid/v4&quot;));
+const env_1 = tslib_1.__importDefault(require(&quot;./env&quot;));
+/**
+ * Escapes the Characters for an Like with the &#039;|&#039; char.
+ */
+function escapeLike(s, { singleQuotes = false, noBoundaries = false, noRightBoundary = false, noLeftBoundary = false } = {}) {
+    s = s.replace(/([%_])/g, &quot;|$1&quot;);
+    if (singleQuotes) {
+        s = s.replace(/[´`&#039;]/g, &quot;_&quot;);
+    }
+    if (noBoundaries) {
+        s = &quot;%&quot; + s + &quot;%&quot;;
+    }
+    else if (noLeftBoundary) {
+        s = &quot;%&quot; + s;
+    }
+    else if (noRightBoundary) {
+        s = s + &quot;%&quot;;
+    }
+    return s;
+}
+const ShaHash = {
+    tag: &quot;sha512&quot;,
+    /**
+     *
+     * @param {number} saltLength
+     * @param {string} text
+     * @return {{salt: string, hash: string}}
+     */
+    hash(text, saltLength = 20) {
+        const salt = crypto_1.default.randomBytes(Math.ceil(saltLength / 2))
+            .toString(&quot;hex&quot;) // convert to hexadecimal format
+            .slice(0, saltLength); // return required number of characters */
+        return { salt, hash: this.innerHash(text, salt) };
+    },
+    innerHash(text, salt) {
+        const hash = crypto_1.default.createHash(&quot;sha512&quot;);
+        hash.update(salt + text);
+        return hash.digest(&quot;hex&quot;);
+    },
+    /**
+     * Checks whether the text hashes to the same hash.
+     */
+    equals(text, hash, salt) {
+        return this.innerHash(text, salt) === hash;
+    },
+};
+const BcryptHash = {
+    tag: &quot;bcrypt&quot;,
+    hash(text) {
+        return { salt: undefined, hash: bcrypt_nodejs_1.default.hashSync(text) };
+    },
+    /**
+     * Checks whether the text hashes to the same hash.
+     *
+     * @param {string} text
+     * @param {string} hash
+     * @return boolean
+     */
+    equals(text, hash) {
+        return bcrypt_nodejs_1.default.compareSync(text, hash);
+    },
+};
+const Hashes = [ShaHash, BcryptHash];
+/**
+ * Checks whether the password equals to the given hash
+ * of the specified algorithm.
+ *
+ * Return true if it does, else false.
+ *
+ * @param {string} password
+ * @param {string} hash
+ * @param {string} alg
+ * @param {string} salt
+ * @return {boolean}
+ * @private
+ */
+const verifyPassword = (password, hash, alg, salt) =&gt; {
+    const hashAlgorithm = Hashes.find((value) =&gt; value.tag === alg);
+    if (!hashAlgorithm) {
+        throw Error(&quot;no such algorithm &quot; + alg);
+    }
+    return hashAlgorithm.equals(password, hash, salt);
+};
+const StandardHash = BcryptHash;
+const database = &quot;enterprise&quot;;
+exports.Errors = {
+    USER_EXISTS_ALREADY: 0x1,
+    INVALID_INPUT: 0x2,
+    INVALID_DATA: 0x4,
+    USER_DOES_NOT_EXIST: 0x8,
+    CORRUPT_DATA: 0x10,
+    UNKNOWN: 0x20,
+    INVALID_MESSAGE: 0x40,
+    INVALID_SESSION: 0x80,
+    DOES_NOT_EXIST: 0x100,
+    UNSUCCESSFUL: 0x200,
+};
+exports.MediaType = {
+    TEXT: 0x1,
+    AUDIO: 0x2,
+    VIDEO: 0x4,
+    IMAGE: 0x8,
+};
+function allTypes() {
+    let types = 0;
+    for (const key of Object.keys(exports.MediaType)) {
+        types |= exports.MediaType[key];
+    }
+    return types;
+}
+/**
+ * Creates the context for QueryContext, to
+ * query a single connection sequentially.
+ */
+async function inContext(callback, transaction = true, allowDatabase = true) {
+    if (!running) {
+        // if inContext is called without Storage being active
+        return Promise.reject(&quot;Not started&quot;);
+    }
+    if (startPromise) {
+        await startPromise;
+    }
+    const con = await pool.getConnection();
+    const context = new QueryContext(con);
+    // don&#039;t use database if it is explicitly disallowed
+    if (allowDatabase) {
+        await context.useDatabase();
+    }
+    let result;
+    try {
+        // if transaction, start it
+        if (transaction) {
+            await context.startTransaction();
+        }
+        // let callback run with context
+        result = await callback(context);
+        // if transaction and no error till now, commit it and return result
+        if (transaction) {
+            await context.commit();
+        }
+    }
+    catch (e) {
+        // if it could not be commit due to error, roll back and rethrow error
+        if (transaction) {
+            // if there is a transaction first rollback and then throw error
+            await context.rollback();
+        }
+        throw e;
+    }
+    finally {
+        // release connection into the pool
+        await pool.releaseConnection(con);
+    }
+    return result;
+}
+exports.inContext = inContext;
+const pool = promise_mysql_1.default.createPool({
+    connectionLimit: env_1.default.dbConLimit,
+    host: env_1.default.dbHost,
+    user: env_1.default.dbUser,
+    password: env_1.default.dbPassword,
+    bigNumberStrings: true,
+});
+const standardListName = &quot;Standard&quot;;
+const Tables = {
+    lists: &quot;name VARCHAR(200) NOT NULL UNIQUE,&quot; +
+        &quot;uuid VARCHAR(200) NOT NULL,&quot; +
+        &quot;salt VARCHAR(200),&quot; +
+        &quot;password VARCHAR(200) NOT NULL,&quot; +
+        &quot;alg VARCHAR(100) NOT NULL,&quot; +
+        &quot;PRIMARY KEY(uuid)&quot;,
+    external_user: &quot;name VARCHAR(200) NOT NULL,&quot; +
+        &quot;uuid VARCHAR(200) NOT NULL,&quot; +
+        &quot;local_uuid VARCHAR(200) NOT NULL,&quot; +
+        &quot;service INT NOT NULL,&quot; +
+        &quot;cookies TEXT,&quot; +
+        &quot;last_scrape DATETIME,&quot; +
+        &quot;PRIMARY KEY(uuid),&quot; +
+        &quot;FOREIGN KEY(local_uuid) REFERENCES user(uuid)&quot;,
+    user_log: &quot;user_uuid VARCHAR(255) NOT NULL,&quot; +
+        &quot;ip VARCHAR(255),&quot; +
+        &quot;session_key VARCHAR(255),&quot; +
+        &quot;acquisition_date VARCHAR(40),&quot; +
+        &quot;PRIMARY KEY(session_key),&quot; +
+        &quot;FOREIGN KEY(user_uuid) REFERENCES user(uuid)&quot;,
+    reading_list: &quot;id INT UNSIGNED NOT NULL AUTO_INCREMENT,&quot; +
+        &quot;name VARCHAR(200) NOT NULL,&quot; +
+        &quot;user_uuid VARCHAR(200) NOT NULL,&quot; +
+        &quot;medium INT NOT NULL,&quot; +
+        &quot;PRIMARY KEY(id),&quot; +
+        &quot;FOREIGN KEY(user_uuid) REFERENCES user(uuid)&quot;,
+    external_reading_list: &quot;id INT UNSIGNED NOT NULL AUTO_INCREMENT, &quot; +
+        &quot;name VARCHAR(200) NOT NULL,&quot; +
+        &quot;user_uuid VARCHAR(200) NOT NULL,&quot; +
+        &quot;medium INT NOT NULL,&quot; +
+        &quot;url VARCHAR(200) NOT NULL,&quot; +
+        &quot;PRIMARY KEY(id),&quot; +
+        &quot;FOREIGN KEY(user_uuid) REFERENCES external_user(uuid)&quot;,
+    medium: &quot;id INT UNSIGNED NOT NULL AUTO_INCREMENT, &quot; +
+        &quot;countryOfOrigin VARCHAR(200),&quot; +
+        &quot;languageOfOrigin VARCHAR(200),&quot; +
+        &quot;author VARCHAR(200),&quot; +
+        &quot;artist VARCHAR(200),&quot; +
+        &quot;title VARCHAR(200) NOT NULL,&quot; +
+        &quot;medium INT NOT NULL,&quot; +
+        &quot;lang VARCHAR(200),&quot; +
+        &quot;stateOrigin INT,&quot; +
+        &quot;stateTL INT,&quot; +
+        &quot;series VARCHAR(200),&quot; +
+        &quot;universe VARCHAR(200),&quot; +
+        &quot;PRIMARY KEY(id)&quot;,
+    medium_synonyms: &quot;medium_id INT UNSIGNED, &quot; +
+        &quot;synonym VARCHAR(200) NOT NULL, &quot; +
+        &quot;PRIMARY KEY(medium_id, synonym), &quot; +
+        &quot;FOREIGN KEY(medium_id) REFERENCES medium(id)&quot;,
+    list_medium: &quot;list_id INT UNSIGNED NOT NULL,&quot; +
+        &quot;medium_id INT UNSIGNED NOT NULL,&quot; +
+        &quot;PRIMARY KEY(list_id, medium_id),&quot; +
+        &quot;FOREIGN KEY(list_id) REFERENCES reading_list(id),&quot; +
+        &quot;FOREIGN KEY(medium_id) REFERENCES medium(id)&quot;,
+    external_list_medium: &quot;list_id INT UNSIGNED NOT NULL,&quot; +
+        &quot;medium_id INT UNSIGNED NOT NULL,&quot; +
+        &quot;PRIMARY KEY(list_id, medium_id),&quot; +
+        &quot;FOREIGN KEY(list_id) REFERENCES external_reading_list(id),&quot; +
+        &quot;FOREIGN KEY(medium_id) REFERENCES medium(id)&quot;,
+    part: &quot;id INT UNSIGNED NOT NULL AUTO_INCREMENT, &quot; +
+        &quot;medium_id INT UNSIGNED NOT NULL, &quot; +
+        &quot;title VARCHAR(200),&quot; +
+        &quot;totalIndex INT NOT NULL,&quot; +
+        &quot;partialIndex INT,&quot; +
+        &quot;PRIMARY KEY(id),&quot; +
+        &quot;FOREIGN KEY(medium_id) REFERENCES medium(id)&quot;,
+    episode: &quot;id INT UNSIGNED NOT NULL AUTO_INCREMENT,&quot; +
+        &quot;part_id INT UNSIGNED NOT NULL,&quot; +
+        &quot;title VARCHAR(200),&quot; +
+        &quot;totalIndex INT NOT NULL,&quot; +
+        &quot;partialIndex INT,&quot; +
+        &quot;url TEXT NOT NULL,&quot; +
+        &quot;releaseDate DATETIME NOT NULL,&quot; +
+        &quot;PRIMARY KEY(id),&quot; +
+        &quot;FOREIGN KEY(part_id) REFERENCES part(id)&quot;,
+    user_episode: &quot;user_uuid VARCHAR(200) NOT NULL,&quot; +
+        &quot;episode_id INT UNSIGNED NOT NULL,&quot; +
+        &quot;progress FLOAT UNSIGNED NOT NULL,&quot; +
+        &quot;PRIMARY KEY(user_uuid, episode_id),&quot; +
+        &quot;FOREIGN KEY(user_uuid) REFERENCES user(uuid),&quot; +
+        &quot;FOREIGN KEY(episode_id) REFERENCES episode(id)&quot;,
+    scrape_board: &quot;link TEXT NOT NULL,&quot; +
+        &quot;last_date DATETIME NOT NULL,&quot; +
+        &quot;type INT UNSIGNED NOT NULL,&quot; +
+        &quot;uuid VARCHAR(200),&quot; +
+        &quot;medium_id INT UNSIGNED,&quot; +
+        &quot;PRIMARY KEY(link(767)),&quot; +
+        &quot;FOREIGN KEY(uuid) REFERENCES external_user(uuid),&quot; +
+        &quot;FOREIGN KEY(medium_id) REFERENCES medium(id)&quot;,
+    news_board: &quot;id INT UNSIGNED NOT NULL AUTO_INCREMENT,&quot; +
+        &quot;title TEXT NOT NULL,&quot; +
+        &quot;link VARCHAR(700) UNIQUE NOT NULL,&quot; +
+        &quot;date DATETIME NOT NULL&quot;,
+    news_user: &quot;news_id INT UNSIGNED NOT NULL, &quot; +
+        &quot;user_id VARCHAR(200) NOT NULL, &quot; +
+        &quot;FOREIGN KEY (user_id) REFERENCES user(uuid), &quot; +
+        &quot;FOREIGN KEY (news_id) REFERENCES news_board(id), &quot; +
+        &quot;PRIMARY KEY (news_id, user_id)&quot;,
+    news_medium: &quot;news_id INT UNSIGNED NOT NULL, &quot; +
+        &quot;medium_id INT UNSIGNED NOT NULL, &quot; +
+        &quot;FOREIGN KEY(medium_id) REFERENCES medium(id),&quot; +
+        &quot;FOREIGN KEY(news_id) REFERENCES news_board(id)&quot;,
+    meta_corrections: &quot;link TEXT NOT NULL,&quot; +
+        &quot;replaced TEXT NOT NULL,&quot; +
+        &quot;startIndex INT UNSIGNED NOT NULL,&quot; +
+        &quot;endIndex INT UNSIGNED NOT NULL,&quot; +
+        &quot;fieldKey INT UNSIGNED NOT NULL,&quot; +
+        &quot;PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)&quot;,
+};
+let errorAtStart = false;
+let running = false;
+/**
+ * @type {Promise&lt;Storage&gt;|void}
+ */
+let startPromise;
+/**
+ * Checks the database for incorrect structure
+ * and tries to correct these.
+ */
+function start() {
+    if (!running) {
+        running = true;
+        startPromise = inContext((context) =&gt; context.start(), true, false)
+            .catch((error) =&gt; {
+            console.log(error);
+            errorAtStart = true;
+        });
+    }
+}
+exports.Storage = {
+    /**
+     * Closes the Storage.
+     *
+     * @return {Promise&lt;void&gt;}
+     */
+    stop() {
+        running = false;
+        startPromise = null;
+        return Promise.resolve(pool.end());
+    },
+    /**
+     * Registers an User if the userName is free.
+     * Returns a Error Code if userName is already
+     * in use.
+     *
+     * If it succeeded, it tries to log the user in
+     * immediately.
+     *
+     * Returns the uuid of the user
+     * and the session key for the ip.
+     *
+     * @return {Promise&lt;{session: string, uuid: string}&gt;}
+     */
+    register(userName, password, ip) {
+        return inContext((context) =&gt; context.register(userName, password, ip));
+    },
+    /**
+     * Logs a user in.
+     *
+     * Returns the uuid of the user
+     * and the session key for the ip.
+     *
+     * @return {Promise&lt;User&gt;}
+     */
+    loginUser(userName, password, ip) {
+        return inContext((context) =&gt; context.loginUser(userName, password, ip));
+    },
+    /**
+     * Checks if for the given ip any user is logged in.
+     *
+     * Returns the uuid of the logged in user and
+     * the session key of the user for the ip.
+     *
+     * @return {Promise&lt;User|null&gt;}
+     */
+    userLoginStatus(ip) {
+        return inContext((context) =&gt; context.userLoginStatus(ip));
+    },
+    /**
+     * Logs a user out.
+     *
+     * @return {Promise&lt;boolean&gt;}
+     */
+    logoutUser(uuid, ip) {
+        return inContext((context) =&gt; context.logoutUser(uuid, ip));
+    },
+    /**
+     * Deletes the whole account of an user
+     * with all associated data.
+     *
+     * Is irreversible.
+     *
+     * @return {Promise&lt;boolean&gt;}
+     */
+    deleteUser(uuid) {
+        return inContext((context) =&gt; context.deleteUser(uuid));
+    },
+    /**
+     * Updates the direct data of an user,
+     * like name or password.
+     *
+     * @return {Promise&lt;boolean&gt;}
+     */
+    updateUser(uuid, user) {
+        return inContext((context) =&gt; context.updateUser(uuid, user));
+    },
+    /**
+     * Adds a list to the storage and
+     * links it to the user of the uuid.
+     *
+     * @return {Promise&lt;List&gt;}
+     */
+    addList(uuid, list) {
+        return inContext((context) =&gt; context.addList(uuid, list));
+    },
+    /**
+     * Returns all mediums of a list with
+     * the list_id.
+     *
+     * @return {Promise&lt;{list: List, media: Array&lt;SimpleMedium&gt;}&gt;}
+     */
+    getList(listId, uuid) {
+        return inContext((context) =&gt; context.getList(listId, uuid));
+    },
+    /**
+     * Updates the properties of a list.
+     */
+    updateList(list) {
+        return inContext((context) =&gt; context.updateList(list));
+    },
+    /**
+     * Deletes a list irreversibly.
+     */
+    deleteList(listId, uuid) {
+        return inContext((context) =&gt; context.deleteList(listId, uuid));
+    },
+    /**
+     * Returns all available lists for the given user.
+     *
+     * @return {Promise&lt;Array&lt;List&gt;&gt;}
+     */
+    getUserLists(uuid) {
+        return inContext((context) =&gt; context.getUserLists(uuid));
+    },
+    /**
+     * Adds a medium to the storage.
+     *
+     * @return {Promise&lt;SimpleMedium&gt;}
+     */
+    addMedium(medium, uuid) {
+        return inContext((context) =&gt; context.addMedium(medium, uuid));
+    },
+    /**
+     * Gets one or multiple media from the storage.
+     */
+    getMedium(id, uuid) {
+        return inContext((context) =&gt; context.getMedium(id, uuid));
+    },
+    /**
+     * Gets one or multiple media from the storage, which are like the input.
+     */
+    getLikeMedium(likeMedia) {
+        return inContext((context) =&gt; context.getLikeMedium(likeMedia));
+    },
+    /**
+     * Updates a medium from the storage.
+     */
+    updateMedium(medium) {
+        return inContext((context) =&gt; context.updateMedium(medium));
+    },
+    /**
+     */
+    addSynonyms(synonyms) {
+        return inContext((context) =&gt; context.addSynonyms(synonyms));
+    },
+    /**
+     *
+     */
+    removeSynonyms(synonyms) {
+        return inContext((context) =&gt; context.removeSynonyms(synonyms));
+    },
+    /**
+     *
+     */
+    getSynonyms(mediumId) {
+        return inContext((context) =&gt; context.getSynonyms(mediumId));
+    },
+    /**
+     * Returns all parts of an medium.
+     */
+    getParts(mediumId) {
+        return inContext((context) =&gt; context.getParts(mediumId));
+    },
+    /**
+     * Adds a part of an medium to the storage.
+     */
+    addPart(mediumId, part) {
+        return inContext((context) =&gt; context.addPart(mediumId, part));
+    },
+    /**
+     * Updates a part.
+     */
+    updatePart(part) {
+        return inContext((context) =&gt; context.updatePart(part));
+    },
+    /**
+     * Deletes a part from the storage.
+     */
+    deletePart(id) {
+        return inContext((context) =&gt; context.deletePart(id));
+    },
+    /**
+     * Adds a episode of a part to the storage.
+     */
+    addEpisode(partId, episode) {
+        return inContext((context) =&gt; context.addEpisode(partId, episode));
+    },
+    /**
+     * Updates an episode from the storage.
+     */
+    updateEpisode(episode) {
+        return inContext((context) =&gt; context.updateEpisode(episode));
+    },
+    /**
+     * Gets an episode from the storage.
+     */
+    getEpisode(id) {
+        return inContext((context) =&gt; context.getEpisode(id));
+    },
+    /**
+     * Deletes an episode from the storage irreversibly.
+     */
+    deleteEpisode(id) {
+        return inContext((context) =&gt; context.deleteEpisode(id));
+    },
+    /**
+     * Adds a medium to a list.
+     */
+    addItemToList(listId, mediumId) {
+        return inContext((context) =&gt; context.addItemToList(false, { listId, id: mediumId }));
+    },
+    /**
+     * Moves a medium from an old list to a new list.
+     */
+    moveMedium(oldListId, newListId, mediumId) {
+        return inContext((context) =&gt; context.moveMedium(newListId, mediumId, oldListId));
+    },
+    /**
+     * Removes an item from a list.
+     */
+    removeMedium(listId, mediumId) {
+        return inContext((context) =&gt; context.removeMedium(listId, mediumId));
+    },
+    /**
+     * Adds an external user of an user to the storage.
+     */
+    addExternalUser(localUuid, externalUser) {
+        return inContext((context) =&gt; context.addExternalUser(localUuid, externalUser));
+    },
+    /**
+     * Deletes an external user from the storage.
+     */
+    deleteExternalUser(externalUuid) {
+        return inContext((context) =&gt; context.deleteExternalUser(externalUuid));
+    },
+    /**
+     * Gets an external user.
+     */
+    getExternalUser(uuid) {
+        return inContext((context) =&gt; context.getExternalUser(uuid));
+    },
+    /**
+     * Gets an external user with cookies, without items.
+     */
+    getExternalUserWithCookies(uuid) {
+        return inContext((context) =&gt; context.getExternalUserWithCookies(uuid));
+    },
+    /**
+     *
+     */
+    getScrapeExternalUser() {
+        return inContext((context) =&gt; context.getScrapeExternalUser());
+    },
+    /**
+     * Updates an external user.
+     */
+    updateExternalUser(externalUser) {
+        return inContext((context) =&gt; context.updateExternalUser(externalUser));
+    },
+    /**
+     * Adds an external list of an user to the storage.
+     */
+    addExternalList(userUuid, externalList) {
+        return inContext((context) =&gt; context.addExternalList(userUuid, externalList));
+    },
+    /**
+     * Updates an external list.
+     */
+    updateExternalList(externalList) {
+        return inContext((context) =&gt; context.updateExternalList(externalList));
+    },
+    /**
+     * Removes one or multiple externalLists from the given user.
+     */
+    removeExternalList(uuid, externalListId) {
+        return inContext((context) =&gt; context.removeExternalList(uuid, externalListId));
+    },
+    /**
+     * Gets an external list from the storage.
+     */
+    getExternalList(id) {
+        return inContext((context) =&gt; context.getExternalList(id));
+    },
+    /**
+     * Gets all external lists from the externalUser from the storage.
+     */
+    getExternalLists(uuid) {
+        return inContext((context) =&gt; context.getExternalUserLists(uuid));
+    },
+    /**
+     * Adds a medium to an external list in the storage.
+     */
+    addItemToExternalList(listId, mediumId) {
+        return inContext((context) =&gt; context.addItemToList(true, { listId, id: mediumId }));
+    },
+    /**
+     * Removes a medium from an external list in the storage.
+     */
+    removeItemFromExternalList(listId, mediumId) {
+        return inContext((context) =&gt; context.removeMedium(listId, mediumId, true));
+    },
+    /**
+     * Add progress of an user in regard to an episode to the storage.
+     */
+    addProgress(uuid, episodeId, progress) {
+        return inContext((context) =&gt; context.addProgress(uuid, episodeId, progress));
+    },
+    /**
+     * Removes progress of an user in regard to an episode.
+     */
+    removeProgress(uuid, episodeId) {
+        return inContext((context) =&gt; context.removeProgress(uuid, episodeId));
+    },
+    /**
+     * Get the progress of an user in regard to an episode.
+     */
+    getProgress(uuid, episodeId) {
+        return inContext((context) =&gt; context.getProgress(uuid, episodeId));
+    },
+    /**
+     * Updates the progress of an user in regard to an episode.
+     */
+    updateProgress(uuid, mediumId, progress) {
+        return inContext((context) =&gt; context.updateProgress(uuid, mediumId, progress));
+    },
+    /**
+     * Inserts a News item into the Storage.
+     * Returns a News item with id if insert was successful.
+     * Returns undefined (or an Array with undefined)
+     * if insert was not successful (meaning it was an duplicate).
+     */
+    addNews(news) {
+        return inContext((context) =&gt; context.addNews(news));
+    },
+    /**
+     *
+     */
+    getNews({ uuid, since, till }) {
+        return inContext((context) =&gt; context.getNews(since, till, uuid));
+    },
+    /**
+     *
+     */
+    deleteOldNews() {
+        return inContext((context) =&gt; context.deleteOldNews());
+    },
+    /**
+     *
+     * @param result
+     */
+    processResult(result) {
+        return inContext((context) =&gt; context.processResult(result));
+    },
+    /**
+     *
+     * @param result
+     */
+    saveResult(result) {
+        return inContext((context) =&gt; context.saveResult(result));
+    },
+    /**
+     *
+     */
+    addScrape(scrape) {
+        return inContext((context) =&gt; context.addScrape(scrape));
+    },
+    /**
+     *
+     */
+    getScrapes() {
+        return inContext((context) =&gt; context.getScrapes());
+    },
+    /**
+     *
+     */
+    removeScrape(link) {
+        return inContext((context) =&gt; context.removeScrape(link));
+    },
+    /**
+     *
+     */
+    showUser() {
+        return inContext((context) =&gt; context.showUser());
+    },
+    /**
+     *
+     */
+    linkNewsToMedium() {
+        return inContext((context) =&gt; context.linkNewsToMedium());
+    },
+    /**
+     *
+     */
+    linkNewsToEpisode(news) {
+        return inContext((context) =&gt; context.linkNewsToEpisode(news));
+    },
+    /**
+     * Marks these news as read for the given user.
+     */
+    markNewsRead(uuid, news) {
+        return inContext((context) =&gt; context.markRead(uuid, news));
+    },
+    /**
+     * Marks these news as read for the given user.
+     */
+    markEpisodeRead(uuid, result) {
+        return inContext((context) =&gt; context.markEpisodeRead(uuid, result));
+    },
+    /**
+     * Marks these news as read for the given user.
+     */
+    checkUnread(uuid) {
+        return inContext((context) =&gt; context.checkUnread(uuid));
+    },
+    /**
+     *
+     */
+    removeLinkNewsToMedium(newsId, mediumId) {
+        return inContext((context) =&gt; context.removeLinkNewsToMedium(newsId, mediumId));
+    },
+    clear() {
+        return inContext((context) =&gt; context.clearAll(), false, false);
+    },
+};
+/**
+ * A Class for consecutive queries on the same connection.
+ */
+class QueryContext {
+    constructor(con) {
+        this.con = con;
+    }
+    /**
+     *
+     */
+    useDatabase() {
+        return this._query(`USE ${database};`);
+    }
+    /**
+     *
+     */
+    startTransaction() {
+        return this._query(&quot;START TRANSACTION;&quot;);
+    }
+    /**
+     *
+     */
+    commit() {
+        return this._query(&quot;COMMIT;&quot;);
+    }
+    /**
+     *
+     */
+    rollback() {
+        return this._query(&quot;ROLLBACK;&quot;);
+    }
+    /**
+     * Checks the database for incorrect structure
+     * and tries to correct these.
+     */
+    async start() {
+        const exists = await this.databaseExists();
+        if (!exists) {
+            await this._query(`CREATE DATABASE ${database};`);
+        }
+        // set database as current database
+        await this.useDatabase();
+        // display all current tables
+        const tables = await this._query(&quot;SHOW TABLES;&quot;);
+        // create tables which do not exist
+        await Promise.all(Object.keys(Tables)
+            .filter((table) =&gt; !tables.find((value) =&gt; value[`Tables_in_${database}`] === table))
+            .map((table) =&gt; this._query(`CREATE TABLE ${table}(${Tables[table]});`)));
+    }
+    /**
+     * Checks whether the main database exists currently.
+     */
+    async databaseExists() {
+        const databases = await this._query(&quot;SHOW DATABASES;&quot;);
+        return databases.find((data) =&gt; data.Database === database) != null;
+    }
+    /**
+     * Registers an User if the userName is free.
+     * Returns a Error Code if userName is already
+     * in use.
+     *
+     * If it succeeded, it tries to log the user in
+     * immediately.
+     *
+     * Returns the uuid of the user
+     * and the session key for the ip.
+     */
+    async register(userName, password, ip) {
+        if (!userName || !password) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        const user = await this._query(`SELECT * FROM user WHERE name = ?;`, userName);
+        // if there is a result in array, userName is not new, so abort
+        if (user.length) {
+            return Promise.reject(exports.Errors.USER_EXISTS_ALREADY);
+        }
+        // if userName is new, proceed to register
+        const id = v1_1.default();
+        const { salt, hash } = StandardHash.hash(password);
+        // insert the full user and loginUser right after
+        await this._query(&quot;INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);&quot;, [userName, id, salt, StandardHash.tag, hash]);
+        // every user gets a standard list for everything that got no list assigned
+        // this standard list name &#039;Standard&#039; is reserved for this purpose
+        await this.addList(id, { name: standardListName, medium: allTypes() });
+        return this.loginUser(userName, password, ip);
+    }
+    /**
+     * Logs a user in.
+     *
+     * Returns the uuid of the user
+     * and the session key for the ip.
+     */
+    async loginUser(userName, password, ip) {
+        if (!userName || !password) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        const result = await this._query(&quot;SELECT * FROM user WHERE name = ?;&quot;, userName);
+        if (!result.length) {
+            return Promise.reject(exports.Errors.USER_DOES_NOT_EXIST);
+        }
+        else if (result.length !== 1) {
+            return Promise.reject(exports.Errors.CORRUPT_DATA);
+        }
+        const user = result[0];
+        const uuid = user.uuid;
+        if (!verifyPassword(password, user.password, user.alg, user.salt)) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        // if there exists a session already for that device, remove it
+        await this._delete(&quot;user_log&quot;, { column: &quot;ip&quot;, value: ip });
+        // generate session key
+        const session = v4_1.default();
+        const date = new Date().toISOString();
+        await this._query(&quot;INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);&quot;, [uuid, ip, session, date]);
+        return this.getUser(uuid, session);
+    }
+    /**
+     * Checks if for the given ip any user is logged in.
+     *
+     * Returns the uuid of the logged in user and
+     * the session key of the user for the ip.
+     */
+    async userLoginStatus(ip) {
+        const result = await this._query(&quot;SELECT * FROM user_log WHERE ip = ?;&quot;, ip);
+        const sessionRecord = result[0];
+        if (!sessionRecord) {
+            return null;
+        }
+        const session = sessionRecord.session_key;
+        if (session) {
+            return this.getUser(sessionRecord.user_uuid, session);
+        }
+        return null;
+    }
+    /**
+     * Logs a user out.
+     */
+    logoutUser(uuid, ip) {
+        return this._delete(&quot;user_log&quot;, { column: &quot;ip&quot;, value: ip });
+    }
+    /**
+     * Deletes the whole account of an user
+     * with all associated data.
+     *
+     * Is irreversible.
+     */
+    async deleteUser(uuid) {
+        // todo delete all associated data
+        // remove in sequence:
+        // user_log =&gt; list_medium =&gt; reading_list
+        // =&gt; external_list_medium =&gt; external_reading_list
+        // =&gt; external_user =&gt; user_episode
+        // delete sessions
+        await this._delete(&quot;user_log&quot;, { column: &quot;user_uuid&quot;, value: uuid });
+        // delete reading lists contents
+        await this._query(&quot;DELETE FROM list_medium &quot; +
+            &quot;WHERE list_id in &quot; +
+            &quot;(SELECT id FROM reading_list &quot; +
+            &quot;WHERE user_uuid = ?);&quot;, uuid);
+        // delete lists
+        await this._delete(&quot;reading_list&quot;, { column: &quot;user_uuid&quot;, value: uuid });
+        // delete external reading lists contents
+        await this._query(&quot;DELETE FROM external_list_medium &quot; +
+            &quot;WHERE list_id &quot; +
+            &quot;IN (SELECT id FROM external_reading_list &quot; +
+            &quot;WHERE user_uuid &quot; +
+            &quot;IN (SELECT uuid FROM external_user &quot; +
+            &quot;WHERE local_uuid = ?));&quot;, uuid);
+        // delete external lists
+        await this._query(&quot;DELETE FROM external_reading_list &quot; +
+            &quot;WHERE user_uuid &quot; +
+            &quot;IN (SELECT uuid FROM external_user WHERE local_uuid = ?);&quot;, uuid);
+        // delete external user
+        await this._delete(&quot;external_user&quot;, { column: &quot;local_uuid&quot;, value: uuid });
+        // delete progress track?
+        await this._delete(&quot;user_episode&quot;, { column: &quot;user_uuid&quot;, value: uuid });
+        // delete user itself
+        // todo check if delete was successful, what if not?
+        //  in case the deletion was unsuccessful, just &#039;ban&#039; any further access to that account
+        //  and delete it manually?
+        return this._delete(&quot;user&quot;, { column: &quot;uuid&quot;, value: uuid });
+    }
+    /**
+     * Updates the direct data of an user,
+     * like name or password.
+     *
+     * Returns a boolean whether data was updated or not.
+     */
+    async updateUser(uuid, user) {
+        if (user.newPassword &amp;&amp; user.password) {
+            await this.verifyPassword(uuid, user.password);
+        }
+        return this._update(&quot;user&quot;, &quot;uuid&quot;, uuid, (updates, values) =&gt; {
+            if (user.name) {
+                updates.push(&quot;name = ?&quot;);
+                values.push(user.name);
+            }
+            if (user.newPassword) {
+                if (!user.password) {
+                    return Promise.reject(exports.Errors.INVALID_INPUT);
+                }
+                const { salt, hash } = StandardHash.hash(user.newPassword);
+                updates.push(&quot;alg = ?&quot;);
+                values.push(StandardHash.tag);
+                updates.push(&quot;salt = ?&quot;);
+                values.push(salt);
+                updates.push(&quot;password = ?&quot;);
+                values.push(hash);
+            }
+        });
+    }
+    /**
+     * Verifies the password the user of
+     * the given uuid.
+     *
+     * @param {string} uuid
+     * @param {string} password
+     * @return {Promise&lt;boolean&gt;}
+     */
+    async verifyPassword(uuid, password) {
+        const result = await this._query(&quot;SELECT password, alg, salt FROM user WHERE uuid = ?&quot;, uuid);
+        const user = result[0];
+        return verifyPassword(password, user.password, user.alg, user.salt);
+    }
+    /**
+     * Adds a list to the storage and
+     * links it to the user of the uuid.
+     */
+    async addList(uuid, { name, medium }) {
+        const result = await this._query(&quot;INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)&quot;, [uuid, name, medium]);
+        if (!Number.isInteger(result.insertId)) {
+            throw Error(`invalid ID: ${result.insertId}`);
+        }
+        return {
+            id: result.insertId,
+            items: [],
+            name,
+            medium,
+        };
+    }
+    /**
+     * Returns all mediums of a list with
+     * the list_id.
+     */
+    async getList(listId, uuid) {
+        const result = await this._query(&quot;SELECT * FROM reading_list WHERE id = ?;&quot;, listId);
+        const list = await this.createShallowList(result[0]);
+        // todo this seems really inefficient
+        // todo look at this again, may be an error!
+        const media = await this.getMedium(list.items, uuid);
+        // @ts-ignore
+        return { list, media };
+    }
+    /**
+     * Recreates a list from storage.
+     */
+    async createShallowList(storageList) {
+        if (!storageList.name) {
+            // @ts-ignore
+            throw Error(exports.Errors.INVALID_INPUT);
+        }
+        const list = {
+            items: [],
+            name: storageList.name,
+            medium: storageList.medium,
+            id: storageList.id,
+        };
+        const result = await this._query(&quot;SELECT medium_id FROM list_medium WHERE list_id = ?&quot;, storageList.id);
+        await list.items.push(...result.map((value) =&gt; value.medium_id));
+        return list;
+    }
+    /**
+     * Updates the properties of a list.
+     */
+    async updateList(list) {
+        return this._update(&quot;reading_list&quot;, &quot;id&quot;, list.id, (updates, values) =&gt; {
+            if (list.name) {
+                updates.push(&quot;name = ?&quot;);
+                values.push(list.name);
+            }
+            if (list.medium) {
+                updates.push(&quot;medium = ?&quot;);
+                values.push(list.medium);
+            }
+        });
+    }
+    /**
+     * Deletes a single list irreversibly.
+     */
+    async deleteList(listId, uuid) {
+        const result = await this._query(&quot;SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?&quot;, [listId, uuid]);
+        // first check if such a list does exist for the given user
+        if (!result.length) {
+            return Promise.reject(exports.Errors.DOES_NOT_EXIST);
+        }
+        // first remove all links between a list and their media
+        await this._delete(&quot;list_medium&quot;, { column: &quot;list_id&quot;, value: listId });
+        // lastly delete the list itself
+        return this._delete(&quot;reading_list&quot;, { column: &quot;id&quot;, value: listId });
+    }
+    /**
+     * Returns all available lists for the given user.
+     */
+    async getUserLists(uuid) {
+        // query all available lists for user
+        const result = await this._query(&quot;SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;&quot;, [uuid, uuid]);
+        // query a shallow list, so that only the id´s of their media is contained
+        // @ts-ignore
+        return Promise.all(result.map((value) =&gt; this.createShallowList(value)));
+    }
+    /**
+     * Adds a medium to the storage.
+     */
+    async addMedium(medium, uuid) {
+        if (!medium || !medium.medium || !medium.title) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        const result = await this._query(&quot;INSERT INTO medium(medium, title) VALUES (?,?);&quot;, [medium.medium, medium.title]);
+        if (!Number.isInteger(result.insertId)) {
+            throw Error(`invalid ID: ${result.insertId}`);
+        }
+        const newMedium = { ...medium, id: result.insertId };
+        // if it should be added to an list, do it right away
+        if (uuid) {
+            // add item to listId of medium or the standard list
+            await this.addItemToList(false, newMedium, uuid);
+        }
+        return newMedium;
+    }
+    /**
+     * Gets one or multiple media from the storage.
+     */
+    getMedium(id, uuid) {
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(id, async (value) =&gt; {
+            let result = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, value);
+            result = result[0];
+            const latestReleasesResult = await this._query(&quot;SELECT * FROM episode &quot; +
+                &quot;WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) &quot; +
+                &quot;ORDER BY releaseDate DESC, totalIndex DESC, partialIndex DESC &quot; +
+                &quot;LIMIT 5;&quot;, value);
+            const currentReadResult = await this._query(&quot;SELECT * FROM &quot; +
+                &quot;(SELECT * FROM user_episode &quot; +
+                &quot;WHERE episode_id IN (SELECT id from episode &quot; +
+                &quot;WHERE part_id IN (SELECT id FROM part &quot; +
+                &quot;WHERE medium_id=?))) as user_episode &quot; +
+                &quot;INNER JOIN episode ON user_episode.episode_id=episode.id &quot; +
+                &quot;WHERE user_uuid=? &quot; +
+                &quot;ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1&quot;, [value, uuid]);
+            const unReadResult = await this._query(&quot;SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) &quot; +
+                &quot;AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) &quot; +
+                &quot;ORDER BY releaseDate DESC, totalIndex DESC, partialIndex DESC;&quot;, [value, uuid]);
+            const partsResult = await this._query(&quot;SELECT id FROM part WHERE medium_id=?;&quot;, value);
+            return {
+                id: result.id,
+                countryOfOrigin: result.countryOfOrigin,
+                languageOfOrigin: result.languageOfOrigin,
+                author: result.author,
+                title: result.title,
+                medium: result.medium,
+                artist: result.artist,
+                lang: result.lang,
+                stateOrigin: result.stateOrigin,
+                stateTL: result.stateTL,
+                series: result.series,
+                universe: result.universe,
+                parts: Array.from(partsResult).map((packet) =&gt; packet.id),
+                currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
+                latestReleases: Array.from(latestReleasesResult).map((packet) =&gt; packet.id),
+                unreadEpisodes: Array.from(unReadResult).map((packet) =&gt; packet.id),
+            };
+        });
+    }
+    /**
+     * Gets one or multiple media from the storage.
+     */
+    getLikeMedium(likeMedia) {
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(likeMedia, async (value) =&gt; {
+            const escapedLinkQuery = escapeLike(value.link, { noRightBoundary: true });
+            const result = await this._query(&quot;SELECT id FROM medium WHERE title = ? OR id IN &quot; +
+                &quot;(SELECT medium_id FROM scrape_board WHERE medium_id IS NOT NULL AND link LIKE ?);&quot;, [value.title, escapedLinkQuery]);
+            return result.length &amp;&amp; {
+                medium: result[0],
+                title: value.title,
+                link: value.link,
+            };
+        });
+    }
+    /**
+     * Updates a medium from the storage.
+     */
+    updateMedium(medium) {
+        return this._update(&quot;medium&quot;, &quot;id&quot;, medium.id, (updates, values) =&gt; {
+            for (const key of Object.keys(medium)) {
+                if (key === &quot;synonyms&quot; || key === &quot;id&quot;) {
+                    continue;
+                }
+                const value = medium[key];
+                if (value === null) {
+                    updates.push(`${key} = NULL`);
+                }
+                else if (value != null) {
+                    updates.push(`${key} = ?`);
+                    values.push(value);
+                }
+            }
+        });
+    }
+    /**
+     * Returns all parts of an medium.
+     */
+    async getParts(mediumId) {
+        // select all parts from a medium
+        const result = await this._query(&quot;SELECT * FROM medium_part WHERE medium_id =?;&quot;, mediumId);
+        // recreate shallow parts
+        // @ts-ignore
+        return Promise.all(result.map(async (value) =&gt; {
+            const part = await this._query(&quot;SELECT * FROM part WHERE id = ?&quot;, value.part_id);
+            // query episodes of part and return part
+            const episodes = await this._query(&quot;SELECT id FROM episode WHERE part_id = ?&quot;, part.id);
+            part.episodes = [...episodes.map((episode) =&gt; episode.id)];
+            return part;
+        }));
+    }
+    /**
+     * Adds a part of an medium to the storage.
+     */
+    async addPart(mediumId, part) {
+        const result = await this._query(&quot;INSERT INTO part (medium_id, title, totalIndex, partialIndex) VALUES (?,?,?,?);&quot;, [mediumId, part.title, part.totalIndex, part.partialIndex]);
+        if (!Number.isInteger(result.insertId)) {
+            throw Error(`invalid ID ${result.insertId}`);
+        }
+        // todo add episodes
+        return {
+            id: result.insertId,
+            title: part.title,
+            partialIndex: part.partialIndex,
+            totalIndex: part.totalIndex,
+            episodes: [],
+        };
+    }
+    /**
+     * Updates a part.
+     */
+    updatePart(part) {
+        return this._update(&quot;part&quot;, &quot;id&quot;, part.id, (updates, values) =&gt; {
+            if (part.title) {
+                updates.push(&quot;title = ?&quot;);
+                values.push(part.title);
+            }
+            else { // noinspection JSValidateTypes
+                if (part.title === null) {
+                    updates.push(&quot;title = NULL&quot;);
+                }
+            }
+            if (part.partialIndex) {
+                updates.push(&quot;partialIndex = ?&quot;);
+                values.push(part.partialIndex);
+            }
+            if (part.totalIndex) {
+                updates.push(&quot;totalIndex = ?&quot;);
+                values.push(part.totalIndex);
+            }
+        });
+    }
+    /**
+     * Deletes a part from the storage.
+     */
+    async deletePart(id) {
+        // todo delete all episode in this part or just transfer them to the &quot;all&quot; part?
+        return false;
+    }
+    /**
+     * Adds a episode of a part to the storage.
+     */
+    async addEpisode(partId, episode) {
+        const result = await this._query(&quot;INSERT INTO episode &quot; +
+            &quot;(part_id, title, totalIndex, partialIndex, url, releaseDate) &quot; +
+            &quot;VALUES (?,?,?,?,?,?);&quot;, [partId, episode.title, episode.totalIndex, episode.partialIndex, episode.url, episode.releaseDate]);
+        if (!Number.isInteger(result.insertId)) {
+            throw Error(`invalid ID ${result.insertId}`);
+        }
+        return {
+            id: result.insertId,
+            partId,
+            title: episode.title,
+            partialIndex: episode.partialIndex,
+            totalIndex: episode.totalIndex,
+            url: episode.url,
+            releaseDate: episode.releaseDate,
+        };
+    }
+    /**
+     * Gets an episode from the storage.
+     */
+    async getEpisode(id) {
+        const result = await this._query(&quot;SELECT * FROM episode WHERE id = ?;&quot;, id);
+        return result[0];
+    }
+    /**
+     * Updates an episode from the storage.
+     */
+    async updateEpisode(episode) {
+        return this._update(&quot;episode&quot;, &quot;id&quot;, episode.id, (updates, values) =&gt; {
+            if (episode.partId) {
+                updates.push(&quot;part_id = ?&quot;);
+                values.push(episode.partId);
+            }
+            if (episode.title) {
+                updates.push(&quot;title = ?&quot;);
+                values.push(episode.title);
+            }
+            else { // noinspection JSValidateTypes
+                if (episode.title === null) {
+                    updates.push(&quot;title = NULL&quot;);
+                }
+            }
+            if (episode.partialIndex) {
+                updates.push(&quot;partialIndex = ?&quot;);
+                values.push(episode.partialIndex);
+            }
+            if (episode.totalIndex) {
+                updates.push(&quot;totalIndex = ?&quot;);
+                values.push(episode.totalIndex);
+            }
+        });
+    }
+    /**
+     * Deletes an episode from the storage irreversibly.
+     */
+    async deleteEpisode(id) {
+        // remove episode from progress first
+        await this._delete(&quot;user_episode&quot;, { column: &quot;episode_id&quot;, value: id });
+        // lastly remove episode itself
+        return this._delete(&quot;episode&quot;, { column: &quot;id&quot;, value: id });
+    }
+    /**
+     * Adds a medium to the list.
+     *
+     * If no listId is available it selects the
+     * &#039;Standard&#039; List of the given user and adds it there.
+     */
+    async addItemToList(external, medium, uuid) {
+        const table = external ? &quot;external_list_medium&quot; : &quot;list_medium&quot;;
+        // if list_ident is not a number,
+        // then take it as uuid from user and get the standard listId of &#039;Standard&#039; list
+        if (medium.listId == null || !Number.isInteger(medium.listId)) {
+            const idResult = await this._query(&quot;SELECT id FROM reading_list WHERE `name` = &#039;Standard&#039; AND user_uuid = ?;&quot;, uuid);
+            medium.listId = idResult[0].id;
+        }
+        const result = await this._query(`INSERT INTO ${table} (list_id, medium_id) VALUES(?,?);`, [medium.listId, medium.id]);
+        return result.affectedRows &gt; 0;
+    }
+    /**
+     * Moves a medium from an old list to a new list.
+     *
+     * @return {Promise&lt;boolean&gt;}
+     */
+    async moveMedium(oldListId, newListId, mediumId) {
+        // first remove medium from old list
+        await this.removeMedium(oldListId, mediumId);
+        // add item to new list
+        return this.addItemToList(false, { listId: newListId, id: mediumId });
+    }
+    /**
+     * Removes an item from a list.
+     */
+    removeMedium(listId, mediumId, external = false) {
+        const table = external ? &quot;external_list_medium&quot; : &quot;list_medium&quot;;
+        return this._delete(table, {
+            column: &quot;list_id&quot;,
+            value: listId,
+        }, {
+            column: &quot;medium_id&quot;,
+            value: mediumId,
+        });
+    }
+    /**
+     * Adds an external user of an user to the storage.
+     */
+    async addExternalUser(localUuid, externalUser) {
+        let result = await this._query(&quot;SELECT * FROM external_user &quot; +
+            &quot;WHERE name = ? &quot; +
+            &quot;AND local_uuid = ? &quot; +
+            &quot;AND service = ?&quot;, [externalUser.identifier, localUuid, externalUser.type]);
+        if (result.length) {
+            // @ts-ignore
+            throw Error(exports.Errors.USER_EXISTS_ALREADY);
+        }
+        const uuid = v1_1.default();
+        result = await this._query(&quot;INSERT INTO external_user &quot; +
+            &quot;(name, uuid, local_uuid, service, cookies) &quot; +
+            &quot;VALUES (?,?,?,?,?);&quot;, [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies]);
+        if (!result.affectedRows) {
+            return Promise.reject(exports.Errors.UNKNOWN);
+        }
+        return externalUser;
+    }
+    /**
+     * Deletes an external user from the storage.
+     */
+    async deleteExternalUser(externalUuid) {
+        // We need a bottom-up approach to delete,
+        // because deleting top-down
+        // would violate the foreign keys restraints
+        // first delete list - medium links
+        await this._query(&quot;DELETE FROM external_list_medium &quot; +
+            &quot;WHERE list_id &quot; +
+            &quot;IN (SELECT id FROM external_reading_list &quot; +
+            &quot;WHERE user_uuid =?);&quot;, externalUuid);
+        // proceed to delete lists of external user
+        await this._delete(&quot;external_reading_list&quot;, { column: &quot;user_uuid&quot;, value: externalUuid });
+        // finish by deleting external user itself
+        return this._delete(&quot;external_user&quot;, { column: &quot;uuid&quot;, value: externalUuid });
+    }
+    /**
+     * Gets an external user.
+     */
+    async getExternalUser(uuid) {
+        const value = await this._query(&quot;SELECT * FROM external_user WHERE uuid = ?;&quot;, uuid);
+        return this.createShallowExternalUser(value[0]);
+    }
+    /**
+     * Gets an external user with cookies, without items.
+     */
+    async getExternalUserWithCookies(uuid) {
+        const value = await this._query(&quot;SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;&quot;, uuid);
+        return {
+            uuid: value[0].uuid,
+            userUuid: value[0].local_uuid,
+            type: value[0].service,
+            cookies: value[0].cookies,
+        };
+    }
+    /**
+     *
+     */
+    async getScrapeExternalUser() {
+        const result = await this._query(&quot;SELECT uuid, local_uuid, service, cookies FROM external_user &quot; +
+            &quot;WHERE last_scrape IS NULL OR last_scrape &gt; NOW() - 7&quot;);
+        return [...result].map((value) =&gt; {
+            return {
+                uuid: value.uuid,
+                userUuid: value.local_uuid,
+                type: value.service,
+                cookies: value.cookies,
+            };
+        });
+    }
+    /**
+     *  Creates a ExternalUser with
+     *  shallow lists.
+     */
+    async createShallowExternalUser(storageUser) {
+        const externalUser = {
+            identifier: storageUser.name,
+            uuid: storageUser.uuid,
+            type: storageUser.service,
+            lists: [],
+        };
+        externalUser.lists = await this.getExternalUserLists(externalUser.uuid);
+        return externalUser;
+    }
+    /**
+     * Updates an external user.
+     */
+    updateExternalUser(externalUser) {
+        return this._update(&quot;external_user&quot;, &quot;uuid&quot;, externalUser.uuid, (updates, values) =&gt; {
+            if (externalUser.identifier) {
+                updates.push(&quot;name = ?&quot;);
+                values.push(externalUser.identifier);
+            }
+            if (externalUser.lastScrape) {
+                updates.push(&quot;last_scrape = ?&quot;);
+                values.push(externalUser.lastScrape);
+            }
+            if (externalUser.cookies) {
+                updates.push(&quot;cookies = ?&quot;);
+                values.push(externalUser.cookies);
+            }
+            else if (externalUser.cookies == null) {
+                updates.push(&quot;cookies = NULL&quot;);
+            }
+        });
+    }
+    /**
+     * Adds an external list of an user to the storage.
+     *
+     * @param {string} userUuid
+     * @param {ExternalList} externalList
+     * @return {Promise&lt;ExternalList&gt;}
+     */
+    async addExternalList(userUuid, externalList) {
+        const result = await this._query(&quot;INSERT INTO external_reading_list &quot; +
+            &quot;(name, user_uuid, medium, url) &quot; +
+            &quot;VALUES(?,?,?,?);&quot;, [externalList.name, userUuid, externalList.medium, externalList.url]);
+        const insertId = result.insertId;
+        if (!Number.isInteger(insertId)) {
+            throw Error(`invalid ID ${insertId}`);
+        }
+        return {
+            id: insertId,
+            name: externalList.name,
+            medium: externalList.medium,
+            url: externalList.url,
+            items: [],
+        };
+    }
+    /**
+     * Updates an external list.
+     */
+    updateExternalList(externalList) {
+        return this._update(&quot;external_reading_list&quot;, &quot;user_uuid&quot;, externalList.id, (updates, values) =&gt; {
+            if (externalList.medium) {
+                updates.push(&quot;medium = ?&quot;);
+                values.push(externalList.medium);
+            }
+            if (externalList.name) {
+                updates.push(&quot;name = ?&quot;);
+                values.push(externalList.name);
+            }
+        });
+    }
+    /**
+     * Removes one or multiple externalLists from the given user.
+     */
+    async removeExternalList(uuid, externalListId) {
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(externalListId, async (item) =&gt; {
+            // first delete any references of externalList: list-media links
+            await this._delete(&quot;external_list_medium&quot;, { column: &quot;list_id&quot;, value: item });
+            // then delete list itself
+            return this._delete(&quot;external_reading_list&quot;, {
+                column: &quot;user_uuid&quot;,
+                value: uuid,
+            }, {
+                column: &quot;id&quot;,
+                value: item,
+            });
+        });
+    }
+    /**
+     * Gets an external list from the storage.
+     *
+     * @param {number} id
+     * @return {Promise&lt;ExternalList&gt;}
+     */
+    async getExternalList(id) {
+        const result = await this._query(&quot;SELECT * FROM external_reading_list WHERE id = ?&quot;, id);
+        return this.createShallowExternalList(result[0]);
+    }
+    /**
+     * Creates a shallow external List with only the id´s of their items
+     * as list.
+     *
+     * @param {ExternalList} storageList
+     * @return {Promise&lt;ExternalList&gt;}
+     */
+    async createShallowExternalList(storageList) {
+        const result = await this._query(&quot;SELECT * FROM external_list_medium WHERE list_id = ?;&quot;, storageList.id);
+        storageList.items = result.map((value) =&gt; value.medium_id);
+        // todo return input or copy object?
+        return storageList;
+    }
+    /**
+     * Gets an array of all lists of an user.
+     */
+    async getExternalUserLists(uuid) {
+        const result = await this._query(&quot;SELECT * FROM external_reading_list WHERE user_uuid = ?;&quot;, uuid);
+        // @ts-ignore
+        return Promise.all(result.map((value) =&gt; this.createShallowExternalList(value)));
+    }
+    /**
+     * Adds a medium to an external list in the storage.
+     */
+    async addItemToExternalList(listId, mediumId) {
+        const result = await this._query(&quot;INSERT INTO external_list_medium &quot; +
+            &quot;(list_id, medium_id) &quot; +
+            &quot;VALUES (?,?)&quot;, [listId, mediumId]);
+        return result.affectedRows &gt; 0;
+    }
+    /**
+     * Add progress of an user in regard to an episode to the storage.
+     */
+    async addProgress(uuid, episodeId, progress) {
+        if (!Number.isInteger(progress + episodeId)) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        await this.removeProgress(uuid, episodeId);
+        const result = await this._query(&quot;INSERT INTO user_episode &quot; +
+            &quot;(user_uuid, episode_id, progress) &quot; +
+            &quot;VALUES (?,?,?);&quot;, [uuid, episodeId, progress]);
+        return result.affectedRows &gt; 0;
+    }
+    /**
+     * Removes progress of an user in regard to an episode.
+     */
+    removeProgress(uuid, episodeId) {
+        return this._delete(&quot;user_episode&quot;, {
+            column: &quot;user_uuid&quot;,
+            value: uuid,
+        }, {
+            column: &quot;episode_id&quot;,
+            value: episodeId,
+        });
+    }
+    /**
+     * Get the progress of an user in regard to an episode.
+     */
+    async getProgress(uuid, episodeId) {
+        const result = await this
+            ._query(&quot;SELECT * FROM user_episode &quot; +
+            &quot;WHERE user_uuid = ? &quot; +
+            &quot;AND episode_id = ?&quot;, [uuid, episodeId]);
+        return result[0].progress;
+    }
+    /**
+     * Updates the progress of an user in regard to an episode.
+     */
+    updateProgress(uuid, episodeId, progress) {
+        // todo for now its the same as calling addProgress, but somehow do it better maybe?
+        return this.addProgress(uuid, episodeId, progress);
+    }
+    /**
+     * Inserts a News item into the Storage.
+     * Returns a News item with id if insert was successful.
+     * Returns undefined (or an Array with undefined)
+     * if insert was not successful (meaning it was an duplicate).
+     *
+     * @param {News|Array&lt;News&gt;} news
+     * @return {Promise&lt;News|undefined|Array&lt;News|undefined&gt;&gt;}
+     */
+    async addNews(news) {
+        return tools_1.promiseMultiSingle(news, async (value) =&gt; {
+            if (!value.link || !value.title || !value.date) {
+                return Promise.reject(exports.Errors.INVALID_INPUT);
+            }
+            let result = await this._query(&quot;INSERT IGNORE INTO news_board (title, link, date) VALUES (?,?,?);&quot;, [value.title, value.link, value.date]);
+            if (!Number.isInteger(result.insertId)) {
+                throw Error(`invalid ID ${result.insertId}`);
+            }
+            if (!result.affectedRows) {
+                return;
+            }
+            result = { ...value, id: result.insertId };
+            return result;
+        });
+    }
+    /**
+     *
+     */
+    async getNews(since, till = new Date(), uuid) {
+        // todo query looks horrible, replace it with something better?
+        const query = &quot;SELECT * FROM news_board &quot; +
+            &quot;LEFT JOIN (SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) &quot; +
+            &quot;as news_user ON news_user.news_id=news_board.id &quot; +
+            // where date between since and till
+            `WHERE ${since ? &quot;? &lt; date AND &quot; : &quot;&quot;} ? &gt; date AND id IN ` +
+            &quot;(SELECT news_id FROM news_medium WHERE medium_id IN&quot; +
+            // and news id from either an medium in user list or external list
+            &quot;(SELECT medium_id FROM list_medium WHERE list_id IN &quot; +
+            &quot;(SELECT id FROM reading_list WHERE user_uuid = ?) &quot; +
+            &quot;UNION SELECT medium_id FROM external_list_medium WHERE list_id IN &quot; +
+            &quot;(SELECT id from external_reading_list WHERE user_uuid IN &quot; +
+            &quot;(SELECT uuid FROM external_user WHERE local_uuid = ?))))&quot; +
+            &quot;ORDER BY date DESC LIMIT 100&quot;;
+        const parameter = [till, uuid, uuid];
+        if (since) {
+            parameter.unshift(since);
+        }
+        parameter.unshift(uuid);
+        const newsResult = await this._query(query, parameter);
+        return Array.from(newsResult).map((value) =&gt; {
+            return {
+                title: value.title,
+                date: value.date,
+                link: value.link,
+                id: value.id,
+                read: Boolean(value.read_news),
+            };
+        });
+    }
+    /**
+     *
+     */
+    async deleteOldNews() {
+        await this._query(&quot;DELETE FROM news_medium WHERE medium_id IN &quot; +
+            &quot;(SELECT FROM news_board WHERE date &lt; NOW() - 30);&quot;);
+        const result = await this._query(&quot;DELETE FROM news_board WHERE date &lt; NOW() - 30;&quot;);
+        return result.affectedRows &gt; 0;
+    }
+    /**
+     *
+     */
+    async addScrape(scrape) {
+        await tools_1.promiseMultiSingle(scrape, (item) =&gt; {
+            return this._query(&quot;INSERT INTO scrape_board &quot; +
+                &quot;(link, type, last_date, uuid, medium_id) VALUES (?,?,?,?,?);&quot;, [
+                item.link,
+                item.type,
+                item.lastDate,
+                item.userId,
+                item.mediumId,
+            ]);
+        });
+        return true;
+    }
+    /**
+     *
+     */
+    async getScrapes() {
+        let value = await this._query(&quot;SELECT * FROM scrape_board;&quot;);
+        value = [...value];
+        return value.map((item) =&gt; {
+            return {
+                link: item.link,
+                lastDate: item.last_date,
+                type: item.type,
+                listId: item.list_id,
+                mediumId: item.medium_id,
+            };
+        });
+    }
+    /**
+     *
+     */
+    async removeScrape(link) {
+        return this._delete(&quot;scrape_board&quot;, { column: &quot;link&quot;, value: link });
+    }
+    /**
+     *
+     */
+    async linkNewsToMedium() {
+        // todo maybe implement this with a trigger
+        const result = await this._query(&quot;INSERT INTO enterprise.news_medium (medium_id, news_id)&quot; +
+            &quot;SELECT medium.id, news_board.id FROM medium,news_board &quot; +
+            &quot;WHERE locate(medium.title, news_board.title) &gt; 0&quot;);
+        return result.affectedRows &gt; 0;
+    }
+    linkNewsToEpisode(news) {
+        return Promise.all(news.map((value) =&gt; {
+            this._query(&quot;&quot;);
+        })).then(() =&gt; true);
+    }
+    /**
+     *
+     */
+    async removeLinkNewsToMedium(newsId, mediumId) {
+        const columns = [];
+        if (newsId != null) {
+            columns.push({
+                column: &quot;news_id&quot;,
+                value: newsId,
+            });
+        }
+        if (mediumId != null) {
+            columns.push({
+                column: &quot;medium_id&quot;,
+                value: mediumId,
+            });
+        }
+        return this._delete(&quot;news_medium&quot;, ...columns);
+    }
+    /**
+     * Marks these news as read for the given user.
+     */
+    async markRead(uuid, news) {
+        await tools_1.promiseMultiSingle(news, (newsId) =&gt; this._query(&quot;INSERT IGNORE INTO news_user (user_id,news_id) VALUES (?,?);&quot;, [uuid, newsId]));
+        return true;
+    }
+    /**
+     * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
+     */
+    async markEpisodeRead(uuid, result) {
+        if (!result.accept) {
+            return;
+        }
+        const teaserMatcher = /\(?teaser\)?$|(\s+$)/i;
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(result.result, async (value) =&gt; {
+            // todo what if it is not a serial medium but only an article? should it even save such things?
+            if (!value.novel
+                || (!value.chapIndex &amp;&amp; !value.chapter)
+                // do not mark episode if they are a teaser only
+                || (value.chapter &amp;&amp; value.chapter.match(teaserMatcher))) {
+                return;
+            }
+            const escapedNovel = escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
+            const media = await this._query(&quot;SELECT title, id,synonym FROM medium &quot; +
+                &quot;LEFT JOIN medium_synonyms ON medium.id=medium_synonyms.medium_id &quot; +
+                &quot;WHERE medium.title LIKE ? OR medium_synonyms.synonym LIKE ?;&quot;, [escapedNovel, escapedNovel]);
+            // todo for now only get the first medium?, later test it against each other
+            let bestMedium = media[0];
+            if (!bestMedium) {
+                const addedMedium = await this.addMedium({ title: value.novel, medium: exports.MediaType.TEXT }, uuid);
+                bestMedium = { id: addedMedium.insertId, title: value.novel };
+                // todo add medium if it is not known?
+            }
+            let volumeId;
+            // if there is either an volume or volIndex in result
+            // search or add the given volume to link the episode to the part/volume
+            let volumeTitle = value.volume;
+            if (value.volIndex || volumeTitle) {
+                // todo: do i need to convert volIndex from a string to a number for the query?
+                const volumeArray = await this._query(&quot;SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)&quot;, [bestMedium.id, volumeTitle &amp;&amp; escapeLike(volumeTitle, {
+                        singleQuotes: true,
+                        noBoundaries: true
+                    }), value.volIndex]);
+                const volume = volumeArray[0];
+                if (volume) {
+                    volumeId = volume.id;
+                }
+                else {
+                    // if there is no volume yet, with the given volumeTitle or index, add one
+                    let volIndex = Number(value.volIndex);
+                    if (Number.isNaN(volIndex)) {
+                        const lowestIndexArray = await this._query(&quot;SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?&quot;, bestMedium.id);
+                        const lowestIndexObj = lowestIndexArray[0];
+                        // if the lowest available totalIndex not indexed, decrement, else take -2
+                        // -1 is reserved for all episodes, which do not have any volume/part assigned
+                        volIndex = lowestIndexObj &amp;&amp; lowestIndexObj.totalIndex &lt; 0 ? --lowestIndexObj.totalIndex : -2;
+                    }
+                    if (!volumeTitle) {
+                        volumeTitle = &quot;Volume &quot; + volIndex;
+                    }
+                    const addedVolume = await this.addPart(bestMedium.id, 
+                    // @ts-ignore
+                    { title: volumeTitle, totalIndex: volIndex });
+                    volumeId = addedVolume.id;
+                }
+            }
+            else {
+                // check if there is a part/volume, with index -1, reserved for all episodes, which are not indexed
+                const volumeArray = await this._query(&quot;SELECT id FROM part WHERE medium_id=? AND totalIndex=?&quot;, [bestMedium.id, -1]);
+                const volume = volumeArray[0];
+                if (!volume) {
+                    const insertedPart = await this._query(&quot;INSERT INTO part (medium_id,title, totalIndex) VALUES (?,?,?);&quot;, [bestMedium.id, &quot;Non Indexed Volume&quot;, -1]);
+                    volumeId = insertedPart.insertId;
+                }
+                else {
+                    volumeId = volume.id;
+                }
+            }
+            const episodeSelectArray = await this._query(&quot;SELECT id, part_id, url FROM episode WHERE title LIKE ? OR totalIndex=?&quot;, [value.chapter &amp;&amp; escapeLike(value.chapter, {
+                    noBoundaries: true,
+                    singleQuotes: true
+                }), value.chapIndex]);
+            const episodeSelect = episodeSelectArray[0];
+            let episodeId = episodeSelect &amp;&amp; episodeSelect.id;
+            if (episodeId == null) {
+                let episodeIndex = Number(value.chapIndex);
+                // if there is no index, decrement the minimum index available for this medium
+                if (Number.isNaN(episodeIndex)) {
+                    const latestEpisodeArray = await this._query(&quot;SELECT MIN(totalIndex) as totalIndex FROM episode &quot; +
+                        &quot;WHERE part_id EXISTS (SELECT id from part WHERE medium_id=?);&quot;, bestMedium.id);
+                    const latestEpisode = latestEpisodeArray[0];
+                    // if the lowest available totalIndex not indexed, decrement, else take -1
+                    episodeIndex = latestEpisode &amp;&amp; latestEpisode.totalIndex &lt; 0 ? --latestEpisode.totalIndex : -1;
+                }
+                let chapter = value.chapter;
+                if (!chapter) {
+                    chapter = &quot;Chapter &quot; + episodeIndex;
+                }
+                // @ts-ignore
+                const episode = await this.addEpisode(volumeId, {
+                    title: chapter,
+                    totalIndex: episodeIndex,
+                    url: result.url,
+                    releaseDate: new Date(),
+                });
+                episodeId = episode.id;
+            }
+            // now after setting the storage up, so that all data is &#039;consistent&#039; with this result,
+            // mark the episode as read
+            // fixme: for now the progress is set to 1, because the tracker is malfunctioning,
+            // normally the progress should be updated by messages of the tracker
+            // it should be inserted only, if there does not exist any progress
+            await this._query(&quot;INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,1);&quot;, [uuid, episodeId]);
+        });
+    }
+    /**
+     *
+     */
+    async checkUnread(uuid) {
+        const result = await this._query(&quot;SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN &quot; +
+            &quot;(SELECT news_id FROM news_user WHERE user_id = ?);&quot;, uuid);
+        return result[0].count;
+    }
+    getSynonyms(mediumId) {
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(mediumId, async (value) =&gt; {
+            const synonymResult = await this._query(&quot;SELECT synonym FROM medium_synonyms WHERE medium_id=?;&quot;, value);
+            return {
+                mediumId: value,
+                synonym: Array.from(synonymResult).map(result =&gt; result.synonym)
+            };
+        });
+    }
+    removeSynonyms(synonyms) {
+        return tools_1.promiseMultiSingle(synonyms, value =&gt; {
+            return tools_1.promiseMultiSingle(value.synonym, item =&gt; {
+                return this._delete(&quot;medium_synonyms&quot;, {
+                    column: &quot;synonym&quot;,
+                    value: item
+                }, {
+                    column: &quot;medium_id&quot;,
+                    value: value.mediumId
+                });
+            });
+        }).then(() =&gt; true);
+    }
+    addSynonyms(synonyms) {
+        return tools_1.promiseMultiSingle(synonyms, value =&gt; {
+            return tools_1.promiseMultiSingle(value.synonym, item =&gt; {
+                return this._query(&quot;INSERT IGNORE INTO medium_synonyms (medium_id, synonym) VALUES (?,?)&quot;, [value.mediumId, item]);
+            });
+        }).then(() =&gt; true);
+    }
+    /**
+     * Returns all user stored in storage.
+     */
+    showUser() {
+        return this._query(&quot;SELECT * FROM user;&quot;);
+    }
+    /**
+     * Deletes the whole storage.
+     */
+    async clearAll() {
+        const exists = await this.databaseExists();
+        return exists &amp;&amp; this._query(`DROP DATABASE ${database};`);
+    }
+    processResult(result) {
+        if (!result.preliminary) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(result.result, async (value) =&gt; {
+            // todo implement
+            return value;
+        });
+    }
+    saveResult(result) {
+        if (!result.preliminary) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(result.result, async (value) =&gt; {
+            if (!result.accept) {
+                return false;
+            }
+            // if there is a title, search a medium which matches
+            // todo implement
+            return value;
+        });
+    }
+    /**
+     * Returns a user with their associated lists and external user from the storage.
+     */
+    async getUser(uuid, session) {
+        if (!uuid) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        const user = {
+            externalUser: [],
+            lists: [],
+            name: &quot;&quot;,
+            uuid: &quot;&quot;,
+            session,
+        };
+        // query for user
+        let result = await this._query(&quot;SELECT * FROM user WHERE uuid = ?;&quot;, uuid);
+        // add user metadata
+        result = result[0];
+        user.name = result.name;
+        user.uuid = uuid;
+        if (!user.name) {
+            return Promise.reject(exports.Errors.CORRUPT_DATA);
+        }
+        // query for user reading lists
+        const lists = await this.getUserLists(uuid);
+        // add local user reading lists
+        user.lists.push(...lists);
+        // select external user of user
+        const allExternalUser = await this._query(&quot;SELECT * FROM external_user WHERE local_uuid = ?;&quot;, uuid);
+        // add external_user and add their respective external reading lists
+        await Promise.all(allExternalUser.map((value) =&gt; this
+            .createShallowExternalUser(value)
+            .then((externalUser) =&gt; user.externalUser.push(externalUser))));
+        // return user result
+        return user;
+    }
+    /**
+     * Deletes one or multiple entries from one specific table,
+     * with only one conditional.
+     */
+    async _delete(table, ...condition) {
+        if (!condition || (Array.isArray(condition) &amp;&amp; !condition.length)) {
+            return Promise.reject(exports.Errors.INVALID_INPUT);
+        }
+        let query = `DELETE FROM ${promise_mysql_1.default.escapeId(table)} WHERE `;
+        const values = [];
+        tools_1.multiSingle(condition, (value, _, next) =&gt; {
+            query += `${promise_mysql_1.default.escapeId(value.column)} = ?`;
+            if (next) {
+                query += &quot; AND &quot;;
+            }
+            else {
+                query += &quot;;&quot;;
+            }
+            values.push(value.value);
+        });
+        const result = await this._query(query, values);
+        return result.affectedRows &gt;= 0;
+    }
+    /**
+     * Updates data from the storage.
+     */
+    async _update(table, column, idValue, cb) {
+        const updates = [];
+        const values = [];
+        cb(updates, values);
+        if (!updates.length) {
+            return Promise.resolve(false);
+        }
+        values.push(idValue);
+        const result = await this._query(`UPDATE ${promise_mysql_1.default.escapeId(table)}
+                SET ${updates.join(&quot;, &quot;)}
+                WHERE ${promise_mysql_1.default.escapeId(column)} = ?;`, values);
+        return result.affectedRows &gt; 0;
+    }
+    /**
+     *
+     * @param query
+     * @param parameter
+     * @private
+     */
+    async _query(query, parameter) {
+        return this.con.query(query, parameter);
+    }
+}
+/**
+ *
+ */
+exports.startStorage = () =&gt; start();
+exports.isError = (error) =&gt; {
+    for (const key of Object.keys(exports.Errors)) {
+        if (exports.Errors[key] === error) {
+            return true;
+        }
+    }
+    return false;
+};
+//# sourceMappingURL=database.js.map</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ cyclomatic }} <br>
+    Length : {{ halstead.length }} <br>
+    Difficulty : {{ halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>

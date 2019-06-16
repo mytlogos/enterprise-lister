@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - C:/Users/Dominik/WebstormProjects/enterprise-server/server/dist/userMiddleware.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>C:/Users/Dominik/WebstormProjects/enterprise-server/server/dist/userMiddleware.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">76.25</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">240</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">61.58</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">3.63</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">&quot;use strict&quot;;
+Object.defineProperty(exports, &quot;__esModule&quot;, { value: true });
+const database_1 = require(&quot;./database&quot;);
+const listManager_1 = require(&quot;./externals/listManager&quot;);
+exports.processResult = (req, res) =&gt; {
+    sendResult(res, database_1.Storage.processResult(req.body));
+};
+exports.saveResult = (req, res) =&gt; {
+    sendResult(res, database_1.Storage.saveResult(req.body));
+};
+exports.checkLogin = (req, res) =&gt; {
+    sendResult(res, database_1.Storage.userLoginStatus(req.ip));
+};
+exports.login = (req, res) =&gt; {
+    const { userName, pw } = req.body;
+    sendResult(res, database_1.Storage.loginUser(userName, pw, req.ip));
+};
+exports.register = (req, res) =&gt; {
+    const { userName, pw } = req.body;
+    sendResult(res, database_1.Storage.register(userName, pw, req.ip));
+};
+exports.logout = (req, res) =&gt; {
+    const { uuid } = req.body;
+    sendResult(res, database_1.Storage.logoutUser(uuid, req.ip));
+};
+// fixme an error showed that req.query.something does not assign on first call, only on second???
+exports.addListApi = (route) =&gt; {
+    route.get((req, res) =&gt; {
+        const listId = extractQueryParam(req, &quot;listId&quot;);
+        const uuid = extractQueryParam(req, &quot;uuid&quot;);
+        sendResult(res, database_1.Storage.getList(listId, uuid));
+    });
+    route.post((req, res) =&gt; {
+        const { uuid, list: list } = req.body;
+        sendResult(res, database_1.Storage.addList(uuid, list));
+    });
+    route.put((req, res) =&gt; {
+        const { list } = req.body;
+        sendResult(res, database_1.Storage.updateList(list));
+    });
+    route.delete((req, res) =&gt; {
+        const { listId, uuid } = req.body;
+        sendResult(res, database_1.Storage.deleteList(listId, uuid));
+    });
+};
+exports.addListMediumRoute = (route) =&gt; {
+    route.get((req, res) =&gt; {
+        const listId = extractQueryParam(req, &quot;listId&quot;);
+        const uuid = extractQueryParam(req, &quot;uuid&quot;);
+        let media = extractQueryParam(req, &quot;media&quot;);
+        media = media.split(&quot;,&quot;);
+        media = req.query.media.split(&quot;,&quot;).map((value) =&gt; Number(value));
+        const listPromise = database_1.Storage
+            .getList(listId, uuid)
+            .then((obj) =&gt; obj.media.filter((value) =&gt; media.includes(value.id)));
+        sendResult(res, listPromise);
+    });
+    route.post((req, res) =&gt; {
+        const { listId, mediumId } = req.body;
+        sendResult(res, database_1.Storage.addItemToList(listId, mediumId));
+    });
+    route.put((req, res) =&gt; {
+        const { oldListId, newListId, mediumId } = req.body;
+        sendResult(res, database_1.Storage.moveMedium(oldListId, newListId, mediumId));
+    });
+    route.delete((req, res) =&gt; {
+        const { listId, mediumId } = req.body;
+        sendResult(res, database_1.Storage.removeMedium(listId, mediumId));
+    });
+};
+exports.addPartRoute = (route) =&gt; {
+    route.get((req, res) =&gt; {
+        const mediumId = extractQueryParam(req, &quot;mediumId&quot;);
+        sendResult(res, database_1.Storage.getParts(mediumId));
+    });
+    route.post((req, res) =&gt; {
+        const { part, mediumId } = req.body;
+        sendResult(res, database_1.Storage.addPart(mediumId, part));
+    });
+    route.put((req, res) =&gt; {
+        const { part } = req.body;
+        sendResult(res, database_1.Storage.updatePart(part));
+    });
+    route.delete((req, res) =&gt; {
+        const { partId } = req.body;
+        sendResult(res, database_1.Storage.deletePart(partId));
+    });
+};
+exports.addEpisodeRoute = (route) =&gt; {
+    route.get((req, res) =&gt; {
+        const episodeId = extractQueryParam(req, &quot;episodeId&quot;);
+        sendResult(res, database_1.Storage.getEpisode(episodeId));
+    });
+    route.post((req, res) =&gt; {
+        const { medium, partId } = req.body;
+        sendResult(res, database_1.Storage.addEpisode(partId, medium));
+    });
+    route.put((req, res) =&gt; {
+        const { episode } = req.body;
+        sendResult(res, database_1.Storage.updateEpisode(episode));
+    });
+    route.delete((req, res) =&gt; {
+        const { episodeId } = req.body;
+        sendResult(res, database_1.Storage.deletePart(episodeId));
+    });
+};
+exports.addExternalUserApi = (route) =&gt; {
+    route.get((req, res) =&gt; {
+        const externalUuid = extractQueryParam(req, &quot;externalUuid&quot;);
+        sendResult(res, database_1.Storage.getExternalUser(externalUuid));
+    });
+    route.post((req, res) =&gt; {
+        const { uuid, externalUser } = req.body;
+        sendResultCall(res, async () =&gt; {
+            const listManager = listManager_1.factory(Number(externalUser.type));
+            const valid = await listManager.test({ identifier: externalUser.identifier, password: externalUser.pwd });
+            if (!valid) {
+                return Promise.reject(database_1.Errors.INVALID_DATA);
+            }
+            delete externalUser.pwd;
+            externalUser.cookies = listManager.stringifyCookies();
+            return database_1.Storage.addExternalUser(uuid, externalUser);
+        });
+    });
+    route.delete((req, res) =&gt; {
+        const { externalUuid } = req.body;
+        sendResult(res, database_1.Storage.deleteExternalUser(externalUuid));
+    });
+};
+exports.addUserApi = (router) =&gt; {
+    router.put((req, res) =&gt; {
+        const { uuid, user } = req.body;
+        sendResult(res, database_1.Storage.updateUser(uuid, user));
+    });
+    router.delete((req, res) =&gt; {
+        const { uuid } = req.body;
+        sendResult(res, database_1.Storage.deleteUser(uuid));
+    });
+};
+exports.addProgressRoute = (router) =&gt; {
+    router.get((req, res) =&gt; {
+        const uuid = extractQueryParam(req, &quot;uuid&quot;);
+        const episodeId = extractQueryParam(req, &quot;episodeId&quot;);
+        sendResult(res, database_1.Storage.getProgress(uuid, episodeId));
+    });
+    router.post((req, res) =&gt; {
+        const { uuid, episode_id, progress } = req.body;
+        sendResult(res, database_1.Storage.addProgress(uuid, episode_id, progress));
+    });
+    router.put((req, res) =&gt; {
+        const { uuid, episode_id, progress } = req.body;
+        sendResult(res, database_1.Storage.updateProgress(uuid, episode_id, progress));
+    });
+    router.delete((req, res) =&gt; {
+        const { uuid, episode_id } = req.body;
+        sendResult(res, database_1.Storage.removeProgress(uuid, episode_id));
+    });
+};
+exports.addMediumApi = (route) =&gt; {
+    route.get((req, res) =&gt; {
+        let mediumId = extractQueryParam(req, &quot;mediumId&quot;);
+        let uuid = extractQueryParam(req, &quot;uuid&quot;);
+        if (!Number.isInteger(mediumId)) {
+            mediumId = mediumId.split(&quot;,&quot;).map((value) =&gt; Number(value));
+        }
+        sendResult(res, database_1.Storage.getMedium(mediumId, uuid));
+    });
+    route.post((req, res) =&gt; {
+        const { uuid, medium } = req.body;
+        sendResult(res, database_1.Storage.addMedium(medium, uuid));
+    });
+    route.put((req, res) =&gt; {
+        const { medium } = req.body;
+        sendResult(res, database_1.Storage.updateMedium(medium));
+    });
+};
+exports.addSuggestionsRoute = (route) =&gt; {
+    // todo implement suggestions api for auto complete
+};
+exports.getLists = (req, res) =&gt; {
+    const uuid = extractQueryParam(req, &quot;uuid&quot;);
+    sendResult(res, database_1.Storage.getUserLists(uuid));
+};
+exports.getNews = (req, res) =&gt; {
+    const uuid = extractQueryParam(req, &quot;uuid&quot;);
+    let from = extractQueryParam(req, &quot;from&quot;);
+    let to = extractQueryParam(req, &quot;to&quot;);
+    from = !from || from === &quot;null&quot; ? undefined : new Date(from);
+    to = !to || to === &quot;null&quot; ? undefined : new Date(to);
+    sendResult(res, database_1.Storage.getNews({ uuid, since: from, till: to }));
+};
+exports.authenticate = (req, res, next) =&gt; {
+    let { uuid, session } = req.body;
+    if (!uuid &amp;&amp; !session) {
+        uuid = extractQueryParam(req, &quot;uuid&quot;);
+        session = extractQueryParam(req, &quot;session&quot;);
+    }
+    database_1.Storage
+        .userLoginStatus(req.ip)
+        .then((result) =&gt; {
+        if (result &amp;&amp; session === result.session &amp;&amp; uuid === result.uuid) {
+            next();
+        }
+        else {
+            res.status(400).json({ error: database_1.Errors.INVALID_SESSION });
+        }
+    })
+        .catch((error) =&gt; res.status(500).json({ error: database_1.isError(error) ? error : database_1.Errors.INVALID_MESSAGE }));
+};
+function sendResult(res, promise) {
+    promise
+        .then((result) =&gt; res.json(result))
+        .catch((error) =&gt; {
+        const errorCode = database_1.isError(error);
+        res
+            .status(errorCode ? 400 : 500)
+            .json({ error: errorCode ? error : database_1.Errors.INVALID_MESSAGE });
+    });
+}
+function sendResultCall(res, callback) {
+    let result;
+    try {
+        result = callback();
+    }
+    catch (e) {
+        result = Promise.reject(e);
+    }
+    if (!result || !(result instanceof Promise)) {
+        result = Promise.resolve(result);
+    }
+    sendResult(res, result);
+}
+function extractQueryParam(request, key) {
+    let value = request.query[key];
+    if (value == null) {
+        value = request.query[key];
+    }
+    return value;
+}
+//# sourceMappingURL=userMiddleware.js.map</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ cyclomatic }} <br>
+    Length : {{ halstead.length }} <br>
+    Difficulty : {{ halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
+const logger_1 = tslib_1.__importStar(require("../../logger"));
+const queueManager_1 = require("../queueManager");
+const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
+const database_1 = require("../../database/database");
+const tools_1 = require("../../tools");
+exports.sourceType = "qidian_underground";
+async function scrapeNews() {
+    const uri = "https://toc.qidianunderground.org/";
+    const body = await queueManager_1.queueRequest(uri);
+    const $ = cheerio_1.default.load(body);
+    const tocRows = $(".content p + ul");
+    const chapterReg = /(\d+)(\s*-\s*(\d+))?/;
+    const potentialMediaNews = [];
+    const now = new Date();
+    for (let tocRowIndex = 0; tocRowIndex < tocRows.length; tocRowIndex++) {
+        const tocRow = tocRows.eq(tocRowIndex);
+        const mediumElement = tocRow.prev();
+        const mediumTitle = mediumElement.contents().first().text().trim();
+        if (!mediumTitle) {
+            logger_1.default.warn("changed format on qidianUnderground");
+            return [];
+        }
+        const timeStampElement = mediumElement.find(".timeago").first();
+        const date = new Date(timeStampElement.attr("title"));
+        if (date > now) {
+            // due to summer time the zone of germany is utc+2,
+            // but normally qidianUnderground thinks we have utc+1, also winter time all around?
+            date.setHours(date.getHours() - 1);
+            if (date > now) {
+                logger_1.default.warn("changed time format on qidianUnderground");
+                continue;
+            }
+        }
+        const children = tocRow.find("a");
+        const potentialNews = [];
+        // tslint:disable-next-line:prefer-for-of
+        for (let j = 0; j < children.length; j++) {
+            const titleElement = children.length > 1 ? children.eq(j) : children;
+            const link = titleElement.attr("href");
+            if (!link) {
+                logger_1.default.warn(`missing href attribute for '${mediumTitle}' on qidianUnderground`);
+                continue;
+            }
+            const exec = chapterReg.exec(titleElement.text());
+            if (!exec) {
+                logger_1.default.warn("changed format on qidianUnderground");
+                continue;
+            }
+            const startChapterIndex = Number(exec[1]);
+            const endChapterIndex = Number(exec[3]);
+            if (!Number.isNaN(endChapterIndex)) {
+                for (let chapterIndex = startChapterIndex; chapterIndex <= endChapterIndex; chapterIndex++) {
+                    const title = emoji_strip_1.default(`${mediumTitle} - ${chapterIndex}`);
+                    potentialNews.push({ title, link, date });
+                }
+            }
+            else {
+                const title = emoji_strip_1.default(`${mediumTitle} - ${startChapterIndex}`);
+                potentialNews.push({ title, link, date });
+            }
+        }
+        if (potentialNews.length) {
+            potentialMediaNews.push(processMediumNews(mediumTitle, potentialNews));
+        }
+    }
+    await Promise.all(potentialMediaNews);
+    return [];
+}
+async function processMediumNews(mediumTitle, potentialNews) {
+    const likeMedia = await database_1.Storage.getLikeMedium({
+        title: mediumTitle,
+        link: "",
+        type: tools_1.MediaType.TEXT
+    });
+    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || likeMedia.medium.id == null) {
+        return;
+    }
+    const latestReleases = await database_1.Storage.getLatestReleases(likeMedia.medium.id);
+    const latestRelease = tools_1.max(latestReleases, (previous, current) => {
+        const maxPreviousRelease = tools_1.max(previous.releases, "releaseDate");
+        const maxCurrentRelease = tools_1.max(current.releases, "releaseDate");
+        return ((maxPreviousRelease && maxPreviousRelease.releaseDate.getTime()) || 0)
+            - ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0);
+    });
+    const chapIndexReg = /(\d+)\s*$/;
+    const parts = await database_1.Storage.getMediumParts(likeMedia.medium.id);
+    let part;
+    if (!parts.length) {
+        part = await database_1.Storage.createStandardPart(likeMedia.medium.id);
+    }
+    else if (parts.length !== 1) {
+        throw Error("qidian novel does not have exactly one part!");
+    }
+    else {
+        part = parts[0];
+    }
+    if (part.totalIndex !== -1) {
+        throw Error("qidian novels don't have volumes");
+    }
+    let news;
+    if (latestRelease) {
+        const oldReleases = [];
+        news = potentialNews.filter((value) => {
+            const exec = chapIndexReg.exec(value.title);
+            if (!exec) {
+                logger_1.default.warn("news title does not end chapter index on qidianUnderground");
+                return;
+            }
+            if (Number(exec[1]) > latestRelease.totalIndex) {
+                return true;
+            }
+            else {
+                oldReleases.push(value);
+                return false;
+            }
+        });
+        const sourcedReleases = await database_1.Storage.getSourcedReleases(exports.sourceType, likeMedia.medium.id);
+        const toUpdateReleases = oldReleases.map((value) => {
+            return {
+                title: value.title,
+                url: value.link,
+                releaseDate: value.date,
+                sourceType: exports.sourceType,
+                episodeId: 0,
+            };
+        }).filter((value) => {
+            const foundRelease = sourcedReleases.find((release) => release.title === value.title);
+            if (!foundRelease) {
+                logger_1.default.warn("wanted to update an unavailable release");
+                return false;
+            }
+            return foundRelease.url !== value.url;
+        });
+        if (toUpdateReleases.length) {
+            database_1.Storage
+                .updateRelease(part.id, exports.sourceType, toUpdateReleases)
+                .catch(logger_1.logError);
+        }
+    }
+    else {
+        news = potentialNews;
+    }
+    const newEpisodes = news.map((value) => {
+        const exec = chapIndexReg.exec(value.title);
+        if (!exec) {
+            throw Error(`'${value.title}' does not end with chapter number`);
+        }
+        const totalIndex = Number(exec[1]);
+        return {
+            totalIndex,
+            releases: [
+                {
+                    episodeId: 0,
+                    sourceType: exports.sourceType,
+                    releaseDate: value.date,
+                    url: value.link,
+                    title: value.title
+                }
+            ],
+            id: 0,
+            partId: 0
+        };
+    });
+    if (newEpisodes.length) {
+        await database_1.Storage.addEpisode(part.id, newEpisodes);
+    }
+}
+async function scrapeContent(urlString) {
+    const body = await queueManager_1.queueRequest(urlString);
+    const $ = cheerio_1.default.load(body);
+    const contents = $(".center-block .well");
+    const episodes = [];
+    for (let i = 0; i < contents.length; i++) {
+        const contentElement = contents.eq(i);
+        const contentChildren = contentElement.children();
+        const episodeTitle = contentChildren.find("h2").first().remove().text().trim();
+        const content = contentChildren.html();
+        if (!episodeTitle) {
+            logger_1.default.warn("episode link with no novel or episode title: " + urlString);
+            return [];
+        }
+        if (!content) {
+            logger_1.default.warn("episode link with no content: " + urlString);
+            return [];
+        }
+        const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
+        let index;
+        if (chapterGroups) {
+            index = Number(chapterGroups[1]);
+        }
+        if (index != null && Number.isNaN(index)) {
+            index = undefined;
+        }
+        const textEpisodeContent = {
+            contentType: tools_1.MediaType.TEXT,
+            content,
+            episodeTitle,
+            // the pages themselves dont have any novel titles
+            mediumTitle: "",
+            index
+        };
+        episodes.push(textEpisodeContent);
+    }
+    return episodes;
+}
+scrapeNews.link = "https://toc.qidianunderground.org/";
+function getHook() {
+    return {
+        domainReg: /^https:\/\/toc\.qidianunderground\.org/,
+        newsAdapter: scrapeNews,
+        contentDownloadAdapter: scrapeContent
+    };
+}
+exports.getHook = getHook;
+//# sourceMappingURL=undergroundScraper.js.map

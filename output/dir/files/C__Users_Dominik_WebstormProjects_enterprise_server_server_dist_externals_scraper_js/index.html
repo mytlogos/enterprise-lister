@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plato - C:/Users/Dominik/WebstormProjects/enterprise-server/server/dist/externals/scraper.js</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+
+  <link href="../../assets/css/vendor/morris.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/bootstrap.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/font-awesome.css" rel="stylesheet">
+  <link href="../../assets/css/vendor/codemirror.css" rel="stylesheet">
+  <link href="../../assets/css/plato.css" rel="stylesheet">
+  <link href="../../assets/css/plato-file.css" rel="stylesheet">
+
+</head>
+
+<body>
+
+<div class="navbar navbar-fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="http://github.com/es-analysis/plato">Plato on Github</a>
+    <ul class="nav navbar-nav">
+      <li>
+        <a href="../../index.html">Report Home</a>
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>C:/Users/Dominik/WebstormProjects/enterprise-server/server/dist/externals/scraper.js</h1>
+  </div>
+</div>
+
+<div class="container aggregate-stats">
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Maintainability <a href="http://blogs.msdn.com/b/codeanalysis/archive/2007/11/20/maintainability-index-range-and-meaning.aspx"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="A value between 0 and 100 that represents the relative ease of maintaining the code. A high value means better maintainability." data-original-title="Maintainability Index"  data-container="body"></i></a></h2>
+      <p class="stat">78.20</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Lines of code <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h2>
+      <p class="stat">219</p>
+    </div>
+  </div>
+  <div class="row historical">
+    <div class="col-md-6">
+      <p id="chart_historical_maint" class="chart"></p>
+    </div>
+    <div class="col-md-6">
+      <p id="chart_historical_sloc" class="chart"></p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h2 class="header">Difficulty  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="The difficulty measure is related to the difficulty of the program to write or understand." data-original-title="Difficulty" data-container="body"></i></a></h2>
+      <p class="stat">38.45</p>
+    </div>
+    <div class="col-md-6">
+      <h2 class="header">Estimated Errors  <a href="http://en.wikipedia.org/wiki/Halstead_complexity_measures"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Halstead's delivered bugs is an estimate for the number of errors in the implementation." data-original-title="Delivered Bugs" data-container="body"></i></a></h2>
+      <p class="stat">1.91</p>
+    </div>
+  </div>
+</div>
+
+<div class="container charts">
+  <div class="row">
+    <h2 class="header">Function weight</h2>
+  </div>
+  <div class="row">
+    <div class="col-md-6">
+      <h3 class="chart-header">By Complexity <a href="http://en.wikipedia.org/wiki/Cyclomatic_complexity"><i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="This metric counts the number of distinct paths through a block of code. Lower values are better." data-original-title="Cyclomatic Complexity" data-container="body"></i></a></h3>
+      <div id="fn-by-complexity" class="stat"></div>
+    </div>
+    <div class="col-md-6">
+      <h3 class="chart-header">By SLOC  <i class="icon icon-info-sign" rel="popover" data-placement="top" data-trigger="hover" data-content="Source Lines of Code / Logical Lines of Code" data-original-title="SLOC/LSLOC" data-container="body"></i></h3>
+      <div id="fn-by-sloc" class="stat"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="row">
+    <textarea id="file-source" class="col-md-12">&quot;use strict&quot;;
+Object.defineProperty(exports, &quot;__esModule&quot;, { value: true });
+const tslib_1 = require(&quot;tslib&quot;);
+const database_1 = require(&quot;../database&quot;);
+const listManager_1 = require(&quot;./listManager&quot;);
+const feedparser_promised_1 = tslib_1.__importDefault(require(&quot;feedparser-promised&quot;));
+const tools_1 = require(&quot;../tools&quot;);
+// scrape at an interval of 5 min
+const interval = 5 * 60 * 1000;
+// this one is every 10s
+// let interval = 10000;
+let paused = true;
+/**
+ * Notifies event listener of events for each fulfilled
+ * promise and calls the error listener for each rejected promise
+ * for the corresponding error listener of the event.
+ *
+ * @param {string} key - event key
+ * @param {Array&lt;Promise&lt;*&gt;&gt;} promises - promises to notify the listener if they resolve/reject
+ * @return {Promise&lt;void&gt;} resolves if all promises are rejected or resolved
+ */
+function notify(key, promises) {
+    return new Promise((resolve) =&gt; {
+        let fulfilled = 0;
+        if (!promises.length) {
+            resolve();
+        }
+        promises.forEach((promise) =&gt; {
+            promise
+                .then((value) =&gt; {
+                const callbacks = tools_1.getElseSet(eventMap, key, () =&gt; []);
+                callbacks.forEach((cb) =&gt; cb(value));
+            })
+                .catch((error) =&gt; {
+                const callbacks = tools_1.getElseSet(eventMap, key + &quot;:error&quot;, () =&gt; []);
+                callbacks.forEach((cb) =&gt; cb(error));
+            })
+                .finally(() =&gt; {
+                fulfilled++;
+                if (fulfilled === promises.length) {
+                    resolve();
+                }
+            });
+        });
+    });
+}
+/**
+ * @type {string}
+ */
+let lastListScrape;
+/**
+ * Scrape everything for one cycle, wait for a specified interval and scrape again.
+ * Output is send per event listener.
+ */
+async function scrape(dependants = scrapeDependants, next = true) {
+    if (paused) {
+        return;
+    }
+    const tocFinished = notify(&quot;toc&quot;, dependants.tocs.map((value) =&gt; toc(value)));
+    const newsFinished = notify(&quot;news&quot;, dependants.news.map((value) =&gt; news(value)));
+    const feedFinished = notify(&quot;feed&quot;, dependants.feeds.map((value) =&gt; feed(value)));
+    let newUserFinished = notify(&quot;list&quot;, dependants.oneTimeUser.map((value) =&gt; list(value)));
+    newUserFinished = newUserFinished.then(() =&gt; {
+        dependants.oneTimeUser.length = 0;
+    });
+    // todo add medium/toc? scrapes (mediumScrape == toc, or !=?)
+    const allPromises = [tocFinished, newsFinished, feedFinished, newUserFinished];
+    const today = new Date();
+    const todayString = today.toDateString();
+    // every monday scan every available external user, if not scanned on same day
+    const externals = await database_1.Storage.getScrapeExternalUser();
+    const listFinished = notify(&quot;list&quot;, externals.map((value) =&gt; list(value)));
+    allPromises.push(listFinished);
+    // save current run for users for this monday, so that it does not scan again today
+    lastListScrape = todayString;
+    // start next scrape cycle after all scrape parts are finished, regardless of errors or not
+    await Promise.all(allPromises);
+    if (next) {
+        setTimeout(() =&gt; scrape().catch(console.log), interval);
+    }
+}
+/**
+ *
+ * @param value
+ * @return {Promise&lt;void&gt;}
+ */
+async function news(value) {
+    // todo implement news scraping (from homepage, updates pages etc. which require page analyzing, NOT feed)
+}
+/**
+ *
+ * @param value
+ * @return {Promise&lt;void&gt;}
+ */
+async function toc(value) {
+    // todo implement toc scraping which requires page analyzing
+}
+/**
+ *
+ */
+async function list(value) {
+    const manager = listManager_1.factory(0);
+    manager.parseAndReplaceCookies(value.cookies);
+    try {
+        const lists = await manager.scrapeLists();
+        return { external: value, lists };
+    }
+    catch (e) {
+        return Promise.reject({ ...value, error: e });
+    }
+}
+// todo filter news with between now and last scrapDate
+/**
+ *
+ * @param {string} feedLink
+ * @return {Promise&lt;News&gt;}
+ */
+async function feed(feedLink) {
+    // noinspection JSValidateTypes
+    return feedparser_promised_1.default.parse(feedLink)
+        .then((items) =&gt; items.map((value) =&gt; {
+        return {
+            title: value.title,
+            link: value.link,
+            // fixme does this seem right?, current date as fallback?
+            date: value.pubdate || value.date || new Date(),
+        };
+    }))
+        .catch((error) =&gt; Promise.reject({ feed: feedLink, error }));
+}
+exports.scrapeTypes = {
+    LIST: 0,
+    FEED: 1,
+    NEWS: 2,
+    TOC: 3,
+};
+const eventMap = new Map();
+let scrapeDependants;
+/**
+ *
+ * @return {Promise&lt;void&gt;}
+ */
+async function setup() {
+    const scrapeBoard = await database_1.Storage.getScrapes();
+    const dependants = { feeds: [], tocs: [], oneTimeUser: [], news: [], media: [] };
+    scrapeBoard.forEach((value) =&gt; {
+        if (value.type === exports.scrapeTypes.NEWS) {
+            dependants.news.push(value);
+        }
+        else if (value.type === exports.scrapeTypes.FEED) {
+            dependants.feeds.push(value.link);
+        }
+        else if (value.type === exports.scrapeTypes.TOC) {
+            dependants.tocs.push(value);
+        }
+    });
+    scrapeDependants = dependants;
+}
+exports.setup = setup;
+/**
+ *
+ * @param {Dependant} dependant
+ */
+function add(dependant) {
+    const dependants = { feeds: [], tocs: [], oneTimeUser: [], news: [], media: [] };
+    // @ts-ignore
+    tools_1.addMultiSingle(dependants.oneTimeUser, dependant.oneTimeUser);
+    // @ts-ignore
+    tools_1.addMultiSingle(dependants.feeds, dependant.feed);
+    tools_1.addMultiSingle(dependants.news, dependant.news);
+    tools_1.addMultiSingle(dependants.tocs, dependant.toc);
+    tools_1.addMultiSingle(dependants.media, dependant.medium);
+    // kick of a cycle and if no error occurs: add it to permanent cycle
+    scrape(dependants, false).then(() =&gt; {
+        // @ts-ignore
+        tools_1.addMultiSingle(scrapeDependants.oneTimeUser, dependant.oneTimeUser);
+        // @ts-ignore
+        tools_1.addMultiSingle(scrapeDependants.feeds, dependant.feed);
+        tools_1.addMultiSingle(scrapeDependants.news, dependant.news);
+        tools_1.addMultiSingle(scrapeDependants.tocs, dependant.toc);
+        tools_1.addMultiSingle(scrapeDependants.media, dependant.medium);
+    }).catch(console.log);
+}
+exports.add = add;
+/**
+ *
+ * @param {Dependant} dependant
+ */
+function remove(dependant) {
+    // @ts-ignore
+    tools_1.removeMultiSingle(scrapeDependants.oneTimeUser, dependant.oneTimeUser);
+    // @ts-ignore
+    tools_1.removeMultiSingle(scrapeDependants.feeds, dependant.feed);
+    tools_1.removeMultiSingle(scrapeDependants.news, dependant.news);
+    tools_1.removeMultiSingle(scrapeDependants.tocs, dependant.toc);
+    tools_1.removeMultiSingle(scrapeDependants.media, dependant.medium);
+}
+exports.remove = remove;
+/**
+ *
+ */
+function pause() {
+    paused = true;
+}
+exports.pause = pause;
+/**
+ *
+ */
+function start() {
+    paused = false;
+    scrape().catch(console.log);
+}
+exports.start = start;
+function on(event, callback) {
+    const callbacks = tools_1.getElseSet(eventMap, event, () =&gt; []);
+    callbacks.push(callback);
+}
+exports.on = on;
+//# sourceMappingURL=scraper.js.map</textarea>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <p>.</p>
+  </div>
+</footer>
+
+<script type="text/html" id="complexity-popover-template">
+  <div class="complexity-notice">
+    Complexity : {{ cyclomatic }} <br>
+    Length : {{ halstead.length }} <br>
+    Difficulty : {{ halstead.difficulty.toFixed(2) }} <br>
+    Est # bugs : {{ halstead.bugs.toFixed(2) }}<br>
+  </div>
+</script>
+
+<script type="text/javascript" src="../../assets/scripts/bundles/core-bundle.js"></script>
+<script type="text/javascript" src="../../assets/scripts/bundles/codemirror.js"></script>
+<script type="text/javascript" src="../../assets/scripts/codemirror.markpopovertext.js"></script>
+<script type="text/javascript" src="report.js"></script>
+<script type="text/javascript" src="report.history.js"></script>
+<script type="text/javascript" src="../../assets/scripts/plato-file.js"></script>
+</body>
+</html>

@@ -37,7 +37,6 @@ build/Release
 # Dependency directories
 node_modules/
 exampleData/
-dist/
 binJs/
 tests/
 changes.md
@@ -91,7 +90,6 @@ typings/
 out
 gen
 *.heapsnapshot
-output/
 server/bin/externals/direct/webnovelTocResponse 04.19.json
 server/bin/externals/direct/wwSearchResponse.json
 server/bin/plato.d.ts
@@ -102,3 +100,8 @@ src/**/*.vue.js
 src/**/*.vue.js.map
 start server.bat
 /**/ecosystem.config.js
+dist/
+output/
+server/dist/
+!/output/
+!/server/dist/
