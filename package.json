@@ -5,8 +5,8 @@
   "scripts": {
     "pm2": "pm2 start",
     "pm2:refresh": "pm2 restart ecosystem.config.js --update-env",
-    "start": "node server/dist/start.js",
-    "start:server": "node server/dist/start.js",
+    "start": "node server/dist/startServer.js",
+    "start:server": "node server/dist/startServer.js",
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
