@@ -99,9 +99,3 @@ server/bin/visualize.ts
 src/**/*.vue.js
 src/**/*.vue.js.map
 start server.bat
-/**/ecosystem.config.js
-dist/
-output/
-server/dist/
-!/output/
-!/server/dist/
