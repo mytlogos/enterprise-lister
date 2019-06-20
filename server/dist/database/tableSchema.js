@@ -20,7 +20,7 @@ class TableSchema {
                 columns.push(...this.foreignKeys.map((value) => {
                     const foreignKey = value.foreignKey;
                     // @ts-ignore
-                    return `FOREIGN KEY ${value.name} REFERENCES ${foreignKey.table.name}(${foreignKey.name})`;
+                    return `FOREIGN KEY (${value.name}) REFERENCES ${foreignKey.table.name}(${foreignKey.name})`;
                 }));
             }
             if (this.primaryKeys.length) {
