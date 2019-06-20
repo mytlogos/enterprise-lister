@@ -17,7 +17,16 @@ class ColumnSchema {
     }
     getSchema() {
         const thisDef = this.default;
-        const defValue = thisDef ? " DEFAULT " + thisDef in databaseTypes_1.SqlFunction ? thisDef : promise_mysql_1.default.escape(thisDef) : "";
+        let defValue = " ";
+        if (thisDef) {
+            const values = Object.values(databaseTypes_1.SqlFunction);
+            if (values.includes(thisDef.trim())) {
+                defValue += "DEFAULT " + thisDef;
+            }
+            else {
+                defValue += promise_mysql_1.default.escape(thisDef);
+            }
+        }
         const type = this.type === databaseTypes_1.ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
         return `${this.name} ${type} ${this.modifiers.join(" ")}${defValue}`;
     }

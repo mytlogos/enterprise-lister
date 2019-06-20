@@ -10,11 +10,11 @@ export class ColumnSchema {
     public readonly modifiers: Modifier[];
     public readonly primaryKey?: boolean;
     public readonly foreignKey?: ColumnSchema;
-    public readonly default?: any | SqlFunction;
+    public readonly default?: string | SqlFunction;
     public readonly primaryKeyTypeSize?: number;
 
     constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean,
-                foreignKey?: ColumnSchema, defaultV?: any | SqlFunction, primaryKeyTypeSize?: number) {
+                foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number) {
 
         this.name = name;
         this.type = type;
@@ -30,9 +30,17 @@ export class ColumnSchema {
 
     public getSchema(): string {
         const thisDef = this.default;
-        const defValue = thisDef ? " DEFAULT " + thisDef in SqlFunction ? thisDef : mySql.escape(thisDef) : "";
-        const type = this.type === ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
+        let defValue: string | SqlFunction.NOW = " ";
 
+        if (thisDef) {
+            const values = Object.values(SqlFunction);
+            if (values.includes(thisDef.trim())) {
+                defValue += "DEFAULT " + thisDef;
+            } else {
+                defValue += mySql.escape(thisDef);
+            }
+        }
+        const type = this.type === ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
         return `${this.name} ${type} ${this.modifiers.join(" ")}${defValue}`;
     }
 }
