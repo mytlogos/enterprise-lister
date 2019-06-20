@@ -76,7 +76,7 @@ export class TableBuilder {
             [...this.columns, ...this.stubTable.columns], this.name, this.main,
             this.invalidationColumn, this.invalidationTable
         );
-        this.columns.forEach((value) => value.table = table);
+        table.columns.forEach((value) => value.table = table);
         this.databaseBuilder.addTable(table, this.invalidations);
         return table;
     }

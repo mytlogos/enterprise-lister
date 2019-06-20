@@ -44,6 +44,8 @@ interface StateProcessorImpl extends StateProcessor {
 
     startRound(): Promise<string[]>;
 
+    checkTableSchema(context: QueryContext): Promise<void>;
+
     checkTables(tables: any, track: string[], ignore: string[]): void;
 
     initTableSchema(database: DatabaseSchema): void;

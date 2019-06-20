@@ -30,6 +30,12 @@ export class TableSchema {
             if (this.foreignKeys.length) {
                 columns.push(...this.foreignKeys.map((value) => {
                     const foreignKey = value.foreignKey;
+                    if (!foreignKey) {
+                        throw Error("invalid foreign key: is undefined");
+                    }
+                    if (!foreignKey.table || !foreignKey.table.name) {
+                        throw Error("invalid foreign key: empty table");
+                    }
                     // @ts-ignore
                     return `FOREIGN KEY (${value.name}) REFERENCES ${foreignKey.table.name}(${foreignKey.name})`;
                 }));
