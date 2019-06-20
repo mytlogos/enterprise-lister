@@ -62,8 +62,17 @@ function onListening() {
             ? "pipe " + address
             : "port " + address.port;
         const networkInterfaces = os_1.default.networkInterfaces();
-        const foundIpInterface = networkInterfaces.Ethernet.find((value) => value.family === "IPv4");
-        debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
+        for (const arrays of Object.values(networkInterfaces)) {
+            if (!Array.isArray(arrays)) {
+                continue;
+            }
+            const foundIpInterface = arrays.find((value) => value.family === "IPv4");
+            if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
+                continue;
+            }
+            debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
+            break;
+        }
     }
 }
 //# sourceMappingURL=startServer.js.map
