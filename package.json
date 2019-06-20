@@ -16,7 +16,6 @@
     "buildServer": "tsc -p server/tsconfig.json"
   },
   "dependencies": {
-    "@types/winston": "^2.4.4",
     "bcrypt-nodejs": "0.0.3",
     "cheerio": "^1.0.0-rc.2",
     "compression": "^1.7.3",
@@ -66,13 +65,13 @@
     "@types/node": "11.9.5",
     "@types/request-promise-native": "^1.0.15",
     "@types/uuid": "^3.4.4",
+    "@types/validate.js": "latest",
     "@types/websocket": "0.0.40",
     "@types/winston": "latest",
-    "@types/validate.js": "latest",
     "@vue/cli-plugin-babel": "^3.3.0",
     "@vue/cli-plugin-e2e-cypress": "^3.3.0",
     "@vue/cli-plugin-typescript": "^3.3.0",
-    "@vue/cli-plugin-unit-jest": "^3.7.0",
+    "@vue/cli-plugin-unit-jest": "^3.8.0",
     "@vue/cli-service": "^3.7.0",
     "@vue/test-utils": "^1.0.0-beta.20",
     "babel-core": "7.0.0-bridge.0",

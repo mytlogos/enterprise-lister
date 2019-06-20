@@ -18,8 +18,9 @@ class TableSchema {
             columns.push(...this.columns.map((value) => value.getSchema()));
             if (this.foreignKeys.length) {
                 columns.push(...this.foreignKeys.map((value) => {
+                    const foreignKey = value.foreignKey;
                     // @ts-ignore
-                    return `${value.name} REFERENCES ${value.foreignKey.table.name}(${value.foreignKey.name})`;
+                    return `FOREIGN KEY ${value.name} REFERENCES ${foreignKey.table.name}(${foreignKey.name})`;
                 }));
             }
             if (this.primaryKeys.length) {
