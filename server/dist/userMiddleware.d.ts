@@ -1,5 +1,9 @@
 import { Handler, IRoute } from "express";
 declare type RouteMiddleWare = (route: IRoute) => void;
+export declare const readNews: Handler;
+export declare const processReadEpisode: Handler;
+export declare const processProgress: Handler;
+export declare const refreshExternalUser: Handler;
 export declare const processResult: Handler;
 export declare const saveResult: Handler;
 export declare const checkLogin: Handler;

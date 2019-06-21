@@ -35,18 +35,32 @@ function userRouter(): Router {
 
     router.post("/logout", UserApi.logout);
     router.get("/lists", UserApi.getLists);
-    router.get("/news", UserApi.getNews);
     router.get("/invalidated", UserApi.getInvalidated);
     router.post("/bookmarked", UserApi.addBookmarked);
     router.post("/toc", UserApi.addToc);
     router.get("/download", UserApi.downloadEpisode);
-
     router.use("/medium", mediumRouter());
+
+    router.get("/news", newsRouter());
     router.use("/list", listRouter());
     router.use("/process", processRouter());
+    router.use("/externalUser", externalUserRouter());
 
-    UserApi.addExternalUserApi(router.route("/externalUser"));
     UserApi.addSuggestionsRoute(router.route("/suggestion"));
+    return router;
+}
+
+function newsRouter() {
+    const router = Router();
+    router.post("/read", UserApi.readNews);
+    router.get("", UserApi.getNews);
+    return router;
+}
+
+function externalUserRouter() {
+    const router = Router();
+    router.get("/refresh", UserApi.refreshExternalUser);
+    UserApi.addExternalUserApi(router.route(""));
     return router;
 }
 
@@ -65,6 +79,8 @@ function listRouter(): Router {
 function processRouter(): Router {
     const router = Router();
     router.post("/result", UserApi.processResult);
+    router.post("/read", UserApi.processReadEpisode);
+    router.post("/progress", UserApi.processProgress);
     return router;
 }
 

@@ -1,6 +1,5 @@
 import * as scraper from "./externals/scraper";
 import {Storage} from "./database/database";
-import {sendMessage} from "./websocketManager";
 import {Errors, getElseSet, isTocEpisode, isTocPart, Md5Hash, multiSingle} from "./tools";
 import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {Episode, ExternalList, LikeMedium, News, Part, SimpleEpisode, SimpleMedium} from "./types";
@@ -367,70 +366,18 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
     return foundLikeMedia;
 }
 
-/**
- *
- */
-async function listHandler(result: {
-    external: { cookies: string, uuid: string, userUuid: string, type: number },
-    lists: ListScrapeResult;
-})
-    : Promise<void> {
+interface ChangeContent {
+    removedLists: any;
+    result: { external: { cookies: string; uuid: string; userUuid: string; type: number }; lists: ListScrapeResult };
+    addedLists: ScrapeList[];
+    renamedLists: ScrapeList[];
+    allLists: ExternalList[];
+    lists: any;
+}
 
-    const feeds = result.lists.feed;
-    const lists = result.lists.lists;
-    const media = result.lists.media;
-
-    // list of media, which are referenced in the scraped lists
-    const likeMedia = await processMedia(media, result.external.type, result.external.userUuid);
-    // add feeds to the storage and add them to the scraper
-    await addFeeds(feeds);
-
-    const currentLists = await Storage.getExternalLists(result.external.uuid);
-
-    // all available stored list, which lie on the same index as the scraped lists
-    const allLists: ExternalList[] = [];
-    // new lists, which should be added to the storage
-    const addedLists: ScrapeList[] = [];
-    // all renamed lists
-    const renamedLists: ScrapeList[] = [];
-
-    lists.forEach((scrapeList, index) => {
-        // check whether there is some list with the same name
-        let listIndex = currentLists.findIndex((list) => list.name === scrapeList.name);
-
-        if (listIndex < 0) {
-            // check whether there is some list with the same link even if it is another name
-            listIndex = currentLists.findIndex((list) => list.url === scrapeList.link);
-
-            // list was renamed if link is the same
-            if (listIndex >= 0) {
-                renamedLists.push(scrapeList);
-            }
-        }
-
-        // if scraped list is neither link or title matched, treat is as a newly added list
-        if (listIndex < 0) {
-            addedLists.push(scrapeList);
-        } else {
-            allLists[index] = currentLists[listIndex];
-        }
-
-        // map the scrapeMedia to their id in the storage
-        // @ts-ignore
-        scrapeList.media = scrapeList.media.map((scrapeMedium: ScrapeMedium) => {
-            const likeMedium = likeMedia.find((like: LikeMedium) => {
-                return like && like.link === scrapeMedium.title.link;
-            });
-            if (!likeMedium || !likeMedium.medium) {
-                throw Error("missing medium in storage for " + scrapeMedium.title.link);
-            }
-            return likeMedium.medium.id;
-        });
-    });
-    // lists that are not in the scraped lists => lists that were deleted
-    const removedLists = currentLists.filter((value) => !allLists.includes(value)).map((value) => value.id);
+async function updateDatabase({removedLists, result, addedLists, renamedLists, allLists, lists}: ChangeContent) {
+    // TODO: check if this whole message thing is solved with invalidation table from database
     const message: any = {};
-
     const promisePool = [];
 
     if (removedLists.length) {
@@ -557,7 +504,80 @@ async function listHandler(result: {
         }));
 
     await Promise.all(promisePool);
-    sendMessage(result.external.userUuid, message);
+    return message;
+}
+
+/**
+ *
+ */
+async function listHandler(result: {
+    external: { cookies: string, uuid: string, userUuid: string, type: number },
+    lists: ListScrapeResult;
+})
+    : Promise<void> {
+
+    const feeds = result.lists.feed;
+    const lists = result.lists.lists;
+    const media = result.lists.media;
+
+    // list of media, which are referenced in the scraped lists
+    const likeMedia = await processMedia(media, result.external.type, result.external.userUuid);
+    // add feeds to the storage and add them to the scraper
+    await addFeeds(feeds);
+
+    const currentLists = await Storage.getExternalLists(result.external.uuid);
+
+    // all available stored list, which lie on the same index as the scraped lists
+    const allLists: ExternalList[] = [];
+    // new lists, which should be added to the storage
+    const addedLists: ScrapeList[] = [];
+    // all renamed lists
+    const renamedLists: ScrapeList[] = [];
+
+    lists.forEach((scrapeList, index) => {
+        // check whether there is some list with the same name
+        let listIndex = currentLists.findIndex((list) => list.name === scrapeList.name);
+
+        if (listIndex < 0) {
+            // check whether there is some list with the same link even if it is another name
+            listIndex = currentLists.findIndex((list) => list.url === scrapeList.link);
+
+            // list was renamed if link is the same
+            if (listIndex >= 0) {
+                renamedLists.push(scrapeList);
+            }
+        }
+
+        // if scraped list is neither link or title matched, treat is as a newly added list
+        if (listIndex < 0) {
+            addedLists.push(scrapeList);
+        } else {
+            allLists[index] = currentLists[listIndex];
+        }
+
+        // map the scrapeMedia to their id in the storage
+        // @ts-ignore
+        scrapeList.media = scrapeList.media.map((scrapeMedium: ScrapeMedium) => {
+            const likeMedium = likeMedia.find((like: LikeMedium) => {
+                return like && like.link === scrapeMedium.title.link;
+            });
+            if (!likeMedium || !likeMedium.medium) {
+                throw Error("missing medium in storage for " + scrapeMedium.title.link);
+            }
+            return likeMedium.medium.id;
+        });
+    });
+    // lists that are not in the scraped lists => lists that were deleted
+    const removedLists = currentLists.filter((value) => !allLists.includes(value)).map((value) => value.id);
+
+    await updateDatabase({
+        removedLists,
+        result,
+        addedLists,
+        renamedLists,
+        allLists,
+        lists
+    });
 }
 
 async function newsHandler({link, result}: { link: string, result: News[] }) {

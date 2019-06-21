@@ -3,9 +3,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const database_1 = require("./database/database");
 const listManager_1 = require("./externals/listManager");
-const logger_1 = tslib_1.__importDefault(require("./logger"));
+const logger_1 = tslib_1.__importStar(require("./logger"));
 const scraper_1 = require("./externals/scraper");
 const tools_1 = require("./tools");
+exports.readNews = (req, res) => {
+    const { uuid, read } = req.body;
+    if (!read || !tools_1.isString(read)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+    }
+    const currentlyReadNews = tools_1.stringToNumberList(read);
+    sendResult(res, database_1.Storage.markNewsRead(uuid, currentlyReadNews));
+};
+exports.processReadEpisode = (req, res) => {
+    const { uuid, result } = req.body;
+    sendResult(res, database_1.Storage.markEpisodeRead(uuid, result));
+};
+exports.processProgress = (req, res) => {
+    const { uuid, progress } = req.body;
+    sendResult(res, database_1.Storage.setProgress(uuid, progress));
+};
+exports.refreshExternalUser = (req, res) => {
+    const uuid = extractQueryParam(req, "externalUuid");
+    const externalUserWithCookies = database_1.Storage.getExternalUserWithCookies(uuid);
+    sendResult(res, externalUserWithCookies.then((value) => !!value));
+    externalUserWithCookies
+        .then((externalUser) => scraper_1.add({ oneTimeUser: externalUser }))
+        .catch((error) => logger_1.logError(error));
+};
 exports.processResult = (req, res) => {
     sendResult(res, database_1.Storage.processResult(req.body));
 };

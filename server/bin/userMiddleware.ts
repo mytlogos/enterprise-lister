@@ -1,11 +1,43 @@
 import {Storage} from "./database/database";
 import {factory} from "./externals/listManager";
 import {Handler, IRoute, Request, Response} from "express";
-import logger from "./logger";
+import logger, {logError} from "./logger";
 import {add as addDependant, downloadEpisodes} from "./externals/scraper";
 import {Errors, isError, isString, stringToNumberList} from "./tools";
 
 type RouteMiddleWare = (route: IRoute) => void;
+
+
+export const readNews: Handler = (req, res) => {
+    const {uuid, read} = req.body;
+    if (!read || !isString(read)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    }
+    const currentlyReadNews = stringToNumberList(read);
+
+    sendResult(res, Storage.markNewsRead(uuid, currentlyReadNews));
+};
+
+export const processReadEpisode: Handler = (req, res) => {
+    const {uuid, result} = req.body;
+    sendResult(res, Storage.markEpisodeRead(uuid, result));
+};
+
+export const processProgress: Handler = (req, res) => {
+    const {uuid, progress} = req.body;
+    sendResult(res, Storage.setProgress(uuid, progress));
+};
+
+export const refreshExternalUser: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "externalUuid");
+
+    const externalUserWithCookies = Storage.getExternalUserWithCookies(uuid);
+    sendResult(res, externalUserWithCookies.then((value) => !!value));
+
+    externalUserWithCookies
+        .then((externalUser) => addDependant({oneTimeUser: externalUser}))
+        .catch((error) => logError(error));
+};
 
 export const processResult: Handler = (req, res) => {
     sendResult(res, Storage.processResult(req.body));

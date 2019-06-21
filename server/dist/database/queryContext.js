@@ -1786,7 +1786,6 @@ class QueryContext {
      * @private
      */
     _query(query, parameter) {
-        // return Promise.resolve()
         return databaseValidator_1.StateProcessor
             .validateQuery(query, parameter)
             .then(() => this.con.query(query, parameter))

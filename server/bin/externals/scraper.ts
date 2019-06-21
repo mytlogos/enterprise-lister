@@ -95,6 +95,8 @@ async function scrape(dependants = scrapeDependants, next = true) {
         return;
     }
 
+    const startTime = Date.now();
+
     const tocFinished = notify("toc", dependants.tocs.map((value) => toc(value)));
     const newsFinished = notify("news", dependants.news.map((value) => news(value)));
     const feedFinished = notify("feed", dependants.feeds.map((value) => feed(value)));
@@ -132,6 +134,9 @@ async function scrape(dependants = scrapeDependants, next = true) {
 
     // start next scrape cycle after all scrape parts are finished, regardless of errors or not
     await Promise.all(allPromises);
+
+    const duration = Date.now() - startTime;
+    logger.info(`Scrape Cycle took ${duration} ms`);
 
     if (next) {
         setTimeout(() => scrape().catch((error) => {
@@ -559,7 +564,6 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
             }
         }
 
-        console.log(`checking link '${link}'`);
         queueRequestFullResponse(link)
             .then((response) => {
                 const href = response.request.uri.href;

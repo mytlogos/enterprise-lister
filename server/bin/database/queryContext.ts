@@ -2286,7 +2286,6 @@ export class QueryContext {
      * @private
      */
     private _query(query: string, parameter?: any | any[]): Promise<any> {
-        // return Promise.resolve()
         return StateProcessor
             .validateQuery(query, parameter)
             .then(() => this.con.query(query, parameter))

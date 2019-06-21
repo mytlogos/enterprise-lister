@@ -29,6 +29,8 @@ const UpdateParser = {
         }
         const column = tableMeta.primaryKeys.find((value) => value.name === idConditionColumnName);
         if (!column) {
+            // TODO: 21.06.2019 somehow do this
+            //  search for other possible keys, like foreign keys which are primary keys?
             logger_1.default.warn(`condition column is not a primary key: '${idConditionColumnName}'`);
             return null;
         }
@@ -373,7 +375,7 @@ const StateProcessorImpl = {
                 affectedRows: value.affectedRows,
                 uuid
             });
-            logger_1.default.info(`Query: '${query}', Parameter: '${parameter}'`);
+            logger_1.default.silly(`Query: '${query}', Parameter: '${parameter}'`);
         }
         return value;
     },
@@ -430,7 +432,6 @@ const StateProcessorImpl = {
                 }
             });
         }
-        console.log(`${queries.length} queries to: ${invalidationQueries}`);
         return invalidationQueries;
     },
     initTableSchema(database) {

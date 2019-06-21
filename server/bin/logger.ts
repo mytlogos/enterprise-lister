@@ -32,7 +32,7 @@ if (process.env.NODE_ENV !== "production") {
                     return `${info.timestamp} ${info.level}: ${info.message}`;
                 }
             })
-        )
+        ),
     }));
 }
 

@@ -28,7 +28,7 @@ if (process.env.NODE_ENV !== "production") {
             else {
                 return `${info.timestamp} ${info.level}: ${info.message}`;
             }
-        }))
+        })),
     }));
 }
 process.on("unhandledRejection", (reason, promise) => {

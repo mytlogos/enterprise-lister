@@ -60,7 +60,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("medium INT NOT NULL")
     .parseColumn("url VARCHAR(200) NOT NULL")
     .parseMeta("PRIMARY KEY(id)")
-    .parseMeta("FOREIGN KEY(user_uuid) REFERENCES user(uuid)")
+    .parseMeta("FOREIGN KEY(user_uuid) REFERENCES external_user(uuid)")
     .build();
 dataBaseBuilder.getTableBuilder()
     .setName("medium")
