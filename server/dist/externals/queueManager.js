@@ -2,8 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const cloudscraper_1 = tslib_1.__importDefault(require("cloudscraper"));
+const request_1 = tslib_1.__importDefault(require("request"));
+const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
+const parse5_parser_stream_1 = tslib_1.__importDefault(require("parse5-parser-stream"));
+const parse5_1 = tslib_1.__importDefault(require("parse5"));
+const htmlparser2_1 = tslib_1.__importStar(require("htmlparser2"));
+const transform_1 = require("../transform");
 class Queue {
-    constructor() {
+    constructor(maxLimit = 1000) {
+        this.maxLimit = maxLimit > 10 ? maxLimit : 10;
+        this.limitVariation = this.maxLimit / 2;
         this.queue = [];
         this.working = false;
     }
@@ -33,24 +41,25 @@ class Queue {
             return;
         }
         worker().finally(() => {
-            // start next work ranging from 500 to 1000 ms
-            const randomDuration = 1000 - Math.random() * 500;
+            // start next work ranging from maxLimit / 2 to maxLimit ms
+            const randomDuration = this.maxLimit - Math.random() * (this.maxLimit / 2);
             setTimeout(() => this.doWork(), randomDuration);
         });
     }
 }
 const queues = new Map();
+const fastQueues = new Map();
 const domainReg = /https?:\/\/(.+?)\//;
-function processRequest(uri, otherRequest) {
+function processRequest(uri, otherRequest, queueToUse = queues, limit) {
     const exec = domainReg.exec(uri);
     if (!exec) {
         throw Error("not a valid url");
     }
     // get the host of the uri
     const host = exec[1];
-    let queue = queues.get(host);
+    let queue = queueToUse.get(host);
     if (!queue) {
-        queues.set(host, queue = new Queue());
+        queueToUse.set(host, queue = new Queue(limit));
     }
     const toUseRequest = otherRequest || cloudscraper_1.default;
     return { toUseRequest, queue };
@@ -59,18 +68,146 @@ exports.queueRequest = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
     return queue.push(() => toUseRequest.get(uri, options));
 };
-exports.queueRequestFullResponse = (uri, options, otherRequest) => {
+exports.queueCheerioRequestBuffered = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
     if (!options) {
-        options = { resolveWithFullResponse: true, uri };
+        options = { uri };
     }
-    return queue.push(() => toUseRequest.get(options));
+    options.transform = transformCheerio;
+    return queue.push(() => toUseRequest.get(uri, options));
 };
-exports.queueWork = (key, callback) => {
-    let queue = queues.get(key);
+function streamParse5(resolve, reject, uri, options) {
+    // i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly
+    // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
+    //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
+    //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
+    const parser = new parse5_parser_stream_1.default({ treeAdapter: parse5_1.default.treeAdapters.htmlparser2 });
+    parser.on("finish", () => {
+        if (parser.document && parser.document.children) {
+            // @ts-ignore
+            const load = cheerio_1.default.load(parser.document.children);
+            if (load) {
+                resolve(load);
+            }
+            else {
+                reject("Document could not be loaded");
+            }
+        }
+        else {
+            reject("No Document parsed");
+        }
+    });
+    const stream = new transform_1.BufferToStringStream();
+    stream.on("data", (chunk) => console.log("first chunk:\n " + chunk.substring(0, 100)));
+    request_1.default
+        .get(uri, options)
+        .on("response", (resp) => {
+        resp.pause();
+        if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
+            resp.destroy();
+            if (!options) {
+                options = { uri };
+            }
+            options.transform = transformCheerio;
+            resolve(cloudscraper_1.default(options));
+            return;
+        }
+        resp.pipe(stream).pipe(parser);
+    })
+        .on("error", (e) => {
+        reject(e);
+    });
+    return options;
+}
+function streamHtmlParser2(resolve, reject, uri, options) {
+    // TODO: 22.06.2019 seems to produce sth bad, maybe some error in how i stream the buffer to string?
+    // TODO: 22.06.2019 seems to throw this error primarily (noticed there only) on webnovel.com, parts are messed up
+    const parser = new htmlparser2_1.default.WritableStream(new htmlparser2_1.DomHandler((error, dom) => {
+        // @ts-ignore
+        const load = cheerio_1.default.load(dom);
+        resolve(load);
+    }, {
+        withDomLvl1: true,
+        normalizeWhitespace: false,
+    }), {
+        decodeEntities: true,
+    }).on("error", (err) => reject(err));
+    const stream = new transform_1.BufferToStringStream();
+    request_1.default
+        .get(uri, options)
+        .on("response", (resp) => {
+        resp.pause();
+        if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
+            resp.destroy();
+            if (!options) {
+                options = { uri };
+            }
+            options.transform = transformCheerio;
+            resolve(cloudscraper_1.default(options));
+            return;
+        }
+        resp.pipe(stream).pipe(parser);
+    })
+        .on("error", (e) => {
+        reject(e);
+    });
+    return options;
+}
+exports.queueCheerioRequestStream = (uri, options) => {
+    const { queue } = processRequest(uri);
+    if (!options) {
+        options = { uri };
+    }
+    return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
+};
+exports.queueCheerioRequest = exports.queueCheerioRequestBuffered;
+const transformCheerio = (body) => cheerio_1.default.load(body);
+const queueFullResponseWithLimit = (uri, options, otherRequest, queueToUse = queues, limit) => {
+    const { toUseRequest, queue } = processRequest(uri, otherRequest, queueToUse, limit);
+    // @ts-ignore
+    const requestOptions = options || {};
+    requestOptions.resolveWithFullResponse = true;
+    // @ts-ignore
+    requestOptions.uri = uri;
+    return queue
+        .push(() => requestOptions.method ? toUseRequest(requestOptions) : toUseRequest.get(requestOptions))
+        .then((value) => {
+        return value;
+    });
+};
+// TODO: 21.06.2019 use stream to load with parse5 streamer with request into cheerio
+exports.queueRequestFullResponse = (uri, options, otherRequest) => {
+    return queueFullResponseWithLimit(uri, options, otherRequest);
+};
+exports.queueFastRequestFullResponse = (uri, options, otherRequest) => {
+    return queueFullResponseWithLimit(uri, options, otherRequest, fastQueues, 100);
+};
+function queueWithLimit(key, callback, limit, queueToUse) {
+    queueToUse = queueToUse || queues;
+    let queue = queueToUse.get(key);
     if (!queue) {
-        queues.set(key, queue = new Queue());
+        queueToUse.set(key, queue = new Queue(limit));
     }
     return queue.push(callback);
+}
+exports.queueWork = (key, callback) => {
+    return queueWithLimit(key, callback);
 };
+exports.queueFastWork = (key, callback) => {
+    return queueWithLimit(key, callback, 50, fastQueues);
+};
+/*
+parse5-parser-stream
+
+// Fetch the page content and obtain it's <head> node
+http.get('http://inikulin.github.io/parse5/', res => {
+    const parser = new ParserStream();
+
+    parser.once('finish', () => {
+        console.log(parser.document.childNodes[1].childNodes[0].tagName); //> 'head'
+    });
+
+    res.pipe(parser);
+});
+ */
 //# sourceMappingURL=queueManager.js.map

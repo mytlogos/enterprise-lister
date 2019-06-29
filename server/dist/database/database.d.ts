@@ -5,7 +5,7 @@ declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
  * Creates the context for QueryContext, to
  * query a single connection sequentially.
  */
-export declare function inContext<T>(callback: ContextCallback<T>, transaction?: boolean, allowDatabase?: boolean): Promise<T>;
+export declare function inContext<T>(callback: ContextCallback<T>, transaction?: boolean): Promise<T>;
 export interface Storage {
     getPageInfo(link: string, key: string): Promise<{
         link: string;

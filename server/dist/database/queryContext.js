@@ -98,8 +98,6 @@ class QueryContext {
         if (!exists) {
             await this._query(`CREATE DATABASE ${database};`);
         }
-        // set database as current database
-        await this.useDatabase();
         // display all current tables
         const tables = await this._query("SHOW TABLES;");
         // create tables which do not exist
@@ -123,7 +121,7 @@ class QueryContext {
     createTable(table, columns) {
         return this._query(`CREATE TABLE ${promise_mysql_1.default.escapeId(table)} (${columns.join(", ")});`);
     }
-    dropTable() {
+    showTables() {
         return this._query("SHOW TABLES;");
     }
     /**
@@ -317,6 +315,7 @@ class QueryContext {
      */
     async getList(listId, media, uuid) {
         const toLoadMedia = new Set();
+        // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         const lists = await tools_1.promiseMultiSingle(listId, async (id) => {
             const result = await this._query("SELECT * FROM reading_list WHERE id = ?;", id);
@@ -432,7 +431,7 @@ class QueryContext {
             "ORDER BY episode.totalIndex DESC, episode.partialIndex DESC " +
             "LIMIT 5;", mediumId);
         // @ts-ignore
-        return Promise.all(Array.prototype.map.call(resultArray, async (rawEpisode) => {
+        return Promise.all(resultArray.map(async (rawEpisode) => {
             const releases = await this.getReleases(rawEpisode.id);
             return {
                 id: rawEpisode.id,
@@ -446,7 +445,7 @@ class QueryContext {
     async getReleases(episodeId) {
         const resultArray = await this._query("SELECT * FROM episode_release WHERE episode_id=?", episodeId);
         // @ts-ignore
-        return Array.prototype.map.call(resultArray, (value) => {
+        return resultArray.map((value) => {
             return {
                 episodeId: value.episode_id,
                 sourceType: value.source_type,
@@ -457,6 +456,7 @@ class QueryContext {
         });
     }
     getSimpleMedium(id) {
+        // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return tools_1.promiseMultiSingle(id, async (mediumId) => {
             const resultArray = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
@@ -491,6 +491,7 @@ class QueryContext {
      * Gets one or multiple media from the storage.
      */
     getMedium(id, uuid) {
+        // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return tools_1.promiseMultiSingle(id, async (mediumId) => {
             let result = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
@@ -521,7 +522,7 @@ class QueryContext {
                 stateTL: result.stateTL,
                 series: result.series,
                 universe: result.universe,
-                parts: Array.from(partsResult).map((packet) => packet.id),
+                parts: partsResult.map((packet) => packet.id),
                 currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
                 latestReleases: latestReleasesResult.map((packet) => packet.id),
                 unreadEpisodes: unReadResult.map((packet) => packet.id),
@@ -539,7 +540,7 @@ class QueryContext {
             let result = await this._query("SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
                 "(SELECT medium_id FROM scrape_board WHERE medium_id IS NOT NULL AND link LIKE ?);", [escapedTitle, escapedLinkQuery]);
             if (value.type != null) {
-                result = Array.prototype.filter.call(result, (medium) => medium.medium === value.type);
+                result = result.filter((medium) => medium.medium === value.type);
             }
             return {
                 medium: result[0],
@@ -573,6 +574,7 @@ class QueryContext {
      */
     async getMediumParts(mediumId, uuid) {
         const parts = await this._query("SELECT * FROM part WHERE medium_id = ?", mediumId);
+        // TODO: 29.06.2019 replace with part_id IN (...), replace querying every single episode with querying all in one
         // recreate shallow parts
         // @ts-ignore
         return Promise.all(parts.map(async (value) => {
@@ -599,6 +601,7 @@ class QueryContext {
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
     getMediumPartsPerIndex(mediumId, index, uuid) {
+        // TODO: 29.06.2019 replace totalIndex IN (...), replace querying every single episode with querying all in one
         // @ts-ignore
         return tools_1.promiseMultiSingle(index, async (totalIndex) => {
             const parts = await this._query("SELECT * FROM part WHERE medium_id = ? AND totalIndex=?", [mediumId, totalIndex]);
@@ -612,7 +615,7 @@ class QueryContext {
                 value.episodes = await Promise.all(episodes.map((episode) => this.getEpisode(episode.id, uuid)));
             }
             else {
-                await Promise.all(Array.prototype.map.call(episodes, (episode) => {
+                await Promise.all(episodes.map((episode) => {
                     return this.getReleases(episode.id).then((releases) => episode.releases = releases);
                 }));
                 value.episodes = episodes;
@@ -631,6 +634,7 @@ class QueryContext {
      * Returns all parts of an medium.
      */
     getParts(partId, uuid) {
+        // TODO: 29.06.2019 replace id IN (...), replace querying every single episode with querying all in one
         // @ts-ignore
         return tools_1.promiseMultiSingle(partId, async (value) => {
             const partArray = await this._query("SELECT * FROM part WHERE id = ?", value);
@@ -706,10 +710,12 @@ class QueryContext {
         return false;
     }
     async addRelease(episodeId, releases) {
+        // TODO: 29.06.2019 replace with VALUES(....),(...),(....)
         // @ts-ignore
         return tools_1.promiseMultiSingle(releases, (release) => {
             release.episodeId = episodeId;
-            return this._query("INSERT IGNORE INTO episode_release " +
+            return this
+                ._query("INSERT IGNORE INTO episode_release " +
                 "(episode_id, title, url, source_type, releaseDate) " +
                 "VALUES (?,?,?,?,?);", [
                 episodeId,
@@ -717,14 +723,17 @@ class QueryContext {
                 release.url,
                 release.sourceType,
                 release.releaseDate
-            ]).then(() => release);
+            ])
+                .then(() => release);
         });
     }
     getSourcedReleases(sourceType, mediumId) {
-        return this._query("SELECT url, episode_release.title FROM episode_release " +
+        return this
+            ._query("SELECT url, episode_release.title FROM episode_release " +
             "INNER JOIN episode ON episode.id=episode_release.episode_id " +
             "INNER JOIN part ON part.id=episode.part_id " +
-            "WHERE source_type=? AND medium_id=?;", [sourceType, mediumId]).then((resultArray) => resultArray.map((value) => {
+            "WHERE source_type=? AND medium_id=?;", [sourceType, mediumId])
+            .then((resultArray) => resultArray.map((value) => {
             value.sourceType = sourceType;
             value.mediumId = mediumId;
             return value;
@@ -762,6 +771,7 @@ class QueryContext {
      * Adds a episode of a part to the storage.
      */
     addEpisode(partId, episodes) {
+        // TODO: 29.06.2019 insert multiple rows, what happens with insertId?
         // @ts-ignore
         return tools_1.promiseMultiSingle(episodes, async (episode) => {
             const result = await this._query("INSERT INTO episode " +
@@ -789,6 +799,7 @@ class QueryContext {
      * Gets an episode from the storage.
      */
     getEpisode(id, uuid) {
+        // TODO: 29.06.2019 replace with id IN (...), query Releases in 'batch' too?, make inner join on first two queries?
         // @ts-ignore
         return tools_1.promiseMultiSingle(id, async (episodeId) => {
             const episodePromise = this._query("SELECT * FROM episode WHERE id = ?;", episodeId);
@@ -811,6 +822,7 @@ class QueryContext {
         });
     }
     getPartEpisodePerIndex(partId, index) {
+        // TODO: 29.06.2019 replace with totalIndex IN (...), query Releases in 'batch' too?
         // @ts-ignore
         return tools_1.promiseMultiSingle(index, async (totalIndex) => {
             if (Number.isNaN(totalIndex)) {
@@ -965,7 +977,7 @@ class QueryContext {
     async getScrapeExternalUser() {
         const result = await this._query("SELECT uuid, local_uuid, service, cookies FROM external_user " +
             "WHERE last_scrape IS NULL OR last_scrape > NOW() - 7");
-        return [...result].map((value) => {
+        return result.map((value) => {
             return {
                 uuid: value.uuid,
                 userUuid: value.local_uuid,
@@ -1053,6 +1065,7 @@ class QueryContext {
      * Removes one or multiple externalLists from the given user.
      */
     async removeExternalList(uuid, externalListId) {
+        // TODO: 29.06.2019 replace with id IN (...) and list_id IN (...)
         // @ts-ignore
         return tools_1.promiseMultiSingle(externalListId, async (item) => {
             // first delete any references of externalList: list-media links
@@ -1180,6 +1193,7 @@ class QueryContext {
      * @return {Promise<News|undefined|Array<News|undefined>>}
      */
     async addNews(news) {
+        // TODO: 29.06.2019 if inserting multiple rows in a single insert, what happens with result.insertId?
         // @ts-ignore
         return tools_1.promiseMultiSingle(news, async (value) => {
             // an empty link may be the result of a faulty link (e.g. a link which leads to 404 error)
@@ -1210,17 +1224,13 @@ class QueryContext {
         let parameter;
         let query;
         if (newsIds) {
+            if (!newsIds.length || newsIds.some((newsId) => !Number.isInteger(newsId) && newsId > 0)) {
+                return [];
+            }
             query = "SELECT * FROM news_board " +
                 "LEFT JOIN (SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) " +
                 "as news_user ON news_user.news_id=news_board.id " +
-                "WHERE id IN (";
-            if (!newsIds.length) {
-                return [];
-            }
-            if (newsIds.some((newsId) => !Number.isInteger(newsId))) {
-                return [];
-            }
-            query = query + newsIds.join(", ") + ");";
+                "WHERE id IN (" + newsIds.join(", ") + ");";
             parameter = uuid;
         }
         else {
@@ -1249,7 +1259,7 @@ class QueryContext {
             parameter.unshift(uuid);
         }
         const newsResult = await this._query(query, parameter);
-        return Array.from(newsResult).map((value) => {
+        return newsResult.map((value) => {
             return {
                 title: value.title,
                 date: value.date,
@@ -1272,6 +1282,7 @@ class QueryContext {
      *
      */
     async addScrape(scrape) {
+        // TODO: 29.06.2019 replace with VALUES(.....),(...),...
         // @ts-ignore
         await tools_1.promiseMultiSingle(scrape, (item) => {
             return this._query("INSERT INTO scrape_board " +
@@ -1346,6 +1357,7 @@ class QueryContext {
      * Marks these news as read for the given user.
      */
     async markRead(uuid, news) {
+        // TODO: 29.06.2019 replace with 'VALUES(1,1), (1,2), (2,1),...'
         await tools_1.promiseMultiSingle(news, (newsId) => this._query("INSERT IGNORE INTO news_user (user_id,news_id) VALUES (?,?);", [uuid, newsId]));
         return true;
     }
@@ -1502,6 +1514,7 @@ class QueryContext {
         return this._query("SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);", uuid);
     }
     getSynonyms(mediumId) {
+        // TODO: 29.06.2019 replace with 'medium_id IN (list)'
         // @ts-ignore
         return tools_1.promiseMultiSingle(mediumId, async (value) => {
             const synonymResult = await this._query("SELECT synonym FROM medium_synonyms WHERE medium_id=?;", value);
@@ -1526,6 +1539,7 @@ class QueryContext {
         }).then(() => true);
     }
     addSynonyms(synonyms) {
+        // TODO: 29.06.2019 replace with multiple INSERT .... VALUES... : VALUES(1,2), (1,1), ...
         // @ts-ignore
         return tools_1.promiseMultiSingle(synonyms, (value) => {
             return tools_1.promiseMultiSingle(value.synonym, (item) => {
@@ -1602,11 +1616,11 @@ class QueryContext {
     async getUnreadChapter(uuid) {
         const resultArray = await this._query("SELECT id FROM episode WHERE id NOT IN " +
             "(SELECT episode_id FROM user_episode WHERE progress < 1 AND user_uuid=?);", uuid);
-        return Array.from(resultArray).map((value) => value.id);
+        return resultArray.map((value) => value.id);
     }
     async getReadToday(uuid) {
         const resultArray = await this._query("SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;", uuid);
-        return Array.from(resultArray).map((value) => {
+        return resultArray.map((value) => {
             return {
                 episodeId: value.episode_id,
                 readDate: value.read_date,
@@ -1647,6 +1661,7 @@ class QueryContext {
                     if (!value || !validate.isString(value)) {
                         throw tools_1.Errors.INVALID_INPUT;
                     }
+                    // TODO: 29.06.2019 use 'value IN (list)'
                     return this._query("DELETE FROM page_info WHERE link=? AND keyString=? AND value=?", [link, key, value]);
                 }));
             }
@@ -1669,7 +1684,7 @@ class QueryContext {
             console.log(reason);
             logger_1.default.error(reason);
         });
-        return Array.from(result).map((value) => {
+        return result.map((value) => {
             return {
                 externalListId: value.external_list_id,
                 externalUuid: value.external_uuid,

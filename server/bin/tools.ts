@@ -14,6 +14,15 @@ export function remove<T>(array: T[], item: T): boolean {
     return true;
 }
 
+export function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean {
+    const index = array.findIndex(equals);
+    if (index < 0) {
+        return false;
+    }
+    array.splice(index, 1);
+    return true;
+}
+
 export type ArrayCallback<T> = (value: T, index: number) => void;
 
 export function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: ArrayCallback<T>, start = 0): void {
@@ -94,7 +103,7 @@ export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) 
             uniques.push(value);
         });
     } else {
-        const set = new Set();
+        const set = new Set<T>();
         forEachArrayLike(array, (value) => set.add(value));
         uniques.push(...set);
     }

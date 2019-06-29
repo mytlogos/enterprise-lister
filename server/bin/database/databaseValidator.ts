@@ -498,7 +498,7 @@ const StateProcessorImpl: StateProcessorImpl = {
                 affectedRows: value.affectedRows,
                 uuid
             });
-            logger.silly(`Query: '${query}', Parameter: '${parameter}'`);
+            logger.debug(`Query: '${query}', Parameter: '${parameter}'`);
         }
         return value;
     },
@@ -617,13 +617,6 @@ const StateProcessorImpl: StateProcessorImpl = {
 
 
     async checkTableSchema(context: QueryContext): Promise<void> {
-        const exists = await context.databaseExists();
-
-        if (!exists) {
-            await context.createDatabase();
-        }
-        // set database as current database
-        await context.useDatabase();
         // display all current tables
         const tables: any[] = await context.getTables();
 

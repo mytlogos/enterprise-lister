@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const logger_1 = tslib_1.__importStar(require("../../logger"));
 const queueManager_1 = require("../queueManager");
 const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
@@ -10,8 +9,7 @@ const tools_1 = require("../../tools");
 exports.sourceType = "qidian_underground";
 async function scrapeNews() {
     const uri = "https://toc.qidianunderground.org/";
-    const body = await queueManager_1.queueRequest(uri);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(uri);
     const tocRows = $(".content p + ul");
     const chapterReg = /(\d+)(\s*-\s*(\d+))?/;
     const potentialMediaNews = [];
@@ -37,7 +35,6 @@ async function scrapeNews() {
         }
         const children = tocRow.find("a");
         const potentialNews = [];
-        // tslint:disable-next-line:prefer-for-of
         for (let j = 0; j < children.length; j++) {
             const titleElement = children.length > 1 ? children.eq(j) : children;
             const link = titleElement.attr("href");
@@ -70,6 +67,7 @@ async function scrapeNews() {
     await Promise.all(potentialMediaNews);
     return [];
 }
+// TODO: 25.06.2019 use caching for likeMedium?
 async function processMediumNews(mediumTitle, potentialNews) {
     const likeMedia = await database_1.Storage.getLikeMedium({
         title: mediumTitle,
@@ -170,8 +168,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
     }
 }
 async function scrapeContent(urlString) {
-    const body = await queueManager_1.queueRequest(urlString);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contents = $(".center-block .well");
     const episodes = [];
     for (let i = 0; i < contents.length; i++) {

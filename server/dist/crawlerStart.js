@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const scraper = tslib_1.__importStar(require("./externals/scraper"));
 const database_1 = require("./database/database");
 const tools_1 = require("./tools");
 const logger_1 = tslib_1.__importStar(require("./logger"));
 const validate = tslib_1.__importStar(require("validate.js"));
+const scraperTools_1 = require("./externals/scraperTools");
+const jobScraper_1 = require("./externals/jobScraper");
+const scraper = new jobScraper_1.JobScraper();
 // todo look into database trigger or maybe replace it with database listener, which notify user on changes?
 // todo fill out all of the event listener
 /**
@@ -240,14 +242,14 @@ async function addFeeds(feeds) {
         return;
     }
     let scrapes = await database_1.Storage.getScrapes();
-    scrapes = scrapes.filter((value) => value.type === scraper.scrapeTypes.FEED);
+    scrapes = scrapes.filter((value) => value.type === scraperTools_1.scrapeTypes.FEED);
     const scrapeFeeds = feeds.map((feed) => {
         if (scrapes.find((value) => value.link === feed)) {
             return;
         }
         return {
             link: feed,
-            type: scraper.scrapeTypes.FEED,
+            type: scraperTools_1.scrapeTypes.FEED,
         };
     }).filter((value) => value);
     if (!scrapeFeeds.length) {
@@ -308,7 +310,7 @@ async function processMedia(media, listType, userUuid) {
         }
         foundLikeMedia.push(...storedMedia);
         // queue newly added media for scraping
-        scraper.add({
+        scraper.addDependant({
             medium: storedMedia.map((value) => {
                 return {
                     id: value.medium.id,
@@ -518,19 +520,14 @@ scraper.on("news", (result) => newsHandler(result).catch((error) => logger_1.log
 scraper.on("toc", (result) => tocHandler(result).catch((error) => logger_1.logError(error)));
 scraper.on("feed", (result) => feedHandler(result).catch((error) => logger_1.logError(error)));
 scraper.on("list", (result) => listHandler(result).catch((error) => logger_1.logError(error)));
-const listenerList = [];
 exports.startCrawler = () => {
-    scraper.setup().then(() => scraper.start()).catch((error) => {
-        console.log(error);
-        logger_1.default.error(error);
-    });
+    scraper
+        .setup()
+        .then(() => scraper.start())
+        .catch((error) => logger_1.logError(error));
 };
-/**
- *
- * @param {function} listener
- * @return {undefined}
- */
-exports.addErrorListener = (listener) => {
-    listenerList.push(listener);
-};
+function addDependant(dependant) {
+    scraper.addDependant(dependant);
+}
+exports.addDependant = addDependant;
 //# sourceMappingURL=crawlerStart.js.map

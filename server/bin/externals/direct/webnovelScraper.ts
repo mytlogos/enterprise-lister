@@ -1,10 +1,9 @@
 import {Hook, TextEpisodeContent, Toc, TocEpisode, TocPart} from "../types";
 import {News} from "../../types";
-import cheerio from "cheerio";
 import {MediaType, relativeToAbsoluteTime} from "../../tools";
 import logger from "../../logger";
 import * as url from "url";
-import {queueRequest} from "../queueManager";
+import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as request from "request-promise-native";
 
 const defaultRequest = request.defaults({
@@ -15,8 +14,7 @@ const initPromise = queueRequest("https://www.webnovel.com/", undefined, default
 
 async function scrapeNews(): Promise<News[]> {
     const uri = "https://www.webnovel.com/";
-    const body: string = await queueRequest(uri);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(uri);
     const newsRows = $("#LatUpdate tbody > tr");
 
     const news: News[] = [];
@@ -94,9 +92,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 function loadBody(urlString: string): Promise<CheerioStatic> {
-    return initPromise
-        .then(() => queueRequest(urlString, undefined, defaultRequest))
-        .then((body) => cheerio.load(body));
+    return initPromise.then(() => queueCheerioRequest(urlString, undefined, defaultRequest));
 }
 
 function loadJson(urlString: string): Promise<any> {
@@ -142,6 +138,7 @@ async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
 }
 
 scrapeNews.link = "https://www.webnovel.com/";
+
 export function getHook(): Hook {
     return {
         domainReg: /^https:\/\/(www\.)?webnovel\.com/,

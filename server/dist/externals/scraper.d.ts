@@ -1,6 +1,55 @@
 import { ListScrapeResult } from "./listManager";
-import { Episode, News } from "../types";
-import { Dependant, DownloadContent, Hook, Toc } from "./types";
+import { Episode, News, ScrapeItem } from "../types";
+import { Dependant, DownloadContent, Hook, NewsScraper, OneTimeToc, Toc } from "./types";
+export declare function processNewsScraper(adapter: NewsScraper): Promise<{
+    link: string;
+    result: News[];
+}>;
+export declare function checkTocs(): Promise<{
+    toc: Toc[];
+    uuid?: string;
+}>;
+export declare function oneTimeToc({ url: link, uuid, mediumId }: OneTimeToc): Promise<{
+    toc: Toc[];
+    uuid: string;
+}>;
+/**
+ *
+ * @param scrapeItem
+ * @return {Promise<void>}
+ */
+export declare function news(scrapeItem: ScrapeItem): Promise<{
+    link: string;
+    result: News[];
+}>;
+/**
+ *
+ * @param value
+ * @return {Promise<void>}
+ */
+export declare function toc(value: ScrapeItem): Promise<void>;
+/**
+ * Scrapes ListWebsites and follows possible redirected pages.
+ */
+export declare function list(value: {
+    cookies: string;
+    uuid: string;
+}): Promise<{
+    external: {
+        cookies: string;
+        uuid: string;
+    };
+    lists: ListScrapeResult;
+}>;
+/**
+ *
+ * @param {string} feedLink
+ * @return {Promise<News>}
+ */
+export declare function feed(feedLink: string): Promise<{
+    link: string;
+    result: News[];
+}>;
 export declare const scrapeTypes: {
     LIST: number;
     FEED: number;

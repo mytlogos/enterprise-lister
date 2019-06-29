@@ -1,6 +1,7 @@
 import { MultiSingle } from "./types";
 import { TocEpisode, TocPart } from "./externals/types";
 export declare function remove<T>(array: T[], item: T): boolean;
+export declare function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean;
 export declare type ArrayCallback<T> = (value: T, index: number) => void;
 export declare function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: ArrayCallback<T>, start?: number): void;
 declare type multiSingleCallback<T, R> = (value: T, index?: number, last?: boolean) => R;

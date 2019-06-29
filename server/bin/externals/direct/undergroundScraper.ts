@@ -1,8 +1,7 @@
 import {Hook, TextEpisodeContent} from "../types";
 import {EpisodeRelease, LikeMedium, MultiSingle, News, Part, SimpleEpisode} from "../../types";
-import cheerio from "cheerio";
 import logger, {logError} from "../../logger";
-import {queueRequest} from "../queueManager";
+import {queueCheerioRequest} from "../queueManager";
 import emojiStrip from "emoji-strip";
 import {Storage} from "../../database/database";
 import {max, MediaType} from "../../tools";
@@ -12,8 +11,7 @@ export const sourceType = "qidian_underground";
 async function scrapeNews(): Promise<News[]> {
     const uri = "https://toc.qidianunderground.org/";
 
-    const body: string = await queueRequest(uri);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(uri);
     const tocRows = $(".content p + ul");
 
     const chapterReg = /(\d+)(\s*-\s*(\d+))?/;
@@ -48,7 +46,6 @@ async function scrapeNews(): Promise<News[]> {
 
         const potentialNews: News[] = [];
 
-        // tslint:disable-next-line:prefer-for-of
         for (let j = 0; j < children.length; j++) {
             const titleElement = children.length > 1 ? children.eq(j) : children;
             const link = titleElement.attr("href");
@@ -84,7 +81,7 @@ async function scrapeNews(): Promise<News[]> {
     await Promise.all(potentialMediaNews);
     return [];
 }
-
+// TODO: 25.06.2019 use caching for likeMedium?
 async function processMediumNews(mediumTitle: string, potentialNews: News[]): Promise<void> {
     const likeMedia: MultiSingle<LikeMedium> = await Storage.getLikeMedium({
         title: mediumTitle,
@@ -106,7 +103,6 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
     });
 
     const chapIndexReg = /(\d+)\s*$/;
-
     const parts = await Storage.getMediumParts(likeMedia.medium.id);
     let part: Part;
 
@@ -197,8 +193,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
 }
 
 async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
-    const body: string = await queueRequest(urlString);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(urlString);
 
     const contents = $(".center-block .well");
 

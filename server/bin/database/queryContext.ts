@@ -151,8 +151,6 @@ export class QueryContext {
         if (!exists) {
             await this._query(`CREATE DATABASE ${database};`);
         }
-        // set database as current database
-        await this.useDatabase();
         // display all current tables
         const tables = await this._query("SHOW TABLES;");
 
@@ -182,7 +180,7 @@ export class QueryContext {
         return this._query(`CREATE TABLE ${mySql.escapeId(table)} (${columns.join(", ")});`);
     }
 
-    public dropTable() {
+    public showTables() {
         return this._query("SHOW TABLES;");
     }
 
@@ -428,7 +426,7 @@ export class QueryContext {
         Promise<{ list: List[] | List, media: Medium[] }> {
 
         const toLoadMedia: Set<number> = new Set();
-
+        // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         const lists: List | List[] = await promiseMultiSingle(listId, async (id: number) => {
             const result = await this._query("SELECT * FROM reading_list WHERE id = ?;", id);
@@ -581,7 +579,7 @@ export class QueryContext {
             mediumId
         );
         // @ts-ignore
-        return Promise.all(Array.prototype.map.call(resultArray, async (rawEpisode) => {
+        return Promise.all(resultArray.map(async (rawEpisode) => {
             const releases = await this.getReleases(rawEpisode.id);
             return {
                 id: rawEpisode.id,
@@ -599,7 +597,7 @@ export class QueryContext {
             episodeId
         );
         // @ts-ignore
-        return Array.prototype.map.call(resultArray, (value: any): EpisodeRelease => {
+        return resultArray.map((value: any): EpisodeRelease => {
             return {
                 episodeId: value.episode_id,
                 sourceType: value.source_type,
@@ -611,6 +609,7 @@ export class QueryContext {
     }
 
     public getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]> {
+        // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return promiseMultiSingle(id, async (mediumId) => {
             const resultArray: any[] = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
@@ -651,6 +650,7 @@ export class QueryContext {
      * Gets one or multiple media from the storage.
      */
     public getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]> {
+        // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return promiseMultiSingle(id, async (mediumId: number) => {
             let result = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
@@ -690,7 +690,7 @@ export class QueryContext {
                 stateTL: result.stateTL,
                 series: result.series,
                 universe: result.universe,
-                parts: Array.from(partsResult).map((packet: any) => packet.id),
+                parts: partsResult.map((packet: any) => packet.id),
                 currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
                 latestReleases: latestReleasesResult.map((packet: any) => packet.id),
                 unreadEpisodes: unReadResult.map((packet: any) => packet.id),
@@ -718,7 +718,7 @@ export class QueryContext {
                 [escapedTitle, escapedLinkQuery]);
 
             if (value.type != null) {
-                result = Array.prototype.filter.call(result, (medium: any) => medium.medium === value.type);
+                result = result.filter((medium: any) => medium.medium === value.type);
             }
             return {
                 medium: result[0],
@@ -754,6 +754,8 @@ export class QueryContext {
      */
     public async getMediumParts(mediumId: number, uuid?: string): Promise<Part[]> {
         const parts: any[] = await this._query("SELECT * FROM part WHERE medium_id = ?", mediumId);
+        // TODO: 29.06.2019 replace with part_id IN (...), replace querying every single episode with querying all in one
+
         // recreate shallow parts
         // @ts-ignore
         return Promise.all(parts.map(async (value: any) => {
@@ -781,6 +783,7 @@ export class QueryContext {
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
     public getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]> {
+        // TODO: 29.06.2019 replace totalIndex IN (...), replace querying every single episode with querying all in one
         // @ts-ignore
         return promiseMultiSingle(index, async (totalIndex) => {
             const parts: any[] = await this._query(
@@ -805,7 +808,7 @@ export class QueryContext {
                     )
                 );
             } else {
-                await Promise.all(Array.prototype.map.call(episodes, (episode: any) => {
+                await Promise.all(episodes.map((episode: any) => {
                     return this.getReleases(episode.id).then((releases) => episode.releases = releases);
                 }));
                 value.episodes = episodes;
@@ -828,6 +831,7 @@ export class QueryContext {
      * Returns all parts of an medium.
      */
     public getParts(partId: number | number[], uuid: string): Promise<Part[] | Part> {
+        // TODO: 29.06.2019 replace id IN (...), replace querying every single episode with querying all in one
         // @ts-ignore
         return promiseMultiSingle(partId, async (value): Promise<Part> => {
             const partArray: any[] = await this._query("SELECT * FROM part WHERE id = ?", value);
@@ -918,37 +922,41 @@ export class QueryContext {
 
     public async addRelease(episodeId: number, releases: EpisodeRelease | EpisodeRelease[]):
         Promise<EpisodeRelease | EpisodeRelease[]> {
-
+        // TODO: 29.06.2019 replace with VALUES(....),(...),(....)
         // @ts-ignore
         return promiseMultiSingle(releases, (release: EpisodeRelease) => {
             release.episodeId = episodeId;
-            return this._query("INSERT IGNORE INTO episode_release " +
-                "(episode_id, title, url, source_type, releaseDate) " +
-                "VALUES (?,?,?,?,?);",
-                [
-                    episodeId,
-                    release.title,
-                    release.url,
-                    release.sourceType,
-                    release.releaseDate
-                ]
-            ).then(() => release);
+            return this
+                ._query("INSERT IGNORE INTO episode_release " +
+                    "(episode_id, title, url, source_type, releaseDate) " +
+                    "VALUES (?,?,?,?,?);",
+                    [
+                        episodeId,
+                        release.title,
+                        release.url,
+                        release.sourceType,
+                        release.releaseDate
+                    ]
+                )
+                .then(() => release);
         });
     }
 
     public getSourcedReleases(sourceType: string, mediumId: number):
         Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
-        return this._query(
-            "SELECT url, episode_release.title FROM episode_release " +
-            "INNER JOIN episode ON episode.id=episode_release.episode_id " +
-            "INNER JOIN part ON part.id=episode.part_id " +
-            "WHERE source_type=? AND medium_id=?;",
-            [sourceType, mediumId]
-        ).then((resultArray) => resultArray.map((value: any) => {
-            value.sourceType = sourceType;
-            value.mediumId = mediumId;
-            return value;
-        }));
+        return this
+            ._query(
+                "SELECT url, episode_release.title FROM episode_release " +
+                "INNER JOIN episode ON episode.id=episode_release.episode_id " +
+                "INNER JOIN part ON part.id=episode.part_id " +
+                "WHERE source_type=? AND medium_id=?;",
+                [sourceType, mediumId]
+            )
+            .then((resultArray) => resultArray.map((value: any) => {
+                value.sourceType = sourceType;
+                value.mediumId = mediumId;
+                return value;
+            }));
     }
 
     public updateRelease(episodeId: number, releases: MultiSingle<EpisodeRelease>): Promise<void> {
@@ -991,6 +999,7 @@ export class QueryContext {
      * Adds a episode of a part to the storage.
      */
     public addEpisode(partId: number, episodes: MultiSingle<SimpleEpisode>): Promise<MultiSingle<Episode>> {
+        // TODO: 29.06.2019 insert multiple rows, what happens with insertId?
         // @ts-ignore
         return promiseMultiSingle(episodes, async (episode: SimpleEpisode) => {
             const result = await this._query(
@@ -1028,6 +1037,7 @@ export class QueryContext {
      * Gets an episode from the storage.
      */
     public getEpisode(id: number | number[], uuid: string): Promise<Episode | Episode[]> {
+        // TODO: 29.06.2019 replace with id IN (...), query Releases in 'batch' too?, make inner join on first two queries?
         // @ts-ignore
         return promiseMultiSingle(id, async (episodeId: number): Episode => {
             const episodePromise = this._query("SELECT * FROM episode WHERE id = ?;", episodeId);
@@ -1055,6 +1065,7 @@ export class QueryContext {
     }
 
     public getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
+        // TODO: 29.06.2019 replace with totalIndex IN (...), query Releases in 'batch' too?
         // @ts-ignore
         return promiseMultiSingle(index, async (totalIndex: number): SimpleEpisode => {
             if (Number.isNaN(totalIndex)) {
@@ -1257,7 +1268,7 @@ export class QueryContext {
             "WHERE last_scrape IS NULL OR last_scrape > NOW() - 7",
         );
 
-        return [...result].map((value) => {
+        return result.map((value: any) => {
             return {
                 uuid: value.uuid,
                 userUuid: value.local_uuid,
@@ -1361,6 +1372,7 @@ export class QueryContext {
      * Removes one or multiple externalLists from the given user.
      */
     public async removeExternalList(uuid: string, externalListId: number | number[]): Promise<boolean> {
+        // TODO: 29.06.2019 replace with id IN (...) and list_id IN (...)
         // @ts-ignore
         return promiseMultiSingle(externalListId, async (item) => {
             // first delete any references of externalList: list-media links
@@ -1524,6 +1536,7 @@ export class QueryContext {
      * @return {Promise<News|undefined|Array<News|undefined>>}
      */
     public async addNews(news: News | News[]): Promise<News | undefined | Array<News | undefined>> {
+        // TODO: 29.06.2019 if inserting multiple rows in a single insert, what happens with result.insertId?
         // @ts-ignore
         return promiseMultiSingle(news, async (value: News) => {
             // an empty link may be the result of a faulty link (e.g. a link which leads to 404 error)
@@ -1564,17 +1577,13 @@ export class QueryContext {
         let query: string;
 
         if (newsIds) {
+            if (!newsIds.length || newsIds.some((newsId) => !Number.isInteger(newsId) && newsId > 0)) {
+                return [];
+            }
             query = "SELECT * FROM news_board " +
                 "LEFT JOIN (SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) " +
                 "as news_user ON news_user.news_id=news_board.id " +
-                "WHERE id IN (";
-            if (!newsIds.length) {
-                return [];
-            }
-            if (newsIds.some((newsId) => !Number.isInteger(newsId))) {
-                return [];
-            }
-            query = query + newsIds.join(", ") + ");";
+                "WHERE id IN (" + newsIds.join(", ") + ");";
             parameter = uuid;
         } else {
             // todo query looks horrible, replace it with something better?
@@ -1605,7 +1614,7 @@ export class QueryContext {
         }
         const newsResult: any[] = await this._query(query, parameter);
 
-        return Array.from(newsResult).map((value): News => {
+        return newsResult.map((value): News => {
             return {
                 title: value.title,
                 date: value.date,
@@ -1630,6 +1639,7 @@ export class QueryContext {
      *
      */
     public async addScrape(scrape: ScrapeItem | ScrapeItem[]): Promise<boolean> {
+        // TODO: 29.06.2019 replace with VALUES(.....),(...),...
         // @ts-ignore
         await promiseMultiSingle(scrape, (item: ScrapeItem) => {
             return this._query("INSERT INTO scrape_board " +
@@ -1713,6 +1723,7 @@ export class QueryContext {
      * Marks these news as read for the given user.
      */
     public async markRead(uuid: string, news: number[]): Promise<boolean> {
+        // TODO: 29.06.2019 replace with 'VALUES(1,1), (1,2), (2,1),...'
         await promiseMultiSingle(news, (newsId) =>
             this._query(
                 "INSERT IGNORE INTO news_user (user_id,news_id) VALUES (?,?);",
@@ -1933,6 +1944,7 @@ export class QueryContext {
     }
 
     public getSynonyms(mediumId: number | number[]): Promise<Synonyms[]> {
+        // TODO: 29.06.2019 replace with 'medium_id IN (list)'
         // @ts-ignore
         return promiseMultiSingle(mediumId, async (value): Synonyms => {
             const synonymResult: any[] = await this._query(
@@ -1964,6 +1976,7 @@ export class QueryContext {
     }
 
     public addSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
+        // TODO: 29.06.2019 replace with multiple INSERT .... VALUES... : VALUES(1,2), (1,1), ...
         // @ts-ignore
         return promiseMultiSingle(synonyms, (value: Synonyms) => {
             return promiseMultiSingle(value.synonym, (item) => {
@@ -2072,7 +2085,7 @@ export class QueryContext {
             "(SELECT episode_id FROM user_episode WHERE progress < 1 AND user_uuid=?);",
             uuid
         );
-        return Array.from(resultArray).map((value: any) => value.id);
+        return resultArray.map((value: any) => value.id);
     }
 
     public async getReadToday(uuid: string): Promise<ReadEpisode[]> {
@@ -2080,7 +2093,7 @@ export class QueryContext {
             "SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;",
             uuid
         );
-        return Array.from(resultArray).map((value: any): ReadEpisode => {
+        return resultArray.map((value: any): ReadEpisode => {
             return {
                 episodeId: value.episode_id,
                 readDate: value.read_date,
@@ -2125,6 +2138,7 @@ export class QueryContext {
                     if (!value || !validate.isString(value)) {
                         throw Errors.INVALID_INPUT;
                     }
+                    // TODO: 29.06.2019 use 'value IN (list)'
                     return this._query(
                         "DELETE FROM page_info WHERE link=? AND keyString=? AND value=?",
                         [link, key, value]
@@ -2150,7 +2164,7 @@ export class QueryContext {
             console.log(reason);
             logger.error(reason);
         });
-        return Array.from(result).map((value: any): Invalidation => {
+        return result.map((value: any): Invalidation => {
             return {
                 externalListId: value.external_list_id,
                 externalUuid: value.external_uuid,

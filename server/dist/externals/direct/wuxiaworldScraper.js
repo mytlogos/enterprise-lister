@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const url = tslib_1.__importStar(require("url"));
 const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
@@ -9,8 +8,7 @@ const queueManager_1 = require("../queueManager");
 const tools_1 = require("../../tools");
 async function scrapeNews() {
     const uri = "https://www.wuxiaworld.com/";
-    const body = await queueManager_1.queueRequest(uri);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(uri);
     const newsRows = $(".table-novels tbody tr");
     const news = [];
     for (let i = 0; i < newsRows.length; i++) {
@@ -35,8 +33,7 @@ async function scrapeNews() {
     return news;
 }
 async function scrapeToc(urlString) {
-    const body = await queueManager_1.queueRequest(urlString);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".content");
     const novelTitle = contentElement.find("h4").first().text().trim();
     const volumes = contentElement.find("#accordion > .panel");
@@ -123,8 +120,7 @@ async function scrapeToc(urlString) {
     return [toc];
 }
 async function scrapeContent(urlString) {
-    const body = await queueManager_1.queueRequest(urlString);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(urlString);
     const mainElement = $(".content");
     const novelTitle = mainElement.find(".top-bar-area .caption a").first().text().trim();
     const episodeTitle = mainElement.find(".panel .caption h4").first().text().trim();

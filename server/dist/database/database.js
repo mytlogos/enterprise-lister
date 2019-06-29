@@ -12,7 +12,7 @@ const tools_1 = require("../tools");
  * Creates the context for QueryContext, to
  * query a single connection sequentially.
  */
-async function inContext(callback, transaction = true, allowDatabase = true) {
+async function inContext(callback, transaction = true) {
     if (!running) {
         // if inContext is called without Storage being active
         return Promise.reject("Not started");
@@ -25,10 +25,6 @@ async function inContext(callback, transaction = true, allowDatabase = true) {
     }
     const con = await pool.getConnection();
     const context = new queryContext_1.QueryContext(con);
-    // don't use database if it is explicitly disallowed
-    if (allowDatabase) {
-        await context.useDatabase();
-    }
     let result;
     try {
         result = await doTransaction(callback, context, transaction);
@@ -42,7 +38,7 @@ async function inContext(callback, transaction = true, allowDatabase = true) {
         if (!value || !value.length) {
             return;
         }
-        return inContext((invalidatorContext) => invalidatorContext.addInvalidation(value), true, true);
+        return inContext((invalidatorContext) => invalidatorContext.addInvalidation(value), true);
     })
         .catch((reason) => {
         console.log(reason);
@@ -90,6 +86,8 @@ const pool = promise_mysql_1.default.createPool({
     password: env_1.default.dbPassword,
     // charset/collation of the current database and tables
     charset: "utf8mb4",
+    // we assume that the database exists already
+    database: "enterprise"
 });
 let errorAtStart = false;
 let running = false;
@@ -106,7 +104,7 @@ function start() {
         running = true;
         try {
             databaseValidator_1.StateProcessor.initTableSchema(databaseSchema_1.databaseSchema);
-            startPromise = inContext((context) => databaseValidator_1.StateProcessor.checkTableSchema(context), true, false).catch((error) => {
+            startPromise = inContext((context) => databaseValidator_1.StateProcessor.checkTableSchema(context), true).catch((error) => {
                 logger_1.default.error(error);
                 console.log(error);
                 errorAtStart = true;
@@ -648,7 +646,7 @@ exports.Storage = {
         return inContext((context) => context.removeLinkNewsToMedium(newsId, mediumId));
     },
     clear() {
-        return inContext((context) => context.clearAll(), false, false);
+        return inContext((context) => context.clearAll());
     },
 };
 /**

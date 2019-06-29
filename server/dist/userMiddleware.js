@@ -4,7 +4,8 @@ const tslib_1 = require("tslib");
 const database_1 = require("./database/database");
 const listManager_1 = require("./externals/listManager");
 const logger_1 = tslib_1.__importStar(require("./logger"));
-const scraper_1 = require("./externals/scraper");
+const scraperTools_1 = require("./externals/scraperTools");
+const crawlerStart_1 = require("./crawlerStart");
 const tools_1 = require("./tools");
 exports.readNews = (req, res) => {
     const { uuid, read } = req.body;
@@ -27,7 +28,7 @@ exports.refreshExternalUser = (req, res) => {
     const externalUserWithCookies = database_1.Storage.getExternalUserWithCookies(uuid);
     sendResult(res, externalUserWithCookies.then((value) => !!value));
     externalUserWithCookies
-        .then((externalUser) => scraper_1.add({ oneTimeUser: externalUser }))
+        .then((externalUser) => crawlerStart_1.addDependant({ oneTimeUser: externalUser }))
         .catch((error) => logger_1.logError(error));
 };
 exports.processResult = (req, res) => {
@@ -71,7 +72,7 @@ exports.addBookmarked = (req, res) => {
     const { uuid, bookmarked } = req.body;
     const protocol = /^https?:\/\//;
     if (bookmarked && bookmarked.length && bookmarked.every((url) => tools_1.isString(url) && protocol.test(url))) {
-        scraper_1.add({
+        crawlerStart_1.addDependant({
             oneTimeToc: bookmarked.map((url) => {
                 return { url, uuid };
             })
@@ -86,7 +87,7 @@ exports.addToc = (req, res) => {
     const { uuid, toc, mediumId } = req.body;
     const protocol = /^https?:\/\//;
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        scraper_1.add({
+        crawlerStart_1.addDependant({
             oneTimeToc: { url: toc, uuid, mediumId }
         });
         sendResult(res, Promise.resolve(true));
@@ -101,7 +102,7 @@ exports.downloadEpisode = (req, res) => {
     const episodes = tools_1.stringToNumberList(stringEpisode);
     sendResult(res, database_1.Storage
         .getEpisode(episodes, uuid)
-        .then((fullEpisodes) => scraper_1.downloadEpisodes(fullEpisodes.filter((value) => value))));
+        .then((fullEpisodes) => scraperTools_1.downloadEpisodes(fullEpisodes.filter((value) => value))));
 };
 // fixme an error showed that req.query.something does not assign on first call, only on second???
 exports.addListApi = (route) => {

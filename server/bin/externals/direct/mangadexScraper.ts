@@ -1,8 +1,7 @@
 import {Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
 import {News} from "../../types";
-import cheerio from "cheerio";
 import * as url from "url";
-import {queueRequest} from "../queueManager";
+import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
 import {MediaType} from "../../tools";
 
@@ -10,8 +9,7 @@ import {MediaType} from "../../tools";
 async function scrapeNews(): Promise<News[]> {
     // fixme mangadex has cloudflare protection and this request throws a 503 error
     const uri = "https://mangadex.org/";
-    const body: string = await queueRequest(uri + "updates");
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(uri + "updates");
     const newsRows = $(".table tbody tr");
 
     const news: News[] = [];
@@ -50,8 +48,7 @@ async function scrapeNews(): Promise<News[]> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const body: string = await queueRequest(urlString);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#content");
     const mangaTitle = contentElement.find("h6.card-header").first().text();
     // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");

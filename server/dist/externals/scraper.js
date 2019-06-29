@@ -7,10 +7,11 @@ const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promis
 const tools_1 = require("../tools");
 const logger_1 = tslib_1.__importDefault(require("../logger"));
 const directScraper = tslib_1.__importStar(require("./direct/directScraper"));
-const queueManager_1 = require("./queueManager");
 const url = tslib_1.__importStar(require("url"));
 const cache_1 = require("../cache");
 const validate = tslib_1.__importStar(require("validate.js"));
+const request_1 = tslib_1.__importDefault(require("request"));
+const queueManager_1 = require("./queueManager");
 // todo for each page, save info as key-value-pairs
 // scrape at an interval of 5 min
 const interval = 5 * 60 * 1000;
@@ -42,11 +43,11 @@ function notify(key, promises) {
             promise
                 .then((value) => {
                 const callbacks = tools_1.getElseSet(eventMap, key, () => []);
-                callbacks.forEach((cb) => cb(value));
+                // callbacks.forEach((cb) => cb(value));
             })
                 .catch((error) => {
                 const callbacks = tools_1.getElseSet(eventMap, key + ":error", () => []);
-                callbacks.forEach((cb) => cb(error));
+                // callbacks.forEach((cb) => cb(error));
             })
                 .finally(() => {
                 fulfilled++;
@@ -128,6 +129,7 @@ async function processNewsScraper(adapter) {
         result: rawNews || [],
     };
 }
+exports.processNewsScraper = processNewsScraper;
 async function searchToc(id, availableTocs = []) {
     const links = await database_1.Storage.getAllChapterLinks(id);
     const medium = await database_1.Storage.getTocSearchMedium(id);
@@ -202,6 +204,7 @@ async function checkTocs() {
     }));
     return { toc: tocs };
 }
+exports.checkTocs = checkTocs;
 async function oneTimeToc({ url: link, uuid, mediumId }) {
     const host = url.parse(link).host;
     if (!host) {
@@ -233,6 +236,7 @@ async function oneTimeToc({ url: link, uuid, mediumId }) {
     console.log("toc scraped: " + link);
     return { toc: allTocs, uuid };
 }
+exports.oneTimeToc = oneTimeToc;
 /**
  *
  * @param scrapeItem
@@ -245,6 +249,7 @@ async function news(scrapeItem) {
     };
     // todo implement news scraping (from homepage, updates pages etc. which require page analyzing, NOT feed)
 }
+exports.news = news;
 /**
  *
  * @param value
@@ -253,6 +258,7 @@ async function news(scrapeItem) {
 async function toc(value) {
     // todo implement toc scraping which requires page analyzing
 }
+exports.toc = toc;
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
@@ -280,14 +286,18 @@ async function list(value) {
         return Promise.reject({ ...value, error: e });
     }
 }
+exports.list = list;
 const cache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
 const errorCache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
+// TODO: 21.06.2019 save cache in database?
 /**
  *
  * @param {string} feedLink
  * @return {Promise<News>}
  */
 async function feed(feedLink) {
+    console.log("scraping feed: ", feedLink);
+    const startTime = Date.now();
     // noinspection JSValidateTypes
     return feedparser_promised_1.default.parse(feedLink)
         .then((items) => Promise.all(items.map((value) => {
@@ -301,6 +311,8 @@ async function feed(feedLink) {
         });
     })))
         .then((value) => {
+        const duration = Date.now() - startTime;
+        console.log(`scraping feed: ${feedLink} took ${duration} ms`);
         return {
             link: feedLink,
             result: value
@@ -308,6 +320,7 @@ async function feed(feedLink) {
     })
         .catch((error) => Promise.reject({ feed: feedLink, error }));
 }
+exports.feed = feed;
 exports.scrapeTypes = {
     LIST: 0,
     FEED: 1,
@@ -440,6 +453,22 @@ exports.downloadEpisodes = downloadEpisodes;
 function combiIndex(episode) {
     return episode.totalIndex + (episode.partialIndex || 0);
 }
+function checkLinkWithInternet(link) {
+    return new Promise((resolve, reject) => {
+        request_1.default
+            .head(link)
+            .on("response", (res) => {
+            if (res.caseless.get("server") === "cloudflare") {
+                resolve(queueManager_1.queueFastRequestFullResponse(link));
+            }
+            else {
+                resolve(res);
+            }
+        })
+            .on("error", reject)
+            .end();
+    });
+}
 function checkLink(link, linkKey) {
     return new Promise((resolve, reject) => {
         if (!redirects.some((value) => value.test(link))) {
@@ -463,13 +492,13 @@ function checkLink(link, linkKey) {
                 return;
             }
         }
-        queueManager_1.queueRequestFullResponse(link)
+        checkLinkWithInternet(link)
             .then((response) => {
             const href = response.request.uri.href;
             if (linkKey) {
                 cache.set(linkKey, { redirect: link, followed: href });
             }
-            return href;
+            resolve(href);
         })
             .catch((reason) => {
             if (reason && reason.statusCode && reason.statusCode === 404) {
@@ -478,17 +507,18 @@ function checkLink(link, linkKey) {
                     cache.set(linkKey, { redirect: link, followed: "" });
                 }
                 resolve("");
+                return;
             }
-            else if (linkKey) {
+            if (linkKey) {
                 const value = errorCache.get(linkKey);
                 if (!value || value !== link) {
                     errorCache.set(linkKey, link);
                     reject(reason);
+                    return;
                 }
-                else {
-                    errorCache.ttl(linkKey);
-                }
+                errorCache.ttl(linkKey);
             }
+            resolve("");
         });
     });
 }

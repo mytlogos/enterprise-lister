@@ -36,7 +36,7 @@ export declare class QueryContext {
     createDatabase(): Promise<void>;
     getTables(): Promise<any[]>;
     createTable(table: string, columns: string[]): Promise<any>;
-    dropTable(): Promise<any>;
+    showTables(): Promise<any>;
     /**
      * Registers an User if the userName is free.
      * Returns a Error Code if userName is already

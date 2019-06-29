@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const database_1 = require("../../database/database");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
@@ -9,8 +8,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 async function scrapeNews() {
     const uri = "https://kissanime.ru/";
-    const body = await queueManager_1.queueRequest(uri);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(uri);
     const newsRows = $(".scrollable> .items a");
     const news = [];
     for (let i = 0; i < newsRows.length; i++) {
@@ -77,8 +75,7 @@ async function scrapeNews() {
     return news;
 }
 async function scrapeToc(urlString) {
-    const body = await queueManager_1.queueRequest(urlString);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $("#container > #leftside");
     const animeTitle = contentElement
         .find(".bigBarContainer > .barContent > div > a:first-child")

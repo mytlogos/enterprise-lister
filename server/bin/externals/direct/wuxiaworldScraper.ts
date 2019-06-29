@@ -1,17 +1,15 @@
 import {Hook, TextEpisodeContent, Toc, TocPart} from "../types";
 import {News, TocSearchMedium} from "../../types";
-import cheerio from "cheerio";
 import logger from "../../logger";
 import * as url from "url";
 import emojiStrip from "emoji-strip";
-import {queueRequest} from "../queueManager";
+import {queueCheerioRequest, queueRequest} from "../queueManager";
 import {countOccurrence, equalsIgnoreCase, MediaType} from "../../tools";
 
 async function scrapeNews(): Promise<News[]> {
     const uri = "https://www.wuxiaworld.com/";
 
-    const body: string = await queueRequest(uri);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(uri);
     const newsRows = $(".table-novels tbody tr");
 
     const news: News[] = [];
@@ -43,8 +41,7 @@ async function scrapeNews(): Promise<News[]> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const body: string = await queueRequest(urlString);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".content");
     const novelTitle = contentElement.find("h4").first().text().trim();
     const volumes = contentElement.find("#accordion > .panel");
@@ -146,8 +143,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
-    const body: string = await queueRequest(urlString);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(urlString);
     const mainElement = $(".content");
     const novelTitle = mainElement.find(".top-bar-area .caption a").first().text().trim();
     const episodeTitle = mainElement.find(".panel .caption h4").first().text().trim();

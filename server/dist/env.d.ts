@@ -4,5 +4,7 @@ declare const _default: {
     dbPassword: string;
     dbUser: string;
     port: string;
+    measure: boolean;
+    stopScrapeEvents: boolean;
 };
 export default _default;

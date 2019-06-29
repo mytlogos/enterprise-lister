@@ -1,17 +1,15 @@
 import {Hook, Toc, TocEpisode, TocPart} from "../types";
 import {News} from "../../types";
-import cheerio from "cheerio";
 import {Storage} from "../../database/database";
 import * as url from "url";
-import {queueRequest} from "../queueManager";
+import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
 import {MediaType} from "../../tools";
 
 async function scrapeNews(): Promise<News[]> {
     // todo scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
-    const body: string = await queueRequest(baseUri + "latest-releases.html");
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(baseUri + "latest-releases.html");
     const newsRows = $("ul.list_manga  .info-manga");
 
     const news: News[] = [];
@@ -90,8 +88,7 @@ async function scrapeNews(): Promise<News[]> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const body: string = await queueRequest(urlString);
-    const $ = cheerio.load(body);
+    const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");
     const mangaTitle = contentElement.find(".info-title h1").first().text().trim();
     // todo process metadata and get more (like author)

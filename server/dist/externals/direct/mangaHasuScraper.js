@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const database_1 = require("../../database/database");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
@@ -10,8 +9,7 @@ const tools_1 = require("../../tools");
 async function scrapeNews() {
     // todo scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
-    const body = await queueManager_1.queueRequest(baseUri + "latest-releases.html");
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(baseUri + "latest-releases.html");
     const newsRows = $("ul.list_manga  .info-manga");
     const news = [];
     for (let i = 0; i < newsRows.length; i++) {
@@ -81,8 +79,7 @@ async function scrapeNews() {
     return news;
 }
 async function scrapeToc(urlString) {
-    const body = await queueManager_1.queueRequest(urlString);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");
     const mangaTitle = contentElement.find(".info-title h1").first().text().trim();
     // todo process metadata and get more (like author)

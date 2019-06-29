@@ -7,13 +7,16 @@ const logger_1 = tslib_1.__importDefault(require("./logger"));
 class Cache extends node_cache_1.default {
     constructor(options = {}) {
         super(options);
-        this.size = options.size || 100;
+        this.maxSize = options.size || 100;
         this._checkPeriodicSize();
+    }
+    isFull() {
+        return this.keys().length >= this.maxSize;
     }
     // @ts-ignore
     set(key, value, ttl, cb) {
         const b = super.set(key, value, ttl, cb);
-        this._checkSize();
+        this._trimSize();
         return b;
     }
     flushAll() {
@@ -29,12 +32,12 @@ class Cache extends node_cache_1.default {
         }
     }
     _checkPeriodicSize() {
-        this._checkSize();
-        this.timeOutId = setTimeout(() => this._checkSize(), (this.options.stdTTL || 10) * 1000);
+        this._trimSize();
+        this.timeOutId = setTimeout(() => this._trimSize(), (this.options.stdTTL || 10) * 1000);
     }
-    _checkSize() {
+    _trimSize() {
         const keys = this.keys();
-        const overLimit = keys.length - this.size;
+        const overLimit = keys.length - this.maxSize;
         if (overLimit === 1) {
             const maxValue = tools_1.max(keys, (previous, current) => (this.getTtl(previous) || 0) - (this.getTtl(current) || 0));
             if (!maxValue) {

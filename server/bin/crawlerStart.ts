@@ -1,11 +1,14 @@
-import * as scraper from "./externals/scraper";
 import {Storage} from "./database/database";
 import {Errors, getElseSet, isTocEpisode, isTocPart, Md5Hash, multiSingle} from "./tools";
 import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {Episode, ExternalList, LikeMedium, News, Part, SimpleEpisode, SimpleMedium} from "./types";
 import logger, {logError} from "./logger";
-import {Toc, TocEpisode, TocPart} from "./externals/types";
+import {Dependant, Toc, TocEpisode, TocPart} from "./externals/types";
 import * as validate from "validate.js";
+import {scrapeTypes} from "./externals/scraperTools";
+import {JobScraper} from "./externals/jobScraper";
+
+const scraper = new JobScraper();
 
 // todo look into database trigger or maybe replace it with database listener, which notify user on changes?
 // todo fill out all of the event listener
@@ -278,7 +281,7 @@ async function addFeeds(feeds: string[]): Promise<void> {
         return;
     }
     let scrapes = await Storage.getScrapes();
-    scrapes = scrapes.filter((value) => value.type === scraper.scrapeTypes.FEED);
+    scrapes = scrapes.filter((value) => value.type === scrapeTypes.FEED);
 
     const scrapeFeeds = feeds.map((feed) => {
         if (scrapes.find((value) => value.link === feed)) {
@@ -286,7 +289,7 @@ async function addFeeds(feeds: string[]): Promise<void> {
         }
         return {
             link: feed,
-            type: scraper.scrapeTypes.FEED,
+            type: scrapeTypes.FEED,
         };
     }).filter((value) => value);
 
@@ -354,7 +357,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
         foundLikeMedia.push(...storedMedia);
 
         // queue newly added media for scraping
-        scraper.add({
+        scraper.addDependant({
             medium: storedMedia.map((value) => {
                 return {
                     id: value.medium.id,
@@ -595,27 +598,21 @@ async function newsHandler({link, result}: { link: string, result: News[] }) {
 scraper.on("feed:error", (errorValue: any) => logError(errorValue));
 scraper.on("toc:error", (errorValue: any) => logError(errorValue));
 scraper.on("list:error", (errorValue: any) => logError(errorValue));
-scraper.on("news:error", (errorValue: any) => logError(errorValue));
 
+scraper.on("news:error", (errorValue: any) => logError(errorValue));
 scraper.on("news", (result) => newsHandler(result).catch((error) => logError(error)));
 scraper.on("toc", (result) => tocHandler(result).catch((error) => logError(error)));
 scraper.on("feed", (result) => feedHandler(result).catch((error) => logError(error)));
+
 scraper.on("list", (result) => listHandler(result).catch((error) => logError(error)));
 
-const listenerList = [];
-
 export const startCrawler = (): void => {
-    scraper.setup().then(() => scraper.start()).catch((error) => {
-        console.log(error);
-        logger.error(error);
-    });
+    scraper
+        .setup()
+        .then(() => scraper.start())
+        .catch((error) => logError(error));
 };
 
-/**
- *
- * @param {function} listener
- * @return {undefined}
- */
-export const addErrorListener = (listener: (error: Error) => void): void => {
-    listenerList.push(listener);
-};
+export function addDependant(dependant: Dependant) {
+    scraper.addDependant(dependant);
+}

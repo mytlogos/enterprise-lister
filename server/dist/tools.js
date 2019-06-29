@@ -14,6 +14,15 @@ function remove(array, item) {
     return true;
 }
 exports.remove = remove;
+function removeLike(array, equals) {
+    const index = array.findIndex(equals);
+    if (index < 0) {
+        return false;
+    }
+    array.splice(index, 1);
+    return true;
+}
+exports.removeLike = removeLike;
 function forEachArrayLike(arrayLike, callback, start = 0) {
     for (let i = start; i < arrayLike.length; i++) {
         callback(arrayLike[i], i);

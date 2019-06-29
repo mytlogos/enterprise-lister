@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const tools_1 = require("../../tools");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const url = tslib_1.__importStar(require("url"));
@@ -13,8 +12,7 @@ const defaultRequest = request.defaults({
 const initPromise = queueManager_1.queueRequest("https://www.webnovel.com/", undefined, defaultRequest);
 async function scrapeNews() {
     const uri = "https://www.webnovel.com/";
-    const body = await queueManager_1.queueRequest(uri);
-    const $ = cheerio_1.default.load(body);
+    const $ = await queueManager_1.queueCheerioRequest(uri);
     const newsRows = $("#LatUpdate tbody > tr");
     const news = [];
     for (let i = 0; i < newsRows.length; i++) {
@@ -78,9 +76,7 @@ async function scrapeToc(urlString) {
     return [toc];
 }
 function loadBody(urlString) {
-    return initPromise
-        .then(() => queueManager_1.queueRequest(urlString, undefined, defaultRequest))
-        .then((body) => cheerio_1.default.load(body));
+    return initPromise.then(() => queueManager_1.queueCheerioRequest(urlString, undefined, defaultRequest));
 }
 function loadJson(urlString) {
     return initPromise

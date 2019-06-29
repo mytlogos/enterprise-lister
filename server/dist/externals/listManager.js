@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const request_promise_native_1 = tslib_1.__importDefault(require("request-promise-native"));
-const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const url_1 = tslib_1.__importDefault(require("url"));
 const tools_1 = require("../tools");
 const queueManager_1 = require("./queueManager");
@@ -168,8 +167,7 @@ class NovelUpdates {
      * @return {Promise<CheerioStatic>}
      */
     loadCheerio(link) {
-        return queueManager_1.queueRequest(link, { url: link }, this.defaults)
-            .then((body) => cheerio_1.default.load(body));
+        return queueManager_1.queueCheerioRequest(link, { url: link }, this.defaults);
     }
     scrapeList($, media, feed) {
         let feedLink = $(".l-content .seticon a:nth-child(1)").attr("href");

@@ -375,7 +375,7 @@ const StateProcessorImpl = {
                 affectedRows: value.affectedRows,
                 uuid
             });
-            logger_1.default.silly(`Query: '${query}', Parameter: '${parameter}'`);
+            logger_1.default.debug(`Query: '${query}', Parameter: '${parameter}'`);
         }
         return value;
     },
@@ -475,12 +475,6 @@ const StateProcessorImpl = {
         }
     },
     async checkTableSchema(context) {
-        const exists = await context.databaseExists();
-        if (!exists) {
-            await context.createDatabase();
-        }
-        // set database as current database
-        await context.useDatabase();
         // display all current tables
         const tables = await context.getTables();
         const enterpriseTableProperty = `Tables_in_${this.databaseName}`;

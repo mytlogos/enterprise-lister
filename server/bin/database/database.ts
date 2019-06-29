@@ -35,8 +35,7 @@ type ContextCallback<T> = (context: QueryContext) => Promise<T>;
  * Creates the context for QueryContext, to
  * query a single connection sequentially.
  */
-export async function inContext<T>(callback: ContextCallback<T>, transaction = true,
-                                   allowDatabase = true): Promise<T> {
+export async function inContext<T>(callback: ContextCallback<T>, transaction = true): Promise<T> {
     if (!running) {
         // if inContext is called without Storage being active
         return Promise.reject("Not started");
@@ -50,10 +49,6 @@ export async function inContext<T>(callback: ContextCallback<T>, transaction = t
     const con = await pool.getConnection();
     const context = new QueryContext(con);
 
-    // don't use database if it is explicitly disallowed
-    if (allowDatabase) {
-        await context.useDatabase();
-    }
     let result;
     try {
         result = await doTransaction(callback, context, transaction);
@@ -69,7 +64,6 @@ export async function inContext<T>(callback: ContextCallback<T>, transaction = t
             return inContext(
                 (invalidatorContext) => invalidatorContext.addInvalidation(value),
                 true,
-                true
             );
         })
         .catch((reason) => {
@@ -112,7 +106,6 @@ async function doTransaction<T>(callback: ContextCallback<T>, context: QueryCont
     return result;
 }
 
-
 const pool = mySql.createPool({
     connectionLimit: env.dbConLimit,
     host: env.dbHost,
@@ -120,6 +113,8 @@ const pool = mySql.createPool({
     password: env.dbPassword,
     // charset/collation of the current database and tables
     charset: "utf8mb4",
+    // we assume that the database exists already
+    database: "enterprise"
 });
 
 let errorAtStart = false;
@@ -143,7 +138,6 @@ function start(): void {
             startPromise = inContext(
                 (context) => StateProcessor.checkTableSchema(context),
                 true,
-                false
             ).catch((error) => {
                 logger.error(error);
                 console.log(error);
@@ -982,7 +976,7 @@ export const Storage: Storage = {
     },
 
     clear(): Promise<boolean> {
-        return inContext((context) => context.clearAll(), false, false);
+        return inContext((context) => context.clearAll());
     },
 };
 

@@ -15,5 +15,7 @@ exports.default = {
     dbPassword: config.parsed.dbPassword,
     dbUser: config.parsed.dbUser,
     port: config.parsed.port,
+    measure: !!Number(config.parsed.measure),
+    stopScrapeEvents: !!Number(config.parsed.stopScrapeEvents)
 };
 //# sourceMappingURL=env.js.map

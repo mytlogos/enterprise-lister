@@ -2,7 +2,8 @@ import {Storage} from "../database/database";
 import {factory} from "../externals/listManager";
 import {Handler, IRoute, Request, Response} from "express";
 import logger from "../logger";
-import {add as addDependant, downloadEpisodes} from "../externals/scraper";
+import {downloadEpisodes} from "../externals/scraperTools";
+import {addDependant} from "../crawlerStart";
 import {Errors, isError, isString, stringToNumberList} from "../tools";
 
 type RouteMiddleWare = (route: IRoute) => void;
