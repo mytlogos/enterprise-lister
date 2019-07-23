@@ -2,8 +2,7 @@ import {Storage} from "../database/database";
 import {factory} from "../externals/listManager";
 import {Handler, IRoute, Request, Response} from "express";
 import logger from "../logger";
-import {downloadEpisodes} from "../externals/scraperTools";
-import {addDependant} from "../crawlerStart";
+import {downloadEpisodes, ScrapeTypes} from "../externals/scraperTools";
 import {Errors, isError, isString, stringToNumberList} from "../tools";
 
 type RouteMiddleWare = (route: IRoute) => void;
@@ -58,13 +57,11 @@ export const addBookmarked: Handler = (req, res) => {
     const {uuid, bookmarked} = req.body;
     const protocol = /^https?:\/\//;
 
-    if (bookmarked && bookmarked.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
-        addDependant({
-            oneTimeToc: bookmarked.map((url: string) => {
-                return {url, uuid};
-            })
-        });
-        sendResult(res, Promise.resolve(true));
+    if (bookmarked && bookmarked.length && bookmarked.every((link: any) => isString(link) && protocol.test(link))) {
+        const storePromise = Storage.addScrape(bookmarked.map((link: string) => {
+            return {type: ScrapeTypes.ONETIMETOC, link, userId: uuid};
+        }));
+        sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
     }
@@ -75,10 +72,8 @@ export const addToc: Handler = (req, res) => {
     const protocol = /^https?:\/\//;
 
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        addDependant({
-            oneTimeToc: {url: toc, uuid, mediumId}
-        });
-        sendResult(res, Promise.resolve(true));
+        const storePromise = Storage.addScrape({type: ScrapeTypes.ONETIMETOC, link: toc, userId: uuid, mediumId});
+        sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
     }
@@ -165,7 +160,8 @@ export const addPartRoute: RouteMiddleWare = (route) => {
     });
     route.post((req, res) => {
         const {part, mediumId, uuid} = req.body;
-        sendResult(res, Storage.addPart(mediumId, part, uuid));
+        part.mediumId = mediumId;
+        sendResult(res, Storage.addPart(part, uuid));
     });
     route.put((req, res) => {
         const {part, uuid} = req.body;
@@ -190,7 +186,8 @@ export const addEpisodeRoute: RouteMiddleWare = (route) => {
     });
     route.post((req, res) => {
         const {episode, partId, uuid} = req.body;
-        sendResult(res, Storage.addEpisode(partId, episode, uuid));
+        episode.partId = partId;
+        sendResult(res, Storage.addEpisode(episode, uuid));
     });
     route.put((req, res) => {
         const {episode, uuid} = req.body;

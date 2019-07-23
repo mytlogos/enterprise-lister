@@ -112,7 +112,7 @@
 
             mark(entry, index, prop) {
                 this.marked.id = entry.id;
-                this.marked.index = index;
+                this.marked.totalIndex = index;
                 this.marked.prop = prop;
             },
 
@@ -154,7 +154,7 @@
                     }
                     this.marked.prop = this.columns[0].prop;
                     this.marked.id = this.filteredData[0].id;
-                    this.marked.index = 0;
+                    this.marked.totalIndex = 0;
                     return;
                 }
                 if (direction === Move.DOWN) {

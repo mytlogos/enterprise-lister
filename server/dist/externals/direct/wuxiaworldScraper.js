@@ -3,39 +3,108 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const url = tslib_1.__importStar(require("url"));
-const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
 const queueManager_1 = require("../queueManager");
 const tools_1 = require("../../tools");
 async function scrapeNews() {
     const uri = "https://www.wuxiaworld.com/";
     const $ = await queueManager_1.queueCheerioRequest(uri);
     const newsRows = $(".table-novels tbody tr");
-    const news = [];
+    const episodeNews = [];
+    // todo somestimes instead of chapter the Abbrev. of medium
+    const titleRegex = /((vol(\.|ume)|book)?\s*((\d+)(\.(\d+))?).+)?ch(\.|apter)?\s*((\d+)(\.(\d+))?)/i;
+    const abbrevTitleRegex = "|^)\\s*((\\d+)(\\.(\\d+))?)";
     for (let i = 0; i < newsRows.length; i++) {
         const newsRow = newsRows.eq(i);
-        const children = newsRow.children("td");
-        const titleElement = children.eq(1);
-        const link = url.resolve(uri, titleElement.children("a").attr("href"));
-        const mediumElement = children.eq(0).children(".title");
-        const title = emoji_strip_1.default(`${mediumElement.text().trim()} - ${titleElement.text().trim()}`);
-        const timeStampElement = children.eq(3).children("[data-timestamp]").first();
+        const mediumLinkElement = newsRow.find("td:first-child .title a:first-child");
+        const tocLink = url.resolve(uri, mediumLinkElement.attr("href"));
+        const mediumTitle = tools_1.sanitizeString(mediumLinkElement.text());
+        const titleLink = newsRow.find("td:nth-child(2) a:first-child");
+        const link = url.resolve(uri, titleLink.attr("href"));
+        const episodeTitle = tools_1.sanitizeString(titleLink.text());
+        const timeStampElement = newsRow.find("td:last-child [data-timestamp]");
         const date = new Date(Number(timeStampElement.attr("data-timestamp")) * 1000);
         if (date > new Date()) {
             logger_1.default.warn("changed time format on wuxiaworld");
-            return [];
+            return;
         }
-        news.push({
-            title,
+        let regexResult = titleRegex.exec(episodeTitle);
+        if (!regexResult) {
+            let abbrev = "";
+            for (const word of mediumTitle.split(/\W+/)) {
+                if (word) {
+                    abbrev += word[0];
+                }
+            }
+            // workaround, as some titles have the abbreviation instead of chapter before the chapter index
+            const match = episodeTitle.match(new RegExp(`(${abbrev}${abbrevTitleRegex}`, "i"));
+            if (!abbrev || !match) {
+                logger_1.default.warn("changed title format on wuxiaworld");
+                return;
+            }
+            regexResult = [];
+            regexResult[9] = match[2];
+            regexResult[10] = match[3];
+            regexResult[12] = match[5];
+        }
+        let partIndex;
+        let partTotalIndex;
+        let partPartialIndex;
+        if (regexResult[4]) {
+            partIndex = Number(regexResult[4]);
+            if (regexResult[5]) {
+                partTotalIndex = Number(regexResult[5]);
+            }
+            if (regexResult[7]) {
+                partPartialIndex = Number(regexResult[7]) || undefined;
+            }
+        }
+        let episodeIndex;
+        let episodeTotalIndex;
+        let episodePartialIndex;
+        if (regexResult[9]) {
+            episodeIndex = Number(regexResult[9]);
+            if (regexResult[10]) {
+                episodeTotalIndex = Number(regexResult[10]);
+            }
+            if (regexResult[12]) {
+                episodePartialIndex = Number(regexResult[12]) || undefined;
+            }
+        }
+        if (episodeIndex == null || episodeTotalIndex == null) {
+            logger_1.default.warn("changed title format on wuxiaworld");
+            return;
+        }
+        episodeNews.push({
+            mediumTocLink: tocLink,
+            mediumTitle,
+            mediumType: tools_1.MediaType.TEXT,
+            partIndex,
+            partTotalIndex,
+            partPartialIndex,
+            episodeTotalIndex,
+            episodePartialIndex,
+            episodeIndex,
+            episodeTitle,
             link,
             date,
         });
     }
-    return news;
+    const news = [];
+    const translatorNewsElements = $(".section >.section-content .col-sm-6.clearfix");
+    for (let i = 0; i < translatorNewsElements.length; i++) {
+        const tlNews = translatorNewsElements.eq(i);
+    }
+    const pageNewsElements = $(".section >.section-content .col-sm-6 > .caption > div:not([class])");
+    for (let i = 0; i < pageNewsElements.length; i++) {
+        const pageNewsElement = pageNewsElements.eq(i);
+    }
+    // TODO: 07.07.2019 scrape news (not new episodes)
+    return { episodes: episodeNews, news };
 }
 async function scrapeToc(urlString) {
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".content");
-    const novelTitle = contentElement.find("h4").first().text().trim();
+    const novelTitle = tools_1.sanitizeString(contentElement.find("h4").first().text());
     const volumes = contentElement.find("#accordion > .panel");
     if (!volumes.length) {
         logger_1.default.warn("toc link with no volumes: " + urlString);
@@ -59,7 +128,7 @@ async function scrapeToc(urlString) {
         const volume = {
             title: volumeTitle,
             episodes: [],
-            index: volumeIndex
+            totalIndex: volumeIndex
         };
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
@@ -69,7 +138,7 @@ async function scrapeToc(urlString) {
             if (chapterGroups) {
                 const index = Number(chapterGroups[1]);
                 if (!Number.isNaN(index)) {
-                    volume.episodes.push({ url: link, title, index });
+                    volume.episodes.push({ url: link, title, totalIndex: index });
                 }
             }
         }
@@ -85,8 +154,9 @@ async function scrapeToc(urlString) {
         for (const entry of occurrence.entries()) {
             if (!maxEntry) {
                 maxEntry = entry;
+                continue;
             }
-            else if (maxEntry[1] < entry[1]) {
+            if (maxEntry[1] < entry[1]) {
                 maxEntry = entry;
             }
         }
@@ -94,13 +164,13 @@ async function scrapeToc(urlString) {
             const decrementIndices = [];
             for (const tocPart of content) {
                 if (!tocPart.title.startsWith(maxEntry[0])) {
-                    decrementIndices.push(tocPart.index);
+                    decrementIndices.push(tocPart.totalIndex);
                 }
                 else {
                     filteredContent.push(tocPart);
                     for (const decrementIndex of decrementIndices) {
-                        if (decrementIndex < tocPart.index) {
-                            tocPart.index--;
+                        if (decrementIndex < tocPart.totalIndex) {
+                            tocPart.totalIndex--;
                         }
                     }
                 }
@@ -161,15 +231,12 @@ async function tocSearcher(medium) {
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
     for (let wordsCount = 1; wordsCount <= words.length; wordsCount++) {
-        let searchQuery = "";
-        for (let i = 0; i < wordsCount; i++) {
-            searchQuery = `${searchQuery}+${encodeURIComponent(words[i])}`;
-        }
-        const responseJson = await queueManager_1.queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + words[0]);
+        const word = encodeURIComponent(words[0]);
+        const responseJson = await queueManager_1.queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + word);
         const parsed = JSON.parse(responseJson);
         if (parsed.result && parsed.items && parsed.items.length) {
-            const foundItem = parsed.items.find((value) => tools_1.equalsIgnoreCase(value.name, medium.title)
-                || medium.synonyms.some((s) => tools_1.equalsIgnoreCase(value.name, s)));
+            const foundItem = parsed.items.find((value) => tools_1.equalsIgnore(value.name, medium.title)
+                || medium.synonyms.some((s) => tools_1.equalsIgnore(value.name, s)));
             if (foundItem) {
                 tocLink = "https://www.wuxiaworld.com/novel/" + foundItem.slug;
                 break;

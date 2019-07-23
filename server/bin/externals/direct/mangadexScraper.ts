@@ -1,50 +1,121 @@
 import {Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
-import {News} from "../../types";
+import {EpisodeNews, News} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {MediaType} from "../../tools";
+import {MediaType, sanitizeString} from "../../tools";
+import * as request from "request";
 
+const jar = request.jar();
+jar.setCookie(
+    `mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;`,
+    "https://mangadex.org/",
+    {secure: false}
+);
 
-async function scrapeNews(): Promise<News[]> {
-    // fixme mangadex has cloudflare protection and this request throws a 503 error
+async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+    // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
+    //  with expiration date somewhere in 100 years to lessen load
+
     const uri = "https://mangadex.org/";
-    const $ = await queueCheerioRequest(uri + "updates");
+    const requestLink = uri + "updates";
+    const $ = await queueCheerioRequest(requestLink, {jar, uri: requestLink});
     const newsRows = $(".table tbody tr");
 
-    const news: News[] = [];
-    let currentMedium: string = "";
+    const episodeNews: EpisodeNews[] = [];
+    let currentMedium = "";
+    let currentMediumLink = "";
+
+    const titlePattern = /(vol\.\s*((\d+)(\.(\d+))?))?\s*ch\.\s*((\d+)(\.(\d+))?)(\s*-\s*(.+))?/i;
 
     for (let i = 0; i < newsRows.length; i++) {
         const newsRow = newsRows.eq(i);
 
-        if (newsRow.has(".flag").length) {
-            if (!currentMedium) {
-                throw Error("episode without medium");
-            }
-            const children = newsRow.children("td");
-
-            // ignore manga which are not english
-            if (!children.eq(3).children(".flag-gb").length) {
-                continue;
-            }
-            const titleElement = children.eq(1);
-            const link = url.resolve(uri, titleElement.children("a").attr("href"));
-            const title = `${currentMedium} - ${titleElement.text()}`;
-
-            const timeStampElement = children.eq(6).children("time").first();
-            const date = new Date(timeStampElement.attr("datetime"));
-
-            news.push({
-                title,
-                link,
-                date,
-            });
-        } else {
-            currentMedium = newsRow.text().trim();
+        if (!newsRow.has(".flag").length) {
+            const mediumLinkElement = newsRow.find("a.manga_title");
+            currentMediumLink = url.resolve(uri, mediumLinkElement.attr("href"));
+            currentMedium = sanitizeString(mediumLinkElement.text());
+            continue;
         }
+
+        if (!currentMedium) {
+            throw Error("episode without medium");
+        }
+        const children = newsRow.children("td");
+
+        // ignore manga which are not english
+        if (!children.eq(2).children(".flag-gb").length) {
+            continue;
+        }
+        const titleElement = children.eq(1);
+        const link = url.resolve(uri, titleElement.children("a").attr("href"));
+        const title = sanitizeString(titleElement.text());
+
+        // ignore oneshots, they are not 'interesting' enough, e.g. too short
+        if (title === "Oneshot") {
+            continue;
+        }
+
+        const timeStampElement = children.eq(6).children("time").first();
+        const date = new Date(timeStampElement.attr("datetime"));
+
+        const groups = titlePattern.exec(title);
+
+        if (!groups) {
+            console.log(`Unknown News Format: '${title}' for '${currentMedium}'`);
+            continue;
+        }
+
+        let episodeIndex;
+        let episodeTotalIndex;
+        let episodePartialIndex;
+        let episodeTitle = "";
+
+        if (groups[11]) {
+            episodeTitle = sanitizeString(groups[11]);
+        }
+
+        if (groups[6]) {
+            episodeIndex = Number(groups[6]);
+            episodeTotalIndex = Number(groups[7]);
+            episodePartialIndex = Number(groups[9]) || undefined;
+
+            if (episodeTitle) {
+                episodeTitle = `Ch. ${episodeIndex} - ` + episodeTitle;
+            } else {
+                episodeTitle = `Ch. ${episodeIndex}`;
+            }
+        } else {
+            logger.info(`unknown new format on mangadex: ${title}`);
+            continue;
+        }
+        let partIndex;
+        let partTotalIndex;
+        let partPartialIndex;
+        let partTitle;
+
+        if (groups[2]) {
+            partIndex = Number(groups[2]);
+            partTitle = `Vol. ${partIndex}`;
+            partTotalIndex = Number(groups[3]);
+            partPartialIndex = Number(groups[5]) || undefined;
+        }
+        episodeNews.push({
+            mediumTitle: currentMedium,
+            mediumTocLink: currentMediumLink,
+            mediumType: MediaType.IMAGE,
+            episodeTitle: title,
+            episodeIndex,
+            episodeTotalIndex,
+            episodePartialIndex,
+            partIndex,
+            partTotalIndex,
+            partPartialIndex,
+            link,
+            date
+        });
     }
-    return news;
+    return {episodes: episodeNews};
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
@@ -135,14 +206,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             if (!part) {
                 contents[volIndex] = part = {
                     episodes: [],
-                    index: volIndex,
+                    totalIndex: volIndex,
                     title: "Vol." + volIndex
                 };
             }
 
             part.episodes.push({
                 title,
-                index: chapIndex,
+                totalIndex: chapIndex,
                 url: link,
                 releaseDate: time
             });
@@ -159,7 +230,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
             contents.push({
                 title,
-                index: chapIndex,
+                totalIndex: chapIndex,
                 url: link,
                 releaseDate: time
             } as TocEpisode);

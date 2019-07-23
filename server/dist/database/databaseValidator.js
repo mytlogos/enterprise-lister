@@ -8,6 +8,7 @@ const tableParser_1 = require("./tableParser");
 const tools_1 = require("../tools");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const validate = tslib_1.__importStar(require("validate.js"));
+const counter_1 = require("../counter");
 const UpdateParser = {
     parse(rawQuery) {
         const query = rawQuery.rawQuery;
@@ -258,7 +259,8 @@ function createTrigger(watchTable, targetTable, invalidationTable, mainPrimaryKe
     };
 }
 const queryTableReg = /((select .+? from)|(update )|(delete.+?from)|(insert.+?into )|(.+?join))\s*(\w+)/gi;
-const queryColumnReg = /((\w+\.)?(\w+))\s+(like|is|=)\s+\?/gi;
+const queryColumnReg = /(((\w+\.)?(\w+))|\?)\s*(like|is|=|<|>|<>|<=|>=)\s*(((\w+\.)?(\w+))|\?)/gi;
+const counter = new counter_1.Counter();
 const StateProcessorImpl = {
     databaseName: "",
     workingPromise: Promise.resolve(),
@@ -268,6 +270,12 @@ const StateProcessorImpl = {
     invalidationTable: null,
     trigger: [],
     async validateQuery(query, parameter) {
+        if (query.length > 20 && counter.count(query) === 100) {
+            console.log(`Query: '${query}' executed 100 times`);
+        }
+        if (counter.count("query") % 100 === 0) {
+            console.log(`Database queried ${counter.getCount("query")} times`);
+        }
         let tableExec = queryTableReg.exec(query);
         if (!tableExec) {
             return;
@@ -285,13 +293,16 @@ const StateProcessorImpl = {
         let columnExec = queryColumnReg.exec(query);
         const columns = [];
         while (columnExec) {
-            if (columnExec[1]) {
+            if (columnExec[1] === "?") {
+                columns.push(columnExec[6]);
+            }
+            if (columnExec[6] === "?") {
                 columns.push(columnExec[1]);
             }
             columnExec = queryColumnReg.exec(query);
         }
         const referencedTables = tools_1.unique(tables.map((name) => {
-            const foundTable = this.tables.find((value) => tools_1.equalsIgnoreCase(value.name, name));
+            const foundTable = this.tables.find((value) => tools_1.equalsIgnore(value.name, name));
             if (!foundTable) {
                 throw Error(`Unknown Table: '${name}'`);
             }
@@ -303,19 +314,19 @@ const StateProcessorImpl = {
             let columnSchema;
             if (separator >= 0) {
                 const tableName = columnName.substring(0, separator);
-                const foundTable = this.tables.find((value) => tools_1.equalsIgnoreCase(value.name, tableName));
+                const foundTable = this.tables.find((value) => tools_1.equalsIgnore(value.name, tableName));
                 if (!foundTable) {
                     throw Error(`Unknown Table: '${tableName}'`);
                 }
                 const realColumnName = columnName.substring(separator + 1);
                 columnSchema = foundTable.columns.find((schema) => {
-                    return tools_1.equalsIgnoreCase(schema.name, realColumnName);
+                    return tools_1.equalsIgnore(schema.name, realColumnName);
                 });
             }
             else {
                 for (const referencedTable of referencedTables) {
                     const foundColumn = referencedTable.columns.find((schema) => {
-                        return tools_1.equalsIgnoreCase(schema.name, columnName);
+                        return tools_1.equalsIgnore(schema.name, columnName);
                     });
                     if (foundColumn) {
                         columnSchema = foundColumn;
@@ -324,7 +335,9 @@ const StateProcessorImpl = {
                 }
             }
             if (!columnSchema) {
-                throw Error(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
+                // todo look into why he cant find it
+                logger_1.default.silly(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
+                return;
             }
             let columnValue;
             if (Array.isArray(parameter)) {

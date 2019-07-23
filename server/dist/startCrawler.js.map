@@ -1,1 +1,1 @@
-{"version":3,"file":"startCrawler.js","sourceRoot":"","sources":["../bin/startCrawler.ts"],"names":[],"mappings":";;AAAA,iDAA4C;AAC5C,kDAAiD;AACjD,mEAAmE;AACnE,uBAAY,EAAE,CAAC;AACf,2BAAY,EAAE,CAAC;AACf,OAAO,CAAC,GAAG,CAAC,eAAe,GAAG,OAAO,CAAC,GAAG,CAAC,CAAC"}
+{"version":3,"file":"startCrawler.js","sourceRoot":"","sources":["../bin/startCrawler.ts"],"names":[],"mappings":";;AAAA,iDAA4C;AAC5C,kDAAiD;AACjD,OAAO,CAAC,GAAG,CAAC,eAAe,GAAG,OAAO,CAAC,GAAG,CAAC,CAAC;AAC3C,mEAAmE;AACnE,uBAAY,EAAE,CAAC;AACf,2BAAY,EAAE,CAAC"}

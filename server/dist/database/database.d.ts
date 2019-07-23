@@ -1,5 +1,7 @@
-import { Episode, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, SimpleEpisode, SimpleMedium, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, Synonyms, TocSearchMedium, User } from "../types";
 import { QueryContext } from "./queryContext";
+import { MediumInWait } from "./databaseTypes";
+import { ScrapeTypes } from "../externals/scraperTools";
 declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 /**
  * Creates the context for QueryContext, to
@@ -14,9 +16,9 @@ export interface Storage {
     }>;
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void>;
     removePageInfo(link: string, key?: string): Promise<void>;
-    addRelease(episodeId: number, releases: EpisodeRelease): Promise<EpisodeRelease>;
-    addRelease(episodeId: number, releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
-    updateRelease(episodeId: number, sourceType: string, releases: MultiSingle<EpisodeRelease>): Promise<void>;
+    addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
+    addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+    updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void>;
     getSourcedReleases(sourceType: string, mediumId: number): Promise<Array<{
         sourceType: string;
         url: string;
@@ -28,6 +30,7 @@ export interface Storage {
     getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;
     updatePart(part: Part, uuid?: string): Promise<boolean>;
     userLoginStatus(ip: string): Promise<User | null>;
+    userLoginStatus(ip: string, uuid: string, session: string): Promise<boolean>;
     removeSynonyms(synonyms: (Synonyms | Synonyms[]), uuid?: string): Promise<boolean>;
     updateExternalList(externalList: ExternalList, uuid?: string): Promise<boolean>;
     getProgress(uuid: string, episodeId: number): Promise<number>;
@@ -36,7 +39,7 @@ export interface Storage {
     removeMedium(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
     addNews(news: (News | News[])): Promise<News | Array<News | undefined> | undefined>;
     getScrapes(): Promise<ScrapeItem[]>;
-    createStandardPart(mediumId: number): Promise<Part>;
+    createStandardPart(mediumId: number): Promise<ShallowPart>;
     deletePart(id: number, uuid?: string): Promise<boolean>;
     getList(listId: (number | number[]), media: number[], uuid: string): Promise<{
         list: List | List[];
@@ -50,10 +53,10 @@ export interface Storage {
         cookies: string;
     }>>;
     removeProgress(uuid: string, episodeId: number): Promise<boolean>;
-    linkNewsToEpisode(news: News[]): Promise<boolean>;
     addItemToExternalList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
     getMediumParts(mediumId: number, uuid?: string): Promise<Part[]>;
+    getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
     updateProgress(uuid: string, mediumId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
     showUser(): Promise<User[]>;
     addScrape(scrape: (ScrapeItem | ScrapeItem[])): Promise<boolean>;
@@ -62,15 +65,19 @@ export interface Storage {
     addProgress(uuid: string, episodeId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
     logoutUser(uuid: string, ip: string): Promise<boolean>;
     stop(): Promise<void>;
-    addEpisode(partId: number, episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
-    addEpisode(partId: number, episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
+    addEpisode(episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
+    addEpisode(episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean>;
+    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number): Promise<boolean>;
     deleteUser(uuid: string): Promise<boolean>;
-    addPart(mediumId: number, part: Part, uuid?: string): Promise<Part>;
+    addPart(part: Part, uuid?: string): Promise<Part>;
     getLatestNews(domain: string): Promise<News[]>;
     getMedium(id: (number | number[]), uuid: string): Promise<Medium | Medium[]>;
     deleteList(listId: number, uuid: string): Promise<boolean>;
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean>;
+    getMediaInWait(): Promise<MediumInWait[]>;
+    deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
+    addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
     getExternalLists(uuid: string): Promise<ExternalList[]>;
     saveResult(result: Result): Promise<boolean>;
     setProgress(uuid: string, progressResult: (ProgressResult | ProgressResult[])): Promise<void>;
@@ -91,6 +98,10 @@ export interface Storage {
     removeItemFromExternalList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
     updateList(list: List): Promise<boolean>;
     getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]>;
+    getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{
+        partId: number;
+        episodes: number[];
+    }>>;
     getParts(partsId: (number | number[]), uuid: string): Promise<Part[] | Part>;
     getInvalidated(uuid: string): Promise<Invalidation[]>;
     markNewsRead(uuid: string, news: number[]): Promise<boolean>;
@@ -110,13 +121,15 @@ export interface Storage {
         cookies: string;
     }>;
     addExternalList(userUuid: string, externalList: ExternalList, uuid?: string): Promise<ExternalList>;
-    removeScrape(link: string): Promise<boolean>;
+    removeScrape(link: string, type: ScrapeTypes): Promise<boolean>;
     deleteEpisode(id: number, uuid?: string): Promise<boolean>;
     getLatestReleases(mediumId: number): Promise<SimpleEpisode[]>;
     addSynonyms(synonyms: (Synonyms | Synonyms[]), uuid?: string): Promise<boolean>;
     addToc(mediumId: number, link: string): Promise<void>;
     linkNewsToMedium(): Promise<boolean>;
     getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
+    getMediumEpisodePerIndex(mediumId: number, index: number[]): Promise<SimpleEpisode[]>;
+    getMediumEpisodePerIndex(mediumId: number, index: number): Promise<SimpleEpisode>;
     getEpisode(id: number, uuid: string): Promise<Episode>;
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
     getExternalUser(uuid: string): Promise<ExternalUser>;
@@ -136,6 +149,7 @@ export interface Storage {
     getChapterIndices(mediumId: number): Promise<number[]>;
     getAllChapterLinks(mediumId: number): Promise<string[]>;
     getTocSearchMedium(id: number): Promise<TocSearchMedium>;
+    getTocSearchMedia(): Promise<TocSearchMedium[]>;
     deleteOldNews(): Promise<boolean>;
 }
 export declare const Storage: Storage;

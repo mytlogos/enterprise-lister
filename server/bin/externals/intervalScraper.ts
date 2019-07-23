@@ -11,7 +11,7 @@ import {
     ScrapeDependants,
     Scraper,
     ScraperHelper,
-    scrapeTypes,
+    ScrapeTypes,
     toc
 } from "./scraperTools";
 import {Dependant} from "./types";
@@ -69,11 +69,11 @@ export class IntervalScraper implements Scraper {
         const scrapeBoard = await Storage.getScrapes();
 
         scrapeBoard.forEach((value) => {
-            if (value.type === scrapeTypes.NEWS) {
+            if (value.type === ScrapeTypes.NEWS) {
                 this.scrapeDependants.news.push(value);
-            } else if (value.type === scrapeTypes.FEED) {
+            } else if (value.type === ScrapeTypes.FEED) {
                 this.scrapeDependants.feeds.push(value.link);
-            } else if (value.type === scrapeTypes.TOC) {
+            } else if (value.type === ScrapeTypes.TOC) {
                 this.scrapeDependants.tocs.push(value);
             }
         });

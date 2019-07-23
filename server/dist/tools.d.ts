@@ -16,7 +16,7 @@ export declare function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, ot
 export declare function isTocEpisode(tocContent: any): tocContent is TocEpisode;
 export declare function isTocPart(tocContent: any): tocContent is TocPart;
 export declare function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: number): boolean;
-export declare function equalsIgnoreCase(s1: string, s2: string): boolean;
+export declare function equalsIgnore(s1: string, s2: string): boolean;
 export declare function countOccurrence<T>(array: T[]): Map<T, number>;
 export declare type Predicate<T> = (value: T, index: number) => boolean;
 export declare function count<T>(array: T[], condition: Predicate<T>): number;
@@ -27,6 +27,7 @@ export declare function minValue<T>(array: T[]): T | undefined;
 export declare function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined;
 export declare function relativeToAbsoluteTime(relative: string): Date | null;
 export declare function delay(timeout?: number): Promise<void>;
+export declare function sanitizeString(s: string): string;
 export declare function isString(value: any): value is string;
 export declare function stringToNumberList(s: string): number[];
 interface Hash {
@@ -61,4 +62,12 @@ export declare enum MediaType {
     IMAGE = 8
 }
 export declare function allTypes(): any;
+export declare function combiIndex(value: {
+    totalIndex: number;
+    partialIndex?: number;
+}): number;
+export declare function separateIndex(value: number): {
+    totalIndex: number;
+    partialIndex?: number;
+};
 export {};

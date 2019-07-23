@@ -11,7 +11,7 @@ dataBaseBuilder.getTableBuilder()
     .addInvalidation(InvalidationType.INSERT_OR_DELETE, "reading_list")
     .addInvalidation(InvalidationType.INSERT_OR_DELETE, "external_user")
     .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
-    .parseColumn("uuid VARCHAR(200) NOT NULL")
+    .parseColumn("uuid CHAR(36) NOT NULL")
     .parseColumn("salt VARCHAR(200)")
     .parseColumn("password VARCHAR(200) NOT NULL")
     .parseColumn("alg VARCHAR(100) NOT NULL")
@@ -23,8 +23,8 @@ dataBaseBuilder.getTableBuilder()
     .addInvalidation(InvalidationType.UPDATE)
     .addInvalidation(InvalidationType.INSERT_OR_DELETE, "external_reading_list")
     .parseColumn("name VARCHAR(200) NOT NULL")
-    .parseColumn("uuid VARCHAR(200) NOT NULL")
-    .parseColumn("local_uuid VARCHAR(200) NOT NULL")
+    .parseColumn("uuid CHAR(36) NOT NULL")
+    .parseColumn("local_uuid CHAR(36) NOT NULL")
     .parseColumn("service INT NOT NULL")
     .parseColumn("cookies TEXT")
     .parseColumn("last_scrape DATETIME")
@@ -34,9 +34,9 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("user_log")
-    .parseColumn("user_uuid VARCHAR(255) NOT NULL")
-    .parseColumn("ip VARCHAR(255)")
-    .parseColumn("session_key VARCHAR(255)")
+    .parseColumn("user_uuid CHAR(36) NOT NULL")
+    .parseColumn("ip VARCHAR(100)")
+    .parseColumn("session_key CHAR(36)")
     .parseColumn("acquisition_date VARCHAR(40)")
     .parseMeta("PRIMARY KEY(session_key)")
     .parseMeta("FOREIGN KEY(user_uuid) REFERENCES user(uuid)")
@@ -48,7 +48,7 @@ dataBaseBuilder.getTableBuilder()
     .addInvalidation(InvalidationType.ANY, "list_medium")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("name VARCHAR(200) NOT NULL")
-    .parseColumn("user_uuid VARCHAR(200) NOT NULL")
+    .parseColumn("user_uuid CHAR(36) NOT NULL")
     .parseColumn("medium INT NOT NULL")
     .parseMeta("PRIMARY KEY(id)")
     .parseMeta("FOREIGN KEY(user_uuid) REFERENCES user(uuid)")
@@ -60,7 +60,7 @@ dataBaseBuilder.getTableBuilder()
     .addInvalidation(InvalidationType.ANY, "external_list_medium")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("name VARCHAR(200) NOT NULL")
-    .parseColumn("user_uuid VARCHAR(200) NOT NULL")
+    .parseColumn("user_uuid CHAR(36) NOT NULL")
     .parseColumn("medium INT NOT NULL")
     .parseColumn("url VARCHAR(200) NOT NULL")
     .parseMeta("PRIMARY KEY(id)")
@@ -102,6 +102,14 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("link TEXT NOT NULL")
     .parseMeta("PRIMARY KEY(medium_id, link(767))")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
+    .build();
+
+dataBaseBuilder.getTableBuilder()
+    .setName("medium_in_wait")
+    .parseColumn("title VARCHAR(180) NOT NULL")
+    .parseColumn("medium INT NOT NULL")
+    .parseColumn("link TEXT NOT NULL")
+    .parseMeta("PRIMARY KEY(title, medium, link(500))")
     .build();
 
 dataBaseBuilder.getTableBuilder()
@@ -161,7 +169,7 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("user_episode")
-    .parseColumn("user_uuid VARCHAR(200) NOT NULL")
+    .parseColumn("user_uuid CHAR(36) NOT NULL")
     .parseColumn("episode_id INT UNSIGNED NOT NULL")
     .parseColumn("progress FLOAT UNSIGNED NOT NULL")
     .parseColumn("read_date DATETIME NOT NULL DEFAULT NOW()")
@@ -172,13 +180,16 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("scrape_board")
-    .parseColumn("link TEXT NOT NULL")
+    .parseColumn("link VARCHAR(500) NOT NULL")
     .parseColumn("last_date DATETIME NOT NULL")
     .parseColumn("type INT UNSIGNED NOT NULL")
-    .parseColumn("uuid VARCHAR(200)")
+    .parseColumn("uuid CHAR(36)")
+    .parseColumn("external_uuid CHAR(36)")
+    .parseColumn("info TEXT")
     .parseColumn("medium_id INT UNSIGNED")
-    .parseMeta("PRIMARY KEY(link(767))")
-    .parseMeta("FOREIGN KEY(uuid) REFERENCES external_user(uuid)")
+    .parseMeta("PRIMARY KEY(link, type)")
+    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
+    .parseMeta("FOREIGN KEY(external_uuid) REFERENCES external_user(uuid)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
     .build();
 
@@ -195,7 +206,7 @@ dataBaseBuilder.getTableBuilder()
 dataBaseBuilder.getTableBuilder()
     .setName("news_user")
     .parseColumn("news_id INT UNSIGNED NOT NULL")
-    .parseColumn("user_id VARCHAR(200) NOT NULL")
+    .parseColumn("user_id CHAR(36) NOT NULL")
     .parseMeta("FOREIGN KEY (user_id) REFERENCES user(uuid)")
     .parseMeta("FOREIGN KEY (news_id) REFERENCES news_board(id)")
     .parseMeta("PRIMARY KEY (news_id, user_id)")
@@ -238,10 +249,18 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("keyString VARCHAR(200) NOT NULL")
     .parseColumn("value TEXT NOT NULL")
     .build();
+
+// todo user defined function, create it automatically at startup
+// "CREATE DEFINER=`root`@`localhost` FUNCTION `combineFloat`(whole INT, afterDecimal INT) RETURNS float\n" +
+// "    DETERMINISTIC\n" +
+// "BEGIN\n" +
+// "RETURN concat(whole,'.', Coalesce(afterDecimal,0))+0;\n" +
+// "END"
+
 /*
 dataBaseBuilder.getTableBuilder()
     .setName("list_settings")
-    .parseColumn("uuid VARCHAR(200) NOT NULL")
+    .parseColumn("uuid CHAR(36) NOT NULL")
     .parseColumn("list_id INT UNSIGNED NOT NULL")
     .parseColumn("stringified_settings TEXT")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
@@ -250,7 +269,7 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("external_list_settings")
-    .parseColumn("uuid VARCHAR(200) NOT NULL")
+    .parseColumn("uuid CHAR(36) NOT NULL")
     .parseColumn("list_id INT UNSIGNED NOT NULL")
     .parseColumn("stringified_settings TEXT")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
@@ -259,7 +278,7 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("medium_settings")
-    .parseColumn("uuid VARCHAR(200) NOT NULL")
+    .parseColumn("uuid CHAR(36) NOT NULL")
     .parseColumn("medium_id INT UNSIGNED NOT NULL")
     .parseColumn("stringified_settings TEXT")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
@@ -267,20 +286,20 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("app_settings")
-    .parseColumn("uuid VARCHAR(200) NOT NULL UNIQUE")
+    .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");
 
 dataBaseBuilder.getTableBuilder()
     .setName("service_settings")
-    .parseColumn("uuid VARCHAR(200) NOT NULL UNIQUE")
+    .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");*/
 
 dataBaseBuilder.getTableBuilder()
     .setName("user_data_invalidation")
     .setInvalidationTable()
-    .parseColumn("uuid VARCHAR(200) NOT NULL")
+    .parseColumn("uuid CHAR(36) NOT NULL")
     .parseColumn("user_uuid BOOLEAN")
     .parseColumn("news_id INT UNSIGNED ")
     .parseColumn("medium_id INT UNSIGNED ")
@@ -288,7 +307,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("episode_id INT UNSIGNED ")
     .parseColumn("list_id INT UNSIGNED ")
     .parseColumn("external_list_id INT UNSIGNED ")
-    .parseColumn("external_uuid VARCHAR(200)")
+    .parseColumn("external_uuid CHAR(36)")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
     .parseMeta("FOREIGN KEY(news_id) REFERENCES news_board(id)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
@@ -332,15 +351,15 @@ export interface Tables {
 export const Tables: Tables = {
     user:
         "name VARCHAR(200) NOT NULL UNIQUE," +
-        "uuid VARCHAR(200) NOT NULL," +
+        "uuid CHAR(36) NOT NULL," +
         "salt VARCHAR(200)," +
         "password VARCHAR(200) NOT NULL," +
         "alg VARCHAR(100) NOT NULL," +
         "PRIMARY KEY(uuid)",
     external_user:
         "name VARCHAR(200) NOT NULL," +
-        "uuid VARCHAR(200) NOT NULL," +
-        "local_uuid VARCHAR(200) NOT NULL," +
+        "uuid CHAR(36) NOT NULL," +
+        "local_uuid CHAR(36) NOT NULL," +
         "service INT NOT NULL," +
         "cookies TEXT," +
         "last_scrape DATETIME," +
@@ -356,14 +375,14 @@ export const Tables: Tables = {
     reading_list:
         "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
         "name VARCHAR(200) NOT NULL," +
-        "user_uuid VARCHAR(200) NOT NULL," +
+        "user_uuid CHAR(36) NOT NULL," +
         "medium INT NOT NULL," +
         "PRIMARY KEY(id)," +
         "FOREIGN KEY(user_uuid) REFERENCES user(uuid)",
     external_reading_list:
         "id INT UNSIGNED NOT NULL AUTO_INCREMENT, " +
         "name VARCHAR(200) NOT NULL," +
-        "user_uuid VARCHAR(200) NOT NULL," +
+        "user_uuid CHAR(36) NOT NULL," +
         "medium INT NOT NULL," +
         "url VARCHAR(200) NOT NULL," +
         "PRIMARY KEY(id)," +
@@ -418,7 +437,7 @@ export const Tables: Tables = {
         "PRIMARY KEY(id)," +
         "FOREIGN KEY(part_id) REFERENCES part(id)",
     user_episode:
-        "user_uuid VARCHAR(200) NOT NULL," +
+        "user_uuid CHAR(36) NOT NULL," +
         "episode_id INT UNSIGNED NOT NULL," +
         "progress FLOAT UNSIGNED NOT NULL," +
         "read_date DATETIME NOT NULL DEFAULT NOW()," +
@@ -429,7 +448,7 @@ export const Tables: Tables = {
         "link TEXT NOT NULL," +
         "last_date DATETIME NOT NULL," +
         "type INT UNSIGNED NOT NULL," +
-        "uuid VARCHAR(200)," +
+        "uuid CHAR(36)," +
         "medium_id INT UNSIGNED," +
         "PRIMARY KEY(link(767))," +
         "FOREIGN KEY(uuid) REFERENCES external_user(uuid)," +
@@ -442,7 +461,7 @@ export const Tables: Tables = {
         "PRIMARY KEY (id)",
     news_user:
         "news_id INT UNSIGNED NOT NULL, " +
-        "user_id VARCHAR(200) NOT NULL, " +
+        "user_id CHAR(36) NOT NULL, " +
         "FOREIGN KEY (user_id) REFERENCES user(uuid), " +
         "FOREIGN KEY (news_id) REFERENCES news_board(id), " +
         "PRIMARY KEY (news_id, user_id)",
@@ -469,7 +488,7 @@ export const Tables: Tables = {
         "FOREIGN KEY(episode_id) REFERENCES episode(id)," +
         "PRIMARY KEY(novel, chapter, chapIndex)",
     user_data_invalidation:
-        "uuid VARCHAR(200) NOT NULL," +
+        "uuid CHAR(36) NOT NULL," +
         "user_uuid BOOLEAN," +
         "news_id INT UNSIGNED ," +
         "medium_id INT UNSIGNED ," +
@@ -477,7 +496,7 @@ export const Tables: Tables = {
         "episode_id INT UNSIGNED ," +
         "list_id INT UNSIGNED ," +
         "external_list_id INT UNSIGNED ," +
-        "external_uuid VARCHAR(200)," +
+        "external_uuid CHAR(36)," +
         "FOREIGN KEY(uuid) REFERENCES user(uuid)," +
         "FOREIGN KEY(news_id) REFERENCES news_board(id)," +
         "FOREIGN KEY(medium_id) REFERENCES medium(id)," +

@@ -100,14 +100,21 @@ class TableParser {
                 type = databaseTypes_1.ColumnType.TEXT;
                 break;
             default:
-                const exec = /VARCHAR\((\d+)\)/i.exec(partsType);
+                let exec = /VARCHAR\((\d+)\)/i.exec(partsType);
                 if (exec) {
                     type = databaseTypes_1.ColumnType.VARCHAR;
                     typeSize = Number(exec[1]);
                 }
                 else {
-                    logger_1.default.warn(`could not parse column type for: '${value}'`);
-                    return null;
+                    exec = /CHAR\((\d+)\)/i.exec(partsType);
+                    if (exec) {
+                        type = databaseTypes_1.ColumnType.CHAR;
+                        typeSize = Number(exec[1]);
+                    }
+                    else {
+                        logger_1.default.warn(`could not parse column type for: '${value}'`);
+                        return null;
+                    }
                 }
         }
         const modifiers = [];

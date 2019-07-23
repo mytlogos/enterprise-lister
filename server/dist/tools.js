@@ -5,6 +5,7 @@ const logger_1 = tslib_1.__importDefault(require("./logger"));
 const crypto_1 = tslib_1.__importDefault(require("crypto"));
 const crypto_2 = tslib_1.__importDefault(require("crypto"));
 const bcrypt_nodejs_1 = tslib_1.__importDefault(require("bcrypt-nodejs"));
+const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
 function remove(array, item) {
     const index = array.indexOf(item);
     if (index < 0) {
@@ -47,9 +48,9 @@ exports.promiseMultiSingle = promiseMultiSingle;
 function multiSingle(item, cb) {
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
-        return item.map((value, index) => cb(value, index, index < maxIndex));
+        return item.map((value, index) => cb(value, index, index >= maxIndex));
     }
-    return cb(item);
+    return cb(item, 0, true);
 }
 exports.multiSingle = multiSingle;
 function addMultiSingle(array, item, allowNull) {
@@ -118,10 +119,17 @@ function some(array, predicate, start) {
     return false;
 }
 exports.some = some;
-function equalsIgnoreCase(s1, s2) {
+const apostrophe = /['´`’′‘]/g;
+function equalsIgnore(s1, s2) {
+    if (apostrophe.test(s1)) {
+        s1 = s1.replace(apostrophe, "");
+    }
+    if (apostrophe.test(s2)) {
+        s2 = s2.replace(apostrophe, "");
+    }
     return s1.localeCompare(s2, undefined, { sensitivity: "base" }) === 0;
 }
-exports.equalsIgnoreCase = equalsIgnoreCase;
+exports.equalsIgnore = equalsIgnore;
 function countOccurrence(array) {
     const occurrenceMap = new Map();
     for (const value of array) {
@@ -191,13 +199,16 @@ function min(array, comparator) {
 }
 exports.min = min;
 function relativeToAbsoluteTime(relative) {
-    const exec = /\s*(\d+)\s+(\w+)\s+(ago)\s*/i.exec(relative);
+    let exec = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
     if (!exec) {
-        return null;
+        if (!relative || relative.toLowerCase() !== "just now") {
+            return null;
+        }
+        exec = ["", "30", "s"];
     }
     const [, value, unit] = exec;
     const absolute = new Date();
-    const timeValue = Number(value);
+    const timeValue = value && value.match("an?") ? 1 : Number(value);
     if (Number.isNaN(timeValue)) {
         logger_1.default.warn(`'${value}' is not a number`);
         return null;
@@ -236,6 +247,13 @@ function delay(timeout = 1000) {
     });
 }
 exports.delay = delay;
+function sanitizeString(s) {
+    if (!s) {
+        return s;
+    }
+    return emoji_strip_1.default(s).trim().replace(/\s+/g, " ");
+}
+exports.sanitizeString = sanitizeString;
 function isString(value) {
     return Object.prototype.toString.call(value) === "[object String]";
 }
@@ -333,4 +351,15 @@ function allTypes() {
     return Object.values(MediaType).reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
 }
 exports.allTypes = allTypes;
+function combiIndex(value) {
+    const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
+    return combi;
+}
+exports.combiIndex = combiIndex;
+function separateIndex(value) {
+    const total = Math.floor(value);
+    const partial = value - total;
+    return { totalIndex: total, partialIndex: partial ? partial : undefined };
+}
+exports.separateIndex = separateIndex;
 //# sourceMappingURL=tools.js.map

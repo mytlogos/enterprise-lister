@@ -1,5 +1,7 @@
 import { Connection } from "promise-mysql";
-import { Episode, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, SimpleEpisode, SimpleMedium, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, Synonyms, TocSearchMedium, User } from "../types";
+import { MediumInWait } from "./databaseTypes";
+import { ScrapeTypes } from "../externals/scraperTools";
 /**
  * A Class for consecutive queries on the same connection.
  */
@@ -62,7 +64,7 @@ export declare class QueryContext {
      * Returns the uuid of the logged in user and
      * the session key of the user for the ip.
      */
-    userLoginStatus(ip: string): Promise<User | null>;
+    userLoginStatus(ip: string, uuid?: string, session?: string): Promise<User | null | boolean>;
     /**
      * Logs a user out.
      */
@@ -139,8 +141,9 @@ export declare class QueryContext {
      *
      */
     getLatestReleases(mediumId: number): Promise<SimpleEpisode[]>;
-    getReleases(episodeId: number): Promise<EpisodeRelease[]>;
+    getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]>;
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
+    getTocSearchMedia(): Promise<TocSearchMedium[]>;
     getTocSearchMedium(id: number): Promise<TocSearchMedium>;
     getMedium(id: number, uuid: string): Promise<Medium>;
     getMedium(id: number[], uuid: string): Promise<Medium[]>;
@@ -150,10 +153,18 @@ export declare class QueryContext {
      * Updates a medium from the storage.
      */
     updateMedium(medium: SimpleMedium): Promise<boolean>;
+    getMediaInWait(): Promise<MediumInWait[]>;
+    deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
+    addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
+    getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
     /**
      * Returns all parts of an medium.
      */
     getMediumParts(mediumId: number, uuid?: string): Promise<Part[]>;
+    getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{
+        partId: number;
+        episodes: number[];
+    }>>;
     /**
      * Returns all parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
@@ -164,7 +175,7 @@ export declare class QueryContext {
     /**
      * Adds a part of an medium to the storage.
      */
-    addPart(mediumId: number, part: Part): Promise<Part>;
+    addPart(part: Part): Promise<Part>;
     /**
      * Updates a part.
      */
@@ -173,26 +184,29 @@ export declare class QueryContext {
      * Deletes a part from the storage.
      */
     deletePart(id: number): Promise<boolean>;
-    addRelease(episodeId: number, releases: EpisodeRelease): Promise<EpisodeRelease>;
-    addRelease(episodeId: number, releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+    addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
+    addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
     getSourcedReleases(sourceType: string, mediumId: number): Promise<Array<{
         sourceType: string;
         url: string;
         title: string;
         mediumId: number;
     }>>;
-    updateRelease(episodeId: number, releases: MultiSingle<EpisodeRelease>): Promise<void>;
-    /**
-     * Adds a episode of a part to the storage.
-     */
-    addEpisode(partId: number, episodes: MultiSingle<SimpleEpisode>): Promise<MultiSingle<Episode>>;
+    updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void>;
+    addEpisode(episode: SimpleEpisode): Promise<Episode>;
+    addEpisode(episode: SimpleEpisode[]): Promise<Episode[]>;
     getEpisode(id: number, uuid: string): Promise<Episode>;
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
     getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
+    getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
     /**
      * Updates an episode from the storage.
      */
     updateEpisode(episode: SimpleEpisode): Promise<boolean>;
+    /**
+     * Updates an episode from the storage.
+     */
+    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number): Promise<boolean>;
     /**
      * Deletes an episode from the storage irreversibly.
      */
@@ -350,12 +364,11 @@ export declare class QueryContext {
     /**
      *
      */
-    removeScrape(link: string): Promise<boolean>;
+    removeScrape(link: string, type: ScrapeTypes): Promise<boolean>;
     /**
      *
      */
     linkNewsToMedium(): Promise<boolean>;
-    linkNewsToEpisode(news: News[]): Promise<boolean>;
     /**
      *
      */
@@ -368,7 +381,7 @@ export declare class QueryContext {
      * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
      */
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
-    createStandardPart(mediumId: number): Promise<Part>;
+    createStandardPart(mediumId: number): Promise<ShallowPart>;
     /**
      *
      */
@@ -422,6 +435,8 @@ export declare class QueryContext {
      * Updates data from the storage.
      */
     private _update;
+    private _multiInsert;
+    private _queryInList;
     /**
      *
      * @param query
@@ -429,4 +444,11 @@ export declare class QueryContext {
      * @private
      */
     private _query;
+    /**
+     *
+     * @param query
+     * @param parameter
+     * @private
+     */
+    private _queryStream;
 }

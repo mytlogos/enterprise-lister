@@ -7,13 +7,12 @@ const logger_1 = tslib_1.__importStar(require("./logger"));
 const validate = tslib_1.__importStar(require("validate.js"));
 const scraperTools_1 = require("./externals/scraperTools");
 const jobScraper_1 = require("./externals/jobScraper");
-const scraper = new jobScraper_1.JobScraper();
-// todo look into database trigger or maybe replace it with database listener, which notify user on changes?
+const scraper = jobScraper_1.DefaultJobScraper;
 // todo fill out all of the event listener
 /**
  *
  */
-async function notifyUser({ link, rawNews }) {
+async function processNews({ link, rawNews }) {
     if (!link || !validate.isString(link)) {
         throw tools_1.Errors.INVALID_INPUT;
     }
@@ -45,85 +44,28 @@ async function notifyUser({ link, rawNews }) {
     if (!news || (Array.isArray(news) && !news.length)) {
         return;
     }
+    // this produces wrong links, so disable it for now
     // set news to medium
-    await database_1.Storage.linkNewsToMedium();
-}
-function extractNewsMeta() {
-    const likelyChapReg = /(\W|^)((ch(apter|(\.?\s?\d+)))|c\d+|episode|((extra|intermission|side.story).+))([^a-z]|$)/i;
-    const probableChapReg = /(\W|^)part([^a-z]|$)/i;
-    const likelyChapRegSensitive = /(\W|^)SS([^a-z]|$)/;
-    const likelyVolReg = /(\W|^)(Vol(ume|\.)|v\d+|Arc|book)([^a-z]|$)/i;
-    const volChapReg = /(\d+)-(\d+)/;
-    const numberReg = /\d+/;
-    /*if (chapter) {
-        // if the chapter match is not at the beginning, sth else (novel title likely) is preceding it
-        const chapStart = chapter.chapter.index;
-
-        if (chapStart) {
-            let novel = chapter.text.substring(0, chapStart).trim();
-
-            if (chapter.volume) {
-                const volStart = chapter.volume.index;
-                result.volume = chapter.text.substring(volStart, chapStart);
-
-                const volIndex = result.volume.match(/\d+/);
-                result.volIndex = volIndex && volIndex[0];
-
-                if (volStart) {
-                    novel = chapter.text.substring(0, volStart).trim();
-                } else {
-                    novel = "";
-                }
-            }
-            result.novel = novel;
-        }
-
-        result.chapter = chapter.text.substring(chapStart);
-
-        const chapIndex = result.chapter.match(/\d+([,.]\d+)?/);
-        result.chapIndex = chapIndex && chapIndex[0];
-    }
-    let volume;
-
-    if (!result.volume) {
-        volume = volumes[0];
-
-        if (volume && !volume.chapter) {
-            const volStart = volume.volume.index;
-            result.volume = volume.text.substring(volStart);
-
-            const volIndex = result.volume.match(/\d+([,.]\d+)?/);
-            result.volIndex = volIndex && volIndex[0];
-
-            if (volStart) {
-                result.novel = volume.text.substring(0, volStart).trim();
-            }
-        }
-    }*/
+    // await Storage.linkNewsToMedium();
 }
 async function feedHandler({ link, result }) {
     result.forEach((value) => {
         value.title = value.title.replace(/(\s|\n|\t)+/g, " ");
     });
     try {
-        await notifyUser({ link, rawNews: result });
+        await processNews({ link, rawNews: result });
     }
     catch (e) {
         logger_1.logError(e);
     }
 }
-async function tocHandler(result) {
-    if (!(result.toc && result.toc.length)) {
-        return;
-    }
-    // todo do not only search for episodes and parts with totalIndex, but with partialIndex too
-    const uuid = result.uuid;
+async function getTocMedia(result, uuid) {
     const media = new Map();
-    await Promise.all(result.toc.map(async (toc) => {
+    await Promise.all(result.tocs.map(async (toc) => {
         let medium;
         if (toc.mediumId) {
             // @ts-ignore
-            medium = await database_1.Storage.getMedium(toc.mediumId, uuid);
+            medium = await database_1.Storage.getSimpleMedium(toc.mediumId);
         }
         else {
             const likeMedium = await database_1.Storage.getLikeMedium({ title: toc.title, link: "" });
@@ -135,6 +77,9 @@ async function tocHandler(result) {
         if (medium.id && toc.link) {
             await database_1.Storage.addToc(medium.id, toc.link);
         }
+        else {
+            console.log("missing");
+        }
         const mediumValue = tools_1.getElseSet(media, medium, () => {
             return {
                 episodes: [],
@@ -142,15 +87,30 @@ async function tocHandler(result) {
             };
         });
         toc.content.forEach((content) => {
-            const totalIndex = Math.floor(content.index);
-            const partialIndex = content.index - totalIndex;
+            if (!content || content.totalIndex == null) {
+                throw Error(`invalid tocContent for mediumId:'${medium && medium.id}' and link:'${toc.link}'`);
+            }
+            const totalIndex = Math.floor(content.totalIndex);
+            content.totalIndex = totalIndex;
+            const partialIndex = content.totalIndex - totalIndex;
+            let alterTitle;
+            if (!content.title) {
+                alterTitle = `${content.totalIndex}${content.partialIndex ? "." + content.partialIndex : ""}`;
+                content.title = alterTitle;
+            }
             if (partialIndex) {
                 content.partialIndex = partialIndex;
             }
             if (tools_1.isTocEpisode(content)) {
+                if (alterTitle) {
+                    content.title = `Episode ${content.title}`;
+                }
                 mediumValue.episodes.push(content);
             }
             else if (tools_1.isTocPart(content)) {
+                if (alterTitle) {
+                    content.title = `Volume ${content.title}`;
+                }
                 mediumValue.parts.push(content);
             }
             else {
@@ -158,6 +118,70 @@ async function tocHandler(result) {
             }
         });
     }));
+    return media;
+}
+async function remapParts(indexPartsMap, mediumId) {
+    const values = [...indexPartsMap.values()];
+    const standardTocPart = values.find((value) => value.tocPart.totalIndex === -1);
+    let standardPart;
+    if (!standardTocPart || !standardTocPart.part) {
+        standardPart = await database_1.Storage.getStandardPart(mediumId);
+        if (standardTocPart) {
+            standardTocPart.part = standardPart;
+        }
+    }
+    else {
+        standardPart = standardTocPart.part;
+    }
+    // if there is no standard part, we return as there is no part to move from
+    if (!standardPart) {
+        return;
+    }
+    values.forEach((value) => {
+        if (!value.part) {
+            throw Error("tocPart without part!");
+        }
+    });
+    const [standardPartEpisodeIndices] = await database_1.Storage.getPartsEpisodeIndices(standardPart.id);
+    const episodePartMap = new Map();
+    for (const episodeIndex of standardPartEpisodeIndices.episodes) {
+        for (const part of values) {
+            // skip standard parts here
+            if (part.tocPart.totalIndex === -1) {
+                continue;
+            }
+            if (!part.part) {
+                throw Error("tocPart without part!");
+            }
+            if (part.tocPart.episodes.find((value) => value.totalIndex + (value.partialIndex || 0) === episodeIndex)) {
+                const partId = episodePartMap.get(episodeIndex);
+                if (partId != null) {
+                    throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.part.id}'`);
+                }
+                episodePartMap.set(episodeIndex, part.part.id);
+                break;
+            }
+        }
+    }
+    const partEpisodes = new Map();
+    for (const [episodeId, partId] of episodePartMap.entries()) {
+        const episodes = tools_1.getElseSet(partEpisodes, partId, () => []);
+        episodes.push(episodeId);
+    }
+    const promises = [];
+    for (const [partId, episodeIds] of partEpisodes.entries()) {
+        promises.push(database_1.Storage.moveEpisodeToPart(episodeIds, partId));
+    }
+    await Promise.all(promises);
+}
+async function tocHandler(result) {
+    console.log(`handling toc: ${result.tocs} ${result.uuid}`);
+    if (!(result.tocs && result.tocs.length)) {
+        return;
+    }
+    // todo do not only search for episodes and parts with totalIndex, but with partialIndex too
+    const uuid = result.uuid;
+    const media = await getTocMedia(result, uuid);
     const promises = Array.from(media.entries())
         .filter((entry) => entry[0].id)
         .map(async (entry) => {
@@ -165,42 +189,56 @@ async function tocHandler(result) {
         const tocParts = entry[1].parts;
         const partsMap = new Map();
         tocParts.forEach((value) => {
-            partsMap.set(value.index, { tocPart: value, episodeMap: new Map() });
+            if (value.totalIndex == null) {
+                throw Error(`totalIndex should not be null! mediumId: '${mediumId}'`);
+            }
+            partsMap.set(tools_1.combiIndex(value), { tocPart: value, episodeMap: new Map() });
         });
         if (entry[1].episodes.length) {
-            partsMap.set(-1, { tocPart: { title: "", index: -1, episodes: entry[1].episodes }, episodeMap: new Map() });
+            partsMap.set(-1, {
+                tocPart: { title: "", totalIndex: -1, episodes: entry[1].episodes },
+                episodeMap: new Map()
+            });
         }
-        const parts = await database_1.Storage.getMediumPartsPerIndex(mediumId, [...partsMap.keys()]);
+        const partIndices = [...partsMap.keys()];
+        const parts = await database_1.Storage.getMediumPartsPerIndex(mediumId, partIndices);
         parts.forEach((value) => {
             if (!value.id) {
                 return;
             }
-            const tocPart = partsMap.get(value.totalIndex);
+            const tocPart = partsMap.get(tools_1.combiIndex(value));
             if (!tocPart) {
                 throw Error("something went wrong. got no value at this part index");
             }
             tocPart.part = value;
         });
-        await Promise.all(parts.filter((value) => !value.id).map((value) => {
-            const partToc = partsMap.get(value.totalIndex);
+        await Promise.all(partIndices
+            .filter((index) => parts.every((part) => tools_1.combiIndex(part) !== index || !part.id))
+            .map((index) => {
+            const partToc = partsMap.get(index);
             if (!partToc) {
                 throw Error("something went wrong. got no value at this part index");
             }
             return database_1.Storage
                 // @ts-ignore
-                .addPart(mediumId, {
-                totalIndex: partToc.tocPart.index,
+                .addPart({
+                mediumId,
+                totalIndex: partToc.tocPart.totalIndex,
                 title: partToc.tocPart.title,
                 partialIndex: partToc.tocPart.partialIndex
             })
                 // @ts-ignore
                 .then((part) => partToc.part = part);
         }));
+        // 'moves' episodes from the standard part to other parts, if they own the episodes too
+        await remapParts(partsMap, mediumId);
         return [...partsMap.values()].map(async (value) => {
             if (!value.part) {
-                throw Error("something went wrong. got no part for tocPart");
+                throw Error(`something went wrong. got no part for tocPart ${value.tocPart.totalIndex}`);
             }
-            value.tocPart.episodes.forEach((episode) => value.episodeMap.set(episode.index, { tocEpisode: episode }));
+            value.tocPart.episodes.forEach((episode) => {
+                value.episodeMap.set(episode.totalIndex, { tocEpisode: episode });
+            });
             // @ts-ignore
             const episodes = await database_1.Storage.getPartEpisodePerIndex(value.part.id, [...value.episodeMap.keys()]);
             episodes.forEach((episode) => {
@@ -213,16 +251,19 @@ async function tocHandler(result) {
                 }
                 tocEpisode.episode = episode;
             });
-            await Promise.all(episodes.filter((episode) => !episode.id).map((episode) => {
-                const episodeToc = value.episodeMap.get(episode.totalIndex);
+            await Promise.all([...value.episodeMap.keys()]
+                .filter((index) => !episodes.find((episode) => episode.totalIndex === index))
+                .map((episodeIndex) => {
+                const episodeToc = value.episodeMap.get(episodeIndex);
                 if (!episodeToc) {
                     throw Error("something went wrong. got no value at this episode index");
                 }
                 return database_1.Storage
+                    .addEpisode({
                     // @ts-ignore
-                    .addEpisode(value.part.id, {
+                    partId: value.part.id,
                     // @ts-ignore
-                    totalIndex: episodeToc.tocEpisode.index,
+                    totalIndex: episodeToc.tocEpisode.totalIndex,
                     partialIndex: episodeToc.tocEpisode.partialIndex,
                     releases: [{
                             title: episodeToc.tocEpisode.title,
@@ -237,19 +278,20 @@ async function tocHandler(result) {
     await Promise.all((await Promise.all(promises)).flat());
     logger_1.default.info("toc: " + JSON.stringify(result));
 }
+exports.tocHandler = tocHandler;
 async function addFeeds(feeds) {
     if (!feeds.length) {
         return;
     }
     let scrapes = await database_1.Storage.getScrapes();
-    scrapes = scrapes.filter((value) => value.type === scraperTools_1.scrapeTypes.FEED);
+    scrapes = scrapes.filter((value) => value.type === scraperTools_1.ScrapeTypes.FEED);
     const scrapeFeeds = feeds.map((feed) => {
         if (scrapes.find((value) => value.link === feed)) {
             return;
         }
         return {
             link: feed,
-            type: scraperTools_1.scrapeTypes.FEED,
+            type: scraperTools_1.ScrapeTypes.FEED,
         };
     }).filter((value) => value);
     if (!scrapeFeeds.length) {
@@ -505,7 +547,7 @@ async function newsHandler({ link, result }) {
         value.title = value.title.replace(/(\s|\n|\t)+/, " ");
     });
     try {
-        await notifyUser({ link, rawNews: result });
+        await processNews({ link, rawNews: result });
     }
     catch (e) {
         logger_1.default.error(e);
@@ -526,8 +568,4 @@ exports.startCrawler = () => {
         .then(() => scraper.start())
         .catch((error) => logger_1.logError(error));
 };
-function addDependant(dependant) {
-    scraper.addDependant(dependant);
-}
-exports.addDependant = addDependant;
 //# sourceMappingURL=crawlerStart.js.map

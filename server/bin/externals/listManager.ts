@@ -2,7 +2,7 @@ import request from "request-promise-native";
 import url from "url";
 import {Errors, MediaType, unique} from "../tools";
 import {queueCheerioRequest} from "./queueManager";
-import CookieJar from "tough-cookie";
+import {CookieJar} from "tough-cookie";
 import {Hook} from "./types";
 
 class NovelUpdates implements ListManager {

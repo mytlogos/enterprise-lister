@@ -120,13 +120,20 @@ export class TableParser {
                 type = ColumnType.TEXT;
                 break;
             default:
-                const exec = /VARCHAR\((\d+)\)/i.exec(partsType);
+                let exec = /VARCHAR\((\d+)\)/i.exec(partsType);
                 if (exec) {
                     type = ColumnType.VARCHAR;
                     typeSize = Number(exec[1]);
                 } else {
-                    logger.warn(`could not parse column type for: '${value}'`);
-                    return null;
+                    exec = /CHAR\((\d+)\)/i.exec(partsType);
+
+                    if (exec) {
+                        type = ColumnType.CHAR;
+                        typeSize = Number(exec[1]);
+                    } else {
+                        logger.warn(`could not parse column type for: '${value}'`);
+                        return null;
+                    }
                 }
         }
         const modifiers: Modifier[] = [];

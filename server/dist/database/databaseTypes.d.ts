@@ -1,4 +1,5 @@
 import { TableSchema } from "./tableSchema";
+import { MediaType } from "../tools";
 export interface DatabaseSchema {
     readonly name: string;
     readonly tables: ReadonlyArray<TableSchema>;
@@ -20,6 +21,7 @@ export declare enum Modifier {
 export declare enum ColumnType {
     BOOLEAN = "BOOLEAN",
     TEXT = "TEXT",
+    CHAR = "CHAR",
     VARCHAR = "VARCHAR",
     DATETIME = "DATETIME",
     FLOAT = "FLOAT",
@@ -32,4 +34,9 @@ export declare enum InvalidationType {
     INSERT_OR_UPDATE = 3,
     INSERT_OR_DELETE = 5,
     ANY = 7
+}
+export interface MediumInWait {
+    title: string;
+    medium: MediaType;
+    link: string;
 }

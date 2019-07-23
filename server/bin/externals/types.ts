@@ -1,12 +1,64 @@
-import {News, TocSearchMedium} from "../types";
+import {EpisodeNews, News, TocSearchMedium} from "../types";
 import {MediaType} from "../tools";
+import {JobCallback} from "../jobQueue";
+
+export interface ScraperJob {
+    type: string;
+    onSuccess?: () => void;
+    onDone?: () => void | ScraperJob | ScraperJob[];
+    onFailure?: (reason?: any) => void;
+    cb: (item: any) => Promise<any>;
+}
+
+export interface OneTimeEmittableJob extends ScraperJob {
+    type: "onetime_emittable";
+    key: string;
+    item: any;
+}
+
+export interface PeriodicEmittableJob extends ScraperJob {
+    type: "periodic_emittable";
+    interval: number;
+    key: string;
+    item: any;
+}
+
+// @ts-ignore
+export interface PeriodicJob extends ScraperJob {
+    type: "periodic";
+    interval: number;
+    cb: JobCallback;
+}
+
+export interface ScrapeNewsChapter {
+    mediumTitle: string;
+    mediumLink: string;
+    type: MediaType;
+    allowedParts?: number;
+    standardPartOnly?: boolean;
+    partTitle?: string;
+    sourceType: string;
+    date: Date;
+    episodeLink: string;
+    episodeTitle: string;
+    episodeTotalIndex: number;
+    episodePartialIndex?: number;
+    partTotalIndex?: number;
+    partPartialIndex?: number;
+}
+
+export interface ScrapeNews extends News {
+    scrapeNewsChapter: ScrapeNewsChapter;
+}
 
 export interface Hook {
     domainReg?: RegExp;
+    tocPattern?: RegExp;
     redirectReg?: RegExp;
     newsAdapter?: NewsScraper[] | NewsScraper;
     tocAdapter?: TocScraper;
     tocSearchAdapter?: TocSearchScraper;
+    // TODO: 20.07.2019 do i need this?
     contentAdapter?: ChapterMetaScraper;
     contentDownloadAdapter?: ContentDownloader;
 }
@@ -34,7 +86,7 @@ export interface DownloadContent {
 
 export interface TocContent {
     title: string;
-    index: number;
+    totalIndex: number;
     partialIndex?: number;
 }
 
@@ -90,8 +142,14 @@ export interface EpisodeMeta {
     title: string;
 }
 
+export interface NewsScrapeResult {
+    news?: News[];
+    episodes?: EpisodeNews[];
+    update?: boolean;
+}
+
 export interface NewsScraper {
-    (): Promise<News[]>;
+    (): Promise<NewsScrapeResult | undefined>;
 
     link: string;
 }

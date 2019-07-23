@@ -5,7 +5,7 @@ const request_promise_native_1 = tslib_1.__importDefault(require("request-promis
 const url_1 = tslib_1.__importDefault(require("url"));
 const tools_1 = require("../tools");
 const queueManager_1 = require("./queueManager");
-const tough_cookie_1 = tslib_1.__importDefault(require("tough-cookie"));
+const tough_cookie_1 = require("tough-cookie");
 class NovelUpdates {
     static scrapeListRow(i, tableData) {
         const link = tableData.eq(i).children("a").first();
@@ -145,7 +145,7 @@ class NovelUpdates {
      */
     parseAndReplaceCookies(cookies) {
         // @ts-ignore
-        this.jar = cookies ? tough_cookie_1.default.fromJSON(cookies) : new tough_cookie_1.default();
+        this.jar = cookies ? tough_cookie_1.CookieJar.fromJSON(cookies) : new tough_cookie_1.CookieJar();
         const notUsed = {
             "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
             "accept-encoding": "gzip, deflate, br",

@@ -17,6 +17,7 @@ import {
     ProgressResult,
     Result,
     ScrapeItem,
+    ShallowPart,
     SimpleEpisode,
     SimpleMedium,
     Synonyms,
@@ -28,6 +29,8 @@ import logger from "../logger";
 import {QueryContext} from "./queryContext";
 import {databaseSchema} from "./databaseSchema";
 import {delay} from "../tools";
+import {MediumInWait} from "./databaseTypes";
+import {ScrapeTypes} from "../externals/scraperTools";
 
 type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 
@@ -46,6 +49,7 @@ export async function inContext<T>(callback: ContextCallback<T>, transaction = t
     if (startPromise) {
         await startPromise;
     }
+    const pool = await poolPromise;
     const con = await pool.getConnection();
     const context = new QueryContext(con);
 
@@ -106,7 +110,7 @@ async function doTransaction<T>(callback: ContextCallback<T>, context: QueryCont
     return result;
 }
 
-const pool = mySql.createPool({
+const poolPromise = mySql.createPool({
     connectionLimit: env.dbConLimit,
     host: env.dbHost,
     user: env.dbUser,
@@ -160,11 +164,11 @@ export interface Storage {
 
     removePageInfo(link: string, key?: string): Promise<void>;
 
-    addRelease(episodeId: number, releases: EpisodeRelease): Promise<EpisodeRelease>;
+    addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
 
-    addRelease(episodeId: number, releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+    addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
 
-    updateRelease(episodeId: number, sourceType: string, releases: MultiSingle<EpisodeRelease>): Promise<void>;
+    updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void>;
 
     getSourcedReleases(sourceType: string, mediumId: number):
         Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>>;
@@ -178,6 +182,8 @@ export interface Storage {
     updatePart(part: Part, uuid?: string): Promise<boolean>;
 
     userLoginStatus(ip: string): Promise<User | null>;
+
+    userLoginStatus(ip: string, uuid: string, session: string): Promise<boolean>;
 
     removeSynonyms(synonyms: (Synonyms | Synonyms[]), uuid?: string): Promise<boolean>;
 
@@ -195,7 +201,7 @@ export interface Storage {
 
     getScrapes(): Promise<ScrapeItem[]>;
 
-    createStandardPart(mediumId: number): Promise<Part>;
+    createStandardPart(mediumId: number): Promise<ShallowPart>;
 
     deletePart(id: number, uuid?: string): Promise<boolean>;
 
@@ -209,13 +215,13 @@ export interface Storage {
 
     removeProgress(uuid: string, episodeId: number): Promise<boolean>;
 
-    linkNewsToEpisode(news: News[]): Promise<boolean>;
-
     addItemToExternalList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
 
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
 
     getMediumParts(mediumId: number, uuid?: string): Promise<Part[]>;
+
+    getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
 
     updateProgress(uuid: string, mediumId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
 
@@ -233,15 +239,17 @@ export interface Storage {
 
     stop(): Promise<void>;
 
-    addEpisode(partId: number, episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
+    addEpisode(episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
 
-    addEpisode(partId: number, episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
+    addEpisode(episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
 
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean>;
 
+    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number): Promise<boolean>;
+
     deleteUser(uuid: string): Promise<boolean>;
 
-    addPart(mediumId: number, part: Part, uuid?: string): Promise<Part>;
+    addPart(part: Part, uuid?: string): Promise<Part>;
 
     getLatestNews(domain: string): Promise<News[]>;
 
@@ -250,6 +258,12 @@ export interface Storage {
     deleteList(listId: number, uuid: string): Promise<boolean>;
 
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean>;
+
+    getMediaInWait(): Promise<MediumInWait[]>;
+
+    deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
+
+    addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
 
     getExternalLists(uuid: string): Promise<ExternalList[]>;
 
@@ -277,6 +291,8 @@ export interface Storage {
 
     getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]>;
 
+    getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number, episodes: number[] }>>;
+
     getParts(partsId: (number | number[]), uuid: string): Promise<Part[] | Part>;
 
     getInvalidated(uuid: string): Promise<Invalidation[]>;
@@ -302,7 +318,7 @@ export interface Storage {
 
     addExternalList(userUuid: string, externalList: ExternalList, uuid?: string): Promise<ExternalList>;
 
-    removeScrape(link: string): Promise<boolean>;
+    removeScrape(link: string, type: ScrapeTypes): Promise<boolean>;
 
     deleteEpisode(id: number, uuid?: string): Promise<boolean>;
 
@@ -315,6 +331,10 @@ export interface Storage {
     linkNewsToMedium(): Promise<boolean>;
 
     getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
+
+    getMediumEpisodePerIndex(mediumId: number, index: number[]): Promise<SimpleEpisode[]>;
+
+    getMediumEpisodePerIndex(mediumId: number, index: number): Promise<SimpleEpisode>;
 
     getEpisode(id: number, uuid: string): Promise<Episode>;
 
@@ -348,6 +368,8 @@ export interface Storage {
 
     getTocSearchMedium(id: number): Promise<TocSearchMedium>;
 
+    getTocSearchMedia(): Promise<TocSearchMedium[]>;
+
     deleteOldNews(): Promise<boolean>;
 }
 
@@ -361,7 +383,7 @@ export const Storage: Storage = {
     stop(): Promise<void> {
         running = false;
         startPromise = null;
-        return Promise.resolve(pool.end());
+        return Promise.resolve(poolPromise.then((value) => value.end()));
     },
 
     /**
@@ -401,8 +423,9 @@ export const Storage: Storage = {
      *
      * @return {Promise<User|null>}
      */
-    userLoginStatus(ip: string): Promise<User | null> {
-        return inContext((context) => context.userLoginStatus(ip));
+    // @ts-ignore
+    userLoginStatus(ip: string, uuid?: string, session?: string): Promise<User | null | boolean> {
+        return inContext((context) => context.userLoginStatus(ip, uuid, session));
     },
 
     /**
@@ -521,6 +544,18 @@ export const Storage: Storage = {
         return inContext((context) => context.setUuid(uuid).updateMedium(medium));
     },
 
+    getMediaInWait(): Promise<MediumInWait[]> {
+        return inContext((context) => context.getMediaInWait());
+    },
+
+    deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
+        return inContext((context) => context.deleteMediaInWait(mediaInWait));
+    },
+
+    addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
+        return inContext((context) => context.addMediumInWait(mediaInWait));
+    },
+
     /**
      */
     addSynonyms(synonyms: Synonyms | Synonyms[], uuid?: string): Promise<boolean> {
@@ -555,6 +590,10 @@ export const Storage: Storage = {
         return inContext((context) => context.getAllChapterLinks(mediumId));
     },
 
+    getTocSearchMedia(): Promise<TocSearchMedium[]> {
+        return inContext((context) => context.getTocSearchMedia());
+    },
+
     getTocSearchMedium(id: number): Promise<TocSearchMedium> {
         return inContext((context) => context.getTocSearchMedium(id));
     },
@@ -580,12 +619,20 @@ export const Storage: Storage = {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
     },
 
+    getStandardPart(mediumId: number): Promise<ShallowPart | undefined> {
+        return inContext((context) => context.getStandardPart(mediumId));
+    },
+
     /**
      * Returns parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
     getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]> {
         return inContext((context) => context.getMediumPartsPerIndex(mediumId, index, uuid));
+    },
+
+    getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number, episodes: number[] }>> {
+        return inContext((context) => context.getPartsEpisodeIndices(partId));
     },
 
     /**
@@ -599,8 +646,8 @@ export const Storage: Storage = {
     /**
      * Adds a part of an medium to the storage.
      */
-    addPart(mediumId: number, part: Part, uuid?: string): Promise<Part> {
-        return inContext((context) => context.setUuid(uuid).addPart(mediumId, part));
+    addPart(part: Part, uuid?: string): Promise<Part> {
+        return inContext((context) => context.setUuid(uuid).addPart(part));
     },
 
     /**
@@ -613,7 +660,7 @@ export const Storage: Storage = {
     /**
      * Creates the Standard Part for all non part-indexed episodes for the given mediumId.
      */
-    createStandardPart(mediumId: number): Promise<Part> {
+    createStandardPart(mediumId: number): Promise<ShallowPart> {
         return inContext((context) => context.createStandardPart(mediumId));
     },
 
@@ -628,10 +675,10 @@ export const Storage: Storage = {
      * Adds a episode of a part to the storage.
      */
     // @ts-ignore
-    addEpisode(partId: number, episode: MultiSingle<SimpleEpisode>, uuid?: string)
+    addEpisode(episode: MultiSingle<SimpleEpisode>, uuid?: string)
         : Promise<MultiSingle<SimpleEpisode>> {
         // @ts-ignore
-        return inContext((context) => context.setUuid(uuid).addEpisode(partId, episode));
+        return inContext((context) => context.setUuid(uuid).addEpisode(episode));
     },
 
     /**
@@ -639,6 +686,10 @@ export const Storage: Storage = {
      */
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).updateEpisode(episode));
+    },
+
+    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number) {
+        return inContext((context) => context.moveEpisodeToPart(episodeId, partId));
     },
 
     /**
@@ -658,6 +709,14 @@ export const Storage: Storage = {
     },
 
     /**
+     *
+     */
+    // @ts-ignore
+    getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
+        return inContext((context) => context.getMediumEpisodePerIndex(mediumId, index));
+    },
+
+    /**
      * Deletes an episode from the storage irreversibly.
      */
     deleteEpisode(id: number, uuid?: string): Promise<boolean> {
@@ -665,14 +724,14 @@ export const Storage: Storage = {
     },
 
     // @ts-ignore
-    addRelease(episodeId: number, releases: MultiSingle<EpisodeRelease>): Promise<MultiSingle<EpisodeRelease>> {
+    addRelease(releases: MultiSingle<EpisodeRelease>): Promise<MultiSingle<EpisodeRelease>> {
         // @ts-ignore
-        return inContext((context) => context.addRelease(episodeId, releases));
+        return inContext((context) => context.addRelease(releases));
     },
 
     // @ts-ignore
-    updateRelease(episodeId: number, sourceType: string, releases: MultiSingle<EpisodeRelease>): Promise<void> {
-        return inContext((context) => context.updateRelease(episodeId, releases));
+    updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void> {
+        return inContext((context) => context.updateRelease(releases));
     },
 
     getSourcedReleases(sourceType: string, mediumId: number):
@@ -906,8 +965,8 @@ export const Storage: Storage = {
     /**
      *
      */
-    removeScrape(link: string): Promise<boolean> {
-        return inContext((context) => context.removeScrape(link));
+    removeScrape(link: string, type: ScrapeTypes): Promise<boolean> {
+        return inContext((context) => context.removeScrape(link, type));
     },
 
     /**
@@ -924,15 +983,6 @@ export const Storage: Storage = {
     linkNewsToMedium(): Promise<boolean> {
         return inContext((context) => context.linkNewsToMedium());
     },
-
-
-    /**
-     *
-     */
-    linkNewsToEpisode(news: News[]): Promise<boolean> {
-        return inContext((context) => context.linkNewsToEpisode(news));
-    },
-
 
     /**
      * Marks these news as read for the given user.

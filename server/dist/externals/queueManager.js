@@ -49,9 +49,8 @@ class Queue {
 }
 const queues = new Map();
 const fastQueues = new Map();
-const domainReg = /https?:\/\/(.+?)\//;
 function processRequest(uri, otherRequest, queueToUse = queues, limit) {
-    const exec = domainReg.exec(uri);
+    const exec = /https?:\/\/(.+?)\/?/.exec(uri);
     if (!exec) {
         throw Error("not a valid url");
     }

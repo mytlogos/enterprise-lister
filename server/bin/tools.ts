@@ -4,6 +4,7 @@ import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
 import bcrypt from "bcrypt-nodejs";
+import emojiStrip from "emoji-strip";
 
 export function remove<T>(array: T[], item: T): boolean {
     const index = array.indexOf(item);
@@ -56,9 +57,9 @@ export function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): R[]
 export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): R | R[] {
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
-        return item.map((value, index) => cb(value, index, index < maxIndex));
+        return item.map((value, index) => cb(value, index, index >= maxIndex));
     }
-    return cb(item);
+    return cb(item, 0, true);
 }
 
 export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
@@ -128,7 +129,15 @@ export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: num
     return false;
 }
 
-export function equalsIgnoreCase(s1: string, s2: string) {
+const apostrophe = /['´`’′‘]/g;
+
+export function equalsIgnore(s1: string, s2: string) {
+    if (apostrophe.test(s1)) {
+        s1 = s1.replace(apostrophe, "");
+    }
+    if (apostrophe.test(s2)) {
+        s2 = s2.replace(apostrophe, "");
+    }
     return s1.localeCompare(s2, undefined, {sensitivity: "base"}) === 0;
 }
 
@@ -208,13 +217,16 @@ export function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | und
 }
 
 export function relativeToAbsoluteTime(relative: string): Date | null {
-    const exec = /\s*(\d+)\s+(\w+)\s+(ago)\s*/i.exec(relative);
+    let exec: string[] | null = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
     if (!exec) {
-        return null;
+        if (!relative || relative.toLowerCase() !== "just now") {
+            return null;
+        }
+        exec = ["", "30", "s"];
     }
     const [, value, unit] = exec;
     const absolute = new Date();
-    const timeValue = Number(value);
+    const timeValue = value && value.match("an?") ? 1 : Number(value);
 
     if (Number.isNaN(timeValue)) {
         logger.warn(`'${value}' is not a number`);
@@ -253,6 +265,13 @@ export function delay(timeout = 1000): Promise<void> {
     return new Promise((resolve) => {
         setTimeout(() => resolve(), timeout);
     });
+}
+
+export function sanitizeString(s: string): string {
+    if (!s) {
+        return s;
+    }
+    return emojiStrip(s).trim().replace(/\s+/g, " ");
 }
 
 export function isString(value: any): value is string {
@@ -377,4 +396,15 @@ export enum MediaType {
 
 export function allTypes() {
     return Object.values(MediaType).reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
+}
+
+export function combiIndex(value: { totalIndex: number, partialIndex?: number }): number {
+    const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
+    return combi;
+}
+
+export function separateIndex(value: number): { totalIndex: number, partialIndex?: number; } {
+    const total = Math.floor(value);
+    const partial = value - total;
+    return {totalIndex: total, partialIndex: partial ? partial : undefined};
 }

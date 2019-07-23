@@ -5,7 +5,6 @@ const database_1 = require("../database/database");
 const listManager_1 = require("../externals/listManager");
 const logger_1 = tslib_1.__importDefault(require("../logger"));
 const scraperTools_1 = require("../externals/scraperTools");
-const crawlerStart_1 = require("../crawlerStart");
 const tools_1 = require("../tools");
 exports.processResult = (req, res) => {
     sendResult(res, database_1.Storage.processResult(req.body));
@@ -47,13 +46,11 @@ exports.getInvalidated = (req, res) => {
 exports.addBookmarked = (req, res) => {
     const { uuid, bookmarked } = req.body;
     const protocol = /^https?:\/\//;
-    if (bookmarked && bookmarked.length && bookmarked.every((url) => tools_1.isString(url) && protocol.test(url))) {
-        crawlerStart_1.addDependant({
-            oneTimeToc: bookmarked.map((url) => {
-                return { url, uuid };
-            })
-        });
-        sendResult(res, Promise.resolve(true));
+    if (bookmarked && bookmarked.length && bookmarked.every((link) => tools_1.isString(link) && protocol.test(link))) {
+        const storePromise = database_1.Storage.addScrape(bookmarked.map((link) => {
+            return { type: scraperTools_1.ScrapeTypes.ONETIMETOC, link, userId: uuid };
+        }));
+        sendResult(res, storePromise);
     }
     else {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
@@ -63,10 +60,8 @@ exports.addToc = (req, res) => {
     const { uuid, toc, mediumId } = req.body;
     const protocol = /^https?:\/\//;
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        crawlerStart_1.addDependant({
-            oneTimeToc: { url: toc, uuid, mediumId }
-        });
-        sendResult(res, Promise.resolve(true));
+        const storePromise = database_1.Storage.addScrape({ type: scraperTools_1.ScrapeTypes.ONETIMETOC, link: toc, userId: uuid, mediumId });
+        sendResult(res, storePromise);
     }
     else {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
@@ -144,7 +139,8 @@ exports.addPartRoute = (route) => {
     });
     route.post((req, res) => {
         const { part, mediumId, uuid } = req.body;
-        sendResult(res, database_1.Storage.addPart(mediumId, part, uuid));
+        part.mediumId = mediumId;
+        sendResult(res, database_1.Storage.addPart(part, uuid));
     });
     route.put((req, res) => {
         const { part, uuid } = req.body;
@@ -167,7 +163,8 @@ exports.addEpisodeRoute = (route) => {
     });
     route.post((req, res) => {
         const { episode, partId, uuid } = req.body;
-        sendResult(res, database_1.Storage.addEpisode(partId, episode, uuid));
+        episode.partId = partId;
+        sendResult(res, database_1.Storage.addEpisode(episode, uuid));
     });
     route.put((req, res) => {
         const { episode, uuid } = req.body;

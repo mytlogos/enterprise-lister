@@ -1,3 +1,5 @@
+import {MediaType} from "../server/bin/tools";
+
 export interface Medium {
     id: number;
 }
@@ -100,6 +102,20 @@ export interface News {
     date: Date;
     id?: number;
     read?: boolean;
+    mediumId?: number;
+}
+
+export interface EpisodeNews {
+    mediumType: MediaType;
+    mediumTitle: string;
+    partTitle?: string;
+    partIndex?: number;
+    episodeTitle: string;
+    episodeIndex: number;
+    episodeTotalIndex: number;
+    episodePartialIndex?: number;
+    link: string;
+    date: Date;
 }
 
 export interface Synonyms {

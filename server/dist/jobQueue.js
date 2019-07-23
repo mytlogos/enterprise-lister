@@ -1,15 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tools_1 = require("./tools");
+const logger_1 = require("./logger");
+var MemorySize;
+(function (MemorySize) {
+    MemorySize[MemorySize["GB"] = 1073741824] = "GB";
+    MemorySize[MemorySize["MB"] = 1048576] = "MB";
+    MemorySize[MemorySize["KB"] = 1024] = "KB";
+    MemorySize[MemorySize["B"] = 1] = "B";
+})(MemorySize = exports.MemorySize || (exports.MemorySize = {}));
 class JobQueue {
-    constructor({ memoryLimit = 0, maxActive = 5 } = {}) {
+    constructor({ memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5 } = {}) {
         this.waitingJobs = [];
         this.newJobs = [];
         this.activeJobs = [];
         this.queueActive = false;
         this.currentJobId = 0;
-        this.scheduled = false;
+        this.nextScheduling = -1;
+        this.timesRescheduled = 0;
         this.memoryLimit = memoryLimit;
+        this.memorySize = memorySize;
         this.maxActive = maxActive;
     }
     get runningJobs() {
@@ -112,15 +122,19 @@ class JobQueue {
         if (this.memoryLimit <= 0) {
             return false;
         }
-        return process.memoryUsage().heapUsed > this.memoryLimit;
+        return (process.memoryUsage().rss / this.memorySize) > this.memoryLimit;
     }
     _reschedule(timeout) {
-        if (this.scheduled) {
+        this.timesRescheduled++;
+        if (this.timesRescheduled > 100 && this._overMemoryLimit()) {
+            console.error("too long rescheduled and over memoryLimit");
+        }
+        if (this.nextScheduling > 0 && this.nextScheduling < timeout) {
             return;
         }
-        this.scheduled = true;
+        this.nextScheduling = timeout;
         tools_1.delay(timeout).then(() => {
-            this.scheduled = false;
+            this.nextScheduling = -1;
             this._schedule();
         });
         console.log("rescheduling");
@@ -145,11 +159,13 @@ class JobQueue {
         }
         const toExecute = nextInternJob;
         if (toExecute.jobInfo.nextRun > 0) {
-            console.log(`waiting for ${toExecute.jobInfo.nextRun} ms`);
+            const iso = new Date().toISOString();
+            console.log(`waiting for ${toExecute.jobInfo.nextRun} ms on ${iso}`);
             jobArray.unshift(toExecute);
             this._reschedule(toExecute.jobInfo.nextRun);
             return;
         }
+        this.timesRescheduled = 0;
         toExecute.running = true;
         this.activeJobs.push(toExecute);
         let result;
@@ -157,6 +173,9 @@ class JobQueue {
         try {
             toExecute.executed++;
             result = toExecute.job(() => this._done(toExecute, start));
+            if (toExecute.jobInfo.onSuccess) {
+                toExecute.jobInfo.onSuccess();
+            }
         }
         catch (e) {
             this._done(toExecute, start);
@@ -167,7 +186,17 @@ class JobQueue {
             console.error(e);
             throw e;
         }
-        if (result && result.then) {
+        finally {
+            if (toExecute.jobInfo.onDone) {
+                try {
+                    toExecute.jobInfo.onDone();
+                }
+                catch (e) {
+                    logger_1.logError("On Done threw an error!: " + e);
+                }
+            }
+        }
+        if (result && result instanceof Promise) {
             result
                 .then(() => this._done(toExecute, start))
                 .catch((reason) => {

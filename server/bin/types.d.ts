@@ -1,3 +1,6 @@
+import {MediaType} from "./tools";
+import {ScrapeTypes} from "./externals/scraperTools";
+
 export interface SimpleMedium {
     id?: number;
     countryOfOrigin?: string;
@@ -24,17 +27,27 @@ export interface Medium extends SimpleMedium {
 
 export interface TocSearchMedium {
     mediumId: number;
+    hosts?: string[];
     title: string;
     synonyms: string[];
 }
 
 export interface Part {
-    mediumId: number;
     id: number;
     title?: string;
+    mediumId: number;
     totalIndex: number;
     partialIndex?: number;
+    episodes: Episode[] | number[];
+
+}
+
+export interface FullPart extends Part {
     episodes: Episode[];
+}
+
+export interface ShallowPart extends Part {
+    episodes: number[];
 }
 
 export interface SimpleEpisode {
@@ -55,7 +68,7 @@ export interface EpisodeRelease {
     title: string;
     url: string;
     releaseDate: Date;
-    sourceType: string;
+    sourceType?: string;
 }
 
 export interface List {
@@ -102,6 +115,23 @@ export interface News {
     date: Date;
     id?: number;
     read?: boolean;
+    mediumId?: number;
+    mediumTitle?: number;
+}
+
+export interface EpisodeNews {
+    mediumType: MediaType;
+    mediumTocLink?: string;
+    mediumTitle: string;
+    partIndex?: number;
+    partTotalIndex?: number;
+    partPartialIndex?: number;
+    episodeTitle: string;
+    episodeIndex: number;
+    episodeTotalIndex: number;
+    episodePartialIndex?: number;
+    link: string;
+    date: Date;
 }
 
 export interface Synonyms {
@@ -111,10 +141,12 @@ export interface Synonyms {
 
 export interface ScrapeItem {
     link: string;
+    type: ScrapeTypes;
     lastDate?: Date;
-    type?: number;
-    userId?: number;
+    userId?: string;
+    externalUserId?: string;
     mediumId?: number;
+    info?: string;
 }
 
 export interface LikeMedium {
@@ -125,7 +157,7 @@ export interface LikeMedium {
 
 export interface LikeMediumQuery {
     title: string;
-    link: string;
+    link?: string;
     type?: number;
 }
 

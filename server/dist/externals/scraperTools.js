@@ -5,7 +5,7 @@ const database_1 = require("../database/database");
 const listManager_1 = require("./listManager");
 const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promised"));
 const tools_1 = require("../tools");
-const logger_1 = tslib_1.__importDefault(require("../logger"));
+const logger_1 = tslib_1.__importStar(require("../logger"));
 const directScraper = tslib_1.__importStar(require("./direct/directScraper"));
 const directScraper_1 = require("./direct/directScraper");
 const url = tslib_1.__importStar(require("url"));
@@ -15,7 +15,7 @@ const request_1 = tslib_1.__importDefault(require("request"));
 const queueManager_1 = require("./queueManager");
 const counter_1 = require("../counter");
 const env_1 = tslib_1.__importDefault(require("../env"));
-// todo for each page, save info as key-value-pairs
+const undergroundScraper_1 = require("./direct/undergroundScraper");
 // scrape at an interval of 5 min
 const interval = 5 * 60 * 1000;
 // this one is every 10s
@@ -107,45 +107,230 @@ exports.processNewsScraper = activity(async (adapter) => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
+    console.log(`Scraping for News with Adapter on '${adapter.link}'`);
     const rawNews = await adapter();
+    if (rawNews && rawNews.episodes && rawNews.episodes.length) {
+        console.log(`Scraped ${rawNews.episodes.length} Episode News on '${adapter.link}'`);
+        const episodeMap = rawNews.episodes.reduce((map, currentValue) => {
+            const episodeNews = tools_1.getElseSet(map, currentValue.mediumTitle + "%" + currentValue.mediumType, () => []);
+            episodeNews.push(currentValue);
+            return map;
+        }, new Map());
+        const promises = [];
+        for (const value of episodeMap.values()) {
+            const [newsItem] = value;
+            if (!newsItem || !newsItem.mediumTitle || !newsItem.mediumType) {
+                continue;
+            }
+            promises.push(processMediumNews(newsItem.mediumTitle, newsItem.mediumType, newsItem.mediumTocLink, rawNews.update, value));
+        }
+        await Promise.all(promises);
+    }
     return {
         link: adapter.link,
-        result: rawNews || [],
+        result: (rawNews && rawNews.news) || [],
     };
 });
-async function searchToc(id, availableTocs = []) {
-    const links = await database_1.Storage.getAllChapterLinks(id);
-    const medium = await database_1.Storage.getTocSearchMedium(id);
-    const consumed = [];
-    const tocs = [];
-    for (const tocLink of availableTocs) {
-        for (const entry of tocDiscovery.entries()) {
-            const [reg] = entry;
-            if (!consumed.includes(reg) && reg.test(tocLink)) {
-                consumed.push(reg);
-                break;
-            }
+async function processMediumNews(title, type, tocLink, update = false, potentialNews) {
+    const likeMedia = await database_1.Storage.getLikeMedium({ title, type });
+    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || !likeMedia.medium.id) {
+        if (tocLink) {
+            await database_1.Storage.addMediumInWait({ title, medium: type, link: tocLink });
         }
+        return;
     }
-    for (const link of links) {
-        for (const entry of tocDiscovery.entries()) {
-            const [reg, searcher] = entry;
-            if (!consumed.includes(reg) && reg.test(link)) {
-                const scrapedToc = await searcher(medium);
-                if (scrapedToc) {
-                    tocs.push(scrapedToc);
+    const mediumId = likeMedia.medium.id;
+    const latestReleases = await database_1.Storage.getLatestReleases(mediumId);
+    const latestRelease = tools_1.max(latestReleases, (previous, current) => {
+        const maxPreviousRelease = tools_1.max(previous.releases, "releaseDate");
+        const maxCurrentRelease = tools_1.max(current.releases, "releaseDate");
+        return ((maxPreviousRelease && maxPreviousRelease.releaseDate.getTime()) || 0)
+            - ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0);
+    });
+    let standardPart = await database_1.Storage.getStandardPart(mediumId);
+    if (!standardPart) {
+        standardPart = await database_1.Storage.createStandardPart(mediumId);
+    }
+    if (!standardPart) {
+        throw Error(`could not create standard part for mediumId: '${mediumId}'`);
+    }
+    let newEpisodeNews;
+    if (latestRelease) {
+        const oldReleases = [];
+        newEpisodeNews = potentialNews.filter((value) => {
+            if (value.episodeIndex > tools_1.combiIndex(latestRelease)) {
+                return true;
+            }
+            else {
+                oldReleases.push(value);
+                return false;
+            }
+        });
+        const indexReleaseMap = new Map();
+        const oldEpisodeIndices = oldReleases.map((value) => {
+            indexReleaseMap.set(value.episodeIndex, {
+                title: value.episodeTitle,
+                url: value.link,
+                releaseDate: value.date,
+                episodeId: 0,
+            });
+            return value.episodeIndex;
+        });
+        if (oldEpisodeIndices.length) {
+            const episodes = await database_1.Storage.getMediumEpisodePerIndex(mediumId, oldEpisodeIndices);
+            const promises = episodes.map((value) => {
+                const index = tools_1.combiIndex(value);
+                const release = indexReleaseMap.get(index);
+                if (!release) {
+                    throw Error(`missing release, queried for episode but got no release source for: '${index}'`);
                 }
-                consumed.push(reg);
-                break;
+                if (value.releases.find((prevRelease) => prevRelease.url === release.url)) {
+                    return Promise.resolve();
+                }
+                if (!value.id) {
+                    return database_1.Storage.addEpisode({
+                        id: 0,
+                        // @ts-ignore
+                        partId: standardPart.id,
+                        partialIndex: value.partialIndex,
+                        totalIndex: value.totalIndex,
+                        releases: [release]
+                    }).then(() => undefined);
+                }
+                release.episodeId = value.id;
+                return database_1.Storage.addRelease(release);
+            });
+            await Promise.all(promises);
+        }
+        if (update) {
+            const sourcedReleases = await database_1.Storage.getSourcedReleases(undergroundScraper_1.sourceType, mediumId);
+            const toUpdateReleases = oldReleases.map((value) => {
+                return {
+                    title: value.episodeTitle,
+                    url: value.link,
+                    releaseDate: value.date,
+                    sourceType: undergroundScraper_1.sourceType,
+                    episodeId: 0,
+                };
+            }).filter((value) => {
+                const foundRelease = sourcedReleases.find((release) => release.title === value.title);
+                if (!foundRelease) {
+                    logger_1.default.warn("wanted to update an unavailable release");
+                    return false;
+                }
+                return foundRelease.url !== value.url;
+            });
+            if (toUpdateReleases.length) {
+                database_1.Storage.updateRelease(toUpdateReleases).catch(logger_1.logError);
             }
         }
     }
-    return { id, tocs };
+    else {
+        newEpisodeNews = potentialNews;
+    }
+    const newEpisodes = newEpisodeNews.map((value) => {
+        return {
+            totalIndex: value.episodeTotalIndex,
+            partialIndex: value.episodePartialIndex,
+            releases: [
+                {
+                    episodeId: 0,
+                    releaseDate: value.date,
+                    url: value.link,
+                    title: value.episodeTitle
+                }
+            ],
+            id: 0,
+            // @ts-ignore
+            partId: standardPart.id
+        };
+    });
+    if (newEpisodes.length) {
+        await database_1.Storage.addEpisode(newEpisodes);
+    }
+    if (tocLink) {
+        await database_1.Storage.addToc(mediumId, tocLink);
+    }
+}
+function searchToc(id, tocSearch, availableTocs) {
+    const consumed = [];
+    const scraperJobs = [];
+    if (availableTocs) {
+        for (const availableToc of availableTocs) {
+            for (const entry of tocScraper.entries()) {
+                const [reg, scraper] = entry;
+                if (!consumed.includes(reg) && reg.test(availableToc)) {
+                    scraperJobs.push({
+                        type: "onetime_emittable",
+                        key: "toc",
+                        item: availableToc,
+                        cb: async (item) => {
+                            const tocs = await scraper(item);
+                            if (tocs) {
+                                tocs.forEach((value) => value.mediumId = id);
+                            }
+                            return { tocs };
+                        }
+                    });
+                    consumed.push(reg);
+                    break;
+                }
+            }
+        }
+    }
+    const searchJobs = [];
+    if (tocSearch && tocSearch.hosts && tocSearch.hosts.length) {
+        for (const link of tocSearch.hosts) {
+            for (const entry of tocDiscovery.entries()) {
+                const [reg, searcher] = entry;
+                if (!consumed.includes(reg) && reg.test(link)) {
+                    searchJobs.push({
+                        type: "onetime_emittable",
+                        key: "toc",
+                        item: tocSearch,
+                        cb: async (item) => {
+                            const newToc = await searcher(item);
+                            const tocs = [];
+                            if (newToc) {
+                                newToc.mediumId = id;
+                                tocs.push(newToc);
+                            }
+                            return { tocs };
+                        }
+                    });
+                    consumed.push(reg);
+                    break;
+                }
+            }
+        }
+    }
+    for (let i = 0; i < searchJobs.length; i++) {
+        const job = searchJobs[i];
+        if (i === 0) {
+            continue;
+        }
+        const previousJob = searchJobs[i - 1];
+        previousJob.onDone = () => job;
+    }
+    for (let i = 0; i < scraperJobs.length; i++) {
+        const job = scraperJobs[i];
+        if (i === 0) {
+            const lastSearchJob = searchJobs[searchJobs.length - 1];
+            if (lastSearchJob) {
+                lastSearchJob.onDone = () => lastSearchJob;
+            }
+            continue;
+        }
+        const previousJob = scraperJobs[i - 1];
+        previousJob.onDone = () => job;
+    }
+    return searchJobs.length ? searchJobs[0] : scraperJobs[0];
 }
 exports.checkTocs = activity(async () => {
-    const allAvailableTocs = await database_1.Storage.getAllTocs();
+    const mediaTocs = await database_1.Storage.getAllTocs();
+    const tocSearchMedia = await database_1.Storage.getTocSearchMedia();
     const mediaWithTocs = new Map();
-    const mediaWithoutTocs = allAvailableTocs
+    const mediaWithoutTocs = mediaTocs
         .filter((value) => {
         if (value.link) {
             let links = mediaWithTocs.get(value.id);
@@ -158,35 +343,30 @@ exports.checkTocs = activity(async () => {
         return true;
     })
         .map((value) => value.id);
-    // TODO: 29.06.2019 possibly stream database request of searchToc
-    const mappedTocs = await Promise
-        .all(mediaWithoutTocs.map((id) => searchToc(id)))
-        .then((tocMedium) => tocMedium.filter((value) => value.tocs.length));
-    const otherMappedTocs = await Promise
-        .all([...mediaWithTocs.entries()].map(async (value) => {
+    const newScraperJobs1 = mediaWithoutTocs.map((id) => {
+        return searchToc(id, tocSearchMedia.find((value) => value.mediumId === id));
+    }).filter((value) => value);
+    const promises = [...mediaWithTocs.entries()].map(async (value) => {
         const mediumId = value[0];
         const indices = await database_1.Storage.getChapterIndices(mediumId);
-        const max = tools_1.maxValue(indices);
-        if (max != null) {
-            let missingChapters;
-            for (let i = 1; i < max; i++) {
-                if (!indices.includes(i)) {
-                    missingChapters = true;
-                    break;
-                }
-            }
-            if (missingChapters) {
-                return searchToc(mediumId, value[1]);
+        const maxIndex = tools_1.maxValue(indices);
+        if (maxIndex == null || indices.length < maxIndex) {
+            return searchToc(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
+        }
+        let missingChapters;
+        for (let i = 1; i < maxIndex; i++) {
+            if (!indices.includes(i)) {
+                missingChapters = true;
+                break;
             }
         }
-    }))
-        .then((array) => array.filter((value) => value && value.tocs.length));
-    mappedTocs.push(...otherMappedTocs);
-    const tocs = mappedTocs.flatMap((value) => value.tocs.map((newToc) => {
-        newToc.mediumId = value.id;
-        return newToc;
-    }));
-    return { toc: tocs };
+        if (missingChapters) {
+            return searchToc(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
+        }
+    });
+    const newScraperJobs2 = await Promise.all(promises);
+    const jobs = [newScraperJobs1, newScraperJobs2].flat(3);
+    return jobs.filter((value) => value);
 });
 exports.oneTimeToc = activity(async ({ url: link, uuid, mediumId }) => {
     const host = url.parse(link).host;
@@ -243,8 +423,7 @@ exports.toc = activity(async (value) => {
  * Scrapes ListWebsites and follows possible redirected pages.
  */
 exports.list = activity(async (value) => {
-    const manager = listManager_1.factory(0);
-    manager.parseAndReplaceCookies(value.cookies);
+    const manager = listManager_1.factory(0, value.cookies);
     try {
         const lists = await manager.scrapeLists();
         const listsPromise = Promise.all(lists.lists.map(async (scrapedList) => scrapedList.link = await checkLink(scrapedList.link, scrapedList.name)));
@@ -312,7 +491,7 @@ async function scrape(dependants = scrapeDependants, next = true) {
         .then(() => {
         dependants.oneTimeUser.length = 0;
     });
-    const checkTocsFinished = notify("toc", [exports.checkTocs()]);
+    const checkTocsFinished = exports.checkTocs();
     const allPromises = [
         tocFinished,
         newsFinished,
@@ -344,12 +523,15 @@ async function scrape(dependants = scrapeDependants, next = true) {
 // TODO: 21.06.2019 save cache in database?
 const cache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
 const errorCache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
-exports.scrapeTypes = {
-    LIST: 0,
-    FEED: 1,
-    NEWS: 2,
-    TOC: 3,
-};
+var ScrapeTypes;
+(function (ScrapeTypes) {
+    ScrapeTypes[ScrapeTypes["LIST"] = 0] = "LIST";
+    ScrapeTypes[ScrapeTypes["FEED"] = 1] = "FEED";
+    ScrapeTypes[ScrapeTypes["NEWS"] = 2] = "NEWS";
+    ScrapeTypes[ScrapeTypes["TOC"] = 3] = "TOC";
+    ScrapeTypes[ScrapeTypes["ONETIMEUSER"] = 4] = "ONETIMEUSER";
+    ScrapeTypes[ScrapeTypes["ONETIMETOC"] = 5] = "ONETIMETOC";
+})(ScrapeTypes = exports.ScrapeTypes || (exports.ScrapeTypes = {}));
 const eventMap = new Map();
 let scrapeDependants;
 /**
@@ -360,13 +542,13 @@ async function setup() {
     const scrapeBoard = await database_1.Storage.getScrapes();
     const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: [] };
     scrapeBoard.forEach((value) => {
-        if (value.type === exports.scrapeTypes.NEWS) {
+        if (value.type === ScrapeTypes.NEWS) {
             dependants.news.push(value);
         }
-        else if (value.type === exports.scrapeTypes.FEED) {
+        else if (value.type === ScrapeTypes.FEED) {
             dependants.feeds.push(value.link);
         }
-        else if (value.type === exports.scrapeTypes.TOC) {
+        else if (value.type === ScrapeTypes.TOC) {
             dependants.tocs.push(value);
         }
     });
@@ -388,6 +570,7 @@ class ScraperHelper {
     }
     emit(event, value) {
         if (env_1.default.stopScrapeEvents) {
+            console.log("not emitting events");
             return;
         }
         const callbacks = tools_1.getElseSet(this.eventMap, event, () => []);
@@ -403,24 +586,35 @@ class ScraperHelper {
             if (value.redirectReg) {
                 redirects.push(value.redirectReg);
             }
+            // TODO: 20.07.2019 check why it should be added to the public ones,
+            //  or make the getter for these access the public ones?
             if (value.newsAdapter) {
                 if (Array.isArray(value.newsAdapter)) {
                     newsAdapter.push(...value.newsAdapter);
+                    this.newsAdapter.push(...value.newsAdapter);
                 }
                 else {
                     newsAdapter.push(value.newsAdapter);
+                    this.newsAdapter.push(value.newsAdapter);
                 }
             }
             if (value.domainReg) {
                 if (value.tocAdapter) {
                     tocScraper.set(value.domainReg, value.tocAdapter);
+                    this.tocScraper.set(value.domainReg, value.tocAdapter);
                 }
                 if (value.contentDownloadAdapter) {
                     episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
+                    this.episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
                 }
                 if (value.tocSearchAdapter) {
                     tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
+                    this.tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
                 }
+            }
+            if (value.tocPattern && value.tocSearchAdapter) {
+                tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
+                this.tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
             }
         });
     }
@@ -459,7 +653,7 @@ async function downloadEpisodes(episodes) {
     const entries = [...episodeDownloader.entries()];
     const downloadContents = new Map();
     for (const episode of episodes) {
-        const indexKey = combiIndex(episode);
+        const indexKey = tools_1.combiIndex(episode);
         if (!episode.releases.length) {
             downloadContents.set(indexKey, {
                 episodeId: episode.id,
@@ -508,7 +702,7 @@ async function downloadEpisodes(episodes) {
         else {
             for (const episodeContent of downloadedContent) {
                 const foundEpisode = episodes.find((value) => value.releases.find((release) => (release.title === episodeContent.episodeTitle)
-                    || (combiIndex(value) === episodeContent.index))
+                    || (tools_1.combiIndex(value) === episodeContent.index))
                     != null);
                 if (foundEpisode) {
                     downloadContents.set(indexKey, {
@@ -526,9 +720,6 @@ async function downloadEpisodes(episodes) {
     return [...downloadContents.values()];
 }
 exports.downloadEpisodes = downloadEpisodes;
-function combiIndex(episode) {
-    return episode.totalIndex + (episode.partialIndex || 0);
-}
 function checkLinkWithInternet(link) {
     return new Promise((resolve, reject) => {
         request_1.default
@@ -589,6 +780,9 @@ function checkLink(link, linkKey) {
                 const value = errorCache.get(linkKey);
                 if (!value || value !== link) {
                     errorCache.set(linkKey, link);
+                    // FIXME 502 Bad Gateway error for some novelupdates short links
+                    //  such as 'https://www.novelupdates.com/extnu/2770610/',
+                    //  while i can acces it from browser just fine
                     reject(reason);
                     return;
                 }

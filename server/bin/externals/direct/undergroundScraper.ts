@@ -1,5 +1,5 @@
 import {Hook, TextEpisodeContent} from "../types";
-import {EpisodeRelease, LikeMedium, MultiSingle, News, Part, SimpleEpisode} from "../../types";
+import {EpisodeNews, EpisodeRelease, LikeMedium, MultiSingle, News, SimpleEpisode} from "../../types";
 import logger, {logError} from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
 import emojiStrip from "emoji-strip";
@@ -8,7 +8,7 @@ import {max, MediaType} from "../../tools";
 
 export const sourceType = "qidian_underground";
 
-async function scrapeNews(): Promise<News[]> {
+async function scrapeNews(): Promise<{news?: News[], episodes?: EpisodeNews[]} | undefined> {
     const uri = "https://toc.qidianunderground.org/";
 
     const $ = await queueCheerioRequest(uri);
@@ -26,7 +26,7 @@ async function scrapeNews(): Promise<News[]> {
 
         if (!mediumTitle) {
             logger.warn("changed format on qidianUnderground");
-            return [];
+            return;
         }
 
         const timeStampElement = mediumElement.find(".timeago").first();
@@ -79,8 +79,8 @@ async function scrapeNews(): Promise<News[]> {
         }
     }
     await Promise.all(potentialMediaNews);
-    return [];
 }
+
 // TODO: 25.06.2019 use caching for likeMedium?
 async function processMediumNews(mediumTitle: string, potentialNews: News[]): Promise<void> {
     const likeMedia: MultiSingle<LikeMedium> = await Storage.getLikeMedium({
@@ -89,10 +89,11 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
         type: MediaType.TEXT
     });
 
-    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || likeMedia.medium.id == null) {
+    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || !likeMedia.medium.id) {
         return;
     }
-    const latestReleases: SimpleEpisode[] = await Storage.getLatestReleases(likeMedia.medium.id);
+    const mediumId = likeMedia.medium.id;
+    const latestReleases: SimpleEpisode[] = await Storage.getLatestReleases(mediumId);
 
     const latestRelease = max(latestReleases, (previous, current) => {
         const maxPreviousRelease = max(previous.releases, "releaseDate");
@@ -103,19 +104,10 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
     });
 
     const chapIndexReg = /(\d+)\s*$/;
-    const parts = await Storage.getMediumParts(likeMedia.medium.id);
-    let part: Part;
+    let standardPart = await Storage.getStandardPart(mediumId);
 
-    if (!parts.length) {
-        part = await Storage.createStandardPart(likeMedia.medium.id);
-    } else if (parts.length !== 1) {
-        throw Error("qidian novel does not have exactly one part!");
-    } else {
-        part = parts[0];
-    }
-
-    if (part.totalIndex !== -1) {
-        throw Error("qidian novels don't have volumes");
+    if (!standardPart) {
+        standardPart = await Storage.createStandardPart(mediumId);
     }
 
     let news: News[];
@@ -138,7 +130,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
             }
         });
 
-        const sourcedReleases = await Storage.getSourcedReleases(sourceType, likeMedia.medium.id);
+        const sourcedReleases = await Storage.getSourcedReleases(sourceType, mediumId);
         const toUpdateReleases = oldReleases.map((value): EpisodeRelease => {
             return {
                 title: value.title,
@@ -157,9 +149,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
             return foundRelease.url !== value.url;
         });
         if (toUpdateReleases.length) {
-            Storage
-                .updateRelease(part.id, sourceType, toUpdateReleases)
-                .catch(logError);
+            Storage.updateRelease(toUpdateReleases).catch(logError);
         }
     } else {
         news = potentialNews;
@@ -183,12 +173,13 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
                 }
             ],
             id: 0,
-            partId: 0
+            // @ts-ignore
+            partId: standardPart.id
         };
     });
 
     if (newEpisodes.length) {
-        await Storage.addEpisode(part.id, newEpisodes);
+        await Storage.addEpisode(newEpisodes);
     }
 }
 

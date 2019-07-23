@@ -359,7 +359,7 @@ function add(dependant) {
     // @ts-ignore
     tools_1.addMultiSingle(dependants.feeds, dependant.feed);
     tools_1.addMultiSingle(dependants.news, dependant.news);
-    tools_1.addMultiSingle(dependants.tocs, dependant.toc);
+    tools_1.addMultiSingle(dependants.tocs, dependant.tocs);
     tools_1.addMultiSingle(dependants.media, dependant.medium);
     // kick of a cycle and if no error occurs: add it to permanent cycle
     tools_1.delay(100)
@@ -370,7 +370,7 @@ function add(dependant) {
         // @ts-ignore
         tools_1.addMultiSingle(scrapeDependants.feeds, dependant.feed);
         tools_1.addMultiSingle(scrapeDependants.news, dependant.news);
-        tools_1.addMultiSingle(scrapeDependants.tocs, dependant.toc);
+        tools_1.addMultiSingle(scrapeDependants.tocs, dependant.tocs);
         tools_1.addMultiSingle(scrapeDependants.media, dependant.medium);
     })
         .catch((error) => {
@@ -432,7 +432,7 @@ async function downloadEpisodes(episodes) {
         else {
             for (const episodeContent of downloadedContent) {
                 const foundEpisode = episodes.find((value) => value.releases.find((release) => (release.title === episodeContent.episodeTitle)
-                    || (combiIndex(value) === episodeContent.index))
+                    || (combiIndex(value) === episodeContent.totalIndex))
                     != null);
                 if (foundEpisode) {
                     downloadContents.set(indexKey, {

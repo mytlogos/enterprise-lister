@@ -31,7 +31,9 @@ function userRouter(): Router {
     // after this middleware should be protected with this now
     router.use(UserApi.authenticate);
 
-    UserApi.addUserApi(router.route(""));
+    const userRoute = router.route("");
+    userRoute.put(UserApi.putUser);
+    userRoute.delete(UserApi.deleteUser);
 
     router.post("/logout", UserApi.logout);
     router.get("/lists", UserApi.getLists);
@@ -41,26 +43,32 @@ function userRouter(): Router {
     router.get("/download", UserApi.downloadEpisode);
     router.use("/medium", mediumRouter());
 
-    router.get("/news", newsRouter());
+    router.use("/news", newsRouter());
     router.use("/list", listRouter());
     router.use("/process", processRouter());
     router.use("/externalUser", externalUserRouter());
 
-    UserApi.addSuggestionsRoute(router.route("/suggestion"));
     return router;
 }
 
 function newsRouter() {
     const router = Router();
     router.post("/read", UserApi.readNews);
+    // TODO: 30.06.2019 get Request does not want to work
+    // TODO: 21.07.2019 update: testing this with intellij rest client does seem to work
+    //  now is just needs to tested with the normal clients e.g. website and android app
     router.get("", UserApi.getNews);
+    router.use(stopper);
     return router;
 }
 
 function externalUserRouter() {
     const router = Router();
     router.get("/refresh", UserApi.refreshExternalUser);
-    UserApi.addExternalUserApi(router.route(""));
+    const externalUserRoute = router.route("");
+    externalUserRoute.get(UserApi.getExternalUser);
+    externalUserRoute.post(UserApi.postExternalUser);
+    externalUserRoute.delete(UserApi.deleteExternalUser);
     return router;
 }
 
@@ -70,8 +78,17 @@ function externalUserRouter() {
 function listRouter(): Router {
     const router = Router();
 
-    UserApi.addListMediumRoute(router.route("/medium"));
-    UserApi.addListApi(router.route(""));
+    const listMediumRoute = router.route("/medium");
+    listMediumRoute.get(UserApi.getListMedium);
+    listMediumRoute.post(UserApi.postListMedium);
+    listMediumRoute.put(UserApi.putListMedium);
+    listMediumRoute.delete(UserApi.deleteListMedium);
+
+    const listRoute = router.route("");
+    listRoute.get(UserApi.getList);
+    listRoute.post(UserApi.postList);
+    listRoute.put(UserApi.putList);
+    listRoute.delete(UserApi.deleteList);
 
     return router;
 }
@@ -91,10 +108,19 @@ function processRouter(): Router {
 function mediumRouter(): Router {
     const router = Router();
 
+    router.get("/unused", UserApi.getUnusedMedia);
     router.use("/part", partRouter());
 
-    UserApi.addMediumApi(router.route(""));
-    UserApi.addProgressRoute(router.route("/progress"));
+    const mediumRoute = router.route("");
+    mediumRoute.get(UserApi.getMedium);
+    mediumRoute.post(UserApi.postMedium);
+    mediumRoute.put(UserApi.putMedium);
+
+    const progressRoute = router.route("/progress");
+    progressRoute.get(UserApi.getProgress);
+    progressRoute.post(UserApi.postProgress);
+    progressRoute.put(UserApi.putProgress);
+    progressRoute.delete(UserApi.deleteProgress);
 
     return router;
 }
@@ -105,8 +131,19 @@ function mediumRouter(): Router {
  */
 function partRouter(): Router {
     const router = Router();
-    UserApi.addEpisodeRoute(router.route("/episode"));
-    UserApi.addPartRoute(router.route(""));
+    const episodeRoute = router.route("/episode");
+    episodeRoute.get(UserApi.getEpisode);
+    episodeRoute.post(UserApi.postEpisode);
+    episodeRoute.put(UserApi.putEpisode);
+    episodeRoute.delete(UserApi.deleteEpisode);
+
+
+    const partRoute = router.route("");
+    partRoute.get(UserApi.getPart);
+    partRoute.post(UserApi.postPart);
+    partRoute.put(UserApi.putPart);
+    partRoute.delete(UserApi.deletePart);
+
     return router;
 }
 

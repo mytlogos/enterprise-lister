@@ -61,10 +61,8 @@ const fastQueues: Map<string, Queue> = new Map();
 
 export type Callback = () => any;
 
-const domainReg = /https?:\/\/(.+?)\//;
-
 function processRequest(uri: string, otherRequest?: Request, queueToUse = queues, limit?: number) {
-    const exec = domainReg.exec(uri);
+    const exec = /https?:\/\/(.+?)\/?/.exec(uri);
 
     if (!exec) {
         throw Error("not a valid url");

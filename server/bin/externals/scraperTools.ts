@@ -1,9 +1,29 @@
 import {Storage} from "../database/database";
 import {factory, getListManagerHooks, ListScrapeResult} from "./listManager";
 import feedParserPromised from "feedparser-promised";
-import {addMultiSingle, delay, getElseSet, maxValue, multiSingle, removeMultiSingle} from "../tools";
-import {Episode, News, ScrapeItem, SimpleEpisode} from "../types";
-import logger from "../logger";
+import {
+    addMultiSingle,
+    combiIndex,
+    delay,
+    getElseSet,
+    max,
+    maxValue,
+    MediaType,
+    multiSingle,
+    removeMultiSingle
+} from "../tools";
+import {
+    Episode,
+    EpisodeNews,
+    EpisodeRelease,
+    LikeMedium,
+    MultiSingle,
+    News,
+    ScrapeItem,
+    SimpleEpisode,
+    TocSearchMedium
+} from "../types";
+import logger, {logError} from "../logger";
 import {
     ContentDownloader,
     Dependant,
@@ -11,7 +31,9 @@ import {
     EpisodeContent,
     Hook,
     NewsScraper,
+    OneTimeEmittableJob,
     OneTimeToc,
+    ScraperJob,
     Toc,
     TocScraper,
     TocSearchScraper
@@ -26,8 +48,7 @@ import {FullResponse} from "cloudscraper";
 import {queueFastRequestFullResponse} from "./queueManager";
 import {Counter} from "../counter";
 import env from "../env";
-
-// todo for each page, save info as key-value-pairs
+import {sourceType} from "./direct/undergroundScraper";
 
 // scrape at an interval of 5 min
 const interval = 5 * 60 * 1000;
@@ -130,56 +151,269 @@ export const processNewsScraper = activity(async (adapter: NewsScraper): Promise
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
+    console.log(`Scraping for News with Adapter on '${adapter.link}'`);
     const rawNews = await adapter();
+
+    if (rawNews && rawNews.episodes && rawNews.episodes.length) {
+        console.log(`Scraped ${rawNews.episodes.length} Episode News on '${adapter.link}'`);
+        const episodeMap: Map<string, EpisodeNews[]> = rawNews.episodes.reduce((map, currentValue) => {
+            const episodeNews = getElseSet(
+                map,
+                currentValue.mediumTitle + "%" + currentValue.mediumType,
+                () => []
+            );
+            episodeNews.push(currentValue);
+            return map;
+        }, new Map<string, EpisodeNews[]>());
+
+        const promises = [];
+        for (const value of episodeMap.values()) {
+            const [newsItem] = value;
+            if (!newsItem || !newsItem.mediumTitle || !newsItem.mediumType) {
+                continue;
+            }
+            promises.push(processMediumNews(
+                newsItem.mediumTitle,
+                newsItem.mediumType,
+                newsItem.mediumTocLink,
+                rawNews.update,
+                value
+            ));
+        }
+        await Promise.all(promises);
+    }
     return {
         link: adapter.link,
-        result: rawNews || [],
+        result: (rawNews && rawNews.news) || [],
     };
 
 });
 
-async function searchToc(id: number, availableTocs: string[] = []): Promise<{ id: number, tocs: Toc[] }> {
-    const links = await Storage.getAllChapterLinks(id);
-    const medium = await Storage.getTocSearchMedium(id);
-    const consumed: RegExp[] = [];
-    const tocs: Toc[] = [];
+async function processMediumNews(
+    title: string, type: MediaType, tocLink: string | undefined, update = false, potentialNews: EpisodeNews[]
+): Promise<void> {
 
-    for (const tocLink of availableTocs) {
+    const likeMedia: MultiSingle<LikeMedium> = await Storage.getLikeMedium({title, type});
 
-        for (const entry of tocDiscovery.entries()) {
-            const [reg] = entry;
-
-            if (!consumed.includes(reg) && reg.test(tocLink)) {
-                consumed.push(reg);
-                break;
-            }
+    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || !likeMedia.medium.id) {
+        if (tocLink) {
+            await Storage.addMediumInWait({title, medium: type, link: tocLink});
         }
+        return;
+    }
+    const mediumId = likeMedia.medium.id;
+    const latestReleases: SimpleEpisode[] = await Storage.getLatestReleases(mediumId);
+
+    const latestRelease = max(latestReleases, (previous, current) => {
+        const maxPreviousRelease = max(previous.releases, "releaseDate");
+        const maxCurrentRelease = max(current.releases, "releaseDate");
+
+        return ((maxPreviousRelease && maxPreviousRelease.releaseDate.getTime()) || 0)
+            - ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0);
+    });
+
+    let standardPart = await Storage.getStandardPart(mediumId);
+
+    if (!standardPart) {
+        standardPart = await Storage.createStandardPart(mediumId);
     }
 
-    for (const link of links) {
+    if (!standardPart) {
+        throw Error(`could not create standard part for mediumId: '${mediumId}'`);
+    }
 
-        for (const entry of tocDiscovery.entries()) {
-            const [reg, searcher] = entry;
+    let newEpisodeNews: EpisodeNews[];
 
-            if (!consumed.includes(reg) && reg.test(link)) {
-                const scrapedToc = await searcher(medium);
+    if (latestRelease) {
+        const oldReleases: EpisodeNews[] = [];
+        newEpisodeNews = potentialNews.filter((value) => {
+            if (value.episodeIndex > combiIndex(latestRelease)) {
+                return true;
+            } else {
+                oldReleases.push(value);
+                return false;
+            }
+        });
+        const indexReleaseMap: Map<number, EpisodeRelease> = new Map();
 
-                if (scrapedToc) {
-                    tocs.push(scrapedToc);
+        const oldEpisodeIndices = oldReleases.map((value) => {
+            indexReleaseMap.set(value.episodeIndex, {
+                title: value.episodeTitle,
+                url: value.link,
+                releaseDate: value.date,
+                episodeId: 0,
+            });
+            return value.episodeIndex;
+        });
+
+        if (oldEpisodeIndices.length) {
+            const episodes = await Storage.getMediumEpisodePerIndex(mediumId, oldEpisodeIndices);
+            const promises = episodes.map((value) => {
+                const index = combiIndex(value);
+                const release = indexReleaseMap.get(index);
+
+                if (!release) {
+                    throw Error(`missing release, queried for episode but got no release source for: '${index}'`);
                 }
-                consumed.push(reg);
-                break;
+                if (value.releases.find((prevRelease) => prevRelease.url === release.url)) {
+                    return Promise.resolve();
+                }
+                if (!value.id) {
+                    return Storage.addEpisode({
+                        id: 0,
+                        // @ts-ignore
+                        partId: standardPart.id,
+                        partialIndex: value.partialIndex,
+                        totalIndex: value.totalIndex,
+                        releases: [release]
+                    }).then(() => undefined);
+                }
+                release.episodeId = value.id;
+                return Storage.addRelease(release) as unknown as Promise<void>;
+            });
+            await Promise.all(promises);
+        }
+        if (update) {
+            const sourcedReleases = await Storage.getSourcedReleases(sourceType, mediumId);
+            const toUpdateReleases = oldReleases.map((value): EpisodeRelease => {
+                return {
+                    title: value.episodeTitle,
+                    url: value.link,
+                    releaseDate: value.date,
+                    sourceType,
+                    episodeId: 0,
+                };
+            }).filter((value) => {
+                const foundRelease = sourcedReleases.find((release) => release.title === value.title);
+
+                if (!foundRelease) {
+                    logger.warn("wanted to update an unavailable release");
+                    return false;
+                }
+                return foundRelease.url !== value.url;
+            });
+            if (toUpdateReleases.length) {
+                Storage.updateRelease(toUpdateReleases).catch(logError);
             }
         }
+    } else {
+        newEpisodeNews = potentialNews;
     }
-    return {id, tocs};
+    const newEpisodes = newEpisodeNews.map((value): SimpleEpisode => {
+        return {
+            totalIndex: value.episodeTotalIndex,
+            partialIndex: value.episodePartialIndex,
+            releases: [
+                {
+                    episodeId: 0,
+                    releaseDate: value.date,
+                    url: value.link,
+                    title: value.episodeTitle
+                }
+            ],
+            id: 0,
+            // @ts-ignore
+            partId: standardPart.id
+        };
+    });
+
+    if (newEpisodes.length) {
+        await Storage.addEpisode(newEpisodes);
+    }
+    if (tocLink) {
+        await Storage.addToc(mediumId, tocLink);
+    }
 }
 
-export const checkTocs = activity(async (): Promise<{ toc: Toc[], uuid?: string }> => {
-    const allAvailableTocs = await Storage.getAllTocs();
+function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: string[]): ScraperJob | undefined {
+    const consumed: RegExp[] = [];
+    const scraperJobs: ScraperJob[] = [];
+
+    if (availableTocs) {
+        for (const availableToc of availableTocs) {
+            for (const entry of tocScraper.entries()) {
+                const [reg, scraper] = entry;
+
+                if (!consumed.includes(reg) && reg.test(availableToc)) {
+                    scraperJobs.push({
+                        type: "onetime_emittable",
+                        key: "toc",
+                        item: availableToc,
+                        cb: async (item) => {
+                            const tocs = await scraper(item);
+                            if (tocs) {
+                                tocs.forEach((value) => value.mediumId = id);
+                            }
+                            return {tocs};
+                        }
+                    } as OneTimeEmittableJob);
+                    consumed.push(reg);
+                    break;
+                }
+            }
+        }
+    }
+
+    const searchJobs: ScraperJob[] = [];
+    if (tocSearch && tocSearch.hosts && tocSearch.hosts.length) {
+        for (const link of tocSearch.hosts) {
+
+            for (const entry of tocDiscovery.entries()) {
+                const [reg, searcher] = entry;
+
+                if (!consumed.includes(reg) && reg.test(link)) {
+                    searchJobs.push({
+                        type: "onetime_emittable",
+                        key: "toc",
+                        item: tocSearch,
+                        cb: async (item) => {
+                            const newToc = await searcher(item);
+                            const tocs = [];
+
+                            if (newToc) {
+                                newToc.mediumId = id;
+                                tocs.push(newToc);
+                            }
+                            return {tocs};
+                        }
+                    } as OneTimeEmittableJob);
+                    consumed.push(reg);
+                    break;
+                }
+            }
+        }
+    }
+    for (let i = 0; i < searchJobs.length; i++) {
+        const job = searchJobs[i];
+
+        if (i === 0) {
+            continue;
+        }
+        const previousJob = searchJobs[i - 1];
+        previousJob.onDone = () => job;
+    }
+    for (let i = 0; i < scraperJobs.length; i++) {
+        const job = scraperJobs[i];
+
+        if (i === 0) {
+            const lastSearchJob = searchJobs[searchJobs.length - 1];
+            if (lastSearchJob) {
+                lastSearchJob.onDone = () => lastSearchJob;
+            }
+            continue;
+        }
+        const previousJob = scraperJobs[i - 1];
+        previousJob.onDone = () => job;
+    }
+    return searchJobs.length ? searchJobs[0] : scraperJobs[0];
+}
+
+export const checkTocs = activity(async (): Promise<void | ScraperJob[]> => {
+    const mediaTocs = await Storage.getAllTocs();
+    const tocSearchMedia = await Storage.getTocSearchMedia();
     const mediaWithTocs: Map<number, string[]> = new Map();
 
-    const mediaWithoutTocs = allAvailableTocs
+    const mediaWithoutTocs = mediaTocs
         .filter((value) => {
             if (value.link) {
                 let links = mediaWithTocs.get(value.id);
@@ -194,40 +428,40 @@ export const checkTocs = activity(async (): Promise<{ toc: Toc[], uuid?: string 
         })
         .map((value) => value.id);
 
-    // TODO: 29.06.2019 possibly stream database request of searchToc
-    const mappedTocs: Array<{ id: number, tocs: Toc[] }> = await Promise
-        .all(mediaWithoutTocs.map((id) => searchToc(id)))
-        .then((tocMedium) => tocMedium.filter((value) => value.tocs.length));
+    const newScraperJobs1: ScraperJob[] = mediaWithoutTocs.map((id) => {
+        return searchToc(id, tocSearchMedia.find((value) => value.mediumId === id));
+    }).filter((value) => value) as ScraperJob[];
 
-    const otherMappedTocs: Array<{ id: number, tocs: Toc[]; }> = await Promise
-        .all([...mediaWithTocs.entries()].map(async (value) => {
-            const mediumId = value[0];
-            const indices = await Storage.getChapterIndices(mediumId);
-            const max = maxValue(indices);
+    const promises = [...mediaWithTocs.entries()].map(async (value) => {
+        const mediumId = value[0];
+        const indices = await Storage.getChapterIndices(mediumId);
+        const maxIndex = maxValue(indices);
 
-            if (max != null) {
-                let missingChapters;
-
-                for (let i = 1; i < max; i++) {
-                    if (!indices.includes(i)) {
-                        missingChapters = true;
-                        break;
-                    }
-                }
-                if (missingChapters) {
-                    return searchToc(mediumId, value[1]);
-                }
+        if (maxIndex == null || indices.length < maxIndex) {
+            return searchToc(
+                mediumId,
+                tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),
+                value[1]
+            );
+        }
+        let missingChapters;
+        for (let i = 1; i < maxIndex; i++) {
+            if (!indices.includes(i)) {
+                missingChapters = true;
+                break;
             }
-        }))
-        .then((array) => array.filter((value) => value && value.tocs.length)) as Array<{ id: number, tocs: Toc[]; }>;
-
-    mappedTocs.push(...otherMappedTocs);
-
-    const tocs = mappedTocs.flatMap((value) => value.tocs.map((newToc) => {
-        newToc.mediumId = value.id;
-        return newToc;
-    }));
-    return {toc: tocs};
+        }
+        if (missingChapters) {
+            return searchToc(
+                mediumId,
+                tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),
+                value[1]
+            );
+        }
+    });
+    const newScraperJobs2: Array<ScraperJob | undefined> = await Promise.all(promises);
+    const jobs: ScraperJob[] = [newScraperJobs1, newScraperJobs2].flat(3);
+    return jobs.filter((value) => value);
 });
 
 export const oneTimeToc = activity(async ({url: link, uuid, mediumId}: OneTimeToc)
@@ -298,8 +532,7 @@ export const toc = activity(async (value: ScrapeItem): Promise<void> => {
 export const list = activity(async (value: { cookies: string, uuid: string; })
     : Promise<{ external: { cookies: string, uuid: string }, lists: ListScrapeResult; }> => {
 
-    const manager = factory(0);
-    manager.parseAndReplaceCookies(value.cookies);
+    const manager = factory(0, value.cookies);
     try {
         const lists = await manager.scrapeLists();
         const listsPromise = Promise.all(lists.lists.map(
@@ -375,7 +608,7 @@ async function scrape(dependants = scrapeDependants, next = true) {
         .then(() => {
             dependants.oneTimeUser.length = 0;
         });
-    const checkTocsFinished = notify("toc", [checkTocs()]);
+    const checkTocsFinished = checkTocs();
 
     const allPromises = [
         tocFinished,
@@ -452,12 +685,14 @@ export interface Scraper {
     on(event: string, callback: (value: any) => void): void;
 }
 
-export const scrapeTypes = {
-    LIST: 0,
-    FEED: 1,
-    NEWS: 2,
-    TOC: 3,
-};
+export enum ScrapeTypes {
+    LIST = 0,
+    FEED = 1,
+    NEWS = 2,
+    TOC = 3,
+    ONETIMEUSER = 4,
+    ONETIMETOC = 5,
+}
 
 const eventMap: Map<string, Array<(value: any) => void>> = new Map();
 
@@ -482,11 +717,11 @@ export async function setup() {
     const dependants: ScrapeDependants = {feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: []};
 
     scrapeBoard.forEach((value) => {
-        if (value.type === scrapeTypes.NEWS) {
+        if (value.type === ScrapeTypes.NEWS) {
             dependants.news.push(value);
-        } else if (value.type === scrapeTypes.FEED) {
+        } else if (value.type === ScrapeTypes.FEED) {
             dependants.feeds.push(value.link);
-        } else if (value.type === scrapeTypes.TOC) {
+        } else if (value.type === ScrapeTypes.TOC) {
             dependants.tocs.push(value);
         }
     });
@@ -509,6 +744,7 @@ export class ScraperHelper {
 
     public emit(event: string, value: any) {
         if (env.stopScrapeEvents) {
+            console.log("not emitting events");
             return;
         }
         const callbacks = getElseSet(this.eventMap, event, () => []);
@@ -526,25 +762,36 @@ export class ScraperHelper {
             if (value.redirectReg) {
                 redirects.push(value.redirectReg);
             }
+            // TODO: 20.07.2019 check why it should be added to the public ones,
+            //  or make the getter for these access the public ones?
             if (value.newsAdapter) {
                 if (Array.isArray(value.newsAdapter)) {
                     newsAdapter.push(...value.newsAdapter);
+                    this.newsAdapter.push(...value.newsAdapter);
                 } else {
                     newsAdapter.push(value.newsAdapter);
+                    this.newsAdapter.push(value.newsAdapter);
                 }
             }
             if (value.domainReg) {
                 if (value.tocAdapter) {
                     tocScraper.set(value.domainReg, value.tocAdapter);
+                    this.tocScraper.set(value.domainReg, value.tocAdapter);
                 }
 
                 if (value.contentDownloadAdapter) {
                     episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
+                    this.episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
                 }
 
                 if (value.tocSearchAdapter) {
                     tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
+                    this.tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
                 }
+            }
+            if (value.tocPattern && value.tocSearchAdapter) {
+                tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
+                this.tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
             }
         });
     }
@@ -667,10 +914,6 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
     return [...downloadContents.values()];
 }
 
-function combiIndex(episode: SimpleEpisode): number {
-    return episode.totalIndex + (episode.partialIndex || 0);
-}
-
 function checkLinkWithInternet(link: string): Promise<FullResponse> {
     return new Promise((resolve, reject) => {
         request
@@ -737,6 +980,9 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
 
                     if (!value || value !== link) {
                         errorCache.set(linkKey, link);
+                        // FIXME 502 Bad Gateway error for some novelupdates short links
+                        //  such as 'https://www.novelupdates.com/extnu/2770610/',
+                        //  while i can acces it from browser just fine
                         reject(reason);
                         return;
                     }
@@ -812,7 +1058,7 @@ export function start() {
     });
 }
 
-export function on(event: "toc", callback: (value: { uuid: string, toc: Toc[] }) => void): void;
+export function on(event: "toc", callback: (value: { uuid?: string, tocs: Toc[] }) => void): void;
 export function on(event: "feed" | "news", callback: (value: { link: string, result: News[] }) => void): void;
 export function on(event: "list", callback: (value: {
     external: { cookies: string, uuid: string, userUuid: string, type: number },

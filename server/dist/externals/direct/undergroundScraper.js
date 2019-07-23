@@ -20,7 +20,7 @@ async function scrapeNews() {
         const mediumTitle = mediumElement.contents().first().text().trim();
         if (!mediumTitle) {
             logger_1.default.warn("changed format on qidianUnderground");
-            return [];
+            return;
         }
         const timeStampElement = mediumElement.find(".timeago").first();
         const date = new Date(timeStampElement.attr("title"));
@@ -65,7 +65,6 @@ async function scrapeNews() {
         }
     }
     await Promise.all(potentialMediaNews);
-    return [];
 }
 // TODO: 25.06.2019 use caching for likeMedium?
 async function processMediumNews(mediumTitle, potentialNews) {
@@ -74,10 +73,11 @@ async function processMediumNews(mediumTitle, potentialNews) {
         link: "",
         type: tools_1.MediaType.TEXT
     });
-    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || likeMedia.medium.id == null) {
+    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || !likeMedia.medium.id) {
         return;
     }
-    const latestReleases = await database_1.Storage.getLatestReleases(likeMedia.medium.id);
+    const mediumId = likeMedia.medium.id;
+    const latestReleases = await database_1.Storage.getLatestReleases(mediumId);
     const latestRelease = tools_1.max(latestReleases, (previous, current) => {
         const maxPreviousRelease = tools_1.max(previous.releases, "releaseDate");
         const maxCurrentRelease = tools_1.max(current.releases, "releaseDate");
@@ -85,19 +85,9 @@ async function processMediumNews(mediumTitle, potentialNews) {
             - ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0);
     });
     const chapIndexReg = /(\d+)\s*$/;
-    const parts = await database_1.Storage.getMediumParts(likeMedia.medium.id);
-    let part;
-    if (!parts.length) {
-        part = await database_1.Storage.createStandardPart(likeMedia.medium.id);
-    }
-    else if (parts.length !== 1) {
-        throw Error("qidian novel does not have exactly one part!");
-    }
-    else {
-        part = parts[0];
-    }
-    if (part.totalIndex !== -1) {
-        throw Error("qidian novels don't have volumes");
+    let standardPart = await database_1.Storage.getStandardPart(mediumId);
+    if (!standardPart) {
+        standardPart = await database_1.Storage.createStandardPart(mediumId);
     }
     let news;
     if (latestRelease) {
@@ -116,7 +106,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
                 return false;
             }
         });
-        const sourcedReleases = await database_1.Storage.getSourcedReleases(exports.sourceType, likeMedia.medium.id);
+        const sourcedReleases = await database_1.Storage.getSourcedReleases(exports.sourceType, mediumId);
         const toUpdateReleases = oldReleases.map((value) => {
             return {
                 title: value.title,
@@ -134,9 +124,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
             return foundRelease.url !== value.url;
         });
         if (toUpdateReleases.length) {
-            database_1.Storage
-                .updateRelease(part.id, exports.sourceType, toUpdateReleases)
-                .catch(logger_1.logError);
+            database_1.Storage.updateRelease(toUpdateReleases).catch(logger_1.logError);
         }
     }
     else {
@@ -160,11 +148,12 @@ async function processMediumNews(mediumTitle, potentialNews) {
                 }
             ],
             id: 0,
-            partId: 0
+            // @ts-ignore
+            partId: standardPart.id
         };
     });
     if (newEpisodes.length) {
-        await database_1.Storage.addEpisode(part.id, newEpisodes);
+        await database_1.Storage.addEpisode(newEpisodes);
     }
 }
 async function scrapeContent(urlString) {

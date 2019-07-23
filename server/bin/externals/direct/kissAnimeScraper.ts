@@ -1,37 +1,89 @@
 import {Hook, Toc, TocEpisode} from "../types";
-import {News} from "../../types";
-import {Storage} from "../../database/database";
+import {EpisodeNews, News} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {MediaType} from "../../tools";
+import {MediaType, sanitizeString} from "../../tools";
+import * as request from "cloudscraper";
+import {CloudScraper, CloudscraperOptions} from "cloudscraper";
+import * as normalRequest from "request";
 
+// @ts-ignore
+const jar = request.jar();
+type RequestAPI = normalRequest.RequestAPI<CloudScraper, CloudscraperOptions, normalRequest.RequiredUriUrl>;
+// @ts-ignore
+const defaultRequest: RequestAPI = request.defaults({
+    jar
+});
 
-async function scrapeNews(): Promise<News[]> {
+function loadBody(urlString: string, options?: CloudscraperOptions): Promise<CheerioStatic> {
+    // @ts-ignore
+    return queueCheerioRequest(urlString, options, defaultRequest);
+}
+
+async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://kissanime.ru/";
-    const $ = await queueCheerioRequest(uri);
+    // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
+    const $ = await loadBody(uri);
 
-    const newsRows = $(".scrollable> .items a");
+    const newsRows = $(".bigBarContainer .barContent a");
 
-    const news: News[] = [];
-
+    const news: EpisodeNews[] = [];
+    const titlePattern = /(Episode\s*((\d+)(\.(\d+))?))|(movie)/i;
     for (let i = 0; i < newsRows.length; i++) {
         const newsRow = newsRows.eq(i);
 
         const link = url.resolve(uri, newsRow.attr("href"));
-        const title = newsRow.text().trim().replace(/\s+/g, " ");
+        const span = newsRow.children("span").eq(0);
+        span.remove();
 
+        const mediumTitle = sanitizeString(newsRow.text());
+
+        const groups = titlePattern.exec(span.text());
+
+        if (!groups) {
+            // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
+            console.log(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
+            continue;
+        }
+
+        let episodeIndex;
+        let episodeTotalIndex;
+        let episodePartialIndex;
+        let episodeTitle;
+
+        if (groups[1]) {
+            episodeTitle = sanitizeString(groups[1]);
+            episodeIndex = Number(groups[2]);
+            episodeTotalIndex = Number(groups[3]);
+            episodePartialIndex = Number(groups[5]) || undefined;
+        } else if (groups[6]) {
+            episodeTitle = mediumTitle;
+            episodeIndex = episodeTotalIndex = 1;
+        } else {
+            continue;
+        }
         news.push({
-            title,
             link,
-            date: new Date(),
+            mediumType: MediaType.VIDEO,
+            mediumTocLink: link,
+            mediumTitle,
+            episodeTitle,
+            episodeIndex,
+            episodeTotalIndex,
+            episodePartialIndex,
+            date: new Date()
         });
     }
     if (!news.length) {
-        return news;
+        return {};
     }
 
-    // the latest 10 news for the given domain
+    return {episodes: news};
+}
+
+/*
+// the latest 10 news for the given domain
     const latestNews = await Storage.getLatestNews("kissanime.ru");
 
     let endDate;
@@ -43,7 +95,7 @@ async function scrapeNews(): Promise<News[]> {
         for (let i = 0; i < news.length; i++) {
             const item = news[i];
 
-            if (item.title === latestNews[0].title) {
+            if (item.episodeTitle === latestNews[0].title) {
                 let allMatch = true;
                 // if there are less than 3 items left to compare the latest news with
                 // a precise statement cannot be made, so just take the date of this item
@@ -54,7 +106,7 @@ async function scrapeNews(): Promise<News[]> {
                 for (let j = i; j < i + 9; j++) {
                     const latestItem = latestNews[j - i];
 
-                    if (item.title !== latestItem.title) {
+                    if (item.episodeTitle !== latestItem.title) {
                         allMatch = false;
                         break;
                     }
@@ -81,8 +133,7 @@ async function scrapeNews(): Promise<News[]> {
             date.setMinutes(date.getMinutes() - i * 15);
         }
     }
-    return news;
-}
+ */
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
     const $ = await queueCheerioRequest(urlString);
@@ -133,7 +184,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         }
         content.push({
             title,
-            index: episodeIndex,
+            totalIndex: episodeIndex,
             url: link,
             releaseDate: date
         });

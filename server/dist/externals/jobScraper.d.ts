@@ -1,5 +1,7 @@
 import { Scraper } from "./scraperTools";
-import { Dependant } from "./types";
+import { Dependant, ScraperJob } from "./types";
+import { Job, JobCallback } from "../jobQueue";
+export declare type PromiseConsumer = (item: any) => Promise<any>;
 export declare class JobScraper implements Scraper {
     private static processDependant;
     private paused;
@@ -14,8 +16,15 @@ export declare class JobScraper implements Scraper {
     start(): void;
     pause(): void;
     stop(): void;
-    private queuePeriodicEmittable;
-    private queuePeriodic;
-    private queueOneTimeEmittable;
+    queuePeriodicEmittable(key: string, interval: number, item: any, cb: PromiseConsumer): Job | null;
+    queuePeriodic(interval: number, cb: JobCallback): Job;
+    queueOneTimeEmittable(key: string, item: any, cb: PromiseConsumer): Job | null;
+    addScraperJob(value: ScraperJob): void;
+    private queueOneTimeEmittableJob;
+    private queuePeriodicEmittableJob;
+    private queuePeriodicJob;
+    private processJobCallback;
+    private processJobCallbackResult;
     private collectEmittable;
 }
+export declare const DefaultJobScraper: JobScraper;

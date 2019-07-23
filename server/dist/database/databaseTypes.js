@@ -18,6 +18,7 @@ var ColumnType;
 (function (ColumnType) {
     ColumnType["BOOLEAN"] = "BOOLEAN";
     ColumnType["TEXT"] = "TEXT";
+    ColumnType["CHAR"] = "CHAR";
     ColumnType["VARCHAR"] = "VARCHAR";
     ColumnType["DATETIME"] = "DATETIME";
     ColumnType["FLOAT"] = "FLOAT";

@@ -5,7 +5,7 @@ import VueObserveVisibility from "vue-observe-visibility";
 import {WSClient} from "./WebsocketClient";
 import {emitBusEvent, onBusEvent} from "./bus";
 import {optimizedResize} from "./init";
-import {ExternalList, ExternalUser, List, Medium, News, TransferList, TransferMedium, User} from "./types";
+import {ExternalList, ExternalUser, List, Medium, News, TransferList, TransferMedium, User} from "./siteTypes";
 import {HttpClient} from "./Httpclient";
 
 Vue.config.devtools = true;

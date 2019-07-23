@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const database_1 = require("../../database/database");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
@@ -12,71 +11,81 @@ async function scrapeNews() {
     const $ = await queueManager_1.queueCheerioRequest(baseUri + "latest-releases.html");
     const newsRows = $("ul.list_manga  .info-manga");
     const news = [];
+    const titlePattern = /(vol\s*((\d+)(\.(\d+))?))?\s*chapter\s*((\d+)(\.(\d+))?)(\s*:\s*(.+))?/i;
     for (let i = 0; i < newsRows.length; i++) {
         const newsRow = newsRows.eq(i);
         const children = newsRow.children("a");
         const mediumElement = children.eq(0);
         const titleElement = children.eq(1);
         const link = url.resolve(baseUri, titleElement.attr("href"));
-        const title = `${mediumElement.text().trim()} - ${titleElement.text().trim()}`;
+        const mediumTocLink = url.resolve(baseUri, mediumElement.attr("href"));
+        const mediumTitle = tools_1.sanitizeString(mediumElement.text());
+        const title = tools_1.sanitizeString(titleElement.text());
+        // ignore oneshots, they are not 'interesting' enough, e.g. too short
+        if (title === "Oneshot") {
+            continue;
+        }
+        const groups = titlePattern.exec(title);
+        if (!groups) {
+            console.log(`Unknown News Format: '${title}' for '${mediumTitle}'`);
+            continue;
+        }
+        let episodeIndex;
+        let episodeTotalIndex;
+        let episodePartialIndex;
+        let episodeTitle = "";
+        if (groups[11]) {
+            episodeTitle = tools_1.sanitizeString(groups[11]);
+        }
+        if (groups[6]) {
+            episodeIndex = Number(groups[6]);
+            episodeTotalIndex = Number(groups[7]);
+            episodePartialIndex = Number(groups[9]) || undefined;
+            if (episodeTitle) {
+                episodeTitle = `Ch. ${episodeIndex} - ` + episodeTitle;
+            }
+            else {
+                episodeTitle = `Ch. ${episodeIndex}`;
+            }
+        }
+        else {
+            logger_1.default.info(`unknown news format on mangahasu: ${title}`);
+            continue;
+        }
+        let partIndex;
+        let partTotalIndex;
+        let partPartialIndex;
+        let partTitle;
+        if (groups[2]) {
+            partIndex = Number(groups[2]);
+            partTitle = `Vol. ${partIndex}`;
+            partTotalIndex = Number(groups[3]);
+            partPartialIndex = Number(groups[5]) || undefined;
+        }
         news.push({
-            title,
+            mediumTitle,
+            mediumTocLink,
+            mediumType: tools_1.MediaType.IMAGE,
+            episodeTitle,
+            episodeIndex,
+            episodeTotalIndex,
+            episodePartialIndex,
+            partIndex,
+            partTotalIndex,
+            partPartialIndex,
             link,
-            date: new Date(),
+            date: new Date()
         });
     }
     if (!news.length) {
-        return news;
+        return {};
     }
-    // the latest 10 news for the given domain
-    const latestNews = await database_1.Storage.getLatestNews("mangahasu.se");
-    let endDate;
-    // if there are no other news yet, set duration for this news batch to 10 hours
-    if (!latestNews.length) {
-        endDate = new Date();
-        endDate.setHours(endDate.getHours() - 10);
+    // if there is an open end, just pretend as if every 15 min one release happened
+    for (let i = 0; i < news.length; i++) {
+        const date = news[i].date;
+        date.setMinutes(date.getMinutes() - i * 15);
     }
-    else {
-        for (let i = 0; i < news.length; i++) {
-            const item = news[i];
-            if (item.title === latestNews[0].title) {
-                let allMatch = true;
-                // if there are less than 3 items left to compare the latest news with
-                // a precise statement cannot be made, so just take the date of this item
-                if ((i + 3) >= news.length) {
-                    endDate = item.date;
-                    break;
-                }
-                for (let j = i; j < i + 9; j++) {
-                    const latestItem = latestNews[j - i];
-                    if (item.title !== latestItem.title) {
-                        allMatch = false;
-                        break;
-                    }
-                    endDate = latestItem.date;
-                }
-                if (!allMatch) {
-                    endDate = null;
-                }
-            }
-        }
-    }
-    if (endDate) {
-        const duration = Date.now() - endDate.getTime();
-        const itemDuration = duration / news.length;
-        for (let i = 0; i < news.length; i++) {
-            const date = news[i].date;
-            date.setMilliseconds(date.getMilliseconds() - i * itemDuration);
-        }
-    }
-    else {
-        // if there is an open end, just pretend as if every 15 min one release happened
-        for (let i = 0; i < news.length; i++) {
-            const date = news[i].date;
-            date.setMinutes(date.getMinutes() - i * 15);
-        }
-    }
-    return news;
+    return { episodes: news };
 }
 async function scrapeToc(urlString) {
     const $ = await queueManager_1.queueCheerioRequest(urlString);
@@ -142,13 +151,13 @@ async function scrapeToc(urlString) {
             if (!part) {
                 partContents[volIndex] = part = {
                     episodes: [],
-                    index: volIndex,
+                    totalIndex: volIndex,
                     title: "Vol." + volIndex
                 };
             }
             part.episodes.push({
                 title,
-                index: chapIndex,
+                totalIndex: chapIndex,
                 url: link,
                 releaseDate: time
             });
@@ -163,7 +172,7 @@ async function scrapeToc(urlString) {
             }
             chapterContents.push({
                 title,
-                index: chapIndex,
+                totalIndex: chapIndex,
                 url: link,
                 releaseDate: time
             });

@@ -1,16 +1,15 @@
 import {
     checkTocs,
-    feed,
     list,
     news,
     oneTimeToc,
     processNewsScraper,
     Scraper,
     ScraperHelper,
-    scrapeTypes,
+    ScrapeTypes,
     toc
 } from "./scraperTools";
-import {Dependant} from "./types";
+import {Dependant, OneTimeEmittableJob, OneTimeToc, PeriodicEmittableJob, PeriodicJob, ScraperJob} from "./types";
 import {Job, JobCallback, JobQueue} from "../jobQueue";
 import {multiSingle} from "../tools";
 import {Storage} from "../database/database";
@@ -20,8 +19,9 @@ const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
-const CHECK_TOC = "check_toc_key";
 const counter = new Counter();
+
+export type PromiseConsumer = (item: any) => Promise<any>;
 
 export class JobScraper implements Scraper {
 
@@ -49,12 +49,20 @@ export class JobScraper implements Scraper {
         JobScraper.processDependant(
             dependant,
             "oneTimeToc",
-            (value: any) => this.queueOneTimeEmittable("toc", value, oneTimeToc)
+            (value: any) => this.queueOneTimeEmittable(
+                "toc",
+                value,
+                (item: OneTimeToc) => oneTimeToc(item).finally(
+                    () => Storage.removeScrape(item.url, ScrapeTypes.ONETIMETOC)
+                )
+            )
         );
         JobScraper.processDependant(
             dependant,
             "feed",
-            (value: any) => this.queuePeriodicEmittable("feed", 10 * MINUTE, value, feed)
+            // TODO: 20.07.2019 decomment this
+            (value: any) => {/*this.queuePeriodicEmittable("feed", 10 * MINUTE, value, feed)*/
+            }
         );
         JobScraper.processDependant(
             dependant,
@@ -64,7 +72,11 @@ export class JobScraper implements Scraper {
         JobScraper.processDependant(
             dependant,
             "oneTimeUser",
-            (value: any) => this.queueOneTimeEmittable("list", value, list)
+            (value: any) => this.queueOneTimeEmittable(
+                "list",
+                value,
+                (item) => list(item).finally(() => Storage.removeScrape(item.url, ScrapeTypes.ONETIMEUSER))
+            )
         );
     }
 
@@ -82,28 +94,35 @@ export class JobScraper implements Scraper {
     }
 
     public async setup(): Promise<void> {
-        this.queuePeriodic(HOUR, async () => {
+        this.queuePeriodic(MINUTE, async () => {
             const scrapeBoard = await Storage.getScrapes();
 
             scrapeBoard
-                .map((value) => {
-                    if (value.type === scrapeTypes.NEWS) {
+                .map((value): Dependant | null => {
+                    if (value.type === ScrapeTypes.NEWS) {
                         return {news: value};
-                    } else if (value.type === scrapeTypes.FEED) {
+                    } else if (value.type === ScrapeTypes.FEED) {
                         return {feed: value.link};
-                    } else if (value.type === scrapeTypes.TOC) {
+                    } else if (value.type === ScrapeTypes.TOC) {
                         return {toc: value};
+                    } else if (value.type === ScrapeTypes.ONETIMETOC) {
+                        // @ts-ignore
+                        return {oneTimeToc: {mediumId: value.mediumId, url: value.link, uuid: value.userId}};
+                    } else if (value.type === ScrapeTypes.ONETIMEUSER) {
+                        // @ts-ignore
+                        return {oneTimeUser: {cookies: value.info, url: value.link, uuid: value.userId}};
                     }
                     return null;
                 })
                 // TODO: 23.06.2019 add only new ones, map checks for reference equality not value equality
                 .filter((value) => value)
-                .forEach((value) => value && this.addDependant(value));
+                // @ts-ignore
+                .forEach((value: Dependant) => this.addDependant(value));
         });
         this.helper.newsAdapter.forEach((value) => {
             this.queuePeriodicEmittable("news", 5 * MINUTE, value, processNewsScraper);
         });
-        this.queuePeriodicEmittable("toc", HOUR, CHECK_TOC, checkTocs);
+        this.queuePeriodic(HOUR, checkTocs);
         this.queuePeriodic(DAY, async () => {
             // every monday scan every available external user, if not scanned on same day
             const externals = await Storage.getScrapeExternalUser();
@@ -126,26 +145,145 @@ export class JobScraper implements Scraper {
         this.queue.clear();
     }
 
-    private queuePeriodicEmittable(key: string, interval: number, item: any, cb: (item: any) => Promise<any>) {
-        if (!item || this.dependantMap.has(item)) {
-            return;
-        }
-        const periodicJob = this.queue.addJob(() => this.collectEmittable(key, cb(item)), interval);
-        periodicJob.onFailure = () => this.dependantMap.delete(item);
-        this.dependantMap.set(item, periodicJob);
+    public queuePeriodicEmittable(key: string, interval: number, item: any, cb: PromiseConsumer): Job | null {
+        return this.queuePeriodicEmittableJob({type: "periodic_emittable", key, interval, item, cb});
     }
 
-    private queuePeriodic(interval: number, cb: JobCallback): Job {
-        return this.queue.addJob(cb, interval);
+    public queuePeriodic(interval: number, cb: JobCallback): Job {
+        return this.queuePeriodicJob({type: "periodic", interval, cb});
     }
 
-    private queueOneTimeEmittable(key: string, item: any, cb: (item: any) => Promise<any>) {
-        if (!item || this.dependantMap.has(item)) {
+    public queueOneTimeEmittable(key: string, item: any, cb: PromiseConsumer): Job | null {
+        return this.queueOneTimeEmittableJob({type: "onetime_emittable", key, item, cb});
+    }
+
+    public addScraperJob(value: ScraperJob) {
+        if (isPeriodicEmittableJob(value)) {
+            this.queuePeriodicEmittableJob(value);
+
+        } else if (isOneTimeEmittableJob(value)) {
+            this.queueOneTimeEmittableJob(value);
+
+        } else if (isPeriodicJob(value)) {
+            this.queuePeriodicJob(value);
+        }
+    }
+
+    private queueOneTimeEmittableJob(job: OneTimeEmittableJob): Job | null {
+        if (!job.item || this.dependantMap.has(job.item)) {
+            return null;
+        }
+        const oneTimeJob = this.queue.addJob(() => this.collectEmittable(job.key, job.cb(job.item)));
+        let otherOnFailure: (reason?: any) => void | undefined;
+        const onFailure = (reason: any) => {
+            this.dependantMap.delete(job.item);
+            if (job.onFailure) {
+                job.onFailure(reason);
+            }
+            if (otherOnFailure) {
+                otherOnFailure(reason);
+            }
+        };
+        Object.defineProperty(oneTimeJob, "onFailure", {
+            get(): (reason?: any) => void {
+                return onFailure;
+            },
+            set(v: any): void {
+                otherOnFailure = v;
+            }
+        });
+        this.dependantMap.set(job.item, oneTimeJob);
+        oneTimeJob.onSuccess = job.onSuccess;
+        oneTimeJob.onDone = () => {
+            if (!job.onDone) {
+                return;
+            }
+            const result = job.onDone();
+            if (result) {
+                this.processJobCallbackResult(result);
+            }
+        };
+        return oneTimeJob;
+    }
+
+    private queuePeriodicEmittableJob(job: PeriodicEmittableJob): Job | null {
+        if (!job || !job.item || this.dependantMap.has(job.item)) {
+            return null;
+        }
+        const periodicJob = this.queue.addJob(() => this.collectEmittable(job.key, job.cb(job.item)), job.interval);
+        periodicJob.onFailure = () => this.dependantMap.delete(job.item);
+        let otherOnFailure: (reason?: any) => void | undefined;
+        const onFailure = (reason: any) => {
+            this.dependantMap.delete(job.item);
+            if (job.onFailure) {
+                job.onFailure(reason);
+            }
+            if (otherOnFailure) {
+                otherOnFailure(reason);
+            }
+        };
+        Object.defineProperty(periodicJob, "onFailure", {
+            get(): (reason?: any) => void {
+                return onFailure;
+            },
+            set(v: any): void {
+                otherOnFailure = v;
+            }
+        });
+        this.dependantMap.set(job.item, periodicJob);
+        periodicJob.onSuccess = job.onSuccess;
+        periodicJob.onDone = () => {
+            if (!job.onDone) {
+                return;
+            }
+            const result = job.onDone();
+            if (result) {
+                this.processJobCallbackResult(result);
+            }
+        };
+        return periodicJob;
+    }
+
+    private queuePeriodicJob(job: PeriodicJob): Job {
+        // TODO: 22.07.2019 this could be a potential bug
+        // @ts-ignore
+        const addJob = this.queue.addJob((done) => this.processJobCallback(done, job.cb), job.interval);
+        addJob.onDone = () => {
+            if (!job.onDone) {
+                return;
+            }
+            const result = job.onDone();
+            if (result) {
+                this.processJobCallbackResult(result);
+            }
+        };
+        addJob.onSuccess = job.onSuccess;
+        addJob.onFailure = job.onFailure;
+        return addJob;
+    }
+
+    private processJobCallback(done: () => void, cb: JobCallback): Promise<void> | void {
+        const result = cb(done);
+
+        if (!result) {
             return;
         }
-        const oneTimeJob = this.queue.addJob(() => this.collectEmittable(key, cb(item)));
-        oneTimeJob.onFailure = () => this.dependantMap.delete(item);
-        this.dependantMap.set(item, oneTimeJob);
+        if (result instanceof Promise) {
+            return result.then((value) => this.processJobCallbackResult(value));
+        } else {
+            return this.processJobCallbackResult(result);
+        }
+    }
+
+    private processJobCallbackResult(value: any): void {
+        if (!value) {
+            return value;
+        }
+        if (Array.isArray(value)) {
+            value.forEach((scraperJob) => this.addScraperJob(scraperJob));
+        } else {
+            this.addScraperJob(value);
+        }
     }
 
     private collectEmittable(key: string, value: Promise<any>): Promise<void> {
@@ -159,3 +297,18 @@ export class JobScraper implements Scraper {
             });
     }
 }
+
+function isOneTimeEmittableJob(value: any): value is OneTimeEmittableJob {
+    return value && value.type === "onetime_emittable";
+}
+
+function isPeriodicEmittableJob(value: any): value is PeriodicEmittableJob {
+    return value && value.type === "periodic_emittable";
+}
+
+function isPeriodicJob(value: any): value is PeriodicJob {
+    return value && value.type === "periodic";
+}
+
+export const DefaultJobScraper = new JobScraper();
+DefaultJobScraper.start();

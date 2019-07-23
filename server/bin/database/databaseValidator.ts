@@ -3,11 +3,12 @@ import {ColumnType, DatabaseSchema, InvalidationType, Modifier} from "./database
 import {TableSchema} from "./tableSchema";
 import {ColumnSchema} from "./columnSchema";
 import {TableParser} from "./tableParser";
-import {equalsIgnoreCase, isString, unique} from "../tools";
+import {equalsIgnore, isString, unique} from "../tools";
 import mySql from "promise-mysql";
 import {MultiSingle} from "../types";
 import {QueryContext} from "./queryContext";
 import * as validate from "validate.js";
+import {Counter} from "../counter";
 
 interface StateProcessor {
     addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: string): T;
@@ -362,8 +363,8 @@ function createTrigger(watchTable: TableSchema, targetTable: TableSchema, invali
 }
 
 const queryTableReg = /((select .+? from)|(update )|(delete.+?from)|(insert.+?into )|(.+?join))\s*(\w+)/gi;
-const queryColumnReg = /((\w+\.)?(\w+))\s+(like|is|=)\s+\?/gi;
-
+const queryColumnReg = /(((\w+\.)?(\w+))|\?)\s*(like|is|=|<|>|<>|<=|>=)\s*(((\w+\.)?(\w+))|\?)/gi;
+const counter = new Counter();
 const StateProcessorImpl: StateProcessorImpl = {
     databaseName: "",
     workingPromise: Promise.resolve(),
@@ -374,6 +375,12 @@ const StateProcessorImpl: StateProcessorImpl = {
     trigger: [],
 
     async validateQuery(query: string, parameter: any) {
+        if (query.length > 20 && counter.count(query) === 100) {
+            console.log(`Query: '${query}' executed 100 times`);
+        }
+        if (counter.count("query") % 100 === 0) {
+            console.log(`Database queried ${counter.getCount("query")} times`);
+        }
         let tableExec = queryTableReg.exec(query);
 
         if (!tableExec) {
@@ -393,13 +400,16 @@ const StateProcessorImpl: StateProcessorImpl = {
         const columns = [];
 
         while (columnExec) {
-            if (columnExec[1]) {
+            if (columnExec[1] === "?") {
+                columns.push(columnExec[6]);
+            }
+            if (columnExec[6] === "?") {
                 columns.push(columnExec[1]);
             }
             columnExec = queryColumnReg.exec(query);
         }
         const referencedTables = unique(tables.map((name) => {
-            const foundTable = this.tables.find((value) => equalsIgnoreCase(value.name, name));
+            const foundTable = this.tables.find((value) => equalsIgnore(value.name, name));
 
             if (!foundTable) {
                 throw Error(`Unknown Table: '${name}'`);
@@ -416,19 +426,19 @@ const StateProcessorImpl: StateProcessorImpl = {
             let columnSchema: ColumnSchema | undefined;
             if (separator >= 0) {
                 const tableName = columnName.substring(0, separator);
-                const foundTable = this.tables.find((value) => equalsIgnoreCase(value.name, tableName));
+                const foundTable = this.tables.find((value) => equalsIgnore(value.name, tableName));
 
                 if (!foundTable) {
                     throw Error(`Unknown Table: '${tableName}'`);
                 }
                 const realColumnName = columnName.substring(separator + 1);
                 columnSchema = foundTable.columns.find((schema) => {
-                    return equalsIgnoreCase(schema.name, realColumnName);
+                    return equalsIgnore(schema.name, realColumnName);
                 });
             } else {
                 for (const referencedTable of referencedTables) {
                     const foundColumn = referencedTable.columns.find((schema) => {
-                        return equalsIgnoreCase(schema.name, columnName);
+                        return equalsIgnore(schema.name, columnName);
                     });
 
                     if (foundColumn) {
@@ -439,7 +449,9 @@ const StateProcessorImpl: StateProcessorImpl = {
             }
 
             if (!columnSchema) {
-                throw Error(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
+                // todo look into why he cant find it
+                logger.silly(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
+                return;
             }
             let columnValue: any;
 

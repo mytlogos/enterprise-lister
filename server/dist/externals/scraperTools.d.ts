@@ -1,15 +1,12 @@
 import { ListScrapeResult } from "./listManager";
 import { Episode, News, ScrapeItem } from "../types";
-import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, Toc, TocScraper, TocSearchScraper } from "./types";
-export declare const processNewsScraper: (...args: any[]) => Promise<{
+import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, ScraperJob, Toc, TocScraper, TocSearchScraper } from "./types";
+export declare const processNewsScraper: (...args: any) => Promise<{
     link: string;
     result: News[];
 }>;
-export declare const checkTocs: (...args: any[]) => Promise<{
-    toc: Toc[];
-    uuid?: string | undefined;
-}>;
-export declare const oneTimeToc: (...args: any[]) => Promise<{
+export declare const checkTocs: (...args: any) => Promise<void | ScraperJob[]>;
+export declare const oneTimeToc: (...args: any) => Promise<{
     toc: Toc[];
     uuid: string;
 }>;
@@ -18,7 +15,7 @@ export declare const oneTimeToc: (...args: any[]) => Promise<{
  * @param scrapeItem
  * @return {Promise<void>}
  */
-export declare let news: (...args: any[]) => Promise<{
+export declare let news: (...args: any) => Promise<{
     link: string;
     result: News[];
 }>;
@@ -27,18 +24,18 @@ export declare let news: (...args: any[]) => Promise<{
  * @param value
  * @return {Promise<void>}
  */
-export declare const toc: (...args: any[]) => Promise<void>;
+export declare const toc: (...args: any) => Promise<void>;
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export declare const list: (...args: any[]) => Promise<{
+export declare const list: (...args: any) => Promise<{
     external: {
         cookies: string;
         uuid: string;
     };
     lists: ListScrapeResult;
 }>;
-export declare const feed: (...args: any[]) => Promise<{
+export declare const feed: (...args: any) => Promise<{
     link: string;
     result: News[];
 }>;
@@ -73,12 +70,14 @@ export interface Scraper {
     on(event: "list:error", callback: (errorValue: any) => void): void;
     on(event: string, callback: (value: any) => void): void;
 }
-export declare const scrapeTypes: {
-    LIST: number;
-    FEED: number;
-    NEWS: number;
-    TOC: number;
-};
+export declare enum ScrapeTypes {
+    LIST = 0,
+    FEED = 1,
+    NEWS = 2,
+    TOC = 3,
+    ONETIMEUSER = 4,
+    ONETIMETOC = 5
+}
 export interface ScrapeDependants {
     news: ScrapeItem[];
     oneTimeUser: Array<{
@@ -127,8 +126,8 @@ export declare function pause(): void;
  */
 export declare function start(): void;
 export declare function on(event: "toc", callback: (value: {
-    uuid: string;
-    toc: Toc[];
+    uuid?: string;
+    tocs: Toc[];
 }) => void): void;
 export declare function on(event: "feed" | "news", callback: (value: {
     link: string;

@@ -1,14 +1,25 @@
 import {delay, remove, removeLike} from "./tools";
+import {ScraperJob} from "./externals/types";
+import {logError} from "./logger";
+
+export enum MemorySize {
+    GB = 1024 * 1024 * 1024,
+    MB = 1024 * 1024,
+    KB = 1024,
+    B = 1,
+}
 
 export class JobQueue {
     public readonly memoryLimit: number;
     public readonly maxActive: number;
+    public readonly memorySize: MemorySize;
     private readonly waitingJobs: InternJob[] = [];
     private readonly newJobs: InternJob[] = [];
     private readonly activeJobs: InternJob[] = [];
     private queueActive = false;
     private currentJobId = 0;
-    private scheduled = false;
+    private nextScheduling = -1;
+    private timesRescheduled = 0;
 
     get runningJobs() {
         return this.activeJobs.length;
@@ -22,8 +33,9 @@ export class JobQueue {
         return this.waitingJobs.length + this.newJobs.length + this.activeJobs.length;
     }
 
-    constructor({memoryLimit = 0, maxActive = 5} = {}) {
+    constructor({memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5} = {}) {
         this.memoryLimit = memoryLimit;
+        this.memorySize = memorySize;
         this.maxActive = maxActive;
     }
 
@@ -131,16 +143,20 @@ export class JobQueue {
         if (this.memoryLimit <= 0) {
             return false;
         }
-        return process.memoryUsage().heapUsed > this.memoryLimit;
+        return (process.memoryUsage().rss / this.memorySize) > this.memoryLimit;
     }
 
     private _reschedule(timeout: number) {
-        if (this.scheduled) {
+        this.timesRescheduled++;
+        if (this.timesRescheduled > 100 && this._overMemoryLimit()) {
+            console.error("too long rescheduled and over memoryLimit");
+        }
+        if (this.nextScheduling > 0 && this.nextScheduling < timeout) {
             return;
         }
-        this.scheduled = true;
+        this.nextScheduling = timeout;
         delay(timeout).then(() => {
-            this.scheduled = false;
+            this.nextScheduling = -1;
             this._schedule();
         });
         console.log("rescheduling");
@@ -165,19 +181,25 @@ export class JobQueue {
         }
         const toExecute = nextInternJob;
         if (toExecute.jobInfo.nextRun > 0) {
-            console.log(`waiting for ${toExecute.jobInfo.nextRun} ms`);
+            const iso = new Date().toISOString();
+            console.log(`waiting for ${toExecute.jobInfo.nextRun} ms on ${iso}`);
             jobArray.unshift(toExecute);
             this._reschedule(toExecute.jobInfo.nextRun);
             return;
         }
+        this.timesRescheduled = 0;
         toExecute.running = true;
         this.activeJobs.push(toExecute);
-        let result: void | Promise<void>;
+        let result;
 
         const start = Date.now();
         try {
             toExecute.executed++;
             result = toExecute.job(() => this._done(toExecute, start));
+
+            if (toExecute.jobInfo.onSuccess) {
+                toExecute.jobInfo.onSuccess();
+            }
         } catch (e) {
             this._done(toExecute, start);
             remove(this.waitingJobs, toExecute);
@@ -187,9 +209,17 @@ export class JobQueue {
             }
             console.error(e);
             throw e;
+        } finally {
+            if (toExecute.jobInfo.onDone) {
+                try {
+                    toExecute.jobInfo.onDone();
+                } catch (e) {
+                    logError("On Done threw an error!: " + e);
+                }
+            }
         }
 
-        if (result && result.then) {
+        if (result && result instanceof Promise) {
             result
                 .then(() => this._done(toExecute, start))
                 .catch((reason) => {
@@ -207,7 +237,8 @@ export class JobQueue {
     }
 }
 
-export type JobCallback = ((done: () => void) => void) | (() => Promise<void>);
+export type JobCallback = ((done: () => void) => void | ScraperJob | ScraperJob[])
+    | (() => Promise<void | ScraperJob | ScraperJob[]>);
 
 interface InternJob {
     readonly jobInfo: Job;
@@ -226,6 +257,8 @@ export interface Job {
     readonly lastRun: number | null;
     parent: Job | null;
     onFailure?: (reason: any) => void;
+    onSuccess?: () => void;
+    onDone?: () => void;
 
     addChildJob(childJob: JobCallback, childInterval?: number): Job;
 }

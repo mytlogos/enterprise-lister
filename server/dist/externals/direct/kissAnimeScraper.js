@@ -1,41 +1,88 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const database_1 = require("../../database/database");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
+const request = tslib_1.__importStar(require("cloudscraper"));
+// @ts-ignore
+const jar = request.jar();
+// @ts-ignore
+const defaultRequest = request.defaults({
+    jar
+});
+function loadBody(urlString, options) {
+    // @ts-ignore
+    return queueManager_1.queueCheerioRequest(urlString, options, defaultRequest);
+}
 async function scrapeNews() {
     const uri = "https://kissanime.ru/";
-    const $ = await queueManager_1.queueCheerioRequest(uri);
-    const newsRows = $(".scrollable> .items a");
+    // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
+    const $ = await loadBody(uri);
+    const newsRows = $(".bigBarContainer .barContent a");
     const news = [];
+    const titlePattern = /(Episode\s*((\d+)(\.(\d+))?))|(movie)/i;
     for (let i = 0; i < newsRows.length; i++) {
         const newsRow = newsRows.eq(i);
         const link = url.resolve(uri, newsRow.attr("href"));
-        const title = newsRow.text().trim().replace(/\s+/g, " ");
+        const span = newsRow.children("span").eq(0);
+        span.remove();
+        const mediumTitle = tools_1.sanitizeString(newsRow.text());
+        const groups = titlePattern.exec(span.text());
+        if (!groups) {
+            // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
+            console.log(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
+            continue;
+        }
+        let episodeIndex;
+        let episodeTotalIndex;
+        let episodePartialIndex;
+        let episodeTitle;
+        if (groups[1]) {
+            episodeTitle = tools_1.sanitizeString(groups[1]);
+            episodeIndex = Number(groups[2]);
+            episodeTotalIndex = Number(groups[3]);
+            episodePartialIndex = Number(groups[5]) || undefined;
+        }
+        else if (groups[6]) {
+            episodeTitle = mediumTitle;
+            episodeIndex = episodeTotalIndex = 1;
+        }
+        else {
+            continue;
+        }
         news.push({
-            title,
             link,
-            date: new Date(),
+            mediumType: tools_1.MediaType.VIDEO,
+            mediumTocLink: link,
+            mediumTitle,
+            episodeTitle,
+            episodeIndex,
+            episodeTotalIndex,
+            episodePartialIndex,
+            date: new Date()
         });
     }
     if (!news.length) {
-        return news;
+        return {};
     }
-    // the latest 10 news for the given domain
-    const latestNews = await database_1.Storage.getLatestNews("kissanime.ru");
+    return { episodes: news };
+}
+/*
+// the latest 10 news for the given domain
+    const latestNews = await Storage.getLatestNews("kissanime.ru");
+
     let endDate;
     // if there are no other news yet, set duration for this news batch to 10 hours
     if (!latestNews.length) {
         endDate = new Date();
         endDate.setHours(endDate.getHours() - 10);
-    }
-    else {
+    } else {
         for (let i = 0; i < news.length; i++) {
             const item = news[i];
-            if (item.title === latestNews[0].title) {
+
+            if (item.episodeTitle === latestNews[0].title) {
                 let allMatch = true;
                 // if there are less than 3 items left to compare the latest news with
                 // a precise statement cannot be made, so just take the date of this item
@@ -45,7 +92,8 @@ async function scrapeNews() {
                 }
                 for (let j = i; j < i + 9; j++) {
                     const latestItem = latestNews[j - i];
-                    if (item.title !== latestItem.title) {
+
+                    if (item.episodeTitle !== latestItem.title) {
                         allMatch = false;
                         break;
                     }
@@ -60,20 +108,19 @@ async function scrapeNews() {
     if (endDate) {
         const duration = Date.now() - endDate.getTime();
         const itemDuration = duration / news.length;
+
         for (let i = 0; i < news.length; i++) {
             const date = news[i].date;
             date.setMilliseconds(date.getMilliseconds() - i * itemDuration);
         }
-    }
-    else {
+    } else {
         // if there is an open end, just pretend as if every 15 min one release happened
         for (let i = 0; i < news.length; i++) {
             const date = news[i].date;
             date.setMinutes(date.getMinutes() - i * 15);
         }
     }
-    return news;
-}
+ */
 async function scrapeToc(urlString) {
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $("#container > #leftside");
@@ -113,7 +160,7 @@ async function scrapeToc(urlString) {
         }
         content.push({
             title,
-            index: episodeIndex,
+            totalIndex: episodeIndex,
             url: link,
             releaseDate: date
         });

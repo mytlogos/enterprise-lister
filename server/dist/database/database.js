@@ -23,6 +23,7 @@ async function inContext(callback, transaction = true) {
     if (startPromise) {
         await startPromise;
     }
+    const pool = await poolPromise;
     const con = await pool.getConnection();
     const context = new queryContext_1.QueryContext(con);
     let result;
@@ -79,7 +80,7 @@ async function doTransaction(callback, context, transaction, attempts = 0) {
     }
     return result;
 }
-const pool = promise_mysql_1.default.createPool({
+const poolPromise = promise_mysql_1.default.createPool({
     connectionLimit: env_1.default.dbConLimit,
     host: env_1.default.dbHost,
     user: env_1.default.dbUser,
@@ -128,7 +129,7 @@ exports.Storage = {
     stop() {
         running = false;
         startPromise = null;
-        return Promise.resolve(pool.end());
+        return Promise.resolve(poolPromise.then((value) => value.end()));
     },
     /**
      * Registers an User if the userName is free.
@@ -165,8 +166,9 @@ exports.Storage = {
      *
      * @return {Promise<User|null>}
      */
-    userLoginStatus(ip) {
-        return inContext((context) => context.userLoginStatus(ip));
+    // @ts-ignore
+    userLoginStatus(ip, uuid, session) {
+        return inContext((context) => context.userLoginStatus(ip, uuid, session));
     },
     /**
      * Logs a user out.
@@ -269,6 +271,15 @@ exports.Storage = {
     updateMedium(medium, uuid) {
         return inContext((context) => context.setUuid(uuid).updateMedium(medium));
     },
+    getMediaInWait() {
+        return inContext((context) => context.getMediaInWait());
+    },
+    deleteMediaInWait(mediaInWait) {
+        return inContext((context) => context.deleteMediaInWait(mediaInWait));
+    },
+    addMediumInWait(mediaInWait) {
+        return inContext((context) => context.addMediumInWait(mediaInWait));
+    },
     /**
      */
     addSynonyms(synonyms, uuid) {
@@ -297,6 +308,9 @@ exports.Storage = {
     getAllChapterLinks(mediumId) {
         return inContext((context) => context.getAllChapterLinks(mediumId));
     },
+    getTocSearchMedia() {
+        return inContext((context) => context.getTocSearchMedia());
+    },
     getTocSearchMedium(id) {
         return inContext((context) => context.getTocSearchMedium(id));
     },
@@ -318,12 +332,18 @@ exports.Storage = {
     getMediumParts(mediumId, uuid) {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
     },
+    getStandardPart(mediumId) {
+        return inContext((context) => context.getStandardPart(mediumId));
+    },
     /**
      * Returns parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
     getMediumPartsPerIndex(mediumId, index, uuid) {
         return inContext((context) => context.getMediumPartsPerIndex(mediumId, index, uuid));
+    },
+    getPartsEpisodeIndices(partId) {
+        return inContext((context) => context.getPartsEpisodeIndices(partId));
     },
     /**
      * Returns one or multiple parts with their episode.
@@ -335,8 +355,8 @@ exports.Storage = {
     /**
      * Adds a part of an medium to the storage.
      */
-    addPart(mediumId, part, uuid) {
-        return inContext((context) => context.setUuid(uuid).addPart(mediumId, part));
+    addPart(part, uuid) {
+        return inContext((context) => context.setUuid(uuid).addPart(part));
     },
     /**
      * Updates a part.
@@ -360,15 +380,18 @@ exports.Storage = {
      * Adds a episode of a part to the storage.
      */
     // @ts-ignore
-    addEpisode(partId, episode, uuid) {
+    addEpisode(episode, uuid) {
         // @ts-ignore
-        return inContext((context) => context.setUuid(uuid).addEpisode(partId, episode));
+        return inContext((context) => context.setUuid(uuid).addEpisode(episode));
     },
     /**
      * Updates an episode from the storage.
      */
     updateEpisode(episode, uuid) {
         return inContext((context) => context.setUuid(uuid).updateEpisode(episode));
+    },
+    moveEpisodeToPart(episodeId, partId) {
+        return inContext((context) => context.moveEpisodeToPart(episodeId, partId));
     },
     /**
      * Gets an episode from the storage.
@@ -385,19 +408,26 @@ exports.Storage = {
         return inContext((context) => context.getPartEpisodePerIndex(partId, index));
     },
     /**
+     *
+     */
+    // @ts-ignore
+    getMediumEpisodePerIndex(mediumId, index) {
+        return inContext((context) => context.getMediumEpisodePerIndex(mediumId, index));
+    },
+    /**
      * Deletes an episode from the storage irreversibly.
      */
     deleteEpisode(id, uuid) {
         return inContext((context) => context.setUuid(uuid).deleteEpisode(id));
     },
     // @ts-ignore
-    addRelease(episodeId, releases) {
+    addRelease(releases) {
         // @ts-ignore
-        return inContext((context) => context.addRelease(episodeId, releases));
+        return inContext((context) => context.addRelease(releases));
     },
     // @ts-ignore
-    updateRelease(episodeId, sourceType, releases) {
-        return inContext((context) => context.updateRelease(episodeId, releases));
+    updateRelease(releases) {
+        return inContext((context) => context.updateRelease(releases));
     },
     getSourcedReleases(sourceType, mediumId) {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
@@ -591,8 +621,8 @@ exports.Storage = {
     /**
      *
      */
-    removeScrape(link) {
-        return inContext((context) => context.removeScrape(link));
+    removeScrape(link, type) {
+        return inContext((context) => context.removeScrape(link, type));
     },
     /**
      *
@@ -605,12 +635,6 @@ exports.Storage = {
      */
     linkNewsToMedium() {
         return inContext((context) => context.linkNewsToMedium());
-    },
-    /**
-     *
-     */
-    linkNewsToEpisode(news) {
-        return inContext((context) => context.linkNewsToEpisode(news));
     },
     /**
      * Marks these news as read for the given user.
