@@ -319,12 +319,16 @@ exports.getProgress = (req, res) => {
     sendResult(res, database_1.Storage.getProgress(uuid, episodeId));
 };
 exports.postProgress = (req, res) => {
-    const { uuid, episodeId, progress } = req.body;
+    const { uuid, progress } = req.body;
+    let episodeId = req.body.episodeId;
     if (!episodeId || progress == null) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
     }
+    if (tools_1.isString(episodeId)) {
+        episodeId = tools_1.stringToNumberList(episodeId);
+    }
     try {
-        const readDate = req.body.readDate ? new Date(req.body.readDate) : null;
+        const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
         sendResult(res, database_1.Storage.addProgress(uuid, episodeId, progress, readDate));
     }
     catch (e) {
@@ -333,21 +337,7 @@ exports.postProgress = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
     }
 };
-exports.putProgress = (req, res) => {
-    const { uuid, episodeId, progress } = req.body;
-    if (!episodeId || progress == null) {
-        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
-    }
-    try {
-        const readDate = req.body.readDate ? new Date(req.body.readDate) : null;
-        sendResult(res, database_1.Storage.updateProgress(uuid, episodeId, progress, readDate));
-    }
-    catch (e) {
-        console.log(e);
-        logger_1.default.error(e);
-        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
-    }
-};
+exports.putProgress = exports.postProgress;
 exports.deleteProgress = (req, res) => {
     const { uuid, episodeId } = req.body;
     if (!episodeId) {

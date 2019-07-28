@@ -143,6 +143,9 @@ async function remapParts(indexPartsMap, mediumId) {
         }
     });
     const [standardPartEpisodeIndices] = await database_1.Storage.getPartsEpisodeIndices(standardPart.id);
+    if (!standardPartEpisodeIndices) {
+        return;
+    }
     const episodePartMap = new Map();
     for (const episodeIndex of standardPartEpisodeIndices.episodes) {
         for (const part of values) {
@@ -155,7 +158,7 @@ async function remapParts(indexPartsMap, mediumId) {
             }
             if (part.tocPart.episodes.find((value) => value.totalIndex + (value.partialIndex || 0) === episodeIndex)) {
                 const partId = episodePartMap.get(episodeIndex);
-                if (partId != null) {
+                if (partId != null && partId !== part.part.id) {
                     throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.part.id}'`);
                 }
                 episodePartMap.set(episodeIndex, part.part.id);
@@ -174,6 +177,49 @@ async function remapParts(indexPartsMap, mediumId) {
     }
     await Promise.all(promises);
 }
+async function addPartEpisodes(value) {
+    if (!value.part) {
+        throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
+    }
+    value.tocPart.episodes.forEach((episode) => {
+        value.episodeMap.set(episode.combiIndex, { tocEpisode: episode });
+    });
+    // @ts-ignore
+    const episodes = await database_1.Storage.getPartEpisodePerIndex(value.part.id, [...value.episodeMap.keys()]);
+    episodes.forEach((episode) => {
+        if (!episode.id) {
+            return;
+        }
+        const tocEpisode = value.episodeMap.get(episode.totalIndex);
+        if (!tocEpisode) {
+            throw Error("something went wrong. got no value at this episode index");
+        }
+        tocEpisode.episode = episode;
+    });
+    const allEpisodes = [...value.episodeMap.keys()]
+        .filter((index) => !episodes.find((episode) => tools_1.combiIndex(episode) === index))
+        .map((episodeIndex) => {
+        const episodeToc = value.episodeMap.get(episodeIndex);
+        if (!episodeToc) {
+            throw Error("something went wrong. got no value at this episode index");
+        }
+        return {
+            id: 0,
+            // @ts-ignore
+            partId: value.part.id,
+            // @ts-ignore
+            totalIndex: episodeToc.tocEpisode.totalIndex,
+            partialIndex: episodeToc.tocEpisode.partialIndex,
+            releases: [{
+                    episodeId: 0,
+                    title: episodeToc.tocEpisode.title,
+                    url: episodeToc.tocEpisode.url,
+                    releaseDate: episodeToc.tocEpisode.releaseDate || new Date()
+                }]
+        };
+    });
+    await database_1.Storage.addEpisode(allEpisodes);
+}
 async function tocHandler(result) {
     console.log(`handling toc: ${result.tocs} ${result.uuid}`);
     if (!(result.tocs && result.tocs.length)) {
@@ -187,26 +233,26 @@ async function tocHandler(result) {
         .map(async (entry) => {
         const mediumId = entry[0].id;
         const tocParts = entry[1].parts;
-        const partsMap = new Map();
+        const indexPartsMap = new Map();
         tocParts.forEach((value) => {
             if (value.totalIndex == null) {
                 throw Error(`totalIndex should not be null! mediumId: '${mediumId}'`);
             }
-            partsMap.set(tools_1.combiIndex(value), { tocPart: value, episodeMap: new Map() });
+            indexPartsMap.set(value.combiIndex, { tocPart: value, episodeMap: new Map() });
         });
         if (entry[1].episodes.length) {
-            partsMap.set(-1, {
-                tocPart: { title: "", totalIndex: -1, episodes: entry[1].episodes },
+            indexPartsMap.set(-1, {
+                tocPart: { title: "", totalIndex: -1, combiIndex: -1, episodes: entry[1].episodes },
                 episodeMap: new Map()
             });
         }
-        const partIndices = [...partsMap.keys()];
+        const partIndices = [...indexPartsMap.keys()];
         const parts = await database_1.Storage.getMediumPartsPerIndex(mediumId, partIndices);
         parts.forEach((value) => {
             if (!value.id) {
                 return;
             }
-            const tocPart = partsMap.get(tools_1.combiIndex(value));
+            const tocPart = indexPartsMap.get(tools_1.combiIndex(value));
             if (!tocPart) {
                 throw Error("something went wrong. got no value at this part index");
             }
@@ -215,7 +261,7 @@ async function tocHandler(result) {
         await Promise.all(partIndices
             .filter((index) => parts.every((part) => tools_1.combiIndex(part) !== index || !part.id))
             .map((index) => {
-            const partToc = partsMap.get(index);
+            const partToc = indexPartsMap.get(index);
             if (!partToc) {
                 throw Error("something went wrong. got no value at this part index");
             }
@@ -223,60 +269,18 @@ async function tocHandler(result) {
                 // @ts-ignore
                 .addPart({
                 mediumId,
-                totalIndex: partToc.tocPart.totalIndex,
                 title: partToc.tocPart.title,
+                totalIndex: partToc.tocPart.totalIndex,
                 partialIndex: partToc.tocPart.partialIndex
             })
                 // @ts-ignore
                 .then((part) => partToc.part = part);
         }));
         // 'moves' episodes from the standard part to other parts, if they own the episodes too
-        await remapParts(partsMap, mediumId);
-        return [...partsMap.values()].map(async (value) => {
-            if (!value.part) {
-                throw Error(`something went wrong. got no part for tocPart ${value.tocPart.totalIndex}`);
-            }
-            value.tocPart.episodes.forEach((episode) => {
-                value.episodeMap.set(episode.totalIndex, { tocEpisode: episode });
-            });
-            // @ts-ignore
-            const episodes = await database_1.Storage.getPartEpisodePerIndex(value.part.id, [...value.episodeMap.keys()]);
-            episodes.forEach((episode) => {
-                if (!episode.id) {
-                    return;
-                }
-                const tocEpisode = value.episodeMap.get(episode.totalIndex);
-                if (!tocEpisode) {
-                    throw Error("something went wrong. got no value at this episode index");
-                }
-                tocEpisode.episode = episode;
-            });
-            await Promise.all([...value.episodeMap.keys()]
-                .filter((index) => !episodes.find((episode) => episode.totalIndex === index))
-                .map((episodeIndex) => {
-                const episodeToc = value.episodeMap.get(episodeIndex);
-                if (!episodeToc) {
-                    throw Error("something went wrong. got no value at this episode index");
-                }
-                return database_1.Storage
-                    .addEpisode({
-                    // @ts-ignore
-                    partId: value.part.id,
-                    // @ts-ignore
-                    totalIndex: episodeToc.tocEpisode.totalIndex,
-                    partialIndex: episodeToc.tocEpisode.partialIndex,
-                    releases: [{
-                            title: episodeToc.tocEpisode.title,
-                            url: episodeToc.tocEpisode.url,
-                            releaseDate: episodeToc.tocEpisode.releaseDate || new Date()
-                        }]
-                })
-                    .then((addedEpisode) => episodeToc.episode = addedEpisode);
-            }));
-        });
+        await remapParts(indexPartsMap, mediumId);
+        return [...indexPartsMap.values()].map((value) => addPartEpisodes(value));
     });
     await Promise.all((await Promise.all(promises)).flat());
-    logger_1.default.info("toc: " + JSON.stringify(result));
 }
 exports.tocHandler = tocHandler;
 async function addFeeds(feeds) {

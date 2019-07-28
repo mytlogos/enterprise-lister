@@ -125,18 +125,25 @@ function mediumRouter(): Router {
     return router;
 }
 
+function episodeRouter() {
+    const router = Router();
+
+    const episodeRoute = router.route("");
+    episodeRoute.get(UserApi.getEpisode);
+    episodeRoute.post(UserApi.postEpisode);
+    episodeRoute.put(UserApi.putEpisode);
+    episodeRoute.delete(UserApi.deleteEpisode);
+    return router;
+}
+
 /**
  * Creates the Part Api Router.
  * Adds the Episode Api Route to the Part Api Router.
  */
 function partRouter(): Router {
     const router = Router();
-    const episodeRoute = router.route("/episode");
-    episodeRoute.get(UserApi.getEpisode);
-    episodeRoute.post(UserApi.postEpisode);
-    episodeRoute.put(UserApi.putEpisode);
-    episodeRoute.delete(UserApi.deleteEpisode);
 
+    router.use("/episode", episodeRouter());
 
     const partRoute = router.route("");
     partRoute.get(UserApi.getPart);

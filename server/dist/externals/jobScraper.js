@@ -14,7 +14,7 @@ class JobScraper {
     constructor() {
         this.paused = true;
         this.helper = new scraperTools_1.ScraperHelper();
-        this.queue = new jobQueue_1.JobQueue();
+        this.queue = new jobQueue_1.JobQueue({ maxActive: 50 });
         this.dependantMap = new Map();
         this.helper.init();
     }
@@ -219,7 +219,7 @@ class JobScraper {
     }
     processJobCallbackResult(value) {
         if (!value) {
-            return value;
+            return;
         }
         if (Array.isArray(value)) {
             value.forEach((scraperJob) => this.addScraperJob(scraperJob));

@@ -2,8 +2,9 @@ import {EpisodeContent, Hook, TextEpisodeContent, Toc, TocContent, TocEpisode} f
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
-import {MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
+import {getTextContent} from "./directTools";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return;
@@ -23,32 +24,11 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 
     const content = directContentElement.html();
 
-    if (!novelTitle || !episodeTitle) {
-        logger.warn("episode link with no novel or episode title: " + urlString);
-        return [];
-    }
     if (!content) {
-        logger.warn("episode link with no content: " + urlString);
         return [];
     }
-    const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
 
-    let index;
-    if (chapterGroups) {
-        index = Number(chapterGroups[1]);
-    }
-    if (index == null || Number.isNaN(index)) {
-        index = undefined;
-    }
-    const textEpisodeContent: TextEpisodeContent = {
-        contentType: MediaType.TEXT,
-        content,
-        episodeTitle,
-        mediumTitle: novelTitle,
-        index
-    };
-
-    return [textEpisodeContent];
+    return getTextContent(novelTitle, episodeTitle, urlString, content);
 }
 
 async function tocAdapter(tocLink: string): Promise<Toc[]> {
@@ -97,27 +77,16 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
             logger.warn("changed title format on boxNovel");
             return [];
         }
-        let episodeIndex;
-        let episodeTotalIndex;
-        let episodePartialIndex;
+        const episodeIndices = extractIndices(regexResult, 2, 3, 5);
 
-        if (regexResult[2]) {
-            episodeIndex = Number(regexResult[2]);
 
-            if (regexResult[3]) {
-                episodeTotalIndex = Number(regexResult[3]);
-            }
-            if (regexResult[5]) {
-                episodePartialIndex = Number(regexResult[5]) || undefined;
-            }
-        }
-        if (episodeIndex == null || episodeTotalIndex == null) {
-            logger.warn("changed title format on boxNovel");
-            return [];
+        if (!episodeIndices) {
+            throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
         }
         content.push({
-            totalIndex: episodeTotalIndex,
-            partialIndex: episodePartialIndex,
+            combiIndex: episodeIndices.combi,
+            totalIndex: episodeIndices.total,
+            partialIndex: episodeIndices.total,
             url: link,
             releaseDate: date,
             title: episodeTitle

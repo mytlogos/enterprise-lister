@@ -19,6 +19,7 @@ export declare enum Modifier {
     AUTO_INCREMENT = "AUTO_INCREMENT"
 }
 export declare enum ColumnType {
+    DOUBLE = "DOUBLE",
     BOOLEAN = "BOOLEAN",
     TEXT = "TEXT",
     CHAR = "CHAR",

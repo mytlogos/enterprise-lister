@@ -119,7 +119,7 @@
             startEdit(entry, prop) {
                 this.editCell.id = entry.id;
                 this.editCell.prop = prop;
-                this.editCell.value = entry[prop];
+                this.editCell.values = entry[prop];
                 // input is not yet available, only after this method is over, so set a timeout to focus
                 setTimeout(() => this.$el.querySelector("td input").focus(), 200);
             },
@@ -135,7 +135,7 @@
                 });
                 this.editCell.id = null;
                 this.editCell.prop = null;
-                this.editCell.value = null;
+                this.editCell.values = null;
             },
 
             sortBy(key) {

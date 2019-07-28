@@ -34,6 +34,23 @@ import {ScrapeTypes} from "../externals/scraperTools";
 
 type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 
+
+// setInterval(
+//     () => StateProcessor
+//         .startRound()
+//         .then((value) => {
+//             if (!value || !value.length) {
+//                 return;
+//             }
+//             return inContext((invalidatorContext) => invalidatorContext.addInvalidation(value));
+//         })
+//         .catch((reason) => {
+//             console.log(reason);
+//             logger.error(reason);
+//         }),
+//     5000
+// );
+
 /**
  * Creates the context for QueryContext, to
  * query a single connection sequentially.
@@ -60,20 +77,6 @@ export async function inContext<T>(callback: ContextCallback<T>, transaction = t
         // release connection into the pool
         await pool.releaseConnection(con);
     }
-    StateProcessor.startRound()
-        .then((value) => {
-            if (!value || !value.length) {
-                return;
-            }
-            return inContext(
-                (invalidatorContext) => invalidatorContext.addInvalidation(value),
-                true,
-            );
-        })
-        .catch((reason) => {
-            console.log(reason);
-            logger.error(reason);
-        });
     return result;
 }
 
@@ -98,8 +101,8 @@ async function doTransaction<T>(callback: ContextCallback<T>, context: QueryCont
             // if there is a transaction first rollback and then throw error
             await context.rollback();
         }
-        // if it is an deadlock error, restart transaction after a delay at max five times
-        if (e.errno === 1213 && attempts < 5) {
+        // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
+        if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
             await delay(500);
             return doTransaction(callback, context, transaction, ++attempts);
         } else {
@@ -233,7 +236,7 @@ export interface Storage {
 
     getExternalList(id: number): Promise<ExternalList>;
 
-    addProgress(uuid: string, episodeId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
+    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: (Date | null)): Promise<boolean>;
 
     logoutUser(uuid: string, ip: string): Promise<boolean>;
 
@@ -744,7 +747,7 @@ export const Storage: Storage = {
     },
 
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void> {
-        return inContext((context) => context.updatePageInfo(link, key, values));
+        return inContext((context) => context.updatePageInfo(link, key, values, toDeleteValues));
     },
 
     removePageInfo(link: string, key?: string): Promise<void> {
@@ -880,7 +883,7 @@ export const Storage: Storage = {
     /**
      * Add progress of an user in regard to an episode to the storage.
      */
-    addProgress(uuid: string, episodeId: number, progress: number, readDate: Date | null): Promise<boolean> {
+    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).addProgress(uuid, episodeId, progress, readDate));
     },
 

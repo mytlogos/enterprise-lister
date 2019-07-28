@@ -317,7 +317,7 @@ export declare class QueryContext {
     /**
      * Add progress of an user in regard to an episode to the storage.
      */
-    addProgress(uuid: string, episodeId: number, progress: number, readDate: Date | null): Promise<boolean>;
+    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean>;
     /**
      * Removes progress of an user in regard to an episode.
      */
@@ -437,11 +437,11 @@ export declare class QueryContext {
     private _update;
     private _multiInsert;
     private _queryInList;
+    private _batchFunction;
     /**
      *
      * @param query
      * @param parameter
-     * @private
      */
     private _query;
     /**

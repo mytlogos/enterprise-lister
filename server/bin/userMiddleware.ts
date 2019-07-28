@@ -349,12 +349,16 @@ export const getProgress: Handler = (req, res) => {
 };
 
 export const postProgress: Handler = (req, res) => {
-    const {uuid, episodeId, progress} = req.body;
+    const {uuid, progress} = req.body;
+    let episodeId = req.body.episodeId;
     if (!episodeId || progress == null) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
     }
+    if (isString(episodeId)) {
+        episodeId = stringToNumberList(episodeId);
+    }
     try {
-        const readDate = req.body.readDate ? new Date(req.body.readDate) : null;
+        const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
         sendResult(res, Storage.addProgress(uuid, episodeId, progress, readDate));
     } catch (e) {
         console.log(e);
@@ -363,20 +367,7 @@ export const postProgress: Handler = (req, res) => {
     }
 };
 
-export const putProgress: Handler = (req, res) => {
-    const {uuid, episodeId, progress} = req.body;
-    if (!episodeId || progress == null) {
-        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    }
-    try {
-        const readDate = req.body.readDate ? new Date(req.body.readDate) : null;
-        sendResult(res, Storage.updateProgress(uuid, episodeId, progress, readDate));
-    } catch (e) {
-        console.log(e);
-        logger.error(e);
-        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    }
-};
+export const putProgress: Handler = postProgress;
 
 export const deleteProgress: Handler = (req, res) => {
     const {uuid, episodeId} = req.body;

@@ -66,6 +66,11 @@ export declare function combiIndex(value: {
     totalIndex: number;
     partialIndex?: number;
 }): number;
+export declare function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number): {
+    combi: number;
+    total: number;
+    fraction?: number;
+} | null;
 export declare function separateIndex(value: number): {
     totalIndex: number;
     partialIndex?: number;

@@ -5,7 +5,7 @@ const kissAnimeScraper_1 = require("./kissAnimeScraper");
 const mangadexScraper_1 = require("./mangadexScraper");
 const mangaHasuScraper_1 = require("./mangaHasuScraper");
 const webnovelScraper_1 = require("./webnovelScraper");
-const fullNovelScraper_1 = require("./fullNovelScraper");
+const novelFullScraper_1 = require("./novelFullScraper");
 const boxNovelScraper_1 = require("./boxNovelScraper");
 function getHooks() {
     return [
@@ -17,7 +17,7 @@ function getHooks() {
         // getQUndergroundHook(),
         webnovelScraper_1.getHook(),
         boxNovelScraper_1.getHook(),
-        fullNovelScraper_1.getHook(),
+        novelFullScraper_1.getHook(),
     ];
 }
 exports.getHooks = getHooks;

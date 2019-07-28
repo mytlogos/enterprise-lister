@@ -103,6 +103,7 @@ async function scrapeToc(urlString) {
     }
     const uri = "http://mangahasu.se/";
     const partContents = [];
+    const indexPartMap = new Map();
     const chapterContents = [];
     const toc = {
         link: urlString,
@@ -111,8 +112,8 @@ async function scrapeToc(urlString) {
         mediumType: tools_1.MediaType.IMAGE
     };
     const endReg = /\[END]\s*$/i;
-    const volChapReg = /Vol\.?\s*(\d+(\.\d+)?)\s*Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
-    const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
+    const volChapReg = /Vol\.?\s*((\d+)(\.(\d+))?)\s*Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
+    const chapReg = /Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
     let hasVolumes;
     for (let i = 0; i < chapters.length; i++) {
         const chapterElement = chapters.eq(i);
@@ -139,40 +140,56 @@ async function scrapeToc(urlString) {
             hasVolumes = true;
         }
         if (volChapGroups) {
-            const volIndex = Number(volChapGroups[1]);
-            const chapIndex = Number(volChapGroups[3]);
-            const title = volChapGroups[4] || "Chapter " + chapIndex;
+            const volIndices = tools_1.extractIndices(volChapGroups, 1, 2, 4);
+            if (!volIndices) {
+                throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
+            }
+            const chapIndices = tools_1.extractIndices(volChapGroups, 5, 6, 8);
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
-            let part = partContents[volIndex];
-            if (Number.isNaN(chapIndex)) {
+            if (!chapIndices) {
                 logger_1.default.warn("changed episode format on mangaHasu toc: got no index");
                 return [];
             }
+            let title = "Chapter " + chapIndices.combi;
+            if (volChapGroups[10]) {
+                title += " - " + volChapGroups[10];
+            }
+            let part = indexPartMap.get(volIndices.combi);
             if (!part) {
-                partContents[volIndex] = part = {
+                part = {
                     episodes: [],
-                    totalIndex: volIndex,
-                    title: "Vol." + volIndex
+                    combiIndex: volIndices.combi,
+                    totalIndex: volIndices.total,
+                    partialIndex: volIndices.fraction,
+                    title: "Vol." + volIndices.combi
                 };
+                indexPartMap.set(volIndices.combi, part);
+                partContents.push(part);
             }
             part.episodes.push({
                 title,
-                totalIndex: chapIndex,
+                combiIndex: chapIndices.combi,
+                totalIndex: chapIndices.total,
+                partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
             });
         }
         else if (chapGroups) {
-            const chapIndex = Number(chapGroups[1]);
-            const title = chapGroups[4] || "Chapter " + chapIndex;
+            const chapIndices = tools_1.extractIndices(chapGroups, 1, 2, 4);
+            if (!chapIndices) {
+                throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
+            }
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
-            if (Number.isNaN(chapIndex)) {
-                logger_1.default.warn("changed episode format on mangaHasu toc: got no index");
-                return [];
+            let title = "Chapter " + chapIndices.combi;
+            if (chapGroups[6]) {
+                title += " - " + chapGroups[6];
             }
             chapterContents.push({
                 title,
-                totalIndex: chapIndex,
+                combiIndex: chapIndices.combi,
+                totalIndex: chapIndices.total,
+                partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
             });

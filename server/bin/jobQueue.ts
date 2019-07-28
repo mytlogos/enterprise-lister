@@ -154,12 +154,13 @@ export class JobQueue {
         if (this.nextScheduling > 0 && this.nextScheduling < timeout) {
             return;
         }
+        // FIXME: 25.07.2019 reschedules two times per second?
         this.nextScheduling = timeout;
         delay(timeout).then(() => {
             this.nextScheduling = -1;
             this._schedule();
         });
-        console.log("rescheduling");
+        console.log(`rescheduling, active: ${this.activeJobs.length}, waiting: ${this.waitingJobs.length}, new: ${this.newJobs.length}, times waited: ${this.timesRescheduled}`);
     }
 
     private _schedule() {

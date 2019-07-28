@@ -8,6 +8,7 @@ const http_1 = require("http");
 const env_1 = tslib_1.__importDefault(require("./env"));
 // start storage (connect to database)
 const database_1 = require("./database/database");
+require("./deviceVerificator");
 // start crawler (setup and start running)
 const os_1 = tslib_1.__importDefault(require("os"));
 const port = env_1.default.port || process.env.port;
@@ -35,9 +36,7 @@ function onError(error) {
     if (error.syscall !== "listen") {
         throw error;
     }
-    const bind = typeof port === "string"
-        ? "Pipe " + port
-        : "Port " + port;
+    const bind = "Port " + port;
     // handle specific listen errors with friendly messages
     switch (error.code) {
         case "EACCES":

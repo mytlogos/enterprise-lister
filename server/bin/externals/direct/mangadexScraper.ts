@@ -3,7 +3,7 @@ import {EpisodeNews, News} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {MediaType, sanitizeString} from "../../tools";
+import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "request";
 
 const jar = request.jar();
@@ -141,6 +141,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const uri = "https://mangadex.org/";
 
     const contents: TocContent[] = [];
+    const indexPartMap: Map<number, TocPart> = new Map();
 
     const toc: Toc = {
         link: urlString,
@@ -150,8 +151,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     };
 
     const endReg = /^END$/i;
-    const volChapReg = /^\s*Vol\.?\s*(\d+(\.\d+)?)\s*Ch\.?\s*(\d+(\.\d+)?)\s*(-\s*)?(.+)/i;
-    const chapReg = /^\s*Ch\.?\s*(\d+(\.\d+)?)\s*(-\s*)?(.+)/i;
+    const volChapReg = /^\s*Vol\.?\s*((\d+)(\.(\d+))?)\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*(-\s*)?(.+)/i;
+    const chapReg = /^\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*(-\s*)?(.+)/i;
     let hasVolumes;
 
     for (let i = 0; i < chapters.length; i++) {
@@ -192,45 +193,64 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         }
 
         if (volChapGroups) {
-            const volIndex = Number(volChapGroups[1]);
-            const chapIndex = Number(volChapGroups[2]);
-            const title = volChapGroups[4];
+            const volIndices = extractIndices(volChapGroups, 1, 2, 4);
+
+            if (!volIndices) {
+                throw Error(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
+            }
+
+            const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
+
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
 
-            let part: TocPart = contents[volIndex] as TocPart;
+            let part: TocPart | undefined = indexPartMap.get(volIndices.combi);
 
-            if (Number.isNaN(chapIndex)) {
-                logger.warn("changed episode format on mangaDex toc: got no index");
+
+            if (!chapIndices) {
+                logger.warn("changed episode format on mangadex toc: got no index");
                 return [];
             }
+            let title = "Chapter " + chapIndices.combi;
+
+            if (volChapGroups[10]) {
+                title += " - " + volChapGroups[10];
+            }
+
             if (!part) {
-                contents[volIndex] = part = {
+                part = {
                     episodes: [],
-                    totalIndex: volIndex,
-                    title: "Vol." + volIndex
+                    combiIndex: volIndices.combi,
+                    totalIndex: volIndices.total,
+                    partialIndex: volIndices.fraction,
+                    title: "Vol." + volIndices.combi
                 };
+                indexPartMap.set(volIndices.combi, part);
+                contents.push(part);
             }
 
             part.episodes.push({
                 title,
-                totalIndex: chapIndex,
+                combiIndex: chapIndices.combi,
+                totalIndex: chapIndices.total,
+                partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
             });
         } else if (chapGroups) {
-            const chapIndex = Number(chapGroups[1]);
-            const title = chapGroups[3];
+            const chapIndices = extractIndices(chapGroups, 1, 2, 4);
+
+            if (!chapIndices) {
+                throw Error(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
+            }
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
 
-
-            if (Number.isNaN(chapIndex)) {
-                logger.warn("changed episode format on mangaDex toc: got no index");
-                return [];
-            }
+            const title = `Chapter ${chapIndices.combi} - ${chapGroups[6]}`;
 
             contents.push({
                 title,
-                totalIndex: chapIndex,
+                combiIndex: chapIndices.combi,
+                totalIndex: chapIndices.total,
+                partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
             } as TocEpisode);

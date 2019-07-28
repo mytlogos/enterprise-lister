@@ -8,6 +8,7 @@ class TableBuilder {
         this.columns = [];
         this.stubTable = new tableSchema_1.TableSchema([], "");
         this.invalidations = [];
+        this.uniqueIndices = [];
         this.databaseBuilder = databaseBuilder;
     }
     setInvalidationTable() {
@@ -27,11 +28,15 @@ class TableBuilder {
         return this;
     }
     parseMeta(data) {
-        if (data.startsWith("PRIMARY KEY")) {
+        const uppedData = data.toUpperCase();
+        if (uppedData.startsWith("PRIMARY KEY")) {
             tableParser_1.TableParser.parsePrimaryKey(this.stubTable, this.databaseBuilder.tables, data);
         }
-        else if (data.startsWith("FOREIGN KEY")) {
+        else if (uppedData.startsWith("FOREIGN KEY")) {
             tableParser_1.TableParser.parseForeignKey(this.stubTable, this.databaseBuilder.tables, data);
+        }
+        else if (uppedData.startsWith("UNIQUE")) {
+            tableParser_1.TableParser.parseUnique(this.stubTable, this.databaseBuilder.tables, data);
         }
         else {
             throw Error(`unknown meta: ${data}`);
@@ -43,6 +48,10 @@ class TableBuilder {
     }
     addColumn(column) {
         this.columns.push(column);
+        return this;
+    }
+    addUniqueIndex(index) {
+        this.uniqueIndices.push(index);
         return this;
     }
     setName(name) {
@@ -57,7 +66,7 @@ class TableBuilder {
         if (!this.name) {
             throw Error("table has no name");
         }
-        const table = new tableSchema_1.TableSchema([...this.columns, ...this.stubTable.columns], this.name, this.main, this.invalidationColumn, this.invalidationTable);
+        const table = new tableSchema_1.TableSchema([...this.columns, ...this.stubTable.columns], this.name, this.main, this.invalidationColumn, this.invalidationTable, this.uniqueIndices);
         table.columns.forEach((value) => value.table = table);
         this.databaseBuilder.addTable(table, this.invalidations);
         return table;

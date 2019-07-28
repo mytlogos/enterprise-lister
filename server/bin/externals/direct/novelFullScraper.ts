@@ -1,9 +1,10 @@
-import {EpisodeContent, Hook, TextEpisodeContent, Toc, TocContent, TocEpisode} from "../types";
+import {EpisodeContent, Hook, TextEpisodeContent, Toc, TocContent, TocEpisode, TocPart} from "../types";
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
-import {MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
+import {getTextContent} from "./directTools";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return;
@@ -18,37 +19,17 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
     const novelTitle = sanitizeString(mediumTitleElement.text());
 
-    const episodeTitle = sanitizeString($(".cha-tit h3").text());
-    const directContentElement = $(".cha-content .cha-words .cha-words");
+    const episodeTitle = sanitizeString($(".chapter-title").text());
+    const directContentElement = $("#chapter-content");
+    directContentElement.find("script, ins").remove();
 
     const content = directContentElement.html();
 
-    if (!novelTitle || !episodeTitle) {
-        logger.warn("episode link with no novel or episode title: " + urlString);
-        return [];
-    }
     if (!content) {
-        logger.warn("episode link with no content: " + urlString);
         return [];
     }
-    const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
 
-    let index;
-    if (chapterGroups) {
-        index = Number(chapterGroups[1]);
-    }
-    if (index == null || Number.isNaN(index)) {
-        index = undefined;
-    }
-    const textEpisodeContent: TextEpisodeContent = {
-        contentType: MediaType.TEXT,
-        content,
-        episodeTitle,
-        mediumTitle: novelTitle,
-        index
-    };
-
-    return [textEpisodeContent];
+    return getTextContent(novelTitle, episodeTitle, urlString, content);
 }
 
 async function tocAdapter(tocLink: string): Promise<Toc[]> {
@@ -73,7 +54,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     tocLink = `http://novelfull.com/index.php/${linkMatch[1]}?page=`;
 
     for (let i = 1; ; i++) {
-        const $ = await queueCheerioRequest(tocLink + "i");
+        const $ = await queueCheerioRequest(tocLink + i);
 
         const tocSnippet = await scrapeTocPage($, uri);
 
@@ -119,56 +100,58 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
     const mediumTitle = sanitizeString(mediumTitleElement.text());
 
     const content: TocContent[] = [];
+    const indexPartMap: Map<number, TocPart> = new Map<number, TocPart>();
     const items = $(".list-chapter li a");
 
-    const titleRegex = /ch(\.|apter)?\s*((\d+)(\.(\d+))?)/i;
-
+    const titleRegex = /(vol(\.|ume)?\s*((\d+)(\.(\d+))?).+)?((ch(\.|a?.?p?.?t?.?e?.?r?.?)?)|-)\s*((\d+)(\.(\d+))?)/i;
+    // TODO: 24.07.2019 has volume, 'intermission', 'gossips', 'skill introduction', 'summary'
+    //  for now it skips those, maybe do it with lookAheads in the rows or sth similar
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
 
-        const titleElement = newsRow.find("a");
-        const link = url.resolve(uri, titleElement.attr("href"));
+        const link = url.resolve(uri, newsRow.attr("href"));
 
-        const episodeTitle = sanitizeString(titleElement.text());
+        const episodeTitle = sanitizeString(newsRow.text());
 
-        const timeStampElement = newsRow.find(".chapter-release-date");
-        const date = relativeToAbsoluteTime(timeStampElement.text().trim());
-
-        if (!date || date > new Date()) {
-            logger.warn("changed time format on novelFull");
-            return;
-        }
         const regexResult = titleRegex.exec(episodeTitle);
 
         if (!regexResult) {
-            logger.warn("changed title format on novelFull");
-            return;
+            logger.warn(`changed title format on novelFull: '${episodeTitle}'`);
+            continue;
         }
-        let episodeIndex;
-        let episodeTotalIndex;
-        let episodePartialIndex;
+        const partIndices = extractIndices(regexResult, 3, 4, 6);
+        const episodeIndices = extractIndices(regexResult, 10, 11, 13);
 
-        if (regexResult[2]) {
-            episodeIndex = Number(regexResult[2]);
+        if (!episodeIndices) {
+            throw Error(`title format changed on fullNovel, got no indices for '${episodeTitle}'`);
+        }
 
-            if (regexResult[3]) {
-                episodeTotalIndex = Number(regexResult[3]);
-            }
-            if (regexResult[5]) {
-                episodePartialIndex = Number(regexResult[5]) || undefined;
-            }
-        }
-        if (episodeIndex == null || episodeTotalIndex == null) {
-            logger.warn("changed title format on novelFull");
-            return;
-        }
-        content.push({
-            totalIndex: episodeTotalIndex,
-            partialIndex: episodePartialIndex,
+        const episode = {
+            combiIndex: episodeIndices.combi,
+            totalIndex: episodeIndices.total,
+            partialIndex: episodeIndices.fraction,
             url: link,
-            releaseDate: date,
             title: episodeTitle
-        } as TocEpisode);
+        } as TocEpisode;
+
+        if (partIndices) {
+            let part: TocPart | undefined = indexPartMap.get(partIndices.combi);
+
+            if (!part) {
+                part = {
+                    episodes: [],
+                    combiIndex: partIndices.combi,
+                    totalIndex: partIndices.total,
+                    partialIndex: partIndices.fraction,
+                    title: "Vol." + partIndices.combi
+                };
+                indexPartMap.set(partIndices.combi, part);
+                content.push(part);
+            }
+            part.episodes.push(episode);
+        } else {
+            content.push(episode);
+        }
     }
     return {
         link: "",
@@ -184,8 +167,8 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
     const items = $("#list-index .list-new .row");
 
     const episodeNews: EpisodeNews[] = [];
-    // some genius wrote instead of chapter 'chaptrer' so just allow one character error margin
-    const titleRegex = /(vol(\.|ume)?\s*((\d+)(\.(\d+))?).+)?ch(\.|a.?p.?t.?e.?r.?)?\s*((\d+)(\.(\d+))?)/i;
+    // some people just cant get it right to write 'Chapter' right so just allow a character error margin
+    const titleRegex = /((ch(\.|a?.?p?.?t?.?e?.?r?.?)?)|-)\s*((\d+)(\.(\d+))?)/i;
     const abbrevTitleRegex = "|^)\\s*((\\d+)(\\.(\\d+))?)";
 
     for (let i = 0; i < items.length; i++) {
@@ -210,7 +193,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
         let regexResult: string[] | null = titleRegex.exec(episodeTitle);
         if (!regexResult) {
             let abbrev = "";
-            for (const word of mediumTitle.split(/\W+/)) {
+            for (const word of mediumTitle.split(/[\W'´`’′‘]+/)) {
                 if (word) {
                     abbrev += word[0];
                 }
@@ -219,44 +202,21 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
             const match = episodeTitle.match(new RegExp(`(${abbrev}${abbrevTitleRegex}`, "i"));
 
             if (!abbrev || !match) {
-                logger.warn(`changed title format on novelFull: '${episodeTitle}'`);
+                if (!episodeTitle.startsWith("Side")) {
+                    logger.warn(`changed title format on novelFull: '${episodeTitle}'`);
+                }
                 continue;
             }
 
             regexResult = [];
-            regexResult[8] = match[2];
-            regexResult[9] = match[3];
-            regexResult[11] = match[5];
+            regexResult[10] = match[2];
+            regexResult[11] = match[3];
+            regexResult[13] = match[5];
         }
-        let partIndex;
-        let partTotalIndex;
-        let partPartialIndex;
+        // const partIndices = extractIndices(regexResult, 3, 4, 6);
+        const episodeIndices = extractIndices(regexResult, 4, 5, 7);
 
-        if (regexResult[3]) {
-            partIndex = Number(regexResult[3]);
-
-            if (regexResult[4]) {
-                partTotalIndex = Number(regexResult[4]);
-            }
-            if (regexResult[6]) {
-                partPartialIndex = Number(regexResult[6]) || undefined;
-            }
-        }
-        let episodeIndex;
-        let episodeTotalIndex;
-        let episodePartialIndex;
-
-        if (regexResult[8]) {
-            episodeIndex = Number(regexResult[8]);
-
-            if (regexResult[9]) {
-                episodeTotalIndex = Number(regexResult[9]);
-            }
-            if (regexResult[11]) {
-                episodePartialIndex = Number(regexResult[11]) || undefined;
-            }
-        }
-        if (episodeIndex == null || episodeTotalIndex == null) {
+        if (!episodeIndices) {
             logger.warn(`changed title format on novelFull: '${episodeTitle}'`);
             continue;
         }
@@ -264,12 +224,12 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
             mediumTocLink: tocLink,
             mediumTitle,
             mediumType: MediaType.TEXT,
-            partIndex,
-            partTotalIndex,
-            partPartialIndex,
-            episodeTotalIndex,
-            episodePartialIndex,
-            episodeIndex,
+            // partIndex: partIndices && partIndices.combi || undefined,
+            // partTotalIndex: partIndices && partIndices.total || undefined,
+            // partPartialIndex: partIndices && partIndices.fraction || undefined,
+            episodeTotalIndex: episodeIndices.total,
+            episodePartialIndex: episodeIndices.fraction,
+            episodeIndex: episodeIndices.combi,
             episodeTitle,
             link,
             date,
@@ -278,11 +238,11 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
     return {episodes: episodeNews};
 }
 
-newsAdapter.link = "https://novelfull.com";
+newsAdapter.link = "http://novelfull.com";
 
 export function getHook(): Hook {
     return {
-        domainReg: /https:\/\/novelfull\.com/,
+        domainReg: /https?:\/\/novelfull\.com/,
         contentDownloadAdapter,
         tocAdapter,
         newsAdapter,

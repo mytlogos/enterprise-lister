@@ -4,6 +4,8 @@ const tslib_1 = require("tslib");
 const logger_1 = tslib_1.__importDefault(require("./logger"));
 const crypto_1 = tslib_1.__importDefault(require("crypto"));
 const crypto_2 = tslib_1.__importDefault(require("crypto"));
+// FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
+//  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 const bcrypt_nodejs_1 = tslib_1.__importDefault(require("bcrypt-nodejs"));
 const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
 function remove(array, item) {
@@ -353,9 +355,26 @@ function allTypes() {
 exports.allTypes = allTypes;
 function combiIndex(value) {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
+    if (Number.isNaN(combi)) {
+        throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
+    }
     return combi;
 }
 exports.combiIndex = combiIndex;
+function extractIndices(groups, allPosition, totalPosition, partialPosition) {
+    const whole = Number(groups[allPosition]);
+    if (Number.isNaN(whole)) {
+        return null;
+    }
+    const totalIndex = Number(groups[totalPosition]);
+    let partialIndex;
+    if (groups[partialPosition]) {
+        partialIndex = Number(groups[partialPosition]);
+    }
+    return { combi: whole, total: totalIndex, fraction: partialIndex };
+}
+exports.extractIndices = extractIndices;
+const indexRegex = /\d+(\.(\d+))/;
 function separateIndex(value) {
     const total = Math.floor(value);
     const partial = value - total;

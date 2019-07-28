@@ -127,8 +127,10 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("title VARCHAR(200)")
     .parseColumn("totalIndex INT NOT NULL")
     .parseColumn("partialIndex INT")
+    .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)")
     .parseMeta("PRIMARY KEY(id)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
+    .parseMeta("UNIQUE(medium_id, combiIndex)")
     .build();
 dataBaseBuilder.getTableBuilder()
     .setName("episode")
@@ -139,8 +141,10 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("part_id INT UNSIGNED NOT NULL")
     .parseColumn("totalIndex INT NOT NULL")
     .parseColumn("partialIndex INT")
+    .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)")
     .parseMeta("PRIMARY KEY(id)")
     .parseMeta("FOREIGN KEY(part_id) REFERENCES part(id)")
+    .parseMeta("UNIQUE(part_id, combiIndex)")
     .build();
 dataBaseBuilder.getTableBuilder()
     .setName("episode_release")
@@ -361,17 +365,18 @@ exports.Tables = {
         "title VARCHAR(200)," +
         "totalIndex INT NOT NULL," +
         "partialIndex INT," +
+        "combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)," +
         "PRIMARY KEY(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
+        "FOREIGN KEY(medium_id) REFERENCES medium(id), " +
+        "UNIQUE(medium_id, combiIndex)",
     episode: "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
         "part_id INT UNSIGNED NOT NULL," +
-        "title VARCHAR(200)," +
         "totalIndex INT NOT NULL," +
         "partialIndex INT," +
-        "url TEXT NOT NULL," +
-        "releaseDate DATETIME NOT NULL," +
+        "combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)," +
         "PRIMARY KEY(id)," +
-        "FOREIGN KEY(part_id) REFERENCES part(id)",
+        "FOREIGN KEY(part_id) REFERENCES part(id)," +
+        "UNIQUE(part_id, combiIndex)",
     user_episode: "user_uuid CHAR(36) NOT NULL," +
         "episode_id INT UNSIGNED NOT NULL," +
         "progress FLOAT UNSIGNED NOT NULL," +

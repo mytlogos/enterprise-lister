@@ -77,6 +77,55 @@ class TableParser {
             table.primaryKeys.push(column);
         }
     }
+    static parseUnique(table, tables, data) {
+        const exec = /unique\s*\((.+)\)/i.exec(data);
+        if (!exec) {
+            logger_1.default.warn(`could not parse unique constraint: '${data}'`);
+            return;
+        }
+        const uniqueIndex = [];
+        for (const columnName of exec[1].split(/[,\s]+/)) {
+            const foundColumnIndex = table.columns.findIndex((value) => {
+                if (value.type === databaseTypes_1.ColumnType.TEXT) {
+                    return new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
+                }
+                else {
+                    return value.name === columnName;
+                }
+            });
+            if (foundColumnIndex < 0) {
+                logger_1.default.warn(`could not find matching column for unique: '${columnName}'`);
+                continue;
+            }
+            const foundColumn = table.columns[foundColumnIndex];
+            let keySize;
+            if (foundColumn.type === databaseTypes_1.ColumnType.TEXT) {
+                const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
+                if (!keySizeExec) {
+                    logger_1.default.warn("unique column of type text has no specified key length");
+                    return;
+                }
+                keySize = Number(keySizeExec[1]);
+            }
+            const column = new columnSchema_1.ColumnSchema(foundColumn.name, foundColumn.type, foundColumn.modifiers, foundColumn.typeSize, false, foundColumn.foreignKey, foundColumn.default, keySize);
+            uniqueIndex.push(column);
+            column.table = foundColumn.table;
+            if (column.foreignKey) {
+                const index = table.foreignKeys.findIndex((value) => value.name === columnName);
+                table.foreignKeys[index] = column;
+            }
+            table.columns[foundColumnIndex] = column;
+            const otherUniqueIndex = table.uniqueIndices.find((value) => value.includes(foundColumn));
+            if (otherUniqueIndex) {
+                const index = otherUniqueIndex.indexOf(foundColumn);
+                otherUniqueIndex[index] = column;
+            }
+        }
+        if (!uniqueIndex.length) {
+            throw Error(`unique index without any columns: '${data}'`);
+        }
+        table.uniqueIndices.push(uniqueIndex);
+    }
     static parseDataColumn(table, tables, value) {
         const parts = value.split(/\s+/).filter((s) => s);
         const name = parts[0];
@@ -95,6 +144,9 @@ class TableParser {
                 break;
             case databaseTypes_1.ColumnType.FLOAT:
                 type = databaseTypes_1.ColumnType.FLOAT;
+                break;
+            case databaseTypes_1.ColumnType.DOUBLE:
+                type = databaseTypes_1.ColumnType.DOUBLE;
                 break;
             case databaseTypes_1.ColumnType.TEXT:
                 type = databaseTypes_1.ColumnType.TEXT;
@@ -144,11 +196,13 @@ class TableParser {
                     break;
                 case "DEFAULT":
                     i++;
-                    defaultValue = parts[i];
-                    if (!defaultValue) {
+                    const defaultValueObj = this._getDefaultValue(parts, i);
+                    if (!defaultValueObj || !defaultValueObj.value) {
                         logger_1.default.warn(`no default value specified for '${name}' of ${table.name}`);
                         return null;
                     }
+                    defaultValue = defaultValueObj.value;
+                    i = defaultValueObj.index;
                     break;
                 default:
                     logger_1.default.warn(`could not parse modifier for: '${modifierPart}'`);
@@ -161,6 +215,31 @@ class TableParser {
         const column = new columnSchema_1.ColumnSchema(name, type, modifiers, typeSize, false, undefined, defaultValue);
         column.table = table;
         return column;
+    }
+    static _getDefaultValue(columnParts, index) {
+        let defaultValue = columnParts[index];
+        if (!defaultValue) {
+            throw Error(`missing defaultValue in: '${columnParts.join(" ")}'`);
+        }
+        if (defaultValue.startsWith("(")) {
+            index++;
+            let foundClosingParenthesis = false;
+            for (; index < columnParts.length; index++) {
+                const currentValue = columnParts[index];
+                defaultValue += " " + currentValue;
+                if (currentValue.startsWith("(")) {
+                    defaultValue += TableParser._getDefaultValue(columnParts, index);
+                }
+                else if (currentValue.endsWith(")")) {
+                    foundClosingParenthesis = true;
+                    break;
+                }
+            }
+            if (!foundClosingParenthesis) {
+                throw Error(`invalid default value: no closing parenthesis in '${columnParts.join(" ")}'`);
+            }
+        }
+        return { index, value: defaultValue };
     }
 }
 exports.TableParser = TableParser;

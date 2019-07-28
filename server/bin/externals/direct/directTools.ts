@@ -1,0 +1,32 @@
+import logger from "../../logger";
+import {TextEpisodeContent} from "../types";
+import {MediaType} from "../../tools";
+
+export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string) {
+    if (!novelTitle || !episodeTitle) {
+        logger.warn("episode link with no novel or episode title: " + urlString);
+        return [];
+    }
+    if (!content) {
+        logger.warn("episode link with no content: " + urlString);
+        return [];
+    }
+    const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
+
+    let index;
+    if (chapterGroups) {
+        index = Number(chapterGroups[1]);
+    }
+    if (index == null || Number.isNaN(index)) {
+        index = undefined;
+    }
+    const textEpisodeContent: TextEpisodeContent = {
+        contentType: MediaType.TEXT,
+        content,
+        episodeTitle,
+        mediumTitle: novelTitle,
+        index
+    };
+
+    return [textEpisodeContent];
+}

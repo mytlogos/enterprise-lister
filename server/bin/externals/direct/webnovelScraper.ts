@@ -110,6 +110,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             return {
                 url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
                 title: item.name,
+                combiIndex: item.index,
                 totalIndex: item.index,
                 releaseDate: date
             };
@@ -117,6 +118,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         return {
             episodes: chapters,
             title: name,
+            combiIndex: volume.index,
             totalIndex: volume.index,
         };
     });
@@ -268,7 +270,7 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
             volumeItem.name = "Volume " + volumeItem.index;
         }
         const episodes: TocEpisode[] = [];
-        parts.push({totalIndex: volumeItem.index, title: volumeItem.name, partialIndex: 0, episodes});
+        parts.push({totalIndex: volumeItem.index, title: volumeItem.name, combiIndex: volumeItem.index, episodes});
 
         for (const chapterItem of volumeItem.chapterItems) {
             const date = new Date(chapterItem.createTime);
@@ -280,8 +282,8 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
 
             const link = `https://www.webnovel.com/book/${bookId}/${chapterItem.id}/`;
             episodes.push({
-                partialIndex: 0,
                 title: chapterItem.name,
+                combiIndex: chapterItem.index,
                 totalIndex: chapterItem.index,
                 releaseDate,
                 url: link

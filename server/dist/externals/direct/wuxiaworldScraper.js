@@ -125,21 +125,30 @@ async function scrapeToc(urlString) {
             logger_1.default.warn("could not find volume index on: " + urlString);
             return [];
         }
+        // TODO: 24.07.2019 check if there are volumes with fractional index like '5.1'
         const volume = {
             title: volumeTitle,
             episodes: [],
+            combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
             const link = url.resolve(uri, chapterElement.attr("href"));
             const title = chapterElement.text().trim();
-            const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(title);
-            if (chapterGroups) {
-                const index = Number(chapterGroups[1]);
-                if (!Number.isNaN(index)) {
-                    volume.episodes.push({ url: link, title, totalIndex: index });
+            const chapterGroups = /^\s*Chapter\s*((\d+)(\.(\d+))?)/.exec(title);
+            if (chapterGroups && chapterGroups[2]) {
+                const indices = tools_1.extractIndices(chapterGroups, 1, 2, 4);
+                if (!indices) {
+                    throw Error(`changed format on wuxiaworld, got no indices for: '${title}'`);
                 }
+                volume.episodes.push({
+                    url: link,
+                    title,
+                    totalIndex: indices.total,
+                    partialIndex: indices.fraction,
+                    combiIndex: indices.combi
+                });
             }
         }
         content.push(volume);

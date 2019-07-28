@@ -91,13 +91,19 @@ const InsertParser = {
             });
         }
         const values = insertValues.split(",").map((value) => value.trim());
-        if (values.length !== columns.length) {
-            logger_1.default.warn(`not enough values for the columns: expected ${columns.length}, got ${values.length}`);
+        const columnLength = columns.length;
+        const valueLength = values.length;
+        if (valueLength < columnLength) {
+            logger_1.default.warn(`not enough values for the columns: expected ${columnLength}, got ${valueLength}`);
+            return null;
+        }
+        else if (!(valueLength % columnLength)) {
+            logger_1.default.warn(`mismatching number of values for columns: expected ${columnLength}, got ${valueLength}`);
             return null;
         }
         const columnTargets = [];
         let singleParamUsed = false;
-        for (let i = 0; i < columns.length; i++) {
+        for (let i = 0; i < columnLength; i++) {
             const columnName = columns[i];
             let value = values[i];
             if (value === "?") {
@@ -226,7 +232,7 @@ function createTrigger(watchTable, targetTable, invalidationTable, mainPrimaryKe
     return {
         table: watchTable,
         triggerType,
-        createInvalidationUpdateQuery(query) {
+        updateInvalidationMap(query, invalidations) {
             const triggeredColumn = query.columnTarget.find((value) => {
                 if (value.column.foreignKey && targetTable.primaryKeys.includes(value.column.foreignKey)) {
                     return true;
@@ -235,26 +241,27 @@ function createTrigger(watchTable, targetTable, invalidationTable, mainPrimaryKe
             });
             if (!triggeredColumn) {
                 logger_1.default.warn("an trigger insert statement without the referenced key of target");
-                return "";
+                return;
             }
             const invalidationColumn = columnConverter(query, triggeredColumn);
-            const primaryKeyName = promise_mysql_1.default.escapeId(mainPrimaryKey);
-            const tableName = promise_mysql_1.default.escapeId(invalidationTable.name);
-            const invalidationName = promise_mysql_1.default.escapeId(invalidationColumn.column);
-            const startSql = `INSERT IGNORE INTO ${tableName} (${invalidationName}, ${primaryKeyName})`;
-            let sqlQuery;
-            const invalidationValue = invalidationColumn.value;
+            const key = `${invalidationTable.name}$${mainPrimaryKey}$${invalidationColumn.column}`;
+            const invalidation = tools_1.getElseSet(invalidations, key, () => {
+                return {
+                    table: invalidationTable.name,
+                    foreignColumn: invalidationColumn.column,
+                    keyColumn: mainPrimaryKey,
+                    values: [],
+                };
+            });
             if (watchTable.mainDependent) {
-                const uuid = query.uuid;
-                if (!uuid) {
+                if (!query.uuid) {
                     throw Error("missing uuid on dependant table");
                 }
-                sqlQuery = startSql + ` VALUES (${promise_mysql_1.default.escape(invalidationValue)}, ${promise_mysql_1.default.escape(query.uuid)});`;
+                invalidation.uuid = promise_mysql_1.default.escape(query.uuid);
             }
-            else {
-                sqlQuery = startSql + ` SELECT ${promise_mysql_1.default.escape(invalidationValue)},uuid FROM user;`;
+            if (!invalidation.values.includes(invalidationColumn.value)) {
+                invalidation.values.push(invalidationColumn.value);
             }
-            return sqlQuery;
         }
     };
 }
@@ -431,19 +438,29 @@ const StateProcessorImpl = {
                 queries.push(query);
             }
         }
-        const invalidationQueries = [];
+        const invalidationMap = new Map();
         for (const query of queries) {
             this.trigger
                 .filter((value) => (value.triggerType === query.operation) && (value.table === query.target))
-                .forEach((value) => {
-                const updateQuery = value.createInvalidationUpdateQuery(query);
-                if (Array.isArray(updateQuery) && updateQuery.length) {
-                    invalidationQueries.push(...updateQuery.filter((s) => s));
-                }
-                else if (tools_1.isString(updateQuery) && updateQuery) {
-                    invalidationQueries.push(updateQuery);
-                }
-            });
+                .forEach((value) => value.updateInvalidationMap(query, invalidationMap));
+        }
+        const invalidationQueries = [];
+        for (const value of invalidationMap.values()) {
+            let sqlQuery = `INSERT IGNORE INTO ${promise_mysql_1.default.escapeId(value.table)} ` +
+                `(${promise_mysql_1.default.escapeId(value.foreignColumn)}, ${promise_mysql_1.default.escapeId(value.keyColumn)}) `;
+            if (value.uuid) {
+                const values = value.values
+                    .map((v) => `SELECT ${promise_mysql_1.default.escape(v)},${promise_mysql_1.default.escape(value.uuid)}`)
+                    .join(" UNION ");
+                sqlQuery += `VALUES (${values})`;
+            }
+            else {
+                const values = value.values
+                    .map((v) => `SELECT ${promise_mysql_1.default.escape(v)}`)
+                    .join(" UNION ");
+                sqlQuery += ` SELECT * FROM (${values}) AS value JOIN (SELECT uuid FROM user) AS user`;
+            }
+            invalidationQueries.push(sqlQuery);
         }
         return invalidationQueries;
     },
@@ -498,7 +515,6 @@ const StateProcessorImpl = {
             const schema = tableSchema.getTableSchema();
             return context.createTable(schema.name, schema.columns);
         }));
-        return;
     },
     checkTables(tables, track, ignore) {
         const separator = /\s+/;

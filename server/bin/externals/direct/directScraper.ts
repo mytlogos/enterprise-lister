@@ -4,7 +4,7 @@ import {getHook as getKissAnimeHook} from "./kissAnimeScraper";
 import {getHook as getMangaDexHook} from "./mangadexScraper";
 import {getHook as getMangaHasuHook} from "./mangaHasuScraper";
 import {getHook as getWebnovelHook} from "./webnovelScraper";
-import {getHook as getNovelFullHook} from "./fullNovelScraper";
+import {getHook as getNovelFullHook} from "./novelFullScraper";
 import {getHook as getBoxnovelHook} from "./boxNovelScraper";
 
 export function getHooks(): Hook[] {

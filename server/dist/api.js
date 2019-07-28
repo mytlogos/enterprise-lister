@@ -105,17 +105,22 @@ function mediumRouter() {
     progressRoute.delete(UserApi.deleteProgress);
     return router;
 }
+function episodeRouter() {
+    const router = express_1.Router();
+    const episodeRoute = router.route("");
+    episodeRoute.get(UserApi.getEpisode);
+    episodeRoute.post(UserApi.postEpisode);
+    episodeRoute.put(UserApi.putEpisode);
+    episodeRoute.delete(UserApi.deleteEpisode);
+    return router;
+}
 /**
  * Creates the Part Api Router.
  * Adds the Episode Api Route to the Part Api Router.
  */
 function partRouter() {
     const router = express_1.Router();
-    const episodeRoute = router.route("/episode");
-    episodeRoute.get(UserApi.getEpisode);
-    episodeRoute.post(UserApi.postEpisode);
-    episodeRoute.put(UserApi.putEpisode);
-    episodeRoute.delete(UserApi.deleteEpisode);
+    router.use("/episode", episodeRouter());
     const partRoute = router.route("");
     partRoute.get(UserApi.getPart);
     partRoute.post(UserApi.postPart);

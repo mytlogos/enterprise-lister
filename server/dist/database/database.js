@@ -8,6 +8,21 @@ const logger_1 = tslib_1.__importDefault(require("../logger"));
 const queryContext_1 = require("./queryContext");
 const databaseSchema_1 = require("./databaseSchema");
 const tools_1 = require("../tools");
+// setInterval(
+//     () => StateProcessor
+//         .startRound()
+//         .then((value) => {
+//             if (!value || !value.length) {
+//                 return;
+//             }
+//             return inContext((invalidatorContext) => invalidatorContext.addInvalidation(value));
+//         })
+//         .catch((reason) => {
+//             console.log(reason);
+//             logger.error(reason);
+//         }),
+//     5000
+// );
 /**
  * Creates the context for QueryContext, to
  * query a single connection sequentially.
@@ -34,17 +49,6 @@ async function inContext(callback, transaction = true) {
         // release connection into the pool
         await pool.releaseConnection(con);
     }
-    databaseValidator_1.StateProcessor.startRound()
-        .then((value) => {
-        if (!value || !value.length) {
-            return;
-        }
-        return inContext((invalidatorContext) => invalidatorContext.addInvalidation(value), true);
-    })
-        .catch((reason) => {
-        console.log(reason);
-        logger_1.default.error(reason);
-    });
     return result;
 }
 exports.inContext = inContext;
@@ -68,8 +72,8 @@ async function doTransaction(callback, context, transaction, attempts = 0) {
             // if there is a transaction first rollback and then throw error
             await context.rollback();
         }
-        // if it is an deadlock error, restart transaction after a delay at max five times
-        if (e.errno === 1213 && attempts < 5) {
+        // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
+        if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
             await tools_1.delay(500);
             return doTransaction(callback, context, transaction, ++attempts);
         }
@@ -436,7 +440,7 @@ exports.Storage = {
         return inContext((context) => context.getPageInfo(link, key));
     },
     updatePageInfo(link, key, values, toDeleteValues) {
-        return inContext((context) => context.updatePageInfo(link, key, values));
+        return inContext((context) => context.updatePageInfo(link, key, values, toDeleteValues));
     },
     removePageInfo(link, key) {
         return inContext((context) => context.removePageInfo(link, key));

@@ -140,27 +140,32 @@ async function scrapeToc(urlString) {
     }
     const uri = "https://kissanime.ru/";
     const content = [];
-    const chapReg = /Episode\s*(\d+(\.\d+)?)(\s*.+)?/i;
+    const chapReg = /Episode\s*((\d+)(\.(\d+))?)(\s*(.+))?/i;
     for (let i = 0; i < episodeElements.length; i++) {
         const episodeElement = episodeElements.eq(i);
         const columns = episodeElement.children();
         const date = new Date(columns.eq(1).text());
         const titleElement = columns.eq(0).find("a");
-        const episodeGroups = chapReg.exec(titleElement.text());
+        const titleString = tools_1.sanitizeString(titleElement.text());
+        const episodeGroups = chapReg.exec(titleString);
         if (Number.isNaN(date.getDate()) || !episodeGroups) {
             logger_1.default.warn("changed episode format on kissAnime toc");
             return [];
         }
         const link = url.resolve(uri, titleElement.attr("href"));
-        const episodeIndex = Number(episodeGroups[1]);
-        const title = episodeGroups[3] || "Episode " + episodeIndex;
-        if (Number.isNaN(episodeIndex)) {
-            logger_1.default.warn("changed episode format on kissAnime toc: got no index");
-            return [];
+        const indices = tools_1.extractIndices(episodeGroups, 1, 2, 4);
+        if (!indices) {
+            throw Error(`changed format on kissAnime, got no indices for: '${titleString}'`);
+        }
+        let title = "Episode " + indices.combi;
+        if (episodeGroups[6]) {
+            title += " - " + episodeGroups[6];
         }
         content.push({
             title,
-            totalIndex: episodeIndex,
+            combiIndex: indices.combi,
+            totalIndex: indices.total,
+            partialIndex: indices.fraction,
             url: link,
             releaseDate: date
         });

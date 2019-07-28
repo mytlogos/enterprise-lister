@@ -103,7 +103,7 @@
                 const data = this.user
                     .filter((value) => value)
                     .map((value) => {
-                        const host = this.hosts.find((hostValue) => hostValue.value === value.type);
+                        const host = this.hosts.find((hostValue) => hostValue.values === value.type);
                         return {...value, host};
                     });
 

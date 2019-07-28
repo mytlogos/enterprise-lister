@@ -3,7 +3,7 @@ import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import logger from "../../logger";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
-import {countOccurrence, equalsIgnore, MediaType, sanitizeString} from "../../tools";
+import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.wuxiaworld.com/";
@@ -146,9 +146,11 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             logger.warn("could not find volume index on: " + urlString);
             return [];
         }
+        // TODO: 24.07.2019 check if there are volumes with fractional index like '5.1'
         const volume: TocPart = {
             title: volumeTitle,
             episodes: [],
+            combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
 
@@ -157,14 +159,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             const link = url.resolve(uri, chapterElement.attr("href"));
             const title = chapterElement.text().trim();
 
-            const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(title);
+            const chapterGroups = /^\s*Chapter\s*((\d+)(\.(\d+))?)/.exec(title);
 
-            if (chapterGroups) {
-                const index = Number(chapterGroups[1]);
-
-                if (!Number.isNaN(index)) {
-                    volume.episodes.push({url: link, title, totalIndex: index});
+            if (chapterGroups && chapterGroups[2]) {
+                const indices = extractIndices(chapterGroups, 1, 2, 4);
+                if (!indices) {
+                    throw Error(`changed format on wuxiaworld, got no indices for: '${title}'`);
                 }
+                volume.episodes.push({
+                    url: link,
+                    title,
+                    totalIndex: indices.total,
+                    partialIndex: indices.fraction,
+                    combiIndex: indices.combi
+                });
             }
         }
 

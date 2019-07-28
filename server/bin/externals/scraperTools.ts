@@ -269,7 +269,7 @@ async function processMediumNews(
                     }).then(() => undefined);
                 }
                 release.episodeId = value.id;
-                return Storage.addRelease(release) as unknown as Promise<void>;
+                return Storage.addRelease(release).then(() => undefined);
             });
             await Promise.all(promises);
         }
@@ -408,7 +408,7 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
     return searchJobs.length ? searchJobs[0] : scraperJobs[0];
 }
 
-export const checkTocs = activity(async (): Promise<void | ScraperJob[]> => {
+export const checkTocs = activity(async (): Promise<ScraperJob[]> => {
     const mediaTocs = await Storage.getAllTocs();
     const tocSearchMedia = await Storage.getTocSearchMedia();
     const mediaWithTocs: Map<number, string[]> = new Map();
@@ -589,7 +589,7 @@ export const feed = activity(async (feedLink: string): Promise<{ link: string, r
  * Scrape everything for one cycle, wait for a specified interval and scrape again.
  * Output is send per event listener.
  */
-async function scrape(dependants = scrapeDependants, next = true) {
+async function scrape(dependants = scrapeDependants, next = true): Promise<void> {
     if (paused) {
         return;
     }
@@ -608,9 +608,9 @@ async function scrape(dependants = scrapeDependants, next = true) {
         .then(() => {
             dependants.oneTimeUser.length = 0;
         });
-    const checkTocsFinished = checkTocs();
+    const checkTocsFinished = checkTocs().then(() => undefined);
 
-    const allPromises = [
+    const allPromises: Array<Promise<void>> = [
         tocFinished,
         newsFinished,
         newsAdapterFinished,
@@ -742,7 +742,7 @@ export class ScraperHelper {
         callbacks.push(callback);
     }
 
-    public emit(event: string, value: any) {
+    public emit(event: string, value: any): void {
         if (env.stopScrapeEvents) {
             console.log("not emitting events");
             return;
@@ -751,12 +751,12 @@ export class ScraperHelper {
         callbacks.forEach((cb) => cb(value));
     }
 
-    public init() {
+    public init(): void {
         this.registerHooks(getListManagerHooks());
         this.registerHooks(getHooks());
     }
 
-    private registerHooks(hook: Hook[] | Hook) {
+    private registerHooks(hook: Hook[] | Hook): void {
         // @ts-ignore
         multiSingle(hook, (value: Hook) => {
             if (value.redirectReg) {
@@ -828,7 +828,13 @@ export function addDependant(dependant: Dependant) {
         });
 }
 
+let hookRegistered = false;
+
 export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]> {
+    if (!episodeDownloader.size && !hookRegistered) {
+        registerHooks(directScraper.getHooks());
+        hookRegistered = true;
+    }
     const entries = [...episodeDownloader.entries()];
 
     const downloadContents: Map<number, DownloadContent> = new Map();

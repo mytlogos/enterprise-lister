@@ -23,6 +23,7 @@ export enum Modifier {
 }
 
 export enum ColumnType {
+    DOUBLE = "DOUBLE",
     BOOLEAN = "BOOLEAN",
     TEXT = "TEXT",
     CHAR = "CHAR",

@@ -3,7 +3,7 @@ import {EpisodeNews, News} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {MediaType, sanitizeString} from "../../tools";
+import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "cloudscraper";
 import {CloudScraper, CloudscraperOptions} from "cloudscraper";
 import * as normalRequest from "request";
@@ -158,7 +158,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
     const content: TocEpisode[] = [];
 
-    const chapReg = /Episode\s*(\d+(\.\d+)?)(\s*.+)?/i;
+    const chapReg = /Episode\s*((\d+)(\.(\d+))?)(\s*(.+))?/i;
 
     for (let i = 0; i < episodeElements.length; i++) {
         const episodeElement = episodeElements.eq(i);
@@ -167,7 +167,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         const date = new Date(columns.eq(1).text());
 
         const titleElement = columns.eq(0).find("a");
-        const episodeGroups = chapReg.exec(titleElement.text());
+        const titleString = sanitizeString(titleElement.text());
+        const episodeGroups = chapReg.exec(titleString);
 
         if (Number.isNaN(date.getDate()) || !episodeGroups) {
             logger.warn("changed episode format on kissAnime toc");
@@ -175,16 +176,23 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         }
 
         const link = url.resolve(uri, titleElement.attr("href"));
-        const episodeIndex = Number(episodeGroups[1]);
-        const title = episodeGroups[3] || "Episode " + episodeIndex;
+        const indices = extractIndices(episodeGroups, 1, 2, 4);
 
-        if (Number.isNaN(episodeIndex)) {
-            logger.warn("changed episode format on kissAnime toc: got no index");
-            return [];
+        if (!indices) {
+            throw Error(`changed format on kissAnime, got no indices for: '${titleString}'`);
         }
+
+        let title = "Episode " + indices.combi;
+
+        if (episodeGroups[6]) {
+            title += " - " + episodeGroups[6];
+        }
+
         content.push({
             title,
-            totalIndex: episodeIndex,
+            combiIndex: indices.combi,
+            totalIndex: indices.total,
+            partialIndex: indices.fraction,
             url: link,
             releaseDate: date
         });

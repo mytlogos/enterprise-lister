@@ -5,7 +5,7 @@ export declare const processNewsScraper: (...args: any) => Promise<{
     link: string;
     result: News[];
 }>;
-export declare const checkTocs: (...args: any) => Promise<void | ScraperJob[]>;
+export declare const checkTocs: (...args: any) => Promise<ScraperJob[]>;
 export declare const oneTimeToc: (...args: any) => Promise<{
     toc: Toc[];
     uuid: string;

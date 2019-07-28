@@ -86,6 +86,7 @@ export interface DownloadContent {
 
 export interface TocContent {
     title: string;
+    combiIndex: number;
     totalIndex: number;
     partialIndex?: number;
 }

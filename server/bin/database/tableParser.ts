@@ -96,6 +96,65 @@ export class TableParser {
         }
     }
 
+    public static parseUnique(table: TableSchema, tables: TableSchema[], data: string) {
+        const exec = /unique\s*\((.+)\)/i.exec(data);
+
+        if (!exec) {
+            logger.warn(`could not parse unique constraint: '${data}'`);
+            return;
+        }
+        const uniqueIndex: ColumnSchema[] = [];
+        for (const columnName of exec[1].split(/[,\s]+/)) {
+            const foundColumnIndex = table.columns.findIndex((value) => {
+                if (value.type === ColumnType.TEXT) {
+                    return new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
+                } else {
+                    return value.name === columnName;
+                }
+            });
+
+            if (foundColumnIndex < 0) {
+                logger.warn(`could not find matching column for unique: '${columnName}'`);
+                continue;
+            }
+            const foundColumn: ColumnSchema = table.columns[foundColumnIndex];
+            let keySize: number | undefined;
+
+            if (foundColumn.type === ColumnType.TEXT) {
+                const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
+
+                if (!keySizeExec) {
+                    logger.warn("unique column of type text has no specified key length");
+                    return;
+                }
+                keySize = Number(keySizeExec[1]);
+            }
+            const column = new ColumnSchema(
+                foundColumn.name, foundColumn.type, foundColumn.modifiers,
+                foundColumn.typeSize, false, foundColumn.foreignKey, foundColumn.default,
+                keySize
+            );
+            uniqueIndex.push(column);
+
+            column.table = foundColumn.table;
+            if (column.foreignKey) {
+                const index = table.foreignKeys.findIndex((value: ColumnSchema) => value.name === columnName);
+                table.foreignKeys[index] = column;
+            }
+            table.columns[foundColumnIndex] = column;
+            const otherUniqueIndex = table.uniqueIndices.find((value) => value.includes(foundColumn));
+
+            if (otherUniqueIndex) {
+                const index = otherUniqueIndex.indexOf(foundColumn);
+                otherUniqueIndex[index] = column;
+            }
+        }
+        if (!uniqueIndex.length) {
+            throw Error(`unique index without any columns: '${data}'`);
+        }
+        table.uniqueIndices.push(uniqueIndex);
+    }
+
     public static parseDataColumn(table: TableSchema, tables: TableSchema[], value: string): ColumnSchema | null {
         const parts = value.split(/\s+/).filter((s) => s);
         const name = parts[0];
@@ -115,6 +174,9 @@ export class TableParser {
                 break;
             case ColumnType.FLOAT:
                 type = ColumnType.FLOAT;
+                break;
+            case ColumnType.DOUBLE:
+                type = ColumnType.DOUBLE;
                 break;
             case ColumnType.TEXT:
                 type = ColumnType.TEXT;
@@ -164,12 +226,14 @@ export class TableParser {
                     break;
                 case "DEFAULT":
                     i++;
-                    defaultValue = parts[i];
+                    const defaultValueObj = this._getDefaultValue(parts, i);
 
-                    if (!defaultValue) {
+                    if (!defaultValueObj || !defaultValueObj.value) {
                         logger.warn(`no default value specified for '${name}' of ${table.name}`);
                         return null;
                     }
+                    defaultValue = defaultValueObj.value;
+                    i = defaultValueObj.index;
                     break;
                 default:
                     logger.warn(`could not parse modifier for: '${modifierPart}'`);
@@ -182,5 +246,33 @@ export class TableParser {
         const column = new ColumnSchema(name, type, modifiers, typeSize, false, undefined, defaultValue);
         column.table = table;
         return column;
+    }
+
+    private static _getDefaultValue(columnParts: string[], index: number): { index: number, value: string } {
+        let defaultValue = columnParts[index];
+
+        if (!defaultValue) {
+            throw Error(`missing defaultValue in: '${columnParts.join(" ")}'`);
+        }
+        if (defaultValue.startsWith("(")) {
+            index++;
+            let foundClosingParenthesis = false;
+
+            for (; index < columnParts.length; index++) {
+                const currentValue = columnParts[index];
+                defaultValue += " " + currentValue;
+
+                if (currentValue.startsWith("(")) {
+                    defaultValue += TableParser._getDefaultValue(columnParts, index);
+                } else if (currentValue.endsWith(")")) {
+                    foundClosingParenthesis = true;
+                    break;
+                }
+            }
+            if (!foundClosingParenthesis) {
+                throw Error(`invalid default value: no closing parenthesis in '${columnParts.join(" ")}'`);
+            }
+        }
+        return {index, value: defaultValue};
     }
 }

@@ -3,8 +3,11 @@ import {MultiSingle} from "./types";
 import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
+// FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
+//  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 import bcrypt from "bcrypt-nodejs";
 import emojiStrip from "emoji-strip";
+
 
 export function remove<T>(array: T[], item: T): boolean {
     const index = array.indexOf(item);
@@ -400,8 +403,30 @@ export function allTypes() {
 
 export function combiIndex(value: { totalIndex: number, partialIndex?: number }): number {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
+    if (Number.isNaN(combi)) {
+        throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
+    }
     return combi;
 }
+
+export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number)
+    : { combi: number, total: number, fraction?: number } | null {
+
+    const whole = Number(groups[allPosition]);
+
+    if (Number.isNaN(whole)) {
+        return null;
+    }
+    const totalIndex = Number(groups[totalPosition]);
+    let partialIndex;
+
+    if (groups[partialPosition]) {
+        partialIndex = Number(groups[partialPosition]);
+    }
+    return {combi: whole, total: totalIndex, fraction: partialIndex};
+}
+
+const indexRegex = /\d+(\.(\d+))/;
 
 export function separateIndex(value: number): { totalIndex: number, partialIndex?: number; } {
     const total = Math.floor(value);

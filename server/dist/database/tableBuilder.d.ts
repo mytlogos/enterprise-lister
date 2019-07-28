@@ -12,6 +12,7 @@ export declare class TableBuilder {
     private readonly databaseBuilder;
     private readonly stubTable;
     private readonly invalidations;
+    private readonly uniqueIndices;
     constructor(databaseBuilder: DataBaseBuilder);
     setInvalidationTable(): this;
     parseColumn(column: string): this;
@@ -19,6 +20,7 @@ export declare class TableBuilder {
     parseMeta(data: string): this;
     getColumnBuilder(): ColumnBuilder;
     addColumn(column: ColumnSchema): this;
+    addUniqueIndex(index: ColumnSchema[]): this;
     setName(name: string): this;
     addInvalidation(type: InvalidationType, tableName?: string): this;
     build(): TableSchema;

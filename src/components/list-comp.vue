@@ -46,7 +46,7 @@
                             return {value, match: regFilter.exec(value.name)};
                         })
                         .filter((value) => value.match)
-                        .map((value) => value.value);
+                        .map((value) => value.values);
                 }
 
                 return lists;

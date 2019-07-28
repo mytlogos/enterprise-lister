@@ -65,7 +65,7 @@
                 let mediumType = 0;
                 this.mediaTypes.forEach((value) => {
                     if (value.checked) {
-                        mediumType |= value.value;
+                        mediumType |= value.values;
                     }
                 });
                 emitBusEvent("do:add-list", {name: this.name, type: mediumType});

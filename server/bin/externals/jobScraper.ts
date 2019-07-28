@@ -33,7 +33,7 @@ export class JobScraper implements Scraper {
 
     private paused = true;
     private readonly helper = new ScraperHelper();
-    private readonly queue = new JobQueue();
+    private readonly queue = new JobQueue({maxActive: 50});
     private readonly dependantMap: Map<any, Job> = new Map();
 
     constructor() {
@@ -277,7 +277,7 @@ export class JobScraper implements Scraper {
 
     private processJobCallbackResult(value: any): void {
         if (!value) {
-            return value;
+            return;
         }
         if (Array.isArray(value)) {
             value.forEach((scraperJob) => this.addScraperJob(scraperJob));

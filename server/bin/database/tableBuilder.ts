@@ -14,6 +14,8 @@ export class TableBuilder {
     private readonly databaseBuilder: DataBaseBuilder;
     private readonly stubTable = new TableSchema([], "");
     private readonly invalidations: Array<{ type: InvalidationType, table?: string }> = [];
+    private readonly uniqueIndices: ColumnSchema[][] = [];
+
 
     constructor(databaseBuilder: DataBaseBuilder) {
         this.databaseBuilder = databaseBuilder;
@@ -39,10 +41,15 @@ export class TableBuilder {
     }
 
     public parseMeta(data: string): this {
-        if (data.startsWith("PRIMARY KEY")) {
+        const uppedData = data.toUpperCase();
+        if (uppedData.startsWith("PRIMARY KEY")) {
             TableParser.parsePrimaryKey(this.stubTable, this.databaseBuilder.tables, data);
-        } else if (data.startsWith("FOREIGN KEY")) {
+
+        } else if (uppedData.startsWith("FOREIGN KEY")) {
             TableParser.parseForeignKey(this.stubTable, this.databaseBuilder.tables, data);
+
+        } else if (uppedData.startsWith("UNIQUE")) {
+            TableParser.parseUnique(this.stubTable, this.databaseBuilder.tables, data);
         } else {
             throw Error(`unknown meta: ${data}`);
         }
@@ -55,6 +62,11 @@ export class TableBuilder {
 
     public addColumn(column: ColumnSchema): this {
         this.columns.push(column);
+        return this;
+    }
+
+    public addUniqueIndex(index: ColumnSchema[]): this {
+        this.uniqueIndices.push(index);
         return this;
     }
 
@@ -74,7 +86,7 @@ export class TableBuilder {
         }
         const table = new TableSchema(
             [...this.columns, ...this.stubTable.columns], this.name, this.main,
-            this.invalidationColumn, this.invalidationTable
+            this.invalidationColumn, this.invalidationTable, this.uniqueIndices
         );
         table.columns.forEach((value) => value.table = table);
         this.databaseBuilder.addTable(table, this.invalidations);

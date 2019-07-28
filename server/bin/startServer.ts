@@ -5,6 +5,7 @@ import {createServer, Server} from "http";
 import env from "./env";
 // start storage (connect to database)
 import {startStorage} from "./database/database";
+import "./deviceVerificator";
 // start crawler (setup and start running)
 import os from "os";
 
@@ -39,9 +40,7 @@ function onError(error: any) {
         throw error;
     }
 
-    const bind = typeof port === "string"
-        ? "Pipe " + port
-        : "Port " + port;
+    const bind = "Port " + port;
 
     // handle specific listen errors with friendly messages
     switch (error.code) {

@@ -16,6 +16,7 @@ var Modifier;
 })(Modifier = exports.Modifier || (exports.Modifier = {}));
 var ColumnType;
 (function (ColumnType) {
+    ColumnType["DOUBLE"] = "DOUBLE";
     ColumnType["BOOLEAN"] = "BOOLEAN";
     ColumnType["TEXT"] = "TEXT";
     ColumnType["CHAR"] = "CHAR";

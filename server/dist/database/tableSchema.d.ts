@@ -12,8 +12,9 @@ export declare class TableSchema {
     readonly main: boolean;
     readonly invalidationColumn?: string;
     readonly invalidationTable: boolean;
+    readonly uniqueIndices: ColumnSchema[][];
     mainDependent?: boolean;
-    constructor(columns: ColumnSchema[], name: string, main?: boolean, invalidationCol?: string, invalidTable?: boolean);
+    constructor(columns: ColumnSchema[], name: string, main?: boolean, invalidationCol?: string, invalidTable?: boolean, uniqueIndices?: ColumnSchema[][]);
     getTableSchema(): {
         name: string;
         columns: string[];

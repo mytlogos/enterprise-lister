@@ -198,7 +198,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                     }).then(() => undefined);
                 }
                 release.episodeId = value.id;
-                return database_1.Storage.addRelease(release);
+                return database_1.Storage.addRelease(release).then(() => undefined);
             });
             await Promise.all(promises);
         }
@@ -491,7 +491,7 @@ async function scrape(dependants = scrapeDependants, next = true) {
         .then(() => {
         dependants.oneTimeUser.length = 0;
     });
-    const checkTocsFinished = exports.checkTocs();
+    const checkTocsFinished = exports.checkTocs().then(() => undefined);
     const allPromises = [
         tocFinished,
         newsFinished,
@@ -649,7 +649,12 @@ function addDependant(dependant) {
     });
 }
 exports.addDependant = addDependant;
+let hookRegistered = false;
 async function downloadEpisodes(episodes) {
+    if (!episodeDownloader.size && !hookRegistered) {
+        registerHooks(directScraper.getHooks());
+        hookRegistered = true;
+    }
     const entries = [...episodeDownloader.entries()];
     const downloadContents = new Map();
     for (const episode of episodes) {
