@@ -5,6 +5,25 @@ import logger from "./logger";
 import {downloadEpisodes, ScrapeTypes} from "./externals/scraperTools";
 import {Errors, isError, isString, stringToNumberList} from "./tools";
 
+export const putConsumeUnusedMedia: Handler = (req, res) => {
+    const {mediumId, tocsMedia} = req.body;
+
+    if (mediumId <= 0 || !tocsMedia || !Array.isArray(tocsMedia) || !tocsMedia.length) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, Storage.consumeMediaInWait(mediumId, tocsMedia));
+};
+
+export const postCreateFromUnusedMedia: Handler = (req, res) => {
+    const {createMedium, tocsMedia, listId} = req.body;
+
+    if (!createMedium || listId <= 0) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, Storage.createFromMediaInWait(createMedium, tocsMedia, listId));
+};
 export const getUnusedMedia: Handler = (req, res) => {
     sendResult(res, Storage.getMediaInWait());
 };
@@ -13,6 +32,7 @@ export const readNews: Handler = (req, res) => {
     const {uuid, read} = req.body;
     if (!read || !isString(read)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     const currentlyReadNews = stringToNumberList(read);
 
@@ -23,6 +43,7 @@ export const processReadEpisode: Handler = (req, res) => {
     const {uuid, result} = req.body;
     if (!result) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.markEpisodeRead(uuid, result));
 };
@@ -31,6 +52,7 @@ export const processProgress: Handler = (req, res) => {
     const {uuid, progress} = req.body;
     if (!progress) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.setProgress(uuid, progress));
 };
@@ -39,6 +61,7 @@ export const refreshExternalUser: Handler = (req, res) => {
     const externalUuid = extractQueryParam(req, "externalUuid");
     if (!externalUuid) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     const externalUserWithCookies = Storage.getExternalUserWithCookies(externalUuid);
     const storePromise = externalUserWithCookies.then((value) => Storage.addScrape({
@@ -54,6 +77,7 @@ export const refreshExternalUser: Handler = (req, res) => {
 export const processResult: Handler = (req, res) => {
     if (!req.body) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.processResult(req.body));
 };
@@ -61,12 +85,17 @@ export const processResult: Handler = (req, res) => {
 export const saveResult: Handler = (req, res) => {
     if (!req.body) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.saveResult(req.body));
 };
 
 export const checkLogin: Handler = (req, res) => {
-    sendResult(res, Storage.userLoginStatus(req.ip));
+    sendResult(res, Storage.loggedInUser(req.ip));
+};
+export const getUser: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, Storage.getUser(uuid, req.ip));
 };
 
 export const login: Handler = (req, res) => {
@@ -74,6 +103,7 @@ export const login: Handler = (req, res) => {
 
     if (!userName || !pw) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.loginUser(userName, pw, req.ip));
 };
@@ -83,6 +113,7 @@ export const register: Handler = (req, res) => {
 
     if (!userName || !pw) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.register(userName, pw, req.ip));
 };
@@ -91,6 +122,7 @@ export const logout: Handler = (req, res) => {
     const {uuid} = req.body;
     if (!uuid) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.logoutUser(uuid, req.ip));
 };
@@ -99,6 +131,7 @@ export const getInvalidated: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     if (!uuid) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.getInvalidated(uuid));
 };
@@ -136,6 +169,7 @@ export const downloadEpisode: Handler = (req, res) => {
 
     if (!episodes || !episodes.length) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(
         res,
@@ -148,8 +182,12 @@ export const getList: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     let media = extractQueryParam(req, "media");
 
-    if (!listId || !media) {
+    if (!media) {
+        media = "";
+    }
+    if (!listId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
 
     if (isString(listId)) {
@@ -164,6 +202,7 @@ export const postList: Handler = (req, res) => {
     const {uuid, list} = req.body;
     if (!list) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.addList(uuid, list));
 };
@@ -172,6 +211,7 @@ export const putList: Handler = (req, res) => {
     const {uuid, list} = req.body;
     if (!list) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.addList(uuid, list));
 };
@@ -179,6 +219,7 @@ export const deleteList: Handler = (req, res) => {
     const {listId, uuid} = req.body;
     if (!listId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.deleteList(listId, uuid));
 };
@@ -190,20 +231,39 @@ export const getListMedium: Handler = (req, res) => {
 
     if (!listId || !media || (Array.isArray(media) && !media.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.getList(listId, media, uuid));
 };
 export const postListMedium: Handler = (req, res) => {
     const {listId, mediumId, uuid} = req.body;
-    if (!listId || !mediumId) {
+
+    if (!listId || !mediumId || (Array.isArray(mediumId) && !mediumId.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
+    // @ts-ignore
     sendResult(res, Storage.addItemToList(listId, mediumId, uuid));
 };
 export const putListMedium: Handler = (req, res) => {
-    const {oldListId, newListId, mediumId, uuid} = req.body;
+    const {oldListId, newListId, uuid} = req.body;
+    let {mediumId} = req.body;
+
+    if (Number.isNaN(mediumId)) {
+        if (isString(mediumId)) {
+            mediumId = stringToNumberList(mediumId);
+
+            if (!mediumId.length) {
+                sendResult(res, Promise.resolve(false));
+                return;
+            }
+        } else {
+            mediumId = undefined;
+        }
+    }
     if (!oldListId || !newListId || !mediumId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.moveMedium(oldListId, newListId, mediumId, uuid));
 };
@@ -211,6 +271,7 @@ export const deleteListMedium: Handler = (req, res) => {
     const {listId, mediumId, uuid} = req.body;
     if (!listId || !mediumId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.removeMedium(listId, mediumId, uuid));
 };
@@ -236,6 +297,7 @@ export const postPart: Handler = (req, res) => {
     const {part, mediumId, uuid} = req.body;
     if (!part || !mediumId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     part.mediumId = mediumId;
     sendResult(res, Storage.addPart(part, uuid));
@@ -244,6 +306,7 @@ export const putPart: Handler = (req, res) => {
     const {part, uuid} = req.body;
     if (!part) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.updatePart(part, uuid));
 };
@@ -251,6 +314,7 @@ export const deletePart: Handler = (req, res) => {
     const {partId, uuid} = req.body;
     if (!partId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.deletePart(partId, uuid));
 };
@@ -264,6 +328,7 @@ export const getEpisode: Handler = (req, res) => {
     }
     if (!episodeId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.getEpisode(episodeId, uuid));
 };
@@ -271,6 +336,7 @@ export const postEpisode: Handler = (req, res) => {
     const {episode, partId, uuid} = req.body;
     if (!episode || (Array.isArray(episode) && !episode.length) || !partId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     if (Array.isArray(episode)) {
         episode.forEach((value) => value.partId = partId);
@@ -283,6 +349,7 @@ export const putEpisode: Handler = (req, res) => {
     const {episode, uuid} = req.body;
     if (!episode || (Array.isArray(episode) && !episode.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.updateEpisode(episode, uuid));
 };
@@ -290,6 +357,7 @@ export const deleteEpisode: Handler = (req, res) => {
     const {episodeId, uuid} = req.body;
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.deletePart(episodeId, uuid));
 };
@@ -298,6 +366,7 @@ export const getExternalUser: Handler = (req, res) => {
     if (!externalUuid) {
         // TODO: 23.07.2019 check if valid uuid
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.getExternalUser(externalUuid));
 };
@@ -306,6 +375,7 @@ export const postExternalUser: Handler = (req, res) => {
 
     if (!externalUser) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResultCall(res, async () => {
         const listManager = factory(Number(externalUser.type));
@@ -324,6 +394,7 @@ export const deleteExternalUser: Handler = (req, res) => {
     const {externalUuid, uuid} = req.body;
     if (!externalUuid) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.deleteExternalUser(externalUuid, uuid));
 };
@@ -331,6 +402,7 @@ export const putUser: Handler = (req, res) => {
     const {uuid, user} = req.body;
     if (!user) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.updateUser(uuid, user));
 };
@@ -344,6 +416,7 @@ export const getProgress: Handler = (req, res) => {
     const episodeId = extractQueryParam(req, "episodeId");
     if (!episodeId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.getProgress(uuid, episodeId));
 };
@@ -353,6 +426,7 @@ export const postProgress: Handler = (req, res) => {
     let episodeId = req.body.episodeId;
     if (!episodeId || progress == null) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     if (isString(episodeId)) {
         episodeId = stringToNumberList(episodeId);
@@ -373,6 +447,7 @@ export const deleteProgress: Handler = (req, res) => {
     const {uuid, episodeId} = req.body;
     if (!episodeId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.removeProgress(uuid, episodeId));
 };
@@ -382,6 +457,7 @@ export const getMedium: Handler = (req, res) => {
 
     if (!mediumId) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     if (!Number.isInteger(mediumId)) {
         mediumId = stringToNumberList(mediumId);
@@ -393,6 +469,7 @@ export const postMedium: Handler = (req, res) => {
     const {uuid, medium} = req.body;
     if (!medium) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.addMedium(medium, uuid));
 };
@@ -400,6 +477,7 @@ export const putMedium: Handler = (req, res) => {
     const {medium, uuid} = req.body;
     if (!medium) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, Storage.updateMedium(medium, uuid));
 };
@@ -436,6 +514,7 @@ export const authenticate: Handler = (req, res, next) => {
     }
     if (!uuid || !session) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     Storage
         .userLoginStatus(req.ip, uuid, session)

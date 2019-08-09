@@ -6,6 +6,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const request = tslib_1.__importStar(require("request-promise-native"));
+const scraperTools_1 = require("../scraperTools");
 const jar = request.jar();
 const defaultRequest = request.defaults({
     jar
@@ -58,11 +59,12 @@ async function scrapeNews() {
 async function scrapeToc(urlString) {
     // wait for a normal request, to get the right cookies
     await initPromise;
-    const bookId = /https?:\/\/(www\.)?webnovel\.com\/book\/(\d+)/.exec(urlString);
-    if (!bookId || !bookId[2]) {
-        logger_1.default.warn("WebNovel toc link has no bookId: " + urlString);
+    const bookIdResult = /https?:\/\/(www\.)?webnovel\.com\/book\/(\d+)/.exec(urlString);
+    if (!bookIdResult) {
+        logger_1.default.warn("WebNovel toc link has no bookIdResult: " + urlString);
         return [];
     }
+    const bookId = bookIdResult[2];
     const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
     if (!csrfCookie) {
         logger_1.default.warn("csrf cookie not found for webnovel");
@@ -82,20 +84,24 @@ async function scrapeToc(urlString) {
             if (Number.isNaN(date.getDate())) {
                 date = tools_1.relativeToAbsoluteTime(item.createTime) || new Date();
             }
-            return {
-                url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
+            const chapterContent = {
+                url: `https://www.webnovel.com/book/${bookIdResult}/${item.id}/`,
                 title: item.name,
                 combiIndex: item.index,
                 totalIndex: item.index,
                 releaseDate: date
             };
+            scraperTools_1.checkTocContent(chapterContent);
+            return chapterContent;
         });
-        return {
+        const partContent = {
             episodes: chapters,
             title: name,
             combiIndex: volume.index,
             totalIndex: volume.index,
         };
+        scraperTools_1.checkTocContent(partContent);
+        return partContent;
     });
     const toc = {
         link: urlString,
@@ -117,7 +123,10 @@ function loadJson(urlString) {
 async function scrapeContent(urlString) {
     const $ = await loadBody(urlString);
     const contentElement = $(".chapter_content");
-    const novelTitle = contentElement.find(".cha-hd-mn-text").first().text().trim();
+    if ($("._lock").length) {
+        return [];
+    }
+    const novelTitle = $(".cha-hd-mn-text a").first().text().trim();
     const episodeTitle = contentElement.find(".cha-tit h3").first().text().trim();
     const content = contentElement.find(".cha-words").first().html();
     if (!novelTitle || !episodeTitle) {
@@ -136,14 +145,13 @@ async function scrapeContent(urlString) {
     if (index != null && Number.isNaN(index)) {
         index = undefined;
     }
-    const textEpisodeContent = {
-        contentType: tools_1.MediaType.TEXT,
-        content,
+    const episodeContent = {
+        content: [content],
         episodeTitle,
         mediumTitle: novelTitle,
         index
     };
-    return [textEpisodeContent];
+    return [episodeContent];
 }
 async function searchToc(searchMedium) {
     console.log("start scraping webnovel " + searchMedium.mediumId);
@@ -161,6 +169,10 @@ async function searchToc(searchMedium) {
     }
     if (!bookId) {
         return;
+    }
+    const idPattern = /^\d+$/;
+    if (idPattern.test(bookId)) {
+        throw Error("invalid bookId");
     }
     const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
     if (!csrfCookie) {
@@ -184,14 +196,19 @@ async function searchToc(searchMedium) {
             if (!releaseDate) {
                 throw Error(`invalid date: '${chapterItem.createTime}'`);
             }
+            if (idPattern.test(chapterItem.id)) {
+                throw Error("invalid bookId");
+            }
             const link = `https://www.webnovel.com/book/${bookId}/${chapterItem.id}/`;
-            episodes.push({
+            const chapterContent = {
                 title: chapterItem.name,
                 combiIndex: chapterItem.index,
                 totalIndex: chapterItem.index,
                 releaseDate,
                 url: link
-            });
+            };
+            scraperTools_1.checkTocContent(chapterContent);
+            episodes.push(chapterContent);
         }
     }
     console.log("scraping toc on webnovel successfully " + searchMedium.mediumId);

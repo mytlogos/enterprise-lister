@@ -3,13 +3,12 @@ module.exports = {
         {
             name: "enterprise-server",
             script: "server/dist/startServer.js",
-
-            instances: 2,
+            instances: 1,
             max_restarts: 5,
-            exec_mode: "cluster",
+            exec_mode: "fork",
             autorestart: true,
             watch: false,
-            max_memory_restart: "150M",
+            max_memory_restart: "200M",
             env: {
                 NODE_ENV: "development"
             },
@@ -19,12 +18,12 @@ module.exports = {
         }, {
             name: "enterprise-crawler",
             script: "server/dist/startCrawler.js",
-
+            max_restarts: 5,
             instances: 1,
             exec_mode: "fork",
             autorestart: true,
             watch: false,
-            max_memory_restart: "1G",
+            max_memory_restart: "300M",
             env: {
                 NODE_ENV: "development"
             },

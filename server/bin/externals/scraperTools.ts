@@ -6,6 +6,7 @@ import {
     combiIndex,
     delay,
     getElseSet,
+    ignore,
     max,
     maxValue,
     MediaType,
@@ -35,6 +36,7 @@ import {
     OneTimeToc,
     ScraperJob,
     Toc,
+    TocContent,
     TocScraper,
     TocSearchScraper
 } from "./types";
@@ -147,7 +149,7 @@ function decActivity() {
     console.log("Active:" + counter.countDown("scrape"));
 }
 
-export const processNewsScraper = activity(async (adapter: NewsScraper): Promise<{ link: string, result: News[] }> => {
+export const scrapeNews = activity(async (adapter: NewsScraper): Promise<{ link: string, result: News[] }> => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
@@ -465,20 +467,20 @@ export const checkTocs = activity(async (): Promise<ScraperJob[]> => {
 });
 
 export const oneTimeToc = activity(async ({url: link, uuid, mediumId}: OneTimeToc)
-    : Promise<{ toc: Toc[], uuid: string; }> => {
+    : Promise<{ tocs: Toc[], uuid: string; }> => {
 
-    const host = url.parse(link).host;
+    const path = url.parse(link).path;
 
-    if (!host) {
+    if (!path) {
         logger.warn(`malformed url: '${link}'`);
-        return {toc: [], uuid};
+        return {tocs: [], uuid};
     }
     let allTocPromise: Promise<Toc[]> | undefined;
 
     for (const entry of tocScraper.entries()) {
         const regExp = entry[0];
 
-        if (regExp.test(host)) {
+        if (regExp.test(link)) {
             const scraper: TocScraper = entry[1];
             allTocPromise = scraper(link);
             break;
@@ -488,20 +490,20 @@ export const oneTimeToc = activity(async ({url: link, uuid, mediumId}: OneTimeTo
     if (!allTocPromise) {
         // todo use the default scraper here, after creating it
         logger.warn(`no scraper found for: '${link}'`);
-        return {toc: [], uuid};
+        return {tocs: [], uuid};
     }
 
     const allTocs: Toc[] = await allTocPromise;
 
     if (!allTocs.length) {
         logger.warn(`no tocs found on: '${link}'`);
-        return {toc: [], uuid};
+        return {tocs: [], uuid};
     }
     if (mediumId && allTocs.length === 1) {
         allTocs[0].mediumId = mediumId;
     }
     console.log("toc scraped: " + link);
-    return {toc: allTocs, uuid};
+    return {tocs: allTocs, uuid};
 });
 
 /**
@@ -535,26 +537,28 @@ export const list = activity(async (value: { cookies: string, uuid: string; })
     const manager = factory(0, value.cookies);
     try {
         const lists = await manager.scrapeLists();
-        const listsPromise = Promise.all(lists.lists.map(
+        const listsPromise: Promise<void> = Promise.all(lists.lists.map(
             async (scrapedList) => scrapedList.link = await checkLink(scrapedList.link, scrapedList.name))
-        );
+        ).then(ignore);
 
-        const feedLinksPromise = Promise.all(lists.feed.map((feedLink) => checkLink(feedLink)));
+        const feedLinksPromise: Promise<string[]> = Promise.all(lists.feed.map((feedLink) => checkLink(feedLink)));
+
         const mediaPromise = Promise.all(lists.media.map(async (medium) => {
-            const titleLinkPromise = checkLink(medium.title.link, medium.title.text);
-            const currentLinkPromise = checkLink(medium.current.link, medium.current.text);
-            const latestLinkPromise = checkLink(medium.latest.link, medium.latest.text);
+            const titleLinkPromise: Promise<string> = checkLink(medium.title.link, medium.title.text);
+            const currentLinkPromise: Promise<string> = checkLink(medium.current.link, medium.current.text);
+            const latestLinkPromise: Promise<string> = checkLink(medium.latest.link, medium.latest.text);
 
             medium.title.link = await titleLinkPromise;
             medium.current.link = await currentLinkPromise;
             medium.latest.link = await latestLinkPromise;
-        }));
+        })).then(ignore);
 
         await listsPromise;
         await mediaPromise;
         lists.feed = await feedLinksPromise;
         return {external: value, lists};
     } catch (e) {
+        // noinspection ES6MissingAwait
         return Promise.reject({...value, error: e});
     }
 });
@@ -585,6 +589,23 @@ export const feed = activity(async (feedLink: string): Promise<{ link: string, r
         .catch((error) => Promise.reject({feed: feedLink, error}));
 });
 
+export function checkTocContent(content: TocContent) {
+    if (!content) {
+        throw Error("empty toc content");
+    }
+
+    if (content.combiIndex == null || content.combiIndex < 0) {
+        throw Error("invalid toc content, combiIndex invalid");
+    }
+
+    if (content.totalIndex == null || content.totalIndex < 0) {
+        throw Error("invalid toc content, totalIndex invalid");
+    }
+    if (content.partialIndex != null && (content.partialIndex < 0 || !Number.isInteger(content.partialIndex))) {
+        throw Error("invalid toc content, partialIndex invalid");
+    }
+}
+
 /**
  * Scrape everything for one cycle, wait for a specified interval and scrape again.
  * Output is send per event listener.
@@ -596,11 +617,11 @@ async function scrape(dependants = scrapeDependants, next = true): Promise<void>
 
     const startTime = Date.now();
 
-    const tocFinished = notify("toc", dependants.tocs.map((value) => toc(value)));
-    const newsFinished = notify("news", dependants.news.map((value) => news(value)));
-    const feedFinished = notify("feed", dependants.feeds.map((value) => feed(value)));
-    const newsAdapterFinished = notify("news", newsAdapter.map((adapter) => processNewsScraper(adapter)));
-    const oneTimeTocFinished = notify("toc", dependants.oneTimeTocs.map((value) => oneTimeToc(value)))
+    const tocFinished: Promise<void> = notify("toc", dependants.tocs.map((value) => toc(value)));
+    const newsFinished: Promise<void> = notify("news", dependants.news.map((value) => news(value)));
+    const feedFinished: Promise<void> = notify("feed", dependants.feeds.map((value) => feed(value)));
+    const newsAdapterFinished: Promise<void> = notify("news", newsAdapter.map((adapter) => scrapeNews(adapter)));
+    const oneTimeTocFinished: Promise<void> = notify("toc", dependants.oneTimeTocs.map((value) => oneTimeToc(value)))
         .then(() => {
             dependants.oneTimeTocs.length = 0;
         });
@@ -626,7 +647,7 @@ async function scrape(dependants = scrapeDependants, next = true): Promise<void>
     // every monday scan every available external user, if not scanned on same day
     const externals = await Storage.getScrapeExternalUser();
 
-    const listFinished = notify("list", externals.map((value) => list(value)));
+    const listFinished: Promise<void> = notify("list", externals.map((value) => list(value)));
     allPromises.push(listFinished);
     // save current run for users for this monday, so that it does not scan again today
     lastListScrape = todayString;
@@ -846,7 +867,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
             downloadContents.set(indexKey, {
                 episodeId: episode.id,
                 title: "",
-                content: ""
+                content: []
             });
             logger.warn(`no releases available for episodeId: ${episode.id} with ${episode.releases.length} Releases`);
             continue;
@@ -882,17 +903,18 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
 
             let episodeContents: EpisodeContent[] = await downloaderEntry[1](release.url);
 
-            episodeContents = episodeContents.filter((value) => value.content);
+            episodeContents = episodeContents.filter((value) => value.content.length && value.content.every((s) => s));
 
-            if (episodeContents.length && episodeContents[0].content) {
+            if (episodeContents.length && episodeContents[0].content.length) {
                 downloadedContent = episodeContents;
+                break;
             }
         }
         if (!downloadedContent) {
             downloadContents.set(indexKey, {
                 episodeId: episode.id,
                 title: "",
-                content: ""
+                content: []
             });
             logger.warn(`nothing downloaded for episodeId: ${episode.id}`);
         } else {
@@ -925,6 +947,7 @@ function checkLinkWithInternet(link: string): Promise<FullResponse> {
         request
             .head(link)
             .on("response", (res) => {
+                // noinspection TypeScriptValidateJSTypes
                 if (res.caseless.get("server") === "cloudflare") {
                     resolve(queueFastRequestFullResponse(link));
                 } else {
@@ -1050,14 +1073,17 @@ export function pause() {
     paused = true;
 }
 
+export function initHooks() {
+    registerHooks(getListManagerHooks());
+    registerHooks(directScraper.getHooks());
+}
+
 /**
  *
  */
 export function start() {
     paused = false;
-    registerHooks(getListManagerHooks());
-    registerHooks(directScraper.getHooks());
-
+    initHooks();
     scrape().catch((error) => {
         console.log(error);
         logger.error(error);

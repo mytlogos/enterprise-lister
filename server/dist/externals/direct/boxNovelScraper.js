@@ -1,0 +1,178 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
+const queueManager_1 = require("../queueManager");
+const url = tslib_1.__importStar(require("url"));
+const tools_1 = require("../../tools");
+const logger_1 = tslib_1.__importDefault(require("../../logger"));
+const directTools_1 = require("./directTools");
+const scraperTools_1 = require("../scraperTools");
+async function tocSearch(medium) {
+    return;
+}
+async function contentDownloadAdapter(urlString) {
+    if (!urlString.match(/https:\/\/boxnovel\.com\/novel\/.+\/chapter-.+/)) {
+        return [];
+    }
+    const $ = await queueManager_1.queueCheerioRequest(urlString);
+    const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
+    const novelTitle = tools_1.sanitizeString(mediumTitleElement.text());
+    const episodeTitle = tools_1.sanitizeString($(".cha-tit h3").text());
+    const directContentElement = $(".cha-content .cha-words .cha-words");
+    const content = directContentElement.html();
+    if (!content) {
+        return [];
+    }
+    return directTools_1.getTextContent(novelTitle, episodeTitle, urlString, content);
+}
+async function tocAdapter(tocLink) {
+    const uri = "https://boxnovel.com";
+    if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
+        return [];
+    }
+    const $ = await queueManager_1.queueCheerioRequest(tocLink);
+    const mediumTitleElement = $(".post-title h3");
+    mediumTitleElement.find("span").remove();
+    const mediumTitle = tools_1.sanitizeString(mediumTitleElement.text());
+    const content = [];
+    const items = $(".wp-manga-chapter");
+    const titleRegex = /ch(\.|apter)?\s*((\d+)(\.(\d+))?)/i;
+    for (let i = 0; i < items.length; i++) {
+        const newsRow = items.eq(i);
+        const titleElement = newsRow.find("a");
+        const link = url.resolve(uri, titleElement.attr("href"));
+        const episodeTitle = tools_1.sanitizeString(titleElement.text());
+        const timeStampElement = newsRow.find(".chapter-release-date");
+        const dateString = timeStampElement.text().trim();
+        const lowerDate = dateString.toLowerCase();
+        let date;
+        if (lowerDate.includes("now") || lowerDate.includes("ago")) {
+            date = tools_1.relativeToAbsoluteTime(dateString);
+        }
+        else {
+            date = new Date(dateString);
+        }
+        if (!date || date > new Date()) {
+            logger_1.default.warn("changed time format on boxNovel");
+            return [];
+        }
+        const regexResult = titleRegex.exec(episodeTitle);
+        if (!regexResult) {
+            logger_1.default.warn("changed title format on boxNovel");
+            return [];
+        }
+        const episodeIndices = tools_1.extractIndices(regexResult, 2, 3, 5);
+        if (!episodeIndices) {
+            throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
+        }
+        const chapterContent = {
+            combiIndex: episodeIndices.combi,
+            totalIndex: episodeIndices.total,
+            partialIndex: episodeIndices.fraction,
+            url: link,
+            releaseDate: date,
+            title: episodeTitle
+        };
+        scraperTools_1.checkTocContent(chapterContent);
+        content.push(chapterContent);
+    }
+    return [{
+            link: tocLink,
+            content,
+            title: mediumTitle,
+            mediumType: tools_1.MediaType.TEXT
+        }];
+}
+async function newsAdapter() {
+    const uri = "https://boxnovel.com";
+    const $ = await queueManager_1.queueCheerioRequest(uri);
+    const items = $(".page-item-detail");
+    const episodeNews = [];
+    const titleRegex = /(vol(\.|ume)?\s*((\d+)(\.(\d+))?).+)?ch(\.|apter)?\s*((\d+)(\.(\d+))?)/i;
+    for (let i = 0; i < items.length; i++) {
+        const newsRow = items.eq(i);
+        const mediumTitleElement = newsRow.find(".post-title a");
+        const tocLink = url.resolve(uri, mediumTitleElement.attr("href"));
+        const mediumTitle = tools_1.sanitizeString(mediumTitleElement.text());
+        const titleElement = newsRow.find(".chapter-item .chapter a");
+        const timeElements = newsRow.find(".chapter-item .post-on");
+        for (let j = 0; j < titleElement.length; j++) {
+            const chapterTitleElement = titleElement.eq(j);
+            const link = url.resolve(uri, chapterTitleElement.attr("href"));
+            const episodeTitle = tools_1.sanitizeString(chapterTitleElement.text());
+            const timeStampElement = timeElements.eq(j);
+            const dateString = timeStampElement.text().trim();
+            const lowerDate = dateString.toLowerCase();
+            let date;
+            if (lowerDate.includes("now") || lowerDate.includes("ago")) {
+                date = tools_1.relativeToAbsoluteTime(dateString);
+            }
+            else {
+                date = new Date(dateString);
+            }
+            if (!date || date > new Date()) {
+                logger_1.default.warn("changed time format on boxNovel");
+                return;
+            }
+            const regexResult = titleRegex.exec(episodeTitle);
+            if (!regexResult) {
+                logger_1.default.warn("changed title format on boxNovel");
+                return;
+            }
+            let partIndex;
+            let partTotalIndex;
+            let partPartialIndex;
+            if (regexResult[3]) {
+                partIndex = Number(regexResult[3]);
+                if (regexResult[4]) {
+                    partTotalIndex = Number(regexResult[4]);
+                }
+                if (regexResult[6]) {
+                    partPartialIndex = Number(regexResult[6]) || undefined;
+                }
+            }
+            let episodeIndex;
+            let episodeTotalIndex;
+            let episodePartialIndex;
+            if (regexResult[8]) {
+                episodeIndex = Number(regexResult[8]);
+                if (regexResult[9]) {
+                    episodeTotalIndex = Number(regexResult[9]);
+                }
+                if (regexResult[11]) {
+                    episodePartialIndex = Number(regexResult[11]) || undefined;
+                }
+            }
+            if (episodeIndex == null || episodeTotalIndex == null) {
+                logger_1.default.warn("changed title format on boxNovel");
+                return;
+            }
+            episodeNews.push({
+                mediumTocLink: tocLink,
+                mediumTitle,
+                mediumType: tools_1.MediaType.TEXT,
+                partIndex,
+                partTotalIndex,
+                partPartialIndex,
+                episodeTotalIndex,
+                episodePartialIndex,
+                episodeIndex,
+                episodeTitle,
+                link,
+                date,
+            });
+        }
+    }
+    return { episodes: episodeNews };
+}
+newsAdapter.link = "https://boxnovel.com";
+function getHook() {
+    return {
+        domainReg: /https:\/\/boxnovel\.com/,
+        contentDownloadAdapter,
+        tocAdapter,
+        newsAdapter,
+    };
+}
+exports.getHook = getHook;
+//# sourceMappingURL=boxNovelScraper.js.map

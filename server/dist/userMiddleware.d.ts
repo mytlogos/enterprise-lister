@@ -1,4 +1,6 @@
 import { Handler } from "express";
+export declare const putConsumeUnusedMedia: Handler;
+export declare const postCreateFromUnusedMedia: Handler;
 export declare const getUnusedMedia: Handler;
 export declare const readNews: Handler;
 export declare const processReadEpisode: Handler;
@@ -7,6 +9,7 @@ export declare const refreshExternalUser: Handler;
 export declare const processResult: Handler;
 export declare const saveResult: Handler;
 export declare const checkLogin: Handler;
+export declare const getUser: Handler;
 export declare const login: Handler;
 export declare const register: Handler;
 export declare const logout: Handler;

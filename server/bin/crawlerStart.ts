@@ -1,11 +1,11 @@
 import {Storage} from "./database/database";
-import {combiIndex, Errors, getElseSet, isTocEpisode, isTocPart, Md5Hash, multiSingle} from "./tools";
+import {checkIndices, combiIndex, Errors, getElseSet, isTocEpisode, isTocPart, Md5Hash, multiSingle} from "./tools";
 import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {ExternalList, LikeMedium, News, Part, SimpleEpisode, SimpleMedium} from "./types";
 import logger, {logError} from "./logger";
 import {Toc, TocEpisode, TocPart} from "./externals/types";
 import * as validate from "validate.js";
-import {ScrapeTypes} from "./externals/scraperTools";
+import {checkTocContent, ScrapeTypes} from "./externals/scraperTools";
 import {DefaultJobScraper} from "./externals/jobScraper";
 
 const scraper = DefaultJobScraper;
@@ -104,17 +104,12 @@ async function getTocMedia(result: { tocs: Toc[]; uuid: string }, uuid: string)
             if (!content || content.totalIndex == null) {
                 throw Error(`invalid tocContent for mediumId:'${medium && medium.id}' and link:'${toc.link}'`);
             }
-            const totalIndex = Math.floor(content.totalIndex);
-            content.totalIndex = totalIndex;
-            const partialIndex = content.totalIndex - totalIndex;
+            checkTocContent(content);
 
             let alterTitle;
             if (!content.title) {
                 alterTitle = `${content.totalIndex}${content.partialIndex ? "." + content.partialIndex : ""}`;
                 content.title = alterTitle;
-            }
-            if (partialIndex) {
-                content.partialIndex = partialIndex;
             }
             if (isTocEpisode(content)) {
                 if (alterTitle) {
@@ -125,6 +120,7 @@ async function getTocMedia(result: { tocs: Toc[]; uuid: string }, uuid: string)
                 if (alterTitle) {
                     content.title = `Volume ${content.title}`;
                 }
+                content.episodes.forEach((value) => checkTocContent(value));
                 mediumValue.parts.push(content);
             } else {
                 throw Error("content neither part nor episode");
@@ -221,6 +217,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
     value.tocPart.episodes.forEach((episode) => {
+        checkTocContent(episode);
         value.episodeMap.set(episode.combiIndex, {tocEpisode: episode});
     });
     // @ts-ignore
@@ -233,7 +230,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         if (!episode.id) {
             return;
         }
-        const tocEpisode = value.episodeMap.get(episode.totalIndex);
+        const tocEpisode = value.episodeMap.get(combiIndex(episode));
 
         if (!tocEpisode) {
             throw Error("something went wrong. got no value at this episode index");
@@ -242,7 +239,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
     });
 
     const allEpisodes: SimpleEpisode[] = [...value.episodeMap.keys()]
-        .filter((index) => !episodes.find((episode) => combiIndex(episode) === index))
+        .filter((index) => episodes.every((episode) => combiIndex(episode) !== index || !episode.id))
         .map((episodeIndex): SimpleEpisode => {
             const episodeToc = value.episodeMap.get(episodeIndex);
 
@@ -272,8 +269,6 @@ export async function tocHandler(result: { tocs: Toc[], uuid: string }): Promise
     if (!(result.tocs && result.tocs.length)) {
         return;
     }
-    // todo do not only search for episodes and parts with totalIndex, but with partialIndex too
-
     const uuid = result.uuid;
 
     const media: Map<SimpleMedium, { parts: TocPart[], episodes: TocEpisode[]; }> = await getTocMedia(result, uuid);
@@ -287,6 +282,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid: string }): Promise
             const indexPartsMap: Map<number, TocPartMapping> = new Map();
 
             tocParts.forEach((value) => {
+                checkTocContent(value);
                 if (value.totalIndex == null) {
                     throw Error(`totalIndex should not be null! mediumId: '${mediumId}'`);
                 }
@@ -304,6 +300,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid: string }): Promise
             const parts = await Storage.getMediumPartsPerIndex(mediumId, partIndices);
 
             parts.forEach((value) => {
+                checkIndices(value);
                 if (!value.id) {
                     return;
                 }
@@ -323,7 +320,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid: string }): Promise
                     if (!partToc) {
                         throw Error("something went wrong. got no value at this part index");
                     }
-
+                    checkTocContent(partToc.tocPart);
                     return Storage
                     // @ts-ignore
                         .addPart({

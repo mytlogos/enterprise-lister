@@ -1,14 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tableBuilder_1 = require("./tableBuilder");
+const triggerBuilder_1 = require("./triggerBuilder");
 class DataBaseBuilder {
-    constructor() {
+    constructor(name, version) {
         this.tables = [];
+        this.triggers = [];
         this.invalidations = [];
+        this.migrations = [];
+        this.name = name;
+        this.version = version;
     }
     build() {
         if (!this.name) {
-            throw Error();
+            throw Error("database has no name");
+        }
+        if (this.version <= 0 || !Number.isInteger(this.version)) {
+            throw Error("invalid database version");
         }
         this.invalidations.forEach((value) => {
             let table;
@@ -81,11 +89,20 @@ class DataBaseBuilder {
             }
         }
         return {
+            version: this.version,
             name: this.name,
+            triggers: this.triggers,
             tables: [...this.tables],
             invalidationTable,
             mainTable,
+            migrations: this.migrations
         };
+    }
+    addMigrations(...migrations) {
+        this.migrations.push(...migrations);
+    }
+    addTrigger(trigger) {
+        this.triggers.push(trigger);
     }
     addTable(table, invalidations) {
         this.tables.push(table);
@@ -97,9 +114,8 @@ class DataBaseBuilder {
     getTableBuilder() {
         return new tableBuilder_1.TableBuilder(this);
     }
-    setName(name) {
-        this.name = name;
-        return this;
+    getTriggerBuilder() {
+        return new triggerBuilder_1.TriggerBuilder(this);
     }
 }
 exports.DataBaseBuilder = DataBaseBuilder;

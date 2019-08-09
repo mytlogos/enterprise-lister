@@ -1,6 +1,5 @@
 import logger from "../../logger";
-import {TextEpisodeContent} from "../types";
-import {MediaType} from "../../tools";
+import {EpisodeContent} from "../types";
 
 export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string) {
     if (!novelTitle || !episodeTitle) {
@@ -20,13 +19,12 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
     if (index == null || Number.isNaN(index)) {
         index = undefined;
     }
-    const textEpisodeContent: TextEpisodeContent = {
-        contentType: MediaType.TEXT,
-        content,
+    const episodeContent: EpisodeContent = {
+        content: [content],
         episodeTitle,
         mediumTitle: novelTitle,
         index
     };
 
-    return [textEpisodeContent];
+    return [episodeContent];
 }

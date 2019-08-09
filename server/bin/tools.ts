@@ -409,6 +409,15 @@ export function combiIndex(value: { totalIndex: number, partialIndex?: number })
     return combi;
 }
 
+export function checkIndices(value: { totalIndex: number, partialIndex?: number }) {
+    if (value.totalIndex == null || value.totalIndex < -1) {
+        throw Error("invalid toc content, totalIndex invalid");
+    }
+    if (value.partialIndex != null && (value.partialIndex < 0 || !Number.isInteger(value.partialIndex))) {
+        throw Error("invalid toc content, partialIndex invalid");
+    }
+}
+
 export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number)
     : { combi: number, total: number, fraction?: number } | null {
 
@@ -426,10 +435,23 @@ export function extractIndices(groups: string[], allPosition: number, totalPosit
     return {combi: whole, total: totalIndex, fraction: partialIndex};
 }
 
-const indexRegex = /\d+(\.(\d+))/;
+const indexRegex = /(-?\d+)(\.(\d+))?/;
 
 export function separateIndex(value: number): { totalIndex: number, partialIndex?: number; } {
-    const total = Math.floor(value);
-    const partial = value - total;
-    return {totalIndex: total, partialIndex: partial ? partial : undefined};
+    const exec = indexRegex.exec(value + "");
+    if (!exec) {
+        throw Error("not a positive number");
+    }
+    const totalIndex = Number(exec[1]);
+    const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
+
+    // @ts-ignore
+    if (Number.isNaN(totalIndex) || Number.isNaN(partialIndex)) {
+        throw Error("invalid number");
+    }
+    return {totalIndex, partialIndex};
+}
+
+export function ignore() {
+    return undefined;
 }

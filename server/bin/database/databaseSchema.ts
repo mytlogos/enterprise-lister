@@ -1,8 +1,9 @@
 import {DataBaseBuilder} from "./databaseBuilder";
 import {InvalidationType} from "./databaseTypes";
+import {TriggerEvent, TriggerTiming} from "./trigger";
+import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder();
-dataBaseBuilder.setName("enterprise");
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 1);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")
@@ -85,6 +86,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("series VARCHAR(200)")
     .parseColumn("universe VARCHAR(200)")
     .parseMeta("PRIMARY KEY(id)")
+    .parseMeta("UNIQUE(title, medium)")
     .build();
 
 
@@ -253,6 +255,196 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("keyString VARCHAR(200) NOT NULL")
     .parseColumn("value TEXT NOT NULL")
     .build();
+
+dataBaseBuilder.getTableBuilder()
+    .setName("page_info")
+    .parseColumn("link TEXT NOT NULL")
+    .parseColumn("keyString VARCHAR(200) NOT NULL")
+    .parseColumn("value TEXT NOT NULL")
+    .build();
+
+dataBaseBuilder.getTableBuilder()
+    .setName("enterprise_database_info")
+    .parseColumn("version INT NOT NULL UNSIGNED")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("episode_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("episode")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, part_id) SELECT uuid, NEW.part_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("episode_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("episode")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) SELECT uuid, NEW.id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("episode_release_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("episode_release")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) SELECT uuid, NEW.episode_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("episode_release_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("episode_release")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) SELECT uuid, NEW.episode_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("external_list_medium_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("external_list_medium")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_list_id) SELECT local_uuid, NEW.list_id FROM user inner join external_reading_list on external_reading_list.id=list_id inner join external_user on user_uuid=uuid;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("external_reading_list_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("external_reading_list")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_uuid) VALUES ((SELECT local_uuid FROM external_user WHERE uuid=NEW.user_uuid LIMIT 1), NEW.user_uuid);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("external_reading_list_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("external_reading_list")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_list_id) VALUES ((SELECT local_uuid FROM external_user WHERE uuid=NEW.user_uuid LIMIT 1), NEW.id);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("external_user_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("external_user")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, uuid) VALUES(NEW.local_uuid, 1);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("external_user_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("external_user")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_user) VALUES(NEW.local_uuid, NEW.uuid);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("list_medium_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("list_medium")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, list_id) SELECT user_uuid, NEW.list_id FROM user inner join reading_list on reading_list.id=NEW.list_id;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("medium_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("medium")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, NEW.id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("medium_synonyms_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("medium_synonyms")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, NEW.medium_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("medium_toc_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("medium_toc")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, NEW.medium_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("news_board_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("news_board")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, news_id) SELECT uuid, NEW.id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("news_user_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("news_user")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, news_id) VALUES (NEW.user_id, NEW.news_id);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("part_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("part")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, NEW.medium_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("part_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("part")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, part_id) SELECT uuid, NEW.id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("reading_list_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("reading_list")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, user_uuid) VALUES (NEW.user_uuid, 1);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("reading_list_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("reading_list")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, list_id) VALUES (NEW.user_uuid, NEW.id);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("user_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("user")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, user_uud) VALUES (NEW.uuid,1);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("user_episode_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
+    .setTable("user_episode")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) VALUES (NEW.user_uuid, NEW.episode_id);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("user_episode_AFTER_UPDATE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.UPDATE)
+    .setTable("user_episode")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) VALUES (NEW.user_uuid, NEW.episode_id);")
+    .build();
+
+dataBaseBuilder.addMigrations(...Migrations);
 
 // todo user defined function, create it automatically at startup
 // "CREATE DEFINER=`root`@`localhost` FUNCTION `combineFloat`(whole INT, afterDecimal INT) RETURNS float\n" +

@@ -16,7 +16,7 @@ export const saveResult: Handler = (req, res) => {
 };
 
 export const checkLogin: Handler = (req, res) => {
-    sendResult(res, Storage.userLoginStatus(req.ip));
+    sendResult(res, Storage.loggedInUser(req.ip));
 };
 
 export const login: Handler = (req, res) => {
@@ -328,7 +328,7 @@ export const authenticate: Handler = (req, res, next) => {
     }
 
     Storage
-        .userLoginStatus(req.ip)
+        .loggedInUser(req.ip)
         .then((result) => {
             if (result && session === result.session && uuid === result.uuid) {
                 next();

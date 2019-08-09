@@ -361,6 +361,15 @@ function combiIndex(value) {
     return combi;
 }
 exports.combiIndex = combiIndex;
+function checkIndices(value) {
+    if (value.totalIndex == null || value.totalIndex < -1) {
+        throw Error("invalid toc content, totalIndex invalid");
+    }
+    if (value.partialIndex != null && (value.partialIndex < 0 || !Number.isInteger(value.partialIndex))) {
+        throw Error("invalid toc content, partialIndex invalid");
+    }
+}
+exports.checkIndices = checkIndices;
 function extractIndices(groups, allPosition, totalPosition, partialPosition) {
     const whole = Number(groups[allPosition]);
     if (Number.isNaN(whole)) {
@@ -374,11 +383,23 @@ function extractIndices(groups, allPosition, totalPosition, partialPosition) {
     return { combi: whole, total: totalIndex, fraction: partialIndex };
 }
 exports.extractIndices = extractIndices;
-const indexRegex = /\d+(\.(\d+))/;
+const indexRegex = /(-?\d+)(\.(\d+))?/;
 function separateIndex(value) {
-    const total = Math.floor(value);
-    const partial = value - total;
-    return { totalIndex: total, partialIndex: partial ? partial : undefined };
+    const exec = indexRegex.exec(value + "");
+    if (!exec) {
+        throw Error("not a positive number");
+    }
+    const totalIndex = Number(exec[1]);
+    const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
+    // @ts-ignore
+    if (Number.isNaN(totalIndex) || Number.isNaN(partialIndex)) {
+        throw Error("invalid number");
+    }
+    return { totalIndex, partialIndex };
 }
 exports.separateIndex = separateIndex;
+function ignore() {
+    return undefined;
+}
+exports.ignore = ignore;
 //# sourceMappingURL=tools.js.map

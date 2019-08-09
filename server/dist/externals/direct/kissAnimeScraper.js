@@ -6,6 +6,7 @@ const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 const request = tslib_1.__importStar(require("cloudscraper"));
+const scraperTools_1 = require("../scraperTools");
 // @ts-ignore
 const jar = request.jar();
 // @ts-ignore
@@ -161,14 +162,16 @@ async function scrapeToc(urlString) {
         if (episodeGroups[6]) {
             title += " - " + episodeGroups[6];
         }
-        content.push({
+        const episodeContent = {
             title,
             combiIndex: indices.combi,
             totalIndex: indices.total,
             partialIndex: indices.fraction,
             url: link,
             releaseDate: date
-        });
+        };
+        scraperTools_1.checkTocContent(episodeContent);
+        content.push(episodeContent);
     }
     const toc = {
         link: urlString,
@@ -181,7 +184,7 @@ async function scrapeToc(urlString) {
 scrapeNews.link = "https://kissanime.ru/";
 function getHook() {
     return {
-        domainReg: /^kissanime\.ru/,
+        domainReg: /^https?:\/\/kissanime\.ru/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc
     };

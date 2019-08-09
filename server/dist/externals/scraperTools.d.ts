@@ -1,13 +1,13 @@
 import { ListScrapeResult } from "./listManager";
 import { Episode, News, ScrapeItem } from "../types";
-import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, ScraperJob, Toc, TocScraper, TocSearchScraper } from "./types";
-export declare const processNewsScraper: (...args: any) => Promise<{
+import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, ScraperJob, Toc, TocContent, TocScraper, TocSearchScraper } from "./types";
+export declare const scrapeNews: (...args: any) => Promise<{
     link: string;
     result: News[];
 }>;
 export declare const checkTocs: (...args: any) => Promise<ScraperJob[]>;
 export declare const oneTimeToc: (...args: any) => Promise<{
-    toc: Toc[];
+    tocs: Toc[];
     uuid: string;
 }>;
 /**
@@ -39,6 +39,7 @@ export declare const feed: (...args: any) => Promise<{
     link: string;
     result: News[];
 }>;
+export declare function checkTocContent(content: TocContent): void;
 export interface ListScrapeEvent {
     external: {
         cookies: string;
@@ -121,6 +122,7 @@ export declare function registerHooks(hook: Hook[] | Hook): void;
  *
  */
 export declare function pause(): void;
+export declare function initHooks(): void;
 /**
  *
  */

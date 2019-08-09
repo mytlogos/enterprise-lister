@@ -13,7 +13,7 @@ exports.saveResult = (req, res) => {
     sendResult(res, database_1.Storage.saveResult(req.body));
 };
 exports.checkLogin = (req, res) => {
-    sendResult(res, database_1.Storage.userLoginStatus(req.ip));
+    sendResult(res, database_1.Storage.loggedInUser(req.ip));
 };
 exports.login = (req, res) => {
     const { userName, pw } = req.body;
@@ -292,7 +292,7 @@ exports.authenticate = (req, res, next) => {
         session = extractQueryParam(req, "session");
     }
     database_1.Storage
-        .userLoginStatus(req.ip)
+        .loggedInUser(req.ip)
         .then((result) => {
         if (result && session === result.session && uuid === result.uuid) {
             next();

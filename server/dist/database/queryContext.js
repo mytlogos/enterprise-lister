@@ -74,19 +74,19 @@ class QueryContext {
      *
      */
     startTransaction() {
-        return this._query("START TRANSACTION;").then(() => undefined);
+        return this._query("START TRANSACTION;").then(tools_1.ignore);
     }
     /**
      *
      */
     commit() {
-        return this._query("COMMIT;").then(() => undefined);
+        return this._query("COMMIT;").then(tools_1.ignore);
     }
     /**
      *
      */
     rollback() {
-        return this._query("ROLLBACK;").then(() => undefined);
+        return this._query("ROLLBACK;").then(tools_1.ignore);
     }
     /**
      * Checks the database for incorrect structure
@@ -104,6 +104,13 @@ class QueryContext {
             .filter((table) => !tables.find((value) => value[`Tables_in_${database}`] === table))
             .map((table) => this._query(`CREATE TABLE ${table}(${databaseSchema_1.Tables[table]});`)));
     }
+    getDatabaseVersion() {
+        return this._query("SELECT version FROM enterprise_database_info LIMIT 1;");
+    }
+    async updateDatabaseVersion(version) {
+        await this._query("TRUNCATE enterprise_database_info;");
+        return this._query("INSERT INTO enterprise_database_info (version) VALUES (?);", version);
+    }
     /**
      * Checks whether the main database exists currently.
      */
@@ -112,16 +119,69 @@ class QueryContext {
         return databases.find((data) => data.Database === database) != null;
     }
     createDatabase() {
-        return this._query(`CREATE DATABASE ${database};`).then(() => undefined);
+        return this._query(`CREATE DATABASE ${database};`).then(tools_1.ignore);
     }
     getTables() {
         return this._query("SHOW TABLES;");
     }
+    getTriggers() {
+        return this._query("SHOW TRIGGERS;");
+    }
+    createTrigger(trigger) {
+        const schema = trigger.createSchema();
+        return this._query(schema);
+    }
+    dropTrigger(trigger) {
+        return this._query("DROP TRIGGER ?", trigger);
+    }
     createTable(table, columns) {
         return this._query(`CREATE TABLE ${promise_mysql_1.default.escapeId(table)} (${columns.join(", ")});`);
     }
-    showTables() {
-        return this._query("SHOW TABLES;");
+    addColumn(tableName, columnDefinition) {
+        return this._query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
+    }
+    alterColumn(tableName, columnDefinition) {
+        return this._query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnDefinition};`);
+    }
+    addUnique(tableName, indexName, ...columns) {
+        columns = columns.map((value) => promise_mysql_1.default.escapeId(value));
+        const index = promise_mysql_1.default.escapeId(indexName);
+        const table = promise_mysql_1.default.escapeId(tableName);
+        return this._query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
+    }
+    dropIndex(tableName, indexName) {
+        const index = promise_mysql_1.default.escapeId(indexName);
+        const table = promise_mysql_1.default.escapeId(tableName);
+        return this._query(`DROP INDEX ${index} ON ${table};`);
+    }
+    addForeignKey(tableName, constraintName, column, referencedTable, referencedColumn, onDelete, onUpdate) {
+        const index = promise_mysql_1.default.escapeId(column);
+        const table = promise_mysql_1.default.escapeId(tableName);
+        const refTable = promise_mysql_1.default.escapeId(referencedTable);
+        const refColumn = promise_mysql_1.default.escapeId(referencedColumn);
+        const name = promise_mysql_1.default.escapeId(constraintName);
+        let query = `ALTER TABLE ${table} ADD FOREIGN KEY ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+        if (onDelete) {
+            query += " ON DELETE " + onDelete;
+        }
+        if (onUpdate) {
+            query += " ON UPDATE " + onUpdate;
+        }
+        return this._query(query + ";");
+    }
+    dropForeignKey(tableName, indexName) {
+        const index = promise_mysql_1.default.escapeId(indexName);
+        const table = promise_mysql_1.default.escapeId(tableName);
+        return this._query(`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`);
+    }
+    addPrimaryKey(tableName, ...columns) {
+        columns = columns.map((value) => promise_mysql_1.default.escapeId(value));
+        const table = promise_mysql_1.default.escapeId(tableName);
+        return this._query(`ALTER TABLE ${table} ADD PRIMARY KEY (${columns.join(", ")})`);
+    }
+    dropPrimaryKey(tableName) {
+        const table = promise_mysql_1.default.escapeId(tableName);
+        return this._query(`ALTER TABLE ${table} DROP PRIMARY KEY`);
     }
     /**
      * Registers an User if the userName is free.
@@ -193,16 +253,37 @@ class QueryContext {
         const result = await this._query("SELECT * FROM user_log WHERE ip = ?;", ip);
         const sessionRecord = result[0];
         if (!sessionRecord) {
-            return session ? false : null;
+            return false;
         }
         const currentSession = sessionRecord.session_key;
         if (session) {
             return session === currentSession && uuid === sessionRecord.user_uuid;
         }
-        else if (currentSession) {
-            return this._getUser(sessionRecord.user_uuid, currentSession);
+        return !!currentSession;
+    }
+    async loggedInUser(ip) {
+        if (!ip) {
+            return null;
         }
-        return null;
+        const result = await this._query("SELECT name, uuid, session_key FROM user_log " +
+            "INNER JOIN user ON user.uuid=user_log.user_uuid WHERE ip = ?;", ip);
+        const userRecord = result[0];
+        if (!userRecord || !ip || !userRecord.session_key || !userRecord.name || !userRecord.uuid) {
+            return null;
+        }
+        return {
+            name: userRecord.name,
+            session: userRecord.session_key,
+            uuid: userRecord.uuid
+        };
+    }
+    async getUser(uuid, ip) {
+        const result = await this._query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
+        const sessionRecord = result[0];
+        if (!sessionRecord || !sessionRecord.session_key) {
+            throw Error("user has no session");
+        }
+        return this._getUser(uuid, sessionRecord.session_key);
     }
     /**
      * Logs a user out.
@@ -616,11 +697,60 @@ class QueryContext {
             }
         });
     }
+    async createFromMediaInWait(medium, same, listId) {
+        const title = tools_1.sanitizeString(medium.title);
+        const newMedium = await this.addMedium({ title, medium: medium.medium });
+        const id = newMedium.id;
+        if (!id) {
+            throw Error("no medium id available");
+        }
+        const toDeleteMediaInWaits = [medium];
+        if (same && Array.isArray(same)) {
+            await Promise.all(same.filter((value) => value && value.medium === medium.medium)
+                .map((value) => this.addToc(id, value.link)));
+            const synonyms = same.map((value) => tools_1.sanitizeString(value.title))
+                .filter((value) => !tools_1.equalsIgnore(value, medium.title));
+            if (synonyms.length) {
+                await this.addSynonyms({ mediumId: id, synonym: synonyms });
+            }
+            toDeleteMediaInWaits.push(...same);
+        }
+        if (listId) {
+            await this.addItemToList(false, { id, listId });
+        }
+        await this.deleteMediaInWait(toDeleteMediaInWaits);
+        const parts = await this.getMediumParts(id);
+        newMedium.parts = parts.map((value) => value.id);
+        newMedium.latestReleased = [];
+        newMedium.currentRead = 0;
+        newMedium.unreadEpisodes = [];
+        return newMedium;
+    }
+    async consumeMediaInWait(mediumId, same) {
+        if (!same || !same.length) {
+            return false;
+        }
+        await Promise.all(same.filter((value) => value).map((value) => this.addToc(mediumId, value.link)));
+        const synonyms = same.map((value) => tools_1.sanitizeString(value.title));
+        await this.addSynonyms({ mediumId, synonym: synonyms });
+        await this.deleteMediaInWait(same);
+        return true;
+    }
     getMediaInWait() {
         return this._query("SELECT * FROM medium_in_wait");
     }
     async deleteMediaInWait(mediaInWait) {
-        // TODO: 20.07.2019 implement this
+        if (!mediaInWait) {
+            return;
+        }
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(mediaInWait, (value) => this._delete("medium_in_wait", {
+            column: "title", value: value.title
+        }, {
+            column: "medium", value: value.medium
+        }, {
+            column: "link", value: value.link
+        })).then(tools_1.ignore);
     }
     async addMediumInWait(mediaInWait) {
         await this._multiInsert("INSERT IGNORE INTO medium_in_wait (title, medium, link) VALUES ", mediaInWait, (value) => [value.title, value.medium, value.link]);
@@ -959,7 +1089,26 @@ class QueryContext {
             else if (value.sourceType) {
                 await this._query("UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?", [value.url, value.sourceType, value.url, value.title]);
             }
-        }).then(() => undefined);
+        }).then(tools_1.ignore);
+    }
+    async getEpisodeContentData(chapterLink) {
+        const results = await this._query("SELECT episode_release.title as episodeTitle, episode.combiIndex as `index`, " +
+            "medium.title as mediumTitle FROM episode_release " +
+            "INNER JOIN episode ON episode.id=episode_release.episode_id " +
+            "INNER JOIN part ON part.id=episode.part_id INNER JOIN medium ON medium.id=part.medium_id " +
+            "WHERE episode_release.url=?", chapterLink);
+        if (!results || !results.length) {
+            return {
+                episodeTitle: "",
+                index: 0,
+                mediumTitle: ""
+            };
+        }
+        return {
+            episodeTitle: results[0].episodeTitle,
+            index: results[0].index,
+            mediumTitle: results[0].mediumTitle
+        };
     }
     /**
      * Adds a episode of a part to the storage.
@@ -1071,10 +1220,12 @@ class QueryContext {
         tools_1.multiSingle(index, (value) => {
             if (!availableIndices.includes(value)) {
                 const separateValue = tools_1.separateIndex(value);
+                tools_1.checkIndices(separateValue);
                 episodes.push(separateValue);
             }
         });
         return episodes.map((value) => {
+            tools_1.checkIndices(value);
             return {
                 id: value.id,
                 partId,
@@ -1116,6 +1267,7 @@ class QueryContext {
             }
         });
         return episodes.map((value) => {
+            tools_1.checkIndices(value);
             return {
                 id: value.id,
                 partId: value.part_id,
@@ -1175,7 +1327,7 @@ class QueryContext {
             const idResult = await this._query("SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;", uuid);
             medium.listId = idResult[0].id;
         }
-        const result = await this._query(`INSERT INTO ${table} (list_id, medium_id) VALUES(?,?);`, [medium.listId, medium.id]);
+        const result = await this._multiInsert(`INSERT IGNORE INTO ${table} (list_id, medium_id) VALUES`, medium.id, (value) => [medium.listId, value]);
         return result.affectedRows > 0;
     }
     /**
@@ -1194,13 +1346,15 @@ class QueryContext {
      */
     removeMedium(listId, mediumId, external = false) {
         const table = external ? "external_list_medium" : "list_medium";
-        return this._delete(table, {
-            column: "list_id",
-            value: listId,
-        }, {
-            column: "medium_id",
-            value: mediumId,
-        });
+        return tools_1.promiseMultiSingle(mediumId, (value) => {
+            return this._delete(table, {
+                column: "list_id",
+                value: listId,
+            }, {
+                column: "medium_id",
+                value,
+            });
+        }).then(() => true);
     }
     /**
      * Adds an external user of an user to the storage.
@@ -1447,7 +1601,7 @@ class QueryContext {
                 return;
             }
             await this.addProgress(uuid, episodeId, value.progress, value.readDate);
-        }).then(() => undefined);
+        }).then(tools_1.ignore);
     }
     /**
      * Get the progress of an user in regard to an episode.
@@ -1763,7 +1917,7 @@ class QueryContext {
                 ._query("INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);", [uuid, episodeId]);
             await this._query("INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
                 "VALUES (?,?,?,?,?,?);", [value.novel, value.chapter, value.chapIndex, value.volume, value.volIndex, episodeId]);
-        }).then(() => undefined);
+        }).then(tools_1.ignore);
     }
     createStandardPart(mediumId) {
         const partName = "Non Indexed Volume";
@@ -1835,7 +1989,7 @@ class QueryContext {
         return true;
     }
     addToc(mediumId, link) {
-        return this._query("INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)", [mediumId, link]).then(() => undefined);
+        return this._query("INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)", [mediumId, link]).then(tools_1.ignore);
     }
     async getToc(mediumId) {
         const resultArray = await this._query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
@@ -1982,6 +2136,9 @@ class QueryContext {
             };
         });
     }
+    clearInvalidationTable() {
+        return this._query("TRUNCATE user_data_invalidation");
+    }
     /**
      * Returns a user with their associated lists and external user from the storage.
      */
@@ -2057,7 +2214,7 @@ class QueryContext {
             else {
                 query += " AND ";
             }
-            values.push(value.values);
+            values.push(value.value);
         });
         const result = await this._query(query, values);
         return result.affectedRows >= 0;

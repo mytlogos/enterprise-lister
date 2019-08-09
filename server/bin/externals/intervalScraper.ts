@@ -7,7 +7,7 @@ import {
     list,
     news,
     oneTimeToc,
-    processNewsScraper,
+    scrapeNews,
     ScrapeDependants,
     Scraper,
     ScraperHelper,
@@ -123,7 +123,7 @@ export class IntervalScraper implements Scraper {
         allPromises.push(this._notify("feed", dependants.feeds.map((value) => feed(value))));
         allPromises.push(this._notify(
             "news",
-            this.helper.newsAdapter.map((adapter) => processNewsScraper(adapter))
+            this.helper.newsAdapter.map((adapter) => scrapeNews(adapter))
         ));
         allPromises.push(this
             ._notify("toc", dependants.oneTimeTocs.map((value) => oneTimeToc(value)))

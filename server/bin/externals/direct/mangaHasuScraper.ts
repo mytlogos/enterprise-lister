@@ -1,9 +1,10 @@
-import {Hook, Toc, TocEpisode, TocPart} from "../types";
+import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
 import {EpisodeNews, News} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
 import {extractIndices, MediaType, sanitizeString} from "../../tools";
+import {checkTocContent} from "../scraperTools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
@@ -98,6 +99,49 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         date.setMinutes(date.getMinutes() - i * 15);
     }
     return {episodes: news};
+}
+
+async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
+    const $ = await queueCheerioRequest(chapterLink);
+    const mediumTitleElement = $(".breadcrumb li:nth-child(2) a");
+    const titleElement = $(".breadcrumb span");
+
+    const episodeTitle = sanitizeString(titleElement.text());
+    const mediumTitle = sanitizeString(mediumTitleElement.text());
+
+    if (!episodeTitle || !mediumTitle) {
+        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction");
+        return [];
+    }
+    const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
+    const exec = chapReg.exec(episodeTitle);
+
+    if (!exec || !mediumTitle) {
+        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction");
+        return [];
+    }
+    const index = Number(exec[1]);
+    const images = $(".img img");
+    const imageUrls = [];
+    const imageUrlReg = /^http:\/\/img\.mangahasu\.se\/.+\.\w+/;
+
+    for (let i = 0; i < images.length; i++) {
+        const imageElement = images.eq(i);
+        const src = imageElement.attr("src");
+
+        if (!src || !imageUrlReg.test(src)) {
+            logger.warn("image link format changed on mangahasu");
+            return [];
+        }
+        imageUrls.push(src);
+    }
+    const episodeContent: EpisodeContent = {
+        content: imageUrls,
+        episodeTitle,
+        index,
+        mediumTitle
+    };
+    return [episodeContent];
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
@@ -195,18 +239,21 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                     partialIndex: volIndices.fraction,
                     title: "Vol." + volIndices.combi
                 };
+                checkTocContent(part);
                 indexPartMap.set(volIndices.combi, part);
                 partContents.push(part);
             }
 
-            part.episodes.push({
+            const episodeContent = {
                 title,
                 combiIndex: chapIndices.combi,
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
-            });
+            };
+            checkTocContent(episodeContent);
+            part.episodes.push(episodeContent);
         } else if (chapGroups) {
             const chapIndices = extractIndices(chapGroups, 1, 2, 4);
 
@@ -248,8 +295,9 @@ scrapeNews.link = "http://mangahasu.se/";
 
 export function getHook(): Hook {
     return {
-        domainReg: /^mangahasu\.se/,
+        domainReg: /^https?:\/\/mangahasu\.se/,
         newsAdapter: scrapeNews,
+        contentDownloadAdapter,
         tocAdapter: scrapeToc
     };
 }

@@ -7,6 +7,7 @@ import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "cloudscraper";
 import {CloudScraper, CloudscraperOptions} from "cloudscraper";
 import * as normalRequest from "request";
+import {checkTocContent} from "../scraperTools";
 
 // @ts-ignore
 const jar = request.jar();
@@ -188,14 +189,16 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             title += " - " + episodeGroups[6];
         }
 
-        content.push({
+        const episodeContent = {
             title,
             combiIndex: indices.combi,
             totalIndex: indices.total,
             partialIndex: indices.fraction,
             url: link,
             releaseDate: date
-        });
+        };
+        checkTocContent(episodeContent);
+        content.push(episodeContent);
     }
 
     const toc: Toc = {
@@ -212,7 +215,7 @@ scrapeNews.link = "https://kissanime.ru/";
 
 export function getHook(): Hook {
     return {
-        domainReg: /^kissanime\.ru/,
+        domainReg: /^https?:\/\/kissanime\.ru/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc
     };

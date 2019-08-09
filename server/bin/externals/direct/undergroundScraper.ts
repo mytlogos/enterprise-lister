@@ -1,4 +1,4 @@
-import {Hook, TextEpisodeContent} from "../types";
+import {EpisodeContent, Hook} from "../types";
 import {EpisodeNews, EpisodeRelease, LikeMedium, MultiSingle, News, SimpleEpisode} from "../../types";
 import logger, {logError} from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
@@ -8,7 +8,7 @@ import {max, MediaType} from "../../tools";
 
 export const sourceType = "qidian_underground";
 
-async function scrapeNews(): Promise<{news?: News[], episodes?: EpisodeNews[]} | undefined> {
+async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://toc.qidianunderground.org/";
 
     const $ = await queueCheerioRequest(uri);
@@ -183,12 +183,12 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
     }
 }
 
-async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
+async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
     const $ = await queueCheerioRequest(urlString);
 
     const contents = $(".center-block .well");
 
-    const episodes: TextEpisodeContent[] = [];
+    const episodes: EpisodeContent[] = [];
 
     for (let i = 0; i < contents.length; i++) {
         const contentElement = contents.eq(i);
@@ -215,15 +215,14 @@ async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
         if (index != null && Number.isNaN(index)) {
             index = undefined;
         }
-        const textEpisodeContent: TextEpisodeContent = {
-            contentType: MediaType.TEXT,
-            content,
+        const episodeContent: EpisodeContent = {
+            content: [content],
             episodeTitle,
             // the pages themselves dont have any novel titles
             mediumTitle: "",
             index
         };
-        episodes.push(textEpisodeContent);
+        episodes.push(episodeContent);
     }
 
     return episodes;

@@ -1,10 +1,11 @@
-import {EpisodeContent, Hook, TextEpisodeContent, Toc, TocContent, TocEpisode, TocPart} from "../types";
+import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
 import {getTextContent} from "./directTools";
+import {checkTocContent} from "../scraperTools";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return;
@@ -133,6 +134,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
             url: link,
             title: episodeTitle
         } as TocEpisode;
+        checkTocContent(episode);
 
         if (partIndices) {
             let part: TocPart | undefined = indexPartMap.get(partIndices.combi);
@@ -145,6 +147,8 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
                     partialIndex: partIndices.fraction,
                     title: "Vol." + partIndices.combi
                 };
+                checkTocContent(part);
+
                 indexPartMap.set(partIndices.combi, part);
                 content.push(part);
             }

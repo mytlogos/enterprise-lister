@@ -6,8 +6,46 @@ const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 const request = tslib_1.__importStar(require("request"));
+const scraperTools_1 = require("../scraperTools");
+const database_1 = require("../../database/database");
 const jar = request.jar();
 jar.setCookie(`mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;`, "https://mangadex.org/", { secure: false });
+function loadJson(urlString) {
+    return queueManager_1.queueRequest(urlString).then((body) => JSON.parse(body));
+}
+async function contentDownloadAdapter(chapterLink) {
+    const linkReg = /^https:\/\/mangadex\.org\/chapter\/(\d+)/;
+    const exec = linkReg.exec(chapterLink);
+    if (!exec) {
+        logger_1.default.warn("changed chapter link format on mangadex");
+        return [];
+    }
+    const chapterId = exec[1];
+    const urlString = `https://mangadex.org/api/?id=${chapterId}&server=null&type=chapter`;
+    const jsonPromise = loadJson(urlString);
+    const contentData = await database_1.Storage.getEpisodeContent(chapterLink);
+    if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
+        logger_1.default.warn("incoherent data, did not find any release with given url link, " +
+            "which has a title, index and mediumTitle");
+        return [];
+    }
+    const jsonResponse = await jsonPromise;
+    if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
+        logger_1.default.warn("changed chapter api format on mangadex");
+        return [];
+    }
+    const imageUrls = [];
+    for (const imageKey of jsonResponse.page_array) {
+        imageUrls.push(`${jsonResponse.server}${jsonResponse.hash}/${imageKey}`);
+    }
+    const episodeContent = {
+        content: imageUrls,
+        episodeTitle: contentData.episodeTitle,
+        index: contentData.index,
+        mediumTitle: contentData.mediumTitle
+    };
+    return [episodeContent];
+}
 async function scrapeNews() {
     // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
     //  with expiration date somewhere in 100 years to lessen load
@@ -183,17 +221,20 @@ async function scrapeToc(urlString) {
                     partialIndex: volIndices.fraction,
                     title: "Vol." + volIndices.combi
                 };
+                scraperTools_1.checkTocContent(part);
                 indexPartMap.set(volIndices.combi, part);
                 contents.push(part);
             }
-            part.episodes.push({
+            const chapterContent = {
                 title,
                 combiIndex: chapIndices.combi,
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
-            });
+            };
+            scraperTools_1.checkTocContent(chapterContent);
+            part.episodes.push(chapterContent);
         }
         else if (chapGroups) {
             const chapIndices = tools_1.extractIndices(chapGroups, 1, 2, 4);
@@ -202,14 +243,16 @@ async function scrapeToc(urlString) {
             }
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
             const title = `Chapter ${chapIndices.combi} - ${chapGroups[6]}`;
-            contents.push({
+            const chapterContent = {
                 title,
                 combiIndex: chapIndices.combi,
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
-            });
+            };
+            scraperTools_1.checkTocContent(chapterContent);
+            contents.push(chapterContent);
         }
         else {
             logger_1.default.warn("volume - chapter format changed on mangadex: recognized neither of them");
@@ -226,7 +269,8 @@ async function scrapeToc(urlString) {
 scrapeNews.link = "https://mangadex.org/";
 function getHook() {
     return {
-        domainReg: /^mangadex\.org/,
+        domainReg: /^https?:\/\/mangadex\.org/,
+        contentDownloadAdapter,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc
     };

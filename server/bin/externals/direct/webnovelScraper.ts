@@ -1,10 +1,11 @@
-import {Hook, TextEpisodeContent, Toc, TocEpisode, TocPart} from "../types";
+import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import {equalsIgnore, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as request from "request-promise-native";
+import {checkTocContent} from "../scraperTools";
 
 const jar = request.jar();
 const defaultRequest = request.defaults({
@@ -74,12 +75,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     // wait for a normal request, to get the right cookies
     await initPromise;
 
-    const bookId = /https?:\/\/(www\.)?webnovel\.com\/book\/(\d+)/.exec(urlString);
+    const bookIdResult = /https?:\/\/(www\.)?webnovel\.com\/book\/(\d+)/.exec(urlString);
 
-    if (!bookId || !bookId[2]) {
-        logger.warn("WebNovel toc link has no bookId: " + urlString);
+    if (!bookIdResult) {
+        logger.warn("WebNovel toc link has no bookIdResult: " + urlString);
         return [];
     }
+
+    const bookId = bookIdResult[2];
 
     const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
 
@@ -106,21 +109,24 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                 date = relativeToAbsoluteTime(item.createTime) || new Date();
             }
 
-
-            return {
-                url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
+            const chapterContent = {
+                url: `https://www.webnovel.com/book/${bookIdResult}/${item.id}/`,
                 title: item.name,
                 combiIndex: item.index,
                 totalIndex: item.index,
                 releaseDate: date
             };
+            checkTocContent(chapterContent);
+            return chapterContent;
         });
-        return {
+        const partContent = {
             episodes: chapters,
             title: name,
             combiIndex: volume.index,
             totalIndex: volume.index,
         };
+        checkTocContent(partContent);
+        return partContent;
     });
     const toc: Toc = {
         link: urlString,
@@ -143,11 +149,15 @@ function loadJson(urlString: string): Promise<any> {
         .then((body) => JSON.parse(body));
 }
 
-async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
+async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
     const $ = await loadBody(urlString);
 
     const contentElement = $(".chapter_content");
-    const novelTitle = contentElement.find(".cha-hd-mn-text").first().text().trim();
+
+    if ($("._lock").length) {
+        return [];
+    }
+    const novelTitle = $(".cha-hd-mn-text a").first().text().trim();
     const episodeTitle = contentElement.find(".cha-tit h3").first().text().trim();
     const content = contentElement.find(".cha-words").first().html();
 
@@ -168,15 +178,14 @@ async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
     if (index != null && Number.isNaN(index)) {
         index = undefined;
     }
-    const textEpisodeContent: TextEpisodeContent = {
-        contentType: MediaType.TEXT,
-        content,
+    const episodeContent: EpisodeContent = {
+        content: [content],
         episodeTitle,
         mediumTitle: novelTitle,
         index
     };
 
-    return [textEpisodeContent];
+    return [episodeContent];
 }
 
 interface ChapterItem {
@@ -252,6 +261,12 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
     if (!bookId) {
         return;
     }
+
+    const idPattern = /^\d+$/;
+
+    if (idPattern.test(bookId)) {
+        throw Error("invalid bookId");
+    }
     const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
 
     if (!csrfCookie) {
@@ -280,14 +295,19 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
                 throw Error(`invalid date: '${chapterItem.createTime}'`);
             }
 
+            if (idPattern.test(chapterItem.id)) {
+                throw Error("invalid bookId");
+            }
             const link = `https://www.webnovel.com/book/${bookId}/${chapterItem.id}/`;
-            episodes.push({
+            const chapterContent = {
                 title: chapterItem.name,
                 combiIndex: chapterItem.index,
                 totalIndex: chapterItem.index,
                 releaseDate,
                 url: link
-            });
+            };
+            checkTocContent(chapterContent);
+            episodes.push(chapterContent);
         }
     }
     console.log("scraping toc on webnovel successfully " + searchMedium.mediumId);

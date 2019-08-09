@@ -3,11 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const env_1 = tslib_1.__importDefault(require("../env"));
-const databaseValidator_1 = require("./databaseValidator");
 const logger_1 = tslib_1.__importDefault(require("../logger"));
 const queryContext_1 = require("./queryContext");
 const databaseSchema_1 = require("./databaseSchema");
 const tools_1 = require("../tools");
+const schemaManager_1 = require("./schemaManager");
 // setInterval(
 //     () => StateProcessor
 //         .startRound()
@@ -108,8 +108,9 @@ function start() {
     if (!running) {
         running = true;
         try {
-            databaseValidator_1.StateProcessor.initTableSchema(databaseSchema_1.databaseSchema);
-            startPromise = inContext((context) => databaseValidator_1.StateProcessor.checkTableSchema(context), true).catch((error) => {
+            const manager = new schemaManager_1.SchemaManager();
+            manager.initTableSchema(databaseSchema_1.databaseSchema);
+            startPromise = inContext((context) => manager.checkTableSchema(context), true).catch((error) => {
                 logger_1.default.error(error);
                 console.log(error);
                 errorAtStart = true;
@@ -173,6 +174,27 @@ exports.Storage = {
     // @ts-ignore
     userLoginStatus(ip, uuid, session) {
         return inContext((context) => context.userLoginStatus(ip, uuid, session));
+    },
+    /**
+     * Get the user for the given uuid.
+     *
+     * @return {Promise<SimpleUser>}
+     */
+    // @ts-ignore
+    getUser(uuid, ip) {
+        return inContext((context) => context.getUser(uuid, ip));
+    },
+    /**
+     * Checks if for the given ip any user is logged in.
+     *
+     * Returns the uuid of the logged in user and
+     * the session key of the user for the ip.
+     *
+     * @return {Promise<User|null>}
+     */
+    // @ts-ignore
+    loggedInUser(ip) {
+        return inContext((context) => context.loggedInUser(ip));
     },
     /**
      * Logs a user out.
@@ -277,6 +299,12 @@ exports.Storage = {
     },
     getMediaInWait() {
         return inContext((context) => context.getMediaInWait());
+    },
+    createFromMediaInWait(createMedium, tocsMedia, listId) {
+        return inContext((context) => context.createFromMediaInWait(createMedium, tocsMedia, listId));
+    },
+    consumeMediaInWait(mediumId, tocsMedia) {
+        return inContext((context) => context.consumeMediaInWait(mediumId, tocsMedia));
     },
     deleteMediaInWait(mediaInWait) {
         return inContext((context) => context.deleteMediaInWait(mediaInWait));
@@ -436,6 +464,9 @@ exports.Storage = {
     getSourcedReleases(sourceType, mediumId) {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
     },
+    getEpisodeContent(chapterLink) {
+        return inContext((context) => context.getEpisodeContentData(chapterLink));
+    },
     getPageInfo(link, key) {
         return inContext((context) => context.getPageInfo(link, key));
     },
@@ -455,7 +486,7 @@ exports.Storage = {
      * Moves a medium from an old list to a new list.
      */
     moveMedium(oldListId, newListId, mediumId, uuid) {
-        return inContext((context) => context.setUuid(uuid).moveMedium(newListId, mediumId, oldListId));
+        return inContext((context) => context.setUuid(uuid).moveMedium(oldListId, newListId, mediumId));
     },
     getSimpleMedium(id) {
         return inContext((context) => context.getSimpleMedium(id));

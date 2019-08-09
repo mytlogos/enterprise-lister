@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
-const tools_1 = require("../../tools");
 function getTextContent(novelTitle, episodeTitle, urlString, content) {
     if (!novelTitle || !episodeTitle) {
         logger_1.default.warn("episode link with no novel or episode title: " + urlString);
@@ -20,14 +19,13 @@ function getTextContent(novelTitle, episodeTitle, urlString, content) {
     if (index == null || Number.isNaN(index)) {
         index = undefined;
     }
-    const textEpisodeContent = {
-        contentType: tools_1.MediaType.TEXT,
-        content,
+    const episodeContent = {
+        content: [content],
         episodeTitle,
         mediumTitle: novelTitle,
         index
     };
-    return [textEpisodeContent];
+    return [episodeContent];
 }
 exports.getTextContent = getTextContent;
 //# sourceMappingURL=directTools.js.map

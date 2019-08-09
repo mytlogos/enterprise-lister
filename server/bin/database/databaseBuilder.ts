@@ -1,15 +1,29 @@
 import {TableBuilder} from "./tableBuilder";
-import {DatabaseSchema, InvalidationType} from "./databaseTypes";
+import {DatabaseSchema, InvalidationType, Migration} from "./databaseTypes";
 import {TableSchema} from "./tableSchema";
+import {Trigger} from "./trigger";
+import {TriggerBuilder} from "./triggerBuilder";
 
 export class DataBaseBuilder {
     public readonly tables: TableSchema[] = [];
+    private readonly triggers: Trigger[] = [];
     private readonly invalidations: Array<{ table: TableSchema, type: InvalidationType, tableName?: string; }> = [];
-    private name?: string;
+    private readonly migrations: Migration[] = [];
+    private readonly name: string;
+    private readonly version: number;
+
+
+    constructor(name: string, version: number) {
+        this.name = name;
+        this.version = version;
+    }
 
     public build(): DatabaseSchema {
         if (!this.name) {
-            throw Error();
+            throw Error("database has no name");
+        }
+        if (this.version <= 0 || !Number.isInteger(this.version)) {
+            throw Error("invalid database version");
         }
         this.invalidations.forEach((value) => {
             let table: TableSchema;
@@ -85,11 +99,22 @@ export class DataBaseBuilder {
             }
         }
         return {
+            version: this.version,
             name: this.name,
+            triggers: this.triggers,
             tables: [...this.tables],
             invalidationTable,
             mainTable,
+            migrations: this.migrations
         };
+    }
+
+    public addMigrations(...migrations: Migration[]) {
+        this.migrations.push(...migrations);
+    }
+
+    public addTrigger(trigger: Trigger) {
+        this.triggers.push(trigger);
     }
 
     public addTable(table: TableSchema, invalidations: Array<{ type: InvalidationType; table?: string; }>): this {
@@ -105,10 +130,8 @@ export class DataBaseBuilder {
         return new TableBuilder(this);
     }
 
-
-    public setName(name: string): this {
-        this.name = name;
-        return this;
+    public getTriggerBuilder(): TriggerBuilder {
+        return new TriggerBuilder(this);
     }
 }
 

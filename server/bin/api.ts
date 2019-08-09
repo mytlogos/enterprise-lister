@@ -32,6 +32,9 @@ function userRouter(): Router {
     router.use(UserApi.authenticate);
 
     const userRoute = router.route("");
+
+    // check if an user is logged in for ip
+    userRoute.get(UserApi.getUser);
     userRoute.put(UserApi.putUser);
     userRoute.delete(UserApi.deleteUser);
 
@@ -109,6 +112,8 @@ function mediumRouter(): Router {
     const router = Router();
 
     router.get("/unused", UserApi.getUnusedMedia);
+    router.put("/unused", UserApi.putConsumeUnusedMedia);
+    router.post("/create", UserApi.postCreateFromUnusedMedia);
     router.use("/part", partRouter());
 
     const mediumRoute = router.route("");

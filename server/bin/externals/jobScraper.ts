@@ -1,9 +1,10 @@
 import {
     checkTocs,
+    feed,
     list,
     news,
     oneTimeToc,
-    processNewsScraper,
+    scrapeNews,
     Scraper,
     ScraperHelper,
     ScrapeTypes,
@@ -60,8 +61,8 @@ export class JobScraper implements Scraper {
         JobScraper.processDependant(
             dependant,
             "feed",
-            // TODO: 20.07.2019 decomment this
-            (value: any) => {/*this.queuePeriodicEmittable("feed", 10 * MINUTE, value, feed)*/
+            (value: any) => {
+                this.queuePeriodicEmittable("feed", 10 * MINUTE, value, feed);
             }
         );
         JobScraper.processDependant(
@@ -120,13 +121,13 @@ export class JobScraper implements Scraper {
                 .forEach((value: Dependant) => this.addDependant(value));
         });
         this.helper.newsAdapter.forEach((value) => {
-            this.queuePeriodicEmittable("news", 5 * MINUTE, value, processNewsScraper);
+            this.queuePeriodicEmittable("news", 5 * MINUTE, value, scrapeNews);
         });
         this.queuePeriodic(HOUR, checkTocs);
         this.queuePeriodic(DAY, async () => {
             // every monday scan every available external user, if not scanned on same day
             const externals = await Storage.getScrapeExternalUser();
-            // externals.forEach((value) => this.queueOneTimeEmittable("list", value, list));
+            externals.forEach((value) => this.queueOneTimeEmittable("list", value, list));
         });
     }
 

@@ -1,10 +1,12 @@
-import {Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News} from "../../types";
+import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
+import {EpisodeContentData, EpisodeNews, News} from "../../types";
 import * as url from "url";
-import {queueCheerioRequest} from "../queueManager";
+import {queueCheerioRequest, queueRequest} from "../queueManager";
 import logger from "../../logger";
 import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "request";
+import {checkTocContent} from "../scraperTools";
+import {Storage} from "../../database/database";
 
 const jar = request.jar();
 jar.setCookie(
@@ -12,6 +14,104 @@ jar.setCookie(
     "https://mangadex.org/",
     {secure: false}
 );
+
+function loadJson(urlString: string): Promise<any> {
+    return queueRequest(urlString).then((body) => JSON.parse(body));
+}
+
+interface ChapterResponse {
+    id: number;
+    timestamp: number;
+    hash: string;
+    volume: string;
+    chapter: string;
+    title: string;
+    lang_name: string;
+    lang_code: string;
+    manga_id: number;
+    group_id: number;
+    group_id_2: number;
+    group_id_3: number;
+    comments: null | string;
+    server: string;
+    page_array: string[];
+    long_strip: number;
+    status: string;
+}
+
+interface ChapterTocResponse {
+    manga: MangaChapter;
+    chapter: { [key: string]: ChapterChapterItem };
+    status: string;
+}
+
+interface MangaChapter {
+    cover_url: string;
+    description: string;
+    title: string;
+    artist: string;
+    author: string;
+    status: number;
+    genre: number[];
+    last_chapter: string;
+    lang_name: string;
+    lang_flag: string;
+    hentai: number;
+    links: { mu: string, mal: string };
+}
+
+interface ChapterChapterItem {
+    volume: string;
+    chapter: string;
+    title: string;
+    lang_code: string;
+    group_id: string;
+    group_name: string;
+    group_id_2: number;
+    group_name_2: null | string;
+    group_id_3: number;
+    group_name_3: null | string;
+    timestamp: number;
+}
+
+async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
+    const linkReg = /^https:\/\/mangadex\.org\/chapter\/(\d+)/;
+    const exec = linkReg.exec(chapterLink);
+    if (!exec) {
+        logger.warn("changed chapter link format on mangadex");
+        return [];
+    }
+    const chapterId = exec[1];
+    const urlString = `https://mangadex.org/api/?id=${chapterId}&server=null&type=chapter`;
+    const jsonPromise: Promise<any> = loadJson(urlString);
+    const contentData: EpisodeContentData = await Storage.getEpisodeContent(chapterLink);
+
+    if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
+        logger.warn(
+            "incoherent data, did not find any release with given url link, " +
+            "which has a title, index and mediumTitle"
+        );
+        return [];
+    }
+    const jsonResponse: ChapterResponse = await jsonPromise;
+
+    if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
+        logger.warn("changed chapter api format on mangadex");
+        return [];
+    }
+    const imageUrls = [];
+    for (const imageKey of jsonResponse.page_array) {
+        imageUrls.push(`${jsonResponse.server}${jsonResponse.hash}/${imageKey}`);
+    }
+    const episodeContent: EpisodeContent = {
+        content: imageUrls,
+        episodeTitle: contentData.episodeTitle,
+        index: contentData.index,
+        mediumTitle: contentData.mediumTitle
+    };
+    return [episodeContent];
+}
+
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
@@ -224,18 +324,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                     partialIndex: volIndices.fraction,
                     title: "Vol." + volIndices.combi
                 };
+                checkTocContent(part);
                 indexPartMap.set(volIndices.combi, part);
                 contents.push(part);
             }
-
-            part.episodes.push({
+            const chapterContent = {
                 title,
                 combiIndex: chapIndices.combi,
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
-            });
+            };
+            checkTocContent(chapterContent);
+            part.episodes.push(chapterContent);
         } else if (chapGroups) {
             const chapIndices = extractIndices(chapGroups, 1, 2, 4);
 
@@ -246,14 +348,16 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
             const title = `Chapter ${chapIndices.combi} - ${chapGroups[6]}`;
 
-            contents.push({
+            const chapterContent = {
                 title,
                 combiIndex: chapIndices.combi,
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
                 releaseDate: time
-            } as TocEpisode);
+            } as TocEpisode;
+            checkTocContent(chapterContent);
+            contents.push(chapterContent);
         } else {
             logger.warn("volume - chapter format changed on mangadex: recognized neither of them");
             return [];
@@ -271,7 +375,8 @@ scrapeNews.link = "https://mangadex.org/";
 
 export function getHook(): Hook {
     return {
-        domainReg: /^mangadex\.org/,
+        domainReg: /^https?:\/\/mangadex\.org/,
+        contentDownloadAdapter,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc
     };

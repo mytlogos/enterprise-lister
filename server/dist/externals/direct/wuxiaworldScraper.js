@@ -5,6 +5,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const tools_1 = require("../../tools");
+const scraperTools_1 = require("../scraperTools");
 async function scrapeNews() {
     const uri = "https://www.wuxiaworld.com/";
     const $ = await queueManager_1.queueCheerioRequest(uri);
@@ -132,6 +133,7 @@ async function scrapeToc(urlString) {
             combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
+        scraperTools_1.checkTocContent(volume);
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
             const link = url.resolve(uri, chapterElement.attr("href"));
@@ -142,13 +144,15 @@ async function scrapeToc(urlString) {
                 if (!indices) {
                     throw Error(`changed format on wuxiaworld, got no indices for: '${title}'`);
                 }
-                volume.episodes.push({
+                const chapterContent = {
                     url: link,
                     title,
                     totalIndex: indices.total,
                     partialIndex: indices.fraction,
                     combiIndex: indices.combi
-                });
+                };
+                scraperTools_1.checkTocContent(chapterContent);
+                volume.episodes.push(chapterContent);
             }
         }
         content.push(volume);
@@ -227,14 +231,13 @@ async function scrapeContent(urlString) {
     if (index == null || Number.isNaN(index)) {
         index = undefined;
     }
-    const textEpisodeContent = {
-        contentType: tools_1.MediaType.TEXT,
-        content,
+    const episodeContent = {
+        content: [content],
         episodeTitle,
         mediumTitle: novelTitle,
         index
     };
-    return [textEpisodeContent];
+    return [episodeContent];
 }
 async function tocSearcher(medium) {
     const words = medium.title.split(/\s+/).filter((value) => value);

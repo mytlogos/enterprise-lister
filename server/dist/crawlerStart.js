@@ -90,16 +90,11 @@ async function getTocMedia(result, uuid) {
             if (!content || content.totalIndex == null) {
                 throw Error(`invalid tocContent for mediumId:'${medium && medium.id}' and link:'${toc.link}'`);
             }
-            const totalIndex = Math.floor(content.totalIndex);
-            content.totalIndex = totalIndex;
-            const partialIndex = content.totalIndex - totalIndex;
+            scraperTools_1.checkTocContent(content);
             let alterTitle;
             if (!content.title) {
                 alterTitle = `${content.totalIndex}${content.partialIndex ? "." + content.partialIndex : ""}`;
                 content.title = alterTitle;
-            }
-            if (partialIndex) {
-                content.partialIndex = partialIndex;
             }
             if (tools_1.isTocEpisode(content)) {
                 if (alterTitle) {
@@ -111,6 +106,7 @@ async function getTocMedia(result, uuid) {
                 if (alterTitle) {
                     content.title = `Volume ${content.title}`;
                 }
+                content.episodes.forEach((value) => scraperTools_1.checkTocContent(value));
                 mediumValue.parts.push(content);
             }
             else {
@@ -182,6 +178,7 @@ async function addPartEpisodes(value) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
     value.tocPart.episodes.forEach((episode) => {
+        scraperTools_1.checkTocContent(episode);
         value.episodeMap.set(episode.combiIndex, { tocEpisode: episode });
     });
     // @ts-ignore
@@ -190,14 +187,14 @@ async function addPartEpisodes(value) {
         if (!episode.id) {
             return;
         }
-        const tocEpisode = value.episodeMap.get(episode.totalIndex);
+        const tocEpisode = value.episodeMap.get(tools_1.combiIndex(episode));
         if (!tocEpisode) {
             throw Error("something went wrong. got no value at this episode index");
         }
         tocEpisode.episode = episode;
     });
     const allEpisodes = [...value.episodeMap.keys()]
-        .filter((index) => !episodes.find((episode) => tools_1.combiIndex(episode) === index))
+        .filter((index) => episodes.every((episode) => tools_1.combiIndex(episode) !== index || !episode.id))
         .map((episodeIndex) => {
         const episodeToc = value.episodeMap.get(episodeIndex);
         if (!episodeToc) {
@@ -221,11 +218,11 @@ async function addPartEpisodes(value) {
     await database_1.Storage.addEpisode(allEpisodes);
 }
 async function tocHandler(result) {
+    // TODO: 04.08.2019 does not seem to work correctly e.g. with library of heavens path
     console.log(`handling toc: ${result.tocs} ${result.uuid}`);
     if (!(result.tocs && result.tocs.length)) {
         return;
     }
-    // todo do not only search for episodes and parts with totalIndex, but with partialIndex too
     const uuid = result.uuid;
     const media = await getTocMedia(result, uuid);
     const promises = Array.from(media.entries())
@@ -235,6 +232,7 @@ async function tocHandler(result) {
         const tocParts = entry[1].parts;
         const indexPartsMap = new Map();
         tocParts.forEach((value) => {
+            scraperTools_1.checkTocContent(value);
             if (value.totalIndex == null) {
                 throw Error(`totalIndex should not be null! mediumId: '${mediumId}'`);
             }
@@ -249,6 +247,7 @@ async function tocHandler(result) {
         const partIndices = [...indexPartsMap.keys()];
         const parts = await database_1.Storage.getMediumPartsPerIndex(mediumId, partIndices);
         parts.forEach((value) => {
+            tools_1.checkIndices(value);
             if (!value.id) {
                 return;
             }
@@ -265,6 +264,7 @@ async function tocHandler(result) {
             if (!partToc) {
                 throw Error("something went wrong. got no value at this part index");
             }
+            scraperTools_1.checkTocContent(partToc.tocPart);
             return database_1.Storage
                 // @ts-ignore
                 .addPart({

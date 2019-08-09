@@ -28,6 +28,8 @@ function userRouter() {
     // after this middleware should be protected with this now
     router.use(UserApi.authenticate);
     const userRoute = router.route("");
+    // check if an user is logged in for ip
+    userRoute.get(UserApi.getUser);
     userRoute.put(UserApi.putUser);
     userRoute.delete(UserApi.deleteUser);
     router.post("/logout", UserApi.logout);
@@ -93,6 +95,8 @@ function processRouter() {
 function mediumRouter() {
     const router = express_1.Router();
     router.get("/unused", UserApi.getUnusedMedia);
+    router.put("/unused", UserApi.putConsumeUnusedMedia);
+    router.post("/create", UserApi.postCreateFromUnusedMedia);
     router.use("/part", partRouter());
     const mediumRoute = router.route("");
     mediumRoute.get(UserApi.getMedium);

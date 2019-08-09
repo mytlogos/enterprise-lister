@@ -26,9 +26,8 @@ class JobScraper {
     addDependant(dependant) {
         JobScraper.processDependant(dependant, "toc", (value) => this.queuePeriodicEmittable("toc", HOUR, value, scraperTools_1.toc));
         JobScraper.processDependant(dependant, "oneTimeToc", (value) => this.queueOneTimeEmittable("toc", value, (item) => scraperTools_1.oneTimeToc(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeTypes.ONETIMETOC))));
-        JobScraper.processDependant(dependant, "feed", 
-        // TODO: 20.07.2019 decomment this
-        (value) => {
+        JobScraper.processDependant(dependant, "feed", (value) => {
+            this.queuePeriodicEmittable("feed", 10 * MINUTE, value, scraperTools_1.feed);
         });
         JobScraper.processDependant(dependant, "news", (value) => this.queuePeriodicEmittable("news", 5 * MINUTE, value, scraperTools_1.news));
         JobScraper.processDependant(dependant, "oneTimeUser", (value) => this.queueOneTimeEmittable("list", value, (item) => scraperTools_1.list(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeTypes.ONETIMEUSER))));
@@ -74,13 +73,13 @@ class JobScraper {
                 .forEach((value) => this.addDependant(value));
         });
         this.helper.newsAdapter.forEach((value) => {
-            this.queuePeriodicEmittable("news", 5 * MINUTE, value, scraperTools_1.processNewsScraper);
+            this.queuePeriodicEmittable("news", 5 * MINUTE, value, scraperTools_1.scrapeNews);
         });
         this.queuePeriodic(HOUR, scraperTools_1.checkTocs);
         this.queuePeriodic(DAY, async () => {
             // every monday scan every available external user, if not scanned on same day
             const externals = await database_1.Storage.getScrapeExternalUser();
-            // externals.forEach((value) => this.queueOneTimeEmittable("list", value, list));
+            externals.forEach((value) => this.queueOneTimeEmittable("list", value, scraperTools_1.list));
         });
     }
     start() {

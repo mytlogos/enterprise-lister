@@ -1,12 +1,19 @@
 import { Connection } from "promise-mysql";
-import { Episode, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { MediumInWait } from "./databaseTypes";
 import { ScrapeTypes } from "../externals/scraperTools";
+import { Trigger } from "./trigger";
+export interface DbTrigger {
+    Trigger: string;
+    Event: string;
+    Timing: string;
+    Table: string;
+}
 /**
  * A Class for consecutive queries on the same connection.
  */
 export declare class QueryContext {
-    con: Connection;
+    private con;
     private uuid;
     constructor(con: Connection);
     setUuid(uuid?: string): this;
@@ -31,14 +38,28 @@ export declare class QueryContext {
      * and tries to correct these.
      */
     start(): Promise<void>;
+    getDatabaseVersion(): Promise<Array<{
+        version: number;
+    }>>;
+    updateDatabaseVersion(version: number): Promise<number>;
     /**
      * Checks whether the main database exists currently.
      */
     databaseExists(): Promise<boolean>;
     createDatabase(): Promise<void>;
     getTables(): Promise<any[]>;
+    getTriggers(): Promise<DbTrigger[]>;
+    createTrigger(trigger: Trigger): any;
+    dropTrigger(trigger: string): Promise<any>;
     createTable(table: string, columns: string[]): Promise<any>;
-    showTables(): Promise<any>;
+    addColumn(tableName: string, columnDefinition: string): Promise<any>;
+    alterColumn(tableName: string, columnDefinition: string): Promise<any>;
+    addUnique(tableName: string, indexName: string, ...columns: string[]): Promise<any>;
+    dropIndex(tableName: string, indexName: string): Promise<any>;
+    addForeignKey(tableName: string, constraintName: string, column: string, referencedTable: string, referencedColumn: string, onDelete?: string, onUpdate?: string): Promise<any>;
+    dropForeignKey(tableName: string, indexName: string): Promise<any>;
+    addPrimaryKey(tableName: string, ...columns: string[]): Promise<any>;
+    dropPrimaryKey(tableName: string): Promise<any>;
     /**
      * Registers an User if the userName is free.
      * Returns a Error Code if userName is already
@@ -64,7 +85,9 @@ export declare class QueryContext {
      * Returns the uuid of the logged in user and
      * the session key of the user for the ip.
      */
-    userLoginStatus(ip: string, uuid?: string, session?: string): Promise<User | null | boolean>;
+    userLoginStatus(ip: string, uuid?: string, session?: string): Promise<boolean>;
+    loggedInUser(ip: string): Promise<SimpleUser | null>;
+    getUser(uuid: string, ip: string): Promise<User>;
     /**
      * Logs a user out.
      */
@@ -153,6 +176,8 @@ export declare class QueryContext {
      * Updates a medium from the storage.
      */
     updateMedium(medium: SimpleMedium): Promise<boolean>;
+    createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium>;
+    consumeMediaInWait(mediumId: number, same: MediumInWait[]): Promise<boolean>;
     getMediaInWait(): Promise<MediumInWait[]>;
     deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
     addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
@@ -193,6 +218,7 @@ export declare class QueryContext {
         mediumId: number;
     }>>;
     updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void>;
+    getEpisodeContentData(chapterLink: string): Promise<EpisodeContentData>;
     addEpisode(episode: SimpleEpisode): Promise<Episode>;
     addEpisode(episode: SimpleEpisode[]): Promise<Episode[]>;
     getEpisode(id: number, uuid: string): Promise<Episode>;
@@ -218,7 +244,7 @@ export declare class QueryContext {
      * 'Standard' List of the given user and adds it there.
      */
     addItemToList(external: boolean, medium: {
-        id: number;
+        id: number | number[];
         listId?: number;
     }, uuid?: string): Promise<boolean>;
     /**
@@ -226,11 +252,11 @@ export declare class QueryContext {
      *
      * @return {Promise<boolean>}
      */
-    moveMedium(oldListId: number, newListId: number, mediumId: number): Promise<boolean>;
+    moveMedium(oldListId: number, newListId: number, mediumId: number | number[]): Promise<boolean>;
     /**
      * Removes an item from a list.
      */
-    removeMedium(listId: number, mediumId: number, external?: boolean): Promise<boolean>;
+    removeMedium(listId: number, mediumId: number | number[], external?: boolean): Promise<boolean>;
     /**
      * Adds an external user of an user to the storage.
      */
@@ -422,6 +448,7 @@ export declare class QueryContext {
     removePageInfo(link: string, key?: string, toDeleteValues?: string[]): Promise<void>;
     addInvalidation(value: string[]): Promise<void>;
     getInvalidated(uuid: string): Promise<Invalidation[]>;
+    clearInvalidationTable(): Promise<any>;
     /**
      * Returns a user with their associated lists and external user from the storage.
      */

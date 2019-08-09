@@ -181,15 +181,14 @@ async function scrapeContent(urlString) {
         if (index != null && Number.isNaN(index)) {
             index = undefined;
         }
-        const textEpisodeContent = {
-            contentType: tools_1.MediaType.TEXT,
-            content,
+        const episodeContent = {
+            content: [content],
             episodeTitle,
             // the pages themselves dont have any novel titles
             mediumTitle: "",
             index
         };
-        episodes.push(textEpisodeContent);
+        episodes.push(episodeContent);
     }
     return episodes;
 }

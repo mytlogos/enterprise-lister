@@ -66,6 +66,10 @@ export declare function combiIndex(value: {
     totalIndex: number;
     partialIndex?: number;
 }): number;
+export declare function checkIndices(value: {
+    totalIndex: number;
+    partialIndex?: number;
+}): void;
 export declare function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number): {
     combi: number;
     total: number;
@@ -75,4 +79,5 @@ export declare function separateIndex(value: number): {
     totalIndex: number;
     partialIndex?: number;
 };
+export declare function ignore(): undefined;
 export {};

@@ -79,10 +79,13 @@ export interface List {
     items: number[];
 }
 
-export interface User {
+export interface SimpleUser {
     uuid: string;
     name: string;
     session: string;
+}
+
+export interface User extends SimpleUser {
     unreadNews: number[];
     unreadChapter: number[];
     readToday: ReadEpisode[];
@@ -202,3 +205,5 @@ export interface Invalidation {
     listId?: number;
     newsId?: number;
 }
+
+export type EpisodeContentData = { episodeTitle: string; index: number; mediumTitle: string; };

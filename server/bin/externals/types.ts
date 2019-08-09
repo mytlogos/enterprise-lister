@@ -79,7 +79,7 @@ export interface OneTimeToc {
 }
 
 export interface DownloadContent {
-    content: string;
+    content: string[];
     title: string;
     episodeId: number;
 }
@@ -115,28 +115,7 @@ export interface EpisodeContent {
     mediumTitle: string;
     episodeTitle: string;
     index?: number;
-    contentType: MediaType;
-    content: any;
-}
-
-export interface TextEpisodeContent extends EpisodeContent {
-    contentType: MediaType.TEXT;
-    content: string;
-}
-
-export interface AudioEpisodeContent extends EpisodeContent {
-    contentType: MediaType.AUDIO;
-    content: any;
-}
-
-export interface ImageEpisodeContent extends EpisodeContent {
-    contentType: MediaType.IMAGE;
-    content: any;
-}
-
-export interface VideoEpisodeContent extends EpisodeContent {
-    contentType: MediaType.VIDEO;
-    content: any;
+    content: string[];
 }
 
 export interface EpisodeMeta {

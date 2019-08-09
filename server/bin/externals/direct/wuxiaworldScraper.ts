@@ -1,9 +1,10 @@
-import {Hook, TextEpisodeContent, Toc, TocPart} from "../types";
+import {EpisodeContent, Hook, Toc, TocPart} from "../types";
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import logger from "../../logger";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
+import {checkTocContent} from "../scraperTools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.wuxiaworld.com/";
@@ -153,6 +154,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
+        checkTocContent(volume);
 
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
@@ -166,13 +168,15 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                 if (!indices) {
                     throw Error(`changed format on wuxiaworld, got no indices for: '${title}'`);
                 }
-                volume.episodes.push({
+                const chapterContent = {
                     url: link,
                     title,
                     totalIndex: indices.total,
                     partialIndex: indices.fraction,
                     combiIndex: indices.combi
-                });
+                };
+                checkTocContent(chapterContent);
+                volume.episodes.push(chapterContent);
             }
         }
 
@@ -229,7 +233,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     return [toc];
 }
 
-async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
+async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
     const $ = await queueCheerioRequest(urlString);
     const mainElement = $(".content");
     const novelTitle = mainElement.find(".top-bar-area .caption a").first().text().trim();
@@ -260,15 +264,14 @@ async function scrapeContent(urlString: string): Promise<TextEpisodeContent[]> {
     if (index == null || Number.isNaN(index)) {
         index = undefined;
     }
-    const textEpisodeContent: TextEpisodeContent = {
-        contentType: MediaType.TEXT,
-        content,
+    const episodeContent: EpisodeContent = {
+        content: [content],
         episodeTitle,
         mediumTitle: novelTitle,
         index
     };
 
-    return [textEpisodeContent];
+    return [episodeContent];
 }
 
 async function tocSearcher(medium: TocSearchMedium): Promise<Toc | undefined> {

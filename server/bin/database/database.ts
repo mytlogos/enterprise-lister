@@ -2,6 +2,7 @@ import mySql from "promise-mysql";
 import env from "../env";
 import {
     Episode,
+    EpisodeContentData,
     EpisodeRelease,
     ExternalList,
     ExternalUser,
@@ -20,17 +21,18 @@ import {
     ShallowPart,
     SimpleEpisode,
     SimpleMedium,
+    SimpleUser,
     Synonyms,
     TocSearchMedium,
     User
 } from "../types";
-import {StateProcessor} from "./databaseValidator";
 import logger from "../logger";
 import {QueryContext} from "./queryContext";
 import {databaseSchema} from "./databaseSchema";
 import {delay} from "../tools";
 import {MediumInWait} from "./databaseTypes";
 import {ScrapeTypes} from "../externals/scraperTools";
+import {SchemaManager} from "./schemaManager";
 
 type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 
@@ -141,9 +143,10 @@ function start(): void {
     if (!running) {
         running = true;
         try {
-            StateProcessor.initTableSchema(databaseSchema);
+            const manager = new SchemaManager();
+            manager.initTableSchema(databaseSchema);
             startPromise = inContext(
-                (context) => StateProcessor.checkTableSchema(context),
+                (context) => manager.checkTableSchema(context),
                 true,
             ).catch((error) => {
                 logger.error(error);
@@ -161,6 +164,8 @@ function start(): void {
 }
 
 export interface Storage {
+    getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
+
     getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }>;
 
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void>;
@@ -184,7 +189,9 @@ export interface Storage {
 
     updatePart(part: Part, uuid?: string): Promise<boolean>;
 
-    userLoginStatus(ip: string): Promise<User | null>;
+    getUser(uuid: string, ip: string): Promise<User>;
+
+    loggedInUser(ip: string): Promise<SimpleUser | null>;
 
     userLoginStatus(ip: string, uuid: string, session: string): Promise<boolean>;
 
@@ -194,7 +201,7 @@ export interface Storage {
 
     getProgress(uuid: string, episodeId: number): Promise<number>;
 
-    moveMedium(oldListId: number, newListId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    moveMedium(oldListId: number, newListId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
 
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
 
@@ -262,6 +269,10 @@ export interface Storage {
 
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean>;
 
+    createFromMediaInWait(createMedium: any, tocsMedia: any, listId: any): Promise<any>;
+
+    consumeMediaInWait(mediumId: number, tocsMedia: MediumInWait[]): Promise<boolean>;
+
     getMediaInWait(): Promise<MediumInWait[]>;
 
     deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
@@ -304,7 +315,7 @@ export interface Storage {
 
     updateExternalUser(externalUser: ExternalUser): Promise<boolean>;
 
-    addItemToList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    addItemToList(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
 
     removeLinkNewsToMedium(newsId: number, mediumId: number): Promise<boolean>;
 
@@ -427,8 +438,31 @@ export const Storage: Storage = {
      * @return {Promise<User|null>}
      */
     // @ts-ignore
-    userLoginStatus(ip: string, uuid?: string, session?: string): Promise<User | null | boolean> {
+    userLoginStatus(ip: string, uuid?: string, session?: string): Promise<boolean> {
         return inContext((context) => context.userLoginStatus(ip, uuid, session));
+    },
+
+    /**
+     * Get the user for the given uuid.
+     *
+     * @return {Promise<SimpleUser>}
+     */
+    // @ts-ignore
+    getUser(uuid: string, ip: string): Promise<User> {
+        return inContext((context) => context.getUser(uuid, ip));
+    },
+
+    /**
+     * Checks if for the given ip any user is logged in.
+     *
+     * Returns the uuid of the logged in user and
+     * the session key of the user for the ip.
+     *
+     * @return {Promise<User|null>}
+     */
+    // @ts-ignore
+    loggedInUser(ip: string): Promise<SimpleUser | null> {
+        return inContext((context) => context.loggedInUser(ip));
     },
 
     /**
@@ -549,6 +583,14 @@ export const Storage: Storage = {
 
     getMediaInWait(): Promise<MediumInWait[]> {
         return inContext((context) => context.getMediaInWait());
+    },
+
+    createFromMediaInWait(createMedium: MediumInWait, tocsMedia?: MediumInWait[], listId?: number): Promise<Medium> {
+        return inContext((context) => context.createFromMediaInWait(createMedium, tocsMedia, listId));
+    },
+
+    consumeMediaInWait(mediumId: number, tocsMedia: MediumInWait[]): Promise<boolean> {
+        return inContext((context) => context.consumeMediaInWait(mediumId, tocsMedia));
     },
 
     deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
@@ -742,6 +784,10 @@ export const Storage: Storage = {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
     },
 
+    getEpisodeContent(chapterLink: string): Promise<EpisodeContentData> {
+        return inContext((context) => context.getEpisodeContentData(chapterLink));
+    },
+
     getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }> {
         return inContext((context) => context.getPageInfo(link, key));
     },
@@ -757,15 +803,15 @@ export const Storage: Storage = {
     /**
      * Adds a medium to a list.
      */
-    addItemToList(listId: number, mediumId: number, uuid?: string): Promise<boolean> {
+    addItemToList(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).addItemToList(false, {listId, id: mediumId}));
     },
 
     /**
      * Moves a medium from an old list to a new list.
      */
-    moveMedium(oldListId: number, newListId: number, mediumId: number, uuid?: string): Promise<boolean> {
-        return inContext((context) => context.setUuid(uuid).moveMedium(newListId, mediumId, oldListId));
+    moveMedium(oldListId: number, newListId: number, mediumId: number | number[], uuid?: string): Promise<boolean> {
+        return inContext((context) => context.setUuid(uuid).moveMedium(oldListId, newListId, mediumId));
     },
 
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]> {

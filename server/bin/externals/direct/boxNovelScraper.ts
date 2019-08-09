@@ -1,10 +1,11 @@
-import {EpisodeContent, Hook, TextEpisodeContent, Toc, TocContent, TocEpisode} from "../types";
+import {EpisodeContent, Hook, Toc, TocContent, TocEpisode} from "../types";
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
 import {getTextContent} from "./directTools";
+import {checkTocContent} from "../scraperTools";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return;
@@ -83,14 +84,16 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         if (!episodeIndices) {
             throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
         }
-        content.push({
+        const chapterContent = {
             combiIndex: episodeIndices.combi,
             totalIndex: episodeIndices.total,
-            partialIndex: episodeIndices.total,
+            partialIndex: episodeIndices.fraction,
             url: link,
             releaseDate: date,
             title: episodeTitle
-        } as TocEpisode);
+        } as TocEpisode;
+        checkTocContent(chapterContent);
+        content.push(chapterContent);
     }
     return [{
         link: tocLink,

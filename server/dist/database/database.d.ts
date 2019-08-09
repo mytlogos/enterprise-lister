@@ -1,4 +1,4 @@
-import { Episode, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { QueryContext } from "./queryContext";
 import { MediumInWait } from "./databaseTypes";
 import { ScrapeTypes } from "../externals/scraperTools";
@@ -9,6 +9,7 @@ declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
  */
 export declare function inContext<T>(callback: ContextCallback<T>, transaction?: boolean): Promise<T>;
 export interface Storage {
+    getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
     getPageInfo(link: string, key: string): Promise<{
         link: string;
         key: string;
@@ -29,12 +30,13 @@ export interface Storage {
     getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
     getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;
     updatePart(part: Part, uuid?: string): Promise<boolean>;
-    userLoginStatus(ip: string): Promise<User | null>;
+    getUser(uuid: string, ip: string): Promise<User>;
+    loggedInUser(ip: string): Promise<SimpleUser | null>;
     userLoginStatus(ip: string, uuid: string, session: string): Promise<boolean>;
     removeSynonyms(synonyms: (Synonyms | Synonyms[]), uuid?: string): Promise<boolean>;
     updateExternalList(externalList: ExternalList, uuid?: string): Promise<boolean>;
     getProgress(uuid: string, episodeId: number): Promise<number>;
-    moveMedium(oldListId: number, newListId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    moveMedium(oldListId: number, newListId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
     removeMedium(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
     addNews(news: (News | News[])): Promise<News | Array<News | undefined> | undefined>;
@@ -75,6 +77,8 @@ export interface Storage {
     getMedium(id: (number | number[]), uuid: string): Promise<Medium | Medium[]>;
     deleteList(listId: number, uuid: string): Promise<boolean>;
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean>;
+    createFromMediaInWait(createMedium: any, tocsMedia: any, listId: any): Promise<any>;
+    consumeMediaInWait(mediumId: number, tocsMedia: MediumInWait[]): Promise<boolean>;
     getMediaInWait(): Promise<MediumInWait[]>;
     deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
     addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
@@ -106,7 +110,7 @@ export interface Storage {
     getInvalidated(uuid: string): Promise<Invalidation[]>;
     markNewsRead(uuid: string, news: number[]): Promise<boolean>;
     updateExternalUser(externalUser: ExternalUser): Promise<boolean>;
-    addItemToList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    addItemToList(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
     removeLinkNewsToMedium(newsId: number, mediumId: number): Promise<boolean>;
     clear(): Promise<boolean>;
     updateUser(uuid: string, user: {
