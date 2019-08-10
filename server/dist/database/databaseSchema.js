@@ -129,7 +129,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("title VARCHAR(200)")
     .parseColumn("totalIndex INT NOT NULL")
     .parseColumn("partialIndex INT")
-    .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)")
+    .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT 0")
     .parseMeta("PRIMARY KEY(id)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
     .parseMeta("UNIQUE(medium_id, combiIndex)")
@@ -143,7 +143,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("part_id INT UNSIGNED NOT NULL")
     .parseColumn("totalIndex INT NOT NULL")
     .parseColumn("partialIndex INT")
-    .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)")
+    .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT 0")
     .parseMeta("PRIMARY KEY(id)")
     .parseMeta("FOREIGN KEY(part_id) REFERENCES part(id)")
     .parseMeta("UNIQUE(part_id, combiIndex)")
@@ -398,12 +398,6 @@ dataBaseBuilder.getTriggerBuilder()
     .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) VALUES (NEW.user_uuid, NEW.episode_id);")
     .build();
 dataBaseBuilder.addMigrations(...migrations_1.Migrations);
-// todo user defined function, create it automatically at startup
-// "CREATE DEFINER=`root`@`localhost` FUNCTION `combineFloat`(whole INT, afterDecimal INT) RETURNS float\n" +
-// "    DETERMINISTIC\n" +
-// "BEGIN\n" +
-// "RETURN concat(whole,'.', Coalesce(afterDecimal,0))+0;\n" +
-// "END"
 /*
 dataBaseBuilder.getTableBuilder()
     .setName("list_settings")
@@ -466,146 +460,4 @@ dataBaseBuilder.getTableBuilder()
     "episode_id, list_id, external_list_id, external_uuid)")
     .build();
 exports.databaseSchema = dataBaseBuilder.build();
-exports.Tables = {
-    user: "name VARCHAR(200) NOT NULL UNIQUE," +
-        "uuid CHAR(36) NOT NULL," +
-        "salt VARCHAR(200)," +
-        "password VARCHAR(200) NOT NULL," +
-        "alg VARCHAR(100) NOT NULL," +
-        "PRIMARY KEY(uuid)",
-    external_user: "name VARCHAR(200) NOT NULL," +
-        "uuid CHAR(36) NOT NULL," +
-        "local_uuid CHAR(36) NOT NULL," +
-        "service INT NOT NULL," +
-        "cookies TEXT," +
-        "last_scrape DATETIME," +
-        "PRIMARY KEY(uuid)," +
-        "FOREIGN KEY(local_uuid) REFERENCES user(uuid)",
-    user_log: "user_uuid VARCHAR(255) NOT NULL," +
-        "ip VARCHAR(255)," +
-        "session_key VARCHAR(255)," +
-        "acquisition_date VARCHAR(40)," +
-        "PRIMARY KEY(session_key)," +
-        "FOREIGN KEY(user_uuid) REFERENCES user(uuid)",
-    reading_list: "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
-        "name VARCHAR(200) NOT NULL," +
-        "user_uuid CHAR(36) NOT NULL," +
-        "medium INT NOT NULL," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(user_uuid) REFERENCES user(uuid)",
-    external_reading_list: "id INT UNSIGNED NOT NULL AUTO_INCREMENT, " +
-        "name VARCHAR(200) NOT NULL," +
-        "user_uuid CHAR(36) NOT NULL," +
-        "medium INT NOT NULL," +
-        "url VARCHAR(200) NOT NULL," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(user_uuid) REFERENCES external_user(uuid)",
-    medium: "id INT UNSIGNED NOT NULL AUTO_INCREMENT, " +
-        "countryOfOrigin VARCHAR(200)," +
-        "languageOfOrigin VARCHAR(200)," +
-        "author VARCHAR(200)," +
-        "artist VARCHAR(200)," +
-        "title VARCHAR(200) NOT NULL," +
-        "medium INT NOT NULL," +
-        "lang VARCHAR(200)," +
-        "stateOrigin INT," +
-        "stateTL INT," +
-        "series VARCHAR(200)," +
-        "universe VARCHAR(200)," +
-        "PRIMARY KEY(id)",
-    medium_synonyms: "medium_id INT UNSIGNED, " +
-        "synonym VARCHAR(200) NOT NULL, " +
-        "PRIMARY KEY(medium_id, synonym), " +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    list_medium: "list_id INT UNSIGNED NOT NULL," +
-        "medium_id INT UNSIGNED NOT NULL," +
-        "PRIMARY KEY(list_id, medium_id)," +
-        "FOREIGN KEY(list_id) REFERENCES reading_list(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    external_list_medium: "list_id INT UNSIGNED NOT NULL," +
-        "medium_id INT UNSIGNED NOT NULL," +
-        "PRIMARY KEY(list_id, medium_id)," +
-        "FOREIGN KEY(list_id) REFERENCES external_reading_list(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    part: "id INT UNSIGNED NOT NULL AUTO_INCREMENT, " +
-        "medium_id INT UNSIGNED NOT NULL, " +
-        "title VARCHAR(200)," +
-        "totalIndex INT NOT NULL," +
-        "partialIndex INT," +
-        "combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id), " +
-        "UNIQUE(medium_id, combiIndex)",
-    episode: "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
-        "part_id INT UNSIGNED NOT NULL," +
-        "totalIndex INT NOT NULL," +
-        "partialIndex INT," +
-        "combiIndex DOUBLE NOT NULL DEFAULT (concat(`totalIndex`,_utf8mb4'.',coalesce(`partialIndex`,0)) + 0)," +
-        "PRIMARY KEY(id)," +
-        "FOREIGN KEY(part_id) REFERENCES part(id)," +
-        "UNIQUE(part_id, combiIndex)",
-    user_episode: "user_uuid CHAR(36) NOT NULL," +
-        "episode_id INT UNSIGNED NOT NULL," +
-        "progress FLOAT UNSIGNED NOT NULL," +
-        "read_date DATETIME NOT NULL DEFAULT NOW()," +
-        "PRIMARY KEY(user_uuid, episode_id)," +
-        "FOREIGN KEY(user_uuid) REFERENCES user(uuid)," +
-        "FOREIGN KEY(episode_id) REFERENCES episode(id)",
-    scrape_board: "link TEXT NOT NULL," +
-        "last_date DATETIME NOT NULL," +
-        "type INT UNSIGNED NOT NULL," +
-        "uuid CHAR(36)," +
-        "medium_id INT UNSIGNED," +
-        "PRIMARY KEY(link(767))," +
-        "FOREIGN KEY(uuid) REFERENCES external_user(uuid)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)",
-    news_board: "id INT UNSIGNED NOT NULL AUTO_INCREMENT," +
-        "title TEXT NOT NULL," +
-        "link VARCHAR(700) UNIQUE NOT NULL," +
-        "date DATETIME NOT NULL," +
-        "PRIMARY KEY (id)",
-    news_user: "news_id INT UNSIGNED NOT NULL, " +
-        "user_id CHAR(36) NOT NULL, " +
-        "FOREIGN KEY (user_id) REFERENCES user(uuid), " +
-        "FOREIGN KEY (news_id) REFERENCES news_board(id), " +
-        "PRIMARY KEY (news_id, user_id)",
-    news_medium: "news_id INT UNSIGNED NOT NULL, " +
-        "medium_id INT UNSIGNED NOT NULL, " +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)," +
-        "FOREIGN KEY(news_id) REFERENCES news_board(id)," +
-        "PRIMARY KEY(news_id, medium_id)",
-    meta_corrections: "link TEXT NOT NULL," +
-        "replaced TEXT NOT NULL," +
-        "startIndex INT UNSIGNED NOT NULL," +
-        "endIndex INT UNSIGNED NOT NULL," +
-        "fieldKey INT UNSIGNED NOT NULL," +
-        "PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)",
-    result_episode: "novel VARCHAR(300) NOT NULL," +
-        "chapter VARCHAR(300)," +
-        "chapIndex INT UNSIGNED," +
-        "volume VARCHAR(300)," +
-        "volIndex INT UNSIGNED," +
-        "episode_id INT UNSIGNED NOT NULL," +
-        "FOREIGN KEY(episode_id) REFERENCES episode(id)," +
-        "PRIMARY KEY(novel, chapter, chapIndex)",
-    user_data_invalidation: "uuid CHAR(36) NOT NULL," +
-        "user_uuid BOOLEAN," +
-        "news_id INT UNSIGNED ," +
-        "medium_id INT UNSIGNED ," +
-        "part_id INT UNSIGNED ," +
-        "episode_id INT UNSIGNED ," +
-        "list_id INT UNSIGNED ," +
-        "external_list_id INT UNSIGNED ," +
-        "external_uuid CHAR(36)," +
-        "FOREIGN KEY(uuid) REFERENCES user(uuid)," +
-        "FOREIGN KEY(news_id) REFERENCES news_board(id)," +
-        "FOREIGN KEY(medium_id) REFERENCES medium(id)," +
-        "FOREIGN KEY(part_id) REFERENCES part(id)," +
-        "FOREIGN KEY(episode_id) REFERENCES episode(id)," +
-        "FOREIGN KEY(list_id) REFERENCES reading_list(id)," +
-        "FOREIGN KEY(external_list_id) REFERENCES external_reading_list(id)," +
-        "FOREIGN KEY(external_uuid) REFERENCES external_user(uuid)," +
-        "PRIMARY KEY(uuid, user_uuid, news_id, medium_id, part_id, " +
-        "episode_id, list_id, external_list_id, external_uuid)"
-};
 //# sourceMappingURL=databaseSchema.js.map

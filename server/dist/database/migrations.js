@@ -5,10 +5,12 @@ exports.Migrations = [
         fromVersion: 0,
         toVersion: 1,
         async migrate(context) {
-            await context.addColumn("episode", "combiIndex double DEFAULT (concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
+            await context.addColumn("episode", "combiIndex double DEFAULT 0");
+            await context.query("UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
             await context.addColumn("scrape_board", "info TEXT");
             await context.addColumn("scrape_board", "external_uuid TEXT");
-            await context.addColumn("part", "combiIndex double DEFAULT (concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
+            await context.addColumn("part", "combiIndex double DEFAULT 0");
+            await context.query("UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
             await context.alterColumn("external_user", "uuid char(36)");
             await context.alterColumn("external_user", "link varchar(500)");
             await context.alterColumn("user_data_invalidation", "external_uuid char(36)");

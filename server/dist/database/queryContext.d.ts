@@ -450,6 +450,12 @@ export declare class QueryContext {
     getInvalidated(uuid: string): Promise<Invalidation[]>;
     clearInvalidationTable(): Promise<any>;
     /**
+     *
+     * @param query
+     * @param parameter
+     */
+    query(query: string, parameter?: any | any[]): Promise<any>;
+    /**
      * Returns a user with their associated lists and external user from the storage.
      */
     private _getUser;
@@ -465,12 +471,6 @@ export declare class QueryContext {
     private _multiInsert;
     private _queryInList;
     private _batchFunction;
-    /**
-     *
-     * @param query
-     * @param parameter
-     */
-    private _query;
     /**
      *
      * @param query

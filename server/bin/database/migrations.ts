@@ -8,7 +8,10 @@ export const Migrations: Migration[] = [
         async migrate(context: QueryContext): Promise<void> {
             await context.addColumn(
                 "episode",
-                "combiIndex double DEFAULT (concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                "combiIndex double DEFAULT 0"
+            );
+            await context.query(
+                "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
             );
             await context.addColumn(
                 "scrape_board",
@@ -20,7 +23,10 @@ export const Migrations: Migration[] = [
             );
             await context.addColumn(
                 "part",
-                "combiIndex double DEFAULT (concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                "combiIndex double DEFAULT 0"
+            );
+            await context.query(
+                "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
             );
             await context.alterColumn(
                 "external_user",

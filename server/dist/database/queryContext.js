@@ -6,7 +6,6 @@ const v1_1 = tslib_1.__importDefault(require("uuid/v1"));
 const v4_1 = tslib_1.__importDefault(require("uuid/v4"));
 const tools_1 = require("../tools");
 const logger_1 = tslib_1.__importDefault(require("../logger"));
-const databaseSchema_1 = require("./databaseSchema");
 const validate = tslib_1.__importStar(require("validate.js"));
 /**
  * Escapes the Characters for an Like with the '|' char.
@@ -68,25 +67,25 @@ class QueryContext {
      *
      */
     useDatabase() {
-        return this._query(`USE ${database};`);
+        return this.query(`USE ${database};`);
     }
     /**
      *
      */
     startTransaction() {
-        return this._query("START TRANSACTION;").then(tools_1.ignore);
+        return this.query("START TRANSACTION;").then(tools_1.ignore);
     }
     /**
      *
      */
     commit() {
-        return this._query("COMMIT;").then(tools_1.ignore);
+        return this.query("COMMIT;").then(tools_1.ignore);
     }
     /**
      *
      */
     rollback() {
-        return this._query("ROLLBACK;").then(tools_1.ignore);
+        return this.query("ROLLBACK;").then(tools_1.ignore);
     }
     /**
      * Checks the database for incorrect structure
@@ -95,64 +94,58 @@ class QueryContext {
     async start() {
         const exists = await this.databaseExists();
         if (!exists) {
-            await this._query(`CREATE DATABASE ${database};`);
+            await this.query(`CREATE DATABASE ${database};`);
         }
-        // display all current tables
-        const tables = await this._query("SHOW TABLES;");
-        // create tables which do not exist
-        await Promise.all(Object.keys(databaseSchema_1.Tables)
-            .filter((table) => !tables.find((value) => value[`Tables_in_${database}`] === table))
-            .map((table) => this._query(`CREATE TABLE ${table}(${databaseSchema_1.Tables[table]});`)));
     }
     getDatabaseVersion() {
-        return this._query("SELECT version FROM enterprise_database_info LIMIT 1;");
+        return this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
     }
     async updateDatabaseVersion(version) {
-        await this._query("TRUNCATE enterprise_database_info;");
-        return this._query("INSERT INTO enterprise_database_info (version) VALUES (?);", version);
+        await this.query("TRUNCATE enterprise_database_info;");
+        return this.query("INSERT INTO enterprise_database_info (version) VALUES (?);", version);
     }
     /**
      * Checks whether the main database exists currently.
      */
     async databaseExists() {
-        const databases = await this._query("SHOW DATABASES;");
+        const databases = await this.query("SHOW DATABASES;");
         return databases.find((data) => data.Database === database) != null;
     }
     createDatabase() {
-        return this._query(`CREATE DATABASE ${database};`).then(tools_1.ignore);
+        return this.query(`CREATE DATABASE ${database};`).then(tools_1.ignore);
     }
     getTables() {
-        return this._query("SHOW TABLES;");
+        return this.query("SHOW TABLES;");
     }
     getTriggers() {
-        return this._query("SHOW TRIGGERS;");
+        return this.query("SHOW TRIGGERS;");
     }
     createTrigger(trigger) {
         const schema = trigger.createSchema();
-        return this._query(schema);
+        return this.query(schema);
     }
     dropTrigger(trigger) {
-        return this._query("DROP TRIGGER ?", trigger);
+        return this.query("DROP TRIGGER ?", trigger);
     }
     createTable(table, columns) {
-        return this._query(`CREATE TABLE ${promise_mysql_1.default.escapeId(table)} (${columns.join(", ")});`);
+        return this.query(`CREATE TABLE ${promise_mysql_1.default.escapeId(table)} (${columns.join(", ")});`);
     }
     addColumn(tableName, columnDefinition) {
-        return this._query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
     }
     alterColumn(tableName, columnDefinition) {
-        return this._query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnDefinition};`);
     }
     addUnique(tableName, indexName, ...columns) {
         columns = columns.map((value) => promise_mysql_1.default.escapeId(value));
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this._query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
+        return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
     }
     dropIndex(tableName, indexName) {
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this._query(`DROP INDEX ${index} ON ${table};`);
+        return this.query(`DROP INDEX ${index} ON ${table};`);
     }
     addForeignKey(tableName, constraintName, column, referencedTable, referencedColumn, onDelete, onUpdate) {
         const index = promise_mysql_1.default.escapeId(column);
@@ -167,21 +160,21 @@ class QueryContext {
         if (onUpdate) {
             query += " ON UPDATE " + onUpdate;
         }
-        return this._query(query + ";");
+        return this.query(query + ";");
     }
     dropForeignKey(tableName, indexName) {
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this._query(`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`);
+        return this.query(`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`);
     }
     addPrimaryKey(tableName, ...columns) {
         columns = columns.map((value) => promise_mysql_1.default.escapeId(value));
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this._query(`ALTER TABLE ${table} ADD PRIMARY KEY (${columns.join(", ")})`);
+        return this.query(`ALTER TABLE ${table} ADD PRIMARY KEY (${columns.join(", ")})`);
     }
     dropPrimaryKey(tableName) {
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this._query(`ALTER TABLE ${table} DROP PRIMARY KEY`);
+        return this.query(`ALTER TABLE ${table} DROP PRIMARY KEY`);
     }
     /**
      * Registers an User if the userName is free.
@@ -198,7 +191,7 @@ class QueryContext {
         if (!userName || !password) {
             return Promise.reject(new Error(tools_1.Errors.INVALID_INPUT));
         }
-        const user = await this._query(`SELECT * FROM user WHERE name = ?;`, userName);
+        const user = await this.query(`SELECT * FROM user WHERE name = ?;`, userName);
         // if there is a result in array, userName is not new, so abort
         if (user.length) {
             return Promise.reject(new Error(tools_1.Errors.USER_EXISTS_ALREADY));
@@ -207,7 +200,7 @@ class QueryContext {
         const id = v1_1.default();
         const { salt, hash } = StandardHash.hash(password);
         // insert the full user and loginUser right after
-        await this._query("INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);", [userName, id, salt, StandardHash.tag, hash]);
+        await this.query("INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);", [userName, id, salt, StandardHash.tag, hash]);
         // every user gets a standard list for everything that got no list assigned
         // this standard list name 'Standard' is reserved for this purpose
         await this.addList(id, { name: standardListName, medium: tools_1.allTypes() });
@@ -223,7 +216,7 @@ class QueryContext {
         if (!userName || !password) {
             return Promise.reject(new Error(tools_1.Errors.INVALID_INPUT));
         }
-        const result = await this._query("SELECT * FROM user WHERE name = ?;", userName);
+        const result = await this.query("SELECT * FROM user WHERE name = ?;", userName);
         if (!result.length) {
             return Promise.reject(new Error(tools_1.Errors.USER_DOES_NOT_EXIST));
         }
@@ -240,7 +233,7 @@ class QueryContext {
         // generate session key
         const session = v4_1.default();
         const date = new Date().toISOString();
-        await this._query("INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);", [uuid, ip, session, date]);
+        await this.query("INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);", [uuid, ip, session, date]);
         return this._getUser(uuid, session);
     }
     /**
@@ -250,7 +243,7 @@ class QueryContext {
      * the session key of the user for the ip.
      */
     async userLoginStatus(ip, uuid, session) {
-        const result = await this._query("SELECT * FROM user_log WHERE ip = ?;", ip);
+        const result = await this.query("SELECT * FROM user_log WHERE ip = ?;", ip);
         const sessionRecord = result[0];
         if (!sessionRecord) {
             return false;
@@ -265,7 +258,7 @@ class QueryContext {
         if (!ip) {
             return null;
         }
-        const result = await this._query("SELECT name, uuid, session_key FROM user_log " +
+        const result = await this.query("SELECT name, uuid, session_key FROM user_log " +
             "INNER JOIN user ON user.uuid=user_log.user_uuid WHERE ip = ?;", ip);
         const userRecord = result[0];
         if (!userRecord || !ip || !userRecord.session_key || !userRecord.name || !userRecord.uuid) {
@@ -278,7 +271,7 @@ class QueryContext {
         };
     }
     async getUser(uuid, ip) {
-        const result = await this._query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
+        const result = await this.query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
         const sessionRecord = result[0];
         if (!sessionRecord || !sessionRecord.session_key) {
             throw Error("user has no session");
@@ -306,21 +299,21 @@ class QueryContext {
         // delete sessions
         await this._delete("user_log", { column: "user_uuid", value: uuid });
         // delete reading lists contents
-        await this._query("DELETE FROM list_medium " +
+        await this.query("DELETE FROM list_medium " +
             "WHERE list_id in " +
             "(SELECT id FROM reading_list " +
             "WHERE user_uuid = ?);", uuid);
         // delete lists
         await this._delete("reading_list", { column: "user_uuid", value: uuid });
         // delete external reading lists contents
-        await this._query("DELETE FROM external_list_medium " +
+        await this.query("DELETE FROM external_list_medium " +
             "WHERE list_id " +
             "IN (SELECT id FROM external_reading_list " +
             "WHERE user_uuid " +
             "IN (SELECT uuid FROM external_user " +
             "WHERE local_uuid = ?));", uuid);
         // delete external lists
-        await this._query("DELETE FROM external_reading_list " +
+        await this.query("DELETE FROM external_reading_list " +
             "WHERE user_uuid " +
             "IN (SELECT uuid FROM external_user WHERE local_uuid = ?);", uuid);
         // delete external user
@@ -371,7 +364,7 @@ class QueryContext {
      * @return {Promise<boolean>}
      */
     async verifyPassword(uuid, password) {
-        const result = await this._query("SELECT password, alg, salt FROM user WHERE uuid = ?", uuid);
+        const result = await this.query("SELECT password, alg, salt FROM user WHERE uuid = ?", uuid);
         const user = result[0];
         return verifyPassword(password, user.password, user.alg, user.salt);
     }
@@ -380,7 +373,7 @@ class QueryContext {
      * links it to the user of the uuid.
      */
     async addList(uuid, { name, medium }) {
-        const result = await this._query("INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)", [uuid, name, medium]);
+        const result = await this.query("INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)", [uuid, name, medium]);
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
@@ -401,7 +394,7 @@ class QueryContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         const lists = await tools_1.promiseMultiSingle(listId, async (id) => {
-            const result = await this._query("SELECT * FROM reading_list WHERE id = ?;", id);
+            const result = await this.query("SELECT * FROM reading_list WHERE id = ?;", id);
             const list = await this.createShallowList(result[0]);
             for (const itemId of list.items) {
                 if (!media.includes(itemId)) {
@@ -428,7 +421,7 @@ class QueryContext {
             id: storageList.id,
             userUuid: storageList.user_uuid,
         };
-        const result = await this._query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
+        const result = await this.query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
         await list.items.push(...result.map((value) => value.medium_id));
         return list;
     }
@@ -454,7 +447,7 @@ class QueryContext {
      * Deletes a single list irreversibly.
      */
     async deleteList(listId, uuid) {
-        const result = await this._query("SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?", [listId, uuid]);
+        const result = await this.query("SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?", [listId, uuid]);
         // first check if such a list does exist for the given user
         if (!result.length) {
             return Promise.reject(new Error(tools_1.Errors.DOES_NOT_EXIST));
@@ -469,7 +462,7 @@ class QueryContext {
      */
     async getUserLists(uuid) {
         // query all available lists for user
-        const result = await this._query("SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;", [uuid, uuid]);
+        const result = await this.query("SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;", [uuid, uuid]);
         // query a shallow list, so that only the id´s of their media is contained
         // @ts-ignore
         return Promise.all(result.map((value) => this.createShallowList(value)));
@@ -481,7 +474,7 @@ class QueryContext {
         if (!medium || !medium.medium || !medium.title) {
             return Promise.reject(new Error(tools_1.Errors.INVALID_INPUT));
         }
-        const result = await this._query("INSERT INTO medium(medium, title) VALUES (?,?);", [medium.medium, medium.title]);
+        const result = await this.query("INSERT INTO medium(medium, title) VALUES (?,?);", [medium.medium, medium.title]);
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
@@ -501,7 +494,7 @@ class QueryContext {
      *
      */
     async getLatestReleases(mediumId) {
-        const resultArray = await this._query("SELECT episode.* FROM episode_release " +
+        const resultArray = await this.query("SELECT episode.* FROM episode_release " +
             "INNER JOIN episode ON episode.id=episode_release.episode_id " +
             "INNER JOIN part ON part.id=episode.part_id  " +
             "WHERE medium_id=? " +
@@ -543,7 +536,7 @@ class QueryContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return tools_1.promiseMultiSingle(id, async (mediumId) => {
-            const resultArray = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
+            const resultArray = await this.query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
             const result = resultArray[0];
             return {
                 id: result.id,
@@ -562,7 +555,7 @@ class QueryContext {
         });
     }
     async getTocSearchMedia() {
-        const result = await this._query("SELECT substring(episode_release.url, 1, locate(\"/\",episode_release.url,9)) as host, " +
+        const result = await this.query("SELECT substring(episode_release.url, 1, locate(\"/\",episode_release.url,9)) as host, " +
             "part.medium_id as mediumId, medium.title " +
             "FROM episode_release " +
             "INNER JOIN episode ON episode_id=episode.id " +
@@ -606,7 +599,7 @@ class QueryContext {
         return tocSearchMedia;
     }
     async getTocSearchMedium(id) {
-        const resultArray = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, id);
+        const resultArray = await this.query(`SELECT * FROM medium WHERE medium.id =?;`, id);
         const result = resultArray[0];
         const synonyms = await this.getSynonyms(id);
         return {
@@ -622,10 +615,10 @@ class QueryContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return tools_1.promiseMultiSingle(id, async (mediumId) => {
-            let result = await this._query(`SELECT * FROM medium WHERE medium.id=?;`, mediumId);
+            let result = await this.query(`SELECT * FROM medium WHERE medium.id=?;`, mediumId);
             result = result[0];
             const latestReleasesResult = await this.getLatestReleases(mediumId);
-            const currentReadResult = await this._query("SELECT * FROM " +
+            const currentReadResult = await this.query("SELECT * FROM " +
                 "(SELECT * FROM user_episode " +
                 "WHERE episode_id IN (SELECT id from episode " +
                 "WHERE part_id IN (SELECT id FROM part " +
@@ -633,10 +626,10 @@ class QueryContext {
                 "INNER JOIN episode ON user_episode.episode_id=episode.id " +
                 "WHERE user_uuid=? " +
                 "ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1", [mediumId, uuid]);
-            const unReadResult = await this._query("SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
+            const unReadResult = await this.query("SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
                 "AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) " +
                 "ORDER BY totalIndex DESC, partialIndex DESC;", [mediumId, uuid]);
-            const partsResult = await this._query("SELECT id FROM part WHERE medium_id=?;", mediumId);
+            const partsResult = await this.query("SELECT id FROM part WHERE medium_id=?;", mediumId);
             return {
                 id: result.id,
                 countryOfOrigin: result.countryOfOrigin,
@@ -665,7 +658,7 @@ class QueryContext {
         return tools_1.promiseMultiSingle(likeMedia, async (value) => {
             const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
             const escapedTitle = escapeLike(value.title, { singleQuotes: true });
-            let result = await this._query("SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
+            let result = await this.query("SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
                 "(SELECT medium_id FROM scrape_board WHERE medium_id IS NOT NULL AND link LIKE ?);", [escapedTitle, escapedLinkQuery]);
             if (value.type != null) {
                 result = result.filter((medium) => medium.medium === value.type);
@@ -737,7 +730,7 @@ class QueryContext {
         return true;
     }
     getMediaInWait() {
-        return this._query("SELECT * FROM medium_in_wait");
+        return this.query("SELECT * FROM medium_in_wait");
     }
     async deleteMediaInWait(mediaInWait) {
         if (!mediaInWait) {
@@ -756,7 +749,7 @@ class QueryContext {
         await this._multiInsert("INSERT IGNORE INTO medium_in_wait (title, medium, link) VALUES ", mediaInWait, (value) => [value.title, value.medium, value.link]);
     }
     async getStandardPart(mediumId) {
-        const [standardPartResult] = await this._query("SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1", mediumId);
+        const [standardPartResult] = await this.query("SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1", mediumId);
         if (!standardPartResult) {
             return;
         }
@@ -778,7 +771,7 @@ class QueryContext {
      * Returns all parts of an medium.
      */
     async getMediumParts(mediumId, uuid) {
-        const parts = await this._query("SELECT * FROM part WHERE medium_id = ?", mediumId);
+        const parts = await this.query("SELECT * FROM part WHERE medium_id = ?", mediumId);
         const idMap = new Map();
         // recreate shallow parts
         const fullParts = parts.map((value) => {
@@ -967,7 +960,7 @@ class QueryContext {
         }
         let partId;
         try {
-            const result = await this._query("INSERT INTO part (medium_id, title, totalIndex, partialIndex) VALUES (?,?,?,?);", [part.mediumId, part.title, part.totalIndex, part.partialIndex]);
+            const result = await this.query("INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?);", [part.mediumId, part.title, part.totalIndex, part.partialIndex, tools_1.combiIndex(part)]);
             partId = result.insertId;
         }
         catch (e) {
@@ -975,7 +968,7 @@ class QueryContext {
             if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
                 throw e;
             }
-            const result = await this._query("SELECT id from part where medium_id=? and combiIndex=?", [part.mediumId, tools_1.combiIndex(part)]);
+            const result = await this.query("SELECT id from part where medium_id=? and combiIndex=?", [part.mediumId, tools_1.combiIndex(part)]);
             partId = result[0].id;
         }
         if (!Number.isInteger(partId)) {
@@ -1053,7 +1046,7 @@ class QueryContext {
     }
     getSourcedReleases(sourceType, mediumId) {
         return this
-            ._query("SELECT url, episode_release.title FROM episode_release " +
+            .query("SELECT url, episode_release.title FROM episode_release " +
             "INNER JOIN episode ON episode.id=episode_release.episode_id " +
             "INNER JOIN part ON part.id=episode.part_id " +
             "WHERE source_type=? AND medium_id=?;", [sourceType, mediumId])
@@ -1087,12 +1080,12 @@ class QueryContext {
                 });
             }
             else if (value.sourceType) {
-                await this._query("UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?", [value.url, value.sourceType, value.url, value.title]);
+                await this.query("UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?", [value.url, value.sourceType, value.url, value.title]);
             }
         }).then(tools_1.ignore);
     }
     async getEpisodeContentData(chapterLink) {
-        const results = await this._query("SELECT episode_release.title as episodeTitle, episode.combiIndex as `index`, " +
+        const results = await this.query("SELECT episode_release.title as episodeTitle, episode.combiIndex as `index`, " +
             "medium.title as mediumTitle FROM episode_release " +
             "INNER JOIN episode ON episode.id=episode_release.episode_id " +
             "INNER JOIN part ON part.id=episode.part_id INNER JOIN medium ON medium.id=part.medium_id " +
@@ -1120,9 +1113,9 @@ class QueryContext {
         return tools_1.promiseMultiSingle(episodes, async (episode) => {
             let insertId;
             try {
-                const result = await this._query("INSERT INTO episode " +
-                    "(part_id, totalIndex, partialIndex) " +
-                    "VALUES (?,?,?);", [episode.partId, episode.totalIndex, episode.partialIndex]);
+                const result = await this.query("INSERT INTO episode " +
+                    "(part_id, totalIndex, partialIndex, combiIndex) " +
+                    "VALUES (?,?,?,?);", [episode.partId, episode.totalIndex, episode.partialIndex, tools_1.combiIndex(episode)]);
                 insertId = result.insertId;
             }
             catch (e) {
@@ -1130,7 +1123,7 @@ class QueryContext {
                 if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
                     throw e;
                 }
-                const result = await this._query("SELECT id from episode where part_id=? and combiIndex=?", [episode.partId, tools_1.combiIndex(episode)]);
+                const result = await this.query("SELECT id from episode where part_id=? and combiIndex=?", [episode.partId, tools_1.combiIndex(episode)]);
                 insertId = result[0].id;
             }
             if (!Number.isInteger(insertId)) {
@@ -1324,7 +1317,7 @@ class QueryContext {
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list
         if (medium.listId == null || !Number.isInteger(medium.listId)) {
-            const idResult = await this._query("SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;", uuid);
+            const idResult = await this.query("SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;", uuid);
             medium.listId = idResult[0].id;
         }
         const result = await this._multiInsert(`INSERT IGNORE INTO ${table} (list_id, medium_id) VALUES`, medium.id, (value) => [medium.listId, value]);
@@ -1360,7 +1353,7 @@ class QueryContext {
      * Adds an external user of an user to the storage.
      */
     async addExternalUser(localUuid, externalUser) {
-        let result = await this._query("SELECT * FROM external_user " +
+        let result = await this.query("SELECT * FROM external_user " +
             "WHERE name = ? " +
             "AND local_uuid = ? " +
             "AND service = ?", [externalUser.identifier, localUuid, externalUser.type]);
@@ -1369,7 +1362,7 @@ class QueryContext {
             throw Error(tools_1.Errors.USER_EXISTS_ALREADY);
         }
         const uuid = v1_1.default();
-        result = await this._query("INSERT INTO external_user " +
+        result = await this.query("INSERT INTO external_user " +
             "(name, uuid, local_uuid, service, cookies) " +
             "VALUES (?,?,?,?,?);", [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies]);
         if (!result.affectedRows) {
@@ -1386,7 +1379,7 @@ class QueryContext {
         // because deleting top-down
         // would violate the foreign keys restraints
         // first delete list - medium links
-        await this._query("DELETE FROM external_list_medium " +
+        await this.query("DELETE FROM external_list_medium " +
             "WHERE list_id " +
             "IN (SELECT id FROM external_reading_list " +
             "WHERE user_uuid =?);", externalUuid);
@@ -1399,14 +1392,14 @@ class QueryContext {
      * Gets an external user.
      */
     async getExternalUser(externalUuid) {
-        const resultArray = await this._query("SELECT * FROM external_user WHERE uuid = ?;", externalUuid);
+        const resultArray = await this.query("SELECT * FROM external_user WHERE uuid = ?;", externalUuid);
         return this.createShallowExternalUser(resultArray[0]);
     }
     /**
      * Gets an external user with cookies, without items.
      */
     async getExternalUserWithCookies(uuid) {
-        const value = await this._query("SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;", uuid);
+        const value = await this.query("SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;", uuid);
         return {
             uuid: value[0].uuid,
             userUuid: value[0].local_uuid,
@@ -1418,7 +1411,7 @@ class QueryContext {
      *
      */
     async getScrapeExternalUser() {
-        const result = await this._query("SELECT uuid, local_uuid, service, cookies FROM external_user " +
+        const result = await this.query("SELECT uuid, local_uuid, service, cookies FROM external_user " +
             "WHERE last_scrape IS NULL OR last_scrape > NOW() - 7");
         return result.map((value) => {
             return {
@@ -1474,7 +1467,7 @@ class QueryContext {
      * @return {Promise<ExternalList>}
      */
     async addExternalList(userUuid, externalList) {
-        const result = await this._query("INSERT INTO external_reading_list " +
+        const result = await this.query("INSERT INTO external_reading_list " +
             "(name, user_uuid, medium, url) " +
             "VALUES(?,?,?,?);", [externalList.name, userUuid, externalList.medium, externalList.url]);
         const insertId = result.insertId;
@@ -1530,7 +1523,7 @@ class QueryContext {
      * @return {Promise<ExternalList>}
      */
     async getExternalList(id) {
-        const result = await this._query("SELECT * FROM external_reading_list WHERE id = ?", id);
+        const result = await this.query("SELECT * FROM external_reading_list WHERE id = ?", id);
         return this.createShallowExternalList(result[0]);
     }
     /**
@@ -1541,7 +1534,7 @@ class QueryContext {
      * @return {Promise<ExternalList>}
      */
     async createShallowExternalList(storageList) {
-        const result = await this._query("SELECT * FROM external_list_medium WHERE list_id = ?;", storageList.id);
+        const result = await this.query("SELECT * FROM external_list_medium WHERE list_id = ?;", storageList.id);
         storageList.items = result.map((value) => value.medium_id);
         // todo return input or copy object?
         return storageList;
@@ -1550,7 +1543,7 @@ class QueryContext {
      * Gets an array of all lists of an user.
      */
     async getExternalUserLists(uuid) {
-        const result = await this._query("SELECT * FROM external_reading_list WHERE user_uuid = ?;", uuid);
+        const result = await this.query("SELECT * FROM external_reading_list WHERE user_uuid = ?;", uuid);
         // @ts-ignore
         return Promise.all(result.map((value) => this.createShallowExternalList(value)));
     }
@@ -1558,7 +1551,7 @@ class QueryContext {
      * Adds a medium to an external list in the storage.
      */
     async addItemToExternalList(listId, mediumId) {
-        const result = await this._query("INSERT INTO external_list_medium " +
+        const result = await this.query("INSERT INTO external_list_medium " +
             "(list_id, medium_id) " +
             "VALUES (?,?)", [listId, mediumId]);
         return result.affectedRows > 0;
@@ -1593,7 +1586,7 @@ class QueryContext {
     setProgress(uuid, progressResult) {
         // @ts-ignore
         return tools_1.promiseMultiSingle(progressResult, async (value) => {
-            const resultArray = await this._query("SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)", [value.novel, value.chapter, value.chapIndex]);
+            const resultArray = await this.query("SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)", [value.novel, value.chapter, value.chapIndex]);
             const episodeId = resultArray[0] && resultArray[0].episode_id;
             if (episodeId == null) {
                 const msg = `could not find an episode for '${value.novel}', '${value.chapter}', '${value.chapIndex}'`;
@@ -1608,7 +1601,7 @@ class QueryContext {
      */
     async getProgress(uuid, episodeId) {
         const result = await this
-            ._query("SELECT * FROM user_episode " +
+            .query("SELECT * FROM user_episode " +
             "WHERE user_uuid = ? " +
             "AND episode_id = ?", [uuid, episodeId]);
         return result[0].progress;
@@ -1640,7 +1633,7 @@ class QueryContext {
             if (!value.title || !value.date) {
                 return Promise.reject(new Error(tools_1.Errors.INVALID_INPUT));
             }
-            let result = await this._query("INSERT IGNORE INTO news_board (title, link, date) VALUES (?,?,?);", [value.title, value.link, value.date]);
+            let result = await this.query("INSERT IGNORE INTO news_board (title, link, date) VALUES (?,?,?);", [value.title, value.link, value.date]);
             if (!Number.isInteger(result.insertId)) {
                 throw Error(`invalid ID ${result.insertId}`);
             }
@@ -1652,7 +1645,7 @@ class QueryContext {
         });
     }
     getLatestNews(domain) {
-        return this._query("SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10", domain);
+        return this.query("SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10", domain);
     }
     /**
      *
@@ -1695,7 +1688,7 @@ class QueryContext {
             }
             parameter.unshift(uuid);
         }
-        const newsResult = await this._query(query, parameter);
+        const newsResult = await this.query(query, parameter);
         return newsResult.map((value) => {
             return {
                 title: value.title,
@@ -1710,9 +1703,9 @@ class QueryContext {
      *
      */
     async deleteOldNews() {
-        await this._query("DELETE FROM news_medium WHERE news_id IN " +
+        await this.query("DELETE FROM news_medium WHERE news_id IN " +
             "(SELECT news_id FROM news_board WHERE date < NOW() - INTERVAL 30 DAY);");
-        const result = await this._query("DELETE FROM news_board WHERE date < NOW() - INTERVAL 30 DAY;");
+        const result = await this.query("DELETE FROM news_board WHERE date < NOW() - INTERVAL 30 DAY;");
         return result.affectedRows > 0;
     }
     /**
@@ -1735,7 +1728,7 @@ class QueryContext {
      *
      */
     async getScrapes() {
-        let value = await this._query("SELECT * FROM scrape_board;");
+        let value = await this.query("SELECT * FROM scrape_board;");
         value = [...value];
         return value.map((item) => {
             return {
@@ -1760,7 +1753,7 @@ class QueryContext {
      */
     async linkNewsToMedium() {
         // todo maybe implement this with a trigger
-        const result = await this._query("INSERT IGNORE INTO news_medium (medium_id, news_id)" +
+        const result = await this.query("INSERT IGNORE INTO news_medium (medium_id, news_id)" +
             "SELECT medium.id, news_board.id FROM medium,news_board " +
             "WHERE locate(medium.title, news_board.title) > 0");
         return result.affectedRows > 0;
@@ -1808,13 +1801,13 @@ class QueryContext {
                 || (value.chapter && value.chapter.match(teaserMatcher))) {
                 return;
             }
-            const resultArray = await this._query("SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?);", [value.novel, value.chapter, value.chapIndex]);
+            const resultArray = await this.query("SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?);", [value.novel, value.chapter, value.chapIndex]);
             // if a similar/same result was mapped to an episode before, get episode_id and update read
             if (resultArray[0] && resultArray[0].episode_id != null) {
-                return this._query("INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);", [uuid, resultArray[0].episode_id]);
+                return this.query("INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);", [uuid, resultArray[0].episode_id]);
             }
             const escapedNovel = escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
-            const media = await this._query("SELECT title, id,synonym FROM medium " +
+            const media = await this.query("SELECT title, id,synonym FROM medium " +
                 "LEFT JOIN medium_synonyms ON medium.id=medium_synonyms.medium_id " +
                 "WHERE medium.title LIKE ? OR medium_synonyms.synonym LIKE ?;", [escapedNovel, escapedNovel]);
             // todo for now only get the first medium?, later test it against each other
@@ -1832,7 +1825,7 @@ class QueryContext {
             let volIndex = Number(value.volIndex);
             if (volIndex || volumeTitle) {
                 // todo: do i need to convert volIndex from a string to a number for the query?
-                const volumeArray = await this._query("SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)", [bestMedium.id, volumeTitle && escapeLike(volumeTitle, {
+                const volumeArray = await this.query("SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)", [bestMedium.id, volumeTitle && escapeLike(volumeTitle, {
                         singleQuotes: true,
                         noBoundaries: true
                     }), volIndex]);
@@ -1842,7 +1835,7 @@ class QueryContext {
                 }
                 else {
                     if (Number.isNaN(volIndex)) {
-                        const lowestIndexArray = await this._query("SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?", bestMedium.id);
+                        const lowestIndexArray = await this.query("SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?", bestMedium.id);
                         // todo look if totalIndex incremential needs to be replaced with combiIndex
                         const lowestIndexObj = lowestIndexArray[0];
                         // if the lowest available totalIndex not indexed, decrement, else take -2
@@ -1860,7 +1853,7 @@ class QueryContext {
             }
             else {
                 // check if there is a part/volume, with index -1, reserved for all episodes, which are not indexed
-                const volumeArray = await this._query("SELECT id FROM part WHERE medium_id=? AND totalIndex=?", [bestMedium.id, -1]);
+                const volumeArray = await this.query("SELECT id FROM part WHERE medium_id=? AND totalIndex=?", [bestMedium.id, -1]);
                 const volume = volumeArray[0];
                 if (!volume) {
                     volumeId = (await this.createStandardPart(bestMedium.id)).id;
@@ -1869,7 +1862,7 @@ class QueryContext {
                     volumeId = volume.id;
                 }
             }
-            const episodeSelectArray = await this._query("SELECT id, part_id, url FROM episode " +
+            const episodeSelectArray = await this.query("SELECT id, part_id, url FROM episode " +
                 "LEFT JOIN episode_release " +
                 "ON episode.id=episode_release.episode_id " +
                 "WHERE title LIKE ? OR totalIndex=?", [value.chapter && escapeLike(value.chapter, {
@@ -1882,7 +1875,7 @@ class QueryContext {
                 let episodeIndex = Number(value.chapIndex);
                 // if there is no index, decrement the minimum index available for this medium
                 if (Number.isNaN(episodeIndex)) {
-                    const latestEpisodeArray = await this._query("SELECT MIN(totalIndex) as totalIndex FROM episode " +
+                    const latestEpisodeArray = await this.query("SELECT MIN(totalIndex) as totalIndex FROM episode " +
                         "WHERE part_id EXISTS (SELECT id from part WHERE medium_id=?);", bestMedium.id);
                     const latestEpisode = latestEpisodeArray[0];
                     // TODO: 23.07.2019 look if totalIndex needs to be replaced with combiIndex
@@ -1914,14 +1907,14 @@ class QueryContext {
             // normally the progress should be updated by messages of the tracker
             // it should be inserted only, if there does not exist any progress
             await this
-                ._query("INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);", [uuid, episodeId]);
-            await this._query("INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
+                .query("INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);", [uuid, episodeId]);
+            await this.query("INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
                 "VALUES (?,?,?,?,?,?);", [value.novel, value.chapter, value.chapIndex, value.volume, value.volIndex, episodeId]);
         }).then(tools_1.ignore);
     }
     createStandardPart(mediumId) {
         const partName = "Non Indexed Volume";
-        return this._query("INSERT IGNORE INTO part (medium_id,title, totalIndex) VALUES (?,?,?);", [mediumId, partName, -1]).then((value) => {
+        return this.query("INSERT IGNORE INTO part (medium_id,title, totalIndex) VALUES (?,?,?);", [mediumId, partName, -1]).then((value) => {
             return {
                 totalIndex: -1,
                 title: partName,
@@ -1935,7 +1928,7 @@ class QueryContext {
      *
      */
     async checkUnreadNewsCount(uuid) {
-        const result = await this._query("SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN " +
+        const result = await this.query("SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN " +
             "(SELECT news_id FROM news_user WHERE user_id = ?);", uuid);
         return result[0].count;
     }
@@ -1943,7 +1936,7 @@ class QueryContext {
      *
      */
     checkUnreadNews(uuid) {
-        return this._query("SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);", uuid);
+        return this.query("SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);", uuid);
     }
     async getSynonyms(mediumId) {
         // TODO: 29.06.2019 replace with 'medium_id IN (list)'
@@ -1989,22 +1982,22 @@ class QueryContext {
         return true;
     }
     addToc(mediumId, link) {
-        return this._query("INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)", [mediumId, link]).then(tools_1.ignore);
+        return this.query("INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)", [mediumId, link]).then(tools_1.ignore);
     }
     async getToc(mediumId) {
-        const resultArray = await this._query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
+        const resultArray = await this.query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
         return resultArray.map((value) => value.link).filter((value) => value);
     }
     getAllTocs() {
-        return this._query("SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id");
+        return this.query("SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id");
     }
     async getChapterIndices(mediumId) {
-        const result = await this._query("SELECT episode.combiIndex FROM episode " +
+        const result = await this.query("SELECT episode.combiIndex FROM episode " +
             "INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?", mediumId);
         return result.map((value) => value.combiIndex);
     }
     async getAllChapterLinks(mediumId) {
-        const result = await this._query("SELECT url FROM episode " +
+        const result = await this.query("SELECT url FROM episode " +
             "INNER JOIN episode_release ON episode.id=episode_release.episode_id " +
             "INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?", mediumId);
         return result
@@ -2015,14 +2008,14 @@ class QueryContext {
      * Returns all user stored in storage.
      */
     showUser() {
-        return this._query("SELECT * FROM user;");
+        return this.query("SELECT * FROM user;");
     }
     /**
      * Deletes the whole storage.
      */
     async clearAll() {
         const exists = await this.databaseExists();
-        return exists && this._query(`DROP DATABASE ${database};`);
+        return exists && this.query(`DROP DATABASE ${database};`);
     }
     processResult(result) {
         if (!result.preliminary) {
@@ -2030,7 +2023,7 @@ class QueryContext {
         }
         // @ts-ignore
         return tools_1.promiseMultiSingle(result.result, async (value) => {
-            const resultArray = await this._query("SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)", [value.novel, value.chapter, value.chapIndex]);
+            const resultArray = await this.query("SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)", [value.novel, value.chapter, value.chapIndex]);
             if (resultArray[0] && resultArray[0].episode_id != null) {
                 return null;
             }
@@ -2053,12 +2046,12 @@ class QueryContext {
         });
     }
     async getUnreadChapter(uuid) {
-        const resultArray = await this._query("SELECT id FROM episode WHERE id NOT IN " +
+        const resultArray = await this.query("SELECT id FROM episode WHERE id NOT IN " +
             "(SELECT episode_id FROM user_episode WHERE progress < 1 AND user_uuid=?);", uuid);
         return resultArray.map((value) => value.id);
     }
     async getReadToday(uuid) {
-        const resultArray = await this._query("SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;", uuid);
+        const resultArray = await this.query("SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;", uuid);
         return resultArray.map((value) => {
             return {
                 episodeId: value.episode_id,
@@ -2071,7 +2064,7 @@ class QueryContext {
         if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
             return Promise.reject(tools_1.Errors.INVALID_INPUT);
         }
-        const query = await this._query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
+        const query = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
         return {
             link,
             key,
@@ -2087,7 +2080,7 @@ class QueryContext {
             if (!value || !validate.isString(value)) {
                 throw tools_1.Errors.INVALID_INPUT;
             }
-            return this._query("INSERT INTO page_info (link, key, value) VALUES(?,?,?)", [link, key, value]);
+            return this.query("INSERT INTO page_info (link, key, value) VALUES(?,?,?)", [link, key, value]);
         }));
     }
     async removePageInfo(link, key, toDeleteValues) {
@@ -2101,24 +2094,24 @@ class QueryContext {
                         throw tools_1.Errors.INVALID_INPUT;
                     }
                     // TODO: 29.06.2019 use 'value IN (list)'
-                    return this._query("DELETE FROM page_info WHERE link=? AND keyString=? AND value=?", [link, key, value]);
+                    return this.query("DELETE FROM page_info WHERE link=? AND keyString=? AND value=?", [link, key, value]);
                 }));
             }
             else {
-                await this._query("DELETE FROM page_info WHERE link=? AND keyString=?", [link, key]);
+                await this.query("DELETE FROM page_info WHERE link=? AND keyString=?", [link, key]);
             }
         }
         else {
-            await this._query("DELETE FROM page_info WHERE link=?", link);
+            await this.query("DELETE FROM page_info WHERE link=?", link);
         }
     }
     async addInvalidation(value) {
         // fixme: this could be a potential security issue, due to executing unvalidated queries
-        await Promise.all(value.map((query) => this._query(query)));
+        await Promise.all(value.map((query) => this.query(query)));
     }
     async getInvalidated(uuid) {
-        const result = await this._query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this._query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+        const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
+        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
             console.log(reason);
             logger_1.default.error(reason);
         });
@@ -2137,7 +2130,25 @@ class QueryContext {
         });
     }
     clearInvalidationTable() {
-        return this._query("TRUNCATE user_data_invalidation");
+        return this.query("TRUNCATE user_data_invalidation");
+    }
+    /**
+     *
+     * @param query
+     * @param parameter
+     */
+    query(query, parameter) {
+        if (query.length > 20) {
+            // console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+        }
+        return Promise.resolve()
+            .then(() => this.con.query(query, parameter))
+            .then((value) => {
+            if (Array.isArray(value) && value.length > 1000) {
+                console.log(`${value.length} Results for ${query}`);
+            }
+            return value;
+        });
     }
     /**
      * Returns a user with their associated lists and external user from the storage.
@@ -2157,7 +2168,7 @@ class QueryContext {
             session,
         };
         // query for user
-        const userPromise = this._query("SELECT * FROM user WHERE uuid = ?;", uuid)
+        const userPromise = this.query("SELECT * FROM user WHERE uuid = ?;", uuid)
             .then((value) => {
             // add user metadata
             user.name = value[0].name;
@@ -2172,7 +2183,7 @@ class QueryContext {
         });
         // select external user of user
         const allExternalUserPromise = this
-            ._query("SELECT * FROM external_user WHERE local_uuid = ?;", uuid)
+            .query("SELECT * FROM external_user WHERE local_uuid = ?;", uuid)
             .then((allExternalUser) => {
             // add external_user and add their respective external reading lists
             return Promise.all(allExternalUser.map((value) => this
@@ -2216,7 +2227,7 @@ class QueryContext {
             }
             values.push(value.value);
         });
-        const result = await this._query(query, values);
+        const result = await this.query(query, values);
         return result.affectedRows >= 0;
     }
     /**
@@ -2230,7 +2241,7 @@ class QueryContext {
             return Promise.resolve(false);
         }
         values.push(idValue);
-        const result = await this._query(`UPDATE ${promise_mysql_1.default.escapeId(table)}
+        const result = await this.query(`UPDATE ${promise_mysql_1.default.escapeId(table)}
                 SET ${updates.join(", ")}
                 WHERE ${promise_mysql_1.default.escapeId(column)} = ?;`, values);
         return result.affectedRows > 0;
@@ -2266,7 +2277,7 @@ class QueryContext {
                 valuesQueries += ",";
             }
         });
-        return this._query(`${query} ${valuesQueries};`, param);
+        return this.query(`${query} ${valuesQueries};`, param);
     }
     async _queryInList(query, value, paramCallback) {
         if (Array.isArray(value)) {
@@ -2302,7 +2313,7 @@ class QueryContext {
         if (!param.length) {
             throw Error(`no params for '${query}'`);
         }
-        return this._query(`${query} IN (${placeholders.join(",")});`, param);
+        return this.query(`${query} IN (${placeholders.join(",")});`, param);
     }
     // noinspection JSMethodCanBeStatic
     async _batchFunction(value, query, paramCallback, func) {
@@ -2321,24 +2332,6 @@ class QueryContext {
         }
         const results = await Promise.all(resultsPromises);
         return results.flat();
-    }
-    /**
-     *
-     * @param query
-     * @param parameter
-     */
-    _query(query, parameter) {
-        if (query.length > 20) {
-            // console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
-        }
-        return Promise.resolve()
-            .then(() => this.con.query(query, parameter))
-            .then((value) => {
-            if (Array.isArray(value) && value.length > 1000) {
-                console.log(`${value.length} Results for ${query}`);
-            }
-            return value;
-        });
     }
     /**
      *

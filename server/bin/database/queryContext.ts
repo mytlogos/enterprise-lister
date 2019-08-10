@@ -47,7 +47,6 @@ import {
     separateIndex
 } from "../tools";
 import logger from "../logger";
-import {Tables} from "./databaseSchema";
 import * as validate from "validate.js";
 import {MediumInWait} from "./databaseTypes";
 import {ScrapeTypes} from "../externals/scraperTools";
@@ -145,21 +144,21 @@ export class QueryContext {
      *
      */
     public useDatabase(): Promise<void> {
-        return this._query(`USE ${database};`);
+        return this.query(`USE ${database};`);
     }
 
     /**
      *
      */
     public startTransaction(): Promise<void> {
-        return this._query("START TRANSACTION;").then(ignore);
+        return this.query("START TRANSACTION;").then(ignore);
     }
 
     /**
      *
      */
     public commit(): Promise<void> {
-        return this._query("COMMIT;").then(ignore);
+        return this.query("COMMIT;").then(ignore);
     }
 
 
@@ -167,7 +166,7 @@ export class QueryContext {
      *
      */
     public rollback(): Promise<void> {
-        return this._query("ROLLBACK;").then(ignore);
+        return this.query("ROLLBACK;").then(ignore);
     }
 
 
@@ -178,79 +177,72 @@ export class QueryContext {
     public async start(): Promise<void> {
         const exists = await this.databaseExists();
         if (!exists) {
-            await this._query(`CREATE DATABASE ${database};`);
+            await this.query(`CREATE DATABASE ${database};`);
         }
-        // display all current tables
-        const tables = await this._query("SHOW TABLES;");
-
-        // create tables which do not exist
-        await Promise.all(Object.keys(Tables)
-            .filter((table) => !tables.find((value: any) => value[`Tables_in_${database}`] === table))
-            .map((table) => this._query(`CREATE TABLE ${table}(${Tables[table]});`)));
     }
 
     public getDatabaseVersion(): Promise<Array<{ version: number }>> {
-        return this._query("SELECT version FROM enterprise_database_info LIMIT 1;");
+        return this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
     }
 
     public async updateDatabaseVersion(version: number): Promise<number> {
-        await this._query("TRUNCATE enterprise_database_info;");
-        return this._query("INSERT INTO enterprise_database_info (version) VALUES (?);", version);
+        await this.query("TRUNCATE enterprise_database_info;");
+        return this.query("INSERT INTO enterprise_database_info (version) VALUES (?);", version);
     }
 
     /**
      * Checks whether the main database exists currently.
      */
     public async databaseExists(): Promise<boolean> {
-        const databases = await this._query("SHOW DATABASES;");
+        const databases = await this.query("SHOW DATABASES;");
         return databases.find((data: { Database: string }) => data.Database === database) != null;
     }
 
 
     public createDatabase(): Promise<void> {
-        return this._query(`CREATE DATABASE ${database};`).then(ignore);
+        return this.query(`CREATE DATABASE ${database};`).then(ignore);
     }
 
     public getTables(): Promise<any[]> {
-        return this._query("SHOW TABLES;");
+        return this.query("SHOW TABLES;");
     }
 
     public getTriggers(): Promise<DbTrigger[]> {
-        return this._query("SHOW TRIGGERS;");
+        return this.query("SHOW TRIGGERS;");
     }
 
     public createTrigger(trigger: Trigger): any {
         const schema = trigger.createSchema();
-        return this._query(schema);
+        return this.query(schema);
     }
 
     public dropTrigger(trigger: string) {
-        return this._query("DROP TRIGGER ?", trigger);
+        return this.query("DROP TRIGGER ?", trigger);
     }
 
     public createTable(table: string, columns: string[]) {
-        return this._query(`CREATE TABLE ${mySql.escapeId(table)} (${columns.join(", ")});`);
+        return this.query(`CREATE TABLE ${mySql.escapeId(table)} (${columns.join(", ")});`);
     }
 
     public addColumn(tableName: string, columnDefinition: string) {
-        return this._query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
     }
 
     public alterColumn(tableName: string, columnDefinition: string) {
-        return this._query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnDefinition};`);
     }
 
     public addUnique(tableName: string, indexName: string, ...columns: string[]) {
         columns = columns.map((value) => mySql.escapeId(value));
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
-        return this._query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
+        return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
     }
 
     public dropIndex(tableName: string, indexName: string) {
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
-        return this._query(`DROP INDEX ${index} ON ${table};`);
+        return this.query(`DROP INDEX ${index} ON ${table};`);
     }
 
     public addForeignKey(tableName: string, constraintName: string, column: string, referencedTable: string,
@@ -269,25 +261,25 @@ export class QueryContext {
         if (onUpdate) {
             query += " ON UPDATE " + onUpdate;
         }
-        return this._query(query + ";");
+        return this.query(query + ";");
     }
 
     public dropForeignKey(tableName: string, indexName: string) {
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
-        return this._query(`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`);
+        return this.query(`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`);
     }
 
     public addPrimaryKey(tableName: string, ...columns: string[]) {
         columns = columns.map((value) => mySql.escapeId(value));
 
         const table = mySql.escapeId(tableName);
-        return this._query(`ALTER TABLE ${table} ADD PRIMARY KEY (${columns.join(", ")})`);
+        return this.query(`ALTER TABLE ${table} ADD PRIMARY KEY (${columns.join(", ")})`);
     }
 
     public dropPrimaryKey(tableName: string) {
         const table = mySql.escapeId(tableName);
-        return this._query(`ALTER TABLE ${table} DROP PRIMARY KEY`);
+        return this.query(`ALTER TABLE ${table} DROP PRIMARY KEY`);
     }
 
 
@@ -306,7 +298,7 @@ export class QueryContext {
         if (!userName || !password) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        const user = await this._query(`SELECT * FROM user WHERE name = ?;`, userName);
+        const user = await this.query(`SELECT * FROM user WHERE name = ?;`, userName);
         // if there is a result in array, userName is not new, so abort
         if (user.length) {
             return Promise.reject(new Error(Errors.USER_EXISTS_ALREADY));
@@ -316,7 +308,7 @@ export class QueryContext {
         const {salt, hash} = StandardHash.hash(password);
 
         // insert the full user and loginUser right after
-        await this._query(
+        await this.query(
             "INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);",
             [userName, id, salt, StandardHash.tag, hash],
         );
@@ -338,7 +330,7 @@ export class QueryContext {
         if (!userName || !password) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        const result = await this._query("SELECT * FROM user WHERE name = ?;", userName);
+        const result = await this.query("SELECT * FROM user WHERE name = ?;", userName);
 
         if (!result.length) {
             return Promise.reject(new Error(Errors.USER_DOES_NOT_EXIST));
@@ -359,7 +351,7 @@ export class QueryContext {
         const session = sessionGenerator();
         const date = new Date().toISOString();
 
-        await this._query(
+        await this.query(
             "INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);",
             [uuid, ip, session, date],
         );
@@ -374,7 +366,7 @@ export class QueryContext {
      * the session key of the user for the ip.
      */
     public async userLoginStatus(ip: string, uuid?: string, session?: string): Promise<boolean> {
-        const result = await this._query("SELECT * FROM user_log WHERE ip = ?;", ip);
+        const result = await this.query("SELECT * FROM user_log WHERE ip = ?;", ip);
 
         const sessionRecord = result[0];
 
@@ -394,7 +386,7 @@ export class QueryContext {
         if (!ip) {
             return null;
         }
-        const result = await this._query(
+        const result = await this.query(
             "SELECT name, uuid, session_key FROM user_log " +
             "INNER JOIN user ON user.uuid=user_log.user_uuid WHERE ip = ?;",
             ip
@@ -414,7 +406,7 @@ export class QueryContext {
     }
 
     public async getUser(uuid: string, ip: string): Promise<User> {
-        const result = await this._query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
+        const result = await this.query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
 
         const sessionRecord = result[0];
 
@@ -449,7 +441,7 @@ export class QueryContext {
         await this._delete("user_log", {column: "user_uuid", value: uuid});
 
         // delete reading lists contents
-        await this._query(
+        await this.query(
             "DELETE FROM list_medium " +
             "WHERE list_id in " +
             "(SELECT id FROM reading_list " +
@@ -459,7 +451,7 @@ export class QueryContext {
         // delete lists
         await this._delete("reading_list", {column: "user_uuid", value: uuid});
         // delete external reading lists contents
-        await this._query(
+        await this.query(
             "DELETE FROM external_list_medium " +
             "WHERE list_id " +
             "IN (SELECT id FROM external_reading_list " +
@@ -470,7 +462,7 @@ export class QueryContext {
         );
 
         // delete external lists
-        await this._query(
+        await this.query(
             "DELETE FROM external_reading_list " +
             "WHERE user_uuid " +
             "IN (SELECT uuid FROM external_user WHERE local_uuid = ?);",
@@ -534,7 +526,7 @@ export class QueryContext {
      * @return {Promise<boolean>}
      */
     public async verifyPassword(uuid: string, password: string): Promise<boolean> {
-        const result = await this._query("SELECT password, alg, salt FROM user WHERE uuid = ?", uuid);
+        const result = await this.query("SELECT password, alg, salt FROM user WHERE uuid = ?", uuid);
         const user = result[0];
         return verifyPassword(password, user.password, user.alg, user.salt);
     }
@@ -544,7 +536,7 @@ export class QueryContext {
      * links it to the user of the uuid.
      */
     public async addList(uuid: string, {name, medium}: { name: string, medium: number }): Promise<List> {
-        const result = await this._query(
+        const result = await this.query(
             "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)",
             [uuid, name, medium],
         );
@@ -571,7 +563,7 @@ export class QueryContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         const lists: List | List[] = await promiseMultiSingle(listId, async (id: number) => {
-            const result = await this._query("SELECT * FROM reading_list WHERE id = ?;", id);
+            const result = await this.query("SELECT * FROM reading_list WHERE id = ?;", id);
             const list = await this.createShallowList(result[0]);
 
             for (const itemId of list.items) {
@@ -607,7 +599,7 @@ export class QueryContext {
             userUuid: storageList.user_uuid,
         };
 
-        const result = await this._query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
+        const result = await this.query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
         await list.items.push(...result.map((value: any) => value.medium_id));
 
         return list;
@@ -638,7 +630,7 @@ export class QueryContext {
      * Deletes a single list irreversibly.
      */
     public async deleteList(listId: number, uuid: string): Promise<boolean> {
-        const result = await this._query(
+        const result = await this.query(
             "SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?",
             [listId, uuid],
         );
@@ -658,7 +650,7 @@ export class QueryContext {
      */
     public async getUserLists(uuid: string): Promise<List[]> {
         // query all available lists for user
-        const result = await this._query(
+        const result = await this.query(
             "SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;",
             [uuid, uuid],
         );
@@ -675,7 +667,7 @@ export class QueryContext {
         if (!medium || !medium.medium || !medium.title) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        const result = await this._query(
+        const result = await this.query(
             "INSERT INTO medium(medium, title) VALUES (?,?);",
             [medium.medium, medium.title],
         );
@@ -702,7 +694,7 @@ export class QueryContext {
      *
      */
     public async getLatestReleases(mediumId: number): Promise<SimpleEpisode[]> {
-        const resultArray: any[] = await this._query(
+        const resultArray: any[] = await this.query(
             "SELECT episode.* FROM episode_release " +
             "INNER JOIN episode ON episode.id=episode_release.episode_id " +
             "INNER JOIN part ON part.id=episode.part_id  " +
@@ -752,7 +744,7 @@ export class QueryContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return promiseMultiSingle(id, async (mediumId) => {
-            const resultArray: any[] = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
+            const resultArray: any[] = await this.query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
             const result = resultArray[0];
             return {
                 id: result.id,
@@ -772,7 +764,7 @@ export class QueryContext {
     }
 
     public async getTocSearchMedia(): Promise<TocSearchMedium[]> {
-        const result: Array<{ host: string, mediumId: number, title: string }> = await this._query(
+        const result: Array<{ host: string, mediumId: number, title: string }> = await this.query(
             "SELECT substring(episode_release.url, 1, locate(\"/\",episode_release.url,9)) as host, " +
             "part.medium_id as mediumId, medium.title " +
             "FROM episode_release " +
@@ -820,7 +812,7 @@ export class QueryContext {
     }
 
     public async getTocSearchMedium(id: number): Promise<TocSearchMedium> {
-        const resultArray: any[] = await this._query(`SELECT * FROM medium WHERE medium.id =?;`, id);
+        const resultArray: any[] = await this.query(`SELECT * FROM medium WHERE medium.id =?;`, id);
         const result = resultArray[0];
         const synonyms: Synonyms[] = await this.getSynonyms(id);
 
@@ -842,12 +834,12 @@ export class QueryContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return promiseMultiSingle(id, async (mediumId: number) => {
-            let result = await this._query(`SELECT * FROM medium WHERE medium.id=?;`, mediumId);
+            let result = await this.query(`SELECT * FROM medium WHERE medium.id=?;`, mediumId);
             result = result[0];
 
             const latestReleasesResult = await this.getLatestReleases(mediumId);
 
-            const currentReadResult = await this._query(
+            const currentReadResult = await this.query(
                 "SELECT * FROM " +
                 "(SELECT * FROM user_episode " +
                 "WHERE episode_id IN (SELECT id from episode " +
@@ -858,13 +850,13 @@ export class QueryContext {
                 "ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1",
                 [mediumId, uuid]
             );
-            const unReadResult = await this._query(
+            const unReadResult = await this.query(
                 "SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
                 "AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) " +
                 "ORDER BY totalIndex DESC, partialIndex DESC;",
                 [mediumId, uuid]
             );
-            const partsResult = await this._query("SELECT id FROM part WHERE medium_id=?;", mediumId);
+            const partsResult = await this.query("SELECT id FROM part WHERE medium_id=?;", mediumId);
 
             return {
                 id: result.id,
@@ -902,7 +894,7 @@ export class QueryContext {
             const escapedLinkQuery = escapeLike(value.link || "", {noRightBoundary: true});
             const escapedTitle = escapeLike(value.title, {singleQuotes: true});
 
-            let result: any[] = await this._query(
+            let result: any[] = await this.query(
                 "SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
                 "(SELECT medium_id FROM scrape_board WHERE medium_id IS NOT NULL AND link LIKE ?);",
                 [escapedTitle, escapedLinkQuery]);
@@ -988,7 +980,7 @@ export class QueryContext {
     }
 
     public getMediaInWait(): Promise<MediumInWait[]> {
-        return this._query("SELECT * FROM medium_in_wait");
+        return this.query("SELECT * FROM medium_in_wait");
     }
 
     public async deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
@@ -1019,7 +1011,7 @@ export class QueryContext {
     }
 
     public async getStandardPart(mediumId: number): Promise<ShallowPart | undefined> {
-        const [standardPartResult]: any = await this._query(
+        const [standardPartResult]: any = await this.query(
             "SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1",
             mediumId
         );
@@ -1051,7 +1043,7 @@ export class QueryContext {
      * Returns all parts of an medium.
      */
     public async getMediumParts(mediumId: number, uuid?: string): Promise<Part[]> {
-        const parts: any[] = await this._query("SELECT * FROM part WHERE medium_id = ?", mediumId);
+        const parts: any[] = await this.query("SELECT * FROM part WHERE medium_id = ?", mediumId);
 
         const idMap = new Map<number, FullPart>();
 
@@ -1276,9 +1268,9 @@ export class QueryContext {
         }
         let partId: any;
         try {
-            const result = await this._query(
-                "INSERT INTO part (medium_id, title, totalIndex, partialIndex) VALUES (?,?,?,?);",
-                [part.mediumId, part.title, part.totalIndex, part.partialIndex],
+            const result = await this.query(
+                "INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?);",
+                [part.mediumId, part.title, part.totalIndex, part.partialIndex, combiIndex(part)],
             );
             partId = result.insertId;
         } catch (e) {
@@ -1286,7 +1278,7 @@ export class QueryContext {
             if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
                 throw e;
             }
-            const result = await this._query(
+            const result = await this.query(
                 "SELECT id from part where medium_id=? and combiIndex=?",
                 [part.mediumId, combiIndex(part)]
             );
@@ -1380,7 +1372,7 @@ export class QueryContext {
     public getSourcedReleases(sourceType: string, mediumId: number):
         Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
         return this
-            ._query(
+            .query(
                 "SELECT url, episode_release.title FROM episode_release " +
                 "INNER JOIN episode ON episode.id=episode_release.episode_id " +
                 "INNER JOIN part ON part.id=episode.part_id " +
@@ -1422,7 +1414,7 @@ export class QueryContext {
                     }
                 );
             } else if (value.sourceType) {
-                await this._query(
+                await this.query(
                     "UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?",
                     [value.url, value.sourceType, value.url, value.title]
                 );
@@ -1431,7 +1423,7 @@ export class QueryContext {
     }
 
     public async getEpisodeContentData(chapterLink: string): Promise<EpisodeContentData> {
-        const results: EpisodeContentData[] = await this._query(
+        const results: EpisodeContentData[] = await this.query(
             "SELECT episode_release.title as episodeTitle, episode.combiIndex as `index`, " +
             "medium.title as mediumTitle FROM episode_release " +
             "INNER JOIN episode ON episode.id=episode_release.episode_id " +
@@ -1467,11 +1459,11 @@ export class QueryContext {
         return promiseMultiSingle(episodes, async (episode: SimpleEpisode) => {
             let insertId: any;
             try {
-                const result = await this._query(
+                const result = await this.query(
                     "INSERT INTO episode " +
-                    "(part_id, totalIndex, partialIndex) " +
-                    "VALUES (?,?,?);",
-                    [episode.partId, episode.totalIndex, episode.partialIndex]
+                    "(part_id, totalIndex, partialIndex, combiIndex) " +
+                    "VALUES (?,?,?,?);",
+                    [episode.partId, episode.totalIndex, episode.partialIndex, combiIndex(episode)]
                 );
                 insertId = result.insertId;
             } catch (e) {
@@ -1479,7 +1471,7 @@ export class QueryContext {
                 if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
                     throw e;
                 }
-                const result = await this._query(
+                const result = await this.query(
                     "SELECT id from episode where part_id=? and combiIndex=?",
                     [episode.partId, combiIndex(episode)]
                 );
@@ -1708,7 +1700,7 @@ export class QueryContext {
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list
         if (medium.listId == null || !Number.isInteger(medium.listId)) {
-            const idResult = await this._query(
+            const idResult = await this.query(
                 "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",
                 uuid,
             );
@@ -1758,7 +1750,7 @@ export class QueryContext {
      * Adds an external user of an user to the storage.
      */
     public async addExternalUser(localUuid: string, externalUser: ExternalUser): Promise<ExternalUser> {
-        let result = await this._query("SELECT * FROM external_user " +
+        let result = await this.query("SELECT * FROM external_user " +
             "WHERE name = ? " +
             "AND local_uuid = ? " +
             "AND service = ?",
@@ -1770,7 +1762,7 @@ export class QueryContext {
         }
         const uuid = uuidGenerator();
 
-        result = await this._query("INSERT INTO external_user " +
+        result = await this.query("INSERT INTO external_user " +
             "(name, uuid, local_uuid, service, cookies) " +
             "VALUES (?,?,?,?,?);",
             [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies],
@@ -1792,7 +1784,7 @@ export class QueryContext {
         // would violate the foreign keys restraints
 
         // first delete list - medium links
-        await this._query(
+        await this.query(
             "DELETE FROM external_list_medium " +
             "WHERE list_id " +
             "IN (SELECT id FROM external_reading_list " +
@@ -1809,7 +1801,7 @@ export class QueryContext {
      * Gets an external user.
      */
     public async getExternalUser(externalUuid: string): Promise<ExternalUser> {
-        const resultArray: any[] = await this._query("SELECT * FROM external_user WHERE uuid = ?;", externalUuid);
+        const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", externalUuid);
         return this.createShallowExternalUser(resultArray[0]);
     }
 
@@ -1819,7 +1811,7 @@ export class QueryContext {
     public async getExternalUserWithCookies(uuid: string)
         : Promise<{ userUuid: string, type: number, uuid: string, cookies: string }> {
 
-        const value = await this._query(
+        const value = await this.query(
             "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
             uuid);
         return {
@@ -1836,7 +1828,7 @@ export class QueryContext {
     public async getScrapeExternalUser():
         Promise<Array<{ userUuid: string, type: number, uuid: string, cookies: string }>> {
 
-        const result = await this._query(
+        const result = await this.query(
             "SELECT uuid, local_uuid, service, cookies FROM external_user " +
             "WHERE last_scrape IS NULL OR last_scrape > NOW() - 7",
         );
@@ -1902,7 +1894,7 @@ export class QueryContext {
      * @return {Promise<ExternalList>}
      */
     public async addExternalList(userUuid: string, externalList: ExternalList): Promise<ExternalList> {
-        const result = await this._query(
+        const result = await this.query(
             "INSERT INTO external_reading_list " +
             "(name, user_uuid, medium, url) " +
             "VALUES(?,?,?,?);",
@@ -1971,7 +1963,7 @@ export class QueryContext {
      * @return {Promise<ExternalList>}
      */
     public async getExternalList(id: number): Promise<ExternalList> {
-        const result = await this._query("SELECT * FROM external_reading_list WHERE id = ?", id);
+        const result = await this.query("SELECT * FROM external_reading_list WHERE id = ?", id);
         return this.createShallowExternalList(result[0]);
     }
 
@@ -1983,7 +1975,7 @@ export class QueryContext {
      * @return {Promise<ExternalList>}
      */
     public async createShallowExternalList(storageList: ExternalList): Promise<ExternalList> {
-        const result = await this._query("SELECT * FROM external_list_medium WHERE list_id = ?;", storageList.id);
+        const result = await this.query("SELECT * FROM external_list_medium WHERE list_id = ?;", storageList.id);
         storageList.items = result.map((value: any) => value.medium_id);
         // todo return input or copy object?
         return storageList;
@@ -1993,7 +1985,7 @@ export class QueryContext {
      * Gets an array of all lists of an user.
      */
     public async getExternalUserLists(uuid: string): Promise<ExternalList[]> {
-        const result = await this._query("SELECT * FROM external_reading_list WHERE user_uuid = ?;", uuid);
+        const result = await this.query("SELECT * FROM external_reading_list WHERE user_uuid = ?;", uuid);
         // @ts-ignore
         return Promise.all(result.map((value: any) => this.createShallowExternalList(value)));
     }
@@ -2002,7 +1994,7 @@ export class QueryContext {
      * Adds a medium to an external list in the storage.
      */
     public async addItemToExternalList(listId: number, mediumId: number): Promise<boolean> {
-        const result = await this._query(
+        const result = await this.query(
             "INSERT INTO external_list_medium " +
             "(list_id, medium_id) " +
             "VALUES (?,?)",
@@ -2053,7 +2045,7 @@ export class QueryContext {
     public setProgress(uuid: string, progressResult: ProgressResult | ProgressResult[]): Promise<void> {
         // @ts-ignore
         return promiseMultiSingle(progressResult, async (value: ProgressResult) => {
-            const resultArray: any[] = await this._query(
+            const resultArray: any[] = await this.query(
                 "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
                 [value.novel, value.chapter, value.chapIndex]
             );
@@ -2073,7 +2065,7 @@ export class QueryContext {
      */
     public async getProgress(uuid: string, episodeId: number): Promise<number> {
         const result = await this
-            ._query(
+            .query(
                 "SELECT * FROM user_episode " +
                 "WHERE user_uuid = ? " +
                 "AND episode_id = ?",
@@ -2111,7 +2103,7 @@ export class QueryContext {
             if (!value.title || !value.date) {
                 return Promise.reject(new Error(Errors.INVALID_INPUT));
             }
-            let result = await this._query(
+            let result = await this.query(
                 "INSERT IGNORE INTO news_board (title, link, date) VALUES (?,?,?);",
                 [value.title, value.link, value.date],
             );
@@ -2128,7 +2120,7 @@ export class QueryContext {
     }
 
     public getLatestNews(domain: string): Promise<News[]> {
-        return this._query(
+        return this.query(
             "SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10",
             domain
         );
@@ -2177,7 +2169,7 @@ export class QueryContext {
             parameter.unshift(uuid);
 
         }
-        const newsResult: any[] = await this._query(query, parameter);
+        const newsResult: any[] = await this.query(query, parameter);
 
         return newsResult.map((value): News => {
             return {
@@ -2194,9 +2186,9 @@ export class QueryContext {
      *
      */
     public async deleteOldNews(): Promise<boolean> {
-        await this._query("DELETE FROM news_medium WHERE news_id IN " +
+        await this.query("DELETE FROM news_medium WHERE news_id IN " +
             "(SELECT news_id FROM news_board WHERE date < NOW() - INTERVAL 30 DAY);");
-        const result = await this._query("DELETE FROM news_board WHERE date < NOW() - INTERVAL 30 DAY;");
+        const result = await this.query("DELETE FROM news_board WHERE date < NOW() - INTERVAL 30 DAY;");
         return result.affectedRows > 0;
     }
 
@@ -2225,7 +2217,7 @@ export class QueryContext {
      *
      */
     public async getScrapes(): Promise<ScrapeItem[]> {
-        let value = await this._query("SELECT * FROM scrape_board;");
+        let value = await this.query("SELECT * FROM scrape_board;");
         value = [...value];
         return value.map((item: any) => {
             return {
@@ -2252,7 +2244,7 @@ export class QueryContext {
      */
     public async linkNewsToMedium(): Promise<boolean> {
         // todo maybe implement this with a trigger
-        const result = await this._query(
+        const result = await this.query(
             "INSERT IGNORE INTO news_medium (medium_id, news_id)" +
             "SELECT medium.id, news_board.id FROM medium,news_board " +
             "WHERE locate(medium.title, news_board.title) > 0",
@@ -2311,20 +2303,20 @@ export class QueryContext {
                 return;
             }
 
-            const resultArray: any[] = await this._query(
+            const resultArray: any[] = await this.query(
                 "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?);",
                 [value.novel, value.chapter, value.chapIndex]
             );
             // if a similar/same result was mapped to an episode before, get episode_id and update read
             if (resultArray[0] && resultArray[0].episode_id != null) {
-                return this._query(
+                return this.query(
                     "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
                     [uuid, resultArray[0].episode_id]
                 );
             }
 
             const escapedNovel = escapeLike(value.novel, {singleQuotes: true, noBoundaries: true});
-            const media: Array<{ title: string, id: number, synonym?: string }> = await this._query(
+            const media: Array<{ title: string, id: number, synonym?: string }> = await this.query(
                 "SELECT title, id,synonym FROM medium " +
                 "LEFT JOIN medium_synonyms ON medium.id=medium_synonyms.medium_id " +
                 "WHERE medium.title LIKE ? OR medium_synonyms.synonym LIKE ?;",
@@ -2349,7 +2341,7 @@ export class QueryContext {
 
             if (volIndex || volumeTitle) {
                 // todo: do i need to convert volIndex from a string to a number for the query?
-                const volumeArray: Array<{ id: number; }> = await this._query(
+                const volumeArray: Array<{ id: number; }> = await this.query(
                     "SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)",
                     [bestMedium.id, volumeTitle && escapeLike(volumeTitle, {
                         singleQuotes: true,
@@ -2362,7 +2354,7 @@ export class QueryContext {
                     volumeId = volume.id;
                 } else {
                     if (Number.isNaN(volIndex)) {
-                        const lowestIndexArray: Array<{ totalIndex: number }> = await this._query(
+                        const lowestIndexArray: Array<{ totalIndex: number }> = await this.query(
                             "SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?",
                             bestMedium.id
                         );
@@ -2383,7 +2375,7 @@ export class QueryContext {
                 }
             } else {
                 // check if there is a part/volume, with index -1, reserved for all episodes, which are not indexed
-                const volumeArray: Array<{ id: number }> = await this._query(
+                const volumeArray: Array<{ id: number }> = await this.query(
                     "SELECT id FROM part WHERE medium_id=? AND totalIndex=?",
                     [bestMedium.id, -1]
                 );
@@ -2396,7 +2388,7 @@ export class QueryContext {
                 }
             }
 
-            const episodeSelectArray: Array<{ id: number, part_id: number, link: string }> = await this._query(
+            const episodeSelectArray: Array<{ id: number, part_id: number, link: string }> = await this.query(
                 "SELECT id, part_id, url FROM episode " +
                 "LEFT JOIN episode_release " +
                 "ON episode.id=episode_release.episode_id " +
@@ -2415,7 +2407,7 @@ export class QueryContext {
 
                 // if there is no index, decrement the minimum index available for this medium
                 if (Number.isNaN(episodeIndex)) {
-                    const latestEpisodeArray: Array<{ totalIndex: number; }> = await this._query(
+                    const latestEpisodeArray: Array<{ totalIndex: number; }> = await this.query(
                         "SELECT MIN(totalIndex) as totalIndex FROM episode " +
                         "WHERE part_id EXISTS (SELECT id from part WHERE medium_id=?);",
                         bestMedium.id
@@ -2454,11 +2446,11 @@ export class QueryContext {
             // normally the progress should be updated by messages of the tracker
             // it should be inserted only, if there does not exist any progress
             await this
-                ._query(
+                .query(
                     "INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);",
                     [uuid, episodeId]
                 );
-            await this._query(
+            await this.query(
                 "INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
                 "VALUES (?,?,?,?,?,?);",
                 [value.novel, value.chapter, value.chapIndex, value.volume, value.volIndex, episodeId]
@@ -2468,7 +2460,7 @@ export class QueryContext {
 
     public createStandardPart(mediumId: number): Promise<ShallowPart> {
         const partName = "Non Indexed Volume";
-        return this._query(
+        return this.query(
             "INSERT IGNORE INTO part (medium_id,title, totalIndex) VALUES (?,?,?);",
             [mediumId, partName, -1]
         ).then((value): ShallowPart => {
@@ -2486,7 +2478,7 @@ export class QueryContext {
      *
      */
     public async checkUnreadNewsCount(uuid: string): Promise<number> {
-        const result = await this._query(
+        const result = await this.query(
             "SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN " +
             "(SELECT news_id FROM news_user WHERE user_id = ?);",
             uuid
@@ -2498,7 +2490,7 @@ export class QueryContext {
      *
      */
     public checkUnreadNews(uuid: string): Promise<number[]> {
-        return this._query(
+        return this.query(
             "SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);",
             uuid
         );
@@ -2557,25 +2549,25 @@ export class QueryContext {
     }
 
     public addToc(mediumId: number, link: string): Promise<void> {
-        return this._query(
+        return this.query(
             "INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)",
             [mediumId, link]
         ).then(ignore);
     }
 
     public async getToc(mediumId: number): Promise<string[]> {
-        const resultArray: any[] = await this._query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
+        const resultArray: any[] = await this.query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
         return resultArray.map((value) => value.link).filter((value) => value);
     }
 
     public getAllTocs(): Promise<Array<{ link?: string, id: number }>> {
-        return this._query(
+        return this.query(
             "SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id"
         );
     }
 
     public async getChapterIndices(mediumId: number): Promise<number[]> {
-        const result: any[] = await this._query(
+        const result: any[] = await this.query(
             "SELECT episode.combiIndex FROM episode " +
             "INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?",
             mediumId
@@ -2584,7 +2576,7 @@ export class QueryContext {
     }
 
     public async getAllChapterLinks(mediumId: number): Promise<string[]> {
-        const result: any[] = await this._query(
+        const result: any[] = await this.query(
             "SELECT url FROM episode " +
             "INNER JOIN episode_release ON episode.id=episode_release.episode_id " +
             "INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?",
@@ -2599,7 +2591,7 @@ export class QueryContext {
      * Returns all user stored in storage.
      */
     public showUser(): Promise<User[]> {
-        return this._query("SELECT * FROM user;");
+        return this.query("SELECT * FROM user;");
     }
 
     /**
@@ -2607,7 +2599,7 @@ export class QueryContext {
      */
     public async clearAll(): Promise<boolean> {
         const exists = await this.databaseExists();
-        return exists && this._query(`DROP DATABASE ${database};`);
+        return exists && this.query(`DROP DATABASE ${database};`);
     }
 
 
@@ -2617,7 +2609,7 @@ export class QueryContext {
         }
         // @ts-ignore
         return promiseMultiSingle(result.result, async (value: MetaResult) => {
-            const resultArray: any[] = await this._query(
+            const resultArray: any[] = await this.query(
                 "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
                 [value.novel, value.chapter, value.chapIndex]
             );
@@ -2646,7 +2638,7 @@ export class QueryContext {
     }
 
     public async getUnreadChapter(uuid: string): Promise<number[]> {
-        const resultArray = await this._query(
+        const resultArray = await this.query(
             "SELECT id FROM episode WHERE id NOT IN " +
             "(SELECT episode_id FROM user_episode WHERE progress < 1 AND user_uuid=?);",
             uuid
@@ -2655,7 +2647,7 @@ export class QueryContext {
     }
 
     public async getReadToday(uuid: string): Promise<ReadEpisode[]> {
-        const resultArray = await this._query(
+        const resultArray = await this.query(
             "SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;",
             uuid
         );
@@ -2672,7 +2664,7 @@ export class QueryContext {
         if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
-        const query: any[] = await this._query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
+        const query: any[] = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
         return {
             link,
             key,
@@ -2690,7 +2682,7 @@ export class QueryContext {
             if (!value || !validate.isString(value)) {
                 throw Errors.INVALID_INPUT;
             }
-            return this._query("INSERT INTO page_info (link, key, value) VALUES(?,?,?)", [link, key, value]);
+            return this.query("INSERT INTO page_info (link, key, value) VALUES(?,?,?)", [link, key, value]);
         }));
     }
 
@@ -2705,27 +2697,27 @@ export class QueryContext {
                         throw Errors.INVALID_INPUT;
                     }
                     // TODO: 29.06.2019 use 'value IN (list)'
-                    return this._query(
+                    return this.query(
                         "DELETE FROM page_info WHERE link=? AND keyString=? AND value=?",
                         [link, key, value]
                     );
                 }));
             } else {
-                await this._query("DELETE FROM page_info WHERE link=? AND keyString=?", [link, key]);
+                await this.query("DELETE FROM page_info WHERE link=? AND keyString=?", [link, key]);
             }
         } else {
-            await this._query("DELETE FROM page_info WHERE link=?", link);
+            await this.query("DELETE FROM page_info WHERE link=?", link);
         }
     }
 
     public async addInvalidation(value: string[]): Promise<void> {
         // fixme: this could be a potential security issue, due to executing unvalidated queries
-        await Promise.all(value.map((query) => this._query(query)));
+        await Promise.all(value.map((query) => this.query(query)));
     }
 
     public async getInvalidated(uuid: string): Promise<Invalidation[]> {
-        const result: any[] = await this._query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this._query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+        const result: any[] = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
+        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
             console.log(reason);
             logger.error(reason);
         });
@@ -2745,7 +2737,26 @@ export class QueryContext {
     }
 
     public clearInvalidationTable() {
-        return this._query("TRUNCATE user_data_invalidation");
+        return this.query("TRUNCATE user_data_invalidation");
+    }
+
+    /**
+     *
+     * @param query
+     * @param parameter
+     */
+    public query(query: string, parameter?: any | any[]): Promise<any> {
+        if (query.length > 20) {
+            // console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+        }
+        return Promise.resolve()
+            .then(() => this.con.query(query, parameter))
+            .then((value) => {
+                if (Array.isArray(value) && value.length > 1000) {
+                    console.log(`${value.length} Results for ${query}`);
+                }
+                return value;
+            });
     }
 
     /**
@@ -2766,7 +2777,7 @@ export class QueryContext {
             session,
         };
         // query for user
-        const userPromise = this._query("SELECT * FROM user WHERE uuid = ?;", uuid)
+        const userPromise = this.query("SELECT * FROM user WHERE uuid = ?;", uuid)
             .then((value: any[]) => {
                 // add user metadata
                 user.name = value[0].name;
@@ -2783,7 +2794,7 @@ export class QueryContext {
 
         // select external user of user
         const allExternalUserPromise = this
-            ._query("SELECT * FROM external_user WHERE local_uuid = ?;", uuid)
+            .query("SELECT * FROM external_user WHERE local_uuid = ?;", uuid)
             .then((allExternalUser: any[]) => {
                 // add external_user and add their respective external reading lists
                 return Promise.all(allExternalUser.map((value: any) => this
@@ -2833,7 +2844,7 @@ export class QueryContext {
             values.push(value.value);
         });
 
-        const result = await this._query(query, values);
+        const result = await this.query(query, values);
 
         return result.affectedRows >= 0;
     }
@@ -2853,7 +2864,7 @@ export class QueryContext {
             return Promise.resolve(false);
         }
         values.push(idValue);
-        const result = await this._query(
+        const result = await this.query(
             `UPDATE ${mySql.escapeId(table)}
                 SET ${updates.join(", ")}
                 WHERE ${mySql.escapeId(column)} = ?;`,
@@ -2897,7 +2908,7 @@ export class QueryContext {
                 valuesQueries += ",";
             }
         });
-        return this._query(`${query} ${valuesQueries};`, param);
+        return this.query(`${query} ${valuesQueries};`, param);
     }
 
     private async _queryInList<T>(query: string, value: T | T[], paramCallback?: ParamCallback<T>)
@@ -2934,7 +2945,7 @@ export class QueryContext {
         if (!param.length) {
             throw Error(`no params for '${query}'`);
         }
-        return this._query(`${query} IN (${placeholders.join(",")});`, param);
+        return this.query(`${query} IN (${placeholders.join(",")});`, param);
     }
 
     // noinspection JSMethodCanBeStatic
@@ -2959,25 +2970,6 @@ export class QueryContext {
         }
         const results = await Promise.all(resultsPromises);
         return results.flat();
-    }
-
-    /**
-     *
-     * @param query
-     * @param parameter
-     */
-    private _query(query: string, parameter?: any | any[]): Promise<any> {
-        if (query.length > 20) {
-            // console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
-        }
-        return Promise.resolve()
-            .then(() => this.con.query(query, parameter))
-            .then((value) => {
-                if (Array.isArray(value) && value.length > 1000) {
-                    console.log(`${value.length} Results for ${query}`);
-                }
-                return value;
-            });
     }
 
     /**
