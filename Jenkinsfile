@@ -20,3 +20,8 @@ pipeline {
         }
     }
 }
+node {
+    stage('build'){
+        if ()
+    }
+}

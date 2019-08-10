@@ -265,7 +265,7 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("enterprise_database_info")
-    .parseColumn("version INT NOT NULL UNSIGNED")
+    .parseColumn("version INT UNSIGNED NOT NULL")
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
