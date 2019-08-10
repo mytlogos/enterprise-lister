@@ -218,7 +218,6 @@ async function addPartEpisodes(value) {
     await database_1.Storage.addEpisode(allEpisodes);
 }
 async function tocHandler(result) {
-    // TODO: 04.08.2019 does not seem to work correctly e.g. with library of heavens path
     console.log(`handling toc: ${result.tocs} ${result.uuid}`);
     if (!(result.tocs && result.tocs.length)) {
         return;

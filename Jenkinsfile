@@ -13,7 +13,7 @@ pipeline {
                  }
             }
             steps {
-                 sh 'copy "%userprofile%\\env.env" env.env'
+                 sh 'cp ~\\enterprise\\env.env env.env'
                  sh 'pm2 stop ecosystem.config.js"'
                  sh 'pm2 start ecosystem.config.js"'
             }
