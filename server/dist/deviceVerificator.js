@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const dgram_1 = tslib_1.__importDefault(require("dgram"));
 const tools_1 = require("./tools");
+const env_1 = tslib_1.__importDefault(require("./env"));
 const PORT = 3001;
 const server = dgram_1.default.createSocket("udp4");
 server.on("listening", () => {
@@ -22,7 +23,8 @@ server.on("message", (message, remote) => {
     }
     const decoded = message.toString();
     if ("DISCOVER_SERVER_REQUEST_ENTERPRISE" === decoded) {
-        const buffer = Buffer.from("SERVER_RESPONSE_ENTERPRISE");
+        const response = "ENTERPRISE_" + env_1.default.development ? "DEV" : "PROD";
+        const buffer = Buffer.from(response);
         const client = dgram_1.default.createSocket("udp4");
         client.send(buffer, 0, message.length, remote.port, remote.address, (err, bytes) => {
             if (err) {

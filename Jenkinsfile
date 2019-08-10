@@ -3,7 +3,7 @@ pipeline {
     stages {
         stage('build') {
             steps {
-                bat 'npm install"'
+                sh 'npm install"'
             }
         }
         stage('post-build'){
@@ -13,9 +13,9 @@ pipeline {
                  }
             }
             steps {
-                 bat 'copy "%userprofile%\\env.env" env.env'
-                 bat 'pm2 stop ecosystem.config.js"'
-                 bat 'pm2 start ecosystem.config.js"'
+                 sh 'copy "%userprofile%\\env.env" env.env'
+                 sh 'pm2 stop ecosystem.config.js"'
+                 sh 'pm2 start ecosystem.config.js"'
             }
         }
     }
