@@ -1,12 +1,12 @@
 import { ListScrapeResult } from "./listManager";
 import { Episode, News, ScrapeItem } from "../types";
-import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, ScraperJob, Toc, TocContent, TocScraper, TocSearchScraper } from "./types";
-export declare const scrapeNews: (...args: any) => Promise<{
+import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, OneTimeToc, ScraperJob, Toc, TocContent, TocScraper, TocSearchScraper } from "./types";
+export declare const scrapeNews: (adapter: NewsScraper) => Promise<{
     link: string;
     result: News[];
 }>;
-export declare const checkTocs: (...args: any) => Promise<ScraperJob[]>;
-export declare const oneTimeToc: (...args: any) => Promise<{
+export declare const checkTocs: () => Promise<ScraperJob[]>;
+export declare const oneTimeToc: ({ url: link, uuid, mediumId }: OneTimeToc) => Promise<{
     tocs: Toc[];
     uuid: string;
 }>;
@@ -15,7 +15,7 @@ export declare const oneTimeToc: (...args: any) => Promise<{
  * @param scrapeItem
  * @return {Promise<void>}
  */
-export declare let news: (...args: any) => Promise<{
+export declare let news: (scrapeItem: ScrapeItem) => Promise<{
     link: string;
     result: News[];
 }>;
@@ -24,18 +24,21 @@ export declare let news: (...args: any) => Promise<{
  * @param value
  * @return {Promise<void>}
  */
-export declare const toc: (...args: any) => Promise<void>;
+export declare const toc: (value: ScrapeItem) => Promise<void>;
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export declare const list: (...args: any) => Promise<{
+export declare const list: (value: {
+    cookies: string;
+    uuid: string;
+}) => Promise<{
     external: {
         cookies: string;
         uuid: string;
     };
     lists: ListScrapeResult;
 }>;
-export declare const feed: (...args: any) => Promise<{
+export declare const feed: (feedLink: string) => Promise<{
     link: string;
     result: News[];
 }>;

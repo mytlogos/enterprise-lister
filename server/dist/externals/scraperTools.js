@@ -7,7 +7,6 @@ const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promis
 const tools_1 = require("../tools");
 const logger_1 = tslib_1.__importStar(require("../logger"));
 const directScraper = tslib_1.__importStar(require("./direct/directScraper"));
-const directScraper_1 = require("./direct/directScraper");
 const url = tslib_1.__importStar(require("url"));
 const cache_1 = require("../cache");
 const validate = tslib_1.__importStar(require("validate.js"));
@@ -43,6 +42,13 @@ function activity(func) {
         }
         return result;
     };
+}
+const counter = new counter_1.Counter();
+function incActivity() {
+    console.log("Active:" + counter.count("scrape"));
+}
+function decActivity() {
+    console.log("Active:" + counter.countDown("scrape"));
 }
 /**
  * Notifies event listener of events for each fulfilled
@@ -96,14 +102,7 @@ function notify(key, promises) {
  * @type {string}
  */
 let lastListScrape;
-const counter = new counter_1.Counter();
-function incActivity() {
-    console.log("Active:" + counter.count("scrape"));
-}
-function decActivity() {
-    console.log("Active:" + counter.countDown("scrape"));
-}
-exports.scrapeNews = activity(async (adapter) => {
+exports.scrapeNews = async (adapter) => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
@@ -130,7 +129,7 @@ exports.scrapeNews = activity(async (adapter) => {
         link: adapter.link,
         result: (rawNews && rawNews.news) || [],
     };
-});
+};
 async function processMediumNews(title, type, tocLink, update = false, potentialNews) {
     const likeMedia = await database_1.Storage.getLikeMedium({ title, type });
     if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || !likeMedia.medium.id) {
@@ -326,7 +325,7 @@ function searchToc(id, tocSearch, availableTocs) {
     }
     return searchJobs.length ? searchJobs[0] : scraperJobs[0];
 }
-exports.checkTocs = activity(async () => {
+exports.checkTocs = async () => {
     const mediaTocs = await database_1.Storage.getAllTocs();
     const tocSearchMedia = await database_1.Storage.getTocSearchMedia();
     const mediaWithTocs = new Map();
@@ -367,8 +366,8 @@ exports.checkTocs = activity(async () => {
     const newScraperJobs2 = await Promise.all(promises);
     const jobs = [newScraperJobs1, newScraperJobs2].flat(3);
     return jobs.filter((value) => value);
-});
-exports.oneTimeToc = activity(async ({ url: link, uuid, mediumId }) => {
+};
+exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
     const path = url.parse(link).path;
     if (!path) {
         logger_1.default.warn(`malformed url: '${link}'`);
@@ -398,31 +397,31 @@ exports.oneTimeToc = activity(async ({ url: link, uuid, mediumId }) => {
     }
     console.log("toc scraped: " + link);
     return { tocs: allTocs, uuid };
-});
+};
 /**
  *
  * @param scrapeItem
  * @return {Promise<void>}
  */
-exports.news = activity(async (scrapeItem) => {
+exports.news = async (scrapeItem) => {
     return {
         link: scrapeItem.link,
         result: [],
     };
     // todo implement news scraping (from homepage, updates pages etc. which require page analyzing, NOT feed)
-});
+};
 /**
  *
  * @param value
  * @return {Promise<void>}
  */
-exports.toc = activity(async (value) => {
+exports.toc = async (value) => {
     // todo implement toc scraping which requires page analyzing
-});
+};
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-exports.list = activity(async (value) => {
+exports.list = async (value) => {
     const manager = listManager_1.factory(0, value.cookies);
     try {
         const lists = await manager.scrapeLists();
@@ -445,8 +444,8 @@ exports.list = activity(async (value) => {
         // noinspection ES6MissingAwait
         return Promise.reject({ ...value, error: e });
     }
-});
-exports.feed = activity(async (feedLink) => {
+};
+exports.feed = async (feedLink) => {
     console.log("scraping feed: ", feedLink);
     const startTime = Date.now();
     // noinspection JSValidateTypes
@@ -470,7 +469,7 @@ exports.feed = activity(async (feedLink) => {
         };
     })
         .catch((error) => Promise.reject({ feed: feedLink, error }));
-});
+};
 function checkTocContent(content) {
     if (!content) {
         throw Error("empty toc content");
@@ -594,7 +593,7 @@ class ScraperHelper {
     }
     init() {
         this.registerHooks(listManager_1.getListManagerHooks());
-        this.registerHooks(directScraper_1.getHooks());
+        this.registerHooks(directScraper.getHooks());
     }
     registerHooks(hook) {
         // @ts-ignore

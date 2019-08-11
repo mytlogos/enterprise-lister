@@ -69,24 +69,26 @@ export class SchemaManager {
             previousVersion = versionResult[0].version;
         }
 
-        if (this.dataBaseVersion === previousVersion) {
+        const currentVersion = this.dataBaseVersion;
+        if (currentVersion === previousVersion) {
             return;
-        } else if (this.dataBaseVersion < previousVersion) {
+        } else if (currentVersion < previousVersion) {
             throw Error("database version is smaller in code than in database");
         }
 
         let foundMigration = null;
         for (const migration of this.migrations) {
-            if (migration.fromVersion === previousVersion && migration.toVersion === this.dataBaseVersion) {
+            if (migration.fromVersion === previousVersion && migration.toVersion === currentVersion) {
                 foundMigration = migration;
                 break;
             }
         }
         if (foundMigration == null) {
-            throw Error(`no direct migration plan found from '${previousVersion}' to '${this.dataBaseVersion}'`);
+            throw Error(`no direct migration plan found from '${previousVersion}' to '${currentVersion}'`);
         }
         await foundMigration.migrate(context);
-        await context.updateDatabaseVersion(this.dataBaseVersion);
+        // FIXME: 10.08.2019 inserting new database version does not seem to work
+        await context.updateDatabaseVersion(currentVersion);
     }
 
     private getShortest(previousVersion: number) {

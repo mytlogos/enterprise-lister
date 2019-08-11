@@ -41,7 +41,6 @@ import {
     TocSearchScraper
 } from "./types";
 import * as directScraper from "./direct/directScraper";
-import {getHooks} from "./direct/directScraper";
 import * as url from "url";
 import {Cache} from "../cache";
 import * as validate from "validate.js";
@@ -82,6 +81,15 @@ function activity<T>(func: (...args: any[]) => T): (...args: any) => T {
         }
         return result;
     };
+}
+const counter = new Counter();
+
+function incActivity() {
+    console.log("Active:" + counter.count("scrape"));
+}
+
+function decActivity() {
+    console.log("Active:" + counter.countDown("scrape"));
 }
 
 /**
@@ -139,17 +147,8 @@ function notify(key: string, promises: Array<Promise<any>>): Promise<void> {
  * @type {string}
  */
 let lastListScrape;
-const counter = new Counter();
 
-function incActivity() {
-    console.log("Active:" + counter.count("scrape"));
-}
-
-function decActivity() {
-    console.log("Active:" + counter.countDown("scrape"));
-}
-
-export const scrapeNews = activity(async (adapter: NewsScraper): Promise<{ link: string, result: News[] }> => {
+export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string, result: News[] }> => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
@@ -189,7 +188,7 @@ export const scrapeNews = activity(async (adapter: NewsScraper): Promise<{ link:
         result: (rawNews && rawNews.news) || [],
     };
 
-});
+};
 
 async function processMediumNews(
     title: string, type: MediaType, tocLink: string | undefined, update = false, potentialNews: EpisodeNews[]
@@ -410,7 +409,7 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
     return searchJobs.length ? searchJobs[0] : scraperJobs[0];
 }
 
-export const checkTocs = activity(async (): Promise<ScraperJob[]> => {
+export const checkTocs = async (): Promise<ScraperJob[]> => {
     const mediaTocs = await Storage.getAllTocs();
     const tocSearchMedia = await Storage.getTocSearchMedia();
     const mediaWithTocs: Map<number, string[]> = new Map();
@@ -464,9 +463,9 @@ export const checkTocs = activity(async (): Promise<ScraperJob[]> => {
     const newScraperJobs2: Array<ScraperJob | undefined> = await Promise.all(promises);
     const jobs: ScraperJob[] = [newScraperJobs1, newScraperJobs2].flat(3);
     return jobs.filter((value) => value);
-});
+};
 
-export const oneTimeToc = activity(async ({url: link, uuid, mediumId}: OneTimeToc)
+export const oneTimeToc = async ({url: link, uuid, mediumId}: OneTimeToc)
     : Promise<{ tocs: Toc[], uuid: string; }> => {
 
     const path = url.parse(link).path;
@@ -504,34 +503,34 @@ export const oneTimeToc = activity(async ({url: link, uuid, mediumId}: OneTimeTo
     }
     console.log("toc scraped: " + link);
     return {tocs: allTocs, uuid};
-});
+};
 
 /**
  *
  * @param scrapeItem
  * @return {Promise<void>}
  */
-export let news = activity(async (scrapeItem: ScrapeItem): Promise<{ link: string, result: News[] }> => {
+export let news = async (scrapeItem: ScrapeItem): Promise<{ link: string, result: News[] }> => {
     return {
         link: scrapeItem.link,
         result: [],
     };
     // todo implement news scraping (from homepage, updates pages etc. which require page analyzing, NOT feed)
-});
+};
 
 /**
  *
  * @param value
  * @return {Promise<void>}
  */
-export const toc = activity(async (value: ScrapeItem): Promise<void> => {
+export const toc = async (value: ScrapeItem): Promise<void> => {
     // todo implement toc scraping which requires page analyzing
-});
+};
 
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export const list = activity(async (value: { cookies: string, uuid: string; })
+export const list = async (value: { cookies: string, uuid: string; })
     : Promise<{ external: { cookies: string, uuid: string }, lists: ListScrapeResult; }> => {
 
     const manager = factory(0, value.cookies);
@@ -561,9 +560,9 @@ export const list = activity(async (value: { cookies: string, uuid: string; })
         // noinspection ES6MissingAwait
         return Promise.reject({...value, error: e});
     }
-});
+};
 
-export const feed = activity(async (feedLink: string): Promise<{ link: string, result: News[] }> => {
+export const feed = async (feedLink: string): Promise<{ link: string, result: News[] }> => {
     console.log("scraping feed: ", feedLink);
     const startTime = Date.now();
     // noinspection JSValidateTypes
@@ -587,7 +586,7 @@ export const feed = activity(async (feedLink: string): Promise<{ link: string, r
             };
         })
         .catch((error) => Promise.reject({feed: feedLink, error}));
-});
+};
 
 export function checkTocContent(content: TocContent) {
     if (!content) {
@@ -774,7 +773,7 @@ export class ScraperHelper {
 
     public init(): void {
         this.registerHooks(getListManagerHooks());
-        this.registerHooks(getHooks());
+        this.registerHooks(directScraper.getHooks());
     }
 
     private registerHooks(hook: Hook[] | Hook): void {
