@@ -171,7 +171,7 @@ async function searchToc(searchMedium) {
         return;
     }
     const idPattern = /^\d+$/;
-    if (idPattern.test(bookId)) {
+    if (!idPattern.test(bookId)) {
         throw Error("invalid bookId");
     }
     const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
@@ -196,7 +196,7 @@ async function searchToc(searchMedium) {
             if (!releaseDate) {
                 throw Error(`invalid date: '${chapterItem.createTime}'`);
             }
-            if (idPattern.test(chapterItem.id)) {
+            if (!idPattern.test(chapterItem.id)) {
                 throw Error("invalid bookId");
             }
             const link = `https://www.webnovel.com/book/${bookId}/${chapterItem.id}/`;
