@@ -23,6 +23,7 @@ server.on("message", (message, remote) => {
     }
     const decoded = message.toString();
     if ("DISCOVER_SERVER_REQUEST_ENTERPRISE" === decoded) {
+        console.log(`server was discovered in ${env.development} and ${process.env.NODE_ENV}`);
         const response = "ENTERPRISE_" + (env.development ? "DEV" : "PROD");
         const buffer = Buffer.from(response);
         const client = diagram.createSocket("udp4");
