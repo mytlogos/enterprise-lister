@@ -23,7 +23,7 @@ server.on("message", (message, remote) => {
     }
     const decoded = message.toString();
     if ("DISCOVER_SERVER_REQUEST_ENTERPRISE" === decoded) {
-        const response = "ENTERPRISE_" + env.development ? "DEV" : "PROD";
+        const response = "ENTERPRISE_" + (env.development ? "DEV" : "PROD");
         const buffer = Buffer.from(response);
         const client = diagram.createSocket("udp4");
         client.send(buffer, 0, message.length, remote.port, remote.address, (err, bytes) => {

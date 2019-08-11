@@ -17,6 +17,6 @@ export default {
     dbUser: config.parsed.dbUser,
     port: config.parsed.port,
     measure: !!Number(config.parsed.measure),
-    development: !!config.parsed.development,
+    development: process.env.NODE_ENV !== "production",
     stopScrapeEvents: !!Number(config.parsed.stopScrapeEvents)
 };
