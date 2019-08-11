@@ -36,7 +36,11 @@ async function contentDownloadAdapter(chapterLink) {
     }
     const imageUrls = [];
     for (const imageKey of jsonResponse.page_array) {
-        imageUrls.push(`${jsonResponse.server}${jsonResponse.hash}/${imageKey}`);
+        let server = jsonResponse.server;
+        if (!server.startsWith("http")) {
+            server = "https://mangadex.org" + server;
+        }
+        imageUrls.push(`${server}${jsonResponse.hash}/${imageKey}`);
     }
     const episodeContent = {
         content: imageUrls,
