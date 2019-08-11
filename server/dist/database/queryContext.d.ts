@@ -170,6 +170,7 @@ export declare class QueryContext {
     getTocSearchMedium(id: number): Promise<TocSearchMedium>;
     getMedium(id: number, uuid: string): Promise<Medium>;
     getMedium(id: number[], uuid: string): Promise<Medium[]>;
+    getAllMedia(): Promise<number[]>;
     getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
     getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;
     /**

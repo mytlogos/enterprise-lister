@@ -650,6 +650,10 @@ class QueryContext {
             };
         });
     }
+    async getAllMedia() {
+        const result = await this.query("SELECT id FROM medium");
+        return result.map((value) => value.id);
+    }
     /**
      * Gets one or multiple media from the storage.
      */

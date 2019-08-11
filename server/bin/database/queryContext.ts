@@ -879,6 +879,11 @@ export class QueryContext {
         });
     }
 
+    public async getAllMedia(): Promise<number[]> {
+        const result: Array<{ id: number }> = await this.query("SELECT id FROM medium");
+        return result.map((value) => value.id);
+    }
+
     public getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
 
     public getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;

@@ -95,6 +95,7 @@ function processRouter() {
 function mediumRouter() {
     const router = express_1.Router();
     router.get("/unused", UserApi.getUnusedMedia);
+    router.get("/all", UserApi.getAllMedia);
     router.put("/unused", UserApi.putConsumeUnusedMedia);
     router.post("/create", UserApi.postCreateFromUnusedMedia);
     router.use("/part", partRouter());

@@ -6,6 +6,9 @@ const listManager_1 = require("./externals/listManager");
 const logger_1 = tslib_1.__importDefault(require("./logger"));
 const scraperTools_1 = require("./externals/scraperTools");
 const tools_1 = require("./tools");
+exports.getAllMedia = (req, res) => {
+    sendResult(res, database_1.Storage.getAllMedia());
+};
 exports.putConsumeUnusedMedia = (req, res) => {
     const { mediumId, tocsMedia } = req.body;
     if (mediumId <= 0 || !tocsMedia || !Array.isArray(tocsMedia) || !tocsMedia.length) {

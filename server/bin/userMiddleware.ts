@@ -5,6 +5,11 @@ import logger from "./logger";
 import {downloadEpisodes, ScrapeTypes} from "./externals/scraperTools";
 import {Errors, isError, isString, stringToNumberList} from "./tools";
 
+export const getAllMedia: Handler = (req, res) => {
+    sendResult(res, Storage.getAllMedia());
+};
+
+
 export const putConsumeUnusedMedia: Handler = (req, res) => {
     const {mediumId, tocsMedia} = req.body;
 

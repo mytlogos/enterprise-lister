@@ -75,6 +75,7 @@ export interface Storage {
     addPart(part: Part, uuid?: string): Promise<Part>;
     getLatestNews(domain: string): Promise<News[]>;
     getMedium(id: (number | number[]), uuid: string): Promise<Medium | Medium[]>;
+    getAllMedia(): Promise<number[]>;
     deleteList(listId: number, uuid: string): Promise<boolean>;
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean>;
     createFromMediaInWait(createMedium: any, tocsMedia: any, listId: any): Promise<any>;

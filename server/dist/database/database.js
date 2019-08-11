@@ -284,6 +284,13 @@ exports.Storage = {
         return inContext((context) => context.getMedium(id, uuid));
     },
     /**
+     * Gets one or multiple media from the storage.
+     */
+    getAllMedia() {
+        // @ts-ignore
+        return inContext((context) => context.getAllMedia());
+    },
+    /**
      * Gets one or multiple media from the storage, which are like the input.
      */
     // @ts-ignore

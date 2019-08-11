@@ -265,6 +265,8 @@ export interface Storage {
 
     getMedium(id: (number | number[]), uuid: string): Promise<Medium | Medium[]>;
 
+    getAllMedia(): Promise<number[]>;
+
     deleteList(listId: number, uuid: string): Promise<boolean>;
 
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean>;
@@ -563,6 +565,14 @@ export const Storage: Storage = {
     getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]> {
         // @ts-ignore
         return inContext((context) => context.getMedium(id, uuid));
+    },
+
+    /**
+     * Gets one or multiple media from the storage.
+     */
+    getAllMedia(): Promise<number[]> {
+        // @ts-ignore
+        return inContext((context) => context.getAllMedia());
     },
 
     /**

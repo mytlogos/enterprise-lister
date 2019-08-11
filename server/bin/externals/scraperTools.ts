@@ -82,6 +82,7 @@ function activity<T>(func: (...args: any[]) => T): (...args: any) => T {
         return result;
     };
 }
+
 const counter = new Counter();
 
 function incActivity() {
