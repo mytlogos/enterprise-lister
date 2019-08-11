@@ -78,6 +78,7 @@ function onListening() {
                 continue;
             }
             debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
+            console.log(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
             break;
         }
     }
