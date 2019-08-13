@@ -128,7 +128,7 @@ async function contentDownloadAdapter(chapterLink) {
 async function scrapeToc(urlString) {
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");
-    const mangaTitle = contentElement.find(".info-title h1").first().text().trim();
+    const mangaTitle = tools_1.sanitizeString(contentElement.find(".info-title h1").first().text());
     // todo process metadata and get more (like author)
     const chapters = contentElement.find(".list-chapter tbody > tr");
     if (!chapters.length) {
@@ -162,10 +162,10 @@ async function scrapeToc(urlString) {
             return [];
         }
         const chapterTitleElement = chapterElement.find(".name");
-        if (endReg.test(chapterTitleElement.text())) {
+        const chapterTitle = tools_1.sanitizeString(chapterTitleElement.text());
+        if (endReg.test(chapterTitle)) {
             toc.end = true;
         }
-        const chapterTitle = chapterTitleElement.text().trim();
         const volChapGroups = volChapReg.exec(chapterTitle);
         const chapGroups = chapReg.exec(chapterTitle);
         if (i && !hasVolumes && volChapGroups && !chapGroups) {
@@ -201,7 +201,7 @@ async function scrapeToc(urlString) {
                     partialIndex: volIndices.fraction,
                     title: "Vol." + volIndices.combi
                 };
-                scraperTools_1.checkTocContent(part);
+                scraperTools_1.checkTocContent(part, true);
                 indexPartMap.set(volIndices.combi, part);
                 partContents.push(part);
             }

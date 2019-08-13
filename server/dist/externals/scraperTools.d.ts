@@ -42,7 +42,7 @@ export declare const feed: (feedLink: string) => Promise<{
     link: string;
     result: News[];
 }>;
-export declare function checkTocContent(content: TocContent): void;
+export declare function checkTocContent(content: TocContent, allowMinusOne?: boolean): void;
 export interface ListScrapeEvent {
     external: {
         cookies: string;

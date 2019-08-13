@@ -22,6 +22,7 @@ import {
     ShallowPart,
     SimpleEpisode,
     SimpleMedium,
+    SimpleRelease,
     SimpleUser,
     Synonyms,
     TocSearchMedium,
@@ -1372,6 +1373,13 @@ export class QueryContext {
                 ];
             });
         return releases;
+    }
+
+    public getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]> {
+        return this._queryInList(
+            "SELECT episode_id as episodeId, url FROM episode_release WHERE episode_id ",
+            episodeIds
+        ) as Promise<SimpleRelease[]>;
     }
 
     public getSourcedReleases(sourceType: string, mediumId: number):
@@ -2879,7 +2887,9 @@ export class QueryContext {
     }
 
     private _multiInsert<T>(query: string, value: T | T[], paramCallback: ParamCallback<T>): Promise<any> {
-
+        if (!value || (Array.isArray(value) && !value.length)) {
+            return Promise.resolve();
+        }
         if (Array.isArray(value) && value.length > 100) {
             // @ts-ignore
             return this._batchFunction(value, query, paramCallback, (q, v, p) => this._multiInsert(q, v, p));

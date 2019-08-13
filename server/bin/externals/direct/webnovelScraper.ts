@@ -125,7 +125,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             combiIndex: volume.index,
             totalIndex: volume.index,
         };
-        checkTocContent(partContent);
+        checkTocContent(partContent, true);
         return partContent;
     });
     const toc: Toc = {
@@ -157,8 +157,8 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
     if ($("._lock").length) {
         return [];
     }
-    const novelTitle = $(".cha-hd-mn-text a").first().text().trim();
-    const episodeTitle = contentElement.find(".cha-tit h3").first().text().trim();
+    const novelTitle = sanitizeString($(".cha-hd-mn-text a").first().text());
+    const episodeTitle = sanitizeString(contentElement.find(".cha-tit h3").first().text());
     const content = contentElement.find(".cha-words").first().html();
 
     if (!novelTitle || !episodeTitle) {
@@ -253,7 +253,8 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
         const titleElement = titles.eq(i);
         const possibleTitles = [searchMedium.title, ...searchMedium.synonyms];
 
-        if (possibleTitles.some((value) => equalsIgnore(titleElement.text(), value))) {
+        const title = sanitizeString(titleElement.text());
+        if (possibleTitles.some((value) => equalsIgnore(title, value))) {
             bookId = titleElement.attr("data-bookid");
             break;
         }

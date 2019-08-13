@@ -4,7 +4,7 @@ import logger, {logError} from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
 import emojiStrip from "emoji-strip";
 import {Storage} from "../../database/database";
-import {max, MediaType} from "../../tools";
+import {max, MediaType, sanitizeString} from "../../tools";
 
 export const sourceType = "qidian_underground";
 
@@ -22,7 +22,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
     for (let tocRowIndex = 0; tocRowIndex < tocRows.length; tocRowIndex++) {
         const tocRow = tocRows.eq(tocRowIndex);
         const mediumElement = tocRow.prev();
-        const mediumTitle = mediumElement.contents().first().text().trim();
+        const mediumTitle = sanitizeString(mediumElement.contents().first().text().trim());
 
         if (!mediumTitle) {
             logger.warn("changed format on qidianUnderground");
@@ -54,7 +54,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
                 logger.warn(`missing href attribute for '${mediumTitle}' on qidianUnderground`);
                 continue;
             }
-            const exec = chapterReg.exec(titleElement.text());
+            const exec = chapterReg.exec(sanitizeString(titleElement.text()));
 
             if (!exec) {
                 logger.warn("changed format on qidianUnderground");
@@ -66,11 +66,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
             if (!Number.isNaN(endChapterIndex)) {
                 for (let chapterIndex = startChapterIndex; chapterIndex <= endChapterIndex; chapterIndex++) {
-                    const title = emojiStrip(`${mediumTitle} - ${chapterIndex}`);
+                    const title = sanitizeString(`${mediumTitle} - ${chapterIndex}`);
                     potentialNews.push({title, link, date});
                 }
             } else {
-                const title = emojiStrip(`${mediumTitle} - ${startChapterIndex}`);
+                const title = sanitizeString(`${mediumTitle} - ${startChapterIndex}`);
                 potentialNews.push({title, link, date});
             }
         }
@@ -195,7 +195,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
 
         const contentChildren = contentElement.children();
 
-        const episodeTitle = contentChildren.find("h2").first().remove().text().trim();
+        const episodeTitle = sanitizeString(contentChildren.find("h2").first().remove().text().trim());
         const content = contentChildren.html();
 
         if (!episodeTitle) {

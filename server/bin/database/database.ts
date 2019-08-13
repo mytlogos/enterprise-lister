@@ -21,6 +21,7 @@ import {
     ShallowPart,
     SimpleEpisode,
     SimpleMedium,
+    SimpleRelease,
     SimpleUser,
     Synonyms,
     TocSearchMedium,
@@ -164,6 +165,8 @@ function start(): void {
 }
 
 export interface Storage {
+    getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
+
     getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
 
     getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }>;
@@ -792,6 +795,10 @@ export const Storage: Storage = {
     getSourcedReleases(sourceType: string, mediumId: number):
         Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
+    },
+
+    getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]> {
+        return inContext((context) => context.getEpisodeLinks(episodeIds));
     },
 
     getEpisodeContent(chapterLink: string): Promise<EpisodeContentData> {

@@ -141,35 +141,40 @@ async function scrapeNews() {
     return { episodes: episodeNews };
 }
 async function scrapeToc(urlString) {
-    const $ = await queueManager_1.queueCheerioRequest(urlString);
-    const contentElement = $("#content");
-    const mangaTitle = contentElement.find("h6.card-header").first().text();
-    // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");
-    // todo process these metadata and get more (like author)
-    // const alternateMangaTitles = metaRows.eq(0).find("li");
-    // const mangaStatus = metaRows.eq(8).find(".col-lg-9.col-xl-10").first();
-    const chapters = contentElement.find(".chapter-container .chapter-row").first().children();
-    if (!chapters.length) {
-        logger_1.default.warn("toc link with no chapters: " + urlString);
-        return [];
-    }
-    if (!mangaTitle) {
-        logger_1.default.warn("toc link with no novel title: " + urlString);
-        return [];
-    }
     const uri = "https://mangadex.org/";
-    const contents = [];
     const indexPartMap = new Map();
     const toc = {
         link: urlString,
         content: [],
-        title: mangaTitle,
+        title: "",
         mediumType: tools_1.MediaType.IMAGE,
     };
+    // todo process these metadata and get more (like author)
+    // const alternateMangaTitles = metaRows.eq(0).find("li");
+    // const mangaStatus = metaRows.eq(8).find(".col-lg-9.col-xl-10").first();
     const endReg = /^END$/i;
     const volChapReg = /^\s*Vol\.?\s*((\d+)(\.(\d+))?)\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*(-\s*)?(.+)/i;
     const chapReg = /^\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*(-\s*)?(.+)/i;
-    let hasVolumes;
+    if (await scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri, urlString)) {
+        return [];
+    }
+    toc.content = toc.content.filter((value) => value);
+    return [toc];
+}
+async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri, urlString) {
+    const $ = await queueManager_1.queueCheerioRequest(urlString);
+    const contentElement = $("#content");
+    const mangaTitle = tools_1.sanitizeString(contentElement.find("h6.card-header").first().text());
+    // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");
+    if (!mangaTitle) {
+        logger_1.default.warn("toc link with no novel title: " + urlString);
+        return true;
+    }
+    const chapters = contentElement.find(".chapter-container .chapter-row");
+    if (!chapters.length) {
+        logger_1.default.warn("toc link with no chapters: " + urlString);
+        return true;
+    }
     for (let i = 0; i < chapters.length; i++) {
         const chapter = chapters.eq(i);
         if (!chapter.has(".flag-gb").length) {
@@ -180,27 +185,16 @@ async function scrapeToc(urlString) {
         const time = new Date(timeString);
         if (!timeString || Number.isNaN(time.getTime())) {
             logger_1.default.warn("no time in title in mangadex toc");
-            return [];
+            return true;
         }
         const chapterTitleElement = columns.eq(1);
         const endBadgeElement = chapterTitleElement.find(".badge").first().remove();
-        if (endBadgeElement.length && endReg.test(endBadgeElement.text())) {
+        if (endBadgeElement.length && endReg.test(tools_1.sanitizeString(endBadgeElement.text()))) {
             toc.end = true;
         }
-        const chapterTitle = chapterTitleElement.text();
+        const chapterTitle = tools_1.sanitizeString(chapterTitleElement.text());
         const volChapGroups = volChapReg.exec(chapterTitle);
         const chapGroups = chapReg.exec(chapterTitle);
-        if (i && !hasVolumes && volChapGroups && !chapGroups) {
-            logger_1.default.warn("changed volume - chapter format on mangadex toc: expected chapter, got volume");
-            return [];
-        }
-        if (i && hasVolumes && chapGroups && !volChapGroups) {
-            logger_1.default.warn("changed volume - chapter format on mangadex toc: expected volume, got chapter");
-            return [];
-        }
-        if (!i && volChapGroups) {
-            hasVolumes = true;
-        }
         if (volChapGroups) {
             const volIndices = tools_1.extractIndices(volChapGroups, 1, 2, 4);
             if (!volIndices) {
@@ -211,7 +205,7 @@ async function scrapeToc(urlString) {
             let part = indexPartMap.get(volIndices.combi);
             if (!chapIndices) {
                 logger_1.default.warn("changed episode format on mangadex toc: got no index");
-                return [];
+                return true;
             }
             let title = "Chapter " + chapIndices.combi;
             if (volChapGroups[10]) {
@@ -225,9 +219,9 @@ async function scrapeToc(urlString) {
                     partialIndex: volIndices.fraction,
                     title: "Vol." + volIndices.combi
                 };
-                scraperTools_1.checkTocContent(part);
+                scraperTools_1.checkTocContent(part, true);
                 indexPartMap.set(volIndices.combi, part);
-                contents.push(part);
+                toc.content.push(part);
             }
             const chapterContent = {
                 title,
@@ -256,19 +250,20 @@ async function scrapeToc(urlString) {
                 releaseDate: time
             };
             scraperTools_1.checkTocContent(chapterContent);
-            contents.push(chapterContent);
+            toc.content.push(chapterContent);
         }
         else {
             logger_1.default.warn("volume - chapter format changed on mangadex: recognized neither of them");
-            return [];
+            return true;
         }
     }
-    contents.forEach((value) => {
-        if (value) {
-            toc.content.push(value);
-        }
-    });
-    return [toc];
+    const nextPaging = $(".page-item:last-child:not(.disabled)");
+    if (nextPaging.length) {
+        const link = nextPaging.find("a").attr("href");
+        const nextPage = url.resolve(uri, link);
+        return scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri, nextPage);
+    }
+    return false;
 }
 scrapeNews.link = "https://mangadex.org/";
 function getHook() {

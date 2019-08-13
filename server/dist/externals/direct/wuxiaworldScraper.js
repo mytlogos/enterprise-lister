@@ -120,7 +120,7 @@ async function scrapeToc(urlString) {
     for (let vIndex = 0; vIndex < volumes.length; vIndex++) {
         const volumeElement = volumes.eq(vIndex);
         const volumeIndex = Number(volumeElement.find(".panel-heading .book").first().text().trim());
-        const volumeTitle = volumeElement.find(".panel-heading .title").first().text().trim();
+        const volumeTitle = tools_1.sanitizeString(volumeElement.find(".panel-heading .title").first().text());
         const volumeChapters = volumeElement.find(".chapter-item a");
         if (Number.isNaN(volumeIndex)) {
             logger_1.default.warn("could not find volume index on: " + urlString);
@@ -133,11 +133,11 @@ async function scrapeToc(urlString) {
             combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
-        scraperTools_1.checkTocContent(volume);
+        scraperTools_1.checkTocContent(volume, true);
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
             const link = url.resolve(uri, chapterElement.attr("href"));
-            const title = chapterElement.text().trim();
+            const title = tools_1.sanitizeString(chapterElement.text());
             const chapterGroups = /^\s*Chapter\s*((\d+)(\.(\d+))?)/.exec(title);
             if (chapterGroups && chapterGroups[2]) {
                 const indices = tools_1.extractIndices(chapterGroups, 1, 2, 4);
@@ -205,8 +205,8 @@ async function scrapeToc(urlString) {
 async function scrapeContent(urlString) {
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const mainElement = $(".content");
-    const novelTitle = mainElement.find(".top-bar-area .caption a").first().text().trim();
-    const episodeTitle = mainElement.find(".panel .caption h4").first().text().trim();
+    const novelTitle = tools_1.sanitizeString(mainElement.find(".top-bar-area .caption a").first().text());
+    const episodeTitle = tools_1.sanitizeString(mainElement.find(".panel .caption h4").first().text());
     const directContentElement = mainElement.find(".top-bar-area + .panel .fr-view").first();
     // remove teaser (especially the teaser button)
     directContentElement.find("button, img, div#spoiler_teaser").remove();

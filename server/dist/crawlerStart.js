@@ -90,7 +90,7 @@ async function getTocMedia(result, uuid) {
             if (!content || content.totalIndex == null) {
                 throw Error(`invalid tocContent for mediumId:'${medium && medium.id}' and link:'${toc.link}'`);
             }
-            scraperTools_1.checkTocContent(content);
+            scraperTools_1.checkTocContent(content, tools_1.isTocPart(content));
             let alterTitle;
             if (!content.title) {
                 alterTitle = `${content.totalIndex}${content.partialIndex ? "." + content.partialIndex : ""}`;
@@ -193,8 +193,15 @@ async function addPartEpisodes(value) {
         }
         tocEpisode.episode = episode;
     });
+    const nonNewIndices = [];
     const allEpisodes = [...value.episodeMap.keys()]
-        .filter((index) => episodes.every((episode) => tools_1.combiIndex(episode) !== index || !episode.id))
+        .filter((index) => {
+        const notInStorage = episodes.every((episode) => tools_1.combiIndex(episode) !== index || !episode.id);
+        if (notInStorage) {
+            return true;
+        }
+        nonNewIndices.push(index);
+    })
         .map((episodeIndex) => {
         const episodeToc = value.episodeMap.get(episodeIndex);
         if (!episodeToc) {
@@ -215,7 +222,40 @@ async function addPartEpisodes(value) {
                 }]
         };
     });
-    await database_1.Storage.addEpisode(allEpisodes);
+    const knownEpisodeIds = nonNewIndices
+        .map((index) => episodes.find((episode) => tools_1.combiIndex(episode) === index))
+        .filter((episode) => episode != null)
+        .map((episode) => episode.id);
+    if (knownEpisodeIds.length) {
+        const episodeLinks = await database_1.Storage.getEpisodeLinks(knownEpisodeIds);
+        const newReleases = nonNewIndices.map((index) => {
+            const episodeValue = value.episodeMap.get(index);
+            if (!episodeValue) {
+                throw Error(`no episodeValue for index ${index} of medium ${value.part && value.part.mediumId}`);
+            }
+            const currentEpisode = episodeValue.episode;
+            if (!currentEpisode) {
+                throw Error("known episode has no episode from storage");
+            }
+            const id = currentEpisode.id;
+            if (episodeLinks.find((episode) => episode.url === episodeValue.tocEpisode.url
+                && episode.episodeId === id)) {
+                return;
+            }
+            return {
+                episodeId: id,
+                releaseDate: episodeValue.tocEpisode.releaseDate || new Date(),
+                title: episodeValue.tocEpisode.title,
+                url: episodeValue.tocEpisode.url
+            };
+        }).filter((v) => v);
+        if (newReleases.length) {
+            await database_1.Storage.addRelease(newReleases);
+        }
+    }
+    if (allEpisodes.length) {
+        await database_1.Storage.addEpisode(allEpisodes);
+    }
 }
 async function tocHandler(result) {
     console.log(`handling toc: ${result.tocs} ${result.uuid}`);
@@ -229,9 +269,12 @@ async function tocHandler(result) {
         .map(async (entry) => {
         const mediumId = entry[0].id;
         const tocParts = entry[1].parts;
+        if (!tocParts.length && !entry[1].episodes.length) {
+            return [];
+        }
         const indexPartsMap = new Map();
         tocParts.forEach((value) => {
-            scraperTools_1.checkTocContent(value);
+            scraperTools_1.checkTocContent(value, true);
             if (value.totalIndex == null) {
                 throw Error(`totalIndex should not be null! mediumId: '${mediumId}'`);
             }
@@ -263,7 +306,7 @@ async function tocHandler(result) {
             if (!partToc) {
                 throw Error("something went wrong. got no value at this part index");
             }
-            scraperTools_1.checkTocContent(partToc.tocPart);
+            scraperTools_1.checkTocContent(partToc.tocPart, true);
             return database_1.Storage
                 // @ts-ignore
                 .addPart({
@@ -278,7 +321,12 @@ async function tocHandler(result) {
         // 'moves' episodes from the standard part to other parts, if they own the episodes too
         await remapParts(indexPartsMap, mediumId);
         return [...indexPartsMap.values()].map((value) => addPartEpisodes(value));
-    });
+        // catch all errors from promises, so it will not affect others
+    })
+        .map((value) => value.catch((reason) => {
+        logger_1.logError(reason);
+        return [];
+    }));
     await Promise.all((await Promise.all(promises)).flat());
 }
 exports.tocHandler = tocHandler;

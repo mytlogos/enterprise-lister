@@ -1,5 +1,5 @@
 import { Connection } from "promise-mysql";
-import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { MediumInWait } from "./databaseTypes";
 import { ScrapeTypes } from "../externals/scraperTools";
 import { Trigger } from "./trigger";
@@ -212,6 +212,7 @@ export declare class QueryContext {
     deletePart(id: number): Promise<boolean>;
     addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
     addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+    getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]>;
     getSourcedReleases(sourceType: string, mediumId: number): Promise<Array<{
         sourceType: string;
         url: string;

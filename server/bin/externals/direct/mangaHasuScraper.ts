@@ -147,7 +147,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 async function scrapeToc(urlString: string): Promise<Toc[]> {
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");
-    const mangaTitle = contentElement.find(".info-title h1").first().text().trim();
+    const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().text());
     // todo process metadata and get more (like author)
 
     const chapters = contentElement.find(".list-chapter tbody > tr");
@@ -189,12 +189,11 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             return [];
         }
         const chapterTitleElement = chapterElement.find(".name");
+        const chapterTitle = sanitizeString(chapterTitleElement.text());
 
-        if (endReg.test(chapterTitleElement.text())) {
+        if (endReg.test(chapterTitle)) {
             toc.end = true;
         }
-
-        const chapterTitle = chapterTitleElement.text().trim();
         const volChapGroups = volChapReg.exec(chapterTitle);
         const chapGroups = chapReg.exec(chapterTitle);
 
@@ -239,7 +238,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                     partialIndex: volIndices.fraction,
                     title: "Vol." + volIndices.combi
                 };
-                checkTocContent(part);
+                checkTocContent(part, true);
                 indexPartMap.set(volIndices.combi, part);
                 partContents.push(part);
             }

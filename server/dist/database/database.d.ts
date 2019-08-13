@@ -1,4 +1,4 @@
-import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { QueryContext } from "./queryContext";
 import { MediumInWait } from "./databaseTypes";
 import { ScrapeTypes } from "../externals/scraperTools";
@@ -9,6 +9,7 @@ declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
  */
 export declare function inContext<T>(callback: ContextCallback<T>, transaction?: boolean): Promise<T>;
 export interface Storage {
+    getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
     getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
     getPageInfo(link: string, key: string): Promise<{
         link: string;

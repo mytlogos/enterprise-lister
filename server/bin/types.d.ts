@@ -63,6 +63,11 @@ export interface Episode extends SimpleEpisode {
     readDate: Date | null;
 }
 
+export interface SimpleRelease {
+    episodeId: number;
+    url: string;
+}
+
 export interface EpisodeRelease {
     episodeId: number;
     title: string;

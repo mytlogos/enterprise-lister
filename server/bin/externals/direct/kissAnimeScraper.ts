@@ -40,7 +40,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         const mediumTitle = sanitizeString(newsRow.text());
 
-        const groups = titlePattern.exec(span.text());
+        const groups = titlePattern.exec(sanitizeString(span.text()));
 
         if (!groups) {
             // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
@@ -165,7 +165,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         const episodeElement = episodeElements.eq(i);
         const columns = episodeElement.children();
 
-        const date = new Date(columns.eq(1).text());
+        const date = new Date(columns.eq(1).text().trim());
 
         const titleElement = columns.eq(0).find("a");
         const titleString = sanitizeString(titleElement.text());

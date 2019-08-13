@@ -264,6 +264,7 @@ function searchToc(id, tocSearch, availableTocs) {
                         key: "toc",
                         item: availableToc,
                         cb: async (item) => {
+                            console.log("scraping one time: " + item);
                             const tocs = await scraper(item);
                             if (tocs) {
                                 tocs.forEach((value) => value.mediumId = id);
@@ -288,6 +289,7 @@ function searchToc(id, tocSearch, availableTocs) {
                         key: "toc",
                         item: tocSearch,
                         cb: async (item) => {
+                            console.log("scraping one time: " + item);
                             const newToc = await searcher(item);
                             const tocs = [];
                             if (newToc) {
@@ -368,6 +370,7 @@ exports.checkTocs = async () => {
     return jobs.filter((value) => value);
 };
 exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
+    console.log("scraping one time toc: " + link);
     const path = url.parse(link).path;
     if (!path) {
         logger_1.default.warn(`malformed url: '${link}'`);
@@ -416,6 +419,7 @@ exports.news = async (scrapeItem) => {
  * @return {Promise<void>}
  */
 exports.toc = async (value) => {
+    console.log("scraping toc: " + value);
     // todo implement toc scraping which requires page analyzing
 };
 /**
@@ -470,17 +474,22 @@ exports.feed = async (feedLink) => {
     })
         .catch((error) => Promise.reject({ feed: feedLink, error }));
 };
-function checkTocContent(content) {
+function checkTocContent(content, allowMinusOne = false) {
     if (!content) {
         throw Error("empty toc content");
     }
-    if (content.combiIndex == null || content.combiIndex < 0) {
+    const index = content.combiIndex;
+    if (index == null || (index < 0 && (index !== -1 || !allowMinusOne))) {
         throw Error("invalid toc content, combiIndex invalid");
     }
-    if (content.totalIndex == null || content.totalIndex < 0) {
+    const totalIndex = content.totalIndex;
+    if (totalIndex == null
+        || !Number.isInteger(totalIndex)
+        || (totalIndex < 0 && (totalIndex !== -1 || !allowMinusOne))) {
         throw Error("invalid toc content, totalIndex invalid");
     }
-    if (content.partialIndex != null && (content.partialIndex < 0 || !Number.isInteger(content.partialIndex))) {
+    const partialIndex = content.partialIndex;
+    if (partialIndex != null && (partialIndex < 0 || !Number.isInteger(partialIndex))) {
         throw Error("invalid toc content, partialIndex invalid");
     }
 }

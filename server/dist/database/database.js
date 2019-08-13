@@ -471,6 +471,9 @@ exports.Storage = {
     getSourcedReleases(sourceType, mediumId) {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
     },
+    getEpisodeLinks(episodeIds) {
+        return inContext((context) => context.getEpisodeLinks(episodeIds));
+    },
     getEpisodeContent(chapterLink) {
         return inContext((context) => context.getEpisodeContentData(chapterLink));
     },

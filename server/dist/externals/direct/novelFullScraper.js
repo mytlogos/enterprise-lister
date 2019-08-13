@@ -118,7 +118,7 @@ async function scrapeTocPage($, uri) {
                     partialIndex: partIndices.fraction,
                     title: "Vol." + partIndices.combi
                 };
-                scraperTools_1.checkTocContent(part);
+                scraperTools_1.checkTocContent(part, true);
                 indexPartMap.set(partIndices.combi, part);
                 content.push(part);
             }

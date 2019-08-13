@@ -147,7 +147,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
                     partialIndex: partIndices.fraction,
                     title: "Vol." + partIndices.combi
                 };
-                checkTocContent(part);
+                checkTocContent(part, true);
 
                 indexPartMap.set(partIndices.combi, part);
                 content.push(part);

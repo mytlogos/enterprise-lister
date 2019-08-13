@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const logger_1 = tslib_1.__importStar(require("../../logger"));
 const queueManager_1 = require("../queueManager");
-const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
 const database_1 = require("../../database/database");
 const tools_1 = require("../../tools");
 exports.sourceType = "qidian_underground";
@@ -17,7 +16,7 @@ async function scrapeNews() {
     for (let tocRowIndex = 0; tocRowIndex < tocRows.length; tocRowIndex++) {
         const tocRow = tocRows.eq(tocRowIndex);
         const mediumElement = tocRow.prev();
-        const mediumTitle = mediumElement.contents().first().text().trim();
+        const mediumTitle = tools_1.sanitizeString(mediumElement.contents().first().text().trim());
         if (!mediumTitle) {
             logger_1.default.warn("changed format on qidianUnderground");
             return;
@@ -42,7 +41,7 @@ async function scrapeNews() {
                 logger_1.default.warn(`missing href attribute for '${mediumTitle}' on qidianUnderground`);
                 continue;
             }
-            const exec = chapterReg.exec(titleElement.text());
+            const exec = chapterReg.exec(tools_1.sanitizeString(titleElement.text()));
             if (!exec) {
                 logger_1.default.warn("changed format on qidianUnderground");
                 continue;
@@ -51,12 +50,12 @@ async function scrapeNews() {
             const endChapterIndex = Number(exec[3]);
             if (!Number.isNaN(endChapterIndex)) {
                 for (let chapterIndex = startChapterIndex; chapterIndex <= endChapterIndex; chapterIndex++) {
-                    const title = emoji_strip_1.default(`${mediumTitle} - ${chapterIndex}`);
+                    const title = tools_1.sanitizeString(`${mediumTitle} - ${chapterIndex}`);
                     potentialNews.push({ title, link, date });
                 }
             }
             else {
-                const title = emoji_strip_1.default(`${mediumTitle} - ${startChapterIndex}`);
+                const title = tools_1.sanitizeString(`${mediumTitle} - ${startChapterIndex}`);
                 potentialNews.push({ title, link, date });
             }
         }
@@ -163,7 +162,7 @@ async function scrapeContent(urlString) {
     for (let i = 0; i < contents.length; i++) {
         const contentElement = contents.eq(i);
         const contentChildren = contentElement.children();
-        const episodeTitle = contentChildren.find("h2").first().remove().text().trim();
+        const episodeTitle = tools_1.sanitizeString(contentChildren.find("h2").first().remove().text().trim());
         const content = contentChildren.html();
         if (!episodeTitle) {
             logger_1.default.warn("episode link with no novel or episode title: " + urlString);

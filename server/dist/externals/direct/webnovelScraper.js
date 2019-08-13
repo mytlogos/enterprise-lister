@@ -100,7 +100,7 @@ async function scrapeToc(urlString) {
             combiIndex: volume.index,
             totalIndex: volume.index,
         };
-        scraperTools_1.checkTocContent(partContent);
+        scraperTools_1.checkTocContent(partContent, true);
         return partContent;
     });
     const toc = {
@@ -126,8 +126,8 @@ async function scrapeContent(urlString) {
     if ($("._lock").length) {
         return [];
     }
-    const novelTitle = $(".cha-hd-mn-text a").first().text().trim();
-    const episodeTitle = contentElement.find(".cha-tit h3").first().text().trim();
+    const novelTitle = tools_1.sanitizeString($(".cha-hd-mn-text a").first().text());
+    const episodeTitle = tools_1.sanitizeString(contentElement.find(".cha-tit h3").first().text());
     const content = contentElement.find(".cha-words").first().html();
     if (!novelTitle || !episodeTitle) {
         logger_1.default.warn("episode link with no novel or episode title: " + urlString);
@@ -162,7 +162,8 @@ async function searchToc(searchMedium) {
     for (let i = 0; i < titles.length; i++) {
         const titleElement = titles.eq(i);
         const possibleTitles = [searchMedium.title, ...searchMedium.synonyms];
-        if (possibleTitles.some((value) => tools_1.equalsIgnore(titleElement.text(), value))) {
+        const title = tools_1.sanitizeString(titleElement.text());
+        if (possibleTitles.some((value) => tools_1.equalsIgnore(title, value))) {
             bookId = titleElement.attr("data-bookid");
             break;
         }

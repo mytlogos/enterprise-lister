@@ -1048,6 +1048,9 @@ class QueryContext {
         });
         return releases;
     }
+    getEpisodeLinks(episodeIds) {
+        return this._queryInList("SELECT episode_id as episodeId, url FROM episode_release WHERE episode_id ", episodeIds);
+    }
     getSourcedReleases(sourceType, mediumId) {
         return this
             .query("SELECT url, episode_release.title FROM episode_release " +
@@ -2251,6 +2254,9 @@ class QueryContext {
         return result.affectedRows > 0;
     }
     _multiInsert(query, value, paramCallback) {
+        if (!value || (Array.isArray(value) && !value.length)) {
+            return Promise.resolve();
+        }
         if (Array.isArray(value) && value.length > 100) {
             // @ts-ignore
             return this._batchFunction(value, query, paramCallback, (q, v, p) => this._multiInsert(q, v, p));

@@ -30,7 +30,7 @@ async function scrapeNews() {
         const span = newsRow.children("span").eq(0);
         span.remove();
         const mediumTitle = tools_1.sanitizeString(newsRow.text());
-        const groups = titlePattern.exec(span.text());
+        const groups = titlePattern.exec(tools_1.sanitizeString(span.text()));
         if (!groups) {
             // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
             console.log(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
@@ -145,7 +145,7 @@ async function scrapeToc(urlString) {
     for (let i = 0; i < episodeElements.length; i++) {
         const episodeElement = episodeElements.eq(i);
         const columns = episodeElement.children();
-        const date = new Date(columns.eq(1).text());
+        const date = new Date(columns.eq(1).text().trim());
         const titleElement = columns.eq(0).find("a");
         const titleString = tools_1.sanitizeString(titleElement.text());
         const episodeGroups = chapReg.exec(titleString);

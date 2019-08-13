@@ -140,7 +140,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         const volumeElement = volumes.eq(vIndex);
 
         const volumeIndex = Number(volumeElement.find(".panel-heading .book").first().text().trim());
-        const volumeTitle = volumeElement.find(".panel-heading .title").first().text().trim();
+        const volumeTitle = sanitizeString(volumeElement.find(".panel-heading .title").first().text());
         const volumeChapters = volumeElement.find(".chapter-item a");
 
         if (Number.isNaN(volumeIndex)) {
@@ -154,12 +154,12 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
-        checkTocContent(volume);
+        checkTocContent(volume, true);
 
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
             const link = url.resolve(uri, chapterElement.attr("href"));
-            const title = chapterElement.text().trim();
+            const title = sanitizeString(chapterElement.text());
 
             const chapterGroups = /^\s*Chapter\s*((\d+)(\.(\d+))?)/.exec(title);
 
@@ -236,8 +236,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
     const $ = await queueCheerioRequest(urlString);
     const mainElement = $(".content");
-    const novelTitle = mainElement.find(".top-bar-area .caption a").first().text().trim();
-    const episodeTitle = mainElement.find(".panel .caption h4").first().text().trim();
+    const novelTitle = sanitizeString(mainElement.find(".top-bar-area .caption a").first().text());
+    const episodeTitle = sanitizeString(mainElement.find(".panel .caption h4").first().text());
     const directContentElement = mainElement.find(".top-bar-area + .panel .fr-view").first();
     // remove teaser (especially the teaser button)
     directContentElement.find("button, img, div#spoiler_teaser").remove();
