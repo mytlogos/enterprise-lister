@@ -107,7 +107,7 @@ async function contentDownloadAdapter(chapterLink) {
     const index = Number(exec[1]);
     const images = $(".img img");
     const imageUrls = [];
-    const imageUrlReg = /^http:\/\/img\.mangahasu\.se\/.+\.\w+/;
+    const imageUrlReg = /\/\d+\.(jpg|png)$/;
     for (let i = 0; i < images.length; i++) {
         const imageElement = images.eq(i);
         const src = imageElement.attr("src");
