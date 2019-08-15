@@ -975,7 +975,7 @@ class QueryContext {
             const result = await this.query("SELECT id from part where medium_id=? and combiIndex=?", [part.mediumId, tools_1.combiIndex(part)]);
             partId = result[0].id;
         }
-        if (!Number.isInteger(partId)) {
+        if (!Number.isInteger(partId) || partId <= 0) {
             throw Error(`invalid ID ${partId}`);
         }
         let episodes;
@@ -1871,6 +1871,9 @@ class QueryContext {
                 else {
                     volumeId = volume.id;
                 }
+            }
+            if (!Number.isInteger(volumeId) || volumeId <= 0) {
+                throw Error("no volume id available");
             }
             const episodeSelectArray = await this.query("SELECT id, part_id, url FROM episode " +
                 "LEFT JOIN episode_release " +

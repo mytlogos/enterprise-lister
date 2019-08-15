@@ -1272,7 +1272,7 @@ export class QueryContext {
         if (part.totalIndex === -1) {
             return this.createStandardPart(part.mediumId);
         }
-        let partId: any;
+        let partId: number;
         try {
             const result = await this.query(
                 "INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?);",
@@ -1291,7 +1291,7 @@ export class QueryContext {
             partId = result[0].id;
         }
 
-        if (!Number.isInteger(partId)) {
+        if (!Number.isInteger(partId) || partId <= 0) {
             throw Error(`invalid ID ${partId}`);
         }
         let episodes: Episode[];
@@ -2402,6 +2402,10 @@ export class QueryContext {
                 } else {
                     volumeId = volume.id;
                 }
+            }
+
+            if (!Number.isInteger(volumeId) || volumeId <= 0) {
+                throw Error("no volume id available");
             }
 
             const episodeSelectArray: Array<{ id: number, part_id: number, link: string }> = await this.query(
