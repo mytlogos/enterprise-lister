@@ -1,16 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+function ignoreError(func, ignoreErrno) {
+    return func().catch((reason) => {
+        if (reason && Number.isInteger(reason.errno) && !ignoreErrno.includes(reason.errno)) {
+            throw reason;
+        }
+    });
+}
 exports.Migrations = [
     {
         fromVersion: 0,
         toVersion: 1,
         async migrate(context) {
-            await context.addColumn("episode", "combiIndex double DEFAULT 0");
-            await context.query("UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
-            await context.addColumn("scrape_board", "info TEXT");
-            await context.addColumn("scrape_board", "external_uuid TEXT");
-            await context.addColumn("part", "combiIndex double DEFAULT 0");
-            await context.query("UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
+            await ignoreError(async () => {
+                await context.addColumn("episode", "combiIndex double DEFAULT 0");
+                await context.query("UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
+            }, [1060]);
+            await ignoreError(() => context.addColumn("scrape_board", "info TEXT"), [1060]);
+            await ignoreError(() => context.addColumn("scrape_board", "external_uuid TEXT"), [1060]);
+            await ignoreError(() => context
+                .addColumn("part", "combiIndex double DEFAULT 0")
+                .then(() => context.query("UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)")), [1060]);
             await context.alterColumn("external_user", "uuid char(36)");
             await context.alterColumn("external_user", "link varchar(500)");
             await context.alterColumn("user_data_invalidation", "external_uuid char(36)");

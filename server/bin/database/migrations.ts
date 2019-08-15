@@ -1,32 +1,51 @@
 import {Migration} from "./databaseTypes";
 import {QueryContext} from "./queryContext";
 
+function ignoreError(func: () => Promise<void>, ignoreErrno: number[]): Promise<void> {
+    return func().catch((reason) => {
+        if (reason && Number.isInteger(reason.errno) && !ignoreErrno.includes(reason.errno)) {
+            throw reason;
+        }
+    });
+}
+
 export const Migrations: Migration[] = [
     {
         fromVersion: 0,
         toVersion: 1,
         async migrate(context: QueryContext): Promise<void> {
-            await context.addColumn(
-                "episode",
-                "combiIndex double DEFAULT 0"
+            await ignoreError(async () => {
+                    await context.addColumn(
+                        "episode",
+                        "combiIndex double DEFAULT 0"
+                    );
+                    await context.query(
+                        "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                    );
+                },
+                [1060]
             );
-            await context.query(
-                "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
-            );
-            await context.addColumn(
+            await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "info TEXT"
+                ),
+                [1060]
             );
-            await context.addColumn(
+            await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "external_uuid TEXT"
+                ),
+                [1060]
             );
-            await context.addColumn(
-                "part",
-                "combiIndex double DEFAULT 0"
-            );
-            await context.query(
-                "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+            await ignoreError(() => context
+                    .addColumn(
+                        "part",
+                        "combiIndex double DEFAULT 0"
+                    )
+                    .then(() => context.query(
+                        "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                    )),
+                [1060]
             );
             await context.alterColumn(
                 "external_user",
