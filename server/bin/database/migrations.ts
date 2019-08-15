@@ -80,7 +80,7 @@ export const Migrations: Migration[] = [
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_3", "uuid", "user", "uuid");
 
             await context.clearInvalidationTable();
-            await context.dropPrimaryKey("user_data_invalidation");
+            await ignoreError(() => context.dropPrimaryKey("user_data_invalidation"), [1091]);
             await context.addUnique("user_data_invalidation", "UNIQUE_NEWS", "news_id", "uuid");
             await context.addUnique("user_data_invalidation", "UNIQUE_MEDIUM", "medium_id", "uuid");
             await context.addUnique("user_data_invalidation", "UNIQUE_PART", "part_id", "uuid");
