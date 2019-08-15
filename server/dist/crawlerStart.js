@@ -174,7 +174,7 @@ async function remapParts(indexPartsMap, mediumId) {
     await Promise.all(promises);
 }
 async function addPartEpisodes(value) {
-    if (!value.part) {
+    if (!value.part || !value.part.id) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
     value.tocPart.episodes.forEach((episode) => {

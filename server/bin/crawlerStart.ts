@@ -221,8 +221,7 @@ interface TocPartMapping {
 }
 
 async function addPartEpisodes(value: TocPartMapping): Promise<void> {
-
-    if (!value.part) {
+    if (!value.part || !value.part.id) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
     value.tocPart.episodes.forEach((episode) => {
