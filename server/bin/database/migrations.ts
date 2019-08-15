@@ -52,7 +52,7 @@ export const Migrations: Migration[] = [
                 "uuid char(36)"
             );
             await context.alterColumn(
-                "external_user",
+                "scrape_board",
                 "link varchar(500)"
             );
             await context.alterColumn(

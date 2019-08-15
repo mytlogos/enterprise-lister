@@ -22,7 +22,7 @@ exports.Migrations = [
                 .addColumn("part", "combiIndex double DEFAULT 0")
                 .then(() => context.query("UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)")), [1060]);
             await context.alterColumn("external_user", "uuid char(36)");
-            await context.alterColumn("external_user", "link varchar(500)");
+            await context.alterColumn("scrape_board", "link varchar(500)");
             await context.alterColumn("user_data_invalidation", "external_uuid char(36)");
             await context.dropIndex("episode", "part_id");
             await context.addUnique("episode", "UNIQUE_EPISODE", "part_id", "combiIndex");
