@@ -24,7 +24,6 @@ exports.Migrations = [
             await context.alterColumn("external_user", "uuid char(36)");
             await context.alterColumn("scrape_board", "link varchar(500)");
             await context.alterColumn("user_data_invalidation", "external_uuid char(36)");
-            await context.dropIndex("episode", "part_id");
             await context.addUnique("episode", "UNIQUE_EPISODE", "part_id", "combiIndex");
             await context.addUnique("medium", "UNIQUE", "title", "medium");
             await context.dropIndex("news_board", "link");
@@ -32,7 +31,6 @@ exports.Migrations = [
             await context.dropForeignKey("news_user", "news_user_ibfk_2");
             await context.addForeignKey("news_user", "news_user_ibfk_1", "user_id", "user", "uuid");
             await context.addForeignKey("news_user", "news_user_ibfk_2", "news_id", "news_board", "id");
-            await context.dropIndex("part", "medium_id");
             await context.addUnique("part", "UNIQUE_PART", "medium_id", "combiIndex");
             await context.dropPrimaryKey("scrape_board");
             await context.addPrimaryKey("scrape_board", "link", "type");
