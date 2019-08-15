@@ -230,7 +230,7 @@ export class QueryContext {
     }
 
     public alterColumn(tableName: string, columnDefinition: string) {
-        return this.query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} CHANGE COLUMN ${columnDefinition};`);
     }
 
     public addUnique(tableName: string, indexName: string, ...columns: string[]) {

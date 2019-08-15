@@ -134,7 +134,7 @@ class QueryContext {
         return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
     }
     alterColumn(tableName, columnDefinition) {
-        return this.query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} CHANGE COLUMN ${columnDefinition};`);
     }
     addUnique(tableName, indexName, ...columns) {
         columns = columns.map((value) => promise_mysql_1.default.escapeId(value));
