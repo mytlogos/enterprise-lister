@@ -226,7 +226,7 @@ export class QueryContext {
     }
 
     public addColumn(tableName: string, columnDefinition: string) {
-        return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnDefinition};`);
     }
 
     public alterColumn(tableName: string, columnDefinition: string) {
@@ -237,13 +237,13 @@ export class QueryContext {
         columns = columns.map((value) => mySql.escapeId(value));
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
-        return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
+        return this.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${index} ON ${table} (${columns.join(", ")});`);
     }
 
     public dropIndex(tableName: string, indexName: string) {
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
-        return this.query(`DROP INDEX ${index} ON ${table};`);
+        return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`);
     }
 
     public addForeignKey(tableName: string, constraintName: string, column: string, referencedTable: string,
@@ -254,7 +254,7 @@ export class QueryContext {
         const refTable = mySql.escapeId(referencedTable);
         const refColumn = mySql.escapeId(referencedColumn);
         const name = mySql.escapeId(constraintName);
-        let query = `ALTER TABLE ${table} ADD FOREIGN KEY ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF NOT EXISTS ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
 
         if (onDelete) {
             query += " ON DELETE " + onDelete;

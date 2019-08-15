@@ -33,7 +33,7 @@ export const Migrations: Migration[] = [
             );
             await ignoreError(() => context.addColumn(
                 "scrape_board",
-                "external_uuid TEXT"
+                "external_uuid char(36)"
                 ),
                 [1060]
             );

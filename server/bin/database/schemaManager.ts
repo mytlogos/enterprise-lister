@@ -89,6 +89,7 @@ export class SchemaManager {
         await foundMigration.migrate(context);
         // FIXME: 10.08.2019 inserting new database version does not seem to work
         await context.updateDatabaseVersion(currentVersion);
+        console.log(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
     }
 
     private getShortest(previousVersion: number) {

@@ -131,7 +131,7 @@ class QueryContext {
         return this.query(`CREATE TABLE ${promise_mysql_1.default.escapeId(table)} (${columns.join(", ")});`);
     }
     addColumn(tableName, columnDefinition) {
-        return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnDefinition};`);
     }
     alterColumn(tableName, columnDefinition) {
         return this.query(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnDefinition};`);
@@ -140,12 +140,12 @@ class QueryContext {
         columns = columns.map((value) => promise_mysql_1.default.escapeId(value));
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
+        return this.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${index} ON ${table} (${columns.join(", ")});`);
     }
     dropIndex(tableName, indexName) {
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this.query(`DROP INDEX ${index} ON ${table};`);
+        return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`);
     }
     addForeignKey(tableName, constraintName, column, referencedTable, referencedColumn, onDelete, onUpdate) {
         const index = promise_mysql_1.default.escapeId(column);
@@ -153,7 +153,7 @@ class QueryContext {
         const refTable = promise_mysql_1.default.escapeId(referencedTable);
         const refColumn = promise_mysql_1.default.escapeId(referencedColumn);
         const name = promise_mysql_1.default.escapeId(constraintName);
-        let query = `ALTER TABLE ${table} ADD FOREIGN KEY ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF NOT EXISTS ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
         if (onDelete) {
             query += " ON DELETE " + onDelete;
         }

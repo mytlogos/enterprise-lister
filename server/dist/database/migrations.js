@@ -17,7 +17,7 @@ exports.Migrations = [
                 await context.query("UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
             }, [1060]);
             await ignoreError(() => context.addColumn("scrape_board", "info TEXT"), [1060]);
-            await ignoreError(() => context.addColumn("scrape_board", "external_uuid TEXT"), [1060]);
+            await ignoreError(() => context.addColumn("scrape_board", "external_uuid char(36)"), [1060]);
             await ignoreError(() => context
                 .addColumn("part", "combiIndex double DEFAULT 0")
                 .then(() => context.query("UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)")), [1060]);
