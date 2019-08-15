@@ -1118,6 +1118,9 @@ class QueryContext {
         const insertReleases = [];
         // @ts-ignore
         return tools_1.promiseMultiSingle(episodes, async (episode) => {
+            if (!(episode.partId > 0)) {
+                throw Error("episode without partId");
+            }
             let insertId;
             try {
                 const result = await this.query("INSERT INTO episode " +

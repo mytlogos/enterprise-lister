@@ -220,7 +220,7 @@ async function processMediumNews(
         standardPart = await Storage.createStandardPart(mediumId);
     }
 
-    if (!standardPart) {
+    if (!standardPart || !standardPart.id) {
         throw Error(`could not create standard part for mediumId: '${mediumId}'`);
     }
 

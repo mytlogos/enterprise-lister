@@ -1470,6 +1470,9 @@ export class QueryContext {
         const insertReleases: EpisodeRelease[] = [];
         // @ts-ignore
         return promiseMultiSingle(episodes, async (episode: SimpleEpisode) => {
+            if (!(episode.partId > 0)) {
+                throw Error("episode without partId");
+            }
             let insertId: any;
             try {
                 const result = await this.query(

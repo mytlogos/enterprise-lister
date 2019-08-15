@@ -150,7 +150,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
     if (!standardPart) {
         standardPart = await database_1.Storage.createStandardPart(mediumId);
     }
-    if (!standardPart) {
+    if (!standardPart || !standardPart.id) {
         throw Error(`could not create standard part for mediumId: '${mediumId}'`);
     }
     let newEpisodeNews;
