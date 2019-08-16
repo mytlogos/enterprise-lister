@@ -1273,10 +1273,12 @@ export class QueryContext {
             return this.createStandardPart(part.mediumId);
         }
         let partId: number;
+        const partCombiIndex = combiIndex(part);
+
         try {
             const result = await this.query(
                 "INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?);",
-                [part.mediumId, part.title, part.totalIndex, part.partialIndex, combiIndex(part)],
+                [part.mediumId, part.title, part.totalIndex, part.partialIndex, partCombiIndex],
             );
             partId = result.insertId;
         } catch (e) {
@@ -1286,7 +1288,7 @@ export class QueryContext {
             }
             const result = await this.query(
                 "SELECT id from part where medium_id=? and combiIndex=?",
-                [part.mediumId, combiIndex(part)]
+                [part.mediumId, partCombiIndex]
             );
             partId = result[0].id;
         }
@@ -2481,8 +2483,8 @@ export class QueryContext {
     public createStandardPart(mediumId: number): Promise<ShallowPart> {
         const partName = "Non Indexed Volume";
         return this.query(
-            "INSERT IGNORE INTO part (medium_id,title, totalIndex) VALUES (?,?,?);",
-            [mediumId, partName, -1]
+            "INSERT IGNORE INTO part (medium_id,title, totalIndex, combiIndex) VALUES (?,?,?,?);",
+            [mediumId, partName, -1, -1]
         ).then((value): ShallowPart => {
             return {
                 totalIndex: -1,

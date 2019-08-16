@@ -963,8 +963,9 @@ class QueryContext {
             return this.createStandardPart(part.mediumId);
         }
         let partId;
+        const partCombiIndex = tools_1.combiIndex(part);
         try {
-            const result = await this.query("INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?);", [part.mediumId, part.title, part.totalIndex, part.partialIndex, tools_1.combiIndex(part)]);
+            const result = await this.query("INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?);", [part.mediumId, part.title, part.totalIndex, part.partialIndex, partCombiIndex]);
             partId = result.insertId;
         }
         catch (e) {
@@ -972,7 +973,7 @@ class QueryContext {
             if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
                 throw e;
             }
-            const result = await this.query("SELECT id from part where medium_id=? and combiIndex=?", [part.mediumId, tools_1.combiIndex(part)]);
+            const result = await this.query("SELECT id from part where medium_id=? and combiIndex=?", [part.mediumId, partCombiIndex]);
             partId = result[0].id;
         }
         if (!Number.isInteger(partId) || partId <= 0) {
@@ -1927,7 +1928,7 @@ class QueryContext {
     }
     createStandardPart(mediumId) {
         const partName = "Non Indexed Volume";
-        return this.query("INSERT IGNORE INTO part (medium_id,title, totalIndex) VALUES (?,?,?);", [mediumId, partName, -1]).then((value) => {
+        return this.query("INSERT IGNORE INTO part (medium_id,title, totalIndex, combiIndex) VALUES (?,?,?,?);", [mediumId, partName, -1, -1]).then((value) => {
             return {
                 totalIndex: -1,
                 title: partName,
