@@ -441,7 +441,7 @@ export const checkTocs = async (): Promise<ScraperJob[]> => {
         const indices = await Storage.getChapterIndices(mediumId);
         const maxIndex = maxValue(indices);
 
-        if (maxIndex == null || indices.length < maxIndex) {
+        if (!maxIndex || indices.length < maxIndex) {
             return searchToc(
                 mediumId,
                 tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),

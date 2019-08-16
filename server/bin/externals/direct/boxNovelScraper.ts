@@ -20,12 +20,28 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
     const novelTitle = sanitizeString(mediumTitleElement.text());
 
-    const episodeTitle = sanitizeString($(".cha-tit h3").text());
-    const directContentElement = $(".cha-content .cha-words .cha-words");
+    const chaTit = $(".cha-tit h3");
+    let directContentElement: Cheerio;
+    let episodeTitle: string;
+
+    if (chaTit.length) {
+        directContentElement = $(".cha-content .cha-words .cha-words");
+        episodeTitle = sanitizeString(chaTit.text());
+    } else {
+        const entryTitle = $("h1.entry-title").remove();
+
+        if (!entryTitle.length) {
+            logger.warn("changed title format for chapters on boxNovel");
+            return [];
+        }
+        episodeTitle = sanitizeString(entryTitle.text());
+        directContentElement = $(".reading-content");
+    }
 
     const content = directContentElement.html();
 
     if (!content) {
+        logger.warn("changed content format for chapters on boxNovel");
         return [];
     }
 

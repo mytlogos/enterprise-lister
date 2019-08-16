@@ -351,7 +351,7 @@ exports.checkTocs = async () => {
         const mediumId = value[0];
         const indices = await database_1.Storage.getChapterIndices(mediumId);
         const maxIndex = tools_1.maxValue(indices);
-        if (maxIndex == null || indices.length < maxIndex) {
+        if (!maxIndex || indices.length < maxIndex) {
             return searchToc(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
         }
         let missingChapters;

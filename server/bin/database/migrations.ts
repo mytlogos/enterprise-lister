@@ -14,39 +14,29 @@ export const Migrations: Migration[] = [
         fromVersion: 0,
         toVersion: 1,
         async migrate(context: QueryContext): Promise<void> {
-            await ignoreError(async () => {
-                    await context.addColumn(
-                        "episode",
-                        "combiIndex double DEFAULT 0"
-                    );
-                    await context.query(
-                        "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
-                    );
-                },
-                [1060]
+            await context.addColumn(
+                "episode",
+                "combiIndex double DEFAULT 0"
             );
-            await ignoreError(() => context.addColumn(
+            await context.query(
+                "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+            );
+            await context.addColumn(
                 "scrape_board",
                 "info TEXT"
-                ),
-                [1060]
             );
-            await ignoreError(() => context.addColumn(
+            await context.addColumn(
                 "scrape_board",
                 "external_uuid char(36)"
-                ),
-                [1060]
             );
-            await ignoreError(() => context
-                    .addColumn(
-                        "part",
-                        "combiIndex double DEFAULT 0"
-                    )
-                    .then(() => context.query(
-                        "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
-                    )),
-                [1060]
-            );
+            await context
+                .addColumn(
+                    "part",
+                    "combiIndex double DEFAULT 0"
+                )
+                .then(() => context.query(
+                    "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                ));
             await context.alterColumn(
                 "external_user",
                 "uuid char(36)"

@@ -17,10 +17,25 @@ async function contentDownloadAdapter(urlString) {
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
     const novelTitle = tools_1.sanitizeString(mediumTitleElement.text());
-    const episodeTitle = tools_1.sanitizeString($(".cha-tit h3").text());
-    const directContentElement = $(".cha-content .cha-words .cha-words");
+    const chaTit = $(".cha-tit h3");
+    let directContentElement;
+    let episodeTitle;
+    if (chaTit.length) {
+        directContentElement = $(".cha-content .cha-words .cha-words");
+        episodeTitle = tools_1.sanitizeString(chaTit.text());
+    }
+    else {
+        const entryTitle = $("h1.entry-title").remove();
+        if (!entryTitle.length) {
+            logger_1.default.warn("changed title format for chapters on boxNovel");
+            return [];
+        }
+        episodeTitle = tools_1.sanitizeString(entryTitle.text());
+        directContentElement = $(".reading-content");
+    }
     const content = directContentElement.html();
     if (!content) {
+        logger_1.default.warn("changed content format for chapters on boxNovel");
         return [];
     }
     return directTools_1.getTextContent(novelTitle, episodeTitle, urlString, content);
