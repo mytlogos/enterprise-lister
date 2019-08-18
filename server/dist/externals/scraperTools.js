@@ -753,13 +753,21 @@ async function downloadEpisodes(episodes) {
                 break;
             }
         }
-        if (!downloadedContent) {
+        if (!downloadedContent || !downloadedContent.length) {
             downloadContents.set(indexKey, {
                 episodeId: episode.id,
                 title: "",
                 content: []
             });
             logger_1.default.warn(`nothing downloaded for episodeId: ${episode.id}`);
+        }
+        else if (downloadedContent.length === 1) {
+            const episodeContent = downloadedContent[0];
+            downloadContents.set(indexKey, {
+                title: episodeContent.episodeTitle,
+                content: episodeContent.content,
+                episodeId: episode.id
+            });
         }
         else {
             for (const episodeContent of downloadedContent) {
