@@ -95,24 +95,24 @@ async function contentDownloadAdapter(chapterLink) {
     const episodeTitle = tools_1.sanitizeString(titleElement.text());
     const mediumTitle = tools_1.sanitizeString(mediumTitleElement.text());
     if (!episodeTitle || !mediumTitle) {
-        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction");
+        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
         return [];
     }
     const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
     const exec = chapReg.exec(episodeTitle);
     if (!exec || !mediumTitle) {
-        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction");
+        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
         return [];
     }
     const index = Number(exec[1]);
     const images = $(".img img");
     const imageUrls = [];
-    const imageUrlReg = /\/\d+\.(jpg|png)$/;
+    const imageUrlReg = /\.(jpg|png)$/;
     for (let i = 0; i < images.length; i++) {
         const imageElement = images.eq(i);
         const src = imageElement.attr("src");
         if (!src || !imageUrlReg.test(src)) {
-            logger_1.default.warn("image link format changed on mangahasu");
+            logger_1.default.warn("image link format changed on mangahasu: " + chapterLink);
             return [];
         }
         imageUrls.push(src);
@@ -158,7 +158,7 @@ async function scrapeToc(urlString) {
         const timeString = chapterElement.find(".date-updated").text().trim();
         const time = new Date(timeString);
         if (!timeString || Number.isNaN(time.getTime())) {
-            logger_1.default.warn("no time in title in mangahasu toc");
+            logger_1.default.warn("no time in title in mangahasu toc: " + urlString);
             return [];
         }
         const chapterTitleElement = chapterElement.find(".name");
@@ -169,10 +169,10 @@ async function scrapeToc(urlString) {
         const volChapGroups = volChapReg.exec(chapterTitle);
         const chapGroups = chapReg.exec(chapterTitle);
         if (i && !hasVolumes && volChapGroups && !chapGroups) {
-            logger_1.default.warn("changed volume - chapter format on mangahasu toc: expected chapter, got volume");
+            logger_1.default.warn("changed volume - chapter format on mangahasu toc: expected chapter, got volume " + urlString);
         }
         if (i && hasVolumes && chapGroups && !volChapGroups) {
-            logger_1.default.warn("changed volume - chapter format on mangahasu toc: expected volume, got chapter");
+            logger_1.default.warn("changed volume - chapter format on mangahasu toc: expected volume, got chapter " + urlString);
         }
         if (!i && volChapGroups) {
             hasVolumes = true;
@@ -185,7 +185,7 @@ async function scrapeToc(urlString) {
             const chapIndices = tools_1.extractIndices(volChapGroups, 5, 6, 8);
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
             if (!chapIndices) {
-                logger_1.default.warn("changed episode format on mangaHasu toc: got no index");
+                logger_1.default.warn("changed episode format on mangaHasu toc: got no index " + urlString);
                 return [];
             }
             let title = "Chapter " + chapIndices.combi;
@@ -236,7 +236,7 @@ async function scrapeToc(urlString) {
             });
         }
         else {
-            logger_1.default.warn("volume - chapter format changed on mangahasu: recognized neither of them");
+            logger_1.default.warn("volume - chapter format changed on mangahasu: recognized neither of them: " + urlString);
             return [];
         }
     }
@@ -251,6 +251,7 @@ async function scrapeToc(urlString) {
 scrapeNews.link = "http://mangahasu.se/";
 function getHook() {
     return {
+        name: "mangahasu",
         domainReg: /^https?:\/\/mangahasu\.se/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter,

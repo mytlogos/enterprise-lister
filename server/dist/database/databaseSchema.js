@@ -4,7 +4,7 @@ const databaseBuilder_1 = require("./databaseBuilder");
 const databaseTypes_1 = require("./databaseTypes");
 const trigger_1 = require("./trigger");
 const migrations_1 = require("./migrations");
-const dataBaseBuilder = new databaseBuilder_1.DataBaseBuilder("enterprise", 1);
+const dataBaseBuilder = new databaseBuilder_1.DataBaseBuilder("enterprise", 2);
 dataBaseBuilder.getTableBuilder()
     .setName("user")
     .setMain()

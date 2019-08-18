@@ -269,6 +269,7 @@ async function tocSearcher(medium) {
 scrapeNews.link = "https://www.wuxiaworld.com/";
 function getHook() {
     return {
+        name: "wuxiaworld",
         domainReg: /^https:\/\/(www\.)?wuxiaworld\.com/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,

@@ -328,6 +328,7 @@ scrapeNews.link = "https://www.wuxiaworld.com/";
 
 export function getHook(): Hook {
     return {
+        name: "wuxiaworld",
         domainReg: /^https:\/\/(www\.)?wuxiaworld\.com/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,

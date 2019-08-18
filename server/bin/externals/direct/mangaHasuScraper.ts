@@ -110,27 +110,27 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const mediumTitle = sanitizeString(mediumTitleElement.text());
 
     if (!episodeTitle || !mediumTitle) {
-        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction");
+        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
         return [];
     }
     const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
     const exec = chapReg.exec(episodeTitle);
 
     if (!exec || !mediumTitle) {
-        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction");
+        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
         return [];
     }
     const index = Number(exec[1]);
     const images = $(".img img");
     const imageUrls = [];
-    const imageUrlReg = /\/\d+\.(jpg|png)$/;
+    const imageUrlReg = /\.(jpg|png)$/;
 
     for (let i = 0; i < images.length; i++) {
         const imageElement = images.eq(i);
         const src = imageElement.attr("src");
 
         if (!src || !imageUrlReg.test(src)) {
-            logger.warn("image link format changed on mangahasu");
+            logger.warn("image link format changed on mangahasu: " + chapterLink);
             return [];
         }
         imageUrls.push(src);
@@ -185,7 +185,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         const time = new Date(timeString);
 
         if (!timeString || Number.isNaN(time.getTime())) {
-            logger.warn("no time in title in mangahasu toc");
+            logger.warn("no time in title in mangahasu toc: " + urlString);
             return [];
         }
         const chapterTitleElement = chapterElement.find(".name");
@@ -198,11 +198,11 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         const chapGroups = chapReg.exec(chapterTitle);
 
         if (i && !hasVolumes && volChapGroups && !chapGroups) {
-            logger.warn("changed volume - chapter format on mangahasu toc: expected chapter, got volume");
+            logger.warn("changed volume - chapter format on mangahasu toc: expected chapter, got volume " + urlString);
         }
 
         if (i && hasVolumes && chapGroups && !volChapGroups) {
-            logger.warn("changed volume - chapter format on mangahasu toc: expected volume, got chapter");
+            logger.warn("changed volume - chapter format on mangahasu toc: expected volume, got chapter " + urlString);
         }
         if (!i && volChapGroups) {
             hasVolumes = true;
@@ -220,7 +220,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
 
             if (!chapIndices) {
-                logger.warn("changed episode format on mangaHasu toc: got no index");
+                logger.warn("changed episode format on mangaHasu toc: got no index " + urlString);
                 return [];
             }
             let title = "Chapter " + chapIndices.combi;
@@ -276,7 +276,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                 releaseDate: time
             });
         } else {
-            logger.warn("volume - chapter format changed on mangahasu: recognized neither of them");
+            logger.warn("volume - chapter format changed on mangahasu: recognized neither of them: " + urlString);
             return [];
         }
     }
@@ -294,6 +294,7 @@ scrapeNews.link = "http://mangahasu.se/";
 
 export function getHook(): Hook {
     return {
+        name: "mangahasu",
         domainReg: /^https?:\/\/mangahasu\.se/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter,

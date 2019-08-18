@@ -167,7 +167,7 @@ exports.queueCheerioRequestStream = (uri, options) => {
     return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
 };
 exports.queueCheerioRequest = exports.queueCheerioRequestBuffered;
-const transformCheerio = (body) => cheerio_1.default.load(body);
+const transformCheerio = (body) => cheerio_1.default.load(body, { decodeEntities: false });
 const queueFullResponseWithLimit = (uri, options, otherRequest, queueToUse = queues, limit) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest, queueToUse, limit);
     // @ts-ignore

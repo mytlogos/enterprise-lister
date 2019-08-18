@@ -210,7 +210,7 @@ export const queueCheerioRequestStream: QueueRequest<CheerioStatic> = (uri, opti
 
 export const queueCheerioRequest = queueCheerioRequestBuffered;
 
-const transformCheerio = (body: string) => cheerio.load(body);
+const transformCheerio = (body: string) => cheerio.load(body, {decodeEntities: false});
 
 const queueFullResponseWithLimit = (uri: string, options?: Options, otherRequest?: Request,
                                     queueToUse = queues, limit?: number): Promise<FullResponse> => {

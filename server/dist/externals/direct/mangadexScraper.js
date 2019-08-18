@@ -17,7 +17,7 @@ async function contentDownloadAdapter(chapterLink) {
     const linkReg = /^https:\/\/mangadex\.org\/chapter\/(\d+)/;
     const exec = linkReg.exec(chapterLink);
     if (!exec) {
-        logger_1.default.warn("changed chapter link format on mangadex");
+        logger_1.default.warn("changed chapter link format on mangadex for " + chapterLink);
         return [];
     }
     const chapterId = exec[1];
@@ -26,12 +26,12 @@ async function contentDownloadAdapter(chapterLink) {
     const contentData = await database_1.Storage.getEpisodeContent(chapterLink);
     if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
         logger_1.default.warn("incoherent data, did not find any release with given url link, " +
-            "which has a title, index and mediumTitle");
+            "which has a title, index and mediumTitle on: " + urlString);
         return [];
     }
     const jsonResponse = await jsonPromise;
     if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
-        logger_1.default.warn("changed chapter api format on mangadex");
+        logger_1.default.warn("changed chapter api format on mangadex " + urlString);
         return [];
     }
     const imageUrls = [];
@@ -184,7 +184,7 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
         const timeString = columns.eq(3).attr("title");
         const time = new Date(timeString);
         if (!timeString || Number.isNaN(time.getTime())) {
-            logger_1.default.warn("no time in title in mangadex toc");
+            logger_1.default.warn("no time in title in mangadex toc for " + urlString);
             return true;
         }
         const chapterTitleElement = columns.eq(1);
@@ -204,7 +204,7 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
             let part = indexPartMap.get(volIndices.combi);
             if (!chapIndices) {
-                logger_1.default.warn("changed episode format on mangadex toc: got no index");
+                logger_1.default.warn("changed episode format on mangadex toc: got no index " + urlString);
                 return true;
             }
             let title = "Chapter " + chapIndices.combi;
@@ -253,7 +253,7 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
             toc.content.push(chapterContent);
         }
         else {
-            logger_1.default.warn("volume - chapter format changed on mangadex: recognized neither of them");
+            logger_1.default.warn("volume - chapter format changed on mangadex: recognized neither of them " + urlString);
             return true;
         }
     }
@@ -268,6 +268,7 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
 scrapeNews.link = "https://mangadex.org/";
 function getHook() {
     return {
+        name: "mangadex",
         domainReg: /^https?:\/\/mangadex\.org/,
         contentDownloadAdapter,
         newsAdapter: scrapeNews,

@@ -21,21 +21,31 @@ async function contentDownloadAdapter(urlString) {
     let directContentElement;
     let episodeTitle;
     if (chaTit.length) {
-        directContentElement = $(".cha-content .cha-words .cha-words");
+        directContentElement = $(".cha-content .cha-words");
+        const firstChild = directContentElement.children().first();
+        if (firstChild.is(".cha-words")) {
+            directContentElement = firstChild;
+        }
         episodeTitle = tools_1.sanitizeString(chaTit.text());
     }
     else {
         const entryTitle = $("h1.entry-title").remove();
         if (!entryTitle.length) {
-            logger_1.default.warn("changed title format for chapters on boxNovel");
-            return [];
+            const currentChapter = $("option[selected]").first();
+            if (!currentChapter.length) {
+                logger_1.default.warn("changed title format for chapters on boxNovel for " + urlString);
+                return [];
+            }
+            episodeTitle = tools_1.sanitizeString(currentChapter.text());
         }
-        episodeTitle = tools_1.sanitizeString(entryTitle.text());
+        else {
+            episodeTitle = tools_1.sanitizeString(entryTitle.text());
+        }
         directContentElement = $(".reading-content");
     }
     const content = directContentElement.html();
     if (!content) {
-        logger_1.default.warn("changed content format for chapters on boxNovel");
+        logger_1.default.warn("changed content format for chapters on boxNovel: " + urlString);
         return [];
     }
     return directTools_1.getTextContent(novelTitle, episodeTitle, urlString, content);
@@ -68,12 +78,12 @@ async function tocAdapter(tocLink) {
             date = new Date(dateString);
         }
         if (!date || date > new Date()) {
-            logger_1.default.warn("changed time format on boxNovel");
+            logger_1.default.warn("changed time format on boxNovel: " + tocLink);
             return [];
         }
         const regexResult = titleRegex.exec(episodeTitle);
         if (!regexResult) {
-            logger_1.default.warn("changed title format on boxNovel");
+            logger_1.default.warn("changed title format on boxNovel: " + tocLink);
             return [];
         }
         const episodeIndices = tools_1.extractIndices(regexResult, 2, 3, 5);
@@ -126,12 +136,12 @@ async function newsAdapter() {
                 date = new Date(dateString);
             }
             if (!date || date > new Date()) {
-                logger_1.default.warn("changed time format on boxNovel");
+                logger_1.default.warn("changed time format on boxNovel: news");
                 return;
             }
             const regexResult = titleRegex.exec(episodeTitle);
             if (!regexResult) {
-                logger_1.default.warn("changed title format on boxNovel");
+                logger_1.default.warn("changed title format on boxNovel: news");
                 return;
             }
             let partIndex;
@@ -159,7 +169,7 @@ async function newsAdapter() {
                 }
             }
             if (episodeIndex == null || episodeTotalIndex == null) {
-                logger_1.default.warn("changed title format on boxNovel");
+                logger_1.default.warn("changed title format on boxNovel: news");
                 return;
             }
             episodeNews.push({
@@ -183,6 +193,7 @@ async function newsAdapter() {
 newsAdapter.link = "https://boxnovel.com";
 function getHook() {
     return {
+        name: "boxnovel",
         domainReg: /https:\/\/boxnovel\.com/,
         contentDownloadAdapter,
         tocAdapter,

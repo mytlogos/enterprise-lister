@@ -440,6 +440,9 @@ exports.Storage = {
         // @ts-ignore
         return inContext((context) => context.getEpisode(id, uuid));
     },
+    getReleases(episodeId) {
+        return inContext((context) => context.getReleases(episodeId));
+    },
     /**
      *
      */
@@ -470,6 +473,9 @@ exports.Storage = {
     },
     getSourcedReleases(sourceType, mediumId) {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
+    },
+    deleteRelease(release) {
+        return inContext((context) => context.deleteRelease(release));
     },
     getEpisodeLinks(episodeIds) {
         return inContext((context) => context.getEpisodeLinks(episodeIds));

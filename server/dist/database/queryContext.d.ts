@@ -220,6 +220,7 @@ export declare class QueryContext {
         mediumId: number;
     }>>;
     updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void>;
+    deleteRelease(release: EpisodeRelease): Promise<void>;
     getEpisodeContentData(chapterLink: string): Promise<EpisodeContentData>;
     addEpisode(episode: SimpleEpisode): Promise<Episode>;
     addEpisode(episode: SimpleEpisode[]): Promise<Episode[]>;

@@ -52,6 +52,7 @@ export interface ScrapeNews extends News {
 }
 
 export interface Hook {
+    name: string;
     domainReg?: RegExp;
     tocPattern?: RegExp;
     redirectReg?: RegExp;
@@ -115,6 +116,7 @@ export interface EpisodeContent {
     mediumTitle: string;
     episodeTitle: string;
     index?: number;
+    locked?: boolean;
     content: string[];
 }
 

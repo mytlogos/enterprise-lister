@@ -232,6 +232,7 @@ scrapeNews.link = "https://toc.qidianunderground.org/";
 
 export function getHook(): Hook {
     return {
+        name: "qidianunderground",
         domainReg: /^https:\/\/toc\.qidianunderground\.org/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter: scrapeContent

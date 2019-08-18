@@ -73,6 +73,7 @@ export interface EpisodeRelease {
     title: string;
     url: string;
     releaseDate: Date;
+    locked?: boolean;
     sourceType?: string;
 }
 

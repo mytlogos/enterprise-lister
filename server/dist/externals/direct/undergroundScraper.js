@@ -194,6 +194,7 @@ async function scrapeContent(urlString) {
 scrapeNews.link = "https://toc.qidianunderground.org/";
 function getHook() {
     return {
+        name: "qidianunderground",
         domainReg: /^https:\/\/toc\.qidianunderground\.org/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter: scrapeContent

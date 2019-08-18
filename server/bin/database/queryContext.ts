@@ -226,7 +226,7 @@ export class QueryContext {
     }
 
     public addColumn(tableName: string, columnDefinition: string) {
-        return this.query(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
     }
 
     public alterColumn(tableName: string, columnDefinition: string) {
@@ -237,13 +237,13 @@ export class QueryContext {
         columns = columns.map((value) => mySql.escapeId(value));
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
-        return this.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${index} ON ${table} (${columns.join(", ")});`);
+        return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
     }
 
     public dropIndex(tableName: string, indexName: string) {
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
-        return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`);
+        return this.query(`DROP INDEX ${index} ON ${table};`);
     }
 
     public addForeignKey(tableName: string, constraintName: string, column: string, referencedTable: string,
@@ -254,7 +254,7 @@ export class QueryContext {
         const refTable = mySql.escapeId(referencedTable);
         const refColumn = mySql.escapeId(referencedColumn);
         const name = mySql.escapeId(constraintName);
-        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF NOT EXISTS ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
 
         if (onDelete) {
             query += " ON DELETE " + onDelete;
@@ -735,6 +735,7 @@ export class QueryContext {
                 episodeId: value.episode_id,
                 sourceType: value.source_type,
                 releaseDate: value.releaseDate,
+                locked: !!value.locked,
                 url: value.url,
                 title: value.title
             };
@@ -961,6 +962,9 @@ export class QueryContext {
         }
         if (listId) {
             await this.addItemToList(false, {id, listId});
+        }
+        if (medium.link) {
+            this.addToc(id, medium.link);
         }
 
         await this.deleteMediaInWait(toDeleteMediaInWaits);
@@ -1359,7 +1363,7 @@ export class QueryContext {
         Promise<EpisodeRelease | EpisodeRelease[]> {
         await this._multiInsert(
             "INSERT IGNORE INTO episode_release " +
-            "(episode_id, title, url, source_type, releaseDate) " +
+            "(episode_id, title, url, source_type, releaseDate, locked) " +
             "VALUES",
             releases,
             (release) => {
@@ -1371,7 +1375,8 @@ export class QueryContext {
                     release.title,
                     release.url,
                     release.sourceType,
-                    release.releaseDate
+                    release.releaseDate,
+                    release.locked
                 ];
             });
         return releases;
@@ -1426,6 +1431,10 @@ export class QueryContext {
                             updates.push("source_type=?");
                             values.push(value.sourceType);
                         }
+                        if (value.locked != null) {
+                            updates.push("locked=?");
+                            values.push(value.locked);
+                        }
                     }
                 );
             } else if (value.sourceType) {
@@ -1435,6 +1444,20 @@ export class QueryContext {
                 );
             }
         }).then(ignore);
+    }
+
+    public deleteRelease(release: EpisodeRelease): Promise<void> {
+        return this._delete(
+            "episode_release",
+            {
+                column: "episode_id",
+                value: release.episodeId
+            },
+            {
+                column: "url",
+                value: release.url
+            }
+        ).then(ignore);
     }
 
     public async getEpisodeContentData(chapterLink: string): Promise<EpisodeContentData> {
@@ -2750,7 +2773,7 @@ export class QueryContext {
                 mediumId: value.medium_id,
                 partId: value.part_id,
                 episodeId: value.episode_id,
-                userUuid: value.user_uuid,
+                userUuid: !!value.user_uuid,
                 listId: value.list_id,
                 newsId: value.news_id,
                 uuid,

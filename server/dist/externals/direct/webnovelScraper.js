@@ -121,22 +121,20 @@ function loadJson(urlString) {
         .then((body) => JSON.parse(body));
 }
 async function scrapeContent(urlString) {
-    const $ = await loadBody(urlString);
+    let $;
+    try {
+        $ = await loadBody(urlString);
+    }
+    catch (e) {
+        logger_1.default.warn("could not access: " + urlString);
+        return [];
+    }
     const contentElement = $(".chapter_content");
-    if ($("._lock").length) {
-        return [];
-    }
-    const novelTitle = tools_1.sanitizeString($(".cha-hd-mn-text a").first().text());
-    const episodeTitle = tools_1.sanitizeString(contentElement.find(".cha-tit h3").first().text());
+    const titleElement = $(".cha-hd-mn-text a").first();
+    const novelTitle = tools_1.sanitizeString(titleElement.text().replace(/\/\s*$/, ""));
+    titleElement.remove();
+    const episodeTitle = tools_1.sanitizeString($(".cha-hd-mn-text").text());
     const content = contentElement.find(".cha-words").first().html();
-    if (!novelTitle || !episodeTitle) {
-        logger_1.default.warn("episode link with no novel or episode title: " + urlString);
-        return [];
-    }
-    if (!content) {
-        logger_1.default.warn("episode link with no content: " + urlString);
-        return [];
-    }
     const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
     let index;
     if (chapterGroups) {
@@ -145,12 +143,25 @@ async function scrapeContent(urlString) {
     if (index != null && Number.isNaN(index)) {
         index = undefined;
     }
+    if (!novelTitle || !episodeTitle) {
+        logger_1.default.warn("episode link with no novel or episode title: " + urlString);
+        return [];
+    }
     const episodeContent = {
-        content: [content],
+        content: [],
         episodeTitle,
         mediumTitle: novelTitle,
         index
     };
+    // either normal premium locked or app locked
+    if ($("._lock").length || !contentElement.children().length) {
+        episodeContent.locked = true;
+        return [episodeContent];
+    }
+    else if (!content) {
+        logger_1.default.warn("episode link with no content: " + urlString);
+        return [];
+    }
     return [episodeContent];
 }
 async function searchToc(searchMedium) {
@@ -226,6 +237,7 @@ async function searchToc(searchMedium) {
 scrapeNews.link = "https://www.webnovel.com/";
 function getHook() {
     return {
+        name: "webnovel",
         domainReg: /^https:\/\/(www\.)?webnovel\.com/,
         // tslint:disable-next-line:max-line-length
         tocPattern: /^https:\/\/(paste\.tech-port\.de)|(priv\.atebin\.com)|(paste\.fizi\.ca)|(privatebin\.secured\.fi)\/$/,

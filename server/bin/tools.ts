@@ -7,6 +7,8 @@ import crypto from "crypto";
 //  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 import bcrypt from "bcrypt-nodejs";
 import emojiStrip from "emoji-strip";
+import * as fs from "fs";
+import * as path from "path";
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -454,4 +456,23 @@ export function separateIndex(value: number): { totalIndex: number, partialIndex
 
 export function ignore() {
     return undefined;
+}
+
+/**
+ * Searches for a project directory by searching  current working directory
+ * and all its parent directories for a package.json.
+ *
+ * Relativize the path of file to project dir.
+ */
+export function findProjectDirPath(file: string): string {
+    let dir = process.cwd();
+    let filePath = file;
+    let currentDirFiles: string[] = fs.readdirSync(dir);
+
+    while (!currentDirFiles.includes("package.json")) {
+        filePath = ".." + path.sep + filePath;
+        dir = path.dirname(dir);
+        currentDirFiles = fs.readdirSync(dir);
+    }
+    return filePath;
 }

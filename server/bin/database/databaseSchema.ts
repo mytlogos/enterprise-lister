@@ -3,7 +3,7 @@ import {InvalidationType} from "./databaseTypes";
 import {TriggerEvent, TriggerTiming} from "./trigger";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder("enterprise", 1);
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 2);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")

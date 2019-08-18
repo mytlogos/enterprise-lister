@@ -8,6 +8,8 @@ const crypto_2 = tslib_1.__importDefault(require("crypto"));
 //  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 const bcrypt_nodejs_1 = tslib_1.__importDefault(require("bcrypt-nodejs"));
 const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
+const fs = tslib_1.__importStar(require("fs"));
+const path = tslib_1.__importStar(require("path"));
 function remove(array, item) {
     const index = array.indexOf(item);
     if (index < 0) {
@@ -402,4 +404,22 @@ function ignore() {
     return undefined;
 }
 exports.ignore = ignore;
+/**
+ * Searches for a project directory by searching  current working directory
+ * and all its parent directories for a package.json.
+ *
+ * Relativize the path of file to project dir.
+ */
+function findProjectDirPath(file) {
+    let dir = process.cwd();
+    let filePath = file;
+    let currentDirFiles = fs.readdirSync(dir);
+    while (!currentDirFiles.includes("package.json")) {
+        filePath = ".." + path.sep + filePath;
+        dir = path.dirname(dir);
+        currentDirFiles = fs.readdirSync(dir);
+    }
+    return filePath;
+}
+exports.findProjectDirPath = findProjectDirPath;
 //# sourceMappingURL=tools.js.map

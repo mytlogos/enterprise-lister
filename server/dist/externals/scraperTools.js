@@ -693,7 +693,8 @@ async function downloadEpisodes(episodes) {
             continue;
         }
         const downloadValue = downloadContents.get(indexKey);
-        if (downloadValue && downloadValue.content) {
+        if (downloadValue && downloadValue.content.length) {
+            logger_1.default.warn(`downloaded episode with index: ${indexKey} and id ${episode.id} already`);
             continue;
         }
         let downloadedContent;
@@ -702,6 +703,10 @@ async function downloadEpisodes(episodes) {
         while (!downloadedContent && releaseIndex !== episode.releases.length) {
             let downloaderEntry;
             const release = episode.releases[releaseIndex];
+            if (release.locked) {
+                releaseIndex++;
+                continue;
+            }
             for (; downloaderIndex < entries.length; downloaderIndex++) {
                 const entry = entries[downloaderIndex];
                 if (entry[0].test(release.url)) {
@@ -714,9 +719,36 @@ async function downloadEpisodes(episodes) {
                 releaseIndex++;
                 continue;
             }
-            let episodeContents = await downloaderEntry[1](release.url);
+            let episodeContents;
+            try {
+                episodeContents = await downloaderEntry[1](release.url);
+            }
+            catch (e) {
+                if (e.statusCode && (e.statusCode === 410 || e.statusCode === 404)) {
+                    database_1.Storage.deleteRelease(release).catch(logger_1.logError);
+                }
+                else {
+                    logger_1.logError(e);
+                }
+                downloaderIndex = 0;
+                releaseIndex++;
+                continue;
+            }
             episodeContents = episodeContents.filter((value) => value.content.length && value.content.every((s) => s));
-            if (episodeContents.length && episodeContents[0].content.length) {
+            if (!episodeContents.length) {
+                downloaderIndex = 0;
+                releaseIndex++;
+                continue;
+            }
+            const content = episodeContents[0];
+            if (content.locked) {
+                release.locked = true;
+                database_1.Storage.updateRelease(release).catch(logger_1.logError);
+                downloaderIndex = 0;
+                releaseIndex++;
+                continue;
+            }
+            if (content.content.length) {
                 downloadedContent = episodeContents;
                 break;
             }

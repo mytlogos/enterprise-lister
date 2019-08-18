@@ -165,6 +165,8 @@ function start(): void {
 }
 
 export interface Storage {
+    deleteRelease(release: EpisodeRelease): Promise<void>;
+
     getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
 
     getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
@@ -358,6 +360,8 @@ export interface Storage {
     getEpisode(id: number, uuid: string): Promise<Episode>;
 
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
+
+    getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]>;
 
     getExternalUser(uuid: string): Promise<ExternalUser>;
 
@@ -759,6 +763,10 @@ export const Storage: Storage = {
         return inContext((context) => context.getEpisode(id, uuid));
     },
 
+    getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]> {
+        return inContext((context) => context.getReleases(episodeId));
+    },
+
     /**
      *
      */
@@ -796,6 +804,11 @@ export const Storage: Storage = {
         Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
     },
+
+    deleteRelease(release: EpisodeRelease): Promise<void> {
+        return inContext((context) => context.deleteRelease(release));
+    },
+
 
     getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]> {
         return inContext((context) => context.getEpisodeLinks(episodeIds));

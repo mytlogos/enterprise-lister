@@ -2,7 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const dotenv_1 = tslib_1.__importDefault(require("dotenv"));
-const config = dotenv_1.default.config({ path: "env.env" });
+const tools_1 = require("./tools");
+const envPath = tools_1.findProjectDirPath("env.env");
+const config = dotenv_1.default.config({ path: envPath });
 if (config.error) {
     throw config.error;
 }

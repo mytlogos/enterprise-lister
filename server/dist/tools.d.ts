@@ -80,4 +80,11 @@ export declare function separateIndex(value: number): {
     partialIndex?: number;
 };
 export declare function ignore(): undefined;
+/**
+ * Searches for a project directory by searching  current working directory
+ * and all its parent directories for a package.json.
+ *
+ * Relativize the path of file to project dir.
+ */
+export declare function findProjectDirPath(file: string): string;
 export {};

@@ -12,7 +12,8 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
 }
 
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
-    if (!urlString.match(/http:\/\/novelfull\.com\/.+\/chapter-.+/)) {
+    if (!urlString.match(/^http:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
+        logger.warn("invalid chapter link for novelFull: " + urlString);
         return [];
     }
 
@@ -27,6 +28,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     const content = directContentElement.html();
 
     if (!content) {
+        logger.warn("no content on novelFull for " + urlString);
         return [];
     }
 
@@ -66,7 +68,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         if (!toc.title) {
             toc.title = tocSnippet.title;
         } else if (tocSnippet.title && tocSnippet.title !== toc.title) {
-            logger.warn(`Mismatched Title on Toc Pages on novelFull: '${toc.title}' and '${tocSnippet.title}'`);
+            logger.warn(`Mismatched Title on Toc Pages on novelFull: '${toc.title}' and '${tocSnippet.title}': ` + tocLink);
             return [];
         }
         if (!toc.content) {
@@ -117,7 +119,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
         const regexResult = titleRegex.exec(episodeTitle);
 
         if (!regexResult) {
-            logger.warn(`changed title format on novelFull: '${episodeTitle}'`);
+            logger.warn(`changed title format on novelFull: '${episodeTitle}': ` + uri);
             continue;
         }
         const partIndices = extractIndices(regexResult, 3, 4, 6);
@@ -191,7 +193,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
         const date = relativeToAbsoluteTime(timeStampElement.text().trim());
 
         if (!date || date > new Date()) {
-            logger.warn(`changed time format on novelFull: '${date}' from '${timeStampElement.text().trim()}'`);
+            logger.warn(`changed time format on novelFull: '${date}' from '${timeStampElement.text().trim()}': news`);
             continue;
         }
         let regexResult: string[] | null = titleRegex.exec(episodeTitle);
@@ -207,7 +209,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
 
             if (!abbrev || !match) {
                 if (!episodeTitle.startsWith("Side")) {
-                    logger.warn(`changed title format on novelFull: '${episodeTitle}'`);
+                    logger.warn(`changed title format on novelFull: '${episodeTitle}': news`);
                 }
                 continue;
             }
@@ -221,7 +223,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
         const episodeIndices = extractIndices(regexResult, 4, 5, 7);
 
         if (!episodeIndices) {
-            logger.warn(`changed title format on novelFull: '${episodeTitle}'`);
+            logger.warn(`changed title format on novelFull: '${episodeTitle}': news`);
             continue;
         }
         episodeNews.push({
@@ -246,6 +248,7 @@ newsAdapter.link = "http://novelfull.com";
 
 export function getHook(): Hook {
     return {
+        name: "novelfull",
         domainReg: /https?:\/\/novelfull\.com/,
         contentDownloadAdapter,
         tocAdapter,

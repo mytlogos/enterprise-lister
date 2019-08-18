@@ -131,7 +131,7 @@ class QueryContext {
         return this.query(`CREATE TABLE ${promise_mysql_1.default.escapeId(table)} (${columns.join(", ")});`);
     }
     addColumn(tableName, columnDefinition) {
-        return this.query(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnDefinition};`);
+        return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`);
     }
     alterColumn(tableName, columnDefinition) {
         return this.query(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnDefinition};`);
@@ -140,12 +140,12 @@ class QueryContext {
         columns = columns.map((value) => promise_mysql_1.default.escapeId(value));
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this.query(`CREATE UNIQUE INDEX IF NOT EXISTS ${index} ON ${table} (${columns.join(", ")});`);
+        return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`);
     }
     dropIndex(tableName, indexName) {
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`);
+        return this.query(`DROP INDEX ${index} ON ${table};`);
     }
     addForeignKey(tableName, constraintName, column, referencedTable, referencedColumn, onDelete, onUpdate) {
         const index = promise_mysql_1.default.escapeId(column);
@@ -153,7 +153,7 @@ class QueryContext {
         const refTable = promise_mysql_1.default.escapeId(referencedTable);
         const refColumn = promise_mysql_1.default.escapeId(referencedColumn);
         const name = promise_mysql_1.default.escapeId(constraintName);
-        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF NOT EXISTS ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
         if (onDelete) {
             query += " ON DELETE " + onDelete;
         }
@@ -527,6 +527,7 @@ class QueryContext {
                 episodeId: value.episode_id,
                 sourceType: value.source_type,
                 releaseDate: value.releaseDate,
+                locked: !!value.locked,
                 url: value.url,
                 title: value.title
             };
@@ -714,6 +715,9 @@ class QueryContext {
         }
         if (listId) {
             await this.addItemToList(false, { id, listId });
+        }
+        if (medium.link) {
+            this.addToc(id, medium.link);
         }
         await this.deleteMediaInWait(toDeleteMediaInWaits);
         const parts = await this.getMediumParts(id);
@@ -1034,7 +1038,7 @@ class QueryContext {
     }
     async addRelease(releases) {
         await this._multiInsert("INSERT IGNORE INTO episode_release " +
-            "(episode_id, title, url, source_type, releaseDate) " +
+            "(episode_id, title, url, source_type, releaseDate, locked) " +
             "VALUES", releases, (release) => {
             if (!release.episodeId) {
                 throw Error("missing episodeId on release");
@@ -1044,7 +1048,8 @@ class QueryContext {
                 release.title,
                 release.url,
                 release.sourceType,
-                release.releaseDate
+                release.releaseDate,
+                release.locked
             ];
         });
         return releases;
@@ -1085,11 +1090,24 @@ class QueryContext {
                         updates.push("source_type=?");
                         values.push(value.sourceType);
                     }
+                    if (value.locked != null) {
+                        updates.push("locked=?");
+                        values.push(value.locked);
+                    }
                 });
             }
             else if (value.sourceType) {
                 await this.query("UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?", [value.url, value.sourceType, value.url, value.title]);
             }
+        }).then(tools_1.ignore);
+    }
+    deleteRelease(release) {
+        return this._delete("episode_release", {
+            column: "episode_id",
+            value: release.episodeId
+        }, {
+            column: "url",
+            value: release.url
         }).then(tools_1.ignore);
     }
     async getEpisodeContentData(chapterLink) {
@@ -2136,7 +2154,7 @@ class QueryContext {
                 mediumId: value.medium_id,
                 partId: value.part_id,
                 episodeId: value.episode_id,
-                userUuid: value.user_uuid,
+                userUuid: !!value.user_uuid,
                 listId: value.list_id,
                 newsId: value.news_id,
                 uuid,

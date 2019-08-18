@@ -150,7 +150,7 @@ async function scrapeToc(urlString) {
         const titleString = tools_1.sanitizeString(titleElement.text());
         const episodeGroups = chapReg.exec(titleString);
         if (Number.isNaN(date.getDate()) || !episodeGroups) {
-            logger_1.default.warn("changed episode format on kissAnime toc");
+            logger_1.default.warn("changed episode format on kissAnime toc " + urlString);
             return [];
         }
         const link = url.resolve(uri, titleElement.attr("href"));
@@ -184,6 +184,7 @@ async function scrapeToc(urlString) {
 scrapeNews.link = "https://kissanime.ru/";
 function getHook() {
     return {
+        name: "kissanime",
         domainReg: /^https?:\/\/kissanime\.ru/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc

@@ -9,6 +9,7 @@ declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
  */
 export declare function inContext<T>(callback: ContextCallback<T>, transaction?: boolean): Promise<T>;
 export interface Storage {
+    deleteRelease(release: EpisodeRelease): Promise<void>;
     getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
     getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
     getPageInfo(link: string, key: string): Promise<{
@@ -138,6 +139,7 @@ export interface Storage {
     getMediumEpisodePerIndex(mediumId: number, index: number): Promise<SimpleEpisode>;
     getEpisode(id: number, uuid: string): Promise<Episode>;
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
+    getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]>;
     getExternalUser(uuid: string): Promise<ExternalUser>;
     deleteExternalUser(externalUuid: string, uuid?: string): Promise<boolean>;
     register(userName: string, password: string, ip: string): Promise<User>;
