@@ -165,7 +165,7 @@ async function scrapeContent(urlString) {
     return [episodeContent];
 }
 async function searchToc(searchMedium) {
-    console.log("start scraping webnovel " + searchMedium.mediumId);
+    console.log("start searching webnovel " + searchMedium.mediumId);
     const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(searchMedium.title);
     const body = await loadBody(urlString);
     const titles = body("body > div.page  ul[class*=result] > li > h3 > a");
@@ -235,9 +235,11 @@ async function searchToc(searchMedium) {
     };
 }
 scrapeNews.link = "https://www.webnovel.com/";
+searchToc.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "webnovel",
+        medium: tools_1.MediaType.TEXT,
         domainReg: /^https:\/\/(www\.)?webnovel\.com/,
         // tslint:disable-next-line:max-line-length
         tocPattern: /^https:\/\/(paste\.tech-port\.de)|(priv\.atebin\.com)|(paste\.fizi\.ca)|(privatebin\.secured\.fi)\/$/,

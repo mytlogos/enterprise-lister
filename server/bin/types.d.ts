@@ -29,6 +29,7 @@ export interface TocSearchMedium {
     mediumId: number;
     hosts?: string[];
     title: string;
+    medium: MediaType;
     synonyms: string[];
 }
 
@@ -212,4 +213,8 @@ export interface Invalidation {
     newsId?: number;
 }
 
-export type EpisodeContentData = { episodeTitle: string; index: number; mediumTitle: string; };
+export interface EpisodeContentData {
+    episodeTitle: string;
+    index: number;
+    mediumTitle: string;
+}

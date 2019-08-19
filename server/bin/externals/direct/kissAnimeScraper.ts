@@ -216,6 +216,7 @@ scrapeNews.link = "https://kissanime.ru/";
 export function getHook(): Hook {
     return {
         name: "kissanime",
+        medium: MediaType.VIDEO,
         domainReg: /^https?:\/\/kissanime\.ru/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc

@@ -6,6 +6,7 @@ import {
     combiIndex,
     delay,
     getElseSet,
+    hasMediaType,
     ignore,
     max,
     maxValue,
@@ -358,34 +359,45 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
     }
 
     const searchJobs: ScraperJob[] = [];
-    if (tocSearch && tocSearch.hosts && tocSearch.hosts.length) {
-        for (const link of tocSearch.hosts) {
+    if (tocSearch) {
+        for (const entry of tocDiscovery.entries()) {
+            const [reg, searcher] = entry;
+            let search = false;
 
-            for (const entry of tocDiscovery.entries()) {
-                const [reg, searcher] = entry;
-
-                if (!consumed.includes(reg) && reg.test(link)) {
-                    searchJobs.push({
-                        type: "onetime_emittable",
-                        key: "toc",
-                        item: tocSearch,
-                        cb: async (item) => {
-                            console.log("scraping one time: " + item);
-                            const newToc = await searcher(item);
-                            const tocs = [];
-
-                            if (newToc) {
-                                newToc.mediumId = id;
-                                tocs.push(newToc);
-                            }
-                            return {tocs};
-                        }
-                    } as OneTimeEmittableJob);
-                    consumed.push(reg);
-                    break;
+            if (tocSearch.hosts) {
+                for (const link of tocSearch.hosts) {
+                    if (!consumed.includes(reg) && reg.test(link)) {
+                        search = true;
+                        consumed.push(reg);
+                        break;
+                    }
                 }
             }
+            // don't search blind for tocs if there are at least one there
+            if (!search && (!hasMediaType(searcher.medium, tocSearch.medium) || availableTocs && availableTocs.length)) {
+                continue;
+            }
+            searchJobs.push({
+                type: "onetime_emittable",
+                key: "toc",
+                item: tocSearch,
+                cb: async (item) => {
+                    console.log("searching: " + (item && item.title));
+                    const newToc = await searcher(item);
+                    const tocs = [];
+
+                    if (newToc) {
+                        newToc.mediumId = id;
+                        tocs.push(newToc);
+                    }
+                    return {tocs};
+                }
+            } as OneTimeEmittableJob);
         }
+    }
+    if (!searchJobs.length && !scraperJobs.length) {
+        console.log("did not find anything for: " + id, tocSearch);
+        return undefined;
     }
     for (let i = 0; i < searchJobs.length; i++) {
         const job = searchJobs[i];
@@ -409,7 +421,7 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
         const previousJob = scraperJobs[i - 1];
         previousJob.onDone = () => job;
     }
-    return searchJobs.length ? searchJobs[0] : scraperJobs[0];
+    return searchJobs[0];
 }
 
 export const checkTocs = async (): Promise<ScraperJob[]> => {

@@ -241,8 +241,13 @@ exports.putListMedium = (req, res) => {
     sendResult(res, database_1.Storage.moveMedium(oldListId, newListId, mediumId, uuid));
 };
 exports.deleteListMedium = (req, res) => {
-    const { listId, mediumId, uuid } = req.body;
-    if (!listId || !mediumId) {
+    const { listId, uuid } = req.body;
+    let { mediumId } = req.body;
+    // if it is a string, it is likely a list of episodeIds was send
+    if (tools_1.isString(mediumId)) {
+        mediumId = tools_1.stringToNumberList(mediumId);
+    }
+    if (!listId || !mediumId || (Array.isArray(mediumId) && !mediumId.length)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -298,7 +303,7 @@ exports.getEpisode = (req, res) => {
     if (tools_1.isString(episodeId)) {
         episodeId = tools_1.stringToNumberList(episodeId);
     }
-    if (!episodeId) {
+    if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }

@@ -103,6 +103,9 @@ async function scrapeNews() {
     return { episodes: episodeNews, news };
 }
 async function scrapeToc(urlString) {
+    if (urlString.endsWith("-preview")) {
+        return [];
+    }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".content");
     const novelTitle = tools_1.sanitizeString(contentElement.find("h4").first().text());
@@ -242,9 +245,14 @@ async function scrapeContent(urlString) {
 async function tocSearcher(medium) {
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
-    for (let wordsCount = 1; wordsCount <= words.length; wordsCount++) {
-        const word = encodeURIComponent(words[0]);
-        const responseJson = await queueManager_1.queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + word);
+    let searchWord = "";
+    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
+        const word = encodeURIComponent(words[wordsCount]);
+        if (!word) {
+            continue;
+        }
+        searchWord += " " + word;
+        const responseJson = await queueManager_1.queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + searchWord);
         const parsed = JSON.parse(responseJson);
         if (parsed.result && parsed.items && parsed.items.length) {
             const foundItem = parsed.items.find((value) => tools_1.equalsIgnore(value.name, medium.title)
@@ -267,9 +275,11 @@ async function tocSearcher(medium) {
     }
 }
 scrapeNews.link = "https://www.wuxiaworld.com/";
+tocSearcher.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "wuxiaworld",
+        medium: tools_1.MediaType.TEXT,
         domainReg: /^https:\/\/(www\.)?wuxiaworld\.com/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,

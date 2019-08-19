@@ -279,31 +279,43 @@ function searchToc(id, tocSearch, availableTocs) {
         }
     }
     const searchJobs = [];
-    if (tocSearch && tocSearch.hosts && tocSearch.hosts.length) {
-        for (const link of tocSearch.hosts) {
-            for (const entry of tocDiscovery.entries()) {
-                const [reg, searcher] = entry;
-                if (!consumed.includes(reg) && reg.test(link)) {
-                    searchJobs.push({
-                        type: "onetime_emittable",
-                        key: "toc",
-                        item: tocSearch,
-                        cb: async (item) => {
-                            console.log("scraping one time: " + item);
-                            const newToc = await searcher(item);
-                            const tocs = [];
-                            if (newToc) {
-                                newToc.mediumId = id;
-                                tocs.push(newToc);
-                            }
-                            return { tocs };
-                        }
-                    });
-                    consumed.push(reg);
-                    break;
+    if (tocSearch) {
+        for (const entry of tocDiscovery.entries()) {
+            const [reg, searcher] = entry;
+            let search = false;
+            if (tocSearch.hosts) {
+                for (const link of tocSearch.hosts) {
+                    if (!consumed.includes(reg) && reg.test(link)) {
+                        search = true;
+                        consumed.push(reg);
+                        break;
+                    }
                 }
             }
+            // don't search blind for tocs if there are at least one there
+            if (!search && (!tools_1.hasMediaType(searcher.medium, tocSearch.medium) || availableTocs && availableTocs.length)) {
+                continue;
+            }
+            searchJobs.push({
+                type: "onetime_emittable",
+                key: "toc",
+                item: tocSearch,
+                cb: async (item) => {
+                    console.log("searching: " + (item && item.title));
+                    const newToc = await searcher(item);
+                    const tocs = [];
+                    if (newToc) {
+                        newToc.mediumId = id;
+                        tocs.push(newToc);
+                    }
+                    return { tocs };
+                }
+            });
         }
+    }
+    if (!searchJobs.length && !scraperJobs.length) {
+        console.log("did not find anything for: " + id, tocSearch);
+        return undefined;
     }
     for (let i = 0; i < searchJobs.length; i++) {
         const job = searchJobs[i];
@@ -325,7 +337,7 @@ function searchToc(id, tocSearch, availableTocs) {
         const previousJob = scraperJobs[i - 1];
         previousJob.onDone = () => job;
     }
-    return searchJobs.length ? searchJobs[0] : scraperJobs[0];
+    return searchJobs[0];
 }
 exports.checkTocs = async () => {
     const mediaTocs = await database_1.Storage.getAllTocs();

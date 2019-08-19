@@ -195,6 +195,7 @@ scrapeNews.link = "https://toc.qidianunderground.org/";
 function getHook() {
     return {
         name: "qidianunderground",
+        medium: tools_1.MediaType.TEXT,
         domainReg: /^https:\/\/toc\.qidianunderground\.org/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter: scrapeContent

@@ -30,37 +30,15 @@ export interface PeriodicJob extends ScraperJob {
     cb: JobCallback;
 }
 
-export interface ScrapeNewsChapter {
-    mediumTitle: string;
-    mediumLink: string;
-    type: MediaType;
-    allowedParts?: number;
-    standardPartOnly?: boolean;
-    partTitle?: string;
-    sourceType: string;
-    date: Date;
-    episodeLink: string;
-    episodeTitle: string;
-    episodeTotalIndex: number;
-    episodePartialIndex?: number;
-    partTotalIndex?: number;
-    partPartialIndex?: number;
-}
-
-export interface ScrapeNews extends News {
-    scrapeNewsChapter: ScrapeNewsChapter;
-}
-
 export interface Hook {
     name: string;
+    medium: MediaType;
     domainReg?: RegExp;
     tocPattern?: RegExp;
     redirectReg?: RegExp;
     newsAdapter?: NewsScraper[] | NewsScraper;
     tocAdapter?: TocScraper;
     tocSearchAdapter?: TocSearchScraper;
-    // TODO: 20.07.2019 do i need this?
-    contentAdapter?: ChapterMetaScraper;
     contentDownloadAdapter?: ContentDownloader;
 }
 
@@ -119,11 +97,6 @@ export interface EpisodeContent {
     locked?: boolean;
     content: string[];
 }
-
-export interface EpisodeMeta {
-    title: string;
-}
-
 export interface NewsScrapeResult {
     news?: News[];
     episodes?: EpisodeNews[];
@@ -136,7 +109,11 @@ export interface NewsScraper {
     link: string;
 }
 
+export interface TocSearchScraper {
+    (medium: TocSearchMedium): Promise<Toc | undefined>;
+
+    medium: MediaType;
+}
+
 export type TocScraper = (url: string) => Promise<Toc[]>;
-export type TocSearchScraper = (medium: TocSearchMedium) => Promise<Toc | undefined>;
-export type ChapterMetaScraper = (url: string) => Promise<EpisodeMeta[]>;
 export type ContentDownloader = (url: string) => Promise<EpisodeContent[]>;

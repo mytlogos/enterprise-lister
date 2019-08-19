@@ -146,6 +146,12 @@ export function equalsIgnore(s1: string, s2: string) {
     return s1.localeCompare(s2, undefined, {sensitivity: "base"}) === 0;
 }
 
+export function contains(s1: string, s2: string) {
+    s1 = s1.replace(apostrophe, "");
+    s2 = s2.replace(apostrophe, "");
+    return s1.toLocaleLowerCase().includes(s2.toLocaleLowerCase());
+}
+
 export function countOccurrence<T>(array: T[]): Map<T, number> {
     const occurrenceMap: Map<T, number> = new Map();
     for (const value of array) {
@@ -396,7 +402,11 @@ export enum MediaType {
     TEXT = 0x1,
     AUDIO = 0x2,
     VIDEO = 0x4,
-    IMAGE = 0x8
+    IMAGE = 0x8,
+}
+
+export function hasMediaType(container: MediaType, testFor: MediaType) {
+    return (container & testFor) === testFor;
 }
 
 export function allTypes() {

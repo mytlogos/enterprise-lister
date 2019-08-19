@@ -249,6 +249,7 @@ newsAdapter.link = "http://novelfull.com";
 export function getHook(): Hook {
     return {
         name: "novelfull",
+        medium: MediaType.TEXT,
         domainReg: /https?:\/\/novelfull\.com/,
         contentDownloadAdapter,
         tocAdapter,

@@ -40,7 +40,7 @@ export interface Storage {
     getProgress(uuid: string, episodeId: number): Promise<number>;
     moveMedium(oldListId: number, newListId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
-    removeMedium(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    removeMedium(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
     addNews(news: (News | News[])): Promise<News | Array<News | undefined> | undefined>;
     getScrapes(): Promise<ScrapeItem[]>;
     createStandardPart(mediumId: number): Promise<ShallowPart>;

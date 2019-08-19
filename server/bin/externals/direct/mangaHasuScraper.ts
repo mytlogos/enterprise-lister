@@ -1,9 +1,9 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News} from "../../types";
+import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {extractIndices, MediaType, sanitizeString} from "../../tools";
+import {contains, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
@@ -176,7 +176,6 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const endReg = /\[END]\s*$/i;
     const volChapReg = /Vol\.?\s*((\d+)(\.(\d+))?)\s*Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
     const chapReg = /Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
-    let hasVolumes;
 
     for (let i = 0; i < chapters.length; i++) {
         const chapterElement = chapters.eq(i);
@@ -196,17 +195,6 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         }
         const volChapGroups = volChapReg.exec(chapterTitle);
         const chapGroups = chapReg.exec(chapterTitle);
-
-        if (i && !hasVolumes && volChapGroups && !chapGroups) {
-            logger.warn("changed volume - chapter format on mangahasu toc: expected chapter, got volume " + urlString);
-        }
-
-        if (i && hasVolumes && chapGroups && !volChapGroups) {
-            logger.warn("changed volume - chapter format on mangahasu toc: expected volume, got chapter " + urlString);
-        }
-        if (!i && volChapGroups) {
-            hasVolumes = true;
-        }
 
         if (volChapGroups) {
             const volIndices = extractIndices(volChapGroups, 1, 2, 4);
@@ -290,14 +278,96 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     return [toc];
 }
 
+async function tocSearchAdapter(search: TocSearchMedium): Promise<Toc | undefined> {
+    console.log("searching for : " + search.title);
+
+    const words = search.title.split(/\s+/).filter((value) => value);
+    let tocLink = "";
+    let searchWords = "";
+    const uri = "http://mangahasu.se/";
+
+    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
+        const word = encodeURIComponent(words[wordsCount]);
+
+        if (!word) {
+            continue;
+        }
+        searchWords = searchWords ? searchWords + "+" + word : word;
+
+        if (searchWords.length < 4) {
+            continue;
+        }
+
+        const link = "http://mangahasu.se/advanced-search.html?keyword=" + searchWords;
+        const $ = await queueCheerioRequest(link);
+
+        const links = $("a.name-manga");
+
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+
+            const text = sanitizeString(linkElement.text());
+
+            if (equalsIgnore(text, search.title) || search.synonyms.some((s) => equalsIgnore(text, s))) {
+                tocLink = linkElement.attr("href");
+                tocLink = url.resolve(uri, tocLink);
+                break;
+            }
+        }
+
+        let tryMore = false;
+
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+
+            const text = sanitizeString(linkElement.text());
+
+            if (contains(text, searchWords) || search.synonyms.some((s) => contains(text, s))) {
+                tryMore = true;
+                break;
+            }
+        }
+        if (tocLink || !tryMore) {
+            break;
+        }
+    }
+    if (tocLink) {
+        const tocs = await scrapeToc(tocLink);
+        if (tocs && tocs.length) {
+            return tocs[0];
+        }
+    }
+    return;
+}
+
+async function scrapeSearch(searchWords: string) {
+    const urlString = "http://mangahasu.se/search/autosearch";
+
+    const body = "key=" + searchWords;
+    const $ = await queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "mangahasu.se",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+
+    return $("a.a-item");
+}
+
 scrapeNews.link = "http://mangahasu.se/";
+tocSearchAdapter.medium = MediaType.IMAGE;
 
 export function getHook(): Hook {
     return {
         name: "mangahasu",
+        medium: MediaType.IMAGE,
         domainReg: /^https?:\/\/mangahasu\.se/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter,
+        tocSearchAdapter,
         tocAdapter: scrapeToc
     };
 }

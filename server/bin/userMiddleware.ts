@@ -273,8 +273,14 @@ export const putListMedium: Handler = (req, res) => {
     sendResult(res, Storage.moveMedium(oldListId, newListId, mediumId, uuid));
 };
 export const deleteListMedium: Handler = (req, res) => {
-    const {listId, mediumId, uuid} = req.body;
-    if (!listId || !mediumId) {
+    const {listId, uuid} = req.body;
+    let {mediumId} = req.body;
+
+    // if it is a string, it is likely a list of episodeIds was send
+    if (isString(mediumId)) {
+        mediumId = stringToNumberList(mediumId);
+    }
+    if (!listId || !mediumId || (Array.isArray(mediumId) && !mediumId.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -331,7 +337,7 @@ export const getEpisode: Handler = (req, res) => {
     if (isString(episodeId)) {
         episodeId = stringToNumberList(episodeId);
     }
-    if (!episodeId) {
+    if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }

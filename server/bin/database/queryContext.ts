@@ -766,30 +766,34 @@ export class QueryContext {
     }
 
     public async getTocSearchMedia(): Promise<TocSearchMedium[]> {
-        const result: Array<{ host: string, mediumId: number, title: string }> = await this.query(
+        const result: Array<{ host?: string, mediumId: number, title: string, medium: number }> = await this.query(
             "SELECT substring(episode_release.url, 1, locate(\"/\",episode_release.url,9)) as host, " +
-            "part.medium_id as mediumId, medium.title " +
-            "FROM episode_release " +
-            "INNER JOIN episode ON episode_id=episode.id " +
-            "INNER JOIN part ON part_id=part.id " +
-            "INNER JOIN medium ON part.medium_id=medium.id " +
+            "medium.id as mediumId, medium.title, medium.medium " +
+            "FROM medium " +
+            "LEFT JOIN part ON part.medium_id=medium.id " +
+            "LEFT JOIN episode ON part_id=part.id " +
+            "LEFT JOIN episode_release ON episode_release.episode_id=episode.id " +
             "GROUP BY mediumId, host;"
         );
         const idMap = new Map<number, TocSearchMedium>();
         const tocSearchMedia = result.map((value) => {
             const medium = idMap.get(value.mediumId);
             if (medium) {
-                if (medium.hosts) {
+                if (medium.hosts && value.host) {
                     medium.hosts.push(value.host);
                 }
                 return false;
             }
-            const searchMedium = {
+            const searchMedium: TocSearchMedium = {
                 mediumId: value.mediumId,
-                hosts: [value.host],
+                hosts: [],
                 synonyms: [],
+                medium: value.medium,
                 title: value.title
             };
+            if (value.host && searchMedium.hosts) {
+                searchMedium.hosts.push(value.host);
+            }
             idMap.set(value.mediumId, searchMedium);
             return searchMedium;
         }).filter((value) => value) as any[] as TocSearchMedium[];
@@ -820,6 +824,7 @@ export class QueryContext {
 
         return {
             mediumId: result.id,
+            medium: result.medium,
             title: result.title,
             synonyms: (synonyms[0] && synonyms[0].synonym) as string[] || []
         };

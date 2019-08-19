@@ -134,6 +134,12 @@ function equalsIgnore(s1, s2) {
     return s1.localeCompare(s2, undefined, { sensitivity: "base" }) === 0;
 }
 exports.equalsIgnore = equalsIgnore;
+function contains(s1, s2) {
+    s1 = s1.replace(apostrophe, "");
+    s2 = s2.replace(apostrophe, "");
+    return s1.toLocaleLowerCase().includes(s2.toLocaleLowerCase());
+}
+exports.contains = contains;
 function countOccurrence(array) {
     const occurrenceMap = new Map();
     for (const value of array) {
@@ -351,6 +357,10 @@ var MediaType;
     MediaType[MediaType["VIDEO"] = 4] = "VIDEO";
     MediaType[MediaType["IMAGE"] = 8] = "IMAGE";
 })(MediaType = exports.MediaType || (exports.MediaType = {}));
+function hasMediaType(container, testFor) {
+    return (container & testFor) === testFor;
+}
+exports.hasMediaType = hasMediaType;
 function allTypes() {
     return Object.values(MediaType).reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
 }

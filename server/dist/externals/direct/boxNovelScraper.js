@@ -8,7 +8,81 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
+    const words = medium.title.split(/\s+/).filter((value) => value);
+    let tocLink = "";
+    let searchWords = "";
+    const uri = "https://boxnovel.com/";
+    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
+        const word = encodeURIComponent(words[wordsCount]);
+        if (!word) {
+            continue;
+        }
+        searchWords = searchWords ? searchWords + "+" + word : word;
+        if (searchWords.length < 4) {
+            continue;
+        }
+        const $ = await queueManager_1.queueCheerioRequest(`https://boxnovel.com/?s=${searchWords}&post_type=wp-manga`);
+        const links = $(".post-title a");
+        console.log(links.length + " possible matches for " + medium.mediumId);
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+            const text = tools_1.sanitizeString(linkElement.text());
+            if (tools_1.equalsIgnore(text, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
+                tocLink = linkElement.attr("href");
+                tocLink = url.resolve(uri, tocLink);
+                break;
+            }
+        }
+        let tryMore = false;
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+            const text = tools_1.sanitizeString(linkElement.text());
+            if (tools_1.contains(text, searchWords) || medium.synonyms.some((s) => tools_1.contains(text, s))) {
+                tryMore = true;
+                break;
+            }
+        }
+        if (tocLink || !tryMore) {
+            break;
+        }
+    }
+    if (tocLink) {
+        const tocs = await tocAdapter(tocLink);
+        if (tocs && tocs.length) {
+            return tocs[0];
+        }
+    }
     return;
+}
+async function searchAjax(searchWords, medium) {
+    const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
+    let response;
+    // TODO: 19.08.2019 this may work, forgot to set http method before
+    try {
+        const body = "action=wp-manga-search-mangatitle=" + searchWords;
+        response = await queueManager_1.queueRequest(urlString, {
+            url: urlString,
+            headers: {
+                "Content-Length": body.length,
+                "Accept": "*/*",
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            method: "POST",
+            body
+        });
+    }
+    catch (e) {
+        console.log(e);
+        return;
+    }
+    const parsed = JSON.parse(response);
+    if (parsed.success && parsed.data && parsed.data.length) {
+        const foundItem = parsed.data.find((value) => tools_1.equalsIgnore(value.title, medium.title)
+            || medium.synonyms.some((s) => tools_1.equalsIgnore(value.title, s)));
+        if (foundItem) {
+            return foundItem.url;
+        }
+    }
 }
 async function contentDownloadAdapter(urlString) {
     if (!urlString.match(/https:\/\/boxnovel\.com\/novel\/.+\/chapter-.+/)) {
@@ -191,12 +265,15 @@ async function newsAdapter() {
     return { episodes: episodeNews };
 }
 newsAdapter.link = "https://boxnovel.com";
+tocSearch.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "boxnovel",
+        medium: tools_1.MediaType.TEXT,
         domainReg: /https:\/\/boxnovel\.com/,
         contentDownloadAdapter,
         tocAdapter,
+        tocSearchAdapter: tocSearch,
         newsAdapter,
     };
 }

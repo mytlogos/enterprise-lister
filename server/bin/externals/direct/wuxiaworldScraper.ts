@@ -119,6 +119,9 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+    if (urlString.endsWith("-preview")) {
+        return [];
+    }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".content");
     const novelTitle = sanitizeString(contentElement.find("h4").first().text());
@@ -277,10 +280,16 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
 async function tocSearcher(medium: TocSearchMedium): Promise<Toc | undefined> {
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
+    let searchWord = "";
 
-    for (let wordsCount = 1; wordsCount <= words.length; wordsCount++) {
-        const word = encodeURIComponent(words[0]);
-        const responseJson = await queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + word);
+    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
+        const word = encodeURIComponent(words[wordsCount]);
+
+        if (!word) {
+            continue;
+        }
+        searchWord += " " + word;
+        const responseJson = await queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + searchWord);
         const parsed: NovelSearchResponse = JSON.parse(responseJson);
 
         if (parsed.result && parsed.items && parsed.items.length) {
@@ -325,10 +334,12 @@ interface NovelSearchItem {
 }
 
 scrapeNews.link = "https://www.wuxiaworld.com/";
+tocSearcher.medium = MediaType.TEXT;
 
 export function getHook(): Hook {
     return {
         name: "wuxiaworld",
+        medium: MediaType.TEXT,
         domainReg: /^https:\/\/(www\.)?wuxiaworld\.com/,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,

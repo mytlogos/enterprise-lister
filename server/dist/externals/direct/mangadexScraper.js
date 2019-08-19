@@ -269,6 +269,7 @@ scrapeNews.link = "https://mangadex.org/";
 function getHook() {
     return {
         name: "mangadex",
+        medium: tools_1.MediaType.IMAGE,
         domainReg: /^https?:\/\/mangadex\.org/,
         contentDownloadAdapter,
         newsAdapter: scrapeNews,

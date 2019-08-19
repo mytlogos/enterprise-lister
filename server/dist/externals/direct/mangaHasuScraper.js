@@ -152,7 +152,6 @@ async function scrapeToc(urlString) {
     const endReg = /\[END]\s*$/i;
     const volChapReg = /Vol\.?\s*((\d+)(\.(\d+))?)\s*Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
     const chapReg = /Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
-    let hasVolumes;
     for (let i = 0; i < chapters.length; i++) {
         const chapterElement = chapters.eq(i);
         const timeString = chapterElement.find(".date-updated").text().trim();
@@ -168,15 +167,6 @@ async function scrapeToc(urlString) {
         }
         const volChapGroups = volChapReg.exec(chapterTitle);
         const chapGroups = chapReg.exec(chapterTitle);
-        if (i && !hasVolumes && volChapGroups && !chapGroups) {
-            logger_1.default.warn("changed volume - chapter format on mangahasu toc: expected chapter, got volume " + urlString);
-        }
-        if (i && hasVolumes && chapGroups && !volChapGroups) {
-            logger_1.default.warn("changed volume - chapter format on mangahasu toc: expected volume, got chapter " + urlString);
-        }
-        if (!i && volChapGroups) {
-            hasVolumes = true;
-        }
         if (volChapGroups) {
             const volIndices = tools_1.extractIndices(volChapGroups, 1, 2, 4);
             if (!volIndices) {
@@ -248,13 +238,78 @@ async function scrapeToc(urlString) {
     toc.content.push(...chapterContents);
     return [toc];
 }
+async function tocSearchAdapter(search) {
+    console.log("searching for : " + search.title);
+    const words = search.title.split(/\s+/).filter((value) => value);
+    let tocLink = "";
+    let searchWords = "";
+    const uri = "http://mangahasu.se/";
+    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
+        const word = encodeURIComponent(words[wordsCount]);
+        if (!word) {
+            continue;
+        }
+        searchWords = searchWords ? searchWords + "+" + word : word;
+        if (searchWords.length < 4) {
+            continue;
+        }
+        const link = "http://mangahasu.se/advanced-search.html?keyword=" + searchWords;
+        const $ = await queueManager_1.queueCheerioRequest(link);
+        const links = $("a.name-manga");
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+            const text = tools_1.sanitizeString(linkElement.text());
+            if (tools_1.equalsIgnore(text, search.title) || search.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
+                tocLink = linkElement.attr("href");
+                tocLink = url.resolve(uri, tocLink);
+                break;
+            }
+        }
+        let tryMore = false;
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+            const text = tools_1.sanitizeString(linkElement.text());
+            if (tools_1.contains(text, searchWords) || search.synonyms.some((s) => tools_1.contains(text, s))) {
+                tryMore = true;
+                break;
+            }
+        }
+        if (tocLink || !tryMore) {
+            break;
+        }
+    }
+    if (tocLink) {
+        const tocs = await scrapeToc(tocLink);
+        if (tocs && tocs.length) {
+            return tocs[0];
+        }
+    }
+    return;
+}
+async function scrapeSearch(searchWords) {
+    const urlString = "http://mangahasu.se/search/autosearch";
+    const body = "key=" + searchWords;
+    const $ = await queueManager_1.queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "mangahasu.se",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    return $("a.a-item");
+}
 scrapeNews.link = "http://mangahasu.se/";
+tocSearchAdapter.medium = tools_1.MediaType.IMAGE;
 function getHook() {
     return {
         name: "mangahasu",
+        medium: tools_1.MediaType.IMAGE,
         domainReg: /^https?:\/\/mangahasu\.se/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter,
+        tocSearchAdapter,
         tocAdapter: scrapeToc
     };
 }

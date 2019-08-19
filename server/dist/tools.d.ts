@@ -17,6 +17,7 @@ export declare function isTocEpisode(tocContent: any): tocContent is TocEpisode;
 export declare function isTocPart(tocContent: any): tocContent is TocPart;
 export declare function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: number): boolean;
 export declare function equalsIgnore(s1: string, s2: string): boolean;
+export declare function contains(s1: string, s2: string): boolean;
 export declare function countOccurrence<T>(array: T[]): Map<T, number>;
 export declare type Predicate<T> = (value: T, index: number) => boolean;
 export declare function count<T>(array: T[], condition: Predicate<T>): number;
@@ -61,6 +62,7 @@ export declare enum MediaType {
     VIDEO = 4,
     IMAGE = 8
 }
+export declare function hasMediaType(container: MediaType, testFor: MediaType): boolean;
 export declare function allTypes(): any;
 export declare function combiIndex(value: {
     totalIndex: number;

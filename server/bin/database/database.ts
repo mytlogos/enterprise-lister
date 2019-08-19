@@ -210,7 +210,7 @@ export interface Storage {
 
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
 
-    removeMedium(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    removeMedium(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
 
     addNews(news: (News | News[])): Promise<News | Array<News | undefined> | undefined>;
 
@@ -851,7 +851,7 @@ export const Storage: Storage = {
     /**
      * Removes an item from a list.
      */
-    removeMedium(listId: number, mediumId: number, uuid?: string): Promise<boolean> {
+    removeMedium(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).removeMedium(listId, mediumId));
     },
 

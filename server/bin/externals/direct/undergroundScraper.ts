@@ -2,7 +2,6 @@ import {EpisodeContent, Hook} from "../types";
 import {EpisodeNews, EpisodeRelease, LikeMedium, MultiSingle, News, SimpleEpisode} from "../../types";
 import logger, {logError} from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
-import emojiStrip from "emoji-strip";
 import {Storage} from "../../database/database";
 import {max, MediaType, sanitizeString} from "../../tools";
 
@@ -233,6 +232,7 @@ scrapeNews.link = "https://toc.qidianunderground.org/";
 export function getHook(): Hook {
     return {
         name: "qidianunderground",
+        medium: MediaType.TEXT,
         domainReg: /^https:\/\/toc\.qidianunderground\.org/,
         newsAdapter: scrapeNews,
         contentDownloadAdapter: scrapeContent
