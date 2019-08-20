@@ -373,8 +373,7 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
                     }
                 }
             }
-            // don't search blind for tocs if there are at least one there
-            if (!search && (!hasMediaType(searcher.medium, tocSearch.medium) || availableTocs && availableTocs.length)) {
+            if (!search && (!hasMediaType(searcher.medium, tocSearch.medium) || !searcher.blindSearch)) {
                 continue;
             }
             searchJobs.push({

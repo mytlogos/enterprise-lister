@@ -40,7 +40,8 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         const mediumTitle = sanitizeString(newsRow.text());
 
-        const groups = titlePattern.exec(sanitizeString(span.text()));
+        const rawTitle = sanitizeString(span.text());
+        const groups = titlePattern.exec(rawTitle);
 
         if (!groups) {
             // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
@@ -48,20 +49,23 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             continue;
         }
 
-        let episodeIndex;
-        let episodeTotalIndex;
-        let episodePartialIndex;
+        let episodeIndices;
+
         let episodeTitle;
 
         if (groups[1]) {
             episodeTitle = sanitizeString(groups[1]);
-            episodeIndex = Number(groups[2]);
-            episodeTotalIndex = Number(groups[3]);
-            episodePartialIndex = Number(groups[5]) || undefined;
+            episodeIndices = extractIndices(groups, 2, 3, 5);
+
+            if (!episodeIndices) {
+                logger.info(`unknown news format on kissanime: ${episodeTitle}`);
+                continue;
+            }
         } else if (groups[6]) {
             episodeTitle = mediumTitle;
-            episodeIndex = episodeTotalIndex = 1;
+            episodeIndices = {total: 1, combi: 1};
         } else {
+            logger.info(`unknown news format on kissanime: ${rawTitle}`);
             continue;
         }
         news.push({
@@ -70,9 +74,9 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             mediumTocLink: link,
             mediumTitle,
             episodeTitle,
-            episodeIndex,
-            episodeTotalIndex,
-            episodePartialIndex,
+            episodeIndex: episodeIndices.combi,
+            episodeTotalIndex: episodeIndices.total,
+            episodePartialIndex: episodeIndices.fraction,
             date: new Date()
         });
     }

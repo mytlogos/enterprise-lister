@@ -166,13 +166,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const groups = titlePattern.exec(title);
 
         if (!groups) {
-            console.log(`Unknown News Format: '${title}' for '${currentMedium}'`);
+            console.log(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
             continue;
         }
 
-        let episodeIndex;
-        let episodeTotalIndex;
-        let episodePartialIndex;
+        let episodeIndices;
         let episodeTitle = "";
 
         if (groups[11]) {
@@ -180,41 +178,46 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         }
 
         if (groups[6]) {
-            episodeIndex = Number(groups[6]);
-            episodeTotalIndex = Number(groups[7]);
-            episodePartialIndex = Number(groups[9]) || undefined;
+            episodeIndices = extractIndices(groups, 6, 7, 9);
+
+            if (!episodeIndices) {
+                logger.info(`unknown news format on mangadex: ${title}`);
+                continue;
+            }
 
             if (episodeTitle) {
-                episodeTitle = `Ch. ${episodeIndex} - ` + episodeTitle;
+                episodeTitle = `Ch. ${episodeIndices.combi} - ` + episodeTitle;
             } else {
-                episodeTitle = `Ch. ${episodeIndex}`;
+                episodeTitle = `Ch. ${episodeIndices.combi}`;
             }
         } else {
-            logger.info(`unknown new format on mangadex: ${title}`);
+            logger.info(`unknown news format on mangadex: ${title}`);
             continue;
         }
-        let partIndex;
-        let partTotalIndex;
-        let partPartialIndex;
+        let partIndices;
         let partTitle;
 
         if (groups[2]) {
-            partIndex = Number(groups[2]);
-            partTitle = `Vol. ${partIndex}`;
-            partTotalIndex = Number(groups[3]);
-            partPartialIndex = Number(groups[5]) || undefined;
+            partIndices = extractIndices(groups, 2, 3, 5);
+
+            if (!partIndices) {
+                logger.info(`unknown news format on mangadex: ${title}`);
+                continue;
+            }
+
+            partTitle = `Vol. ${partIndices.combi}`;
         }
         episodeNews.push({
             mediumTitle: currentMedium,
             mediumTocLink: currentMediumLink,
             mediumType: MediaType.IMAGE,
             episodeTitle: title,
-            episodeIndex,
-            episodeTotalIndex,
-            episodePartialIndex,
-            partIndex,
-            partTotalIndex,
-            partPartialIndex,
+            episodeIndex: episodeIndices.combi,
+            episodeTotalIndex: episodeIndices.total,
+            episodePartialIndex: episodeIndices.fraction,
+            partIndex: partIndices ? partIndices.combi : undefined,
+            partTotalIndex: partIndices ? partIndices.total : undefined,
+            partPartialIndex: partIndices ? partIndices.fraction : undefined,
             link,
             date
         });

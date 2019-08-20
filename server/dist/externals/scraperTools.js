@@ -292,8 +292,7 @@ function searchToc(id, tocSearch, availableTocs) {
                     }
                 }
             }
-            // don't search blind for tocs if there are at least one there
-            if (!search && (!tools_1.hasMediaType(searcher.medium, tocSearch.medium) || availableTocs && availableTocs.length)) {
+            if (!search && (!tools_1.hasMediaType(searcher.medium, tocSearch.medium) || !searcher.blindSearch)) {
                 continue;
             }
             searchJobs.push({

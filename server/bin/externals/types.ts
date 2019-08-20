@@ -97,6 +97,7 @@ export interface EpisodeContent {
     locked?: boolean;
     content: string[];
 }
+
 export interface NewsScrapeResult {
     news?: News[];
     episodes?: EpisodeNews[];
@@ -113,6 +114,7 @@ export interface TocSearchScraper {
     (medium: TocSearchMedium): Promise<Toc | undefined>;
 
     medium: MediaType;
+    blindSearch?: boolean;
 }
 
 export type TocScraper = (url: string) => Promise<Toc[]>;

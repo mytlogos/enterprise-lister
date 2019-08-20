@@ -57,35 +57,17 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             regexResult[10] = match[3];
             regexResult[12] = match[5];
         }
-        let partIndex;
-        let partTotalIndex;
-        let partPartialIndex;
+        let partIndices;
 
-        if (regexResult[4]) {
-            partIndex = Number(regexResult[4]);
-
-            if (regexResult[5]) {
-                partTotalIndex = Number(regexResult[5]);
-            }
-            if (regexResult[7]) {
-                partPartialIndex = Number(regexResult[7]) || undefined;
-            }
+        if (regexResult[3]) {
+            partIndices = extractIndices(regexResult, 4, 5, 7);
         }
-        let episodeIndex;
-        let episodeTotalIndex;
-        let episodePartialIndex;
+        let episodeIndices;
 
         if (regexResult[9]) {
-            episodeIndex = Number(regexResult[9]);
-
-            if (regexResult[10]) {
-                episodeTotalIndex = Number(regexResult[10]);
-            }
-            if (regexResult[12]) {
-                episodePartialIndex = Number(regexResult[12]) || undefined;
-            }
+            episodeIndices = extractIndices(regexResult, 9, 10, 12);
         }
-        if (episodeIndex == null || episodeTotalIndex == null) {
+        if (episodeIndices == null || episodeIndices.total == null) {
             logger.warn("changed title format on wuxiaworld");
             return;
         }
@@ -93,12 +75,12 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             mediumTocLink: tocLink,
             mediumTitle,
             mediumType: MediaType.TEXT,
-            partIndex,
-            partTotalIndex,
-            partPartialIndex,
-            episodeTotalIndex,
-            episodePartialIndex,
-            episodeIndex,
+            partIndex: partIndices ? partIndices.total : undefined,
+            partTotalIndex: partIndices ? partIndices.total : undefined,
+            partPartialIndex: partIndices ? partIndices.total : undefined,
+            episodeTotalIndex: episodeIndices.total,
+            episodePartialIndex: episodeIndices.fraction,
+            episodeIndex: episodeIndices.combi,
             episodeTitle,
             link,
             date,

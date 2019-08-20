@@ -2,7 +2,7 @@ import {EpisodeContent, Hook, Toc, TocContent, TocEpisode} from "../types";
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
-import {contains, equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
 import {getTextContent} from "./directTools";
 import {checkTocContent} from "../scraperTools";
@@ -37,8 +37,10 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
         const $ = await queueCheerioRequest(`https://boxnovel.com/?s=${searchWords}&post_type=wp-manga`);
 
         const links = $(".post-title a");
-        console.log(links.length + " possible matches for " + medium.mediumId);
 
+        if (!links.length) {
+            break;
+        }
         for (let i = 0; i < links.length; i++) {
             const linkElement = links.eq(i);
 
@@ -51,27 +53,20 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
             }
         }
 
-        let tryMore = false;
-
-        for (let i = 0; i < links.length; i++) {
-            const linkElement = links.eq(i);
-
-            const text = sanitizeString(linkElement.text());
-
-            if (contains(text, searchWords) || medium.synonyms.some((s) => contains(text, s))) {
-                tryMore = true;
-                break;
-            }
-        }
-        if (tocLink || !tryMore) {
+        if (tocLink) {
             break;
         }
     }
     if (tocLink) {
         const tocs = await tocAdapter(tocLink);
+
         if (tocs && tocs.length) {
             return tocs[0];
+        } else {
+            console.log("a possible toc link could not be scraped: " + tocLink);
         }
+    } else {
+        console.log(`no toc link found on boxnovel for ${medium.mediumId}: '${medium.title}'`);
     }
     return;
 }
@@ -172,15 +167,16 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const content: TocContent[] = [];
     const items = $(".wp-manga-chapter");
 
-    const titleRegex = /ch(\.|apter)?\s*((\d+)(\.(\d+))?)/i;
-
+    const titleRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?\s*((\d+)(\.(\d+))?)/i;
+    const linkRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?-((\d+)(\.(\d+))?)/i;
+    let end;
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
 
         const titleElement = newsRow.find("a");
         const link = url.resolve(uri, titleElement.attr("href"));
 
-        const episodeTitle = sanitizeString(titleElement.text());
+        let episodeTitle = sanitizeString(titleElement.text());
 
         const timeStampElement = newsRow.find(".chapter-release-date");
         const dateString = timeStampElement.text().trim();
@@ -197,14 +193,39 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
             logger.warn("changed time format on boxNovel: " + tocLink);
             return [];
         }
-        const regexResult = titleRegex.exec(episodeTitle);
+        let regexResult = titleRegex.exec(episodeTitle);
 
         if (!regexResult) {
-            logger.warn("changed title format on boxNovel: " + tocLink);
-            return [];
+            regexResult = linkRegex.exec(link);
+
+            if (!regexResult) {
+                const lowerTitle = episodeTitle.toLowerCase();
+                // for now just skip all these extra chapters
+                if (lowerTitle.startsWith("extra")) {
+                    continue;
+                }
+                logger.warn("changed title format on boxNovel: " + tocLink);
+                return [];
+            }
+        } else if (regexResult.index) {
+            const titleIndices = extractIndices(regexResult, 2, 3, 5);
+            const linkRegexResult = linkRegex.exec(link);
+
+            if (linkRegexResult) {
+                const linkIndices = extractIndices(linkRegexResult, 2, 3, 5);
+
+                if (linkIndices && titleIndices && linkIndices.combi > titleIndices.combi) {
+                    regexResult = linkRegexResult;
+                    const partialIndexPart = linkIndices.fraction ? "." + linkIndices.fraction : "";
+                    episodeTitle = `Chapter ${linkIndices.total}${partialIndexPart} ${episodeTitle}`;
+                }
+            }
         }
         const episodeIndices = extractIndices(regexResult, 2, 3, 5);
 
+        if (episodeTitle.endsWith("(END)")) {
+            end = true;
+        }
 
         if (!episodeIndices) {
             throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
@@ -224,6 +245,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         link: tocLink,
         content,
         title: mediumTitle,
+        end,
         mediumType: MediaType.TEXT
     }];
 }
@@ -272,35 +294,27 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
                 logger.warn("changed title format on boxNovel: news");
                 return;
             }
-            let partIndex;
-            let partTotalIndex;
-            let partPartialIndex;
+            let partIndices;
 
             if (regexResult[3]) {
-                partIndex = Number(regexResult[3]);
+                partIndices = extractIndices(regexResult, 3, 4, 6);
 
-                if (regexResult[4]) {
-                    partTotalIndex = Number(regexResult[4]);
-                }
-                if (regexResult[6]) {
-                    partPartialIndex = Number(regexResult[6]) || undefined;
+                if (!partIndices) {
+                    logger.info(`unknown news format on boxnovel: ${episodeTitle}`);
+                    continue;
                 }
             }
-            let episodeIndex;
-            let episodeTotalIndex;
-            let episodePartialIndex;
+            let episodeIndices;
 
             if (regexResult[8]) {
-                episodeIndex = Number(regexResult[8]);
+                episodeIndices = extractIndices(regexResult, 8, 9, 11);
 
-                if (regexResult[9]) {
-                    episodeTotalIndex = Number(regexResult[9]);
-                }
-                if (regexResult[11]) {
-                    episodePartialIndex = Number(regexResult[11]) || undefined;
+                if (!episodeIndices) {
+                    logger.info(`unknown news format on boxnovel: ${episodeTitle}`);
+                    continue;
                 }
             }
-            if (episodeIndex == null || episodeTotalIndex == null) {
+            if (episodeIndices == null || episodeIndices.combi == null) {
                 logger.warn("changed title format on boxNovel: news");
                 return;
             }
@@ -308,12 +322,12 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
                 mediumTocLink: tocLink,
                 mediumTitle,
                 mediumType: MediaType.TEXT,
-                partIndex,
-                partTotalIndex,
-                partPartialIndex,
-                episodeTotalIndex,
-                episodePartialIndex,
-                episodeIndex,
+                partIndex: partIndices ? partIndices.combi : undefined,
+                partTotalIndex: partIndices ? partIndices.combi : undefined,
+                partPartialIndex: partIndices ? partIndices.combi : undefined,
+                episodeTotalIndex: episodeIndices.total,
+                episodePartialIndex: episodeIndices.fraction,
+                episodeIndex: episodeIndices.combi,
                 episodeTitle,
                 link,
                 date,
@@ -325,6 +339,8 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
 
 newsAdapter.link = "https://boxnovel.com";
 tocSearch.medium = MediaType.TEXT;
+tocSearch.blindSearch = true;
+
 
 export function getHook(): Hook {
     return {

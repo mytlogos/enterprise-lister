@@ -101,6 +101,7 @@ export interface NewsScraper {
 export interface TocSearchScraper {
     (medium: TocSearchMedium): Promise<Toc | undefined>;
     medium: MediaType;
+    blindSearch?: boolean;
 }
 export declare type TocScraper = (url: string) => Promise<Toc[]>;
 export declare type ContentDownloader = (url: string) => Promise<EpisodeContent[]>;

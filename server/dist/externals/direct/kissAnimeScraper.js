@@ -30,27 +30,29 @@ async function scrapeNews() {
         const span = newsRow.children("span").eq(0);
         span.remove();
         const mediumTitle = tools_1.sanitizeString(newsRow.text());
-        const groups = titlePattern.exec(tools_1.sanitizeString(span.text()));
+        const rawTitle = tools_1.sanitizeString(span.text());
+        const groups = titlePattern.exec(rawTitle);
         if (!groups) {
             // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
             console.log(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
             continue;
         }
-        let episodeIndex;
-        let episodeTotalIndex;
-        let episodePartialIndex;
+        let episodeIndices;
         let episodeTitle;
         if (groups[1]) {
             episodeTitle = tools_1.sanitizeString(groups[1]);
-            episodeIndex = Number(groups[2]);
-            episodeTotalIndex = Number(groups[3]);
-            episodePartialIndex = Number(groups[5]) || undefined;
+            episodeIndices = tools_1.extractIndices(groups, 2, 3, 5);
+            if (!episodeIndices) {
+                logger_1.default.info(`unknown news format on kissanime: ${episodeTitle}`);
+                continue;
+            }
         }
         else if (groups[6]) {
             episodeTitle = mediumTitle;
-            episodeIndex = episodeTotalIndex = 1;
+            episodeIndices = { total: 1, combi: 1 };
         }
         else {
+            logger_1.default.info(`unknown news format on kissanime: ${rawTitle}`);
             continue;
         }
         news.push({
@@ -59,9 +61,9 @@ async function scrapeNews() {
             mediumTocLink: link,
             mediumTitle,
             episodeTitle,
-            episodeIndex,
-            episodeTotalIndex,
-            episodePartialIndex,
+            episodeIndex: episodeIndices.combi,
+            episodeTotalIndex: episodeIndices.total,
+            episodePartialIndex: episodeIndices.fraction,
             date: new Date()
         });
     }
