@@ -69,7 +69,7 @@ export class SchemaManager {
             previousVersion = versionResult[0].version;
         }
 
-        const currentVersion = this.dataBaseVersion;
+        let currentVersion = this.dataBaseVersion;
         if (currentVersion === previousVersion) {
             return;
         } else if (currentVersion < previousVersion) {
@@ -99,7 +99,7 @@ export class SchemaManager {
                 throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
             }
         }
-        if (directMigration == null || !migrations.length || lastMigrationVersion !== currentVersion) {
+        if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
             throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
         }
         if (directMigration) {
