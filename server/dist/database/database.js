@@ -125,6 +125,7 @@ function start() {
         }
     }
 }
+// @ts-ignore
 exports.Storage = {
     /**
      * Closes the Storage.
@@ -268,7 +269,7 @@ exports.Storage = {
      * @return {Promise<SimpleMedium>}
      */
     addMedium(medium, uuid) {
-        return inContext((context) => context.setUuid(uuid).addMedium(medium, uuid));
+        return inContext((context) => context.addMedium(medium, uuid));
     },
     /**
      * Gets one or multiple media from the storage.
@@ -368,6 +369,7 @@ exports.Storage = {
     /**
      * Returns all parts of an medium with their episodes.
      */
+    // @ts-ignore
     getMediumParts(mediumId, uuid) {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
     },
@@ -429,8 +431,8 @@ exports.Storage = {
     updateEpisode(episode, uuid) {
         return inContext((context) => context.setUuid(uuid).updateEpisode(episode));
     },
-    moveEpisodeToPart(episodeId, partId) {
-        return inContext((context) => context.moveEpisodeToPart(episodeId, partId));
+    moveEpisodeToPart(oldPartId, episodeIndices, newPartId) {
+        return inContext((context) => context.moveEpisodeToPart(oldPartId, episodeIndices, newPartId));
     },
     /**
      * Gets an episode from the storage.
@@ -443,10 +445,14 @@ exports.Storage = {
     getReleases(episodeId) {
         return inContext((context) => context.getReleases(episodeId));
     },
+    getReleasesByHost(episodeId, host) {
+        return inContext((context) => context.getReleasesByHost(episodeId, host));
+    },
     /**
      *
      */
     getPartEpisodePerIndex(partId, index) {
+        // @ts-ignore
         return inContext((context) => context.getPartEpisodePerIndex(partId, index));
     },
     /**
@@ -491,6 +497,9 @@ exports.Storage = {
     },
     removePageInfo(link, key) {
         return inContext((context) => context.removePageInfo(link, key));
+    },
+    queueNewTocs() {
+        return inContext((context) => context.queueNewTocs());
     },
     /**
      * Adds a medium to a list.
@@ -674,6 +683,9 @@ exports.Storage = {
      */
     removeScrape(link, type) {
         return inContext((context) => context.removeScrape(link, type));
+    },
+    updateScrape(link, type, nextScrape) {
+        return inContext((context) => context.updateScrape(link, type, nextScrape));
     },
     /**
      *

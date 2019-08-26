@@ -65,31 +65,49 @@ async function scrapeToc(urlString) {
         return [];
     }
     const bookId = bookIdResult[2];
+    return scrapeTocPage(bookId);
+}
+async function scrapeTocPage(bookId, mediumId) {
     const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
     if (!csrfCookie) {
         logger_1.default.warn("csrf cookie not found for webnovel");
         return [];
     }
     const csrfValue = csrfCookie.value;
-    const link = `https://www.webnovel.com/apiajax/chapter/GetChapterList?bookId=${bookId[2]}&_csrfToken=${csrfValue}`;
-    const tocJson = await loadJson(link);
+    const tocLink = `https://www.webnovel.com/apiajax/chapter/GetChapterList?bookId=${bookId}&_csrfToken=${csrfValue}`;
+    const tocJson = await loadJson(tocLink);
     if (tocJson.code !== 0) {
-        logger_1.default.warn("WebNovel toc request was not successful for: " + urlString);
+        logger_1.default.warn("WebNovel toc request was not successful for: " + bookId);
         return [];
     }
+    if (!tocJson.data || !tocJson.data.volumeItems || !tocJson.data.volumeItems.length) {
+        logger_1.default.warn("no toc content on webnovel for " + bookId);
+        return [];
+    }
+    const idPattern = /^\d+$/;
     const content = tocJson.data.volumeItems.map((volume) => {
+        if (!volume.name) {
+            volume.name = "Volume " + volume.index;
+        }
         const name = volume.name;
         const chapters = volume.chapterItems.map((item) => {
             let date = new Date(item.createTime);
             if (Number.isNaN(date.getDate())) {
                 date = tools_1.relativeToAbsoluteTime(item.createTime) || new Date();
             }
+            if (!date) {
+                throw Error(`invalid date: '${item.createTime}'`);
+            }
+            if (!idPattern.test(item.id)) {
+                throw Error("invalid chapterId: " + item.id);
+            }
             const chapterContent = {
-                url: `https://www.webnovel.com/book/${bookIdResult}/${item.id}/`,
+                url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
                 title: item.name,
                 combiIndex: item.index,
                 totalIndex: item.index,
-                releaseDate: date
+                releaseDate: date,
+                locked: item.isVip !== 0
             };
             scraperTools_1.checkTocContent(chapterContent);
             return chapterContent;
@@ -104,7 +122,9 @@ async function scrapeToc(urlString) {
         return partContent;
     });
     const toc = {
-        link: urlString,
+        link: `https://www.webnovel.com/book/${bookId}/`,
+        synonyms: [tocJson.data.bookInfo.bookSubName],
+        mediumId,
         content,
         partsOnly: true,
         title: tocJson.data.bookInfo.bookName,
@@ -186,55 +206,12 @@ async function searchToc(searchMedium) {
     if (!idPattern.test(bookId)) {
         throw Error("invalid bookId");
     }
-    const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
-    if (!csrfCookie) {
-        return;
-    }
-    // TODO: 03.07.2019 get _csrfToken from defaultRequest cookies
-    const tocJson = await loadJson(`https://www.webnovel.com/apiajax/chapter/GetChapterList?_csrfToken=${csrfCookie.value}&bookId=${bookId}`);
-    if (!tocJson.data || !tocJson.data.volumeItems || !tocJson.data.volumeItems.length) {
-        return;
-    }
-    const parts = [];
-    for (const volumeItem of tocJson.data.volumeItems) {
-        if (!volumeItem.name) {
-            volumeItem.name = "Volume " + volumeItem.index;
-        }
-        const episodes = [];
-        parts.push({ totalIndex: volumeItem.index, title: volumeItem.name, combiIndex: volumeItem.index, episodes });
-        for (const chapterItem of volumeItem.chapterItems) {
-            const date = new Date(chapterItem.createTime);
-            const releaseDate = date.getTime() ? date : tools_1.relativeToAbsoluteTime(chapterItem.createTime);
-            if (!releaseDate) {
-                throw Error(`invalid date: '${chapterItem.createTime}'`);
-            }
-            if (!idPattern.test(chapterItem.id)) {
-                throw Error("invalid bookId");
-            }
-            const link = `https://www.webnovel.com/book/${bookId}/${chapterItem.id}/`;
-            const chapterContent = {
-                title: chapterItem.name,
-                combiIndex: chapterItem.index,
-                totalIndex: chapterItem.index,
-                releaseDate,
-                url: link
-            };
-            scraperTools_1.checkTocContent(chapterContent);
-            episodes.push(chapterContent);
-        }
-    }
+    const [toc] = await scrapeTocPage(bookId, searchMedium.mediumId);
     console.log("scraping toc on webnovel successfully " + searchMedium.mediumId);
-    return {
-        link: `https://www.webnovel.com/book/${bookId}/`,
-        synonyms: [tocJson.data.bookInfo.bookSubName],
-        content: parts,
-        title: tocJson.data.bookInfo.bookName,
-        mediumId: searchMedium.mediumId,
-        mediumType: tools_1.MediaType.TEXT,
-        partsOnly: true
-    };
+    return toc;
 }
 scrapeNews.link = "https://www.webnovel.com/";
+searchToc.link = "https://www.webnovel.com/";
 searchToc.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {

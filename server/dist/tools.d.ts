@@ -1,4 +1,4 @@
-import { MultiSingle } from "./types";
+import { EpisodeRelease, MultiSingle } from "./types";
 import { TocEpisode, TocPart } from "./externals/types";
 export declare function remove<T>(array: T[], item: T): boolean;
 export declare function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean;
@@ -28,6 +28,7 @@ export declare function minValue<T>(array: T[]): T | undefined;
 export declare function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined;
 export declare function relativeToAbsoluteTime(relative: string): Date | null;
 export declare function delay(timeout?: number): Promise<void>;
+export declare function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease): boolean;
 export declare function sanitizeString(s: string): string;
 export declare function isString(value: any): value is string;
 export declare function stringToNumberList(s: string): number[];

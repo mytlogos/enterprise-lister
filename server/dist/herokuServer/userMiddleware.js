@@ -48,7 +48,7 @@ exports.addBookmarked = (req, res) => {
     const protocol = /^https?:\/\//;
     if (bookmarked && bookmarked.length && bookmarked.every((link) => tools_1.isString(link) && protocol.test(link))) {
         const storePromise = database_1.Storage.addScrape(bookmarked.map((link) => {
-            return { type: scraperTools_1.ScrapeTypes.ONETIMETOC, link, userId: uuid };
+            return { type: scraperTools_1.ScrapeType.ONETIMETOC, link, userId: uuid };
         }));
         sendResult(res, storePromise);
     }
@@ -60,7 +60,7 @@ exports.addToc = (req, res) => {
     const { uuid, toc, mediumId } = req.body;
     const protocol = /^https?:\/\//;
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        const storePromise = database_1.Storage.addScrape({ type: scraperTools_1.ScrapeTypes.ONETIMETOC, link: toc, userId: uuid, mediumId });
+        const storePromise = database_1.Storage.addScrape({ type: scraperTools_1.ScrapeType.TOC, link: toc, userId: uuid, mediumId });
         sendResult(res, storePromise);
     }
     else {

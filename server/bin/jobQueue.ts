@@ -154,6 +154,7 @@ export class JobQueue {
         if (this.nextScheduling > 0 && this.nextScheduling < timeout) {
             return;
         }
+        timeout = timeout < 1000 ? 1000 : timeout;
         // FIXME: 25.07.2019 reschedules two times per second?
         this.nextScheduling = timeout;
         delay(timeout).then(() => {

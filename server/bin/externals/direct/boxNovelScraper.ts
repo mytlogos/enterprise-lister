@@ -4,7 +4,7 @@ import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
 import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent} from "./directTools";
+import {getTextContent, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 
 interface NovelSearchResponse {
@@ -18,63 +18,20 @@ interface NovelSearchData {
 }
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
-    const words = medium.title.split(/\s+/).filter((value) => value);
-    let tocLink = "";
-    let searchWords = "";
-    const uri = "https://boxnovel.com/";
-
-    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
-        const word = encodeURIComponent(words[wordsCount]);
-
-        if (!word) {
-            continue;
-        }
-        searchWords = searchWords ? searchWords + "+" + word : word;
-
-        if (searchWords.length < 4) {
-            continue;
-        }
-        const $ = await queueCheerioRequest(`https://boxnovel.com/?s=${searchWords}&post_type=wp-manga`);
-
-        const links = $(".post-title a");
-
-        if (!links.length) {
-            break;
-        }
-        for (let i = 0; i < links.length; i++) {
-            const linkElement = links.eq(i);
-
-            const text = sanitizeString(linkElement.text());
-
-            if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
-                tocLink = linkElement.attr("href");
-                tocLink = url.resolve(uri, tocLink);
-                break;
-            }
-        }
-
-        if (tocLink) {
-            break;
-        }
-    }
-    if (tocLink) {
-        const tocs = await tocAdapter(tocLink);
-
-        if (tocs && tocs.length) {
-            return tocs[0];
-        } else {
-            console.log("a possible toc link could not be scraped: " + tocLink);
-        }
-    } else {
-        console.log(`no toc link found on boxnovel for ${medium.mediumId}: '${medium.title}'`);
-    }
-    return;
+    return searchToc(
+        medium,
+        tocAdapter,
+        "https://boxnovel.com/",
+        (parameter) => `https://boxnovel.com/?s=${parameter}&post_type=wp-manga`,
+        ".post-title a"
+    );
 }
 
 async function searchAjax(searchWords: string, medium: TocSearchMedium) {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response: string;
     // TODO: 19.08.2019 this may work, forgot to set http method before
+    // TODO: 26.08.2019 this does not work for any reason
     try {
         const body = "action=wp-manga-search-mangatitle=" + searchWords;
         response = await queueRequest(urlString, {
@@ -338,6 +295,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
 }
 
 newsAdapter.link = "https://boxnovel.com";
+tocSearch.link = "https://boxnovel.com";
 tocSearch.medium = MediaType.TEXT;
 tocSearch.blindSearch = true;
 

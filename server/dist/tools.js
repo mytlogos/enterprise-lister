@@ -257,6 +257,18 @@ function delay(timeout = 1000) {
     });
 }
 exports.delay = delay;
+function equalsRelease(firstRelease, secondRelease) {
+    return (firstRelease === secondRelease)
+        || ((firstRelease && secondRelease)
+            && firstRelease.url === secondRelease.url
+            && firstRelease.episodeId === secondRelease.episodeId
+            && !!firstRelease.locked === !!secondRelease.locked
+            // tslint:disable-next-line:triple-equals
+            && firstRelease.sourceType == secondRelease.sourceType
+            && firstRelease.releaseDate.getTime() === secondRelease.releaseDate.getTime()
+            && firstRelease.title === secondRelease.title);
+}
+exports.equalsRelease = equalsRelease;
 function sanitizeString(s) {
     if (!s) {
         return s;

@@ -1,5 +1,5 @@
 import {MediaType} from "./tools";
-import {ScrapeTypes} from "./externals/scraperTools";
+import {ScrapeType} from "./externals/scraperTools";
 
 export interface SimpleMedium {
     id?: number;
@@ -40,7 +40,6 @@ export interface Part {
     totalIndex: number;
     partialIndex?: number;
     episodes: Episode[] | number[];
-
 }
 
 export interface FullPart extends Part {
@@ -140,6 +139,7 @@ export interface EpisodeNews {
     episodeIndex: number;
     episodeTotalIndex: number;
     episodePartialIndex?: number;
+    locked?: boolean;
     link: string;
     date: Date;
 }
@@ -151,8 +151,8 @@ export interface Synonyms {
 
 export interface ScrapeItem {
     link: string;
-    type: ScrapeTypes;
-    lastDate?: Date;
+    type: ScrapeType;
+    nextScrape?: Date;
     userId?: string;
     externalUserId?: string;
     mediumId?: number;

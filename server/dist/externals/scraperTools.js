@@ -171,6 +171,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                 title: value.episodeTitle,
                 url: value.link,
                 releaseDate: value.date,
+                locked: value.locked,
                 episodeId: 0,
             });
             return value.episodeIndex;
@@ -208,6 +209,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                     title: value.episodeTitle,
                     url: value.link,
                     releaseDate: value.date,
+                    locked: value.locked,
                     sourceType: undergroundScraper_1.sourceType,
                     episodeId: 0,
                 };
@@ -236,6 +238,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                     episodeId: 0,
                     releaseDate: value.date,
                     url: value.link,
+                    locked: value.locked,
                     title: value.episodeTitle
                 }
             ],
@@ -251,6 +254,34 @@ async function processMediumNews(title, type, tocLink, update = false, potential
         await database_1.Storage.addToc(mediumId, tocLink);
     }
 }
+async function searchForToc(item, searcher) {
+    const link = searcher.link;
+    if (!link) {
+        throw Error("TocSearcher of mediumType: " + item.medium + " has no link");
+    }
+    const pageInfoKey = "search" + item.mediumId;
+    const result = await database_1.Storage.getPageInfo(link, pageInfoKey);
+    const dates = result.values.map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getDate()));
+    const maxDate = tools_1.maxValue(dates);
+    if (maxDate && maxDate.toDateString() === new Date().toDateString()) {
+        // don't search on the same page the same medium twice in a day
+        return { tocs: [] };
+    }
+    let newToc;
+    try {
+        newToc = await searcher(item);
+    }
+    finally {
+        await database_1.Storage.updatePageInfo(link, pageInfoKey, [new Date().toDateString()], result.values);
+    }
+    const tocs = [];
+    if (newToc) {
+        newToc.mediumId = item.mediumId;
+        tocs.push(newToc);
+    }
+    return { tocs };
+}
+exports.searchForToc = searchForToc;
 function searchToc(id, tocSearch, availableTocs) {
     const consumed = [];
     const scraperJobs = [];
@@ -259,7 +290,7 @@ function searchToc(id, tocSearch, availableTocs) {
             for (const entry of tocScraper.entries()) {
                 const [reg, scraper] = entry;
                 if (!consumed.includes(reg) && reg.test(availableToc)) {
-                    scraperJobs.push({
+                    /*scraperJobs.push({
                         type: "onetime_emittable",
                         key: "toc",
                         item: availableToc,
@@ -269,9 +300,9 @@ function searchToc(id, tocSearch, availableTocs) {
                             if (tocs) {
                                 tocs.forEach((value) => value.mediumId = id);
                             }
-                            return { tocs };
+                            return {tocs};
                         }
-                    });
+                    } as OneTimeEmittableJob);*/
                     consumed.push(reg);
                     break;
                 }
@@ -299,16 +330,7 @@ function searchToc(id, tocSearch, availableTocs) {
                 type: "onetime_emittable",
                 key: "toc",
                 item: tocSearch,
-                cb: async (item) => {
-                    console.log("searching: " + (item && item.title));
-                    const newToc = await searcher(item);
-                    const tocs = [];
-                    if (newToc) {
-                        newToc.mediumId = id;
-                        tocs.push(newToc);
-                    }
-                    return { tocs };
-                }
+                cb: (item) => searchForToc(item, searcher)
             });
         }
     }
@@ -380,6 +402,9 @@ exports.checkTocs = async () => {
     const jobs = [newScraperJobs1, newScraperJobs2].flat(3);
     return jobs.filter((value) => value);
 };
+exports.queueTocs = async () => {
+    await database_1.Storage.queueNewTocs();
+};
 exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
     console.log("scraping one time toc: " + link);
     const path = url.parse(link).path;
@@ -430,8 +455,15 @@ exports.news = async (scrapeItem) => {
  * @return {Promise<void>}
  */
 exports.toc = async (value) => {
-    console.log("scraping toc: " + value);
+    const result = await exports.oneTimeToc(value);
+    if (!result.tocs.length) {
+        throw Error("could not find toc for: " + value);
+    }
     // todo implement toc scraping which requires page analyzing
+    return {
+        tocs: result.tocs,
+        uuid: value.uuid
+    };
 };
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
@@ -558,15 +590,16 @@ async function scrape(dependants = scrapeDependants, next = true) {
 // TODO: 21.06.2019 save cache in database?
 const cache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
 const errorCache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
-var ScrapeTypes;
-(function (ScrapeTypes) {
-    ScrapeTypes[ScrapeTypes["LIST"] = 0] = "LIST";
-    ScrapeTypes[ScrapeTypes["FEED"] = 1] = "FEED";
-    ScrapeTypes[ScrapeTypes["NEWS"] = 2] = "NEWS";
-    ScrapeTypes[ScrapeTypes["TOC"] = 3] = "TOC";
-    ScrapeTypes[ScrapeTypes["ONETIMEUSER"] = 4] = "ONETIMEUSER";
-    ScrapeTypes[ScrapeTypes["ONETIMETOC"] = 5] = "ONETIMETOC";
-})(ScrapeTypes = exports.ScrapeTypes || (exports.ScrapeTypes = {}));
+var ScrapeType;
+(function (ScrapeType) {
+    ScrapeType[ScrapeType["LIST"] = 0] = "LIST";
+    ScrapeType[ScrapeType["FEED"] = 1] = "FEED";
+    ScrapeType[ScrapeType["NEWS"] = 2] = "NEWS";
+    ScrapeType[ScrapeType["TOC"] = 3] = "TOC";
+    ScrapeType[ScrapeType["ONETIMEUSER"] = 4] = "ONETIMEUSER";
+    ScrapeType[ScrapeType["ONETIMETOC"] = 5] = "ONETIMETOC";
+    ScrapeType[ScrapeType["SEARCH"] = 6] = "SEARCH";
+})(ScrapeType = exports.ScrapeType || (exports.ScrapeType = {}));
 const eventMap = new Map();
 let scrapeDependants;
 /**
@@ -577,14 +610,14 @@ async function setup() {
     const scrapeBoard = await database_1.Storage.getScrapes();
     const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: [] };
     scrapeBoard.forEach((value) => {
-        if (value.type === ScrapeTypes.NEWS) {
+        if (value.type === ScrapeType.NEWS) {
             dependants.news.push(value);
         }
-        else if (value.type === ScrapeTypes.FEED) {
+        else if (value.type === ScrapeType.FEED) {
             dependants.feeds.push(value.link);
         }
-        else if (value.type === ScrapeTypes.TOC) {
-            dependants.tocs.push(value);
+        else if (value.type === ScrapeType.TOC) {
+            dependants.tocs.push({ mediumId: value.mediumId, url: value.link, uuid: value.userId });
         }
     });
     scrapeDependants = dependants;
@@ -745,24 +778,21 @@ async function downloadEpisodes(episodes) {
                 releaseIndex++;
                 continue;
             }
-            episodeContents = episodeContents.filter((value) => value.content.length && value.content.every((s) => s));
+            episodeContents = episodeContents.filter((value) => {
+                if (value.locked && value.index === tools_1.combiIndex(episode)) {
+                    release.locked = true;
+                    database_1.Storage.updateRelease(release).catch(logger_1.logError);
+                    return false;
+                }
+                return value.content.filter((s) => s).length;
+            });
             if (!episodeContents.length) {
                 downloaderIndex = 0;
                 releaseIndex++;
                 continue;
             }
-            const content = episodeContents[0];
-            if (content.locked) {
-                release.locked = true;
-                database_1.Storage.updateRelease(release).catch(logger_1.logError);
-                downloaderIndex = 0;
-                releaseIndex++;
-                continue;
-            }
-            if (content.content.length) {
-                downloadedContent = episodeContents;
-                break;
-            }
+            downloadedContent = episodeContents;
+            break;
         }
         if (!downloadedContent || !downloadedContent.length) {
             downloadContents.set(indexKey, {

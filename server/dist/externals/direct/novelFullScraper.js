@@ -8,7 +8,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
-    return;
+    return directTools_1.searchToc(medium, tocAdapter, "https://novelfull.com/", (parameter) => "http://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
 }
 async function contentDownloadAdapter(urlString) {
     if (!urlString.match(/^http:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
@@ -41,6 +41,9 @@ async function tocAdapter(tocLink) {
     tocLink = `http://novelfull.com/index.php/${linkMatch[1]}?page=`;
     for (let i = 1;; i++) {
         const $ = await queueManager_1.queueCheerioRequest(tocLink + i);
+        if ($(".info a[href=\"/status/Completed\"]").length) {
+            toc.end = true;
+        }
         const tocSnippet = await scrapeTocPage($, uri);
         if (!tocSnippet) {
             break;
@@ -143,7 +146,7 @@ async function newsAdapter() {
     const items = $("#list-index .list-new .row");
     const episodeNews = [];
     // some people just cant get it right to write 'Chapter' right so just allow a character error margin
-    const titleRegex = /((ch(\.|a?.?p?.?t?.?e?.?r?.?)?)|-)\s*((\d+)(\.(\d+))?)/i;
+    const titleRegex = /((ch(\.|a?.?p?.?t?.?e?.?r?.?)?)|-|^)\s*((\d+)(\.(\d+))?)/i;
     const abbrevTitleRegex = "|^)\\s*((\\d+)(\\.(\\d+))?)";
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
@@ -204,6 +207,9 @@ async function newsAdapter() {
     return { episodes: episodeNews };
 }
 newsAdapter.link = "http://novelfull.com";
+tocSearch.link = "http://novelfull.com";
+tocSearch.medium = tools_1.MediaType.TEXT;
+tocSearch.blindSearch = true;
 function getHook() {
     return {
         name: "novelfull",
@@ -212,6 +218,7 @@ function getHook() {
         contentDownloadAdapter,
         tocAdapter,
         newsAdapter,
+        tocSearchAdapter: tocSearch
     };
 }
 exports.getHook = getHook;

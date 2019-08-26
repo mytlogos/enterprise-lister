@@ -4,17 +4,19 @@ import {
     list,
     news,
     oneTimeToc,
+    queueTocs,
     scrapeNews,
     Scraper,
     ScraperHelper,
-    ScrapeTypes,
+    ScrapeType,
     toc
 } from "./scraperTools";
-import {Dependant, OneTimeEmittableJob, OneTimeToc, PeriodicEmittableJob, PeriodicJob, ScraperJob} from "./types";
+import {Dependant, OneTimeEmittableJob, PeriodicEmittableJob, PeriodicJob, ScraperJob, TocRequest} from "./types";
 import {Job, JobCallback, JobQueue} from "../jobQueue";
 import {multiSingle} from "../tools";
 import {Storage} from "../database/database";
 import {Counter} from "../counter";
+import {remapMediaParts} from "../crawlerStart";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -45,7 +47,14 @@ export class JobScraper implements Scraper {
         JobScraper.processDependant(
             dependant,
             "toc",
-            (value: any) => this.queuePeriodicEmittable("toc", HOUR, value, toc)
+            (value: any) => this.queueOneTimeEmittable(
+                "toc",
+                value,
+                // what if it can't execute for an whole hour?
+                (item: TocRequest) => toc(item).finally(
+                    () => Storage.updateScrape(item.url, ScrapeType.TOC, HOUR)
+                )
+            )
         );
         JobScraper.processDependant(
             dependant,
@@ -53,8 +62,8 @@ export class JobScraper implements Scraper {
             (value: any) => this.queueOneTimeEmittable(
                 "toc",
                 value,
-                (item: OneTimeToc) => oneTimeToc(item).finally(
-                    () => Storage.removeScrape(item.url, ScrapeTypes.ONETIMETOC)
+                (item: TocRequest) => oneTimeToc(item).finally(
+                    () => Storage.removeScrape(item.url, ScrapeType.ONETIMETOC)
                 )
             )
         );
@@ -76,7 +85,7 @@ export class JobScraper implements Scraper {
             (value: any) => this.queueOneTimeEmittable(
                 "list",
                 value,
-                (item) => list(item).finally(() => Storage.removeScrape(item.url, ScrapeTypes.ONETIMEUSER))
+                (item) => list(item).finally(() => Storage.removeScrape(item.url, ScrapeType.ONETIMEUSER))
             )
         );
     }
@@ -100,16 +109,16 @@ export class JobScraper implements Scraper {
 
             scrapeBoard
                 .map((value): Dependant | null => {
-                    if (value.type === ScrapeTypes.NEWS) {
+                    if (value.type === ScrapeType.NEWS) {
                         return {news: value};
-                    } else if (value.type === ScrapeTypes.FEED) {
+                    } else if (value.type === ScrapeType.FEED) {
                         return {feed: value.link};
-                    } else if (value.type === ScrapeTypes.TOC) {
-                        return {toc: value};
-                    } else if (value.type === ScrapeTypes.ONETIMETOC) {
+                    } else if (value.type === ScrapeType.TOC) {
+                        return {toc: {mediumId: value.mediumId, url: value.link, uuid: value.userId}};
+                    } else if (value.type === ScrapeType.ONETIMETOC) {
                         // @ts-ignore
                         return {oneTimeToc: {mediumId: value.mediumId, url: value.link, uuid: value.userId}};
-                    } else if (value.type === ScrapeTypes.ONETIMEUSER) {
+                    } else if (value.type === ScrapeType.ONETIMEUSER) {
                         // @ts-ignore
                         return {oneTimeUser: {cookies: value.info, url: value.link, uuid: value.userId}};
                     }
@@ -124,6 +133,8 @@ export class JobScraper implements Scraper {
             this.queuePeriodicEmittable("news", 5 * MINUTE, value, scrapeNews);
         });
         this.queuePeriodic(HOUR, checkTocs);
+        this.queuePeriodic(HOUR, queueTocs);
+        this.queuePeriodic(HOUR, remapMediaParts);
         this.queuePeriodic(DAY, async () => {
             // every monday scan every available external user, if not scanned on same day
             const externals = await Storage.getScrapeExternalUser();
@@ -199,6 +210,7 @@ export class JobScraper implements Scraper {
             if (!job.onDone) {
                 return;
             }
+            this.dependantMap.delete(job.item);
             const result = job.onDone();
             if (result) {
                 this.processJobCallbackResult(result);

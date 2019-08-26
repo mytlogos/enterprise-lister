@@ -1,5 +1,5 @@
 import logger from "./logger";
-import {MultiSingle} from "./types";
+import {EpisodeRelease, MultiSingle} from "./types";
 import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
@@ -276,6 +276,20 @@ export function delay(timeout = 1000): Promise<void> {
     return new Promise((resolve) => {
         setTimeout(() => resolve(), timeout);
     });
+}
+
+export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease) {
+    return (firstRelease === secondRelease)
+        || (
+            (firstRelease && secondRelease)
+            && firstRelease.url === secondRelease.url
+            && firstRelease.episodeId === secondRelease.episodeId
+            && !!firstRelease.locked === !!secondRelease.locked
+            // tslint:disable-next-line:triple-equals
+            && firstRelease.sourceType == secondRelease.sourceType
+            && firstRelease.releaseDate.getTime() === secondRelease.releaseDate.getTime()
+            && firstRelease.title === secondRelease.title
+        );
 }
 
 export function sanitizeString(s: string): string {

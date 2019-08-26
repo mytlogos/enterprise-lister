@@ -3,7 +3,7 @@ import {InvalidationType} from "./databaseTypes";
 import {TriggerEvent, TriggerTiming} from "./trigger";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder("enterprise", 2);
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 5);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")
@@ -101,8 +101,8 @@ dataBaseBuilder.getTableBuilder()
 dataBaseBuilder.getTableBuilder()
     .setName("medium_toc")
     .parseColumn("medium_id INT UNSIGNED")
-    .parseColumn("link TEXT NOT NULL")
-    .parseMeta("PRIMARY KEY(medium_id, link(767))")
+    .parseColumn("link VARCHAR(767) NOT NULL")
+    .parseMeta("PRIMARY KEY(medium_id, link)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
     .build();
 
@@ -110,8 +110,8 @@ dataBaseBuilder.getTableBuilder()
     .setName("medium_in_wait")
     .parseColumn("title VARCHAR(180) NOT NULL")
     .parseColumn("medium INT NOT NULL")
-    .parseColumn("link TEXT NOT NULL")
-    .parseMeta("PRIMARY KEY(title, medium, link(500))")
+    .parseColumn("link VARCHAR(767) NOT NULL")
+    .parseMeta("PRIMARY KEY(title, medium, link)")
     .build();
 
 dataBaseBuilder.getTableBuilder()
@@ -166,10 +166,10 @@ dataBaseBuilder.getTableBuilder()
     .setName("episode_release")
     .parseColumn("episode_id INT UNSIGNED NOT NULL")
     .parseColumn("title TEXT NOT NULL")
-    .parseColumn("url TEXT NOT NULL")
+    .parseColumn("url VARCHAR(767) NOT NULL")
     .parseColumn("source_type VARCHAR(200)")
     .parseColumn("releaseDate DATETIME NOT NULL")
-    .parseMeta("PRIMARY KEY(episode_id, url(767))")
+    .parseMeta("PRIMARY KEY(episode_id)")
     .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
     .build();
 
@@ -187,7 +187,7 @@ dataBaseBuilder.getTableBuilder()
 dataBaseBuilder.getTableBuilder()
     .setName("scrape_board")
     .parseColumn("link VARCHAR(500) NOT NULL")
-    .parseColumn("last_date DATETIME NOT NULL")
+    .parseColumn("next_scrape DATETIME NOT NULL")
     .parseColumn("type INT UNSIGNED NOT NULL")
     .parseColumn("uuid CHAR(36)")
     .parseColumn("external_uuid CHAR(36)")
@@ -229,12 +229,12 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("meta_corrections")
-    .parseColumn("link TEXT NOT NULL")
+    .parseColumn("link VARCHAR(767) NOT NULL")
     .parseColumn("replaced TEXT NOT NULL")
     .parseColumn("startIndex INT UNSIGNED NOT NULL")
     .parseColumn("endIndex INT UNSIGNED NOT NULL")
     .parseColumn("fieldKey INT UNSIGNED NOT NULL")
-    .parseMeta("PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)")
+    .parseMeta("PRIMARY KEY (link, replaced(367), startIndex, endIndex)")
     .build();
 
 dataBaseBuilder.getTableBuilder()
@@ -251,14 +251,7 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("page_info")
-    .parseColumn("link TEXT NOT NULL")
-    .parseColumn("keyString VARCHAR(200) NOT NULL")
-    .parseColumn("value TEXT NOT NULL")
-    .build();
-
-dataBaseBuilder.getTableBuilder()
-    .setName("page_info")
-    .parseColumn("link TEXT NOT NULL")
+    .parseColumn("link VARCHAR(767) NOT NULL")
     .parseColumn("keyString VARCHAR(200) NOT NULL")
     .parseColumn("value TEXT NOT NULL")
     .build();
@@ -285,6 +278,14 @@ dataBaseBuilder.getTriggerBuilder()
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
+    .setName("episode_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("episode")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, part_id) SELECT uuid, OLD.part_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
     .setName("episode_release_AFTER_INSERT")
     .setTiming(TriggerTiming.AFTER)
     .setEvent(TriggerEvent.INSERT)
@@ -298,6 +299,14 @@ dataBaseBuilder.getTriggerBuilder()
     .setEvent(TriggerEvent.UPDATE)
     .setTable("episode_release")
     .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) SELECT uuid, NEW.episode_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("episode_release_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("episode_release")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, episode_id) SELECT uuid, OLD.episode_id FROM user;")
     .build();
 
 dataBaseBuilder.getTriggerBuilder()

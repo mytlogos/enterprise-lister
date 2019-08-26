@@ -5,6 +5,7 @@ const jobQueue_1 = require("../jobQueue");
 const tools_1 = require("../tools");
 const database_1 = require("../database/database");
 const counter_1 = require("../counter");
+const crawlerStart_1 = require("../crawlerStart");
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
@@ -24,13 +25,15 @@ class JobScraper {
         }
     }
     addDependant(dependant) {
-        JobScraper.processDependant(dependant, "toc", (value) => this.queuePeriodicEmittable("toc", HOUR, value, scraperTools_1.toc));
-        JobScraper.processDependant(dependant, "oneTimeToc", (value) => this.queueOneTimeEmittable("toc", value, (item) => scraperTools_1.oneTimeToc(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeTypes.ONETIMETOC))));
+        JobScraper.processDependant(dependant, "toc", (value) => this.queueOneTimeEmittable("toc", value, 
+        // what if it can't execute for an whole hour?
+        (item) => scraperTools_1.toc(item).finally(() => database_1.Storage.updateScrape(item.url, scraperTools_1.ScrapeType.TOC, HOUR))));
+        JobScraper.processDependant(dependant, "oneTimeToc", (value) => this.queueOneTimeEmittable("toc", value, (item) => scraperTools_1.oneTimeToc(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeType.ONETIMETOC))));
         JobScraper.processDependant(dependant, "feed", (value) => {
             this.queuePeriodicEmittable("feed", 10 * MINUTE, value, scraperTools_1.feed);
         });
         JobScraper.processDependant(dependant, "news", (value) => this.queuePeriodicEmittable("news", 5 * MINUTE, value, scraperTools_1.news));
-        JobScraper.processDependant(dependant, "oneTimeUser", (value) => this.queueOneTimeEmittable("list", value, (item) => scraperTools_1.list(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeTypes.ONETIMEUSER))));
+        JobScraper.processDependant(dependant, "oneTimeUser", (value) => this.queueOneTimeEmittable("list", value, (item) => scraperTools_1.list(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeType.ONETIMEUSER))));
     }
     on(event, callback) {
         this.helper.on(event, callback);
@@ -48,20 +51,20 @@ class JobScraper {
             const scrapeBoard = await database_1.Storage.getScrapes();
             scrapeBoard
                 .map((value) => {
-                if (value.type === scraperTools_1.ScrapeTypes.NEWS) {
+                if (value.type === scraperTools_1.ScrapeType.NEWS) {
                     return { news: value };
                 }
-                else if (value.type === scraperTools_1.ScrapeTypes.FEED) {
+                else if (value.type === scraperTools_1.ScrapeType.FEED) {
                     return { feed: value.link };
                 }
-                else if (value.type === scraperTools_1.ScrapeTypes.TOC) {
-                    return { toc: value };
+                else if (value.type === scraperTools_1.ScrapeType.TOC) {
+                    return { toc: { mediumId: value.mediumId, url: value.link, uuid: value.userId } };
                 }
-                else if (value.type === scraperTools_1.ScrapeTypes.ONETIMETOC) {
+                else if (value.type === scraperTools_1.ScrapeType.ONETIMETOC) {
                     // @ts-ignore
                     return { oneTimeToc: { mediumId: value.mediumId, url: value.link, uuid: value.userId } };
                 }
-                else if (value.type === scraperTools_1.ScrapeTypes.ONETIMEUSER) {
+                else if (value.type === scraperTools_1.ScrapeType.ONETIMEUSER) {
                     // @ts-ignore
                     return { oneTimeUser: { cookies: value.info, url: value.link, uuid: value.userId } };
                 }
@@ -76,6 +79,8 @@ class JobScraper {
             this.queuePeriodicEmittable("news", 5 * MINUTE, value, scraperTools_1.scrapeNews);
         });
         this.queuePeriodic(HOUR, scraperTools_1.checkTocs);
+        this.queuePeriodic(HOUR, scraperTools_1.queueTocs);
+        this.queuePeriodic(HOUR, crawlerStart_1.remapMediaParts);
         this.queuePeriodic(DAY, async () => {
             // every monday scan every available external user, if not scanned on same day
             const externals = await database_1.Storage.getScrapeExternalUser();
@@ -143,6 +148,7 @@ class JobScraper {
             if (!job.onDone) {
                 return;
             }
+            this.dependantMap.delete(job.item);
             const result = job.onDone();
             if (result) {
                 this.processJobCallbackResult(result);

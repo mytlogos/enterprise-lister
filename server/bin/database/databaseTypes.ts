@@ -60,3 +60,10 @@ export interface MediumInWait {
     medium: MediaType;
     link: string;
 }
+
+export enum MySqlErrorNo {
+    ER_BAD_FIELD_ERROR = 1054,
+    ER_DUP_FIELDNAME = 1060,
+    ER_DUP_ENTRY = 1062,
+    ER_CANT_DROP_FIELD_OR_KEY = 1091
+}

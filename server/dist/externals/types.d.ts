@@ -43,15 +43,15 @@ export interface Dependant {
         cookies: string;
         uuid: string;
     };
-    oneTimeToc?: OneTimeToc[] | OneTimeToc;
+    oneTimeToc?: TocRequest[] | TocRequest;
     feed?: string[] | string;
     news?: any[] | any;
     toc?: any[] | any;
     medium?: any[] | any;
 }
-export interface OneTimeToc {
+export interface TocRequest {
     url: string;
-    uuid: string;
+    uuid?: string;
     mediumId?: number;
 }
 export interface DownloadContent {
@@ -68,6 +68,7 @@ export interface TocContent {
 export interface TocEpisode extends TocContent {
     url: string;
     releaseDate?: Date;
+    locked?: boolean;
 }
 export interface TocPart extends TocContent {
     episodes: TocEpisode[];
@@ -100,6 +101,7 @@ export interface NewsScraper {
 }
 export interface TocSearchScraper {
     (medium: TocSearchMedium): Promise<Toc | undefined>;
+    link: string;
     medium: MediaType;
     blindSearch?: boolean;
 }

@@ -8,55 +8,13 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
-    const words = medium.title.split(/\s+/).filter((value) => value);
-    let tocLink = "";
-    let searchWords = "";
-    const uri = "https://boxnovel.com/";
-    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
-        const word = encodeURIComponent(words[wordsCount]);
-        if (!word) {
-            continue;
-        }
-        searchWords = searchWords ? searchWords + "+" + word : word;
-        if (searchWords.length < 4) {
-            continue;
-        }
-        const $ = await queueManager_1.queueCheerioRequest(`https://boxnovel.com/?s=${searchWords}&post_type=wp-manga`);
-        const links = $(".post-title a");
-        if (!links.length) {
-            break;
-        }
-        for (let i = 0; i < links.length; i++) {
-            const linkElement = links.eq(i);
-            const text = tools_1.sanitizeString(linkElement.text());
-            if (tools_1.equalsIgnore(text, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
-                tocLink = linkElement.attr("href");
-                tocLink = url.resolve(uri, tocLink);
-                break;
-            }
-        }
-        if (tocLink) {
-            break;
-        }
-    }
-    if (tocLink) {
-        const tocs = await tocAdapter(tocLink);
-        if (tocs && tocs.length) {
-            return tocs[0];
-        }
-        else {
-            console.log("a possible toc link could not be scraped: " + tocLink);
-        }
-    }
-    else {
-        console.log(`no toc link found on boxnovel for ${medium.mediumId}: '${medium.title}'`);
-    }
-    return;
+    return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (parameter) => `https://boxnovel.com/?s=${parameter}&post_type=wp-manga`, ".post-title a");
 }
 async function searchAjax(searchWords, medium) {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response;
     // TODO: 19.08.2019 this may work, forgot to set http method before
+    // TODO: 26.08.2019 this does not work for any reason
     try {
         const body = "action=wp-manga-search-mangatitle=" + searchWords;
         response = await queueManager_1.queueRequest(urlString, {
@@ -282,6 +240,7 @@ async function newsAdapter() {
     return { episodes: episodeNews };
 }
 newsAdapter.link = "https://boxnovel.com";
+tocSearch.link = "https://boxnovel.com";
 tocSearch.medium = tools_1.MediaType.TEXT;
 tocSearch.blindSearch = true;
 function getHook() {

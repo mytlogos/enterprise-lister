@@ -243,8 +243,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     // const mangaStatus = metaRows.eq(8).find(".col-lg-9.col-xl-10").first();
 
     const endReg = /^END$/i;
-    const volChapReg = /^\s*Vol\.?\s*((\d+)(\.(\d+))?)\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*(-\s*)?(.+)/i;
-    const chapReg = /^\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*(-\s*)?(.+)/i;
+    const volChapReg = /^\s*Vol\.?\s*((\d+)(\.(\d+))?)\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*((-\s*)?(.+))?/i;
+    const chapReg = /^\s*Ch\.?\s*((\d+)(\.(\d+))?)\s*((-\s*)?(.+))?/i;
 
     if (await scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri, urlString)) {
         return [];
@@ -264,6 +264,8 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
         logger.warn("toc link with no novel title: " + urlString);
         return true;
     }
+
+    toc.title = mangaTitle;
 
     const chapters = contentElement.find(".chapter-container .chapter-row");
 
@@ -314,11 +316,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                 logger.warn("changed episode format on mangadex toc: got no index " + urlString);
                 return true;
             }
-            let title = "Chapter " + chapIndices.combi;
-
-            if (volChapGroups[10]) {
-                title += " - " + volChapGroups[10];
-            }
+            const title = `Chapter ${chapIndices.combi}${volChapGroups[9] ? " - " + volChapGroups[11] : ""}`;
 
             if (!part) {
                 part = {
@@ -350,7 +348,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             }
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
 
-            const title = `Chapter ${chapIndices.combi} - ${chapGroups[6]}`;
+            const title = `Chapter ${chapIndices.combi}${chapGroups[5] ? " - " + chapGroups[7] : ""}`;
 
             const chapterContent = {
                 title,

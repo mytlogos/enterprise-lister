@@ -3,8 +3,9 @@ import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {contains, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
+import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
+import {searchToc} from "./directTools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
@@ -147,6 +148,10 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+    if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
+        logger.info("not a toc link for mangahasu: " + urlString);
+        return [];
+    }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");
     const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().text());
@@ -266,8 +271,10 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                 releaseDate: time
             });
         } else {
-            logger.warn("volume - chapter format changed on mangahasu: recognized neither of them: " + urlString);
-            return [];
+            logger.warn(
+                "volume - chapter format changed on mangahasu: recognized neither of them: "
+                + chapterTitle + " on " + urlString
+            );
         }
     }
     partContents.forEach((value) => {
@@ -281,71 +288,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function tocSearchAdapter(search: TocSearchMedium): Promise<Toc | undefined> {
-    console.log("searching for : " + search.title);
-
-    const words = search.title.split(/\s+/).filter((value) => value);
-    let tocLink = "";
-    let searchWords = "";
-    const uri = "http://mangahasu.se/";
-
-    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
-        const word = encodeURIComponent(words[wordsCount]);
-
-        if (!word) {
-            continue;
-        }
-        searchWords = searchWords ? searchWords + "+" + word : word;
-
-        if (searchWords.length < 4) {
-            continue;
-        }
-
-        const link = "http://mangahasu.se/advanced-search.html?keyword=" + searchWords;
-        const $ = await queueCheerioRequest(link);
-
-        const links = $("a.name-manga");
-
-        for (let i = 0; i < links.length; i++) {
-            const linkElement = links.eq(i);
-
-            const text = sanitizeString(linkElement.text());
-
-            if (equalsIgnore(text, search.title) || search.synonyms.some((s) => equalsIgnore(text, s))) {
-                tocLink = linkElement.attr("href");
-                tocLink = url.resolve(uri, tocLink);
-                break;
-            }
-        }
-
-        let tryMore = false;
-
-        for (let i = 0; i < links.length; i++) {
-            const linkElement = links.eq(i);
-
-            const text = sanitizeString(linkElement.text());
-
-            if (contains(text, searchWords) || search.synonyms.some((s) => contains(text, s))) {
-                tryMore = true;
-                break;
-            }
-        }
-        if (tocLink || !tryMore) {
-            break;
-        }
-    }
-    if (tocLink) {
-        const tocs = await scrapeToc(tocLink);
-        if (tocs && tocs.length) {
-            return tocs[0];
-        }
-    }
-    return;
+    return searchToc(
+        search,
+        scrapeToc,
+        "http://mangahasu.se/",
+        (parameter) => "http://mangahasu.se/advanced-search.html?keyword=" + parameter,
+        "a.name-manga"
+    );
 }
 
 async function scrapeSearch(searchWords: string) {
     const urlString = "http://mangahasu.se/search/autosearch";
 
     const body = "key=" + searchWords;
+    // TODO: 26.08.2019 this does not work for any reason
     const $ = await queueCheerioRequest(urlString, {
         url: urlString,
         headers: {
@@ -360,6 +316,7 @@ async function scrapeSearch(searchWords: string) {
 }
 
 scrapeNews.link = "http://mangahasu.se/";
+tocSearchAdapter.link = "http://mangahasu.se/";
 tocSearchAdapter.medium = MediaType.IMAGE;
 tocSearchAdapter.blindSearch = true;
 

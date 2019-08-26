@@ -1,4 +1,4 @@
-import {Migration} from "./databaseTypes";
+import {Migration, MySqlErrorNo} from "./databaseTypes";
 import {QueryContext} from "./queryContext";
 
 function ignoreError(func: () => Promise<void>, ignoreErrno: number[]): Promise<void> {
@@ -7,11 +7,6 @@ function ignoreError(func: () => Promise<void>, ignoreErrno: number[]): Promise<
             throw reason;
         }
     });
-}
-
-enum MySqlErrorNo {
-    ER_DUP_FIELDNAME = 1060,
-    ER_CANT_DROP_FIELD_OR_KEY = 1091
 }
 
 export const Migrations: Migration[] = [
@@ -109,6 +104,51 @@ export const Migrations: Migration[] = [
                 ),
                 [MySqlErrorNo.ER_DUP_FIELDNAME]
             );
+        }
+    },
+    {
+        fromVersion: 2,
+        toVersion: 3,
+        async migrate(context: QueryContext): Promise<void> {
+            await ignoreError(() => context.changeColumn(
+                "scrape_board",
+                "last_date",
+                "next_scrape",
+                "datetime"
+            ), [MySqlErrorNo.ER_BAD_FIELD_ERROR]);
+        }
+    },
+    {
+        fromVersion: 3,
+        toVersion: 4,
+        async migrate(context: QueryContext): Promise<void> {
+            await context.alterColumn(
+                "episode_release",
+                "url varchar(767) not null",
+            );
+            await context.alterColumn(
+                "meta_corrections",
+                "link VARCHAR(767) NOT NULL",
+            );
+            await context.alterColumn(
+                "page_info",
+                "link VARCHAR(767) NOT NULL",
+            );
+            await context.alterColumn(
+                "medium_toc",
+                "link VARCHAR(767) NOT NULL",
+            );
+            await context.alterColumn(
+                "medium_in_wait",
+                "link VARCHAR(767) NOT NULL",
+            );
+        }
+    },
+    {
+        fromVersion: 4,
+        toVersion: 5,
+        async migrate(context: QueryContext): Promise<void> {
+            // empty migration as it adds trigger only
         }
     }
 ];

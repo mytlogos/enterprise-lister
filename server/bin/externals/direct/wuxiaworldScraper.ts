@@ -316,6 +316,7 @@ interface NovelSearchItem {
 }
 
 scrapeNews.link = "https://www.wuxiaworld.com/";
+tocSearcher.link = "https://www.wuxiaworld.com/";
 tocSearcher.medium = MediaType.TEXT;
 
 export function getHook(): Hook {

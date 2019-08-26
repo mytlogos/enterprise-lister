@@ -34,10 +34,10 @@ import {
     Hook,
     NewsScraper,
     OneTimeEmittableJob,
-    OneTimeToc,
     ScraperJob,
     Toc,
     TocContent,
+    TocRequest,
     TocScraper,
     TocSearchScraper
 } from "./types";
@@ -244,6 +244,7 @@ async function processMediumNews(
                 title: value.episodeTitle,
                 url: value.link,
                 releaseDate: value.date,
+                locked: value.locked,
                 episodeId: 0,
             });
             return value.episodeIndex;
@@ -283,6 +284,7 @@ async function processMediumNews(
                     title: value.episodeTitle,
                     url: value.link,
                     releaseDate: value.date,
+                    locked: value.locked,
                     sourceType,
                     episodeId: 0,
                 };
@@ -311,6 +313,7 @@ async function processMediumNews(
                     episodeId: 0,
                     releaseDate: value.date,
                     url: value.link,
+                    locked: value.locked,
                     title: value.episodeTitle
                 }
             ],
@@ -328,6 +331,36 @@ async function processMediumNews(
     }
 }
 
+export async function searchForToc(item: TocSearchMedium, searcher: TocSearchScraper) {
+    const link = searcher.link;
+    if (!link) {
+        throw Error("TocSearcher of mediumType: " + item.medium + " has no link");
+    }
+
+    const pageInfoKey = "search" + item.mediumId;
+    const result = await Storage.getPageInfo(link, pageInfoKey);
+    const dates = result.values.map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getDate()));
+    const maxDate = maxValue(dates);
+
+    if (maxDate && maxDate.toDateString() === new Date().toDateString()) {
+        // don't search on the same page the same medium twice in a day
+        return {tocs: []};
+    }
+    let newToc: Toc | undefined;
+    try {
+        newToc = await searcher(item);
+    } finally {
+        await Storage.updatePageInfo(link, pageInfoKey, [new Date().toDateString()], result.values);
+    }
+    const tocs = [];
+
+    if (newToc) {
+        newToc.mediumId = item.mediumId;
+        tocs.push(newToc);
+    }
+    return {tocs};
+}
+
 function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: string[]): ScraperJob | undefined {
     const consumed: RegExp[] = [];
     const scraperJobs: ScraperJob[] = [];
@@ -338,7 +371,7 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
                 const [reg, scraper] = entry;
 
                 if (!consumed.includes(reg) && reg.test(availableToc)) {
-                    scraperJobs.push({
+                    /*scraperJobs.push({
                         type: "onetime_emittable",
                         key: "toc",
                         item: availableToc,
@@ -350,7 +383,7 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
                             }
                             return {tocs};
                         }
-                    } as OneTimeEmittableJob);
+                    } as OneTimeEmittableJob);*/
                     consumed.push(reg);
                     break;
                 }
@@ -380,17 +413,7 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
                 type: "onetime_emittable",
                 key: "toc",
                 item: tocSearch,
-                cb: async (item) => {
-                    console.log("searching: " + (item && item.title));
-                    const newToc = await searcher(item);
-                    const tocs = [];
-
-                    if (newToc) {
-                        newToc.mediumId = id;
-                        tocs.push(newToc);
-                    }
-                    return {tocs};
-                }
+                cb: (item) => searchForToc(item, searcher)
             } as OneTimeEmittableJob);
         }
     }
@@ -478,9 +501,11 @@ export const checkTocs = async (): Promise<ScraperJob[]> => {
     const jobs: ScraperJob[] = [newScraperJobs1, newScraperJobs2].flat(3);
     return jobs.filter((value) => value);
 };
-
-export const oneTimeToc = async ({url: link, uuid, mediumId}: OneTimeToc)
-    : Promise<{ tocs: Toc[], uuid: string; }> => {
+export const queueTocs = async (): Promise<void> => {
+    await Storage.queueNewTocs();
+};
+export const oneTimeToc = async ({url: link, uuid, mediumId}: TocRequest)
+    : Promise<{ tocs: Toc[], uuid?: string; }> => {
     console.log("scraping one time toc: " + link);
     const path = url.parse(link).path;
 
@@ -537,9 +562,16 @@ export let news = async (scrapeItem: ScrapeItem): Promise<{ link: string, result
  * @param value
  * @return {Promise<void>}
  */
-export const toc = async (value: ScrapeItem): Promise<void> => {
-    console.log("scraping toc: " + value);
+export const toc = async (value: TocRequest): Promise<{tocs: Toc[], uuid?: string}> => {
+    const result = await oneTimeToc(value);
+    if (!result.tocs.length) {
+        throw Error("could not find toc for: " + value);
+    }
     // todo implement toc scraping which requires page analyzing
+    return {
+        tocs: result.tocs,
+        uuid: value.uuid
+    };
 };
 
 /**
@@ -707,7 +739,7 @@ export interface Scraper {
 
     pause(): void;
 
-    on(event: "toc", callback: (value: { uuid: string, toc: Toc[] }) => void): void;
+    on(event: "toc", callback: (value: { uuid?: string, toc: Toc[] }) => void): void;
 
     on(event: "feed" | "news", callback: (value: { link: string, result: News[] }) => void): void;
 
@@ -725,13 +757,14 @@ export interface Scraper {
     on(event: string, callback: (value: any) => void): void;
 }
 
-export enum ScrapeTypes {
+export enum ScrapeType {
     LIST = 0,
     FEED = 1,
     NEWS = 2,
     TOC = 3,
     ONETIMEUSER = 4,
     ONETIMETOC = 5,
+    SEARCH = 6,
 }
 
 const eventMap: Map<string, Array<(value: any) => void>> = new Map();
@@ -739,9 +772,9 @@ const eventMap: Map<string, Array<(value: any) => void>> = new Map();
 export interface ScrapeDependants {
     news: ScrapeItem[];
     oneTimeUser: Array<{ cookies: string, uuid: string }>;
-    oneTimeTocs: Array<{ url: string, uuid: string }>;
+    oneTimeTocs: TocRequest[];
     feeds: string[];
-    tocs: ScrapeItem[];
+    tocs: TocRequest[];
     media: ScrapeItem[];
 }
 
@@ -757,12 +790,12 @@ export async function setup() {
     const dependants: ScrapeDependants = {feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: []};
 
     scrapeBoard.forEach((value) => {
-        if (value.type === ScrapeTypes.NEWS) {
+        if (value.type === ScrapeType.NEWS) {
             dependants.news.push(value);
-        } else if (value.type === ScrapeTypes.FEED) {
+        } else if (value.type === ScrapeType.FEED) {
             dependants.feeds.push(value.link);
-        } else if (value.type === ScrapeTypes.TOC) {
-            dependants.tocs.push(value);
+        } else if (value.type === ScrapeType.TOC) {
+            dependants.tocs.push({mediumId: value.mediumId, url: value.link, uuid: value.userId});
         }
     });
 
@@ -940,26 +973,22 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
                 continue;
             }
 
-            episodeContents = episodeContents.filter((value) => value.content.length && value.content.every((s) => s));
+            episodeContents = episodeContents.filter((value) => {
+                if (value.locked && value.index === combiIndex(episode)) {
+                    release.locked = true;
+                    Storage.updateRelease(release).catch(logError);
+                    return false;
+                }
+                return value.content.filter((s) => s).length;
+            });
 
             if (!episodeContents.length) {
                 downloaderIndex = 0;
                 releaseIndex++;
                 continue;
             }
-            const content = episodeContents[0];
-
-            if (content.locked) {
-                release.locked = true;
-                Storage.updateRelease(release).catch(logError);
-                downloaderIndex = 0;
-                releaseIndex++;
-                continue;
-            }
-            if (content.content.length) {
-                downloadedContent = episodeContents;
-                break;
-            }
+            downloadedContent = episodeContents;
+            break;
         }
         if (!downloadedContent || !downloadedContent.length) {
             downloadContents.set(indexKey, {

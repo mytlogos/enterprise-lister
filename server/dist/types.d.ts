@@ -87,7 +87,7 @@ export interface Synonyms {
 }
 export interface ScrapeItem {
     link: string;
-    lastDate?: Date;
+    nextScrape?: Date;
     type?: number;
     userId?: number;
     mediumId?: number;

@@ -4,11 +4,17 @@ import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent} from "./directTools";
+import {getTextContent, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
-    return;
+    return searchToc(
+        medium,
+        tocAdapter,
+        "https://novelfull.com/",
+        (parameter) => "http://novelfull.com/search?keyword=" + parameter,
+        ".truyen-title a"
+    );
 }
 
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
@@ -59,6 +65,9 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     for (let i = 1; ; i++) {
         const $ = await queueCheerioRequest(tocLink + i);
 
+        if ($(".info a[href=\"/status/Completed\"]").length) {
+            toc.end = true;
+        }
         const tocSnippet = await scrapeTocPage($, uri);
 
         if (!tocSnippet) {
@@ -68,7 +77,9 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         if (!toc.title) {
             toc.title = tocSnippet.title;
         } else if (tocSnippet.title && tocSnippet.title !== toc.title) {
-            logger.warn(`Mismatched Title on Toc Pages on novelFull: '${toc.title}' and '${tocSnippet.title}': ` + tocLink);
+            logger.warn(
+                `Mismatched Title on Toc Pages on novelFull: '${toc.title}' and '${tocSnippet.title}': ` + tocLink
+            );
             return [];
         }
         if (!toc.content) {
@@ -174,7 +185,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
 
     const episodeNews: EpisodeNews[] = [];
     // some people just cant get it right to write 'Chapter' right so just allow a character error margin
-    const titleRegex = /((ch(\.|a?.?p?.?t?.?e?.?r?.?)?)|-)\s*((\d+)(\.(\d+))?)/i;
+    const titleRegex = /((ch(\.|a?.?p?.?t?.?e?.?r?.?)?)|-|^)\s*((\d+)(\.(\d+))?)/i;
     const abbrevTitleRegex = "|^)\\s*((\\d+)(\\.(\\d+))?)";
 
     for (let i = 0; i < items.length; i++) {
@@ -245,6 +256,9 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
 }
 
 newsAdapter.link = "http://novelfull.com";
+tocSearch.link = "http://novelfull.com";
+tocSearch.medium = MediaType.TEXT;
+tocSearch.blindSearch = true;
 
 export function getHook(): Hook {
     return {
@@ -254,5 +268,6 @@ export function getHook(): Hook {
         contentDownloadAdapter,
         tocAdapter,
         newsAdapter,
+        tocSearchAdapter: tocSearch
     };
 }

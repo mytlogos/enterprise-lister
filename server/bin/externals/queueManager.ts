@@ -62,13 +62,13 @@ const fastQueues: Map<string, Queue> = new Map();
 export type Callback = () => any;
 
 function processRequest(uri: string, otherRequest?: Request, queueToUse = queues, limit?: number) {
-    const exec = /https?:\/\/(www.)?(.+)\/?/.exec(uri);
+    const exec = /https?:\/\/([^\/]+)/.exec(uri);
 
     if (!exec) {
         throw Error("not a valid url");
     }
     // get the host of the uri
-    let host = exec[2];
+    let host = exec[1];
 
     const pathBeginIndex = host.indexOf("/");
 

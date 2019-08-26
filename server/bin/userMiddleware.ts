@@ -2,7 +2,7 @@ import {Storage} from "./database/database";
 import {factory} from "./externals/listManager";
 import {Handler, Request, Response} from "express";
 import logger from "./logger";
-import {downloadEpisodes, ScrapeTypes} from "./externals/scraperTools";
+import {downloadEpisodes, ScrapeType} from "./externals/scraperTools";
 import {Errors, isError, isString, stringToNumberList} from "./tools";
 
 export const getAllMedia: Handler = (req, res) => {
@@ -70,7 +70,7 @@ export const refreshExternalUser: Handler = (req, res) => {
     }
     const externalUserWithCookies = Storage.getExternalUserWithCookies(externalUuid);
     const storePromise = externalUserWithCookies.then((value) => Storage.addScrape({
-        type: ScrapeTypes.ONETIMEUSER,
+        type: ScrapeType.ONETIMEUSER,
         link: value.uuid,
         userId: value.userUuid,
         externalUserId: value.uuid,
@@ -147,7 +147,7 @@ export const addBookmarked: Handler = (req, res) => {
 
     if (bookmarked && bookmarked.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
         const storePromise = Storage.addScrape(bookmarked.map((link: string) => {
-            return {type: ScrapeTypes.ONETIMETOC, link, userId: uuid};
+            return {type: ScrapeType.ONETIMETOC, link, userId: uuid};
         }));
         sendResult(res, storePromise);
     } else {
@@ -160,7 +160,7 @@ export const addToc: Handler = (req, res) => {
     const protocol = /^https?:\/\//;
 
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        const storePromise = Storage.addScrape({type: ScrapeTypes.ONETIMETOC, link: toc, userId: uuid, mediumId});
+        const storePromise = Storage.addScrape({type: ScrapeType.ONETIMETOC, link: toc, userId: uuid, mediumId});
         sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));

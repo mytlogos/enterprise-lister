@@ -84,6 +84,10 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
     const bookId = bookIdResult[2];
 
+    return scrapeTocPage(bookId);
+}
+
+async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> {
     const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
 
     if (!csrfCookie) {
@@ -91,30 +95,48 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         return [];
     }
     const csrfValue = csrfCookie.value;
-    const link = `https://www.webnovel.com/apiajax/chapter/GetChapterList?bookId=${bookId[2]}&_csrfToken=${csrfValue}`;
-    const tocJson = await loadJson(link);
+    const tocLink = `https://www.webnovel.com/apiajax/chapter/GetChapterList?bookId=${bookId}&_csrfToken=${csrfValue}`;
+    const tocJson: TocResponse = await loadJson(tocLink);
 
     if (tocJson.code !== 0) {
-        logger.warn("WebNovel toc request was not successful for: " + urlString);
+        logger.warn("WebNovel toc request was not successful for: " + bookId);
         return [];
     }
 
+    if (!tocJson.data || !tocJson.data.volumeItems || !tocJson.data.volumeItems.length) {
+        logger.warn("no toc content on webnovel for " + bookId);
+        return [];
+    }
+    const idPattern = /^\d+$/;
+
     const content: TocPart[] = tocJson.data.volumeItems.map((volume: any): TocPart => {
+        if (!volume.name) {
+            volume.name = "Volume " + volume.index;
+        }
         const name = volume.name;
 
-        const chapters: TocEpisode[] = volume.chapterItems.map((item: any): TocEpisode => {
+        const chapters: TocEpisode[] = volume.chapterItems.map((item: ChapterItem): TocEpisode => {
             let date = new Date(item.createTime);
 
             if (Number.isNaN(date.getDate())) {
                 date = relativeToAbsoluteTime(item.createTime) || new Date();
             }
 
-            const chapterContent = {
-                url: `https://www.webnovel.com/book/${bookIdResult}/${item.id}/`,
+            if (!date) {
+                throw Error(`invalid date: '${item.createTime}'`);
+            }
+
+            if (!idPattern.test(item.id)) {
+                throw Error("invalid chapterId: " + item.id);
+            }
+
+            const chapterContent: TocEpisode = {
+                url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
                 title: item.name,
                 combiIndex: item.index,
                 totalIndex: item.index,
-                releaseDate: date
+                releaseDate: date,
+                locked: item.isVip !== 0
             };
             checkTocContent(chapterContent);
             return chapterContent;
@@ -129,7 +151,9 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         return partContent;
     });
     const toc: Toc = {
-        link: urlString,
+        link: `https://www.webnovel.com/book/${bookId}/`,
+        synonyms: [tocJson.data.bookInfo.bookSubName],
+        mediumId,
         content,
         partsOnly: true,
         title: tocJson.data.bookInfo.bookName,
@@ -201,7 +225,6 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
 }
 
 interface ChapterItem {
-    chapterLevel: number;
     /**
      * if it is more than a week ago: M, dd,yyyy
      * else in relative time
@@ -218,6 +241,11 @@ interface ChapterItem {
      * 2 means locked with stones
      */
     isVip: number;
+    /**
+     * 0: everyone can access them from browser
+     * > 0: app locked chapters, probably
+     */
+    chapterLevel: number;
     name: string;
     /**
      * normally 0 when not logged in
@@ -280,62 +308,13 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
     if (!idPattern.test(bookId)) {
         throw Error("invalid bookId");
     }
-    const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
-
-    if (!csrfCookie) {
-        return;
-    }
-    // TODO: 03.07.2019 get _csrfToken from defaultRequest cookies
-    const tocJson: TocResponse = await loadJson(
-        `https://www.webnovel.com/apiajax/chapter/GetChapterList?_csrfToken=${csrfCookie.value}&bookId=${bookId}`
-    );
-    if (!tocJson.data || !tocJson.data.volumeItems || !tocJson.data.volumeItems.length) {
-        return;
-    }
-    const parts: TocPart[] = [];
-    for (const volumeItem of tocJson.data.volumeItems) {
-        if (!volumeItem.name) {
-            volumeItem.name = "Volume " + volumeItem.index;
-        }
-        const episodes: TocEpisode[] = [];
-        parts.push({totalIndex: volumeItem.index, title: volumeItem.name, combiIndex: volumeItem.index, episodes});
-
-        for (const chapterItem of volumeItem.chapterItems) {
-            const date = new Date(chapterItem.createTime);
-            const releaseDate = date.getTime() ? date : relativeToAbsoluteTime(chapterItem.createTime);
-
-            if (!releaseDate) {
-                throw Error(`invalid date: '${chapterItem.createTime}'`);
-            }
-
-            if (!idPattern.test(chapterItem.id)) {
-                throw Error("invalid bookId");
-            }
-            const link = `https://www.webnovel.com/book/${bookId}/${chapterItem.id}/`;
-            const chapterContent = {
-                title: chapterItem.name,
-                combiIndex: chapterItem.index,
-                totalIndex: chapterItem.index,
-                releaseDate,
-                url: link
-            };
-            checkTocContent(chapterContent);
-            episodes.push(chapterContent);
-        }
-    }
+    const [toc] = await scrapeTocPage(bookId, searchMedium.mediumId);
     console.log("scraping toc on webnovel successfully " + searchMedium.mediumId);
-    return {
-        link: `https://www.webnovel.com/book/${bookId}/`,
-        synonyms: [tocJson.data.bookInfo.bookSubName],
-        content: parts,
-        title: tocJson.data.bookInfo.bookName,
-        mediumId: searchMedium.mediumId,
-        mediumType: MediaType.TEXT,
-        partsOnly: true
-    };
+    return toc;
 }
 
 scrapeNews.link = "https://www.webnovel.com/";
+searchToc.link = "https://www.webnovel.com/";
 searchToc.medium = MediaType.TEXT;
 
 export function getHook(): Hook {

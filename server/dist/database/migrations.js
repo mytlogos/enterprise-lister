@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const databaseTypes_1 = require("./databaseTypes");
 function ignoreError(func, ignoreErrno) {
     return func().catch((reason) => {
         if (reason && Number.isInteger(reason.errno) && !ignoreErrno.includes(reason.errno)) {
@@ -7,11 +8,6 @@ function ignoreError(func, ignoreErrno) {
         }
     });
 }
-var MySqlErrorNo;
-(function (MySqlErrorNo) {
-    MySqlErrorNo[MySqlErrorNo["ER_DUP_FIELDNAME"] = 1060] = "ER_DUP_FIELDNAME";
-    MySqlErrorNo[MySqlErrorNo["ER_CANT_DROP_FIELD_OR_KEY"] = 1091] = "ER_CANT_DROP_FIELD_OR_KEY";
-})(MySqlErrorNo || (MySqlErrorNo = {}));
 exports.Migrations = [
     {
         fromVersion: 0,
@@ -20,13 +16,13 @@ exports.Migrations = [
             await ignoreError(async () => {
                 await context.addColumn("episode", "combiIndex double DEFAULT 0");
                 await context.query("UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
-            }, [MySqlErrorNo.ER_DUP_FIELDNAME]);
-            await ignoreError(() => context.addColumn("scrape_board", "info TEXT"), [MySqlErrorNo.ER_DUP_FIELDNAME]);
-            await ignoreError(() => context.addColumn("scrape_board", "external_uuid char(36)"), [MySqlErrorNo.ER_DUP_FIELDNAME]);
+            }, [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+            await ignoreError(() => context.addColumn("scrape_board", "info TEXT"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+            await ignoreError(() => context.addColumn("scrape_board", "external_uuid char(36)"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
             await ignoreError(async () => {
                 await context.addColumn("part", "combiIndex double DEFAULT 0");
                 await context.query("UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)");
-            }, [MySqlErrorNo.ER_DUP_FIELDNAME]);
+            }, [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
             await context.alterColumn("external_user", "uuid char(36)");
             await context.alterColumn("scrape_board", "link varchar(500)");
             await context.alterColumn("user_data_invalidation", "external_uuid char(36)");
@@ -43,7 +39,7 @@ exports.Migrations = [
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_1", "external_uuid", "external_user", "uuid");
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_3", "uuid", "user", "uuid");
             await context.clearInvalidationTable();
-            await ignoreError(() => context.dropPrimaryKey("user_data_invalidation"), [MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
+            await ignoreError(() => context.dropPrimaryKey("user_data_invalidation"), [databaseTypes_1.MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
             await context.addUnique("user_data_invalidation", "UNIQUE_NEWS", "news_id", "uuid");
             await context.addUnique("user_data_invalidation", "UNIQUE_MEDIUM", "medium_id", "uuid");
             await context.addUnique("user_data_invalidation", "UNIQUE_PART", "part_id", "uuid");
@@ -58,7 +54,32 @@ exports.Migrations = [
         fromVersion: 1,
         toVersion: 2,
         async migrate(context) {
-            await ignoreError(() => context.addColumn("episode_release", "locked BOOLEAN DEFAULT 0"), [MySqlErrorNo.ER_DUP_FIELDNAME]);
+            await ignoreError(() => context.addColumn("episode_release", "locked BOOLEAN DEFAULT 0"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+        }
+    },
+    {
+        fromVersion: 2,
+        toVersion: 3,
+        async migrate(context) {
+            await ignoreError(() => context.changeColumn("scrape_board", "last_date", "next_scrape", "datetime"), [databaseTypes_1.MySqlErrorNo.ER_BAD_FIELD_ERROR]);
+        }
+    },
+    {
+        fromVersion: 3,
+        toVersion: 4,
+        async migrate(context) {
+            await context.alterColumn("episode_release", "url varchar(767) not null");
+            await context.alterColumn("meta_corrections", "link VARCHAR(767) NOT NULL");
+            await context.alterColumn("page_info", "link VARCHAR(767) NOT NULL");
+            await context.alterColumn("medium_toc", "link VARCHAR(767) NOT NULL");
+            await context.alterColumn("medium_in_wait", "link VARCHAR(767) NOT NULL");
+        }
+    },
+    {
+        fromVersion: 4,
+        toVersion: 5,
+        async migrate(context) {
+            // empty migration as it adds trigger only
         }
     }
 ];

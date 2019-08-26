@@ -49,8 +49,8 @@ import {
 } from "../tools";
 import logger from "../logger";
 import * as validate from "validate.js";
-import {MediumInWait} from "./databaseTypes";
-import {ScrapeTypes} from "../externals/scraperTools";
+import {MediumInWait, MySqlErrorNo} from "./databaseTypes";
+import {ScrapeType} from "../externals/scraperTools";
 import {Query} from "mysql";
 import {Trigger} from "./trigger";
 
@@ -116,6 +116,7 @@ const database = "enterprise";
 const standardListName = "Standard";
 
 type ParamCallback<T> = (value: T) => (any[] | any);
+type UpdateCallback = (updates: string[], values: any[]) => void;
 
 export interface DbTrigger {
     Trigger: string;
@@ -231,6 +232,10 @@ export class QueryContext {
 
     public alterColumn(tableName: string, columnDefinition: string) {
         return this.query(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnDefinition};`);
+    }
+
+    public changeColumn(tableName: string, oldName: string, newName: string, columnDefinition: string) {
+        return this.query(`ALTER TABLE ${tableName} CHANGE COLUMN ${oldName} ${newName} ${columnDefinition};`);
     }
 
     public addUnique(tableName: string, indexName: string, ...columns: string[]) {
@@ -494,7 +499,7 @@ export class QueryContext {
         if (user.newPassword && user.password) {
             await this.verifyPassword(uuid, user.password);
         }
-        return this._update("user", "uuid", uuid, (updates, values) => {
+        return this._update("user", (updates, values) => {
             if (user.name) {
                 updates.push("name = ?");
                 values.push(user.name);
@@ -515,6 +520,9 @@ export class QueryContext {
                 updates.push("password = ?");
                 values.push(hash);
             }
+        }, {
+            column: "uuid",
+            value: uuid
         });
     }
 
@@ -613,7 +621,7 @@ export class QueryContext {
         if (!list.userUuid) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        return this._update("reading_list", "id", list.id, (updates, values) => {
+        return this._update("reading_list", (updates, values) => {
             if (list.name) {
                 updates.push("name = ?");
                 values.push(list.name);
@@ -623,6 +631,9 @@ export class QueryContext {
                 updates.push("medium = ?");
                 values.push(list.medium);
             }
+        }, {
+            column: "id",
+            value: list.id
         });
     }
 
@@ -724,6 +735,30 @@ export class QueryContext {
         }
         const resultArray: any[] | undefined = await this._queryInList(
             "SELECT * FROM episode_release WHERE episode_id ",
+            episodeId
+        );
+        if (!resultArray || !resultArray.length) {
+            return [];
+        }
+        // @ts-ignore
+        return resultArray.map((value: any): EpisodeRelease => {
+            return {
+                episodeId: value.episode_id,
+                sourceType: value.source_type,
+                releaseDate: value.releaseDate,
+                locked: !!value.locked,
+                url: value.url,
+                title: value.title
+            };
+        });
+    }
+
+    public async getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]> {
+        if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
+            return [];
+        }
+        const resultArray: any[] | undefined = await this._queryInList(
+            `SELECT * FROM episode_release WHERE locate(${mySql.escape(host)}, url) = 1 AND episode_id `,
             episodeId
         );
         if (!resultArray || !resultArray.length) {
@@ -926,7 +961,7 @@ export class QueryContext {
      * Updates a medium from the storage.
      */
     public updateMedium(medium: SimpleMedium): Promise<boolean> {
-        return this._update("medium", "id", medium.id, (updates, values) => {
+        return this._update("medium", (updates, values) => {
             for (const key of Object.keys(medium)) {
                 if (key === "synonyms" || key === "id") {
                     continue;
@@ -940,7 +975,7 @@ export class QueryContext {
                     values.push(value);
                 }
             }
-        });
+        }, {column: "id", value: medium.id});
     }
 
     public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {
@@ -1331,26 +1366,30 @@ export class QueryContext {
      * Updates a part.
      */
     public updatePart(part: Part): Promise<boolean> {
-        return this._update("part", "id", part.id, (updates, values) => {
-            if (part.title) {
-                updates.push("title = ?");
-                values.push(part.title);
-            } else { // noinspection JSValidateTypes
-                if (part.title === null) {
-                    updates.push("title = NULL");
+        return this._update("part", (updates, values) => {
+                if (part.title) {
+                    updates.push("title = ?");
+                    values.push(part.title);
+                } else { // noinspection JSValidateTypes
+                    if (part.title === null) {
+                        updates.push("title = NULL");
+                    }
                 }
-            }
 
-            if (part.partialIndex) {
-                updates.push("partialIndex = ?");
-                values.push(part.partialIndex);
-            }
+                if (part.partialIndex) {
+                    updates.push("partialIndex = ?");
+                    values.push(part.partialIndex);
+                }
 
-            if (part.totalIndex) {
-                updates.push("totalIndex = ?");
-                values.push(part.totalIndex);
-            }
-        });
+                if (part.totalIndex) {
+                    updates.push("totalIndex = ?");
+                    values.push(part.totalIndex);
+                }
+            },
+            {
+                column: "id",
+                value: part.id
+            });
     }
 
     /**
@@ -1417,16 +1456,10 @@ export class QueryContext {
             if (value.episodeId) {
                 await this._update(
                     "episode_release",
-                    "episode_id",
-                    value.episodeId,
                     (updates, values) => {
                         if (value.title) {
                             updates.push("title=?");
                             values.push(value.title);
-                        }
-                        if (value.url) {
-                            updates.push("url=?");
-                            values.push(value.url);
                         }
                         if (value.releaseDate) {
                             updates.push("releaseDate=?");
@@ -1440,6 +1473,12 @@ export class QueryContext {
                             updates.push("locked=?");
                             values.push(value.locked);
                         }
+                    }, {
+                        column: "episode_id",
+                        value: value.episodeId,
+                    }, {
+                        column: "url",
+                        value: value.url,
                     }
                 );
             } else if (value.sourceType) {
@@ -1593,6 +1632,9 @@ export class QueryContext {
         });
     }
 
+    public async getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
+    public async getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
+
     public async getPartEpisodePerIndex(partId: number, index: MultiSingle<number>)
         : Promise<MultiSingle<SimpleEpisode>> {
 
@@ -1696,7 +1738,7 @@ export class QueryContext {
      * Updates an episode from the storage.
      */
     public async updateEpisode(episode: SimpleEpisode): Promise<boolean> {
-        return this._update("episode", "id", episode.id, (updates, values) => {
+        return this._update("episode", (updates, values) => {
             if (episode.partId) {
                 updates.push("part_id = ?");
                 values.push(episode.partId);
@@ -1711,14 +1753,84 @@ export class QueryContext {
                 updates.push("totalIndex = ?");
                 values.push(episode.totalIndex);
             }
+        }, {
+            column: "id", value: episode.id
         });
     }
 
     /**
      * Updates an episode from the storage.
      */
-    public async moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number): Promise<boolean> {
-        await this._queryInList(`UPDATE episode SET part_id=${mySql.escape(partId)} WHERE id`, episodeId);
+    public async moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean> {
+        const partEpisodes = await this.getPartEpisodePerIndex(newPartId, episodeIndices);
+        const episodeIndexMap = new Map<number, SimpleEpisode>();
+
+        const replaceIds: Array<{ oldId: number, newId: number }> = await this.query(
+            "SELECT oldEpisode.id as oldId, newEpisode.id as newId FROM " +
+            `(Select * from episode where part_id=?) as oldEpisode ` +
+            `inner join (Select * from episode where part_id=?) as newEpisode ` +
+            "ON oldEpisode.combiIndex=newEpisode.combiIndex",
+            [oldPartId, newPartId]
+        );
+        partEpisodes.forEach((episode) => episodeIndexMap.set(combiIndex(episode), episode));
+
+        const changePartIds = episodeIndices.filter((index) => !episodeIndexMap.has(index));
+
+        await this._queryInList(
+            `UPDATE episode SET part_id=${mySql.escape(newPartId)} ` +
+            `WHERE part_id=${mySql.escape(oldPartId)} AND combiIndex`,
+            changePartIds
+        );
+        const deleteReleaseIds: number[] = [];
+        await Promise.all(replaceIds.map((replaceId) => {
+            return this.query(
+                "UPDATE episode_release set episode_id=? where episode_id=?",
+                [replaceId.newId, replaceId.oldId]
+            ).catch((reason) => {
+                if (reason && MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                    deleteReleaseIds.push(replaceId.oldId);
+                } else {
+                    throw reason;
+                }
+            });
+        }));
+        const deleteProgressIds: number[] = [];
+
+        await Promise.all(replaceIds.map((replaceId) => {
+            return this.query(
+                "UPDATE user_episode set episode_id=? where episode_id=?",
+                [replaceId.newId, replaceId.oldId]
+            ).catch((reason) => {
+                if (reason && MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                    deleteProgressIds.push(replaceId.oldId);
+                } else {
+                    throw reason;
+                }
+            });
+        }));
+        const deleteResultIds: number[] = [];
+
+        await Promise.all(replaceIds.map((replaceId) => {
+            return this.query(
+                "UPDATE result_episode set episode_id=? where episode_id=?",
+                [replaceId.newId, replaceId.oldId]
+            ).catch((reason) => {
+                if (reason && MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                    deleteResultIds.push(replaceId.oldId);
+                } else {
+                    throw reason;
+                }
+            });
+        }));
+        const oldIndices = replaceIds.map((value) => value.oldId);
+        // TODO: 26.08.2019 this does not go quite well, throws error with 'cannot delete parent reference'
+        await this._queryInList("DELETE FROM episode_release WHERE episode_id ", deleteReleaseIds);
+        await this._queryInList("DELETE FROM user_episode WHERE episode_id ", deleteProgressIds);
+        await this._queryInList("DELETE FROM result_episode WHERE episode_id ", deleteResultIds);
+        await this._queryInList(
+            `DELETE FROM episode WHERE part_id=${mySql.escape(oldPartId)} AND combiIndex`,
+            oldIndices,
+        );
         return true;
     }
 
@@ -1746,6 +1858,9 @@ export class QueryContext {
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list
         if (medium.listId == null || !Number.isInteger(medium.listId)) {
+            if (!uuid) {
+                throw Error(Errors.INVALID_INPUT);
+            }
             const idResult = await this.query(
                 "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",
                 uuid,
@@ -1912,7 +2027,7 @@ export class QueryContext {
      * Updates an external user.
      */
     public updateExternalUser(externalUser: ExternalUser): Promise<boolean> {
-        return this._update("external_user", "uuid", externalUser.uuid, (updates, values) => {
+        return this._update("external_user", (updates, values) => {
             if (externalUser.identifier) {
                 updates.push("name = ?");
                 values.push(externalUser.identifier);
@@ -1929,7 +2044,7 @@ export class QueryContext {
             } else if (externalUser.cookies == null) {
                 updates.push("cookies = NULL");
             }
-        });
+        }, {column: "uuid", value: externalUser.uuid});
     }
 
     /**
@@ -1966,7 +2081,7 @@ export class QueryContext {
      * Updates an external list.
      */
     public updateExternalList(externalList: ExternalList): Promise<boolean> {
-        return this._update("external_reading_list", "user_uuid", externalList.id, (updates, values) => {
+        return this._update("external_reading_list", (updates, values) => {
             if (externalList.medium) {
                 updates.push("medium = ?");
                 values.push(externalList.medium);
@@ -1976,7 +2091,7 @@ export class QueryContext {
                 updates.push("name = ?");
                 values.push(externalList.name);
             }
-        });
+        }, {column: "user_uuid", value: externalList.id});
     }
 
     /**
@@ -2244,12 +2359,12 @@ export class QueryContext {
     public async addScrape(scrape: ScrapeItem | ScrapeItem[]): Promise<boolean> {
         // scrapeItem array should never be over 100 so using 'VALUES (...), (...), ...' should be better
         await this._multiInsert(
-            "INSERT INTO scrape_board (link, type, last_date, external_uuid,uuid, medium_id, info) VALUES",
+            "INSERT INTO scrape_board (link, type, next_scrape, external_uuid,uuid, medium_id, info) VALUES",
             scrape,
             (value) => [
                 value.link,
                 value.type,
-                value.lastDate,
+                value.nextScrape,
                 value.externalUserId,
                 value.userId,
                 value.mediumId,
@@ -2263,12 +2378,11 @@ export class QueryContext {
      *
      */
     public async getScrapes(): Promise<ScrapeItem[]> {
-        let value = await this.query("SELECT * FROM scrape_board;");
-        value = [...value];
+        const value = await this.query("SELECT * FROM scrape_board where next_scrape is null or next_scrape < NOW();");
         return value.map((item: any) => {
             return {
                 link: item.link,
-                lastDate: item.last_date,
+                nextScrape: item.next_scrape,
                 type: item.type,
                 userId: item.uuid,
                 externalUserId: item.external_uuid,
@@ -2281,8 +2395,24 @@ export class QueryContext {
     /**
      *
      */
-    public removeScrape(link: string, type: ScrapeTypes): Promise<boolean> {
+    public removeScrape(link: string, type: ScrapeType): Promise<boolean> {
         return this._delete("scrape_board", {column: "link", value: link}, {column: "type", value: type});
+    }
+
+    /**
+     *
+     */
+    public updateScrape(link: string, type: ScrapeType, nextScrape: number): Promise<boolean> {
+        const nextScrapeDate = new Date(Date.now() + nextScrape);
+
+        if (Number.isNaN(nextScrapeDate.getDate())) {
+            throw Error("invalid nextScrapeValue: " + nextScrape + ", cannot get next scrape date");
+        }
+        return this
+            .query(
+                "UPDATE scrape_board SET next_scrape=? WHERE link=? AND type=?",
+                [nextScrapeDate, link, type])
+            .then((value) => value.affectedRows > 0);
     }
 
     /**
@@ -2618,8 +2748,7 @@ export class QueryContext {
 
     public async getChapterIndices(mediumId: number): Promise<number[]> {
         const result: any[] = await this.query(
-            "SELECT episode.combiIndex FROM episode " +
-            "INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?",
+            "SELECT episode.combiIndex FROM episode INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?",
             mediumId
         );
         return result.map((value) => value.combiIndex);
@@ -2714,11 +2843,14 @@ export class QueryContext {
         if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
-        const query: any[] = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
+        const query: any[] = await this.query(
+            "SELECT value FROM page_info WHERE link=? AND keyString=?",
+            [link, key]
+        );
         return {
             link,
             key,
-            values: query.map((value) => value.values).filter((value) => value)
+            values: query.map((value) => value.value).filter((value) => value)
         };
     }
 
@@ -2732,7 +2864,7 @@ export class QueryContext {
             if (!value || !validate.isString(value)) {
                 throw Errors.INVALID_INPUT;
             }
-            return this.query("INSERT INTO page_info (link, key, value) VALUES(?,?,?)", [link, key, value]);
+            return this.query("INSERT INTO page_info (link, keyString, value) VALUES(?,?,?)", [link, key, value]);
         }));
     }
 
@@ -2760,9 +2892,10 @@ export class QueryContext {
         }
     }
 
-    public async addInvalidation(value: string[]): Promise<void> {
-        // fixme: this could be a potential security issue, due to executing unvalidated queries
-        await Promise.all(value.map((query) => this.query(query)));
+    public async queueNewTocs(): Promise<void> {
+        await this.query(
+            "INSERT ignore INTO scrape_board (link, `type`, medium_id) select link, 3, medium_id from medium_toc;"
+        );
     }
 
     public async getInvalidated(uuid: string): Promise<Invalidation[]> {
@@ -2902,9 +3035,12 @@ export class QueryContext {
     /**
      * Updates data from the storage.
      */
-    private async _update(table: string, column: string, idValue: any, cb: (updates: string[], values: any[]) => void)
+    private async _update(table: string, cb: UpdateCallback, ...condition: Array<{ column: string, value: any }>)
         : Promise<boolean> {
 
+        if (!condition || (Array.isArray(condition) && !condition.length)) {
+            return Promise.reject(new Error(Errors.INVALID_INPUT));
+        }
         const updates: string[] = [];
         const values: any[] = [];
 
@@ -2913,13 +3049,19 @@ export class QueryContext {
         if (!updates.length) {
             return Promise.resolve(false);
         }
-        values.push(idValue);
-        const result = await this.query(
-            `UPDATE ${mySql.escapeId(table)}
+        let query = `UPDATE ${mySql.escapeId(table)}
                 SET ${updates.join(", ")}
-                WHERE ${mySql.escapeId(column)} = ?;`,
-            values,
-        );
+                WHERE `;
+        multiSingle(condition, (value: any, _, last) => {
+            query += `${mySql.escapeId(value.column)} = ?`;
+            if (last) {
+                query += ";";
+            } else {
+                query += " AND ";
+            }
+            values.push(value.value);
+        });
+        const result = await this.query(query, values);
         return result.affectedRows > 0;
     }
 

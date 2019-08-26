@@ -6,6 +6,7 @@ const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 const scraperTools_1 = require("../scraperTools");
+const directTools_1 = require("./directTools");
 async function scrapeNews() {
     // todo scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
@@ -126,6 +127,10 @@ async function contentDownloadAdapter(chapterLink) {
     return [episodeContent];
 }
 async function scrapeToc(urlString) {
+    if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
+        logger_1.default.info("not a toc link for mangahasu: " + urlString);
+        return [];
+    }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");
     const mangaTitle = tools_1.sanitizeString(contentElement.find(".info-title h1").first().text());
@@ -226,8 +231,8 @@ async function scrapeToc(urlString) {
             });
         }
         else {
-            logger_1.default.warn("volume - chapter format changed on mangahasu: recognized neither of them: " + urlString);
-            return [];
+            logger_1.default.warn("volume - chapter format changed on mangahasu: recognized neither of them: "
+                + chapterTitle + " on " + urlString);
         }
     }
     partContents.forEach((value) => {
@@ -239,56 +244,12 @@ async function scrapeToc(urlString) {
     return [toc];
 }
 async function tocSearchAdapter(search) {
-    console.log("searching for : " + search.title);
-    const words = search.title.split(/\s+/).filter((value) => value);
-    let tocLink = "";
-    let searchWords = "";
-    const uri = "http://mangahasu.se/";
-    for (let wordsCount = 0; wordsCount <= words.length; wordsCount++) {
-        const word = encodeURIComponent(words[wordsCount]);
-        if (!word) {
-            continue;
-        }
-        searchWords = searchWords ? searchWords + "+" + word : word;
-        if (searchWords.length < 4) {
-            continue;
-        }
-        const link = "http://mangahasu.se/advanced-search.html?keyword=" + searchWords;
-        const $ = await queueManager_1.queueCheerioRequest(link);
-        const links = $("a.name-manga");
-        for (let i = 0; i < links.length; i++) {
-            const linkElement = links.eq(i);
-            const text = tools_1.sanitizeString(linkElement.text());
-            if (tools_1.equalsIgnore(text, search.title) || search.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
-                tocLink = linkElement.attr("href");
-                tocLink = url.resolve(uri, tocLink);
-                break;
-            }
-        }
-        let tryMore = false;
-        for (let i = 0; i < links.length; i++) {
-            const linkElement = links.eq(i);
-            const text = tools_1.sanitizeString(linkElement.text());
-            if (tools_1.contains(text, searchWords) || search.synonyms.some((s) => tools_1.contains(text, s))) {
-                tryMore = true;
-                break;
-            }
-        }
-        if (tocLink || !tryMore) {
-            break;
-        }
-    }
-    if (tocLink) {
-        const tocs = await scrapeToc(tocLink);
-        if (tocs && tocs.length) {
-            return tocs[0];
-        }
-    }
-    return;
+    return directTools_1.searchToc(search, scrapeToc, "http://mangahasu.se/", (parameter) => "http://mangahasu.se/advanced-search.html?keyword=" + parameter, "a.name-manga");
 }
 async function scrapeSearch(searchWords) {
     const urlString = "http://mangahasu.se/search/autosearch";
     const body = "key=" + searchWords;
+    // TODO: 26.08.2019 this does not work for any reason
     const $ = await queueManager_1.queueCheerioRequest(urlString, {
         url: urlString,
         headers: {
@@ -301,6 +262,7 @@ async function scrapeSearch(searchWords) {
     return $("a.a-item");
 }
 scrapeNews.link = "http://mangahasu.se/";
+tocSearchAdapter.link = "http://mangahasu.se/";
 tocSearchAdapter.medium = tools_1.MediaType.IMAGE;
 tocSearchAdapter.blindSearch = true;
 function getHook() {

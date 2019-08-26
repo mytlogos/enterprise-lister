@@ -259,6 +259,7 @@ async function tocSearcher(medium) {
     }
 }
 scrapeNews.link = "https://www.wuxiaworld.com/";
+tocSearcher.link = "https://www.wuxiaworld.com/";
 tocSearcher.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {

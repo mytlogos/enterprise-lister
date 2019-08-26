@@ -1,7 +1,7 @@
-import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, FullPart, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { QueryContext } from "./queryContext";
 import { MediumInWait } from "./databaseTypes";
-import { ScrapeTypes } from "../externals/scraperTools";
+import { ScrapeType } from "../externals/scraperTools";
 declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 /**
  * Creates the context for QueryContext, to
@@ -9,6 +9,7 @@ declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
  */
 export declare function inContext<T>(callback: ContextCallback<T>, transaction?: boolean): Promise<T>;
 export interface Storage {
+    queueNewTocs(): Promise<void>;
     deleteRelease(release: EpisodeRelease): Promise<void>;
     getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
     getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
@@ -59,7 +60,8 @@ export interface Storage {
     removeProgress(uuid: string, episodeId: number): Promise<boolean>;
     addItemToExternalList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
-    getMediumParts(mediumId: number, uuid?: string): Promise<Part[]>;
+    getMediumParts(mediumId: number, uuid: string): Promise<FullPart[]>;
+    getMediumParts(mediumId: number): Promise<ShallowPart[]>;
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
     updateProgress(uuid: string, mediumId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
     showUser(): Promise<User[]>;
@@ -72,7 +74,7 @@ export interface Storage {
     addEpisode(episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
     addEpisode(episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean>;
-    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number): Promise<boolean>;
+    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean>;
     deleteUser(uuid: string): Promise<boolean>;
     addPart(part: Part, uuid?: string): Promise<Part>;
     getLatestNews(domain: string): Promise<News[]>;
@@ -128,7 +130,8 @@ export interface Storage {
         cookies: string;
     }>;
     addExternalList(userUuid: string, externalList: ExternalList, uuid?: string): Promise<ExternalList>;
-    removeScrape(link: string, type: ScrapeTypes): Promise<boolean>;
+    removeScrape(link: string, type: ScrapeType): Promise<boolean>;
+    updateScrape(url: string, scrapeType: ScrapeType, nextScrape: number): void;
     deleteEpisode(id: number, uuid?: string): Promise<boolean>;
     getLatestReleases(mediumId: number): Promise<SimpleEpisode[]>;
     addSynonyms(synonyms: (Synonyms | Synonyms[]), uuid?: string): Promise<boolean>;
@@ -140,6 +143,7 @@ export interface Storage {
     getEpisode(id: number, uuid: string): Promise<Episode>;
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
     getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]>;
+    getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]>;
     getExternalUser(uuid: string): Promise<ExternalUser>;
     deleteExternalUser(externalUuid: string, uuid?: string): Promise<boolean>;
     register(userName: string, password: string, ip: string): Promise<User>;

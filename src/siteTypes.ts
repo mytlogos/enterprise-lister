@@ -114,6 +114,7 @@ export interface EpisodeNews {
     episodeIndex: number;
     episodeTotalIndex: number;
     episodePartialIndex?: number;
+    locked?: boolean;
     link: string;
     date: Date;
 }

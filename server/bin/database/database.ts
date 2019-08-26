@@ -6,6 +6,7 @@ import {
     EpisodeRelease,
     ExternalList,
     ExternalUser,
+    FullPart,
     Invalidation,
     LikeMedium,
     LikeMediumQuery,
@@ -32,7 +33,7 @@ import {QueryContext} from "./queryContext";
 import {databaseSchema} from "./databaseSchema";
 import {delay} from "../tools";
 import {MediumInWait} from "./databaseTypes";
-import {ScrapeTypes} from "../externals/scraperTools";
+import {ScrapeType} from "../externals/scraperTools";
 import {SchemaManager} from "./schemaManager";
 
 type ContextCallback<T> = (context: QueryContext) => Promise<T>;
@@ -165,6 +166,8 @@ function start(): void {
 }
 
 export interface Storage {
+    queueNewTocs(): Promise<void>;
+
     deleteRelease(release: EpisodeRelease): Promise<void>;
 
     getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
@@ -234,7 +237,9 @@ export interface Storage {
 
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
 
-    getMediumParts(mediumId: number, uuid?: string): Promise<Part[]>;
+    getMediumParts(mediumId: number, uuid: string): Promise<FullPart[]>;
+
+    getMediumParts(mediumId: number): Promise<ShallowPart[]>;
 
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
 
@@ -260,7 +265,7 @@ export interface Storage {
 
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean>;
 
-    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number): Promise<boolean>;
+    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean>;
 
     deleteUser(uuid: string): Promise<boolean>;
 
@@ -339,7 +344,9 @@ export interface Storage {
 
     addExternalList(userUuid: string, externalList: ExternalList, uuid?: string): Promise<ExternalList>;
 
-    removeScrape(link: string, type: ScrapeTypes): Promise<boolean>;
+    removeScrape(link: string, type: ScrapeType): Promise<boolean>;
+
+    updateScrape(url: string, scrapeType: ScrapeType, nextScrape: number): void;
 
     deleteEpisode(id: number, uuid?: string): Promise<boolean>;
 
@@ -362,6 +369,8 @@ export interface Storage {
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
 
     getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]>;
+
+    getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]>;
 
     getExternalUser(uuid: string): Promise<ExternalUser>;
 
@@ -396,6 +405,7 @@ export interface Storage {
     deleteOldNews(): Promise<boolean>;
 }
 
+// @ts-ignore
 export const Storage: Storage = {
 
     /**
@@ -556,7 +566,7 @@ export const Storage: Storage = {
      * @return {Promise<SimpleMedium>}
      */
     addMedium(medium: SimpleMedium, uuid?: string): Promise<SimpleMedium> {
-        return inContext((context) => context.setUuid(uuid).addMedium(medium, uuid));
+        return inContext((context) => context.addMedium(medium, uuid));
     },
 
     /**
@@ -677,6 +687,7 @@ export const Storage: Storage = {
     /**
      * Returns all parts of an medium with their episodes.
      */
+    // @ts-ignore
     getMediumParts(mediumId: number, uuid?: string): Promise<Part[]> {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
     },
@@ -750,8 +761,8 @@ export const Storage: Storage = {
         return inContext((context) => context.setUuid(uuid).updateEpisode(episode));
     },
 
-    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number) {
-        return inContext((context) => context.moveEpisodeToPart(episodeId, partId));
+    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number) {
+        return inContext((context) => context.moveEpisodeToPart(oldPartId, episodeIndices, newPartId));
     },
 
     /**
@@ -767,10 +778,15 @@ export const Storage: Storage = {
         return inContext((context) => context.getReleases(episodeId));
     },
 
+    getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]> {
+        return inContext((context) => context.getReleasesByHost(episodeId, host));
+    },
+
     /**
      *
      */
     getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
+        // @ts-ignore
         return inContext((context) => context.getPartEpisodePerIndex(partId, index));
     },
 
@@ -828,6 +844,10 @@ export const Storage: Storage = {
 
     removePageInfo(link: string, key?: string): Promise<void> {
         return inContext((context) => context.removePageInfo(link, key));
+    },
+
+    queueNewTocs(): Promise<void> {
+        return inContext((context) => context.queueNewTocs());
     },
 
     /**
@@ -1044,8 +1064,12 @@ export const Storage: Storage = {
     /**
      *
      */
-    removeScrape(link: string, type: ScrapeTypes): Promise<boolean> {
+    removeScrape(link: string, type: ScrapeType): Promise<boolean> {
         return inContext((context) => context.removeScrape(link, type));
+    },
+
+    updateScrape(link: string, type: ScrapeType, nextScrape: number): Promise<boolean> {
+        return inContext((context) => context.updateScrape(link, type, nextScrape));
     },
 
     /**

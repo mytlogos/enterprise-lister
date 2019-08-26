@@ -1,14 +1,18 @@
 import { ListScrapeResult } from "./listManager";
-import { Episode, News, ScrapeItem } from "../types";
-import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, OneTimeToc, ScraperJob, Toc, TocContent, TocScraper, TocSearchScraper } from "./types";
+import { Episode, News, ScrapeItem, TocSearchMedium } from "../types";
+import { ContentDownloader, Dependant, DownloadContent, Hook, NewsScraper, ScraperJob, Toc, TocContent, TocRequest, TocScraper, TocSearchScraper } from "./types";
 export declare const scrapeNews: (adapter: NewsScraper) => Promise<{
     link: string;
     result: News[];
 }>;
-export declare const checkTocs: () => Promise<ScraperJob[]>;
-export declare const oneTimeToc: ({ url: link, uuid, mediumId }: OneTimeToc) => Promise<{
+export declare function searchForToc(item: TocSearchMedium, searcher: TocSearchScraper): Promise<{
     tocs: Toc[];
-    uuid: string;
+}>;
+export declare const checkTocs: () => Promise<ScraperJob[]>;
+export declare const queueTocs: () => Promise<void>;
+export declare const oneTimeToc: ({ url: link, uuid, mediumId }: TocRequest) => Promise<{
+    tocs: Toc[];
+    uuid?: string | undefined;
 }>;
 /**
  *
@@ -24,7 +28,10 @@ export declare let news: (scrapeItem: ScrapeItem) => Promise<{
  * @param value
  * @return {Promise<void>}
  */
-export declare const toc: (value: ScrapeItem) => Promise<void>;
+export declare const toc: (value: TocRequest) => Promise<{
+    tocs: Toc[];
+    uuid?: string | undefined;
+}>;
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
@@ -60,7 +67,7 @@ export interface Scraper {
     stop(): void;
     pause(): void;
     on(event: "toc", callback: (value: {
-        uuid: string;
+        uuid?: string;
         toc: Toc[];
     }) => void): void;
     on(event: "feed" | "news", callback: (value: {
@@ -74,13 +81,14 @@ export interface Scraper {
     on(event: "list:error", callback: (errorValue: any) => void): void;
     on(event: string, callback: (value: any) => void): void;
 }
-export declare enum ScrapeTypes {
+export declare enum ScrapeType {
     LIST = 0,
     FEED = 1,
     NEWS = 2,
     TOC = 3,
     ONETIMEUSER = 4,
-    ONETIMETOC = 5
+    ONETIMETOC = 5,
+    SEARCH = 6
 }
 export interface ScrapeDependants {
     news: ScrapeItem[];
@@ -88,12 +96,9 @@ export interface ScrapeDependants {
         cookies: string;
         uuid: string;
     }>;
-    oneTimeTocs: Array<{
-        url: string;
-        uuid: string;
-    }>;
+    oneTimeTocs: TocRequest[];
     feeds: string[];
-    tocs: ScrapeItem[];
+    tocs: TocRequest[];
     media: ScrapeItem[];
 }
 /**

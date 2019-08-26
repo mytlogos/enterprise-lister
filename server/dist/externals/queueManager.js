@@ -50,12 +50,12 @@ class Queue {
 const queues = new Map();
 const fastQueues = new Map();
 function processRequest(uri, otherRequest, queueToUse = queues, limit) {
-    const exec = /https?:\/\/(www.)?(.+)\/?/.exec(uri);
+    const exec = /https?:\/\/([^\/]+)/.exec(uri);
     if (!exec) {
         throw Error("not a valid url");
     }
     // get the host of the uri
-    let host = exec[2];
+    let host = exec[1];
     const pathBeginIndex = host.indexOf("/");
     if (pathBeginIndex > 0) {
         host = host.substring(0, pathBeginIndex);

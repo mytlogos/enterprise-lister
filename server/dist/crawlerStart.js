@@ -59,9 +59,9 @@ async function feedHandler({ link, result }) {
         logger_1.logError(e);
     }
 }
-async function getTocMedia(result, uuid) {
+async function getTocMedia(tocs, uuid) {
     const media = new Map();
-    await Promise.all(result.tocs.map(async (toc) => {
+    await Promise.all(tocs.map(async (toc) => {
         let medium;
         if (toc.mediumId) {
             // @ts-ignore
@@ -78,7 +78,7 @@ async function getTocMedia(result, uuid) {
             await database_1.Storage.addToc(medium.id, toc.link);
         }
         else {
-            console.log("missing");
+            console.log("missing toc and id for ", medium, " and ", toc);
         }
         const mediumValue = tools_1.getElseSet(media, medium, () => {
             return {
@@ -116,6 +116,66 @@ async function getTocMedia(result, uuid) {
     }));
     return media;
 }
+async function remapMediaParts() {
+    const mediaIds = await database_1.Storage.getAllMedia();
+    await Promise.all(mediaIds.map((mediumId) => remapMediumPart(mediumId)));
+}
+exports.remapMediaParts = remapMediaParts;
+async function remapMediumPart(mediumId) {
+    const parts = await database_1.Storage.getMediumParts(mediumId);
+    let standardPart = parts.find((value) => value.totalIndex === -1);
+    if (!standardPart) {
+        standardPart = await database_1.Storage.getStandardPart(mediumId);
+    }
+    // if there is no standard part, we return as there is no part to move from
+    if (!standardPart) {
+        logger_1.default.warn("medium: " + mediumId + " without any standard part!");
+        return;
+    }
+    const partEpisodeIndices = await database_1.Storage.getPartsEpisodeIndices(parts.map((value) => value.id));
+    const partEpisodesIndicesMap = new Map();
+    partEpisodeIndices.forEach((value) => {
+        partEpisodesIndicesMap.set(value.partId, value.episodes);
+    });
+    const standardPartEpisodes = partEpisodesIndicesMap.get(standardPart.id);
+    if (!standardPartEpisodes) {
+        // may be the case if standard part does not have any episodes?
+        logger_1.default.warn("could not find standardPartEpisodes even though it has a standard part");
+        return;
+    }
+    const episodePartMap = new Map();
+    for (const episodeIndex of standardPartEpisodes) {
+        for (const part of parts) {
+            // skip standard parts here
+            if (part.totalIndex === -1) {
+                continue;
+            }
+            const episodeIndices = partEpisodesIndicesMap.get(part.id);
+            if (!episodeIndices) {
+                continue;
+            }
+            if (episodeIndices.find((value) => value === episodeIndex)) {
+                const partId = episodePartMap.get(episodeIndex);
+                if (partId != null && partId !== part.id) {
+                    throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.id}'`);
+                }
+                episodePartMap.set(episodeIndex, part.id);
+                break;
+            }
+        }
+    }
+    const partEpisodes = new Map();
+    for (const [episodeIndex, partId] of episodePartMap.entries()) {
+        const episodesIndices = tools_1.getElseSet(partEpisodes, partId, () => []);
+        episodesIndices.push(episodeIndex);
+    }
+    const promises = [];
+    for (const [partId, episodeIndices] of partEpisodes.entries()) {
+        promises.push(database_1.Storage.moveEpisodeToPart(standardPart.id, episodeIndices, partId));
+    }
+    await Promise.all(promises);
+}
+exports.remapMediumPart = remapMediumPart;
 async function remapParts(indexPartsMap, mediumId) {
     const values = [...indexPartsMap.values()];
     const standardTocPart = values.find((value) => value.tocPart.totalIndex === -1);
@@ -169,7 +229,7 @@ async function remapParts(indexPartsMap, mediumId) {
     }
     const promises = [];
     for (const [partId, episodeIds] of partEpisodes.entries()) {
-        promises.push(database_1.Storage.moveEpisodeToPart(episodeIds, partId));
+        promises.push(database_1.Storage.moveEpisodeToPart(standardPart.id, episodeIds, partId));
     }
     await Promise.all(promises);
 }
@@ -227,7 +287,16 @@ async function addPartEpisodes(value) {
         .filter((episode) => episode != null)
         .map((episode) => episode.id);
     if (knownEpisodeIds.length) {
-        const episodeLinks = await database_1.Storage.getEpisodeLinks(knownEpisodeIds);
+        const next = value.episodeMap.values().next();
+        if (!next.value) {
+            throw Error("no episode values for part " + value.part.id);
+        }
+        const exec = /https?:\/\/([^\/]+)/.exec(next.value.tocEpisode.url);
+        if (!exec) {
+            throw Error("invalid url for release: " + next.value.tocEpisode.url);
+        }
+        const episodeReleases = await database_1.Storage.getReleasesByHost(knownEpisodeIds, exec[0]);
+        const updateReleases = [];
         const newReleases = nonNewIndices.map((index) => {
             const episodeValue = value.episodeMap.get(index);
             if (!episodeValue) {
@@ -238,19 +307,29 @@ async function addPartEpisodes(value) {
                 throw Error("known episode has no episode from storage");
             }
             const id = currentEpisode.id;
-            if (episodeLinks.find((episode) => episode.url === episodeValue.tocEpisode.url
-                && episode.episodeId === id)) {
-                return;
-            }
-            return {
+            const foundRelease = episodeReleases.find((release) => release.url === episodeValue.tocEpisode.url
+                && release.episodeId === id);
+            const tocRelease = {
                 episodeId: id,
                 releaseDate: episodeValue.tocEpisode.releaseDate || new Date(),
                 title: episodeValue.tocEpisode.title,
-                url: episodeValue.tocEpisode.url
+                url: episodeValue.tocEpisode.url,
+                locked: episodeValue.tocEpisode.locked,
             };
+            if (foundRelease) {
+                if (!tools_1.equalsRelease(foundRelease, tocRelease)
+                    && foundRelease.releaseDate.toDateString() === tocRelease.releaseDate.toDateString()) {
+                    updateReleases.push(tocRelease);
+                }
+                return;
+            }
+            return tocRelease;
         }).filter((v) => v);
         if (newReleases.length) {
             await database_1.Storage.addRelease(newReleases);
+        }
+        if (updateReleases.length) {
+            await database_1.Storage.updateRelease(updateReleases);
         }
     }
     if (allEpisodes.length) {
@@ -258,12 +337,13 @@ async function addPartEpisodes(value) {
     }
 }
 async function tocHandler(result) {
-    console.log(`handling toc: ${result.tocs} ${result.uuid}`);
-    if (!(result.tocs && result.tocs.length)) {
+    const tocs = result.tocs;
+    const uuid = result.uuid;
+    console.log(`handling toc: ${tocs} ${uuid}`);
+    if (!(tocs && tocs.length)) {
         return;
     }
-    const uuid = result.uuid;
-    const media = await getTocMedia(result, uuid);
+    const media = await getTocMedia(tocs, uuid);
     const promises = Array.from(media.entries())
         .filter((entry) => entry[0].id)
         .map(async (entry) => {
@@ -319,7 +399,12 @@ async function tocHandler(result) {
                 .then((part) => partToc.part = part);
         }));
         // 'moves' episodes from the standard part to other parts, if they own the episodes too
-        await remapParts(indexPartsMap, mediumId);
+        try {
+            await remapParts(indexPartsMap, mediumId);
+        }
+        catch (e) {
+            console.error(e);
+        }
         return [...indexPartsMap.values()].map((value) => addPartEpisodes(value));
         // catch all errors from promises, so it will not affect others
     })
@@ -335,14 +420,14 @@ async function addFeeds(feeds) {
         return;
     }
     let scrapes = await database_1.Storage.getScrapes();
-    scrapes = scrapes.filter((value) => value.type === scraperTools_1.ScrapeTypes.FEED);
+    scrapes = scrapes.filter((value) => value.type === scraperTools_1.ScrapeType.FEED);
     const scrapeFeeds = feeds.map((feed) => {
         if (scrapes.find((value) => value.link === feed)) {
             return;
         }
         return {
             link: feed,
-            type: scraperTools_1.ScrapeTypes.FEED,
+            type: scraperTools_1.ScrapeType.FEED,
         };
     }).filter((value) => value);
     if (!scrapeFeeds.length) {

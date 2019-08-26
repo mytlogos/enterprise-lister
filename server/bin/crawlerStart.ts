@@ -1,20 +1,21 @@
 import {Storage} from "./database/database";
-import {checkIndices, combiIndex, Errors, getElseSet, isTocEpisode, isTocPart, Md5Hash, multiSingle} from "./tools";
-import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {
-    EpisodeRelease,
-    ExternalList,
-    LikeMedium,
-    News,
-    Part,
-    SimpleEpisode,
-    SimpleMedium,
-    SimpleRelease
-} from "./types";
+    checkIndices,
+    combiIndex,
+    equalsRelease,
+    Errors,
+    getElseSet,
+    isTocEpisode,
+    isTocPart,
+    Md5Hash,
+    multiSingle
+} from "./tools";
+import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
+import {EpisodeRelease, ExternalList, LikeMedium, News, Part, SimpleEpisode, SimpleMedium} from "./types";
 import logger, {logError} from "./logger";
 import {Toc, TocEpisode, TocPart} from "./externals/types";
 import * as validate from "validate.js";
-import {checkTocContent, ScrapeTypes} from "./externals/scraperTools";
+import {checkTocContent, ScrapeType} from "./externals/scraperTools";
 import {DefaultJobScraper} from "./externals/jobScraper";
 
 const scraper = DefaultJobScraper;
@@ -76,12 +77,12 @@ async function feedHandler({link, result}: { link: string, result: News[] }): Pr
     }
 }
 
-async function getTocMedia(result: { tocs: Toc[]; uuid: string }, uuid: string)
+async function getTocMedia(tocs: Toc[], uuid?: string)
     : Promise<Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }>> {
 
     const media: Map<SimpleMedium, { parts: TocPart[], episodes: TocEpisode[]; }> = new Map();
 
-    await Promise.all(result.tocs.map(async (toc) => {
+    await Promise.all(tocs.map(async (toc) => {
         let medium: SimpleMedium | undefined;
 
         if (toc.mediumId) {
@@ -99,7 +100,7 @@ async function getTocMedia(result: { tocs: Toc[]; uuid: string }, uuid: string)
         if (medium.id && toc.link) {
             await Storage.addToc(medium.id, toc.link);
         } else {
-            console.log("missing");
+            console.log("missing toc and id for ", medium, " and ", toc);
         }
 
         const mediumValue = getElseSet(media, medium, () => {
@@ -147,6 +148,74 @@ type TocMap = Map<number, {
         episode?: SimpleEpisode
     }>
 }>;
+
+export async function remapMediaParts() {
+    const mediaIds = await Storage.getAllMedia();
+    await Promise.all(mediaIds.map((mediumId) => remapMediumPart(mediumId)));
+}
+
+export async function remapMediumPart(mediumId: number) {
+    const parts = await Storage.getMediumParts(mediumId);
+
+    let standardPart = parts.find((value) => value.totalIndex === -1);
+
+    if (!standardPart) {
+        standardPart = await Storage.getStandardPart(mediumId);
+    }
+    // if there is no standard part, we return as there is no part to move from
+    if (!standardPart) {
+        logger.warn("medium: " + mediumId + " without any standard part!");
+        return;
+    }
+    const partEpisodeIndices = await Storage.getPartsEpisodeIndices(parts.map((value) => value.id));
+    const partEpisodesIndicesMap = new Map<number, number[]>();
+    partEpisodeIndices.forEach((value) => {
+        partEpisodesIndicesMap.set(value.partId, value.episodes);
+    });
+    const standardPartEpisodes = partEpisodesIndicesMap.get(standardPart.id);
+
+    if (!standardPartEpisodes) {
+        // may be the case if standard part does not have any episodes?
+        logger.warn("could not find standardPartEpisodes even though it has a standard part");
+        return;
+    }
+    const episodePartMap = new Map<number, number>();
+
+    for (const episodeIndex of standardPartEpisodes) {
+        for (const part of parts) {
+            // skip standard parts here
+            if (part.totalIndex === -1) {
+                continue;
+            }
+            const episodeIndices = partEpisodesIndicesMap.get(part.id);
+
+            if (!episodeIndices) {
+                continue;
+            }
+            if (episodeIndices.find((value) => value === episodeIndex)) {
+                const partId = episodePartMap.get(episodeIndex);
+
+                if (partId != null && partId !== part.id) {
+                    throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.id}'`);
+                }
+                episodePartMap.set(episodeIndex, part.id);
+                break;
+            }
+        }
+    }
+    const partEpisodes = new Map<number, number[]>();
+    for (const [episodeIndex, partId] of episodePartMap.entries()) {
+        const episodesIndices = getElseSet(partEpisodes, partId, () => []);
+        episodesIndices.push(episodeIndex);
+    }
+
+    const promises = [];
+    for (const [partId, episodeIndices] of partEpisodes.entries()) {
+        promises.push(Storage.moveEpisodeToPart(standardPart.id, episodeIndices, partId));
+    }
+    await Promise.all(promises);
+}
+
 
 async function remapParts(indexPartsMap: TocMap, mediumId: number) {
 
@@ -207,7 +276,7 @@ async function remapParts(indexPartsMap: TocMap, mediumId: number) {
 
     const promises = [];
     for (const [partId, episodeIds] of partEpisodes.entries()) {
-        promises.push(Storage.moveEpisodeToPart(episodeIds, partId));
+        promises.push(Storage.moveEpisodeToPart(standardPart.id, episodeIds, partId));
     }
     await Promise.all(promises);
 }
@@ -283,7 +352,17 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         .map((episode: SimpleEpisode) => episode.id);
 
     if (knownEpisodeIds.length) {
-        const episodeLinks: SimpleRelease[] = await Storage.getEpisodeLinks(knownEpisodeIds);
+        const next = value.episodeMap.values().next();
+
+        if (!next.value) {
+            throw Error("no episode values for part " + value.part.id);
+        }
+        const exec = /https?:\/\/([^\/]+)/.exec(next.value.tocEpisode.url);
+        if (!exec) {
+            throw Error("invalid url for release: " + next.value.tocEpisode.url);
+        }
+        const episodeReleases = await Storage.getReleasesByHost(knownEpisodeIds, exec[0]);
+        const updateReleases: EpisodeRelease[] = [];
 
         const newReleases = nonNewIndices.map((index): EpisodeRelease | undefined => {
             const episodeValue = value.episodeMap.get(index);
@@ -297,21 +376,32 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
                 throw Error("known episode has no episode from storage");
             }
             const id = currentEpisode.id;
-            if (episodeLinks.find((episode) =>
-                episode.url === episodeValue.tocEpisode.url
-                && episode.episodeId === id)) {
-                return;
-            }
-            return {
+            const foundRelease = episodeReleases.find((release) =>
+                release.url === episodeValue.tocEpisode.url
+                && release.episodeId === id);
+
+            const tocRelease: EpisodeRelease = {
                 episodeId: id,
                 releaseDate: episodeValue.tocEpisode.releaseDate || new Date(),
                 title: episodeValue.tocEpisode.title,
-                url: episodeValue.tocEpisode.url
+                url: episodeValue.tocEpisode.url,
+                locked: episodeValue.tocEpisode.locked,
             };
+            if (foundRelease) {
+                if (!equalsRelease(foundRelease, tocRelease)
+                    && foundRelease.releaseDate.toDateString() === tocRelease.releaseDate.toDateString()) {
+                    updateReleases.push(tocRelease);
+                }
+                return;
+            }
+            return tocRelease;
         }).filter((v) => v) as EpisodeRelease[];
 
         if (newReleases.length) {
             await Storage.addRelease(newReleases);
+        }
+        if (updateReleases.length) {
+            await Storage.updateRelease(updateReleases);
         }
     }
     if (allEpisodes.length) {
@@ -319,14 +409,16 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
     }
 }
 
-export async function tocHandler(result: { tocs: Toc[], uuid: string }): Promise<void> {
-    console.log(`handling toc: ${result.tocs} ${result.uuid}`);
-    if (!(result.tocs && result.tocs.length)) {
+export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promise<void> {
+    const tocs = result.tocs;
+    const uuid = result.uuid;
+    console.log(`handling toc: ${tocs} ${uuid}`);
+
+    if (!(tocs && tocs.length)) {
         return;
     }
-    const uuid = result.uuid;
 
-    const media: Map<SimpleMedium, { parts: TocPart[], episodes: TocEpisode[]; }> = await getTocMedia(result, uuid);
+    const media: Map<SimpleMedium, { parts: TocPart[], episodes: TocEpisode[]; }> = await getTocMedia(tocs, uuid);
 
     const promises: Array<Promise<Array<Promise<void>>>> = Array.from(media.entries())
         .filter((entry) => entry[0].id)
@@ -393,7 +485,11 @@ export async function tocHandler(result: { tocs: Toc[], uuid: string }): Promise
                         .then((part: Part) => partToc.part = part);
                 }));
             // 'moves' episodes from the standard part to other parts, if they own the episodes too
-            await remapParts(indexPartsMap, mediumId);
+            try {
+                await remapParts(indexPartsMap, mediumId);
+            } catch (e) {
+                console.error(e);
+            }
 
             return [...indexPartsMap.values()].map((value) => addPartEpisodes(value));
             // catch all errors from promises, so it will not affect others
@@ -410,7 +506,7 @@ async function addFeeds(feeds: string[]): Promise<void> {
         return;
     }
     let scrapes = await Storage.getScrapes();
-    scrapes = scrapes.filter((value) => value.type === ScrapeTypes.FEED);
+    scrapes = scrapes.filter((value) => value.type === ScrapeType.FEED);
 
     const scrapeFeeds = feeds.map((feed) => {
         if (scrapes.find((value) => value.link === feed)) {
@@ -418,7 +514,7 @@ async function addFeeds(feeds: string[]): Promise<void> {
         }
         return {
             link: feed,
-            type: ScrapeTypes.FEED,
+            type: ScrapeType.FEED,
         };
     }).filter((value) => value);
 

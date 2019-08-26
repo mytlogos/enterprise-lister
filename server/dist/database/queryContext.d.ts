@@ -1,7 +1,7 @@
 import { Connection } from "promise-mysql";
 import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { MediumInWait } from "./databaseTypes";
-import { ScrapeTypes } from "../externals/scraperTools";
+import { ScrapeType } from "../externals/scraperTools";
 import { Trigger } from "./trigger";
 export interface DbTrigger {
     Trigger: string;
@@ -54,6 +54,7 @@ export declare class QueryContext {
     createTable(table: string, columns: string[]): Promise<any>;
     addColumn(tableName: string, columnDefinition: string): Promise<any>;
     alterColumn(tableName: string, columnDefinition: string): Promise<any>;
+    changeColumn(tableName: string, oldName: string, newName: string, columnDefinition: string): Promise<any>;
     addUnique(tableName: string, indexName: string, ...columns: string[]): Promise<any>;
     dropIndex(tableName: string, indexName: string): Promise<any>;
     addForeignKey(tableName: string, constraintName: string, column: string, referencedTable: string, referencedColumn: string, onDelete?: string, onUpdate?: string): Promise<any>;
@@ -165,6 +166,7 @@ export declare class QueryContext {
      */
     getLatestReleases(mediumId: number): Promise<SimpleEpisode[]>;
     getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]>;
+    getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]>;
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
     getTocSearchMedia(): Promise<TocSearchMedium[]>;
     getTocSearchMedium(id: number): Promise<TocSearchMedium>;
@@ -226,7 +228,8 @@ export declare class QueryContext {
     addEpisode(episode: SimpleEpisode[]): Promise<Episode[]>;
     getEpisode(id: number, uuid: string): Promise<Episode>;
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
-    getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
+    getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
+    getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
     getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
     /**
      * Updates an episode from the storage.
@@ -235,7 +238,7 @@ export declare class QueryContext {
     /**
      * Updates an episode from the storage.
      */
-    moveEpisodeToPart(episodeId: MultiSingle<number>, partId: number): Promise<boolean>;
+    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean>;
     /**
      * Deletes an episode from the storage irreversibly.
      */
@@ -393,7 +396,11 @@ export declare class QueryContext {
     /**
      *
      */
-    removeScrape(link: string, type: ScrapeTypes): Promise<boolean>;
+    removeScrape(link: string, type: ScrapeType): Promise<boolean>;
+    /**
+     *
+     */
+    updateScrape(link: string, type: ScrapeType, nextScrape: number): Promise<boolean>;
     /**
      *
      */
@@ -449,7 +456,7 @@ export declare class QueryContext {
     }>;
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void>;
     removePageInfo(link: string, key?: string, toDeleteValues?: string[]): Promise<void>;
-    addInvalidation(value: string[]): Promise<void>;
+    queueNewTocs(): Promise<void>;
     getInvalidated(uuid: string): Promise<Invalidation[]>;
     clearInvalidationTable(): Promise<any>;
     /**
