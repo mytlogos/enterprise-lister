@@ -76,17 +76,39 @@ export class SchemaManager {
             throw Error("database version is smaller in code than in database");
         }
 
-        let foundMigration = null;
-        for (const migration of this.migrations) {
-            if (migration.fromVersion === previousVersion && migration.toVersion === currentVersion) {
-                foundMigration = migration;
+        const migrations: Migration[] = [];
+        let lastMigrationVersion = previousVersion;
+        let directMigration = null;
+
+        while (lastMigrationVersion < currentVersion) {
+            let foundMigration = false;
+            for (const migration of this.migrations) {
+                if (migration.fromVersion === previousVersion && migration.toVersion === currentVersion) {
+                    directMigration = migration;
+                    break;
+                } else if (migration.fromVersion === lastMigrationVersion) {
+                    lastMigrationVersion = migration.toVersion;
+                    migrations.push(migration);
+                    foundMigration = true;
+                }
+            }
+            if (directMigration) {
                 break;
             }
+            if (!foundMigration) {
+                throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
+            }
         }
-        if (foundMigration == null) {
-            throw Error(`no direct migration plan found from '${previousVersion}' to '${currentVersion}'`);
+        if (directMigration == null || !migrations.length || lastMigrationVersion !== currentVersion) {
+            throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
         }
-        await foundMigration.migrate(context);
+        if (directMigration) {
+            await directMigration.migrate(context);
+        } else {
+            for (const migration of migrations) {
+                await migration.migrate(context);
+            }
+        }
         // FIXME: 10.08.2019 inserting new database version does not seem to work
         await context.updateDatabaseVersion(currentVersion);
         console.log(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
