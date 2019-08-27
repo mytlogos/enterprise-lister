@@ -69,7 +69,7 @@ export class SchemaManager {
             previousVersion = versionResult[0].version;
         }
 
-        let currentVersion = this.dataBaseVersion;
+        const currentVersion = this.dataBaseVersion;
         if (currentVersion === previousVersion) {
             return;
         } else if (currentVersion < previousVersion) {

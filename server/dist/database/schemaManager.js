@@ -55,7 +55,7 @@ class SchemaManager {
         if (versionResult && versionResult[0] && versionResult[0].version > 0) {
             previousVersion = versionResult[0].version;
         }
-        let currentVersion = this.dataBaseVersion;
+        const currentVersion = this.dataBaseVersion;
         if (currentVersion === previousVersion) {
             return;
         }

@@ -1850,7 +1850,7 @@ class QueryContext {
      *
      */
     async getScrapes() {
-        const value = await this.query("SELECT * FROM scrape_board where next_scrape is null or next_scrape < NOW();");
+        const value = await this.query("SELECT * FROM scrape_board where next_scrape is null or next_scrape < NOW()  LIMIT 50;");
         return value.map((item) => {
             return {
                 link: item.link,

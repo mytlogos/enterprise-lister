@@ -2378,7 +2378,9 @@ export class QueryContext {
      *
      */
     public async getScrapes(): Promise<ScrapeItem[]> {
-        const value = await this.query("SELECT * FROM scrape_board where next_scrape is null or next_scrape < NOW();");
+        const value = await this.query(
+            "SELECT * FROM scrape_board where next_scrape is null or next_scrape < NOW()  LIMIT 50;"
+        );
         return value.map((item: any) => {
             return {
                 link: item.link,

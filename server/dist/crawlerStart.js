@@ -129,7 +129,7 @@ async function remapMediumPart(mediumId) {
     }
     // if there is no standard part, we return as there is no part to move from
     if (!standardPart) {
-        logger_1.default.warn("medium: " + mediumId + " without any standard part!");
+        await database_1.Storage.createStandardPart(mediumId);
         return;
     }
     const partEpisodeIndices = await database_1.Storage.getPartsEpisodeIndices(parts.map((value) => value.id));
