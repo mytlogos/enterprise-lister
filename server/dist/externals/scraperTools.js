@@ -530,7 +530,7 @@ exports.queueTocsJob = async () => {
             runImmediately: true,
             arguments: JSON.stringify({ mediumId: value.id, url: value.link }),
             type: types_1.ScrapeName.toc,
-            name: `${types_1.ScrapeName.toc}-${value.id}`,
+            name: `${types_1.ScrapeName.toc}-${value.id}-${value.link}`,
             interval: types_1.MilliTime.HOUR,
             deleteAfterRun: false,
         };

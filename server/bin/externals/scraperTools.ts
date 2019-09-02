@@ -655,7 +655,7 @@ export const queueTocsJob = async (): Promise<JobRequest[]> => {
             runImmediately: true,
             arguments: JSON.stringify({mediumId: value.id, url: value.link} as TocRequest),
             type: ScrapeName.toc,
-            name: `${ScrapeName.toc}-${value.id}`,
+            name: `${ScrapeName.toc}-${value.id}-${value.link}`,
             interval: MilliTime.HOUR,
             deleteAfterRun: false,
         };
