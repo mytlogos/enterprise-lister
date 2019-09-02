@@ -1,9 +1,12 @@
 import {Storage} from "./database/database";
 import {factory} from "./externals/listManager";
 import {Handler, Request, Response} from "express";
+import stringify from "stringify-stream";
 import logger from "./logger";
-import {downloadEpisodes, ScrapeType} from "./externals/scraperTools";
-import {Errors, isError, isString, stringToNumberList} from "./tools";
+import {downloadEpisodes} from "./externals/scraperTools";
+import {Errors, isError, isQuery, isString, stringToNumberList} from "./tools";
+import {JobRequest, ScrapeName} from "./types";
+import {TocRequest} from "./externals/types";
 
 export const getAllMedia: Handler = (req, res) => {
     sendResult(res, Storage.getAllMedia());
@@ -69,12 +72,18 @@ export const refreshExternalUser: Handler = (req, res) => {
         return;
     }
     const externalUserWithCookies = Storage.getExternalUserWithCookies(externalUuid);
-    const storePromise = externalUserWithCookies.then((value) => Storage.addScrape({
-        type: ScrapeType.ONETIMEUSER,
-        link: value.uuid,
-        userId: value.userUuid,
-        externalUserId: value.uuid,
-        info: value.cookies
+    const storePromise = externalUserWithCookies.then((value) => Storage.addJobs({
+        type: ScrapeName.oneTimeUser,
+        interval: -1,
+        deleteAfterRun: true,
+        runImmediately: true,
+        name: `${ScrapeName.oneTimeUser}-${value.uuid}`,
+        arguments: JSON.stringify({
+            link: value.uuid,
+            userId: value.userUuid,
+            externalUserId: value.uuid,
+            info: value.cookies
+        })
     }));
     sendResult(res, storePromise);
 };
@@ -138,7 +147,7 @@ export const getInvalidated: Handler = (req, res) => {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, Storage.getInvalidated(uuid));
+    sendResult(res, Storage.getInvalidatedStream(uuid));
 };
 
 export const addBookmarked: Handler = (req, res) => {
@@ -146,8 +155,18 @@ export const addBookmarked: Handler = (req, res) => {
     const protocol = /^https?:\/\//;
 
     if (bookmarked && bookmarked.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
-        const storePromise = Storage.addScrape(bookmarked.map((link: string) => {
-            return {type: ScrapeType.ONETIMETOC, link, userId: uuid};
+        const storePromise = Storage.addJobs(bookmarked.map((link: string): JobRequest => {
+            return {
+                name: `${ScrapeName.oneTimeToc}-${link}`,
+                type: ScrapeName.oneTimeToc,
+                runImmediately: true,
+                deleteAfterRun: true,
+                interval: -1,
+                arguments: JSON.stringify({
+                    url: link,
+                    uuid
+                } as TocRequest)
+            };
         }));
         sendResult(res, storePromise);
     } else {
@@ -160,7 +179,18 @@ export const addToc: Handler = (req, res) => {
     const protocol = /^https?:\/\//;
 
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        const storePromise = Storage.addScrape({type: ScrapeType.ONETIMETOC, link: toc, userId: uuid, mediumId});
+        const storePromise = Storage.addJobs({
+            name: `${ScrapeName.oneTimeToc}-${toc}`,
+            type: ScrapeName.oneTimeToc,
+            runImmediately: true,
+            deleteAfterRun: true,
+            interval: -1,
+            arguments: JSON.stringify({
+                url: toc,
+                uuid,
+                mediumId
+            } as TocRequest)
+        });
         sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
@@ -545,7 +575,14 @@ export const authenticate: Handler = (req, res, next) => {
 function sendResult(res: Response, promise: Promise<any>) {
     promise
         .then((result) => {
-            res.json(result);
+            if (isQuery(result)) {
+                result
+                    .stream({objectMode: true, highWaterMark: 10})
+                    .pipe(stringify({open: "[", close: "]"}))
+                    .pipe(res);
+            } else {
+                res.json(result);
+            }
         })
         .catch((error) => {
             const errorCode = isError(error);

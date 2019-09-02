@@ -1,4 +1,7 @@
 import { Hook } from "./types";
+export declare enum ListType {
+    NOVELUPDATES = 0
+}
 export interface ListScrapeResult {
     lists: ScrapeList[];
     media: ScrapeMedium[];

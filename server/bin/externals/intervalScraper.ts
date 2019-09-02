@@ -28,7 +28,6 @@ export class IntervalScraper implements Scraper {
         oneTimeUser: [],
         oneTimeTocs: [],
         news: [],
-        media: []
     };
     private readonly helper = new ScraperHelper();
 
@@ -38,7 +37,7 @@ export class IntervalScraper implements Scraper {
 
 
     public addDependant(dependant: Dependant) {
-        const dependants = {feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: []};
+        const dependants = {feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: []};
 
         // @ts-ignore
         addMultiSingle(dependants.oneTimeUser, dependant.oneTimeUser);
@@ -48,7 +47,6 @@ export class IntervalScraper implements Scraper {
         addMultiSingle(dependants.feeds, dependant.feed);
         addMultiSingle(dependants.news, dependant.news);
         addMultiSingle(dependants.tocs, dependant.toc);
-        addMultiSingle(dependants.media, dependant.medium);
 
         // kick of a cycle and if no error occurs: add it to permanent cycle
         delay(100)
@@ -60,7 +58,6 @@ export class IntervalScraper implements Scraper {
                 addMultiSingle(this.scrapeDependants.feeds, dependant.feed);
                 addMultiSingle(this.scrapeDependants.news, dependant.news);
                 addMultiSingle(this.scrapeDependants.tocs, dependant.toc);
-                addMultiSingle(this.scrapeDependants.media, dependant.medium);
             })
             .catch((error) => logError(error));
     }
@@ -90,7 +87,6 @@ export class IntervalScraper implements Scraper {
         removeMultiSingle(this.scrapeDependants.feeds, dependant.feed);
         removeMultiSingle(this.scrapeDependants.news, dependant.news);
         removeMultiSingle(this.scrapeDependants.tocs, dependant.toc);
-        removeMultiSingle(this.scrapeDependants.media, dependant.medium);
     }
 
     public start(): void {

@@ -5,3 +5,7 @@ export declare class BufferToStringStream extends stream.Transform {
     constructor();
     _transform(chunk: any, encoding: string, callback: (error?: (Error | null), data?: any) => void): void;
 }
+export declare class ObjectToStringStream extends stream.Transform {
+    constructor();
+    _transform(chunk: any, encoding: string, callback: (error?: (Error | null), data?: any) => void): void;
+}

@@ -46,12 +46,36 @@ async function inContext(callback, transaction = true) {
         result = await doTransaction(callback, context, transaction);
     }
     finally {
-        // release connection into the pool
-        await pool.releaseConnection(con);
+        if (tools_1.isQuery(result)) {
+            const query = result;
+            query.on("end", () => {
+                pool.releaseConnection(con);
+            });
+        }
+        else {
+            // release connection into the pool
+            await pool.releaseConnection(con);
+        }
     }
     return result;
 }
 exports.inContext = inContext;
+async function catchTransactionError(transaction, context, e, attempts, callback) {
+    // if it could not be commit due to error, roll back and rethrow error
+    if (transaction) {
+        // if there is a transaction first rollback and then throw error
+        await context.rollback();
+    }
+    // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
+    if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
+        await tools_1.delay(500);
+        return doTransaction(callback, context, transaction, ++attempts);
+    }
+    else {
+        // if it isn't an deadlock error, or still an deadlock after five attempts, rethrow error
+        throw e;
+    }
+}
 async function doTransaction(callback, context, transaction, attempts = 0) {
     let result;
     try {
@@ -61,26 +85,32 @@ async function doTransaction(callback, context, transaction, attempts = 0) {
         }
         // let callback run with context
         result = await callback(context);
-        // if transaction and no error till now, commit it and return result
-        if (transaction) {
+        if (tools_1.isQuery(result)) {
+            const query = result;
+            let error = false;
+            // TODO: 31.08.2019 returning query object does not allow normal error handling,
+            //  maybe return own stream where the control is completely in my own hands
+            query
+                .on("error", (err) => {
+                error = true;
+                if (transaction) {
+                    context.rollback();
+                }
+                console.error(err);
+            })
+                .on("end", () => {
+                if (!error && transaction) {
+                    context.commit();
+                }
+            });
+            // if transaction and no error till now, commit it and return result
+        }
+        else if (transaction) {
             await context.commit();
         }
     }
     catch (e) {
-        // if it could not be commit due to error, roll back and rethrow error
-        if (transaction) {
-            // if there is a transaction first rollback and then throw error
-            await context.rollback();
-        }
-        // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
-        if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
-            await tools_1.delay(500);
-            return doTransaction(callback, context, transaction, ++attempts);
-        }
-        else {
-            // if it isn't an deadlock error, or still an deadlock after five attempts, rethrow error
-            throw e;
-        }
+        return await catchTransactionError(transaction, context, e, attempts, callback);
     }
     return result;
 }
@@ -337,6 +367,11 @@ exports.Storage = {
     },
     /**
      */
+    getAllMediaTocs() {
+        return inContext((context) => context.getAllMediaTocs());
+    },
+    /**
+     */
     getAllTocs() {
         return inContext((context) => context.getAllTocs());
     },
@@ -373,8 +408,17 @@ exports.Storage = {
     getMediumParts(mediumId, uuid) {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
     },
+    /**
+     * Returns all parts of an medium with their episodes.
+     */
+    getMediumPartIds(mediumId) {
+        return inContext((context) => context.getMediumPartIds(mediumId));
+    },
     getStandardPart(mediumId) {
         return inContext((context) => context.getStandardPart(mediumId));
+    },
+    getStandardPartId(mediumId) {
+        return inContext((context) => context.getStandardPartId(mediumId));
     },
     /**
      * Returns parts of an medium with specific totalIndex.
@@ -431,8 +475,8 @@ exports.Storage = {
     updateEpisode(episode, uuid) {
         return inContext((context) => context.setUuid(uuid).updateEpisode(episode));
     },
-    moveEpisodeToPart(oldPartId, episodeIndices, newPartId) {
-        return inContext((context) => context.moveEpisodeToPart(oldPartId, episodeIndices, newPartId));
+    moveEpisodeToPart(oldPartId, newPartId) {
+        return inContext((context) => context.moveEpisodeToPart(oldPartId, newPartId));
     },
     /**
      * Gets an episode from the storage.
@@ -500,6 +544,30 @@ exports.Storage = {
     },
     queueNewTocs() {
         return inContext((context) => context.queueNewTocs());
+    },
+    getOverLappingParts(standardId, nonStandardPartIds) {
+        return inContext((context) => context.getOverLappingParts(standardId, nonStandardPartIds));
+    },
+    stopJobs() {
+        return inContext((context) => context.stopJobs());
+    },
+    getJobs(limit) {
+        return inContext((context) => context.getJobs(limit));
+    },
+    getAfterJobs(id) {
+        return inContext((context) => context.getAfterJobs(id));
+    },
+    addJobs(jobs) {
+        return inContext((context) => context.addJobs(jobs));
+    },
+    removeJobs(jobs) {
+        return inContext((context) => context.removeJobs(jobs));
+    },
+    removeJob(key) {
+        return inContext((context) => context.removeJob(key));
+    },
+    updateJobs(jobs) {
+        return inContext((context) => context.updateJobs(jobs));
     },
     /**
      * Adds a medium to a list.
@@ -723,6 +791,12 @@ exports.Storage = {
     getInvalidated(uuid) {
         return inContext((context) => context.getInvalidated(uuid));
     },
+    /**
+     *
+     */
+    getInvalidatedStream(uuid) {
+        return inContext((context) => context.getInvalidatedStream(uuid));
+    },
     getLatestNews(domain) {
         return inContext((context) => context.getLatestNews(domain));
     },
@@ -740,4 +814,6 @@ exports.Storage = {
  *
  */
 exports.startStorage = () => start();
+// TODO: 01.09.2019 check whether it should 'start' implicitly or explicitly
+start();
 //# sourceMappingURL=database.js.map

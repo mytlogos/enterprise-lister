@@ -1,7 +1,8 @@
-import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, FullPart, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, FullPart, Invalidation, JobItem, JobRequest, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { QueryContext } from "./queryContext";
 import { MediumInWait } from "./databaseTypes";
 import { ScrapeType } from "../externals/scraperTools";
+import { Query } from "mysql";
 declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 /**
  * Creates the context for QueryContext, to
@@ -9,6 +10,14 @@ declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
  */
 export declare function inContext<T>(callback: ContextCallback<T>, transaction?: boolean): Promise<T>;
 export interface Storage {
+    getOverLappingParts(id: number, nonStandardPartIds: number[]): Promise<number[]>;
+    stopJobs(): Promise<void>;
+    getAfterJobs(id: number): Promise<JobItem[]>;
+    getJobs(): Promise<JobItem[]>;
+    addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]>;
+    removeJobs(jobs: JobItem | JobItem[]): Promise<void>;
+    removeJob(key: string | number): Promise<void>;
+    updateJobs(jobs: JobItem | JobItem[]): Promise<void>;
     queueNewTocs(): Promise<void>;
     deleteRelease(release: EpisodeRelease): Promise<void>;
     getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
@@ -62,7 +71,9 @@ export interface Storage {
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
     getMediumParts(mediumId: number, uuid: string): Promise<FullPart[]>;
     getMediumParts(mediumId: number): Promise<ShallowPart[]>;
+    getMediumPartIds(mediumId: number): Promise<number[]>;
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
+    getStandardPartId(mediumId: number): Promise<number | undefined>;
     updateProgress(uuid: string, mediumId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
     showUser(): Promise<User[]>;
     addScrape(scrape: (ScrapeItem | ScrapeItem[])): Promise<boolean>;
@@ -74,7 +85,7 @@ export interface Storage {
     addEpisode(episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
     addEpisode(episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean>;
-    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean>;
+    moveEpisodeToPart(oldPartId: number, newPartId: number): Promise<boolean>;
     deleteUser(uuid: string): Promise<boolean>;
     addPart(part: Part, uuid?: string): Promise<Part>;
     getLatestNews(domain: string): Promise<News[]>;
@@ -113,6 +124,7 @@ export interface Storage {
     }>>;
     getParts(partsId: (number | number[]), uuid: string): Promise<Part[] | Part>;
     getInvalidated(uuid: string): Promise<Invalidation[]>;
+    getInvalidatedStream(uuid: string): Promise<Query>;
     markNewsRead(uuid: string, news: number[]): Promise<boolean>;
     updateExternalUser(externalUser: ExternalUser): Promise<boolean>;
     addItemToList(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
@@ -154,8 +166,12 @@ export interface Storage {
     saveAppSettings(listId: number, settings: any): Promise<void>;
     saveSettings(listId: number, settings: any): Promise<void>;
     getTocs(mediumId: number): Promise<string[]>;
-    getAllTocs(): Promise<Array<{
+    getAllMediaTocs(): Promise<Array<{
         link?: string;
+        id: number;
+    }>>;
+    getAllTocs(): Promise<Array<{
+        link: string;
         id: number;
     }>>;
     getChapterIndices(mediumId: number): Promise<number[]>;

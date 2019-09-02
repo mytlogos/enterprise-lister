@@ -47,6 +47,7 @@ class Queue {
         });
     }
 }
+exports.Queue = Queue;
 const queues = new Map();
 const fastQueues = new Map();
 function processRequest(uri, otherRequest, queueToUse = queues, limit) {

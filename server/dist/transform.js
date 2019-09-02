@@ -25,4 +25,20 @@ class BufferToStringStream extends stream_1.default.Transform {
     }
 }
 exports.BufferToStringStream = BufferToStringStream;
+class ObjectToStringStream extends stream_1.default.Transform {
+    constructor() {
+        super({
+            decodeStrings: false,
+            encoding: "utf-8",
+            writableObjectMode: true,
+            readableObjectMode: false,
+            allowHalfOpen: false
+        });
+    }
+    _transform(chunk, encoding, callback) {
+        this.push(JSON.stringify(chunk));
+        callback(null, JSON.stringify(chunk));
+    }
+}
+exports.ObjectToStringStream = ObjectToStringStream;
 //# sourceMappingURL=transform.js.map

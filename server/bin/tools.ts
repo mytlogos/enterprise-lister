@@ -3,12 +3,14 @@ import {EpisodeRelease, MultiSingle} from "./types";
 import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
+import throttle from "throttle-function";
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
 //  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 import bcrypt from "bcrypt-nodejs";
 import emojiStrip from "emoji-strip";
 import * as fs from "fs";
 import * as path from "path";
+import {Query} from "mysql";
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -499,4 +501,17 @@ export function findProjectDirPath(file: string): string {
         currentDirFiles = fs.readdirSync(dir);
     }
     return filePath;
+}
+
+export function isQuery(value: any): value is Query {
+    return value && typeof value.on === "function" && typeof value.stream === "function";
+}
+
+function throttleFunc<TResult>(fn: () => TResult): () => TResult;
+function throttleFunc<T1, TResult>(fn: (param1: T1) => TResult): (param1: T1) => TResult;
+function throttleFunc<T1, T2, TResult>(fn: (param1: T1, param2: T2) => TResult): (param1: T1, param2: T2) => TResult;
+function throttleFunc<T1, T2, T3, TResult>(fn: (param1: T1, param2: T2, param3: T3) => TResult): (param1: T1, param2: T2, param3: T3) => TResult;
+function throttleFunc<T1, T2, T3, T4, TResult>(fn: (param1: T1, param2: T2, param3: T3, param4: T4) => TResult): (param1: T1, param2: T2, param3: T3, param4: T4) => TResult;
+function throttleFunc<TParam, TResult>(fn: (...params: TParam[]) => TResult): (...params: TParam[]) => TResult {
+    return throttle(fn);
 }

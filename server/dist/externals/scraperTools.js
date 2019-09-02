@@ -5,6 +5,7 @@ const database_1 = require("../database/database");
 const listManager_1 = require("./listManager");
 const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promised"));
 const tools_1 = require("../tools");
+const types_1 = require("../types");
 const logger_1 = tslib_1.__importStar(require("../logger"));
 const directScraper = tslib_1.__importStar(require("./direct/directScraper"));
 const url = tslib_1.__importStar(require("url"));
@@ -25,6 +26,7 @@ const tocScraper = new Map();
 const episodeDownloader = new Map();
 const tocDiscovery = new Map();
 const newsAdapter = [];
+const nameHookMap = new Map();
 function activity(func) {
     return (...args) => {
         if (!env_1.default.measure) {
@@ -102,6 +104,16 @@ function notify(key, promises) {
  * @type {string}
  */
 let lastListScrape;
+exports.scrapeNewsJob = async (name) => {
+    const hook = nameHookMap.get(name);
+    if (!hook) {
+        throw Error("no hook found for name: " + name);
+    }
+    if (!hook.newsAdapter) {
+        throw Error(`expected hook '${name}' to have newsAdapter`);
+    }
+    return exports.scrapeNews(hook.newsAdapter);
+};
 exports.scrapeNews = async (adapter) => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
@@ -254,6 +266,18 @@ async function processMediumNews(title, type, tocLink, update = false, potential
         await database_1.Storage.addToc(mediumId, tocLink);
     }
 }
+async function searchForTocJob(name, item) {
+    console.log(`searching for toc on ${name} with ${item}`);
+    const hook = nameHookMap.get(name);
+    if (!hook) {
+        throw Error("no hook found for name: " + name);
+    }
+    if (!hook.tocSearchAdapter) {
+        throw Error("expected hook with tocSearchAdapter");
+    }
+    return searchForToc(item, hook.tocSearchAdapter);
+}
+exports.searchForTocJob = searchForTocJob;
 async function searchForToc(item, searcher) {
     const link = searcher.link;
     if (!link) {
@@ -360,8 +384,103 @@ function searchToc(id, tocSearch, availableTocs) {
     }
     return searchJobs[0];
 }
+function searchTocJob(id, tocSearch, availableTocs) {
+    const consumed = [];
+    if (availableTocs) {
+        for (const availableToc of availableTocs) {
+            for (const entry of tocScraper.entries()) {
+                const [reg] = entry;
+                if (!consumed.includes(reg) && reg.test(availableToc)) {
+                    consumed.push(reg);
+                    break;
+                }
+            }
+        }
+    }
+    const searchJobs = [];
+    if (tocSearch) {
+        for (const entry of tocDiscovery.entries()) {
+            const [reg, searcher] = entry;
+            let search = false;
+            if (tocSearch.hosts) {
+                for (const link of tocSearch.hosts) {
+                    if (!consumed.includes(reg) && reg.test(link)) {
+                        search = true;
+                        consumed.push(reg);
+                        break;
+                    }
+                }
+            }
+            if (!search && (!tools_1.hasMediaType(searcher.medium, tocSearch.medium) || !searcher.blindSearch)) {
+                continue;
+            }
+            searchJobs.push({
+                name: `${searcher.hookName}-${types_1.ScrapeName.searchForToc}-${tocSearch.mediumId}`,
+                interval: -1,
+                arguments: JSON.stringify([searcher.hookName, tocSearch]),
+                type: types_1.ScrapeName.searchForToc,
+                deleteAfterRun: true,
+                runImmediately: false,
+            });
+        }
+    }
+    if (!searchJobs.length) {
+        console.log("did not find anything for: " + id, tocSearch);
+        return [];
+    }
+    for (let i = 0; i < searchJobs.length; i++) {
+        const job = searchJobs[i];
+        if (i === 0) {
+            job.runImmediately = true;
+            continue;
+        }
+        job.runAfter = searchJobs[i - 1];
+    }
+    return searchJobs;
+}
+exports.checkTocsJob = async () => {
+    const mediaTocs = await database_1.Storage.getAllMediaTocs();
+    const tocSearchMedia = await database_1.Storage.getTocSearchMedia();
+    const mediaWithTocs = new Map();
+    const mediaWithoutTocs = mediaTocs
+        .filter((value) => {
+        if (value.link) {
+            let links = mediaWithTocs.get(value.id);
+            if (!links) {
+                mediaWithTocs.set(value.id, links = []);
+            }
+            links.push(value.link);
+            return false;
+        }
+        return true;
+    })
+        .map((value) => value.id);
+    const newJobs1 = mediaWithoutTocs.map((id) => {
+        return searchTocJob(id, tocSearchMedia.find((value) => value.mediumId === id));
+    }).flat(2);
+    const promises = [...mediaWithTocs.entries()].map(async (value) => {
+        const mediumId = value[0];
+        const indices = await database_1.Storage.getChapterIndices(mediumId);
+        const maxIndex = tools_1.maxValue(indices);
+        if (!maxIndex || indices.length < maxIndex) {
+            return searchTocJob(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
+        }
+        let missingChapters;
+        for (let i = 1; i < maxIndex; i++) {
+            if (!indices.includes(i)) {
+                missingChapters = true;
+                break;
+            }
+        }
+        if (missingChapters) {
+            return searchTocJob(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
+        }
+    }).flat(2);
+    const newJobs2 = await Promise.all(promises);
+    return [newJobs1, newJobs2].flat(3).filter((value) => value);
+};
 exports.checkTocs = async () => {
-    const mediaTocs = await database_1.Storage.getAllTocs();
+    const mediaTocs = await database_1.Storage.getAllMediaTocs();
     const tocSearchMedia = await database_1.Storage.getTocSearchMedia();
     const mediaWithTocs = new Map();
     const mediaWithoutTocs = mediaTocs
@@ -402,6 +521,20 @@ exports.checkTocs = async () => {
     const jobs = [newScraperJobs1, newScraperJobs2].flat(3);
     return jobs.filter((value) => value);
 };
+exports.queueTocsJob = async () => {
+    // TODO: 02.09.2019 a perfect candidate to use stream on
+    const tocs = await database_1.Storage.getAllTocs();
+    return tocs.map((value) => {
+        return {
+            runImmediately: true,
+            arguments: JSON.stringify({ mediumId: value.id, url: value.link }),
+            type: types_1.ScrapeName.toc,
+            name: `${types_1.ScrapeName.toc}-${value.id}`,
+            interval: types_1.MilliTime.HOUR,
+            deleteAfterRun: false,
+        };
+    });
+};
 exports.queueTocs = async () => {
     await database_1.Storage.queueNewTocs();
 };
@@ -437,11 +570,6 @@ exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
     console.log("toc scraped: " + link);
     return { tocs: allTocs, uuid };
 };
-/**
- *
- * @param scrapeItem
- * @return {Promise<void>}
- */
 exports.news = async (scrapeItem) => {
     return {
         link: scrapeItem.link,
@@ -449,11 +577,6 @@ exports.news = async (scrapeItem) => {
     };
     // todo implement news scraping (from homepage, updates pages etc. which require page analyzing, NOT feed)
 };
-/**
- *
- * @param value
- * @return {Promise<void>}
- */
 exports.toc = async (value) => {
     const result = await exports.oneTimeToc(value);
     if (!result.tocs.length) {
@@ -590,6 +713,20 @@ async function scrape(dependants = scrapeDependants, next = true) {
 // TODO: 21.06.2019 save cache in database?
 const cache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
 const errorCache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
+var ScrapeEvent;
+(function (ScrapeEvent) {
+    ScrapeEvent["TOC"] = "toc";
+    ScrapeEvent["FEED"] = "feed";
+    ScrapeEvent["NEWS"] = "news";
+    ScrapeEvent["LIST"] = "list";
+})(ScrapeEvent = exports.ScrapeEvent || (exports.ScrapeEvent = {}));
+var ScrapeErrorEvent;
+(function (ScrapeErrorEvent) {
+    ScrapeErrorEvent["TOC"] = "toc:error";
+    ScrapeErrorEvent["FEED"] = "feed:error";
+    ScrapeErrorEvent["NEWS"] = "news:error";
+    ScrapeErrorEvent["LIST"] = "list:error";
+})(ScrapeErrorEvent = exports.ScrapeErrorEvent || (exports.ScrapeErrorEvent = {}));
 var ScrapeType;
 (function (ScrapeType) {
     ScrapeType[ScrapeType["LIST"] = 0] = "LIST";
@@ -608,7 +745,7 @@ let scrapeDependants;
  */
 async function setup() {
     const scrapeBoard = await database_1.Storage.getScrapes();
-    const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: [] };
+    const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [] };
     scrapeBoard.forEach((value) => {
         if (value.type === ScrapeType.NEWS) {
             dependants.news.push(value);
@@ -631,6 +768,7 @@ class ScraperHelper {
         this.tocDiscovery = new Map();
         this.newsAdapter = [];
         this.eventMap = new Map();
+        this.nameHookMap = new Map();
     }
     on(event, callback) {
         const callbacks = tools_1.getElseSet(this.eventMap, event, () => []);
@@ -648,39 +786,53 @@ class ScraperHelper {
         this.registerHooks(listManager_1.getListManagerHooks());
         this.registerHooks(directScraper.getHooks());
     }
+    getHook(name) {
+        const hook = this.nameHookMap.get(name);
+        if (!hook) {
+            throw Error(`there is no hook with name: '${name}'`);
+        }
+        return hook;
+    }
     registerHooks(hook) {
         // @ts-ignore
         tools_1.multiSingle(hook, (value) => {
+            if (!value.name) {
+                throw Error("hook without name!");
+            }
+            if (this.nameHookMap.has(value.name)) {
+                throw Error(`encountered hook with name '${value.name}' twice`);
+            }
+            this.nameHookMap.set(value.name, value);
+            nameHookMap.set(value.name, value);
             if (value.redirectReg) {
                 redirects.push(value.redirectReg);
             }
             // TODO: 20.07.2019 check why it should be added to the public ones,
             //  or make the getter for these access the public ones?
             if (value.newsAdapter) {
-                if (Array.isArray(value.newsAdapter)) {
-                    newsAdapter.push(...value.newsAdapter);
-                    this.newsAdapter.push(...value.newsAdapter);
-                }
-                else {
-                    newsAdapter.push(value.newsAdapter);
-                    this.newsAdapter.push(value.newsAdapter);
-                }
+                value.newsAdapter.hookName = value.name;
+                newsAdapter.push(value.newsAdapter);
+                this.newsAdapter.push(value.newsAdapter);
             }
             if (value.domainReg) {
                 if (value.tocAdapter) {
+                    value.tocAdapter.hookName = value.name;
                     tocScraper.set(value.domainReg, value.tocAdapter);
                     this.tocScraper.set(value.domainReg, value.tocAdapter);
                 }
                 if (value.contentDownloadAdapter) {
+                    value.contentDownloadAdapter.hookName = value.name;
                     episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
                     this.episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
                 }
                 if (value.tocSearchAdapter) {
+                    value.tocSearchAdapter.hookName = value.name;
                     tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
                     this.tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
                 }
             }
             if (value.tocPattern && value.tocSearchAdapter) {
+                value.tocSearchAdapter.hookName = value.name;
                 tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
                 this.tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
             }
@@ -698,7 +850,6 @@ function addDependant(dependant) {
     tools_1.addMultiSingle(dependants.feeds, dependant.feed);
     tools_1.addMultiSingle(dependants.news, dependant.news);
     tools_1.addMultiSingle(dependants.tocs, dependant.toc);
-    tools_1.addMultiSingle(dependants.media, dependant.medium);
     // kick of a cycle and if no error occurs: add it to permanent cycle
     tools_1.delay(100)
         .then(() => scrape(dependants, false))
@@ -709,7 +860,6 @@ function addDependant(dependant) {
         tools_1.addMultiSingle(scrapeDependants.feeds, dependant.feed);
         tools_1.addMultiSingle(scrapeDependants.news, dependant.news);
         tools_1.addMultiSingle(scrapeDependants.tocs, dependant.toc);
-        tools_1.addMultiSingle(scrapeDependants.media, dependant.medium);
     })
         .catch((error) => {
         console.log(error);
@@ -915,7 +1065,6 @@ function remove(dependant) {
     tools_1.removeMultiSingle(scrapeDependants.feeds, dependant.feed);
     tools_1.removeMultiSingle(scrapeDependants.news, dependant.news);
     tools_1.removeMultiSingle(scrapeDependants.tocs, dependant.toc);
-    tools_1.removeMultiSingle(scrapeDependants.media, dependant.medium);
 }
 exports.remove = remove;
 function registerHooks(hook) {
@@ -925,12 +1074,7 @@ function registerHooks(hook) {
             redirects.push(value.redirectReg);
         }
         if (value.newsAdapter) {
-            if (Array.isArray(value.newsAdapter)) {
-                newsAdapter.push(...value.newsAdapter);
-            }
-            else {
-                newsAdapter.push(value.newsAdapter);
-            }
+            newsAdapter.push(value.newsAdapter);
         }
         if (value.domainReg) {
             if (value.tocAdapter) {
@@ -975,4 +1119,85 @@ function on(event, callback) {
     callbacks.push(callback);
 }
 exports.on = on;
+async function remapMediaParts() {
+    const mediaIds = await database_1.Storage.getAllMedia();
+    await Promise.all(mediaIds.map((mediumId) => remapMediumPart(mediumId)));
+}
+exports.remapMediaParts = remapMediaParts;
+async function queueExternalUser() {
+    console.log("queueing external user");
+}
+exports.queueExternalUser = queueExternalUser;
+async function remapMediumPart(mediumId) {
+    const parts = await database_1.Storage.getMediumPartIds(mediumId);
+    const standardPartId = await database_1.Storage.getStandardPartId(mediumId);
+    // if there is no standard part, we return as there is no part to move from
+    if (!standardPartId) {
+        await database_1.Storage.createStandardPart(mediumId);
+        return;
+    }
+    const nonStandardPartIds = parts.filter((value) => value !== standardPartId);
+    const overLappingParts = await database_1.Storage.getOverLappingParts(standardPartId, nonStandardPartIds);
+    const promises = [];
+    for (const overLappingPart of overLappingParts) {
+        promises.push(database_1.Storage.moveEpisodeToPart(standardPartId, overLappingPart));
+    }
+    await Promise.all(promises);
+    /*const standardPartEpisodeIndices = await Storage.getPartsEpisodeIndices(standardPart.id);
+
+    const standardPartEpisodes = standardPartEpisodeIndices[0].episodes;
+
+    if (!standardPartEpisodes.length) {
+        return;
+    }
+    const partEpisodeIndices = await Storage.getPartsEpisodeIndices(nonStandardPartIds);
+    const partEpisodesIndicesMap = new Map<number, number[]>();
+    partEpisodeIndices.forEach((value) => {
+        partEpisodesIndicesMap.set(value.partId, value.episodes);
+    });
+
+    if (!standardPartEpisodes) {
+        logger.warn("could not find standardPartEpisodes even though it has a standard part");
+        return;
+    }
+    if (!standardPartEpisodes.length) {
+        return;
+    }
+    const episodePartMap = new Map<number, number>();
+
+    for (const episodeIndex of standardPartEpisodes) {
+        for (const part of parts) {
+            // skip standard parts here
+            if (part.totalIndex === -1) {
+                continue;
+            }
+            const episodeIndices = partEpisodesIndicesMap.get(part.id);
+
+            if (!episodeIndices) {
+                continue;
+            }
+            if (episodeIndices.find((value) => value === episodeIndex)) {
+                const partId = episodePartMap.get(episodeIndex);
+
+                if (partId != null && partId !== part.id) {
+                    throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.id}'`);
+                }
+                episodePartMap.set(episodeIndex, part.id);
+                break;
+            }
+        }
+    }
+    const partEpisodes = new Map<number, number[]>();
+    for (const [episodeIndex, partId] of episodePartMap.entries()) {
+        const episodesIndices = getElseSet(partEpisodes, partId, () => []);
+        episodesIndices.push(episodeIndex);
+    }
+
+    const promises = [];
+    for (const [partId, episodeIndices] of partEpisodes.entries()) {
+        promises.push(Storage.moveEpisodeToPart(standardPart.id, episodeIndices, partId));
+    }
+    await Promise.all(promises);*/
+}
+exports.remapMediumPart = remapMediumPart;
 //# sourceMappingURL=scraperTools.js.map

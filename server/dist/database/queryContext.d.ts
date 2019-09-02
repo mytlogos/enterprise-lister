@@ -1,7 +1,8 @@
 import { Connection } from "promise-mysql";
-import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
+import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, JobItem, JobRequest, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { MediumInWait } from "./databaseTypes";
 import { ScrapeType } from "../externals/scraperTools";
+import { Query } from "mysql";
 import { Trigger } from "./trigger";
 export interface DbTrigger {
     Trigger: string;
@@ -184,7 +185,9 @@ export declare class QueryContext {
     getMediaInWait(): Promise<MediumInWait[]>;
     deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
     addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
+    getStandardPartId(mediumId: number): Promise<number | undefined>;
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
+    getMediumPartIds(mediumId: number): Promise<number[]>;
     /**
      * Returns all parts of an medium.
      */
@@ -200,6 +203,7 @@ export declare class QueryContext {
     getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]>;
     getParts(partId: number, uuid: string): Promise<Part>;
     getParts(partId: number[], uuid: string): Promise<Part[]>;
+    getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]>;
     /**
      * Adds a part of an medium to the storage.
      */
@@ -228,6 +232,10 @@ export declare class QueryContext {
     addEpisode(episode: SimpleEpisode[]): Promise<Episode[]>;
     getEpisode(id: number, uuid: string): Promise<Episode>;
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
+    getPartMinimalEpisodes(partId: number): Promise<Array<{
+        id: number;
+        combiIndex: number;
+    }>>;
     getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
     getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
     getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
@@ -238,7 +246,7 @@ export declare class QueryContext {
     /**
      * Updates an episode from the storage.
      */
-    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean>;
+    moveEpisodeToPart(oldPartId: number, newPartId: number): Promise<boolean>;
     /**
      * Deletes an episode from the storage irreversibly.
      */
@@ -431,8 +439,12 @@ export declare class QueryContext {
     addSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean>;
     addToc(mediumId: number, link: string): Promise<void>;
     getToc(mediumId: number): Promise<string[]>;
-    getAllTocs(): Promise<Array<{
+    getAllMediaTocs(): Promise<Array<{
         link?: string;
+        id: number;
+    }>>;
+    getAllTocs(): Promise<Array<{
+        link: string;
         id: number;
     }>>;
     getChapterIndices(mediumId: number): Promise<number[]>;
@@ -457,7 +469,16 @@ export declare class QueryContext {
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void>;
     removePageInfo(link: string, key?: string, toDeleteValues?: string[]): Promise<void>;
     queueNewTocs(): Promise<void>;
+    getJobs(limit?: number): Promise<JobItem[]>;
+    stopJobs(): Promise<void>;
+    getAfterJobs(id: number): Promise<JobItem[]>;
+    addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]>;
+    removeJobs(jobs: JobItem | JobItem[]): Promise<void>;
+    removeJob(key: string | number): Promise<void>;
+    updateJobs(jobs: JobItem | JobItem[]): Promise<void>;
     getInvalidated(uuid: string): Promise<Invalidation[]>;
+    getInvalidatedStream(uuid: string): Promise<Query>;
+    getUserStream(): Promise<Query>;
     clearInvalidationTable(): Promise<any>;
     /**
      *

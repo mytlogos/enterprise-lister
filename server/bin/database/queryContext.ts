@@ -7,6 +7,9 @@ import {
     ExternalUser,
     FullPart,
     Invalidation,
+    JobItem,
+    JobRequest,
+    JobState,
     LikeMedium,
     LikeMediumQuery,
     List,
@@ -41,6 +44,7 @@ import {
     Hasher,
     Hashes,
     ignore,
+    isString,
     MediaType,
     multiSingle,
     promiseMultiSingle,
@@ -943,7 +947,7 @@ export class QueryContext {
 
             let result: any[] = await this.query(
                 "SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
-                "(SELECT medium_id FROM scrape_board WHERE medium_id IS NOT NULL AND link LIKE ?);",
+                "(SELECT medium_id FROM medium_toc WHERE medium_id IS NOT NULL AND link LIKE ?);",
                 [escapedTitle, escapedLinkQuery]);
 
             if (value.type != null) {
@@ -1060,6 +1064,14 @@ export class QueryContext {
         );
     }
 
+    public async getStandardPartId(mediumId: number): Promise<number | undefined> {
+        const [standardPartResult]: any = await this.query(
+            "SELECT id FROM part WHERE medium_id = ? AND totalIndex=-1",
+            mediumId
+        );
+        return standardPartResult ? standardPartResult.id : undefined;
+    }
+
     public async getStandardPart(mediumId: number): Promise<ShallowPart | undefined> {
         const [standardPartResult]: any = await this.query(
             "SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1",
@@ -1089,6 +1101,11 @@ export class QueryContext {
         return standardPart;
     }
 
+    public async getMediumPartIds(mediumId: number): Promise<number[]> {
+        const result: any[] = await this.query("SELECT id FROM part WHERE medium_id = ?;", mediumId);
+        return result.map((value) => value.id);
+    }
+
     /**
      * Returns all parts of an medium.
      */
@@ -1113,6 +1130,7 @@ export class QueryContext {
         const episodesIds: Array<{ id: number, partId: number }> | undefined = await this._queryInList(
             "SELECT id, part_id as partId FROM episode WHERE part_id",
             parts,
+            undefined,
             (value) => value.id
         );
 
@@ -1150,7 +1168,7 @@ export class QueryContext {
             "FROM episode WHERE part_id ",
             partId
         );
-        if (!result || !result.length) {
+        if (!result) {
             return [];
         }
         const idMap = new Map<number, { partId: number, episodes: number[]; }>();
@@ -1160,14 +1178,16 @@ export class QueryContext {
             });
             partValue.episodes.push(value.combinedIndex);
         });
-        if (!idMap.size) {
-            if (Array.isArray(partId)) {
-                return partId.map((value) => {
+        if (Array.isArray(partId)) {
+            partId.forEach((value) => {
+                getElseSet(idMap, value, () => {
                     return {partId: value, episodes: []};
                 });
-            } else {
-                return [{partId, episodes: []}];
-            }
+            });
+        } else {
+            getElseSet(idMap, partId, () => {
+                return {partId, episodes: []};
+            });
         }
         return [...idMap.values()];
     }
@@ -1195,6 +1215,7 @@ export class QueryContext {
         const episodes: any[] | undefined = await this._queryInList(
             "SELECT id, totalIndex, partialIndex, part_id as partId FROM episode WHERE part_id",
             parts,
+            undefined,
             (value) => value.id
         );
         if (episodes && episodes.length) {
@@ -1275,6 +1296,7 @@ export class QueryContext {
         const episodesResult: any[] | undefined = await this._queryInList(
             "SELECT id FROM episode WHERE part_id ",
             parts,
+            undefined,
             (value) => {
                 partIdMap.set(value.id, value);
                 return value.id;
@@ -1307,6 +1329,23 @@ export class QueryContext {
                 mediumId: part.medium_id,
             };
         });
+    }
+
+    public async getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]> {
+        if (!nonStandardPartIds.length) {
+            return [];
+        }
+        const results = await this._queryInList(
+            "SELECT part_id FROM episode WHERE combiIndex IN" +
+            `(SELECT combiIndex FROM episode WHERE part_id = ${mySql.escape(standardId)}) ` +
+            "AND part_id",
+            nonStandardPartIds,
+            "group by part_id"
+        );
+        if (!results) {
+            return [];
+        }
+        return results.map((value) => value.part_id);
     }
 
     /**
@@ -1632,6 +1671,10 @@ export class QueryContext {
         });
     }
 
+    public async getPartMinimalEpisodes(partId: number): Promise<Array<{ id: number, combiIndex: number }>> {
+        return this.query("SELECT id, combiIndex FROM episode WHERE part_id=?", partId);
+    }
+
     public async getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
     public async getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
 
@@ -1761,26 +1804,33 @@ export class QueryContext {
     /**
      * Updates an episode from the storage.
      */
-    public async moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean> {
-        const partEpisodes = await this.getPartEpisodePerIndex(newPartId, episodeIndices);
-        const episodeIndexMap = new Map<number, SimpleEpisode>();
-
-        const replaceIds: Array<{ oldId: number, newId: number }> = await this.query(
+    public async moveEpisodeToPart(oldPartId: number, newPartId: number): Promise<boolean> {
+        if (!oldPartId || !newPartId) {
+            return false;
+        }
+        const replaceIds: Array<{ oldId: number, newId: number; }> = await this.query(
             "SELECT oldEpisode.id as oldId, newEpisode.id as newId FROM " +
             `(Select * from episode where part_id=?) as oldEpisode ` +
             `inner join (Select * from episode where part_id=?) as newEpisode ` +
             "ON oldEpisode.combiIndex=newEpisode.combiIndex",
             [oldPartId, newPartId]
         );
-        partEpisodes.forEach((episode) => episodeIndexMap.set(combiIndex(episode), episode));
 
-        const changePartIds = episodeIndices.filter((index) => !episodeIndexMap.has(index));
+        const changePartIdsResult: any[] = await this.query(
+            "SELECT id FROM episode WHERE combiIndex IN " +
+            `(SELECT combiIndex FROM episode WHERE part_id = ?) AND part_id = ?;`,
+            [newPartId, oldPartId]
+        );
+        const changePartIds: number[] = changePartIdsResult.map((value) => value.id);
 
         await this._queryInList(
             `UPDATE episode SET part_id=${mySql.escape(newPartId)} ` +
             `WHERE part_id=${mySql.escape(oldPartId)} AND combiIndex`,
             changePartIds
         );
+        if (!replaceIds.length) {
+            return true;
+        }
         const deleteReleaseIds: number[] = [];
         await Promise.all(replaceIds.map((replaceId) => {
             return this.query(
@@ -1822,14 +1872,14 @@ export class QueryContext {
                 }
             });
         }));
-        const oldIndices = replaceIds.map((value) => value.oldId);
+        const oldIds = replaceIds.map((value) => value.oldId);
         // TODO: 26.08.2019 this does not go quite well, throws error with 'cannot delete parent reference'
         await this._queryInList("DELETE FROM episode_release WHERE episode_id ", deleteReleaseIds);
         await this._queryInList("DELETE FROM user_episode WHERE episode_id ", deleteProgressIds);
         await this._queryInList("DELETE FROM result_episode WHERE episode_id ", deleteResultIds);
         await this._queryInList(
-            `DELETE FROM episode WHERE part_id=${mySql.escape(oldPartId)} AND combiIndex`,
-            oldIndices,
+            `DELETE FROM episode WHERE part_id=${mySql.escape(oldPartId)} AND id`,
+            oldIds,
         );
         return true;
     }
@@ -2742,10 +2792,14 @@ export class QueryContext {
         return resultArray.map((value) => value.link).filter((value) => value);
     }
 
-    public getAllTocs(): Promise<Array<{ link?: string, id: number }>> {
+    public getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {
         return this.query(
             "SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id"
         );
+    }
+
+    public getAllTocs(): Promise<Array<{ link: string, id: number }>> {
+        return this.query("SELECT medium_id as id, link FROM medium_toc");
     }
 
     public async getChapterIndices(mediumId: number): Promise<number[]> {
@@ -2900,12 +2954,104 @@ export class QueryContext {
         );
     }
 
+    public async getJobs(limit = 50): Promise<JobItem[]> {
+        if (limit <= 0 || !limit) {
+            limit = 50;
+        }
+        return this.query(
+            "SELECT * FROM jobs WHERE nextRun IS NOT NULL AND nextRun < NOW() AND state != 'running' LIMIT ?",
+            limit
+        );
+    }
+
+    public async stopJobs(): Promise<void> {
+        await this.query("UPDATE jobs SET state = ?", JobState.WAITING);
+    }
+
+    public async getAfterJobs(id: number): Promise<JobItem[]> {
+        return this.query("SELECT * FROM jobs WHERE `runAfter` = ? AND `state` != 'running'", id);
+    }
+
+    public async addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]> {
+        const now = new Date();
+        // @ts-ignore
+        return promiseMultiSingle(jobs, async (value: JobRequest): Promise<JobItem> => {
+            let args = value.arguments;
+            if (value.arguments && !isString(value.arguments)) {
+                args = JSON.stringify(value.arguments);
+            }
+            let runAfter: number | undefined;
+
+            // @ts-ignore
+            if (value.runAfter && value.runAfter.id && Number.isInteger(value.runAfter.id)) {
+                // @ts-ignore
+                runAfter = value.runAfter.id;
+            }
+            const nextRun = value.runImmediately ? now : null;
+            const result = await this.query(
+                "INSERT IGNORE INTO jobs " +
+                "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`) " +
+                "VALUES (?,?,?,?,?,?,?,?)",
+                [
+                    value.type, value.name, JobState.WAITING, value.interval,
+                    value.deleteAfterRun, runAfter, args, nextRun
+                ]
+            );
+            // the only reason it should fail to insert is when its name constraint is violated
+            if (!result.insertId) {
+                return this.query("SELECT * FROM jobs WHERE name=?", value.name);
+            }
+            // @ts-ignore
+            value.id = result.insertId;
+            delete value.runImmediately;
+            return value as unknown as JobItem;
+        });
+    }
+
+    public async removeJobs(jobs: JobItem | JobItem[]): Promise<void> {
+        await this._queryInList("DELETE FROM jobs WHERE id", jobs, undefined, (value) => value.id);
+    }
+
+    public async removeJob(key: string | number): Promise<void> {
+        if (isString(key)) {
+            await this.query("DELETE FROM jobs WHERE `name` = ?", key);
+        } else {
+            await this.query("DELETE FROM jobs WHERE id = ?", key);
+        }
+    }
+
+    public async updateJobs(jobs: JobItem | JobItem[]): Promise<void> {
+        // @ts-ignore
+        return promiseMultiSingle(jobs, (value: JobItem) => {
+            return this._update("jobs", (updates, values) => {
+                updates.push("state = ?");
+                values.push(value.state);
+
+                updates.push("lastRun = ?");
+                values.push(value.lastRun);
+
+                updates.push("nextRun = ?");
+                values.push(value.nextRun);
+
+                updates.push("arguments = ?");
+                let args = value.arguments;
+                if (value.arguments && !isString(value.arguments)) {
+                    args = JSON.stringify(value.arguments);
+                }
+                values.push(args);
+            }, {
+                column: "id",
+                value: value.id
+            });
+        }).then(ignore);
+    }
+
     public async getInvalidated(uuid: string): Promise<Invalidation[]> {
         const result: any[] = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
-            console.log(reason);
-            logger.error(reason);
-        });
+        // await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+        //     console.log(reason);
+        //     logger.error(reason);
+        // });
         return result.map((value: any): Invalidation => {
             return {
                 externalListId: value.external_list_id,
@@ -2919,6 +3065,21 @@ export class QueryContext {
                 uuid,
             };
         });
+    }
+
+    public async getInvalidatedStream(uuid: string): Promise<Query> {
+        return this._queryStream(
+            "SELECT " +
+            "external_list_id as externalListId, external_uuid as externalUuid, medium_id as mediumId, " +
+            "part_id as partId, episode_id as episodeId, CASE user_uuid WHEN 1 THEN 1 ELSE 0 END as userUuid," +
+            "list_id as listId, news_id as newsId, uuid " +
+            "FROM user_data_invalidation WHERE uuid=?",
+            uuid
+        );
+    }
+
+    public async getUserStream(): Promise<Query> {
+        return this._queryStream("SELECT * FROM user");
     }
 
     public clearInvalidationTable() {
@@ -3107,7 +3268,7 @@ export class QueryContext {
         return this.query(`${query} ${valuesQueries};`, param);
     }
 
-    private async _queryInList<T>(query: string, value: T | T[], paramCallback?: ParamCallback<T>)
+    private async _queryInList<T>(query: string, value: T | T[], afterQuery?: string, paramCallback?: ParamCallback<T>)
         : Promise<any[] | undefined> {
 
         if (Array.isArray(value)) {
@@ -3141,7 +3302,7 @@ export class QueryContext {
         if (!param.length) {
             throw Error(`no params for '${query}'`);
         }
-        return this.query(`${query} IN (${placeholders.join(",")});`, param);
+        return this.query(`${query} IN (${placeholders.join(",")}) ${afterQuery ? afterQuery : ""};`, param);
     }
 
     // noinspection JSMethodCanBeStatic

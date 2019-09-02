@@ -92,7 +92,7 @@ gen
 *.heapsnapshot
 server/bin/externals/direct/webnovelTocResponse 04.19.json
 server/bin/externals/direct/wwSearchResponse.json
-server/bin/plato.d.ts
+server/bin/moduleDeclaration/plato.d.ts
 server/bin/visualize.js
 server/bin/visualize.js.map
 server/bin/visualize.ts

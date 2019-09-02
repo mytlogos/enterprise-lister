@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
+const types_1 = require("../types");
 const v1_1 = tslib_1.__importDefault(require("uuid/v1"));
 const v4_1 = tslib_1.__importDefault(require("uuid/v4"));
 const tools_1 = require("../tools");
@@ -699,7 +700,7 @@ class QueryContext {
             const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
             const escapedTitle = escapeLike(value.title, { singleQuotes: true });
             let result = await this.query("SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
-                "(SELECT medium_id FROM scrape_board WHERE medium_id IS NOT NULL AND link LIKE ?);", [escapedTitle, escapedLinkQuery]);
+                "(SELECT medium_id FROM medium_toc WHERE medium_id IS NOT NULL AND link LIKE ?);", [escapedTitle, escapedLinkQuery]);
             if (value.type != null) {
                 result = result.filter((medium) => medium.medium === value.type);
             }
@@ -791,6 +792,10 @@ class QueryContext {
     async addMediumInWait(mediaInWait) {
         await this._multiInsert("INSERT IGNORE INTO medium_in_wait (title, medium, link) VALUES ", mediaInWait, (value) => [value.title, value.medium, value.link]);
     }
+    async getStandardPartId(mediumId) {
+        const [standardPartResult] = await this.query("SELECT id FROM part WHERE medium_id = ? AND totalIndex=-1", mediumId);
+        return standardPartResult ? standardPartResult.id : undefined;
+    }
     async getStandardPart(mediumId) {
         const [standardPartResult] = await this.query("SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1", mediumId);
         if (!standardPartResult) {
@@ -809,6 +814,10 @@ class QueryContext {
             episodesIds.forEach((value) => standardPart.episodes.push(value.id));
         }
         return standardPart;
+    }
+    async getMediumPartIds(mediumId) {
+        const result = await this.query("SELECT id FROM part WHERE medium_id = ?;", mediumId);
+        return result.map((value) => value.id);
     }
     /**
      * Returns all parts of an medium.
@@ -829,7 +838,7 @@ class QueryContext {
             idMap.set(value.id, part);
             return part;
         });
-        const episodesIds = await this._queryInList("SELECT id, part_id as partId FROM episode WHERE part_id", parts, (value) => value.id);
+        const episodesIds = await this._queryInList("SELECT id, part_id as partId FROM episode WHERE part_id", parts, undefined, (value) => value.id);
         if (episodesIds) {
             if (uuid) {
                 const values = episodesIds.map((episode) => episode.id);
@@ -858,7 +867,7 @@ class QueryContext {
     async getPartsEpisodeIndices(partId) {
         const result = await this._queryInList("SELECT part_id, combiIndex as combinedIndex " +
             "FROM episode WHERE part_id ", partId);
-        if (!result || !result.length) {
+        if (!result) {
             return [];
         }
         const idMap = new Map();
@@ -868,15 +877,17 @@ class QueryContext {
             });
             partValue.episodes.push(value.combinedIndex);
         });
-        if (!idMap.size) {
-            if (Array.isArray(partId)) {
-                return partId.map((value) => {
+        if (Array.isArray(partId)) {
+            partId.forEach((value) => {
+                tools_1.getElseSet(idMap, value, () => {
                     return { partId: value, episodes: [] };
                 });
-            }
-            else {
-                return [{ partId, episodes: [] }];
-            }
+            });
+        }
+        else {
+            tools_1.getElseSet(idMap, partId, () => {
+                return { partId, episodes: [] };
+            });
         }
         return [...idMap.values()];
     }
@@ -896,7 +907,7 @@ class QueryContext {
             partIdMap.set(value.id, value);
             indexMap.set(value.combiIndex, true);
         });
-        const episodes = await this._queryInList("SELECT id, totalIndex, partialIndex, part_id as partId FROM episode WHERE part_id", parts, (value) => value.id);
+        const episodes = await this._queryInList("SELECT id, totalIndex, partialIndex, part_id as partId FROM episode WHERE part_id", parts, undefined, (value) => value.id);
         if (episodes && episodes.length) {
             const episodeIdMap = new Map();
             const episodeIds = episodes.map((value) => {
@@ -964,7 +975,7 @@ class QueryContext {
             return [];
         }
         const partIdMap = new Map();
-        const episodesResult = await this._queryInList("SELECT id FROM episode WHERE part_id ", parts, (value) => {
+        const episodesResult = await this._queryInList("SELECT id FROM episode WHERE part_id ", parts, undefined, (value) => {
             partIdMap.set(value.id, value);
             return value.id;
         });
@@ -993,6 +1004,18 @@ class QueryContext {
                 mediumId: part.medium_id,
             };
         });
+    }
+    async getOverLappingParts(standardId, nonStandardPartIds) {
+        if (!nonStandardPartIds.length) {
+            return [];
+        }
+        const results = await this._queryInList("SELECT part_id FROM episode WHERE combiIndex IN" +
+            `(SELECT combiIndex FROM episode WHERE part_id = ${promise_mysql_1.default.escape(standardId)}) ` +
+            "AND part_id", nonStandardPartIds, "group by part_id");
+        if (!results) {
+            return [];
+        }
+        return results.map((value) => value.part_id);
     }
     /**
      * Adds a part of an medium to the storage.
@@ -1254,6 +1277,9 @@ class QueryContext {
             };
         });
     }
+    async getPartMinimalEpisodes(partId) {
+        return this.query("SELECT id, combiIndex FROM episode WHERE part_id=?", partId);
+    }
     async getPartEpisodePerIndex(partId, index) {
         const episodes = await this._queryInList("SELECT * FROM episode " +
             `where part_id =${promise_mysql_1.default.escape(partId)} AND combiIndex`, index);
@@ -1363,17 +1389,22 @@ class QueryContext {
     /**
      * Updates an episode from the storage.
      */
-    async moveEpisodeToPart(oldPartId, episodeIndices, newPartId) {
-        const partEpisodes = await this.getPartEpisodePerIndex(newPartId, episodeIndices);
-        const episodeIndexMap = new Map();
+    async moveEpisodeToPart(oldPartId, newPartId) {
+        if (!oldPartId || !newPartId) {
+            return false;
+        }
         const replaceIds = await this.query("SELECT oldEpisode.id as oldId, newEpisode.id as newId FROM " +
             `(Select * from episode where part_id=?) as oldEpisode ` +
             `inner join (Select * from episode where part_id=?) as newEpisode ` +
             "ON oldEpisode.combiIndex=newEpisode.combiIndex", [oldPartId, newPartId]);
-        partEpisodes.forEach((episode) => episodeIndexMap.set(tools_1.combiIndex(episode), episode));
-        const changePartIds = episodeIndices.filter((index) => !episodeIndexMap.has(index));
+        const changePartIdsResult = await this.query("SELECT id FROM episode WHERE combiIndex IN " +
+            `(SELECT combiIndex FROM episode WHERE part_id = ?) AND part_id = ?;`, [newPartId, oldPartId]);
+        const changePartIds = changePartIdsResult.map((value) => value.id);
         await this._queryInList(`UPDATE episode SET part_id=${promise_mysql_1.default.escape(newPartId)} ` +
             `WHERE part_id=${promise_mysql_1.default.escape(oldPartId)} AND combiIndex`, changePartIds);
+        if (!replaceIds.length) {
+            return true;
+        }
         const deleteReleaseIds = [];
         await Promise.all(replaceIds.map((replaceId) => {
             return this.query("UPDATE episode_release set episode_id=? where episode_id=?", [replaceId.newId, replaceId.oldId]).catch((reason) => {
@@ -1407,12 +1438,12 @@ class QueryContext {
                 }
             });
         }));
-        const oldIndices = replaceIds.map((value) => value.oldId);
+        const oldIds = replaceIds.map((value) => value.oldId);
         // TODO: 26.08.2019 this does not go quite well, throws error with 'cannot delete parent reference'
         await this._queryInList("DELETE FROM episode_release WHERE episode_id ", deleteReleaseIds);
         await this._queryInList("DELETE FROM user_episode WHERE episode_id ", deleteProgressIds);
         await this._queryInList("DELETE FROM result_episode WHERE episode_id ", deleteResultIds);
-        await this._queryInList(`DELETE FROM episode WHERE part_id=${promise_mysql_1.default.escape(oldPartId)} AND combiIndex`, oldIndices);
+        await this._queryInList(`DELETE FROM episode WHERE part_id=${promise_mysql_1.default.escape(oldPartId)} AND id`, oldIds);
         return true;
     }
     /**
@@ -2124,8 +2155,11 @@ class QueryContext {
         const resultArray = await this.query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
         return resultArray.map((value) => value.link).filter((value) => value);
     }
-    getAllTocs() {
+    getAllMediaTocs() {
         return this.query("SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id");
+    }
+    getAllTocs() {
+        return this.query("SELECT medium_id as id, link FROM medium_toc");
     }
     async getChapterIndices(mediumId) {
         const result = await this.query("SELECT episode.combiIndex FROM episode INNER JOIN part ON episode.part_id=part.id WHERE medium_id=?", mediumId);
@@ -2243,12 +2277,88 @@ class QueryContext {
     async queueNewTocs() {
         await this.query("INSERT ignore INTO scrape_board (link, `type`, medium_id) select link, 3, medium_id from medium_toc;");
     }
+    async getJobs(limit = 50) {
+        if (limit <= 0 || !limit) {
+            limit = 50;
+        }
+        return this.query("SELECT * FROM jobs WHERE nextRun IS NOT NULL AND nextRun < NOW() AND state != 'running' LIMIT ?", limit);
+    }
+    async stopJobs() {
+        await this.query("UPDATE jobs SET state = ?", types_1.JobState.WAITING);
+    }
+    async getAfterJobs(id) {
+        return this.query("SELECT * FROM jobs WHERE `runAfter` = ? AND `state` != 'running'", id);
+    }
+    async addJobs(jobs) {
+        const now = new Date();
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(jobs, async (value) => {
+            let args = value.arguments;
+            if (value.arguments && !tools_1.isString(value.arguments)) {
+                args = JSON.stringify(value.arguments);
+            }
+            let runAfter;
+            // @ts-ignore
+            if (value.runAfter && value.runAfter.id && Number.isInteger(value.runAfter.id)) {
+                // @ts-ignore
+                runAfter = value.runAfter.id;
+            }
+            const nextRun = value.runImmediately ? now : null;
+            const result = await this.query("INSERT IGNORE INTO jobs " +
+                "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`) " +
+                "VALUES (?,?,?,?,?,?,?,?)", [
+                value.type, value.name, types_1.JobState.WAITING, value.interval,
+                value.deleteAfterRun, runAfter, args, nextRun
+            ]);
+            // the only reason it should fail to insert is when its name constraint is violated
+            if (!result.insertId) {
+                return this.query("SELECT * FROM jobs WHERE name=?", value.name);
+            }
+            // @ts-ignore
+            value.id = result.insertId;
+            delete value.runImmediately;
+            return value;
+        });
+    }
+    async removeJobs(jobs) {
+        await this._queryInList("DELETE FROM jobs WHERE id", jobs, undefined, (value) => value.id);
+    }
+    async removeJob(key) {
+        if (tools_1.isString(key)) {
+            await this.query("DELETE FROM jobs WHERE `name` = ?", key);
+        }
+        else {
+            await this.query("DELETE FROM jobs WHERE id = ?", key);
+        }
+    }
+    async updateJobs(jobs) {
+        // @ts-ignore
+        return tools_1.promiseMultiSingle(jobs, (value) => {
+            return this._update("jobs", (updates, values) => {
+                updates.push("state = ?");
+                values.push(value.state);
+                updates.push("lastRun = ?");
+                values.push(value.lastRun);
+                updates.push("nextRun = ?");
+                values.push(value.nextRun);
+                updates.push("arguments = ?");
+                let args = value.arguments;
+                if (value.arguments && !tools_1.isString(value.arguments)) {
+                    args = JSON.stringify(value.arguments);
+                }
+                values.push(args);
+            }, {
+                column: "id",
+                value: value.id
+            });
+        }).then(tools_1.ignore);
+    }
     async getInvalidated(uuid) {
         const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
-            console.log(reason);
-            logger_1.default.error(reason);
-        });
+        // await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+        //     console.log(reason);
+        //     logger.error(reason);
+        // });
         return result.map((value) => {
             return {
                 externalListId: value.external_list_id,
@@ -2262,6 +2372,16 @@ class QueryContext {
                 uuid,
             };
         });
+    }
+    async getInvalidatedStream(uuid) {
+        return this._queryStream("SELECT " +
+            "external_list_id as externalListId, external_uuid as externalUuid, medium_id as mediumId, " +
+            "part_id as partId, episode_id as episodeId, CASE user_uuid WHEN 1 THEN 1 ELSE 0 END as userUuid," +
+            "list_id as listId, news_id as newsId, uuid " +
+            "FROM user_data_invalidation WHERE uuid=?", uuid);
+    }
+    async getUserStream() {
+        return this._queryStream("SELECT * FROM user");
     }
     clearInvalidationTable() {
         return this.query("TRUNCATE user_data_invalidation");
@@ -2429,7 +2549,7 @@ class QueryContext {
         });
         return this.query(`${query} ${valuesQueries};`, param);
     }
-    async _queryInList(query, value, paramCallback) {
+    async _queryInList(query, value, afterQuery, paramCallback) {
         if (Array.isArray(value)) {
             if (!value.length) {
                 return [];
@@ -2463,7 +2583,7 @@ class QueryContext {
         if (!param.length) {
             throw Error(`no params for '${query}'`);
         }
-        return this.query(`${query} IN (${placeholders.join(",")});`, param);
+        return this.query(`${query} IN (${placeholders.join(",")}) ${afterQuery ? afterQuery : ""};`, param);
     }
     // noinspection JSMethodCanBeStatic
     async _batchFunction(value, query, paramCallback, func) {

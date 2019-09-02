@@ -3,9 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const database_1 = require("./database/database");
 const listManager_1 = require("./externals/listManager");
+const stringify_stream_1 = tslib_1.__importDefault(require("stringify-stream"));
 const logger_1 = tslib_1.__importDefault(require("./logger"));
 const scraperTools_1 = require("./externals/scraperTools");
 const tools_1 = require("./tools");
+const types_1 = require("./types");
 exports.getAllMedia = (req, res) => {
     sendResult(res, database_1.Storage.getAllMedia());
 };
@@ -60,12 +62,18 @@ exports.refreshExternalUser = (req, res) => {
         return;
     }
     const externalUserWithCookies = database_1.Storage.getExternalUserWithCookies(externalUuid);
-    const storePromise = externalUserWithCookies.then((value) => database_1.Storage.addScrape({
-        type: scraperTools_1.ScrapeType.ONETIMEUSER,
-        link: value.uuid,
-        userId: value.userUuid,
-        externalUserId: value.uuid,
-        info: value.cookies
+    const storePromise = externalUserWithCookies.then((value) => database_1.Storage.addJobs({
+        type: types_1.ScrapeName.oneTimeUser,
+        interval: -1,
+        deleteAfterRun: true,
+        runImmediately: true,
+        name: `${types_1.ScrapeName.oneTimeUser}-${value.uuid}`,
+        arguments: JSON.stringify({
+            link: value.uuid,
+            userId: value.userUuid,
+            externalUserId: value.uuid,
+            info: value.cookies
+        })
     }));
     sendResult(res, storePromise);
 };
@@ -120,14 +128,24 @@ exports.getInvalidated = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.getInvalidated(uuid));
+    sendResult(res, database_1.Storage.getInvalidatedStream(uuid));
 };
 exports.addBookmarked = (req, res) => {
     const { uuid, bookmarked } = req.body;
     const protocol = /^https?:\/\//;
     if (bookmarked && bookmarked.length && bookmarked.every((url) => tools_1.isString(url) && protocol.test(url))) {
-        const storePromise = database_1.Storage.addScrape(bookmarked.map((link) => {
-            return { type: scraperTools_1.ScrapeType.ONETIMETOC, link, userId: uuid };
+        const storePromise = database_1.Storage.addJobs(bookmarked.map((link) => {
+            return {
+                name: `${types_1.ScrapeName.oneTimeToc}-${link}`,
+                type: types_1.ScrapeName.oneTimeToc,
+                runImmediately: true,
+                deleteAfterRun: true,
+                interval: -1,
+                arguments: JSON.stringify({
+                    url: link,
+                    uuid
+                })
+            };
         }));
         sendResult(res, storePromise);
     }
@@ -139,7 +157,18 @@ exports.addToc = (req, res) => {
     const { uuid, toc, mediumId } = req.body;
     const protocol = /^https?:\/\//;
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        const storePromise = database_1.Storage.addScrape({ type: scraperTools_1.ScrapeType.ONETIMETOC, link: toc, userId: uuid, mediumId });
+        const storePromise = database_1.Storage.addJobs({
+            name: `${types_1.ScrapeName.oneTimeToc}-${toc}`,
+            type: types_1.ScrapeName.oneTimeToc,
+            runImmediately: true,
+            deleteAfterRun: true,
+            interval: -1,
+            arguments: JSON.stringify({
+                url: toc,
+                uuid,
+                mediumId
+            })
+        });
         sendResult(res, storePromise);
     }
     else {
@@ -500,7 +529,15 @@ exports.authenticate = (req, res, next) => {
 function sendResult(res, promise) {
     promise
         .then((result) => {
-        res.json(result);
+        if (tools_1.isQuery(result)) {
+            result
+                .stream({ objectMode: true, highWaterMark: 10 })
+                .pipe(stringify_stream_1.default({ open: "[", close: "]" }))
+                .pipe(res);
+        }
+        else {
+            res.json(result);
+        }
     })
         .catch((error) => {
         const errorCode = tools_1.isError(error);

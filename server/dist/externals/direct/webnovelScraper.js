@@ -14,7 +14,7 @@ const defaultRequest = request.defaults({
 const initPromise = queueManager_1.queueRequest("https://www.webnovel.com/", {
     method: "HEAD",
     uri: "https://www.webnovel.com/"
-}, defaultRequest);
+}, defaultRequest).then(tools_1.ignore);
 async function scrapeNews() {
     const uri = "https://www.webnovel.com/";
     const $ = await queueManager_1.queueCheerioRequest(uri);

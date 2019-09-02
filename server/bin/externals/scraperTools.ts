@@ -18,10 +18,13 @@ import {
     Episode,
     EpisodeNews,
     EpisodeRelease,
+    JobRequest,
     LikeMedium,
+    MilliTime,
     MultiSingle,
     News,
     ScrapeItem,
+    ScrapeName,
     SimpleEpisode,
     TocSearchMedium
 } from "../types";
@@ -38,6 +41,7 @@ import {
     Toc,
     TocContent,
     TocRequest,
+    TocResult,
     TocScraper,
     TocSearchScraper
 } from "./types";
@@ -63,6 +67,7 @@ const tocScraper: Map<RegExp, TocScraper> = new Map();
 const episodeDownloader: Map<RegExp, ContentDownloader> = new Map();
 const tocDiscovery: Map<RegExp, TocSearchScraper> = new Map();
 const newsAdapter: NewsScraper[] = [];
+const nameHookMap = new Map<string, Hook>();
 
 function activity<T>(func: (...args: any[]) => T): (...args: any) => T {
     return (...args: any): T => {
@@ -149,6 +154,19 @@ function notify(key: string, promises: Array<Promise<any>>): Promise<void> {
  * @type {string}
  */
 let lastListScrape;
+
+export const scrapeNewsJob = async (name: string): Promise<{ link: string, result: News[] }> => {
+    const hook = nameHookMap.get(name);
+    if (!hook) {
+        throw Error("no hook found for name: " + name);
+    }
+
+    if (!hook.newsAdapter) {
+        throw Error(`expected hook '${name}' to have newsAdapter`);
+    }
+
+    return scrapeNews(hook.newsAdapter);
+};
 
 export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string, result: News[] }> => {
     if (!adapter.link || !validate.isString(adapter.link)) {
@@ -331,7 +349,19 @@ async function processMediumNews(
     }
 }
 
-export async function searchForToc(item: TocSearchMedium, searcher: TocSearchScraper) {
+export async function searchForTocJob(name: string, item: TocSearchMedium): Promise<TocResult> {
+    console.log(`searching for toc on ${name} with ${item}`);
+    const hook = nameHookMap.get(name);
+    if (!hook) {
+        throw Error("no hook found for name: " + name);
+    }
+    if (!hook.tocSearchAdapter) {
+        throw Error("expected hook with tocSearchAdapter");
+    }
+    return searchForToc(item, hook.tocSearchAdapter);
+}
+
+export async function searchForToc(item: TocSearchMedium, searcher: TocSearchScraper): Promise<TocResult> {
     const link = searcher.link;
     if (!link) {
         throw Error("TocSearcher of mediumType: " + item.medium + " has no link");
@@ -446,8 +476,122 @@ function searchToc(id: number, tocSearch?: TocSearchMedium, availableTocs?: stri
     return searchJobs[0];
 }
 
+function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: string[]): JobRequest[] {
+    const consumed: RegExp[] = [];
+
+    if (availableTocs) {
+        for (const availableToc of availableTocs) {
+            for (const entry of tocScraper.entries()) {
+                const [reg] = entry;
+
+                if (!consumed.includes(reg) && reg.test(availableToc)) {
+                    consumed.push(reg);
+                    break;
+                }
+            }
+        }
+    }
+
+    const searchJobs: JobRequest[] = [];
+    if (tocSearch) {
+        for (const entry of tocDiscovery.entries()) {
+            const [reg, searcher] = entry;
+            let search = false;
+
+            if (tocSearch.hosts) {
+                for (const link of tocSearch.hosts) {
+                    if (!consumed.includes(reg) && reg.test(link)) {
+                        search = true;
+                        consumed.push(reg);
+                        break;
+                    }
+                }
+            }
+            if (!search && (!hasMediaType(searcher.medium, tocSearch.medium) || !searcher.blindSearch)) {
+                continue;
+            }
+            searchJobs.push({
+                name: `${searcher.hookName}-${ScrapeName.searchForToc}-${tocSearch.mediumId}`,
+                interval: -1,
+                arguments: JSON.stringify([searcher.hookName, tocSearch]),
+                type: ScrapeName.searchForToc,
+                deleteAfterRun: true,
+                runImmediately: false,
+            });
+        }
+    }
+    if (!searchJobs.length) {
+        console.log("did not find anything for: " + id, tocSearch);
+        return [];
+    }
+    for (let i = 0; i < searchJobs.length; i++) {
+        const job = searchJobs[i];
+
+        if (i === 0) {
+            job.runImmediately = true;
+            continue;
+        }
+        job.runAfter = searchJobs[i - 1];
+    }
+    return searchJobs;
+}
+
+export const checkTocsJob = async (): Promise<JobRequest[]> => {
+    const mediaTocs = await Storage.getAllMediaTocs();
+    const tocSearchMedia = await Storage.getTocSearchMedia();
+    const mediaWithTocs: Map<number, string[]> = new Map();
+
+    const mediaWithoutTocs = mediaTocs
+        .filter((value) => {
+            if (value.link) {
+                let links = mediaWithTocs.get(value.id);
+
+                if (!links) {
+                    mediaWithTocs.set(value.id, links = []);
+                }
+                links.push(value.link);
+                return false;
+            }
+            return true;
+        })
+        .map((value) => value.id);
+
+    const newJobs1: JobRequest[] = mediaWithoutTocs.map((id) => {
+        return searchTocJob(id, tocSearchMedia.find((value) => value.mediumId === id));
+    }).flat(2) as JobRequest[];
+
+    const promises = [...mediaWithTocs.entries()].map(async (value) => {
+        const mediumId = value[0];
+        const indices = await Storage.getChapterIndices(mediumId);
+        const maxIndex = maxValue(indices);
+
+        if (!maxIndex || indices.length < maxIndex) {
+            return searchTocJob(
+                mediumId,
+                tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),
+                value[1]
+            );
+        }
+        let missingChapters;
+        for (let i = 1; i < maxIndex; i++) {
+            if (!indices.includes(i)) {
+                missingChapters = true;
+                break;
+            }
+        }
+        if (missingChapters) {
+            return searchTocJob(
+                mediumId,
+                tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),
+                value[1]
+            );
+        }
+    }).flat(2);
+    const newJobs2: JobRequest[] = await Promise.all(promises);
+    return [newJobs1, newJobs2].flat(3).filter((value) => value);
+};
 export const checkTocs = async (): Promise<ScraperJob[]> => {
-    const mediaTocs = await Storage.getAllTocs();
+    const mediaTocs = await Storage.getAllMediaTocs();
     const tocSearchMedia = await Storage.getTocSearchMedia();
     const mediaWithTocs: Map<number, string[]> = new Map();
 
@@ -501,9 +645,25 @@ export const checkTocs = async (): Promise<ScraperJob[]> => {
     const jobs: ScraperJob[] = [newScraperJobs1, newScraperJobs2].flat(3);
     return jobs.filter((value) => value);
 };
+
+export const queueTocsJob = async (): Promise<JobRequest[]> => {
+    // TODO: 02.09.2019 a perfect candidate to use stream on
+    const tocs = await Storage.getAllTocs();
+    return tocs.map((value): JobRequest => {
+        return {
+            runImmediately: true,
+            arguments: JSON.stringify({mediumId: value.id, url: value.link} as TocRequest),
+            type: ScrapeName.toc,
+            name: `${ScrapeName.toc}-${value.id}`,
+            interval: MilliTime.HOUR,
+            deleteAfterRun: false,
+        };
+    });
+};
 export const queueTocs = async (): Promise<void> => {
     await Storage.queueNewTocs();
 };
+
 export const oneTimeToc = async ({url: link, uuid, mediumId}: TocRequest)
     : Promise<{ tocs: Toc[], uuid?: string; }> => {
     console.log("scraping one time toc: " + link);
@@ -544,11 +704,6 @@ export const oneTimeToc = async ({url: link, uuid, mediumId}: TocRequest)
     return {tocs: allTocs, uuid};
 };
 
-/**
- *
- * @param scrapeItem
- * @return {Promise<void>}
- */
 export let news = async (scrapeItem: ScrapeItem): Promise<{ link: string, result: News[] }> => {
     return {
         link: scrapeItem.link,
@@ -557,12 +712,7 @@ export let news = async (scrapeItem: ScrapeItem): Promise<{ link: string, result
     // todo implement news scraping (from homepage, updates pages etc. which require page analyzing, NOT feed)
 };
 
-/**
- *
- * @param value
- * @return {Promise<void>}
- */
-export const toc = async (value: TocRequest): Promise<{tocs: Toc[], uuid?: string}> => {
+export const toc = async (value: TocRequest): Promise<TocResult> => {
     const result = await oneTimeToc(value);
     if (!result.tocs.length) {
         throw Error("could not find toc for: " + value);
@@ -726,6 +876,20 @@ export interface ListScrapeEvent {
     lists: ListScrapeResult;
 }
 
+export enum ScrapeEvent {
+    TOC = "toc",
+    FEED = "feed",
+    NEWS = "news",
+    LIST = "list",
+}
+
+export enum ScrapeErrorEvent {
+    TOC = "toc:error",
+    FEED = "feed:error",
+    NEWS = "news:error",
+    LIST = "list:error",
+}
+
 export interface Scraper {
     addDependant(dependant: Dependant): void;
 
@@ -739,20 +903,20 @@ export interface Scraper {
 
     pause(): void;
 
-    on(event: "toc", callback: (value: { uuid?: string, toc: Toc[] }) => void): void;
+    on(event: ScrapeEvent.TOC, callback: (value: { uuid?: string, toc: Toc[] }) => void): void;
 
-    on(event: "feed" | "news", callback: (value: { link: string, result: News[] }) => void): void;
+    on(event: ScrapeEvent.FEED | ScrapeEvent.NEWS, callback: (value: { link: string, result: News[] }) => void): void;
 
-    on(event: "list", callback: (value: ListScrapeEvent) => void): void;
+    on(event: ScrapeEvent.LIST, callback: (value: ListScrapeEvent) => void): void;
 
 // TODO: 23.06.2019 make error events more distinguishable
-    on(event: "toc:error", callback: (errorValue: any) => void): void;
+    on(event: ScrapeErrorEvent.TOC, callback: (errorValue: any) => void): void;
 
-    on(event: "news:error", callback: (errorValue: any) => void): void;
+    on(event: ScrapeErrorEvent.FEED, callback: (errorValue: any) => void): void;
 
-    on(event: "feed:error", callback: (errorValue: any) => void): void;
+    on(event: ScrapeErrorEvent.NEWS, callback: (errorValue: any) => void): void;
 
-    on(event: "list:error", callback: (errorValue: any) => void): void;
+    on(event: ScrapeErrorEvent.LIST, callback: (errorValue: any) => void): void;
 
     on(event: string, callback: (value: any) => void): void;
 }
@@ -775,7 +939,6 @@ export interface ScrapeDependants {
     oneTimeTocs: TocRequest[];
     feeds: string[];
     tocs: TocRequest[];
-    media: ScrapeItem[];
 }
 
 let scrapeDependants: ScrapeDependants;
@@ -787,7 +950,7 @@ let scrapeDependants: ScrapeDependants;
 export async function setup() {
     const scrapeBoard = await Storage.getScrapes();
 
-    const dependants: ScrapeDependants = {feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: []};
+    const dependants: ScrapeDependants = {feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: []};
 
     scrapeBoard.forEach((value) => {
         if (value.type === ScrapeType.NEWS) {
@@ -809,6 +972,7 @@ export class ScraperHelper {
     public readonly tocDiscovery: Map<RegExp, TocSearchScraper> = new Map();
     public readonly newsAdapter: NewsScraper[] = [];
     private readonly eventMap: Map<string, Array<(value: any) => void>> = new Map();
+    private readonly nameHookMap = new Map<string, Hook>();
 
     public on(event: string, callback: (value: any) => void) {
         const callbacks = getElseSet(this.eventMap, event, () => []);
@@ -829,40 +993,57 @@ export class ScraperHelper {
         this.registerHooks(directScraper.getHooks());
     }
 
+    public getHook(name: string): Hook {
+        const hook = this.nameHookMap.get(name);
+        if (!hook) {
+            throw Error(`there is no hook with name: '${name}'`);
+        }
+        return hook;
+    }
+
     private registerHooks(hook: Hook[] | Hook): void {
         // @ts-ignore
         multiSingle(hook, (value: Hook) => {
+            if (!value.name) {
+                throw Error("hook without name!");
+            }
+            if (this.nameHookMap.has(value.name)) {
+                throw Error(`encountered hook with name '${value.name}' twice`);
+            }
+            this.nameHookMap.set(value.name, value);
+            nameHookMap.set(value.name, value);
+
             if (value.redirectReg) {
                 redirects.push(value.redirectReg);
             }
             // TODO: 20.07.2019 check why it should be added to the public ones,
             //  or make the getter for these access the public ones?
             if (value.newsAdapter) {
-                if (Array.isArray(value.newsAdapter)) {
-                    newsAdapter.push(...value.newsAdapter);
-                    this.newsAdapter.push(...value.newsAdapter);
-                } else {
-                    newsAdapter.push(value.newsAdapter);
-                    this.newsAdapter.push(value.newsAdapter);
-                }
+                value.newsAdapter.hookName = value.name;
+                newsAdapter.push(value.newsAdapter);
+                this.newsAdapter.push(value.newsAdapter);
             }
             if (value.domainReg) {
                 if (value.tocAdapter) {
+                    value.tocAdapter.hookName = value.name;
                     tocScraper.set(value.domainReg, value.tocAdapter);
                     this.tocScraper.set(value.domainReg, value.tocAdapter);
                 }
 
                 if (value.contentDownloadAdapter) {
+                    value.contentDownloadAdapter.hookName = value.name;
                     episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
                     this.episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
                 }
 
                 if (value.tocSearchAdapter) {
+                    value.tocSearchAdapter.hookName = value.name;
                     tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
                     this.tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
                 }
             }
             if (value.tocPattern && value.tocSearchAdapter) {
+                value.tocSearchAdapter.hookName = value.name;
                 tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
                 this.tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
             }
@@ -881,7 +1062,6 @@ export function addDependant(dependant: Dependant) {
     addMultiSingle(dependants.feeds, dependant.feed);
     addMultiSingle(dependants.news, dependant.news);
     addMultiSingle(dependants.tocs, dependant.toc);
-    addMultiSingle(dependants.media, dependant.medium);
 
     // kick of a cycle and if no error occurs: add it to permanent cycle
     delay(100)
@@ -893,7 +1073,6 @@ export function addDependant(dependant: Dependant) {
             addMultiSingle(scrapeDependants.feeds, dependant.feed);
             addMultiSingle(scrapeDependants.news, dependant.news);
             addMultiSingle(scrapeDependants.tocs, dependant.toc);
-            addMultiSingle(scrapeDependants.media, dependant.medium);
         })
         .catch((error) => {
             console.log(error);
@@ -1120,9 +1299,7 @@ export function remove(dependant: Dependant) {
     removeMultiSingle(scrapeDependants.feeds, dependant.feed);
     removeMultiSingle(scrapeDependants.news, dependant.news);
     removeMultiSingle(scrapeDependants.tocs, dependant.toc);
-    removeMultiSingle(scrapeDependants.media, dependant.medium);
 }
-
 
 export function registerHooks(hook: Hook[] | Hook) {
     // @ts-ignore
@@ -1131,11 +1308,7 @@ export function registerHooks(hook: Hook[] | Hook) {
             redirects.push(value.redirectReg);
         }
         if (value.newsAdapter) {
-            if (Array.isArray(value.newsAdapter)) {
-                newsAdapter.push(...value.newsAdapter);
-            } else {
-                newsAdapter.push(value.newsAdapter);
-            }
+            newsAdapter.push(value.newsAdapter);
         }
         if (value.domainReg) {
             if (value.tocAdapter) {
@@ -1191,4 +1364,88 @@ export function on(event: "list:error", callback: (errorValue: any) => void): vo
 export function on(event: string, callback: (value: any) => void) {
     const callbacks = getElseSet(eventMap, event, () => []);
     callbacks.push(callback);
+}
+
+export async function remapMediaParts() {
+    const mediaIds = await Storage.getAllMedia();
+    await Promise.all(mediaIds.map((mediumId) => remapMediumPart(mediumId)));
+}
+
+export async function queueExternalUser() {
+    console.log("queueing external user");
+}
+
+export async function remapMediumPart(mediumId: number) {
+    const parts = await Storage.getMediumPartIds(mediumId);
+
+    const standardPartId = await Storage.getStandardPartId(mediumId);
+
+    // if there is no standard part, we return as there is no part to move from
+    if (!standardPartId) {
+        await Storage.createStandardPart(mediumId);
+        return;
+    }
+    const nonStandardPartIds = parts.filter((value) => value !== standardPartId);
+    const overLappingParts = await Storage.getOverLappingParts(standardPartId, nonStandardPartIds);
+
+    const promises = [];
+    for (const overLappingPart of overLappingParts) {
+        promises.push(Storage.moveEpisodeToPart(standardPartId, overLappingPart));
+    }
+    await Promise.all(promises);
+    /*const standardPartEpisodeIndices = await Storage.getPartsEpisodeIndices(standardPart.id);
+
+    const standardPartEpisodes = standardPartEpisodeIndices[0].episodes;
+
+    if (!standardPartEpisodes.length) {
+        return;
+    }
+    const partEpisodeIndices = await Storage.getPartsEpisodeIndices(nonStandardPartIds);
+    const partEpisodesIndicesMap = new Map<number, number[]>();
+    partEpisodeIndices.forEach((value) => {
+        partEpisodesIndicesMap.set(value.partId, value.episodes);
+    });
+
+    if (!standardPartEpisodes) {
+        logger.warn("could not find standardPartEpisodes even though it has a standard part");
+        return;
+    }
+    if (!standardPartEpisodes.length) {
+        return;
+    }
+    const episodePartMap = new Map<number, number>();
+
+    for (const episodeIndex of standardPartEpisodes) {
+        for (const part of parts) {
+            // skip standard parts here
+            if (part.totalIndex === -1) {
+                continue;
+            }
+            const episodeIndices = partEpisodesIndicesMap.get(part.id);
+
+            if (!episodeIndices) {
+                continue;
+            }
+            if (episodeIndices.find((value) => value === episodeIndex)) {
+                const partId = episodePartMap.get(episodeIndex);
+
+                if (partId != null && partId !== part.id) {
+                    throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.id}'`);
+                }
+                episodePartMap.set(episodeIndex, part.id);
+                break;
+            }
+        }
+    }
+    const partEpisodes = new Map<number, number[]>();
+    for (const [episodeIndex, partId] of episodePartMap.entries()) {
+        const episodesIndices = getElseSet(partEpisodes, partId, () => []);
+        episodesIndices.push(episodeIndex);
+    }
+
+    const promises = [];
+    for (const [partId, episodeIndices] of partEpisodes.entries()) {
+        promises.push(Storage.moveEpisodeToPart(standardPart.id, episodeIndices, partId));
+    }
+    await Promise.all(promises);*/
 }

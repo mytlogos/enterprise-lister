@@ -236,9 +236,9 @@ class NovelUpdates implements ListManager {
     }
 }
 
-const listTypes = {
-    NOVELUPDATES: 0x0,
-};
+export enum ListType {
+    NOVELUPDATES = 0x0,
+}
 
 export interface ListScrapeResult {
     lists: ScrapeList[];
@@ -273,7 +273,13 @@ export interface ScrapeMedium {
 }
 
 export function getListManagerHooks(): Hook[] {
-    return [{redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/}];
+    return [
+        {
+            name: "novelupdates",
+            medium: MediaType.TEXT,
+            redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/
+        }
+    ];
 }
 
 export interface ListManager {
@@ -292,7 +298,7 @@ export interface ListManager {
 
 export function factory(type: number, cookies?: string): ListManager {
     let instance;
-    if (type === listTypes.NOVELUPDATES) {
+    if (type === ListType.NOVELUPDATES) {
         instance = new NovelUpdates();
     }
     if (!instance) {

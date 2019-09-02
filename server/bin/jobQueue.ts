@@ -26,7 +26,9 @@ export class JobQueue {
     }
 
     get schedulableJobs() {
-        return this.waitingJobs.length + this.newJobs.length;
+        const available = this.waitingJobs.length + this.newJobs.length;
+        const maxSchedulable = this.maxActive - this.runningJobs;
+        return maxSchedulable > available ? available : maxSchedulable;
     }
 
     get totalJobs() {
@@ -151,7 +153,7 @@ export class JobQueue {
         if (this.timesRescheduled > 100 && this._overMemoryLimit()) {
             console.error("too long rescheduled and over memoryLimit");
         }
-        if (this.nextScheduling > 0 && this.nextScheduling < timeout) {
+        if ((this.nextScheduling > 0 && this.nextScheduling < timeout) || !this.schedulableJobs) {
             return;
         }
         timeout = timeout < 1000 ? 1000 : timeout;
@@ -214,6 +216,7 @@ export class JobQueue {
         } finally {
             if (toExecute.jobInfo.onDone) {
                 try {
+                    console.log("executing on done");
                     toExecute.jobInfo.onDone();
                 } catch (e) {
                     logError("On Done threw an error!: " + e);

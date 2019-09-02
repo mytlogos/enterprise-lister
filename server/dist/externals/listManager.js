@@ -7,12 +7,12 @@ const tools_1 = require("../tools");
 const queueManager_1 = require("./queueManager");
 const tough_cookie_1 = require("tough-cookie");
 class NovelUpdates {
+    constructor() {
+        this.baseURI = "https://www.novelupdates.com/";
+    }
     static scrapeListRow(i, tableData) {
         const link = tableData.eq(i).children("a").first();
         return { text: link.text().trim(), link: link.attr("href") };
-    }
-    constructor() {
-        this.baseURI = "https://www.novelupdates.com/";
     }
     test(credentials) {
         return this.defaults
@@ -192,16 +192,23 @@ class NovelUpdates {
         return currentMedia;
     }
 }
-const listTypes = {
-    NOVELUPDATES: 0x0,
-};
+var ListType;
+(function (ListType) {
+    ListType[ListType["NOVELUPDATES"] = 0] = "NOVELUPDATES";
+})(ListType = exports.ListType || (exports.ListType = {}));
 function getListManagerHooks() {
-    return [{ redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/ }];
+    return [
+        {
+            name: "novelupdates",
+            medium: tools_1.MediaType.TEXT,
+            redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/
+        }
+    ];
 }
 exports.getListManagerHooks = getListManagerHooks;
 function factory(type, cookies) {
     let instance;
-    if (type === listTypes.NOVELUPDATES) {
+    if (type === ListType.NOVELUPDATES) {
         instance = new NovelUpdates();
     }
     if (!instance) {

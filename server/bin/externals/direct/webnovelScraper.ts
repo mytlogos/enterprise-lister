@@ -1,6 +1,6 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
 import {EpisodeNews, News, TocSearchMedium} from "../../types";
-import {equalsIgnore, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import {equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
@@ -19,7 +19,7 @@ const initPromise = queueRequest(
         uri: "https://www.webnovel.com/"
     },
     defaultRequest
-);
+).then(ignore);
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.webnovel.com/";

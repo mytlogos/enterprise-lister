@@ -218,3 +218,52 @@ export interface EpisodeContentData {
     index: number;
     mediumTitle: string;
 }
+
+export enum ScrapeName {
+    searchForToc = "searchForToc",
+    toc = "toc",
+    oneTimeToc = "oneTimeToc",
+    feed = "feed",
+    news = "news",
+    newsAdapter = "newsAdapter",
+    oneTimeUser = "oneTimeUser",
+    checkTocs = "checkTocs",
+    queueTocs = "queueTocs",
+    remapMediaParts = "remapMediaParts",
+    queueExternalUser = "queueExternalUser",
+}
+
+export enum JobState {
+    RUNNING = "running",
+    WAITING = "waiting",
+}
+
+export interface JobItem {
+    type: ScrapeName;
+    state: JobState;
+    interval: number;
+    deleteAfterRun: boolean;
+    id: number;
+    name?: string;
+    runAfter?: number;
+    nextRun?: Date;
+    lastRun?: Date;
+    arguments?: string;
+}
+
+export interface JobRequest {
+    type: ScrapeName;
+    interval: number;
+    deleteAfterRun: boolean;
+    runImmediately: boolean;
+    name?: string;
+    runAfter?: JobRequest | JobItem;
+    arguments?: string;
+}
+
+export enum MilliTime {
+    SECOND = 1000,
+    MINUTE = 60000,
+    HOUR = 3600000,
+    DAY = 86400000
+}

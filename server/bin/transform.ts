@@ -24,3 +24,20 @@ export class BufferToStringStream extends stream.Transform {
         callback(null, data);
     }
 }
+
+export class ObjectToStringStream extends stream.Transform {
+    constructor() {
+        super({
+            decodeStrings: false,
+            encoding: "utf-8",
+            writableObjectMode: true,
+            readableObjectMode: false,
+            allowHalfOpen: false
+        });
+    }
+
+    public _transform(chunk: any, encoding: string, callback: (error?: (Error | null), data?: any) => void): void {
+        this.push(JSON.stringify(chunk));
+        callback(null, JSON.stringify(chunk));
+    }
+}

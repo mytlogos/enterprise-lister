@@ -4,7 +4,7 @@ import {
     list,
     news,
     oneTimeToc,
-    queueTocs,
+    queueTocs, remapMediaParts,
     scrapeNews,
     Scraper,
     ScraperHelper,
@@ -16,7 +16,6 @@ import {Job, JobCallback, JobQueue} from "../jobQueue";
 import {multiSingle} from "../tools";
 import {Storage} from "../database/database";
 import {Counter} from "../counter";
-import {remapMediaParts} from "../crawlerStart";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -36,7 +35,7 @@ export class JobScraper implements Scraper {
 
     private paused = true;
     private readonly helper = new ScraperHelper();
-    private readonly queue = new JobQueue({maxActive: 50});
+    private readonly queue = new JobQueue({maxActive: 200});
     private readonly dependantMap: Map<any, Job> = new Map();
 
     constructor() {

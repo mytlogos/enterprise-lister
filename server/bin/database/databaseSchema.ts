@@ -261,6 +261,21 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("version INT UNSIGNED NOT NULL")
     .build();
 
+dataBaseBuilder.getTableBuilder()
+    .setName("jobs")
+    .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
+    .parseColumn("type VARCHAR(200) NOT NULL")
+    .parseColumn("name VARCHAR(200) UNIQUE")
+    .parseColumn("state VARCHAR(200) NOT NULL")
+    .parseColumn("interval INT NOT NULL")
+    .parseColumn("deleteAfterRun INT NOT NULL")
+    .parseColumn("runAfter INT")
+    .parseColumn("lastRun DATETIME")
+    .parseColumn("nextRun DATETIME")
+    .parseColumn("arguments TEXT")
+    .parseMeta("PRIMARY KEY(id)")
+    .build();
+
 dataBaseBuilder.getTriggerBuilder()
     .setName("episode_AFTER_INSERT")
     .setTiming(TriggerTiming.AFTER)

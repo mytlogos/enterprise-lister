@@ -1,5 +1,6 @@
 import { EpisodeRelease, MultiSingle } from "./types";
 import { TocEpisode, TocPart } from "./externals/types";
+import { Query } from "mysql";
 export declare function remove<T>(array: T[], item: T): boolean;
 export declare function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean;
 export declare type ArrayCallback<T> = (value: T, index: number) => void;
@@ -64,7 +65,7 @@ export declare enum MediaType {
     IMAGE = 8
 }
 export declare function hasMediaType(container: MediaType, testFor: MediaType): boolean;
-export declare function allTypes(): any;
+export declare function allTypes(): string | 0 | MediaType;
 export declare function combiIndex(value: {
     totalIndex: number;
     partialIndex?: number;
@@ -90,4 +91,5 @@ export declare function ignore(): undefined;
  * Relativize the path of file to project dir.
  */
 export declare function findProjectDirPath(file: string): string;
+export declare function isQuery(value: any): value is Query;
 export {};

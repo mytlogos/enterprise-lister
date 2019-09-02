@@ -8,6 +8,8 @@ import {
     ExternalUser,
     FullPart,
     Invalidation,
+    JobItem,
+    JobRequest,
     LikeMedium,
     LikeMediumQuery,
     List,
@@ -31,10 +33,11 @@ import {
 import logger from "../logger";
 import {QueryContext} from "./queryContext";
 import {databaseSchema} from "./databaseSchema";
-import {delay} from "../tools";
+import {delay, isQuery} from "../tools";
 import {MediumInWait} from "./databaseTypes";
 import {ScrapeType} from "../externals/scraperTools";
 import {SchemaManager} from "./schemaManager";
+import {Query} from "mysql";
 
 type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 
@@ -78,15 +81,38 @@ export async function inContext<T>(callback: ContextCallback<T>, transaction = t
     try {
         result = await doTransaction(callback, context, transaction);
     } finally {
-        // release connection into the pool
-        await pool.releaseConnection(con);
+        if (isQuery(result)) {
+            const query: Query = result;
+            query.on("end", () => {
+                pool.releaseConnection(con);
+            });
+        } else {
+            // release connection into the pool
+            await pool.releaseConnection(con);
+        }
     }
     return result;
 }
 
+async function catchTransactionError<T>(transaction: boolean, context: QueryContext, e: any, attempts: number, callback: ContextCallback<T>) {
+// if it could not be commit due to error, roll back and rethrow error
+    if (transaction) {
+        // if there is a transaction first rollback and then throw error
+        await context.rollback();
+    }
+    // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
+    if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
+        await delay(500);
+        return doTransaction(callback, context, transaction, ++attempts);
+    } else {
+        // if it isn't an deadlock error, or still an deadlock after five attempts, rethrow error
+        throw e;
+    }
+}
+
 async function doTransaction<T>(callback: ContextCallback<T>, context: QueryContext, transaction: boolean,
                                 attempts = 0): Promise<T> {
-    let result;
+    let result: T;
     try {
         // if transaction, start it
         if (transaction) {
@@ -95,24 +121,30 @@ async function doTransaction<T>(callback: ContextCallback<T>, context: QueryCont
         // let callback run with context
         result = await callback(context);
 
-        // if transaction and no error till now, commit it and return result
-        if (transaction) {
+        if (isQuery(result)) {
+            const query: Query = result;
+            let error = false;
+            // TODO: 31.08.2019 returning query object does not allow normal error handling,
+            //  maybe return own stream where the control is completely in my own hands
+            query
+                .on("error", (err) => {
+                    error = true;
+                    if (transaction) {
+                        context.rollback();
+                    }
+                    console.error(err);
+                })
+                .on("end", () => {
+                    if (!error && transaction) {
+                        context.commit();
+                    }
+                });
+            // if transaction and no error till now, commit it and return result
+        } else if (transaction) {
             await context.commit();
         }
     } catch (e) {
-        // if it could not be commit due to error, roll back and rethrow error
-        if (transaction) {
-            // if there is a transaction first rollback and then throw error
-            await context.rollback();
-        }
-        // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
-        if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
-            await delay(500);
-            return doTransaction(callback, context, transaction, ++attempts);
-        } else {
-            // if it isn't an deadlock error, or still an deadlock after five attempts, rethrow error
-            throw e;
-        }
+        return await catchTransactionError(transaction, context, e, attempts, callback);
     }
     return result;
 }
@@ -166,6 +198,22 @@ function start(): void {
 }
 
 export interface Storage {
+    getOverLappingParts(id: number, nonStandardPartIds: number[]): Promise<number[]>;
+
+    stopJobs(): Promise<void>;
+
+    getAfterJobs(id: number): Promise<JobItem[]>;
+
+    getJobs(): Promise<JobItem[]>;
+
+    addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]>;
+
+    removeJobs(jobs: JobItem | JobItem[]): Promise<void>;
+
+    removeJob(key: string | number): Promise<void>;
+
+    updateJobs(jobs: JobItem | JobItem[]): Promise<void>;
+
     queueNewTocs(): Promise<void>;
 
     deleteRelease(release: EpisodeRelease): Promise<void>;
@@ -241,7 +289,11 @@ export interface Storage {
 
     getMediumParts(mediumId: number): Promise<ShallowPart[]>;
 
+    getMediumPartIds(mediumId: number): Promise<number[]>;
+
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
+
+    getStandardPartId(mediumId: number): Promise<number | undefined>;
 
     updateProgress(uuid: string, mediumId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
 
@@ -265,7 +317,7 @@ export interface Storage {
 
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean>;
 
-    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number): Promise<boolean>;
+    moveEpisodeToPart(oldPartId: number, newPartId: number): Promise<boolean>;
 
     deleteUser(uuid: string): Promise<boolean>;
 
@@ -322,6 +374,8 @@ export interface Storage {
     getParts(partsId: (number | number[]), uuid: string): Promise<Part[] | Part>;
 
     getInvalidated(uuid: string): Promise<Invalidation[]>;
+
+    getInvalidatedStream(uuid: string): Promise<Query>;
 
     markNewsRead(uuid: string, news: number[]): Promise<boolean>;
 
@@ -392,7 +446,9 @@ export interface Storage {
 
     getTocs(mediumId: number): Promise<string[]>;
 
-    getAllTocs(): Promise<Array<{ link?: string, id: number }>>;
+    getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>>;
+
+    getAllTocs(): Promise<Array<{ link: string, id: number }>>;
 
     getChapterIndices(mediumId: number): Promise<number[]>;
 
@@ -648,7 +704,13 @@ export const Storage: Storage = {
 
     /**
      */
-    getAllTocs(): Promise<Array<{ link?: string, id: number }>> {
+    getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {
+        return inContext((context) => context.getAllMediaTocs());
+    },
+
+    /**
+     */
+    getAllTocs(): Promise<Array<{ link: string, id: number }>> {
         return inContext((context) => context.getAllTocs());
     },
 
@@ -692,8 +754,19 @@ export const Storage: Storage = {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
     },
 
+    /**
+     * Returns all parts of an medium with their episodes.
+     */
+    getMediumPartIds(mediumId: number): Promise<number[]> {
+        return inContext((context) => context.getMediumPartIds(mediumId));
+    },
+
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined> {
         return inContext((context) => context.getStandardPart(mediumId));
+    },
+
+    getStandardPartId(mediumId: number): Promise<number | undefined> {
+        return inContext((context) => context.getStandardPartId(mediumId));
     },
 
     /**
@@ -761,8 +834,8 @@ export const Storage: Storage = {
         return inContext((context) => context.setUuid(uuid).updateEpisode(episode));
     },
 
-    moveEpisodeToPart(oldPartId: number, episodeIndices: number[], newPartId: number) {
-        return inContext((context) => context.moveEpisodeToPart(oldPartId, episodeIndices, newPartId));
+    moveEpisodeToPart(oldPartId: number, newPartId: number) {
+        return inContext((context) => context.moveEpisodeToPart(oldPartId, newPartId));
     },
 
     /**
@@ -848,6 +921,38 @@ export const Storage: Storage = {
 
     queueNewTocs(): Promise<void> {
         return inContext((context) => context.queueNewTocs());
+    },
+
+    getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]> {
+        return inContext((context) => context.getOverLappingParts(standardId, nonStandardPartIds));
+    },
+
+    stopJobs(): Promise<void> {
+        return inContext((context) => context.stopJobs());
+    },
+
+    getJobs(limit?: number): Promise<JobItem[]> {
+        return inContext((context) => context.getJobs(limit));
+    },
+
+    getAfterJobs(id: number): Promise<JobItem[]> {
+        return inContext((context) => context.getAfterJobs(id));
+    },
+
+    addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]> {
+        return inContext((context) => context.addJobs(jobs));
+    },
+
+    removeJobs(jobs: JobItem | JobItem[]): Promise<void> {
+        return inContext((context) => context.removeJobs(jobs));
+    },
+
+    removeJob(key: string | number): Promise<void> {
+        return inContext((context) => context.removeJob(key));
+    },
+
+    updateJobs(jobs: JobItem | JobItem[]): Promise<void> {
+        return inContext((context) => context.updateJobs(jobs));
     },
 
     /**
@@ -1114,6 +1219,12 @@ export const Storage: Storage = {
     getInvalidated(uuid: string): Promise<Invalidation[]> {
         return inContext((context) => context.getInvalidated(uuid));
     },
+    /**
+     *
+     */
+    getInvalidatedStream(uuid: string): Promise<Query> {
+        return inContext((context) => context.getInvalidatedStream(uuid));
+    },
 
 
     getLatestNews(domain: string): Promise<News[]> {
@@ -1137,3 +1248,5 @@ export const Storage: Storage = {
  *
  */
 export const startStorage = () => start();
+// TODO: 01.09.2019 check whether it should 'start' implicitly or explicitly
+start();

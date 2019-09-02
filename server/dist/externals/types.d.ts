@@ -30,7 +30,7 @@ export interface Hook {
     domainReg?: RegExp;
     tocPattern?: RegExp;
     redirectReg?: RegExp;
-    newsAdapter?: NewsScraper[] | NewsScraper;
+    newsAdapter?: NewsScraper;
     tocAdapter?: TocScraper;
     tocSearchAdapter?: TocSearchScraper;
     contentDownloadAdapter?: ContentDownloader;
@@ -47,7 +47,6 @@ export interface Dependant {
     feed?: string[] | string;
     news?: any[] | any;
     toc?: any[] | any;
-    medium?: any[] | any;
 }
 export interface TocRequest {
     url: string;
@@ -98,12 +97,24 @@ export interface NewsScrapeResult {
 export interface NewsScraper {
     (): Promise<NewsScrapeResult | undefined>;
     link: string;
+    hookName?: string;
 }
 export interface TocSearchScraper {
     (medium: TocSearchMedium): Promise<Toc | undefined>;
     link: string;
     medium: MediaType;
     blindSearch?: boolean;
+    hookName?: string;
 }
-export declare type TocScraper = (url: string) => Promise<Toc[]>;
-export declare type ContentDownloader = (url: string) => Promise<EpisodeContent[]>;
+export interface TocScraper {
+    (url: string): Promise<Toc[]>;
+    hookName?: string;
+}
+export interface ContentDownloader {
+    (url: string): Promise<EpisodeContent[]>;
+    hookName?: string;
+}
+export interface TocResult {
+    tocs: Toc[];
+    uuid?: string;
+}

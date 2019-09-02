@@ -34,6 +34,7 @@ export class ColumnSchema {
 
         if (thisDef) {
             const values = Object.values(SqlFunction);
+            // @ts-ignore
             if (values.includes(thisDef.trim())) {
                 defValue += "DEFAULT " + thisDef;
             } else {
@@ -41,6 +42,6 @@ export class ColumnSchema {
             }
         }
         const type = this.type === ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
-        return `${this.name} ${type} ${this.modifiers.join(" ")}${defValue}`;
+        return `${mySql.escapeId(this.name)} ${type} ${this.modifiers.join(" ")}${defValue}`;
     }
 }

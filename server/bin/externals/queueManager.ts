@@ -7,7 +7,7 @@ import htmlparser2, {DomHandler} from "htmlparser2";
 import {BufferToStringStream} from "../transform";
 
 
-class Queue {
+export class Queue {
     public readonly queue: Callback[];
     public working: boolean;
     private readonly maxLimit: number;
@@ -59,7 +59,7 @@ class Queue {
 const queues: Map<string, Queue> = new Map();
 const fastQueues: Map<string, Queue> = new Map();
 
-export type Callback = () => any;
+export type Callback = () => Promise<any>;
 
 function processRequest(uri: string, otherRequest?: Request, queueToUse = queues, limit?: number) {
     const exec = /https?:\/\/([^\/]+)/.exec(uri);

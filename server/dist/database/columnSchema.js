@@ -20,6 +20,7 @@ class ColumnSchema {
         let defValue = " ";
         if (thisDef) {
             const values = Object.values(databaseTypes_1.SqlFunction);
+            // @ts-ignore
             if (values.includes(thisDef.trim())) {
                 defValue += "DEFAULT " + thisDef;
             }
@@ -28,7 +29,7 @@ class ColumnSchema {
             }
         }
         const type = this.type === databaseTypes_1.ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
-        return `${this.name} ${type} ${this.modifiers.join(" ")}${defValue}`;
+        return `${promise_mysql_1.default.escapeId(this.name)} ${type} ${this.modifiers.join(" ")}${defValue}`;
     }
 }
 exports.ColumnSchema = ColumnSchema;

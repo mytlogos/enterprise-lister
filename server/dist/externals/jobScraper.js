@@ -5,7 +5,6 @@ const jobQueue_1 = require("../jobQueue");
 const tools_1 = require("../tools");
 const database_1 = require("../database/database");
 const counter_1 = require("../counter");
-const crawlerStart_1 = require("../crawlerStart");
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
@@ -15,7 +14,7 @@ class JobScraper {
     constructor() {
         this.paused = true;
         this.helper = new scraperTools_1.ScraperHelper();
-        this.queue = new jobQueue_1.JobQueue({ maxActive: 50 });
+        this.queue = new jobQueue_1.JobQueue({ maxActive: 200 });
         this.dependantMap = new Map();
         this.helper.init();
     }
@@ -80,7 +79,7 @@ class JobScraper {
         });
         this.queuePeriodic(HOUR, scraperTools_1.checkTocs);
         this.queuePeriodic(HOUR, scraperTools_1.queueTocs);
-        this.queuePeriodic(HOUR, crawlerStart_1.remapMediaParts);
+        this.queuePeriodic(HOUR, scraperTools_1.remapMediaParts);
         this.queuePeriodic(DAY, async () => {
             // every monday scan every available external user, if not scanned on same day
             const externals = await database_1.Storage.getScrapeExternalUser();

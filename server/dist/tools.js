@@ -4,6 +4,7 @@ const tslib_1 = require("tslib");
 const logger_1 = tslib_1.__importDefault(require("./logger"));
 const crypto_1 = tslib_1.__importDefault(require("crypto"));
 const crypto_2 = tslib_1.__importDefault(require("crypto"));
+const throttle_function_1 = tslib_1.__importDefault(require("throttle-function"));
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
 //  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 const bcrypt_nodejs_1 = tslib_1.__importDefault(require("bcrypt-nodejs"));
@@ -444,4 +445,11 @@ function findProjectDirPath(file) {
     return filePath;
 }
 exports.findProjectDirPath = findProjectDirPath;
+function isQuery(value) {
+    return value && typeof value.on === "function" && typeof value.stream === "function";
+}
+exports.isQuery = isQuery;
+function throttleFunc(fn) {
+    return throttle_function_1.default(fn);
+}
 //# sourceMappingURL=tools.js.map

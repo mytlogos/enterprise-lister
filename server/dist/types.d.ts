@@ -1,3 +1,5 @@
+import { MediaType } from "./tools";
+import { ScrapeType } from "./externals/scraperTools";
 export interface SimpleMedium {
     id?: number;
     countryOfOrigin?: string;
@@ -19,26 +21,49 @@ export interface Medium extends SimpleMedium {
     currentRead: number;
     unreadEpisodes: number[];
 }
-export interface Part {
+export interface TocSearchMedium {
     mediumId: number;
+    hosts?: string[];
+    title: string;
+    medium: MediaType;
+    synonyms: string[];
+}
+export interface Part {
     id: number;
     title?: string;
+    mediumId: number;
     totalIndex: number;
     partialIndex?: number;
+    episodes: Episode[] | number[];
+}
+export interface FullPart extends Part {
     episodes: Episode[];
+}
+export interface ShallowPart extends Part {
+    episodes: number[];
 }
 export interface SimpleEpisode {
     id: number;
-    partId?: number;
-    title?: string;
+    partId: number;
     totalIndex: number;
     partialIndex?: number;
-    url: string;
-    releaseDate: Date;
+    releases: EpisodeRelease[];
 }
 export interface Episode extends SimpleEpisode {
     progress: number;
     readDate: Date | null;
+}
+export interface SimpleRelease {
+    episodeId: number;
+    url: string;
+}
+export interface EpisodeRelease {
+    episodeId: number;
+    title: string;
+    url: string;
+    releaseDate: Date;
+    locked?: boolean;
+    sourceType?: string;
 }
 export interface List {
     userUuid: string;
@@ -47,10 +72,12 @@ export interface List {
     medium: number;
     items: number[];
 }
-export interface User {
+export interface SimpleUser {
     uuid: string;
     name: string;
     session: string;
+}
+export interface User extends SimpleUser {
     unreadNews: number[];
     unreadChapter: number[];
     readToday: ReadEpisode[];
@@ -80,22 +107,46 @@ export interface News {
     date: Date;
     id?: number;
     read?: boolean;
+    mediumId?: number;
+    mediumTitle?: number;
+}
+export interface EpisodeNews {
+    mediumType: MediaType;
+    mediumTocLink?: string;
+    mediumTitle: string;
+    partIndex?: number;
+    partTotalIndex?: number;
+    partPartialIndex?: number;
+    episodeTitle: string;
+    episodeIndex: number;
+    episodeTotalIndex: number;
+    episodePartialIndex?: number;
+    locked?: boolean;
+    link: string;
+    date: Date;
 }
 export interface Synonyms {
     mediumId: number;
-    synonym: string | string[];
+    synonym: MultiSingle<string>;
 }
 export interface ScrapeItem {
     link: string;
+    type: ScrapeType;
     nextScrape?: Date;
-    type?: number;
-    userId?: number;
+    userId?: string;
+    externalUserId?: string;
     mediumId?: number;
+    info?: string;
 }
 export interface LikeMedium {
-    medium: SimpleMedium;
+    medium?: SimpleMedium;
     title: string;
     link: string;
+}
+export interface LikeMediumQuery {
+    title: string;
+    link?: string;
+    type?: number;
 }
 export interface MetaResult {
     novel: string;
@@ -107,7 +158,7 @@ export interface MetaResult {
     seeAble: boolean;
 }
 export interface Result {
-    result: MetaResult | MetaResult[];
+    result: MultiSingle<MetaResult>;
     preliminary?: boolean;
     accept?: boolean;
     url: string;
@@ -116,6 +167,7 @@ export interface ProgressResult extends MetaResult {
     progress: number;
     readDate: Date;
 }
+export declare type MultiSingle<T> = T | T[];
 export interface ReadEpisode {
     episodeId: number;
     readDate: Date;
@@ -131,4 +183,53 @@ export interface Invalidation {
     externalListId?: number;
     listId?: number;
     newsId?: number;
+}
+export interface EpisodeContentData {
+    episodeTitle: string;
+    index: number;
+    mediumTitle: string;
+}
+export declare enum ScrapeName {
+    searchForToc = "searchForToc",
+    toc = "toc",
+    oneTimeToc = "oneTimeToc",
+    feed = "feed",
+    news = "news",
+    newsAdapter = "newsAdapter",
+    oneTimeUser = "oneTimeUser",
+    checkTocs = "checkTocs",
+    queueTocs = "queueTocs",
+    remapMediaParts = "remapMediaParts",
+    queueExternalUser = "queueExternalUser"
+}
+export declare enum JobState {
+    RUNNING = "running",
+    WAITING = "waiting"
+}
+export interface JobItem {
+    type: ScrapeName;
+    state: JobState;
+    interval: number;
+    deleteAfterRun: boolean;
+    id: number;
+    name?: string;
+    runAfter?: number;
+    nextRun?: Date;
+    lastRun?: Date;
+    arguments?: string;
+}
+export interface JobRequest {
+    type: ScrapeName;
+    interval: number;
+    deleteAfterRun: boolean;
+    runImmediately: boolean;
+    name?: string;
+    runAfter?: JobRequest | JobItem;
+    arguments?: string;
+}
+export declare enum MilliTime {
+    SECOND = 1000,
+    MINUTE = 60000,
+    HOUR = 3600000,
+    DAY = 86400000
 }
