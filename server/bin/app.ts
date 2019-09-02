@@ -7,10 +7,7 @@ import compression from "compression";
 import helmet from "helmet";
 // own router
 import {apiRouter} from "./api";
-import {requestHandler as wsRequestHandler} from "./websocketManager";
 import {blockRequests} from "./timer";
-import {server as WebSocketServer} from "websocket";
-import {Server} from "http";
 import emojiStrip from "emoji-strip";
 import {isString} from "./tools";
 
@@ -61,22 +58,6 @@ app.use((err: HttpError, req: Request, res: Response) => {
     res.sendStatus(err.status || 500);
 });
 
-
-let wsServer;
-
-export const initWSServer = (server: Server) => {
-    wsServer = new WebSocketServer({
-        httpServer: server,
-        // You should not use autoAcceptConnections for production
-        // applications, as it defeats all standard cross-origin protection
-        // facilities built into the protocol and the browser.  You should
-        // *always* verify the connection's origin and decide whether or not
-        // to accept it.
-        autoAcceptConnections: false,
-    });
-
-    wsServer.on("request", wsRequestHandler);
-};
 
 // todo what is with tls (https), cloudflare?
 // todo does it redirect automatically to https when http was typed?

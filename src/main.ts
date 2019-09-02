@@ -2,10 +2,10 @@ import Vue, {VNode} from "vue";
 import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";
-import {events, WSClient} from "./WebsocketClient";
+import {WSClient} from "./WebsocketClient";
 import {emitBusEvent, onBusEvent} from "./bus";
 import {optimizedResize} from "./init";
-import {ExternalList, ExternalUser, List, Medium, News, TransferList, TransferMedium, User} from "./types";
+import {ExternalList, ExternalUser, List, Medium, News, TransferList, TransferMedium, User} from "./siteTypes";
 import {HttpClient} from "./Httpclient";
 
 Vue.config.devtools = true;
@@ -311,11 +311,11 @@ const app: App = new Vue({
 
         // @ts-ignore
         HttpClient.user = user;
-
-        WSClient.addEventListener(events.ADD, (value) => this.processAddEvent(value));
-        WSClient.addEventListener(events.DELETE, (value) => this.processDeleteEvent(value));
-        WSClient.addEventListener(events.UPDATE, (value) => this.processUpdateEvent(value));
-        WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
+        // TODO: use invalidation polling to check
+        // WSClient.addEventListener(events.ADD, (value) => this.processAddEvent(value));
+        // WSClient.addEventListener(events.DELETE, (value) => this.processDeleteEvent(value));
+        // WSClient.addEventListener(events.UPDATE, (value) => this.processUpdateEvent(value));
+        // WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
 
         this.loginState();
         this.sendPeriodicData();

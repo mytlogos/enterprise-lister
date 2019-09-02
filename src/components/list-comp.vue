@@ -46,7 +46,7 @@
                             return {value, match: regFilter.exec(value.name)};
                         })
                         .filter((value) => value.match)
-                        .map((value) => value.value);
+                        .map((value) => value.values);
                 }
 
                 return lists;
@@ -74,7 +74,7 @@
                 this.markClassId = this.markClassId === id ? null : id;
                 this.markClassExternal = this.markClassExternal === id ? null : id;
                 this.marked.id = id;
-                this.marked.index = index;
+                this.marked.totalIndex = index;
                 this.marked.external = external;
             },
 
@@ -86,7 +86,7 @@
                     // noinspection JSPotentiallyInvalidTargetOfIndexedPropertyAccess
                     const currentDisplayedDatum = this.displayedData[0];
                     this.marked.id = currentDisplayedDatum.id;
-                    this.marked.index = 0;
+                    this.marked.totalIndex = 0;
                     this.marked.external = currentDisplayedDatum.external;
                     this.markClassId = this.marked.id;
                     this.markClassExternal = this.marked.external;

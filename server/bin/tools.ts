@@ -1,12 +1,28 @@
 import logger from "./logger";
-import {MultiSingle} from "./types";
+import {EpisodeRelease, MultiSingle} from "./types";
 import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
+// FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
+//  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 import bcrypt from "bcrypt-nodejs";
+import emojiStrip from "emoji-strip";
+import * as fs from "fs";
+import * as path from "path";
+import {Query} from "mysql";
+
 
 export function remove<T>(array: T[], item: T): boolean {
     const index = array.indexOf(item);
+    if (index < 0) {
+        return false;
+    }
+    array.splice(index, 1);
+    return true;
+}
+
+export function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean {
+    const index = array.findIndex(equals);
     if (index < 0) {
         return false;
     }
@@ -47,9 +63,9 @@ export function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): R[]
 export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): R | R[] {
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
-        return item.map((value, index) => cb(value, index, index < maxIndex));
+        return item.map((value, index) => cb(value, index, index >= maxIndex));
     }
-    return cb(item);
+    return cb(item, 0, true);
 }
 
 export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
@@ -94,7 +110,7 @@ export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) 
             uniques.push(value);
         });
     } else {
-        const set = new Set();
+        const set = new Set<T>();
         forEachArrayLike(array, (value) => set.add(value));
         uniques.push(...set);
     }
@@ -119,8 +135,22 @@ export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: num
     return false;
 }
 
-export function equalsIgnoreCase(s1: string, s2: string) {
+const apostrophe = /['´`’′‘]/g;
+
+export function equalsIgnore(s1: string, s2: string) {
+    if (apostrophe.test(s1)) {
+        s1 = s1.replace(apostrophe, "");
+    }
+    if (apostrophe.test(s2)) {
+        s2 = s2.replace(apostrophe, "");
+    }
     return s1.localeCompare(s2, undefined, {sensitivity: "base"}) === 0;
+}
+
+export function contains(s1: string, s2: string) {
+    s1 = s1.replace(apostrophe, "");
+    s2 = s2.replace(apostrophe, "");
+    return s1.toLocaleLowerCase().includes(s2.toLocaleLowerCase());
 }
 
 export function countOccurrence<T>(array: T[]): Map<T, number> {
@@ -199,13 +229,16 @@ export function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | und
 }
 
 export function relativeToAbsoluteTime(relative: string): Date | null {
-    const exec = /\s*(\d+)\s+(\w+)\s+(ago)\s*/i.exec(relative);
+    let exec: string[] | null = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
     if (!exec) {
-        return null;
+        if (!relative || relative.toLowerCase() !== "just now") {
+            return null;
+        }
+        exec = ["", "30", "s"];
     }
     const [, value, unit] = exec;
     const absolute = new Date();
-    const timeValue = Number(value);
+    const timeValue = value && value.match("an?") ? 1 : Number(value);
 
     if (Number.isNaN(timeValue)) {
         logger.warn(`'${value}' is not a number`);
@@ -244,6 +277,27 @@ export function delay(timeout = 1000): Promise<void> {
     return new Promise((resolve) => {
         setTimeout(() => resolve(), timeout);
     });
+}
+
+export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease) {
+    return (firstRelease === secondRelease)
+        || (
+            (firstRelease && secondRelease)
+            && firstRelease.url === secondRelease.url
+            && firstRelease.episodeId === secondRelease.episodeId
+            && !!firstRelease.locked === !!secondRelease.locked
+            // tslint:disable-next-line:triple-equals
+            && firstRelease.sourceType == secondRelease.sourceType
+            && firstRelease.releaseDate.getTime() === secondRelease.releaseDate.getTime()
+            && firstRelease.title === secondRelease.title
+        );
+}
+
+export function sanitizeString(s: string): string {
+    if (!s) {
+        return s;
+    }
+    return emojiStrip(s).trim().replace(/\s+/g, " ");
 }
 
 export function isString(value: any): value is string {
@@ -363,9 +417,92 @@ export enum MediaType {
     TEXT = 0x1,
     AUDIO = 0x2,
     VIDEO = 0x4,
-    IMAGE = 0x8
+    IMAGE = 0x8,
+}
+
+export function hasMediaType(container: MediaType, testFor: MediaType) {
+    return (container & testFor) === testFor;
 }
 
 export function allTypes() {
-    return Object.values(MediaType).reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
+    return (Object.values(MediaType) as number[])
+        .reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
+}
+
+export function combiIndex(value: { totalIndex: number, partialIndex?: number }): number {
+    const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
+    if (Number.isNaN(combi)) {
+        throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
+    }
+    return combi;
+}
+
+export function checkIndices(value: { totalIndex: number, partialIndex?: number }) {
+    if (value.totalIndex == null || value.totalIndex < -1) {
+        throw Error("invalid toc content, totalIndex invalid");
+    }
+    if (value.partialIndex != null && (value.partialIndex < 0 || !Number.isInteger(value.partialIndex))) {
+        throw Error("invalid toc content, partialIndex invalid");
+    }
+}
+
+export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number)
+    : { combi: number, total: number, fraction?: number } | null {
+
+    const whole = Number(groups[allPosition]);
+
+    if (Number.isNaN(whole)) {
+        return null;
+    }
+    const totalIndex = Number(groups[totalPosition]);
+    let partialIndex;
+
+    if (groups[partialPosition]) {
+        partialIndex = Number(groups[partialPosition]);
+    }
+    return {combi: whole, total: totalIndex, fraction: partialIndex};
+}
+
+const indexRegex = /(-?\d+)(\.(\d+))?/;
+
+export function separateIndex(value: number): { totalIndex: number, partialIndex?: number; } {
+    const exec = indexRegex.exec(value + "");
+    if (!exec) {
+        throw Error("not a positive number");
+    }
+    const totalIndex = Number(exec[1]);
+    const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
+
+    // @ts-ignore
+    if (Number.isNaN(totalIndex) || Number.isNaN(partialIndex)) {
+        throw Error("invalid number");
+    }
+    return {totalIndex, partialIndex};
+}
+
+export function ignore() {
+    return undefined;
+}
+
+/**
+ * Searches for a project directory by searching  current working directory
+ * and all its parent directories for a package.json.
+ *
+ * Relativize the path of file to project dir.
+ */
+export function findProjectDirPath(file: string): string {
+    let dir = process.cwd();
+    let filePath = file;
+    let currentDirFiles: string[] = fs.readdirSync(dir);
+
+    while (!currentDirFiles.includes("package.json")) {
+        filePath = ".." + path.sep + filePath;
+        dir = path.dirname(dir);
+        currentDirFiles = fs.readdirSync(dir);
+    }
+    return filePath;
+}
+
+export function isQuery(value: any): value is Query {
+    return value && typeof value.on === "function" && typeof value.stream === "function";
 }

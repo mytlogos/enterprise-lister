@@ -1,46 +1,78 @@
-import {News, TocSearchMedium} from "../types";
+import {EpisodeNews, News, TocSearchMedium} from "../types";
 import {MediaType} from "../tools";
+import {JobCallback} from "../jobQueue";
+
+export interface ScraperJob {
+    type: string;
+    onSuccess?: () => void;
+    onDone?: () => void | ScraperJob | ScraperJob[];
+    onFailure?: (reason?: any) => void;
+    cb: (item: any) => Promise<any>;
+}
+
+export interface OneTimeEmittableJob extends ScraperJob {
+    type: "onetime_emittable";
+    key: string;
+    item: any;
+}
+
+export interface PeriodicEmittableJob extends ScraperJob {
+    type: "periodic_emittable";
+    interval: number;
+    key: string;
+    item: any;
+}
+
+// @ts-ignore
+export interface PeriodicJob extends ScraperJob {
+    type: "periodic";
+    interval: number;
+    cb: JobCallback;
+}
 
 export interface Hook {
+    name: string;
+    medium: MediaType;
     domainReg?: RegExp;
+    tocPattern?: RegExp;
     redirectReg?: RegExp;
-    newsAdapter?: NewsScraper[] | NewsScraper;
+    newsAdapter?: NewsScraper;
     tocAdapter?: TocScraper;
     tocSearchAdapter?: TocSearchScraper;
-    contentAdapter?: ChapterMetaScraper;
     contentDownloadAdapter?: ContentDownloader;
 }
 
 export interface Dependant {
     oneTimeUser?: Array<{ cookies: string, uuid: string }> | { cookies: string, uuid: string };
-    oneTimeToc?: OneTimeToc[] | OneTimeToc;
+    oneTimeToc?: TocRequest[] | TocRequest;
     feed?: string[] | string;
     news?: any[] | any;
     toc?: any[] | any;
-    medium?: any[] | any;
 }
 
-export interface OneTimeToc {
+export interface TocRequest {
     url: string;
-    uuid: string;
+    uuid?: string;
     mediumId?: number;
 }
 
 export interface DownloadContent {
-    content: string;
+    content: string[];
     title: string;
     episodeId: number;
 }
 
 export interface TocContent {
     title: string;
-    index: number;
+    combiIndex: number;
+    totalIndex: number;
     partialIndex?: number;
 }
 
 export interface TocEpisode extends TocContent {
     url: string;
     releaseDate?: Date;
+    locked?: boolean;
 }
 
 export interface TocPart extends TocContent {
@@ -62,41 +94,45 @@ export interface EpisodeContent {
     mediumTitle: string;
     episodeTitle: string;
     index?: number;
-    contentType: MediaType;
-    content: any;
+    locked?: boolean;
+    content: string[];
 }
 
-export interface TextEpisodeContent extends EpisodeContent {
-    contentType: MediaType.TEXT;
-    content: string;
-}
-
-export interface AudioEpisodeContent extends EpisodeContent {
-    contentType: MediaType.AUDIO;
-    content: any;
-}
-
-export interface ImageEpisodeContent extends EpisodeContent {
-    contentType: MediaType.IMAGE;
-    content: any;
-}
-
-export interface VideoEpisodeContent extends EpisodeContent {
-    contentType: MediaType.VIDEO;
-    content: any;
-}
-
-export interface EpisodeMeta {
-    title: string;
+export interface NewsScrapeResult {
+    news?: News[];
+    episodes?: EpisodeNews[];
+    update?: boolean;
 }
 
 export interface NewsScraper {
-    (): Promise<News[]>;
+    (): Promise<NewsScrapeResult | undefined>;
 
     link: string;
+    hookName?: string;
 }
 
-export type TocScraper = (url: string) => Promise<Toc[]>;
-export type TocSearchScraper = (medium: TocSearchMedium) => Promise<Toc | undefined>;
-export type ChapterMetaScraper = (url: string) => Promise<EpisodeMeta[]>;
-export type ContentDownloader = (url: string) => Promise<EpisodeContent[]>;
+export interface TocSearchScraper {
+    (medium: TocSearchMedium): Promise<Toc | undefined>;
+
+    link: string;
+    medium: MediaType;
+    blindSearch?: boolean;
+    hookName?: string;
+}
+
+export interface TocScraper {
+    (url: string): Promise<Toc[]>;
+
+    hookName?: string;
+}
+
+export interface ContentDownloader {
+    (url: string): Promise<EpisodeContent[]>;
+
+    hookName?: string;
+}
+
+export interface TocResult {
+    tocs: Toc[];
+    uuid?: string;
+}

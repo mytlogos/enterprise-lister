@@ -2,10 +2,14 @@ import mySql from "promise-mysql";
 import env from "../env";
 import {
     Episode,
+    EpisodeContentData,
     EpisodeRelease,
     ExternalList,
     ExternalUser,
+    FullPart,
     Invalidation,
+    JobItem,
+    JobRequest,
     LikeMedium,
     LikeMediumQuery,
     List,
@@ -17,26 +21,48 @@ import {
     ProgressResult,
     Result,
     ScrapeItem,
+    ShallowPart,
     SimpleEpisode,
     SimpleMedium,
+    SimpleRelease,
+    SimpleUser,
     Synonyms,
     TocSearchMedium,
     User
 } from "../types";
-import {StateProcessor} from "./databaseValidator";
 import logger from "../logger";
 import {QueryContext} from "./queryContext";
 import {databaseSchema} from "./databaseSchema";
-import {delay} from "../tools";
+import {delay, isQuery} from "../tools";
+import {MediumInWait} from "./databaseTypes";
+import {ScrapeType} from "../externals/scraperTools";
+import {SchemaManager} from "./schemaManager";
+import {Query} from "mysql";
 
 type ContextCallback<T> = (context: QueryContext) => Promise<T>;
+
+
+// setInterval(
+//     () => StateProcessor
+//         .startRound()
+//         .then((value) => {
+//             if (!value || !value.length) {
+//                 return;
+//             }
+//             return inContext((invalidatorContext) => invalidatorContext.addInvalidation(value));
+//         })
+//         .catch((reason) => {
+//             console.log(reason);
+//             logger.error(reason);
+//         }),
+//     5000
+// );
 
 /**
  * Creates the context for QueryContext, to
  * query a single connection sequentially.
  */
-export async function inContext<T>(callback: ContextCallback<T>, transaction = true,
-                                   allowDatabase = true): Promise<T> {
+export async function inContext<T>(callback: ContextCallback<T>, transaction = true): Promise<T> {
     if (!running) {
         // if inContext is called without Storage being active
         return Promise.reject("Not started");
@@ -47,41 +73,46 @@ export async function inContext<T>(callback: ContextCallback<T>, transaction = t
     if (startPromise) {
         await startPromise;
     }
+    const pool = await poolPromise;
     const con = await pool.getConnection();
     const context = new QueryContext(con);
 
-    // don't use database if it is explicitly disallowed
-    if (allowDatabase) {
-        await context.useDatabase();
-    }
     let result;
     try {
         result = await doTransaction(callback, context, transaction);
     } finally {
-        // release connection into the pool
-        await pool.releaseConnection(con);
+        if (isQuery(result)) {
+            const query: Query = result;
+            query.on("end", () => {
+                pool.releaseConnection(con);
+            });
+        } else {
+            // release connection into the pool
+            await pool.releaseConnection(con);
+        }
     }
-    StateProcessor.startRound()
-        .then((value) => {
-            if (!value || !value.length) {
-                return;
-            }
-            return inContext(
-                (invalidatorContext) => invalidatorContext.addInvalidation(value),
-                true,
-                true
-            );
-        })
-        .catch((reason) => {
-            console.log(reason);
-            logger.error(reason);
-        });
     return result;
+}
+
+async function catchTransactionError<T>(transaction: boolean, context: QueryContext, e: any, attempts: number, callback: ContextCallback<T>) {
+// if it could not be commit due to error, roll back and rethrow error
+    if (transaction) {
+        // if there is a transaction first rollback and then throw error
+        await context.rollback();
+    }
+    // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
+    if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
+        await delay(500);
+        return doTransaction(callback, context, transaction, ++attempts);
+    } else {
+        // if it isn't an deadlock error, or still an deadlock after five attempts, rethrow error
+        throw e;
+    }
 }
 
 async function doTransaction<T>(callback: ContextCallback<T>, context: QueryContext, transaction: boolean,
                                 attempts = 0): Promise<T> {
-    let result;
+    let result: T;
     try {
         // if transaction, start it
         if (transaction) {
@@ -90,36 +121,43 @@ async function doTransaction<T>(callback: ContextCallback<T>, context: QueryCont
         // let callback run with context
         result = await callback(context);
 
-        // if transaction and no error till now, commit it and return result
-        if (transaction) {
+        if (isQuery(result)) {
+            const query: Query = result;
+            let error = false;
+            // TODO: 31.08.2019 returning query object does not allow normal error handling,
+            //  maybe return own stream where the control is completely in my own hands
+            query
+                .on("error", (err) => {
+                    error = true;
+                    if (transaction) {
+                        context.rollback();
+                    }
+                    console.error(err);
+                })
+                .on("end", () => {
+                    if (!error && transaction) {
+                        context.commit();
+                    }
+                });
+            // if transaction and no error till now, commit it and return result
+        } else if (transaction) {
             await context.commit();
         }
     } catch (e) {
-        // if it could not be commit due to error, roll back and rethrow error
-        if (transaction) {
-            // if there is a transaction first rollback and then throw error
-            await context.rollback();
-        }
-        // if it is an deadlock error, restart transaction after a delay at max five times
-        if (e.errno === 1213 && attempts < 5) {
-            await delay(500);
-            return doTransaction(callback, context, transaction, ++attempts);
-        } else {
-            // if it isn't an deadlock error, or still an deadlock after five attempts, rethrow error
-            throw e;
-        }
+        return await catchTransactionError(transaction, context, e, attempts, callback);
     }
     return result;
 }
 
-
-const pool = mySql.createPool({
+const poolPromise = mySql.createPool({
     connectionLimit: env.dbConLimit,
     host: env.dbHost,
     user: env.dbUser,
     password: env.dbPassword,
     // charset/collation of the current database and tables
     charset: "utf8mb4",
+    // we assume that the database exists already
+    database: "enterprise"
 });
 
 let errorAtStart = false;
@@ -139,11 +177,11 @@ function start(): void {
     if (!running) {
         running = true;
         try {
-            StateProcessor.initTableSchema(databaseSchema);
+            const manager = new SchemaManager();
+            manager.initTableSchema(databaseSchema);
             startPromise = inContext(
-                (context) => StateProcessor.checkTableSchema(context),
+                (context) => manager.checkTableSchema(context),
                 true,
-                false
             ).catch((error) => {
                 logger.error(error);
                 console.log(error);
@@ -160,17 +198,41 @@ function start(): void {
 }
 
 export interface Storage {
+    getOverLappingParts(id: number, nonStandardPartIds: number[]): Promise<number[]>;
+
+    stopJobs(): Promise<void>;
+
+    getAfterJobs(id: number): Promise<JobItem[]>;
+
+    getJobs(): Promise<JobItem[]>;
+
+    addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]>;
+
+    removeJobs(jobs: JobItem | JobItem[]): Promise<void>;
+
+    removeJob(key: string | number): Promise<void>;
+
+    updateJobs(jobs: JobItem | JobItem[]): Promise<void>;
+
+    queueNewTocs(): Promise<void>;
+
+    deleteRelease(release: EpisodeRelease): Promise<void>;
+
+    getEpisodeLinks(knownEpisodeIds: number[]): Promise<SimpleRelease[]>;
+
+    getEpisodeContent(chapterLink: string): Promise<EpisodeContentData>;
+
     getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }>;
 
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void>;
 
     removePageInfo(link: string, key?: string): Promise<void>;
 
-    addRelease(episodeId: number, releases: EpisodeRelease): Promise<EpisodeRelease>;
+    addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
 
-    addRelease(episodeId: number, releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+    addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
 
-    updateRelease(episodeId: number, sourceType: string, releases: MultiSingle<EpisodeRelease>): Promise<void>;
+    updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void>;
 
     getSourcedReleases(sourceType: string, mediumId: number):
         Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>>;
@@ -183,7 +245,11 @@ export interface Storage {
 
     updatePart(part: Part, uuid?: string): Promise<boolean>;
 
-    userLoginStatus(ip: string): Promise<User | null>;
+    getUser(uuid: string, ip: string): Promise<User>;
+
+    loggedInUser(ip: string): Promise<SimpleUser | null>;
+
+    userLoginStatus(ip: string, uuid: string, session: string): Promise<boolean>;
 
     removeSynonyms(synonyms: (Synonyms | Synonyms[]), uuid?: string): Promise<boolean>;
 
@@ -191,17 +257,17 @@ export interface Storage {
 
     getProgress(uuid: string, episodeId: number): Promise<number>;
 
-    moveMedium(oldListId: number, newListId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    moveMedium(oldListId: number, newListId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
 
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
 
-    removeMedium(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    removeMedium(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
 
     addNews(news: (News | News[])): Promise<News | Array<News | undefined> | undefined>;
 
     getScrapes(): Promise<ScrapeItem[]>;
 
-    createStandardPart(mediumId: number): Promise<Part>;
+    createStandardPart(mediumId: number): Promise<ShallowPart>;
 
     deletePart(id: number, uuid?: string): Promise<boolean>;
 
@@ -215,13 +281,19 @@ export interface Storage {
 
     removeProgress(uuid: string, episodeId: number): Promise<boolean>;
 
-    linkNewsToEpisode(news: News[]): Promise<boolean>;
-
     addItemToExternalList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
 
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
 
-    getMediumParts(mediumId: number, uuid?: string): Promise<Part[]>;
+    getMediumParts(mediumId: number, uuid: string): Promise<FullPart[]>;
+
+    getMediumParts(mediumId: number): Promise<ShallowPart[]>;
+
+    getMediumPartIds(mediumId: number): Promise<number[]>;
+
+    getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
+
+    getStandardPartId(mediumId: number): Promise<number | undefined>;
 
     updateProgress(uuid: string, mediumId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
 
@@ -233,29 +305,43 @@ export interface Storage {
 
     getExternalList(id: number): Promise<ExternalList>;
 
-    addProgress(uuid: string, episodeId: number, progress: number, readDate: (Date | null)): Promise<boolean>;
+    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: (Date | null)): Promise<boolean>;
 
     logoutUser(uuid: string, ip: string): Promise<boolean>;
 
     stop(): Promise<void>;
 
-    addEpisode(partId: number, episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
+    addEpisode(episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;
 
-    addEpisode(partId: number, episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
+    addEpisode(episode: SimpleEpisode[], uuid?: string): Promise<SimpleEpisode[]>;
 
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean>;
 
+    moveEpisodeToPart(oldPartId: number, newPartId: number): Promise<boolean>;
+
     deleteUser(uuid: string): Promise<boolean>;
 
-    addPart(mediumId: number, part: Part, uuid?: string): Promise<Part>;
+    addPart(part: Part, uuid?: string): Promise<Part>;
 
     getLatestNews(domain: string): Promise<News[]>;
 
     getMedium(id: (number | number[]), uuid: string): Promise<Medium | Medium[]>;
 
+    getAllMedia(): Promise<number[]>;
+
     deleteList(listId: number, uuid: string): Promise<boolean>;
 
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean>;
+
+    createFromMediaInWait(createMedium: any, tocsMedia: any, listId: any): Promise<any>;
+
+    consumeMediaInWait(mediumId: number, tocsMedia: MediumInWait[]): Promise<boolean>;
+
+    getMediaInWait(): Promise<MediumInWait[]>;
+
+    deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
+
+    addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void>;
 
     getExternalLists(uuid: string): Promise<ExternalList[]>;
 
@@ -283,15 +369,19 @@ export interface Storage {
 
     getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]>;
 
+    getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number, episodes: number[] }>>;
+
     getParts(partsId: (number | number[]), uuid: string): Promise<Part[] | Part>;
 
     getInvalidated(uuid: string): Promise<Invalidation[]>;
+
+    getInvalidatedStream(uuid: string): Promise<Query>;
 
     markNewsRead(uuid: string, news: number[]): Promise<boolean>;
 
     updateExternalUser(externalUser: ExternalUser): Promise<boolean>;
 
-    addItemToList(listId: number, mediumId: number, uuid?: string): Promise<boolean>;
+    addItemToList(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean>;
 
     removeLinkNewsToMedium(newsId: number, mediumId: number): Promise<boolean>;
 
@@ -308,7 +398,9 @@ export interface Storage {
 
     addExternalList(userUuid: string, externalList: ExternalList, uuid?: string): Promise<ExternalList>;
 
-    removeScrape(link: string): Promise<boolean>;
+    removeScrape(link: string, type: ScrapeType): Promise<boolean>;
+
+    updateScrape(url: string, scrapeType: ScrapeType, nextScrape: number): void;
 
     deleteEpisode(id: number, uuid?: string): Promise<boolean>;
 
@@ -322,9 +414,17 @@ export interface Storage {
 
     getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
 
+    getMediumEpisodePerIndex(mediumId: number, index: number[]): Promise<SimpleEpisode[]>;
+
+    getMediumEpisodePerIndex(mediumId: number, index: number): Promise<SimpleEpisode>;
+
     getEpisode(id: number, uuid: string): Promise<Episode>;
 
     getEpisode(id: number[], uuid: string): Promise<Episode[]>;
+
+    getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]>;
+
+    getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]>;
 
     getExternalUser(uuid: string): Promise<ExternalUser>;
 
@@ -346,7 +446,9 @@ export interface Storage {
 
     getTocs(mediumId: number): Promise<string[]>;
 
-    getAllTocs(): Promise<Array<{ link?: string, id: number }>>;
+    getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>>;
+
+    getAllTocs(): Promise<Array<{ link: string, id: number }>>;
 
     getChapterIndices(mediumId: number): Promise<number[]>;
 
@@ -354,9 +456,12 @@ export interface Storage {
 
     getTocSearchMedium(id: number): Promise<TocSearchMedium>;
 
+    getTocSearchMedia(): Promise<TocSearchMedium[]>;
+
     deleteOldNews(): Promise<boolean>;
 }
 
+// @ts-ignore
 export const Storage: Storage = {
 
     /**
@@ -367,7 +472,7 @@ export const Storage: Storage = {
     stop(): Promise<void> {
         running = false;
         startPromise = null;
-        return Promise.resolve(pool.end());
+        return Promise.resolve(poolPromise.then((value) => value.end()));
     },
 
     /**
@@ -407,8 +512,32 @@ export const Storage: Storage = {
      *
      * @return {Promise<User|null>}
      */
-    userLoginStatus(ip: string): Promise<User | null> {
-        return inContext((context) => context.userLoginStatus(ip));
+    // @ts-ignore
+    userLoginStatus(ip: string, uuid?: string, session?: string): Promise<boolean> {
+        return inContext((context) => context.userLoginStatus(ip, uuid, session));
+    },
+
+    /**
+     * Get the user for the given uuid.
+     *
+     * @return {Promise<SimpleUser>}
+     */
+    // @ts-ignore
+    getUser(uuid: string, ip: string): Promise<User> {
+        return inContext((context) => context.getUser(uuid, ip));
+    },
+
+    /**
+     * Checks if for the given ip any user is logged in.
+     *
+     * Returns the uuid of the logged in user and
+     * the session key of the user for the ip.
+     *
+     * @return {Promise<User|null>}
+     */
+    // @ts-ignore
+    loggedInUser(ip: string): Promise<SimpleUser | null> {
+        return inContext((context) => context.loggedInUser(ip));
     },
 
     /**
@@ -493,7 +622,7 @@ export const Storage: Storage = {
      * @return {Promise<SimpleMedium>}
      */
     addMedium(medium: SimpleMedium, uuid?: string): Promise<SimpleMedium> {
-        return inContext((context) => context.setUuid(uuid).addMedium(medium, uuid));
+        return inContext((context) => context.addMedium(medium, uuid));
     },
 
     /**
@@ -512,6 +641,14 @@ export const Storage: Storage = {
     },
 
     /**
+     * Gets one or multiple media from the storage.
+     */
+    getAllMedia(): Promise<number[]> {
+        // @ts-ignore
+        return inContext((context) => context.getAllMedia());
+    },
+
+    /**
      * Gets one or multiple media from the storage, which are like the input.
      */
     // @ts-ignore
@@ -525,6 +662,26 @@ export const Storage: Storage = {
      */
     updateMedium(medium: SimpleMedium, uuid?: string): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).updateMedium(medium));
+    },
+
+    getMediaInWait(): Promise<MediumInWait[]> {
+        return inContext((context) => context.getMediaInWait());
+    },
+
+    createFromMediaInWait(createMedium: MediumInWait, tocsMedia?: MediumInWait[], listId?: number): Promise<Medium> {
+        return inContext((context) => context.createFromMediaInWait(createMedium, tocsMedia, listId));
+    },
+
+    consumeMediaInWait(mediumId: number, tocsMedia: MediumInWait[]): Promise<boolean> {
+        return inContext((context) => context.consumeMediaInWait(mediumId, tocsMedia));
+    },
+
+    deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
+        return inContext((context) => context.deleteMediaInWait(mediaInWait));
+    },
+
+    addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
+        return inContext((context) => context.addMediumInWait(mediaInWait));
     },
 
     /**
@@ -547,7 +704,13 @@ export const Storage: Storage = {
 
     /**
      */
-    getAllTocs(): Promise<Array<{ link?: string, id: number }>> {
+    getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {
+        return inContext((context) => context.getAllMediaTocs());
+    },
+
+    /**
+     */
+    getAllTocs(): Promise<Array<{ link: string, id: number }>> {
         return inContext((context) => context.getAllTocs());
     },
 
@@ -559,6 +722,10 @@ export const Storage: Storage = {
 
     getAllChapterLinks(mediumId: number): Promise<string[]> {
         return inContext((context) => context.getAllChapterLinks(mediumId));
+    },
+
+    getTocSearchMedia(): Promise<TocSearchMedium[]> {
+        return inContext((context) => context.getTocSearchMedia());
     },
 
     getTocSearchMedium(id: number): Promise<TocSearchMedium> {
@@ -582,8 +749,24 @@ export const Storage: Storage = {
     /**
      * Returns all parts of an medium with their episodes.
      */
+    // @ts-ignore
     getMediumParts(mediumId: number, uuid?: string): Promise<Part[]> {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
+    },
+
+    /**
+     * Returns all parts of an medium with their episodes.
+     */
+    getMediumPartIds(mediumId: number): Promise<number[]> {
+        return inContext((context) => context.getMediumPartIds(mediumId));
+    },
+
+    getStandardPart(mediumId: number): Promise<ShallowPart | undefined> {
+        return inContext((context) => context.getStandardPart(mediumId));
+    },
+
+    getStandardPartId(mediumId: number): Promise<number | undefined> {
+        return inContext((context) => context.getStandardPartId(mediumId));
     },
 
     /**
@@ -592,6 +775,10 @@ export const Storage: Storage = {
      */
     getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]> {
         return inContext((context) => context.getMediumPartsPerIndex(mediumId, index, uuid));
+    },
+
+    getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number, episodes: number[] }>> {
+        return inContext((context) => context.getPartsEpisodeIndices(partId));
     },
 
     /**
@@ -605,8 +792,8 @@ export const Storage: Storage = {
     /**
      * Adds a part of an medium to the storage.
      */
-    addPart(mediumId: number, part: Part, uuid?: string): Promise<Part> {
-        return inContext((context) => context.setUuid(uuid).addPart(mediumId, part));
+    addPart(part: Part, uuid?: string): Promise<Part> {
+        return inContext((context) => context.setUuid(uuid).addPart(part));
     },
 
     /**
@@ -619,7 +806,7 @@ export const Storage: Storage = {
     /**
      * Creates the Standard Part for all non part-indexed episodes for the given mediumId.
      */
-    createStandardPart(mediumId: number): Promise<Part> {
+    createStandardPart(mediumId: number): Promise<ShallowPart> {
         return inContext((context) => context.createStandardPart(mediumId));
     },
 
@@ -634,10 +821,10 @@ export const Storage: Storage = {
      * Adds a episode of a part to the storage.
      */
     // @ts-ignore
-    addEpisode(partId: number, episode: MultiSingle<SimpleEpisode>, uuid?: string)
+    addEpisode(episode: MultiSingle<SimpleEpisode>, uuid?: string)
         : Promise<MultiSingle<SimpleEpisode>> {
         // @ts-ignore
-        return inContext((context) => context.setUuid(uuid).addEpisode(partId, episode));
+        return inContext((context) => context.setUuid(uuid).addEpisode(episode));
     },
 
     /**
@@ -645,6 +832,10 @@ export const Storage: Storage = {
      */
     updateEpisode(episode: SimpleEpisode, uuid?: string): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).updateEpisode(episode));
+    },
+
+    moveEpisodeToPart(oldPartId: number, newPartId: number) {
+        return inContext((context) => context.moveEpisodeToPart(oldPartId, newPartId));
     },
 
     /**
@@ -656,11 +847,28 @@ export const Storage: Storage = {
         return inContext((context) => context.getEpisode(id, uuid));
     },
 
+    getReleases(episodeId: number | number[]): Promise<EpisodeRelease[]> {
+        return inContext((context) => context.getReleases(episodeId));
+    },
+
+    getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]> {
+        return inContext((context) => context.getReleasesByHost(episodeId, host));
+    },
+
     /**
      *
      */
     getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
+        // @ts-ignore
         return inContext((context) => context.getPartEpisodePerIndex(partId, index));
+    },
+
+    /**
+     *
+     */
+    // @ts-ignore
+    getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
+        return inContext((context) => context.getMediumEpisodePerIndex(mediumId, index));
     },
 
     /**
@@ -671,14 +879,14 @@ export const Storage: Storage = {
     },
 
     // @ts-ignore
-    addRelease(episodeId: number, releases: MultiSingle<EpisodeRelease>): Promise<MultiSingle<EpisodeRelease>> {
+    addRelease(releases: MultiSingle<EpisodeRelease>): Promise<MultiSingle<EpisodeRelease>> {
         // @ts-ignore
-        return inContext((context) => context.addRelease(episodeId, releases));
+        return inContext((context) => context.addRelease(releases));
     },
 
     // @ts-ignore
-    updateRelease(episodeId: number, sourceType: string, releases: MultiSingle<EpisodeRelease>): Promise<void> {
-        return inContext((context) => context.updateRelease(episodeId, releases));
+    updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void> {
+        return inContext((context) => context.updateRelease(releases));
     },
 
     getSourcedReleases(sourceType: string, mediumId: number):
@@ -686,30 +894,79 @@ export const Storage: Storage = {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
     },
 
+    deleteRelease(release: EpisodeRelease): Promise<void> {
+        return inContext((context) => context.deleteRelease(release));
+    },
+
+
+    getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]> {
+        return inContext((context) => context.getEpisodeLinks(episodeIds));
+    },
+
+    getEpisodeContent(chapterLink: string): Promise<EpisodeContentData> {
+        return inContext((context) => context.getEpisodeContentData(chapterLink));
+    },
+
     getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }> {
         return inContext((context) => context.getPageInfo(link, key));
     },
 
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void> {
-        return inContext((context) => context.updatePageInfo(link, key, values));
+        return inContext((context) => context.updatePageInfo(link, key, values, toDeleteValues));
     },
 
     removePageInfo(link: string, key?: string): Promise<void> {
         return inContext((context) => context.removePageInfo(link, key));
     },
 
+    queueNewTocs(): Promise<void> {
+        return inContext((context) => context.queueNewTocs());
+    },
+
+    getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]> {
+        return inContext((context) => context.getOverLappingParts(standardId, nonStandardPartIds));
+    },
+
+    stopJobs(): Promise<void> {
+        return inContext((context) => context.stopJobs());
+    },
+
+    getJobs(limit?: number): Promise<JobItem[]> {
+        return inContext((context) => context.getJobs(limit));
+    },
+
+    getAfterJobs(id: number): Promise<JobItem[]> {
+        return inContext((context) => context.getAfterJobs(id));
+    },
+
+    addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]> {
+        return inContext((context) => context.addJobs(jobs));
+    },
+
+    removeJobs(jobs: JobItem | JobItem[]): Promise<void> {
+        return inContext((context) => context.removeJobs(jobs));
+    },
+
+    removeJob(key: string | number): Promise<void> {
+        return inContext((context) => context.removeJob(key));
+    },
+
+    updateJobs(jobs: JobItem | JobItem[]): Promise<void> {
+        return inContext((context) => context.updateJobs(jobs));
+    },
+
     /**
      * Adds a medium to a list.
      */
-    addItemToList(listId: number, mediumId: number, uuid?: string): Promise<boolean> {
+    addItemToList(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).addItemToList(false, {listId, id: mediumId}));
     },
 
     /**
      * Moves a medium from an old list to a new list.
      */
-    moveMedium(oldListId: number, newListId: number, mediumId: number, uuid?: string): Promise<boolean> {
-        return inContext((context) => context.setUuid(uuid).moveMedium(newListId, mediumId, oldListId));
+    moveMedium(oldListId: number, newListId: number, mediumId: number | number[], uuid?: string): Promise<boolean> {
+        return inContext((context) => context.setUuid(uuid).moveMedium(oldListId, newListId, mediumId));
     },
 
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]> {
@@ -719,7 +976,7 @@ export const Storage: Storage = {
     /**
      * Removes an item from a list.
      */
-    removeMedium(listId: number, mediumId: number, uuid?: string): Promise<boolean> {
+    removeMedium(listId: number, mediumId: number | number[], uuid?: string): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).removeMedium(listId, mediumId));
     },
 
@@ -827,7 +1084,7 @@ export const Storage: Storage = {
     /**
      * Add progress of an user in regard to an episode to the storage.
      */
-    addProgress(uuid: string, episodeId: number, progress: number, readDate: Date | null): Promise<boolean> {
+    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean> {
         return inContext((context) => context.setUuid(uuid).addProgress(uuid, episodeId, progress, readDate));
     },
 
@@ -912,8 +1169,12 @@ export const Storage: Storage = {
     /**
      *
      */
-    removeScrape(link: string): Promise<boolean> {
-        return inContext((context) => context.removeScrape(link));
+    removeScrape(link: string, type: ScrapeType): Promise<boolean> {
+        return inContext((context) => context.removeScrape(link, type));
+    },
+
+    updateScrape(link: string, type: ScrapeType, nextScrape: number): Promise<boolean> {
+        return inContext((context) => context.updateScrape(link, type, nextScrape));
     },
 
     /**
@@ -930,15 +1191,6 @@ export const Storage: Storage = {
     linkNewsToMedium(): Promise<boolean> {
         return inContext((context) => context.linkNewsToMedium());
     },
-
-
-    /**
-     *
-     */
-    linkNewsToEpisode(news: News[]): Promise<boolean> {
-        return inContext((context) => context.linkNewsToEpisode(news));
-    },
-
 
     /**
      * Marks these news as read for the given user.
@@ -967,6 +1219,12 @@ export const Storage: Storage = {
     getInvalidated(uuid: string): Promise<Invalidation[]> {
         return inContext((context) => context.getInvalidated(uuid));
     },
+    /**
+     *
+     */
+    getInvalidatedStream(uuid: string): Promise<Query> {
+        return inContext((context) => context.getInvalidatedStream(uuid));
+    },
 
 
     getLatestNews(domain: string): Promise<News[]> {
@@ -982,7 +1240,7 @@ export const Storage: Storage = {
     },
 
     clear(): Promise<boolean> {
-        return inContext((context) => context.clearAll(), false, false);
+        return inContext((context) => context.clearAll());
     },
 };
 
@@ -990,3 +1248,5 @@ export const Storage: Storage = {
  *
  */
 export const startStorage = () => start();
+// TODO: 01.09.2019 check whether it should 'start' implicitly or explicitly
+start();

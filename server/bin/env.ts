@@ -1,6 +1,9 @@
 import dotenv from "dotenv";
+import {findProjectDirPath} from "./tools";
 
-const config = dotenv.config({path: "env.env"});
+const envPath = findProjectDirPath("env.env");
+
+const config = dotenv.config({path: envPath});
 
 if (config.error) {
     throw config.error;
@@ -16,4 +19,7 @@ export default {
     dbPassword: config.parsed.dbPassword,
     dbUser: config.parsed.dbUser,
     port: config.parsed.port,
+    measure: !!Number(config.parsed.measure),
+    development: process.env.NODE_ENV !== "production",
+    stopScrapeEvents: !!Number(config.parsed.stopScrapeEvents)
 };

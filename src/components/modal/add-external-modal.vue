@@ -12,7 +12,7 @@
             </label>
             <label>
                 <select v-model="selected">
-                    <option v-bind:value="option.value" v-for="option in options">
+                    <option v-bind:value="option.values" v-for="option in options">
                         {{option.name}}
                     </option>
                 </select>
@@ -45,7 +45,7 @@
         },
         computed: {
             currentLink() {
-                const option = this.options.find((value) => value.value === this.selected);
+                const option = this.options.find((value) => value.values === this.selected);
                 return option ? option.link : "#";
             }
         },

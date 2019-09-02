@@ -52,7 +52,7 @@
                 const sorter = this.selectedSorter;
 
                 if (sorter) {
-                    const sortFunction = this.sorter.find((value) => value.value === sorter).sort;
+                    const sortFunction = this.sorter.find((value) => value.values === sorter).sort;
                     lists.sort((a, b) => sortFunction(a.name, b.name));
                 }
                 return lists;

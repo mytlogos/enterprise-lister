@@ -8,12 +8,16 @@ export interface CacheOptions extends NodeCache.Options {
 
 export class Cache extends NodeCache {
     private timeOutId?: NodeJS.Timeout;
-    private readonly size: number;
+    private readonly maxSize: number;
 
     constructor(options: CacheOptions = {}) {
         super(options);
-        this.size = options.size || 100;
+        this.maxSize = options.size || 100;
         this._checkPeriodicSize();
+    }
+
+    public isFull(): boolean {
+        return this.keys().length >= this.maxSize;
     }
 
     // @ts-ignore
@@ -22,7 +26,7 @@ export class Cache extends NodeCache {
     // @ts-ignore
     public set<T>(key: string | number, value: T, ttl: number | string, cb?: Callback<boolean>): boolean {
         const b = super.set(key, value, ttl, cb);
-        this._checkSize();
+        this._trimSize();
         return b;
     }
 
@@ -43,14 +47,14 @@ export class Cache extends NodeCache {
     }
 
     private _checkPeriodicSize() {
-        this._checkSize();
-        this.timeOutId = setTimeout(() => this._checkSize(), (this.options.stdTTL || 10) * 1000);
+        this._trimSize();
+        this.timeOutId = setTimeout(() => this._trimSize(), (this.options.stdTTL || 10) * 1000);
     }
 
-    private _checkSize() {
+    private _trimSize() {
         const keys = this.keys();
 
-        const overLimit = keys.length - this.size;
+        const overLimit = keys.length - this.maxSize;
 
         if (overLimit === 1) {
             const maxValue = max(

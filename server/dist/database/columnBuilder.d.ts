@@ -1,0 +1,31 @@
+import { SqlFunction } from "./databaseTypes";
+import { TableBuilder } from "./tableBuilder";
+import { ColumnSchema } from "./columnSchema";
+export declare class ColumnBuilder {
+    private readonly tableBuilder;
+    private name;
+    private type?;
+    private typeSize?;
+    private default?;
+    private modifier;
+    private primaryKey;
+    private primaryKeyTypeSize?;
+    private foreignKey?;
+    constructor(table: TableBuilder);
+    setName(name: string): this;
+    setUnique(): this;
+    setUnsigned(): this;
+    setNonNull(): this;
+    setAutoIncrement(): this;
+    setPrimaryKey(typeSize?: number): this;
+    setInt(): this;
+    setFloat(): this;
+    setText(): this;
+    setDateTime(): this;
+    setVarchar(size: number): this;
+    setDefault(value: any | SqlFunction): this;
+    setForeignKey(referencedColumn: ColumnSchema): this;
+    build(): ColumnSchema;
+    buildOneMoreColumn(): ColumnBuilder;
+    buildReturnTable(): TableBuilder;
+}
