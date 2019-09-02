@@ -1,9 +1,8 @@
 import request from "request-promise-native";
-import cheerio from "cheerio";
 import url from "url";
 import {Errors, MediaType, unique} from "../tools";
-import {queueRequest} from "./queueManager";
-import CookieJar from "tough-cookie";
+import {queueCheerioRequest} from "./queueManager";
+import {CookieJar} from "tough-cookie";
 import {Hook} from "./types";
 
 class NovelUpdates implements ListManager {
@@ -205,8 +204,7 @@ class NovelUpdates implements ListManager {
      * @return {Promise<CheerioStatic>}
      */
     public loadCheerio(link: string): Promise<CheerioStatic> {
-        return queueRequest(link, {url: link}, this.defaults)
-            .then((body: string) => cheerio.load(body));
+        return queueCheerioRequest(link, {url: link}, this.defaults);
     }
 
     public scrapeList($: CheerioStatic, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {
@@ -238,9 +236,9 @@ class NovelUpdates implements ListManager {
     }
 }
 
-const listTypes = {
-    NOVELUPDATES: 0x0,
-};
+export enum ListType {
+    NOVELUPDATES = 0x0,
+}
 
 export interface ListScrapeResult {
     lists: ScrapeList[];
@@ -275,7 +273,13 @@ export interface ScrapeMedium {
 }
 
 export function getListManagerHooks(): Hook[] {
-    return [{redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/}];
+    return [
+        {
+            name: "novelupdates",
+            medium: MediaType.TEXT,
+            redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/
+        }
+    ];
 }
 
 export interface ListManager {
@@ -294,7 +298,7 @@ export interface ListManager {
 
 export function factory(type: number, cookies?: string): ListManager {
     let instance;
-    if (type === listTypes.NOVELUPDATES) {
+    if (type === ListType.NOVELUPDATES) {
         instance = new NovelUpdates();
     }
     if (!instance) {

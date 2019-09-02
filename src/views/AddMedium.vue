@@ -123,7 +123,7 @@
                 let mediumType = 0;
                 this.mediaTypes.forEach((value) => {
                     if (value.checked) {
-                        mediumType |= value.value;
+                        mediumType |= value.values;
                     }
                 });
                 const result = {type: mediumType};

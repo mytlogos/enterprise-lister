@@ -3,11 +3,12 @@ import {ColumnType, DatabaseSchema, InvalidationType, Modifier} from "./database
 import {TableSchema} from "./tableSchema";
 import {ColumnSchema} from "./columnSchema";
 import {TableParser} from "./tableParser";
-import {equalsIgnoreCase, isString, unique} from "../tools";
+import {equalsIgnore, getElseSet, isString, unique} from "../tools";
 import mySql from "promise-mysql";
 import {MultiSingle} from "../types";
 import {QueryContext} from "./queryContext";
 import * as validate from "validate.js";
+import {Counter} from "../counter";
 
 interface StateProcessor {
     addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: string): T;
@@ -28,7 +29,7 @@ interface Trigger {
 
     triggerType: InvalidationType;
 
-    createInvalidationUpdateQuery(query: Query): string;
+    updateInvalidationMap(query: Query, invalidationMap: Map<string, Invalidation>): void;
 }
 
 interface StateProcessorImpl extends StateProcessor {
@@ -44,6 +45,8 @@ interface StateProcessorImpl extends StateProcessor {
 
     startRound(): Promise<string[]>;
 
+    checkTableSchema(context: QueryContext): Promise<void>;
+
     checkTables(tables: any, track: string[], ignore: string[]): void;
 
     initTableSchema(database: DatabaseSchema): void;
@@ -53,6 +56,13 @@ interface StateProcessorImpl extends StateProcessor {
     validateQuery(query: string, parameter: any): Promise<void>;
 }
 
+interface Invalidation {
+    table: string;
+    foreignColumn: string;
+    keyColumn: string;
+    uuid?: string;
+    values: any[];
+}
 
 interface RawQuery {
     rawQuery: string;
@@ -104,6 +114,8 @@ const UpdateParser: Parser = {
         const column = tableMeta.primaryKeys.find((value) => value.name === idConditionColumnName);
 
         if (!column) {
+            // TODO: 21.06.2019 somehow do this
+            //  search for other possible keys, like foreign keys which are primary keys?
             logger.warn(`condition column is not a primary key: '${idConditionColumnName}'`);
             return null;
         }
@@ -164,14 +176,19 @@ const InsertParser: Parser = {
         }
         const values: string[] = insertValues.split(",").map((value) => value.trim());
 
-        if (values.length !== columns.length) {
-            logger.warn(`not enough values for the columns: expected ${columns.length}, got ${values.length}`);
+        const columnLength = columns.length;
+        const valueLength = values.length;
+        if (valueLength < columnLength) {
+            logger.warn(`not enough values for the columns: expected ${columnLength}, got ${valueLength}`);
+            return null;
+        } else if (!(valueLength % columnLength)) {
+            logger.warn(`mismatching number of values for columns: expected ${columnLength}, got ${valueLength}`);
             return null;
         }
         const columnTargets: Array<ColumnTarget<ColumnSchema>> = [];
         let singleParamUsed = false;
 
-        for (let i = 0; i < columns.length; i++) {
+        for (let i = 0; i < columnLength; i++) {
             const columnName = columns[i];
             let value = values[i];
 
@@ -320,7 +337,7 @@ function createTrigger(watchTable: TableSchema, targetTable: TableSchema, invali
     return {
         table: watchTable,
         triggerType,
-        createInvalidationUpdateQuery(query: Query): string {
+        updateInvalidationMap(query: Query, invalidations: Map<string, Invalidation>): void {
             const triggeredColumn = query.columnTarget.find((value) => {
                 if (value.column.foreignKey && targetTable.primaryKeys.includes(value.column.foreignKey)) {
                     return true;
@@ -330,36 +347,35 @@ function createTrigger(watchTable: TableSchema, targetTable: TableSchema, invali
 
             if (!triggeredColumn) {
                 logger.warn("an trigger insert statement without the referenced key of target");
-                return "";
+                return;
             }
             const invalidationColumn = columnConverter(query, triggeredColumn);
-            const primaryKeyName = mySql.escapeId(mainPrimaryKey);
-            const tableName = mySql.escapeId(invalidationTable.name);
-            const invalidationName = mySql.escapeId(invalidationColumn.column);
-
-            const startSql = `INSERT IGNORE INTO ${tableName} (${invalidationName}, ${primaryKeyName})`;
-
-            let sqlQuery: string;
-            const invalidationValue = invalidationColumn.value;
+            const key = `${invalidationTable.name}$${mainPrimaryKey}$${invalidationColumn.column}`;
+            const invalidation = getElseSet(invalidations, key, () => {
+                return {
+                    table: invalidationTable.name,
+                    foreignColumn: invalidationColumn.column,
+                    keyColumn: mainPrimaryKey,
+                    values: [],
+                };
+            });
 
             if (watchTable.mainDependent) {
-                const uuid = query.uuid;
-
-                if (!uuid) {
+                if (!query.uuid) {
                     throw Error("missing uuid on dependant table");
                 }
-                sqlQuery = startSql + ` VALUES (${mySql.escape(invalidationValue)}, ${mySql.escape(query.uuid)});`;
-            } else {
-                sqlQuery = startSql + ` SELECT ${mySql.escape(invalidationValue)},uuid FROM user;`;
+                invalidation.uuid = mySql.escape(query.uuid);
             }
-            return sqlQuery;
+            if (!invalidation.values.includes(invalidationColumn.value)) {
+                invalidation.values.push(invalidationColumn.value);
+            }
         }
     };
 }
 
 const queryTableReg = /((select .+? from)|(update )|(delete.+?from)|(insert.+?into )|(.+?join))\s*(\w+)/gi;
-const queryColumnReg = /((\w+\.)?(\w+))\s+(like|is|=)\s+\?/gi;
-
+const queryColumnReg = /(((\w+\.)?(\w+))|\?)\s*(like|is|=|<|>|<>|<=|>=)\s*(((\w+\.)?(\w+))|\?)/gi;
+const counter = new Counter();
 const StateProcessorImpl: StateProcessorImpl = {
     databaseName: "",
     workingPromise: Promise.resolve(),
@@ -370,6 +386,12 @@ const StateProcessorImpl: StateProcessorImpl = {
     trigger: [],
 
     async validateQuery(query: string, parameter: any) {
+        if (query.length > 20 && counter.count(query) === 100) {
+            console.log(`Query: '${query}' executed 100 times`);
+        }
+        if (counter.count("query") % 100 === 0) {
+            console.log(`Database queried ${counter.getCount("query")} times`);
+        }
         let tableExec = queryTableReg.exec(query);
 
         if (!tableExec) {
@@ -389,13 +411,16 @@ const StateProcessorImpl: StateProcessorImpl = {
         const columns = [];
 
         while (columnExec) {
-            if (columnExec[1]) {
+            if (columnExec[1] === "?") {
+                columns.push(columnExec[6]);
+            }
+            if (columnExec[6] === "?") {
                 columns.push(columnExec[1]);
             }
             columnExec = queryColumnReg.exec(query);
         }
         const referencedTables = unique(tables.map((name) => {
-            const foundTable = this.tables.find((value) => equalsIgnoreCase(value.name, name));
+            const foundTable = this.tables.find((value) => equalsIgnore(value.name, name));
 
             if (!foundTable) {
                 throw Error(`Unknown Table: '${name}'`);
@@ -412,19 +437,19 @@ const StateProcessorImpl: StateProcessorImpl = {
             let columnSchema: ColumnSchema | undefined;
             if (separator >= 0) {
                 const tableName = columnName.substring(0, separator);
-                const foundTable = this.tables.find((value) => equalsIgnoreCase(value.name, tableName));
+                const foundTable = this.tables.find((value) => equalsIgnore(value.name, tableName));
 
                 if (!foundTable) {
                     throw Error(`Unknown Table: '${tableName}'`);
                 }
                 const realColumnName = columnName.substring(separator + 1);
                 columnSchema = foundTable.columns.find((schema) => {
-                    return equalsIgnoreCase(schema.name, realColumnName);
+                    return equalsIgnore(schema.name, realColumnName);
                 });
             } else {
                 for (const referencedTable of referencedTables) {
                     const foundColumn = referencedTable.columns.find((schema) => {
-                        return equalsIgnoreCase(schema.name, columnName);
+                        return equalsIgnore(schema.name, columnName);
                     });
 
                     if (foundColumn) {
@@ -435,7 +460,9 @@ const StateProcessorImpl: StateProcessorImpl = {
             }
 
             if (!columnSchema) {
-                throw Error(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
+                // todo look into why he cant find it
+                logger.silly(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
+                return;
             }
             let columnValue: any;
 
@@ -494,7 +521,7 @@ const StateProcessorImpl: StateProcessorImpl = {
                 affectedRows: value.affectedRows,
                 uuid
             });
-            logger.info(`Query: '${query}', Parameter: '${parameter}'`);
+            logger.debug(`Query: '${query}', Parameter: '${parameter}'`);
         }
         return value;
     },
@@ -538,21 +565,31 @@ const StateProcessorImpl: StateProcessorImpl = {
                 queries.push(query);
             }
         }
-        const invalidationQueries: string[] = [];
+        const invalidationMap: Map<string, Invalidation> = new Map();
+
         for (const query of queries) {
             this.trigger
                 .filter((value) => (value.triggerType === query.operation) && (value.table === query.target))
-                .forEach((value) => {
-                    const updateQuery = value.createInvalidationUpdateQuery(query);
-
-                    if (Array.isArray(updateQuery) && updateQuery.length) {
-                        invalidationQueries.push(...updateQuery.filter((s) => s));
-                    } else if (isString(updateQuery) && updateQuery) {
-                        invalidationQueries.push(updateQuery);
-                    }
-                });
+                .forEach((value) => value.updateInvalidationMap(query, invalidationMap));
         }
-        console.log(`${queries.length} queries to: ${invalidationQueries}`);
+        const invalidationQueries: string[] = [];
+        for (const value of invalidationMap.values()) {
+            let sqlQuery = `INSERT IGNORE INTO ${mySql.escapeId(value.table)} ` +
+                `(${mySql.escapeId(value.foreignColumn)}, ${mySql.escapeId(value.keyColumn)}) `;
+
+            if (value.uuid) {
+                const values = value.values
+                    .map((v) => `SELECT ${mySql.escape(v)},${mySql.escape(value.uuid)}`)
+                    .join(" UNION ");
+                sqlQuery += `VALUES (${values})`;
+            } else {
+                const values = value.values
+                    .map((v) => `SELECT ${mySql.escape(v)}`)
+                    .join(" UNION ");
+                sqlQuery += ` SELECT * FROM (${values}) AS value JOIN (SELECT uuid FROM user) AS user`;
+            }
+            invalidationQueries.push(sqlQuery);
+        }
         return invalidationQueries;
     },
 
@@ -614,13 +651,6 @@ const StateProcessorImpl: StateProcessorImpl = {
 
 
     async checkTableSchema(context: QueryContext): Promise<void> {
-        const exists = await context.databaseExists();
-
-        if (!exists) {
-            await context.createDatabase();
-        }
-        // set database as current database
-        await context.useDatabase();
         // display all current tables
         const tables: any[] = await context.getTables();
 
@@ -633,7 +663,6 @@ const StateProcessorImpl: StateProcessorImpl = {
                 const schema = tableSchema.getTableSchema();
                 return context.createTable(schema.name, schema.columns);
             }));
-        return;
     },
 
 
