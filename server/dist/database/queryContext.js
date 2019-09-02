@@ -2376,7 +2376,7 @@ class QueryContext {
     async getInvalidatedStream(uuid) {
         return this._queryStream("SELECT " +
             "external_list_id as externalListId, external_uuid as externalUuid, medium_id as mediumId, " +
-            "part_id as partId, episode_id as episodeId, CASE user_uuid WHEN 1 THEN 1 ELSE 0 END as userUuid," +
+            "part_id as partId, episode_id as episodeId, user_uuid as userUuid," +
             "list_id as listId, news_id as newsId, uuid " +
             "FROM user_data_invalidation WHERE uuid=?", uuid).on("end", () => {
             this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {

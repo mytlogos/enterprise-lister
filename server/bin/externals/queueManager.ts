@@ -164,6 +164,8 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
                 const load = cheerio.load(dom);
                 resolve(load);
             }, {
+                // FIXME: 02.09.2019 why does it not accept this property?
+                // @ts-ignore
                 withDomLvl1: true,
                 normalizeWhitespace: false,
                 // decodeEntities: true

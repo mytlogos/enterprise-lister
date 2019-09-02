@@ -157,7 +157,14 @@ const poolPromise = mySql.createPool({
     // charset/collation of the current database and tables
     charset: "utf8mb4",
     // we assume that the database exists already
-    database: "enterprise"
+    database: "enterprise",
+    typeCast(field, next) {
+        if (field.type === "TINY" && field.length === 1) {
+            return (field.string() === "1"); // 1 = true, 0 = false
+        } else {
+            return next();
+        }
+    }
 });
 
 let errorAtStart = false;
