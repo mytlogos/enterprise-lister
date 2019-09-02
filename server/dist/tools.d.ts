@@ -65,7 +65,7 @@ export declare enum MediaType {
     IMAGE = 8
 }
 export declare function hasMediaType(container: MediaType, testFor: MediaType): boolean;
-export declare function allTypes(): string | 0 | MediaType;
+export declare function allTypes(): number;
 export declare function combiIndex(value: {
     totalIndex: number;
     partialIndex?: number;
