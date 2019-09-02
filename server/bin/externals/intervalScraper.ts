@@ -11,10 +11,9 @@ import {
     ScrapeDependants,
     Scraper,
     ScraperHelper,
-    ScrapeType,
     toc
 } from "./scraperTools";
-import {Dependant} from "./types";
+import {Dependant, ScrapeType} from "./types";
 
 // scrape at an interval of 5 min
 const interval = 5 * 60 * 1000;

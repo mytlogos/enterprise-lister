@@ -38,6 +38,7 @@ import {
     NewsScraper,
     OneTimeEmittableJob,
     ScraperJob,
+    ScrapeType,
     Toc,
     TocContent,
     TocRequest,
@@ -919,16 +920,6 @@ export interface Scraper {
     on(event: ScrapeErrorEvent.LIST, callback: (errorValue: any) => void): void;
 
     on(event: string, callback: (value: any) => void): void;
-}
-
-export enum ScrapeType {
-    LIST = 0,
-    FEED = 1,
-    NEWS = 2,
-    TOC = 3,
-    ONETIMEUSER = 4,
-    ONETIMETOC = 5,
-    SEARCH = 6,
 }
 
 const eventMap: Map<string, Array<(value: any) => void>> = new Map();

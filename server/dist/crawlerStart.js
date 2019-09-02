@@ -5,6 +5,7 @@ const database_1 = require("./database/database");
 const tools_1 = require("./tools");
 const types_1 = require("./types");
 const logger_1 = tslib_1.__importStar(require("./logger"));
+const types_2 = require("./externals/types");
 const validate = tslib_1.__importStar(require("validate.js"));
 const scraperTools_1 = require("./externals/scraperTools");
 const jobScraperManager_1 = require("./externals/jobScraperManager");
@@ -371,7 +372,7 @@ async function addFeeds(feeds) {
         return;
     }
     let scrapes = await database_1.Storage.getScrapes();
-    scrapes = scrapes.filter((value) => value.type === scraperTools_1.ScrapeType.FEED);
+    scrapes = scrapes.filter((value) => value.type === types_2.ScrapeType.FEED);
     const scrapeFeeds = feeds.filter((feed) => !scrapes.find((value) => value.link === feed)).filter((value) => value);
     if (!scrapeFeeds.length) {
         return;

@@ -54,9 +54,9 @@ import {
 import logger from "../logger";
 import * as validate from "validate.js";
 import {MediumInWait, MySqlErrorNo} from "./databaseTypes";
-import {ScrapeType} from "../externals/scraperTools";
 import {Query} from "mysql";
 import {Trigger} from "./trigger";
+import {ScrapeType} from "../externals/types";
 
 /**
  * Escapes the Characters for an Like with the '|' char.

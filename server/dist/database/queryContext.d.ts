@@ -1,9 +1,9 @@
 import { Connection } from "promise-mysql";
 import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, Invalidation, JobItem, JobRequest, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, ReadEpisode, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { MediumInWait } from "./databaseTypes";
-import { ScrapeType } from "../externals/scraperTools";
 import { Query } from "mysql";
 import { Trigger } from "./trigger";
+import { ScrapeType } from "../externals/types";
 export interface DbTrigger {
     Trigger: string;
     Event: string;

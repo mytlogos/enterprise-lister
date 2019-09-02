@@ -8,10 +8,17 @@ import {
     scrapeNews,
     Scraper,
     ScraperHelper,
-    ScrapeType,
     toc
 } from "./scraperTools";
-import {Dependant, OneTimeEmittableJob, PeriodicEmittableJob, PeriodicJob, ScraperJob, TocRequest} from "./types";
+import {
+    Dependant,
+    OneTimeEmittableJob,
+    PeriodicEmittableJob,
+    PeriodicJob,
+    ScraperJob,
+    ScrapeType,
+    TocRequest
+} from "./types";
 import {Job, JobCallback, JobQueue} from "../jobQueue";
 import {multiSingle} from "../tools";
 import {Storage} from "../database/database";

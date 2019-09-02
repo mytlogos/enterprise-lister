@@ -35,9 +35,9 @@ import {QueryContext} from "./queryContext";
 import {databaseSchema} from "./databaseSchema";
 import {delay, isQuery} from "../tools";
 import {MediumInWait} from "./databaseTypes";
-import {ScrapeType} from "../externals/scraperTools";
 import {SchemaManager} from "./schemaManager";
 import {Query} from "mysql";
+import {ScrapeType} from "../externals/types";
 
 type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 

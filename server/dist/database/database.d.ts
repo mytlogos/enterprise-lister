@@ -1,8 +1,8 @@
 import { Episode, EpisodeContentData, EpisodeRelease, ExternalList, ExternalUser, FullPart, Invalidation, JobItem, JobRequest, LikeMedium, LikeMediumQuery, List, Medium, MetaResult, MultiSingle, News, Part, ProgressResult, Result, ScrapeItem, ShallowPart, SimpleEpisode, SimpleMedium, SimpleRelease, SimpleUser, Synonyms, TocSearchMedium, User } from "../types";
 import { QueryContext } from "./queryContext";
 import { MediumInWait } from "./databaseTypes";
-import { ScrapeType } from "../externals/scraperTools";
 import { Query } from "mysql";
+import { ScrapeType } from "../externals/types";
 declare type ContextCallback<T> = (context: QueryContext) => Promise<T>;
 /**
  * Creates the context for QueryContext, to
