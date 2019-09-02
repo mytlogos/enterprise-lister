@@ -7,6 +7,7 @@ const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promis
 const tools_1 = require("../tools");
 const types_1 = require("../types");
 const logger_1 = tslib_1.__importStar(require("../logger"));
+const types_2 = require("./types");
 const directScraper = tslib_1.__importStar(require("./direct/directScraper"));
 const url = tslib_1.__importStar(require("url"));
 const cache_1 = require("../cache");
@@ -727,16 +728,6 @@ var ScrapeErrorEvent;
     ScrapeErrorEvent["NEWS"] = "news:error";
     ScrapeErrorEvent["LIST"] = "list:error";
 })(ScrapeErrorEvent = exports.ScrapeErrorEvent || (exports.ScrapeErrorEvent = {}));
-var ScrapeType;
-(function (ScrapeType) {
-    ScrapeType[ScrapeType["LIST"] = 0] = "LIST";
-    ScrapeType[ScrapeType["FEED"] = 1] = "FEED";
-    ScrapeType[ScrapeType["NEWS"] = 2] = "NEWS";
-    ScrapeType[ScrapeType["TOC"] = 3] = "TOC";
-    ScrapeType[ScrapeType["ONETIMEUSER"] = 4] = "ONETIMEUSER";
-    ScrapeType[ScrapeType["ONETIMETOC"] = 5] = "ONETIMETOC";
-    ScrapeType[ScrapeType["SEARCH"] = 6] = "SEARCH";
-})(ScrapeType = exports.ScrapeType || (exports.ScrapeType = {}));
 const eventMap = new Map();
 let scrapeDependants;
 /**
@@ -747,13 +738,13 @@ async function setup() {
     const scrapeBoard = await database_1.Storage.getScrapes();
     const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [] };
     scrapeBoard.forEach((value) => {
-        if (value.type === ScrapeType.NEWS) {
+        if (value.type === types_2.ScrapeType.NEWS) {
             dependants.news.push(value);
         }
-        else if (value.type === ScrapeType.FEED) {
+        else if (value.type === types_2.ScrapeType.FEED) {
             dependants.feeds.push(value.link);
         }
-        else if (value.type === ScrapeType.TOC) {
+        else if (value.type === types_2.ScrapeType.TOC) {
             dependants.tocs.push({ mediumId: value.mediumId, url: value.link, uuid: value.userId });
         }
     });

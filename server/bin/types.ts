@@ -1,5 +1,5 @@
 import {MediaType} from "./tools";
-import {ScrapeType} from "./externals/scraperTools";
+import {ScrapeType} from "./externals/types";
 
 export interface SimpleMedium {
     id?: number;

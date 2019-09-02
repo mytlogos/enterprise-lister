@@ -23,9 +23,9 @@ import {
     SimpleMedium
 } from "./types";
 import logger, {logError} from "./logger";
-import {Toc, TocEpisode, TocPart} from "./externals/types";
+import {ScrapeType, Toc, TocEpisode, TocPart} from "./externals/types";
 import * as validate from "validate.js";
-import {checkTocContent, remapMediumPart, ScrapeType} from "./externals/scraperTools";
+import {checkTocContent, remapMediumPart} from "./externals/scraperTools";
 import {DefaultJobScraper} from "./externals/jobScraperManager";
 
 const scraper = DefaultJobScraper;

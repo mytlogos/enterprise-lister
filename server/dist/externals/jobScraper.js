@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const scraperTools_1 = require("./scraperTools");
+const types_1 = require("./types");
 const jobQueue_1 = require("../jobQueue");
 const tools_1 = require("../tools");
 const database_1 = require("../database/database");
@@ -26,13 +27,13 @@ class JobScraper {
     addDependant(dependant) {
         JobScraper.processDependant(dependant, "toc", (value) => this.queueOneTimeEmittable("toc", value, 
         // what if it can't execute for an whole hour?
-        (item) => scraperTools_1.toc(item).finally(() => database_1.Storage.updateScrape(item.url, scraperTools_1.ScrapeType.TOC, HOUR))));
-        JobScraper.processDependant(dependant, "oneTimeToc", (value) => this.queueOneTimeEmittable("toc", value, (item) => scraperTools_1.oneTimeToc(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeType.ONETIMETOC))));
+        (item) => scraperTools_1.toc(item).finally(() => database_1.Storage.updateScrape(item.url, types_1.ScrapeType.TOC, HOUR))));
+        JobScraper.processDependant(dependant, "oneTimeToc", (value) => this.queueOneTimeEmittable("toc", value, (item) => scraperTools_1.oneTimeToc(item).finally(() => database_1.Storage.removeScrape(item.url, types_1.ScrapeType.ONETIMETOC))));
         JobScraper.processDependant(dependant, "feed", (value) => {
             this.queuePeriodicEmittable("feed", 10 * MINUTE, value, scraperTools_1.feed);
         });
         JobScraper.processDependant(dependant, "news", (value) => this.queuePeriodicEmittable("news", 5 * MINUTE, value, scraperTools_1.news));
-        JobScraper.processDependant(dependant, "oneTimeUser", (value) => this.queueOneTimeEmittable("list", value, (item) => scraperTools_1.list(item).finally(() => database_1.Storage.removeScrape(item.url, scraperTools_1.ScrapeType.ONETIMEUSER))));
+        JobScraper.processDependant(dependant, "oneTimeUser", (value) => this.queueOneTimeEmittable("list", value, (item) => scraperTools_1.list(item).finally(() => database_1.Storage.removeScrape(item.url, types_1.ScrapeType.ONETIMEUSER))));
     }
     on(event, callback) {
         this.helper.on(event, callback);
@@ -50,20 +51,20 @@ class JobScraper {
             const scrapeBoard = await database_1.Storage.getScrapes();
             scrapeBoard
                 .map((value) => {
-                if (value.type === scraperTools_1.ScrapeType.NEWS) {
+                if (value.type === types_1.ScrapeType.NEWS) {
                     return { news: value };
                 }
-                else if (value.type === scraperTools_1.ScrapeType.FEED) {
+                else if (value.type === types_1.ScrapeType.FEED) {
                     return { feed: value.link };
                 }
-                else if (value.type === scraperTools_1.ScrapeType.TOC) {
+                else if (value.type === types_1.ScrapeType.TOC) {
                     return { toc: { mediumId: value.mediumId, url: value.link, uuid: value.userId } };
                 }
-                else if (value.type === scraperTools_1.ScrapeType.ONETIMETOC) {
+                else if (value.type === types_1.ScrapeType.ONETIMETOC) {
                     // @ts-ignore
                     return { oneTimeToc: { mediumId: value.mediumId, url: value.link, uuid: value.userId } };
                 }
-                else if (value.type === scraperTools_1.ScrapeType.ONETIMEUSER) {
+                else if (value.type === types_1.ScrapeType.ONETIMEUSER) {
                     // @ts-ignore
                     return { oneTimeUser: { cookies: value.info, url: value.link, uuid: value.userId } };
                 }

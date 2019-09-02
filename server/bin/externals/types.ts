@@ -136,3 +136,13 @@ export interface TocResult {
     tocs: Toc[];
     uuid?: string;
 }
+
+export enum ScrapeType {
+    LIST = 0,
+    FEED = 1,
+    NEWS = 2,
+    TOC = 3,
+    ONETIMEUSER = 4,
+    ONETIMETOC = 5,
+    SEARCH = 6,
+}
