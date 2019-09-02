@@ -2355,10 +2355,10 @@ class QueryContext {
     }
     async getInvalidated(uuid) {
         const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        // await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
-        //     console.log(reason);
-        //     logger.error(reason);
-        // });
+        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+            console.log(reason);
+            logger_1.default.error(reason);
+        });
         return result.map((value) => {
             return {
                 externalListId: value.external_list_id,
@@ -2378,7 +2378,12 @@ class QueryContext {
             "external_list_id as externalListId, external_uuid as externalUuid, medium_id as mediumId, " +
             "part_id as partId, episode_id as episodeId, CASE user_uuid WHEN 1 THEN 1 ELSE 0 END as userUuid," +
             "list_id as listId, news_id as newsId, uuid " +
-            "FROM user_data_invalidation WHERE uuid=?", uuid);
+            "FROM user_data_invalidation WHERE uuid=?", uuid).on("end", () => {
+            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
+                console.log(reason);
+                logger_1.default.error(reason);
+            });
+        });
     }
     async getUserStream() {
         return this._queryStream("SELECT * FROM user");
