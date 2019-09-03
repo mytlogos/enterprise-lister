@@ -3285,7 +3285,7 @@ export class QueryContext {
         }
         if (Array.isArray(value) && value.length > 100) {
             // @ts-ignore
-            return await this._batchFunction(value, query, paramCallback, (q, v, p) => this._queryInList(q, v, p));
+            return await this._batchFunction(value, query, paramCallback, (q, v, p) => this._queryInList(q, v, afterQuery, p));
         }
         const placeholders: string[] = [];
         const param: any[] = [];

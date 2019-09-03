@@ -1,5 +1,4 @@
 import {DataBaseBuilder} from "./databaseBuilder";
-import {InvalidationType} from "./databaseTypes";
 import {TriggerEvent, TriggerTiming} from "./trigger";
 import {Migrations} from "./migrations";
 
@@ -8,9 +7,6 @@ const dataBaseBuilder = new DataBaseBuilder("enterprise", 5);
 dataBaseBuilder.getTableBuilder()
     .setName("user")
     .setMain()
-    .addInvalidation(InvalidationType.UPDATE)
-    .addInvalidation(InvalidationType.INSERT_OR_DELETE, "reading_list")
-    .addInvalidation(InvalidationType.INSERT_OR_DELETE, "external_user")
     .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
     .parseColumn("uuid CHAR(36) NOT NULL")
     .parseColumn("salt VARCHAR(200)")
@@ -21,8 +17,6 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("external_user")
-    .addInvalidation(InvalidationType.UPDATE)
-    .addInvalidation(InvalidationType.INSERT_OR_DELETE, "external_reading_list")
     .parseColumn("name VARCHAR(200) NOT NULL")
     .parseColumn("uuid CHAR(36) NOT NULL")
     .parseColumn("local_uuid CHAR(36) NOT NULL")
@@ -45,8 +39,6 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("reading_list")
-    .addInvalidation(InvalidationType.UPDATE)
-    .addInvalidation(InvalidationType.ANY, "list_medium")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("name VARCHAR(200) NOT NULL")
     .parseColumn("user_uuid CHAR(36) NOT NULL")
@@ -57,8 +49,6 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("external_reading_list")
-    .addInvalidation(InvalidationType.UPDATE)
-    .addInvalidation(InvalidationType.ANY, "external_list_medium")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("name VARCHAR(200) NOT NULL")
     .parseColumn("user_uuid CHAR(36) NOT NULL")
@@ -70,9 +60,6 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("medium")
-    .addInvalidation(InvalidationType.UPDATE)
-    .addInvalidation(InvalidationType.INSERT_OR_DELETE, "medium_synonyms")
-    .addInvalidation(InvalidationType.INSERT_OR_DELETE, "part")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("countryOfOrigin VARCHAR(200)")
     .parseColumn("languageOfOrigin VARCHAR(200)")
@@ -134,8 +121,6 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("part")
-    .addInvalidation(InvalidationType.UPDATE)
-    .addInvalidation(InvalidationType.INSERT_OR_DELETE, "episode")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("medium_id INT UNSIGNED NOT NULL")
     .parseColumn("title VARCHAR(200)")
@@ -149,9 +134,6 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("episode")
-    .addInvalidation(InvalidationType.UPDATE)
-    .addInvalidation(InvalidationType.ANY, "user_episode")
-    .addInvalidation(InvalidationType.ANY, "episode_release")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("part_id INT UNSIGNED NOT NULL")
     .parseColumn("totalIndex INT NOT NULL")
@@ -201,7 +183,6 @@ dataBaseBuilder.getTableBuilder()
 
 dataBaseBuilder.getTableBuilder()
     .setName("news_board")
-    .addInvalidation(InvalidationType.INSERT, "news_user")
     .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
     .parseColumn("title TEXT NOT NULL")
     .parseColumn("link VARCHAR(700) UNIQUE NOT NULL")
@@ -329,7 +310,15 @@ dataBaseBuilder.getTriggerBuilder()
     .setTiming(TriggerTiming.AFTER)
     .setEvent(TriggerEvent.INSERT)
     .setTable("external_list_medium")
-    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_list_id) SELECT local_uuid, NEW.list_id FROM user inner join external_reading_list on external_reading_list.id=list_id inner join external_user on user_uuid=uuid;")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_list_id) SELECT local_uuid, NEW.list_id FROM user inner join external_reading_list on external_reading_list.id=NEW.list_id inner join external_user on NEW.user_uuid=uuid;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("external_list_medium_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("external_list_medium")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_list_id) SELECT local_uuid, OLD.list_id FROM user inner join external_reading_list on external_reading_list.id=OLD.list_id inner join external_user on user_uuid=uuid;")
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
@@ -349,11 +338,19 @@ dataBaseBuilder.getTriggerBuilder()
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
+    .setName("external_reading_list_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("external_reading_list")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_uuid) VALUES ((SELECT local_uuid FROM external_user WHERE uuid=OLD.user_uuid LIMIT 1), OLD.user_uuid);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
     .setName("external_user_AFTER_INSERT")
     .setTiming(TriggerTiming.AFTER)
     .setEvent(TriggerEvent.INSERT)
     .setTable("external_user")
-    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, uuid) VALUES(NEW.local_uuid, 1);")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, external_uuid) VALUES(NEW.local_uuid, NEW.uuid);")
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
@@ -365,6 +362,14 @@ dataBaseBuilder.getTriggerBuilder()
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
+    .setName("external_user_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("external_user")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, userUuid) VALUES(OLD.local_uuid, 1);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
     .setName("list_medium_AFTER_INSERT")
     .setTiming(TriggerTiming.AFTER)
     .setEvent(TriggerEvent.INSERT)
@@ -373,9 +378,25 @@ dataBaseBuilder.getTriggerBuilder()
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
+    .setName("list_medium_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("list_medium")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, list_id) SELECT user_uuid, OLD.list_id FROM user inner join reading_list on reading_list.id=OLD.list_id;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
     .setName("medium_AFTER_UPDATE")
     .setTiming(TriggerTiming.AFTER)
     .setEvent(TriggerEvent.UPDATE)
+    .setTable("medium")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, NEW.id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("medium_AFTER_INSERT")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.INSERT)
     .setTable("medium")
     .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, NEW.id FROM user;")
     .build();
@@ -394,6 +415,14 @@ dataBaseBuilder.getTriggerBuilder()
     .setEvent(TriggerEvent.INSERT)
     .setTable("medium_toc")
     .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, NEW.medium_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
+    .setName("medium_toc_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("medium_toc")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, OLD.medium_id FROM user;")
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
@@ -429,6 +458,14 @@ dataBaseBuilder.getTriggerBuilder()
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
+    .setName("part_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("part")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, medium_id) SELECT uuid, OLD.medium_id FROM user;")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
     .setName("reading_list_AFTER_INSERT")
     .setTiming(TriggerTiming.AFTER)
     .setEvent(TriggerEvent.INSERT)
@@ -445,11 +482,19 @@ dataBaseBuilder.getTriggerBuilder()
     .build();
 
 dataBaseBuilder.getTriggerBuilder()
+    .setName("reading_list_AFTER_DELETE")
+    .setTiming(TriggerTiming.AFTER)
+    .setEvent(TriggerEvent.DELETE)
+    .setTable("reading_list")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, user_uuid) VALUES (OLD.user_uuid, 1);")
+    .build();
+
+dataBaseBuilder.getTriggerBuilder()
     .setName("user_AFTER_UPDATE")
     .setTiming(TriggerTiming.AFTER)
     .setEvent(TriggerEvent.UPDATE)
     .setTable("user")
-    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, user_uud) VALUES (NEW.uuid,1);")
+    .setBody("INSERT IGNORE INTO user_data_invalidation (uuid, user_uuid) VALUES (NEW.uuid,1);")
     .build();
 
 dataBaseBuilder.getTriggerBuilder()

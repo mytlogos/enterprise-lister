@@ -241,8 +241,8 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         value.episodeMap.set(episode.combiIndex, {tocEpisode: episode});
     });
     // @ts-ignore
-    const episodes: SimpleEpisode[] = await Storage.getPartEpisodePerIndex(
-        value.part.id,
+    const episodes: SimpleEpisode[] = await Storage.getMediumEpisodePerIndex(
+        value.part.mediumId,
         [...value.episodeMap.keys()]
     );
 
