@@ -1,6 +1,6 @@
 import { EpisodeNews, News, TocSearchMedium } from "../types";
 import { MediaType } from "../tools";
-import { JobCallback } from "../jobQueue";
+import { JobCallback } from "../jobManager";
 export interface ScraperJob {
     type: string;
     onSuccess?: () => void;
