@@ -12,6 +12,10 @@ class JobContext extends subContext_1.SubContext {
     }
     async stopJobs() {
         await this.query("UPDATE jobs SET state = ?", types_1.JobState.WAITING);
+        await this.query("CREATE TEMPORARY TABLE tmp_jobs (id INT UNSIGNED NOT NULL)");
+        await this.query("INSERT INTO tmp_jobs SELECT id from jobs");
+        await this.query("DELETE FROM jobs WHERE runAfter IS NOT NULL AND runAfter NOT IN (SELECT id FROM tmp_jobs)");
+        await this.query("DROP TEMPORARY TABLE tmp_jobs");
     }
     async getAfterJobs(id) {
         return this.query("SELECT * FROM jobs WHERE `runAfter` = ? AND `state` != 'running'", id);

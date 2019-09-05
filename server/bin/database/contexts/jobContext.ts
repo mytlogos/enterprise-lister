@@ -15,6 +15,10 @@ export class JobContext extends SubContext {
 
     public async stopJobs(): Promise<void> {
         await this.query("UPDATE jobs SET state = ?", JobState.WAITING);
+        await this.query("CREATE TEMPORARY TABLE tmp_jobs (id INT UNSIGNED NOT NULL)");
+        await this.query("INSERT INTO tmp_jobs SELECT id from jobs");
+        await this.query("DELETE FROM jobs WHERE runAfter IS NOT NULL AND runAfter NOT IN (SELECT id FROM tmp_jobs)");
+        await this.query("DROP TEMPORARY TABLE tmp_jobs");
     }
 
     public async getAfterJobs(id: number): Promise<JobItem[]> {
