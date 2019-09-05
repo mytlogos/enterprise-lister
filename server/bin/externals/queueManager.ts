@@ -61,26 +61,26 @@ const fastQueues: Map<string, Queue> = new Map();
 
 export type Callback = () => Promise<any>;
 
-function methodToRequest(options: Options | undefined, toUserRequest: Request) {
+function methodToRequest(options: Options | undefined, toUseRequest: Request) {
     const method = options && options.method ? options.method : "";
 
     switch (method.toLowerCase()) {
         case "get":
-            return toUserRequest.get(options);
+            return toUseRequest.get(options);
         case "head":
-            return toUserRequest.head(options);
+            return toUseRequest.head(options);
         case "put":
-            return toUserRequest.put(options);
+            return toUseRequest.put(options);
         case "post":
-            return toUserRequest.post(options);
+            return toUseRequest.post(options);
         case "patch":
-            return toUserRequest.patch(options);
+            return toUseRequest.patch(options);
         case "del":
-            return toUserRequest.del(options);
+            return toUseRequest.del(options);
         case "delete":
-            return toUserRequest.delete(options);
+            return toUseRequest.delete(options);
         default:
-            return toUserRequest.get(options);
+            return toUseRequest.get(options);
     }
 }
 
