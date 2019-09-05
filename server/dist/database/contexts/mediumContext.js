@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const subContext_1 = require("./subContext");
 const tools_1 = require("../../tools");
+const storageTools_1 = require("../storages/storageTools");
 class MediumContext extends subContext_1.SubContext {
     /**
      * Adds a medium to the storage.
@@ -14,7 +15,7 @@ class MediumContext extends subContext_1.SubContext {
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
-        await this.createStandardPart(result.insertId);
+        await this.parentContext.partContext.createStandardPart(result.insertId);
         const newMedium = {
             ...medium,
             id: result.insertId,
@@ -22,7 +23,7 @@ class MediumContext extends subContext_1.SubContext {
         // if it should be added to an list, do it right away
         if (uuid) {
             // add item to listId of medium or the standard list
-            await this.addItemToList(false, newMedium, uuid);
+            await this.parentContext.internalListContext.addItemToList(newMedium, uuid);
         }
         return newMedium;
     }
@@ -116,7 +117,7 @@ class MediumContext extends subContext_1.SubContext {
         return tools_1.promiseMultiSingle(id, async (mediumId) => {
             let result = await this.query(`SELECT * FROM medium WHERE medium.id=?;`, mediumId);
             result = result[0];
-            const latestReleasesResult = await this.getLatestReleases(mediumId);
+            const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
             const currentReadResult = await this.query("SELECT * FROM " +
                 "(SELECT * FROM user_episode " +
                 "WHERE episode_id IN (SELECT id from episode " +
@@ -159,8 +160,8 @@ class MediumContext extends subContext_1.SubContext {
     getLikeMedium(likeMedia) {
         // @ts-ignore
         return tools_1.promiseMultiSingle(likeMedia, async (value) => {
-            const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
-            const escapedTitle = escapeLike(value.title, { singleQuotes: true });
+            const escapedLinkQuery = storageTools_1.escapeLike(value.link || "", { noRightBoundary: true });
+            const escapedTitle = storageTools_1.escapeLike(value.title, { singleQuotes: true });
             let result = await this.query("SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
                 "(SELECT medium_id FROM medium_toc WHERE medium_id IS NOT NULL AND link LIKE ?);", [escapedTitle, escapedLinkQuery]);
             if (value.type != null) {

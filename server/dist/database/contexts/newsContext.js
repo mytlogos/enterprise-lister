@@ -119,6 +119,35 @@ class NewsContext extends subContext_1.SubContext {
     checkUnreadNews(uuid) {
         return this.query("SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);", uuid);
     }
+    /**
+     *
+     */
+    async linkNewsToMedium() {
+        // todo maybe implement this with a trigger
+        const result = await this.query("INSERT IGNORE INTO news_medium (medium_id, news_id)" +
+            "SELECT medium.id, news_board.id FROM medium,news_board " +
+            "WHERE locate(medium.title, news_board.title) > 0");
+        return result.affectedRows > 0;
+    }
+    /**
+     *
+     */
+    async removeLinkNewsToMedium(newsId, mediumId) {
+        const columns = [];
+        if (newsId != null) {
+            columns.push({
+                column: "news_id",
+                value: newsId,
+            });
+        }
+        if (mediumId != null) {
+            columns.push({
+                column: "medium_id",
+                value: mediumId,
+            });
+        }
+        return this.delete("news_medium", ...columns);
+    }
 }
 exports.NewsContext = NewsContext;
 //# sourceMappingURL=newsContext.js.map

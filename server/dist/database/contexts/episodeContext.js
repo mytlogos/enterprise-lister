@@ -6,6 +6,7 @@ const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const tools_1 = require("../../tools");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const databaseTypes_1 = require("../databaseTypes");
+const storageTools_1 = require("../storages/storageTools");
 class EpisodeContext extends subContext_1.SubContext {
     /**
      *
@@ -176,14 +177,17 @@ class EpisodeContext extends subContext_1.SubContext {
             if (resultArray[0] && resultArray[0].episode_id != null) {
                 return this.query("INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);", [uuid, resultArray[0].episode_id]);
             }
-            const escapedNovel = escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
+            const escapedNovel = storageTools_1.escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
             const media = await this.query("SELECT title, id,synonym FROM medium " +
                 "LEFT JOIN medium_synonyms ON medium.id=medium_synonyms.medium_id " +
                 "WHERE medium.title LIKE ? OR medium_synonyms.synonym LIKE ?;", [escapedNovel, escapedNovel]);
             // todo for now only get the first medium?, later test it against each other
             let bestMedium = media[0];
             if (!bestMedium) {
-                const addedMedium = await this.addMedium({ title: value.novel, medium: tools_1.MediaType.TEXT }, uuid);
+                const addedMedium = await this.parentContext.mediumContext.addMedium({
+                    title: value.novel,
+                    medium: tools_1.MediaType.TEXT
+                }, uuid);
                 bestMedium = { id: addedMedium.insertId, title: value.novel };
                 // todo add medium if it is not known?
             }
@@ -195,7 +199,7 @@ class EpisodeContext extends subContext_1.SubContext {
             let volIndex = Number(value.volIndex);
             if (volIndex || volumeTitle) {
                 // todo: do i need to convert volIndex from a string to a number for the query?
-                const volumeArray = await this.query("SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)", [bestMedium.id, volumeTitle && escapeLike(volumeTitle, {
+                const volumeArray = await this.query("SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)", [bestMedium.id, volumeTitle && storageTools_1.escapeLike(volumeTitle, {
                         singleQuotes: true,
                         noBoundaries: true
                     }), volIndex]);
@@ -215,7 +219,7 @@ class EpisodeContext extends subContext_1.SubContext {
                     if (!volumeTitle) {
                         volumeTitle = "Volume " + volIndex;
                     }
-                    const addedVolume = await this.addPart(
+                    const addedVolume = await this.parentContext.partContext.addPart(
                     // @ts-ignore
                     { title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id });
                     volumeId = addedVolume.id;
@@ -226,7 +230,7 @@ class EpisodeContext extends subContext_1.SubContext {
                 const volumeArray = await this.query("SELECT id FROM part WHERE medium_id=? AND totalIndex=?", [bestMedium.id, -1]);
                 const volume = volumeArray[0];
                 if (!volume) {
-                    volumeId = (await this.createStandardPart(bestMedium.id)).id;
+                    volumeId = (await this.parentContext.partContext.createStandardPart(bestMedium.id)).id;
                 }
                 else {
                     volumeId = volume.id;
@@ -238,7 +242,7 @@ class EpisodeContext extends subContext_1.SubContext {
             const episodeSelectArray = await this.query("SELECT id, part_id, url FROM episode " +
                 "LEFT JOIN episode_release " +
                 "ON episode.id=episode_release.episode_id " +
-                "WHERE title LIKE ? OR totalIndex=?", [value.chapter && escapeLike(value.chapter, {
+                "WHERE title LIKE ? OR totalIndex=?", [value.chapter && storageTools_1.escapeLike(value.chapter, {
                     noBoundaries: true,
                     singleQuotes: true
                 }), value.chapIndex]);

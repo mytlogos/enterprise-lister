@@ -282,4 +282,4 @@ class UserContext extends subContext_1.SubContext {
     }
 }
 exports.UserContext = UserContext;
-//# sourceMappingURL=UserContext.js.map
+//# sourceMappingURL=userContext.js.map

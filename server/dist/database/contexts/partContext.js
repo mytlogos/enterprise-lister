@@ -56,7 +56,7 @@ class PartContext extends subContext_1.SubContext {
         if (episodesIds) {
             if (uuid) {
                 const values = episodesIds.map((episode) => episode.id);
-                const episodes = await this.getEpisode(values, uuid);
+                const episodes = await this.parentContext.episodeContext.getEpisode(values, uuid);
                 episodes.forEach((value) => {
                     const part = idMap.get(value.partId);
                     if (!part) {
@@ -103,10 +103,10 @@ class PartContext extends subContext_1.SubContext {
             });
             let fullEpisodes;
             if (uuid) {
-                fullEpisodes = await this.getEpisode(episodeIds, uuid);
+                fullEpisodes = await this.parentContext.episodeContext.getEpisode(episodeIds, uuid);
             }
             else {
-                const releases = await this.getReleases(episodeIds);
+                const releases = await this.parentContext.episodeContext.getReleases(episodeIds);
                 releases.forEach((value) => {
                     const episode = episodeIdMap.get(value.episodeId);
                     if (!episode) {
@@ -169,7 +169,7 @@ class PartContext extends subContext_1.SubContext {
         const episodes = episodesResult || [];
         if (episodes) {
             const episodeIds = episodes.map((value) => value.id);
-            const fullEpisodes = await this.getEpisode(episodeIds, uuid);
+            const fullEpisodes = await this.parentContext.episodeContext.getEpisode(episodeIds, uuid);
             fullEpisodes.forEach((value) => {
                 const part = partIdMap.get(value.partId);
                 if (!part) {
@@ -232,7 +232,7 @@ class PartContext extends subContext_1.SubContext {
         if (part.episodes && part.episodes.length) {
             // @ts-ignore
             if (!Number.isInteger(part.episodes[0])) {
-                episodes = await this.addEpisode(part.episodes);
+                episodes = await this.parentContext.episodeContext.addEpisode(part.episodes);
             }
             else {
                 episodes = [];
