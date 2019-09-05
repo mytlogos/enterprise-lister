@@ -33,7 +33,7 @@ async function searchAjax(searchWords: string, medium: TocSearchMedium) {
     // TODO: 19.08.2019 this may work, forgot to set http method before
     // TODO: 26.08.2019 this does not work for any reason
     try {
-        const body = "action=wp-manga-search-mangatitle=" + searchWords;
+        const body = "action=wp-manga-search-manga&title=" + searchWords;
         response = await queueRequest(urlString, {
             url: urlString,
             headers: {

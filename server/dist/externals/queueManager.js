@@ -50,6 +50,27 @@ class Queue {
 exports.Queue = Queue;
 const queues = new Map();
 const fastQueues = new Map();
+function methodToRequest(options, toUserRequest) {
+    const method = options && options.method ? options.method : "";
+    switch (method.toLowerCase()) {
+        case "get":
+            return toUserRequest.get(options);
+        case "head":
+            return toUserRequest.head(options);
+        case "put":
+            return toUserRequest.put(options);
+        case "post":
+            return toUserRequest.post(options);
+        case "patch":
+            return toUserRequest.patch(options);
+        case "del":
+            return toUserRequest.del(options);
+        case "delete":
+            return toUserRequest.delete(options);
+        default:
+            return toUserRequest.get(options);
+    }
+}
 function processRequest(uri, otherRequest, queueToUse = queues, limit) {
     const exec = /https?:\/\/([^\/]+)/.exec(uri);
     if (!exec) {
@@ -73,7 +94,14 @@ function processRequest(uri, otherRequest, queueToUse = queues, limit) {
 }
 exports.queueRequest = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
-    return queue.push(() => options && options.method ? toUseRequest(options) : toUseRequest.get(options));
+    if (!options) {
+        options = { uri };
+    }
+    else {
+        // @ts-ignore
+        options.url = uri;
+    }
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 exports.queueCheerioRequestBuffered = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
@@ -81,7 +109,7 @@ exports.queueCheerioRequestBuffered = (uri, options, otherRequest) => {
         options = { uri };
     }
     options.transform = transformCheerio;
-    return queue.push(() => toUseRequest(uri, options));
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 function streamParse5(resolve, reject, uri, options) {
     // i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly

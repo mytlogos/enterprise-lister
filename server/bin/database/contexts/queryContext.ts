@@ -1,9 +1,10 @@
 import mySql, {Connection} from "promise-mysql";
-import {Invalidation, MetaResult, Result} from "../../types";
+import {Invalidation, MetaResult, Result, ScrapeItem} from "../../types";
 import {Errors, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
 import {Query} from "mysql";
+import {ScrapeType} from "../../externals/types";
 import {DatabaseContext} from "./databaseContext";
 import {UserContext} from "./userContext";
 import {ExternalUserContext} from "./externalUserContext";

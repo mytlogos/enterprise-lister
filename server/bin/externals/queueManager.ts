@@ -61,6 +61,29 @@ const fastQueues: Map<string, Queue> = new Map();
 
 export type Callback = () => Promise<any>;
 
+function methodToRequest(options: Options | undefined, toUserRequest: Request) {
+    const method = options && options.method ? options.method : "";
+
+    switch (method.toLowerCase()) {
+        case "get":
+            return toUserRequest.get(options);
+        case "head":
+            return toUserRequest.head(options);
+        case "put":
+            return toUserRequest.put(options);
+        case "post":
+            return toUserRequest.post(options);
+        case "patch":
+            return toUserRequest.patch(options);
+        case "del":
+            return toUserRequest.del(options);
+        case "delete":
+            return toUserRequest.delete(options);
+        default:
+            return toUserRequest.get(options);
+    }
+}
+
 function processRequest(uri: string, otherRequest?: Request, queueToUse = queues, limit?: number) {
     const exec = /https?:\/\/([^\/]+)/.exec(uri);
 
@@ -90,7 +113,13 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
 export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): Promise<string> => {
 
     const {toUseRequest, queue} = processRequest(uri, otherRequest);
-    return queue.push(() => options && options.method ? toUseRequest(options) : toUseRequest.get(options));
+    if (!options) {
+        options = {uri};
+    } else {
+        // @ts-ignore
+        options.url = uri;
+    }
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 
 export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (uri, options, otherRequest):
@@ -102,7 +131,7 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (uri, op
         options = {uri};
     }
     options.transform = transformCheerio;
-    return queue.push(() => toUseRequest(uri, options));
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 
 export type QueueRequest<T> = (uri: string, options?: Options, otherRequest?: Request) => Promise<T>;

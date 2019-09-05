@@ -2,6 +2,7 @@ import {MultiSingle, Part, ShallowPart} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {PartContext} from "../contexts/partContext";
+import {UserStorage} from "./userStorage";
 
 function inContext<T>(callback: ContextCallback<T, PartContext>, transaction = true) {
     return storageInContext(callback, transaction, (con) => queryContextProvider(con).partContext);
