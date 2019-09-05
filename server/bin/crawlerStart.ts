@@ -1,4 +1,3 @@
-import {Storage} from "./database/database";
 import {
     checkIndices,
     combiIndex,
@@ -15,9 +14,11 @@ import {
     EpisodeRelease,
     ExternalList,
     JobRequest,
-    LikeMedium, MilliTime,
+    LikeMedium,
+    MilliTime,
     News,
     Part,
+    ScrapeItem,
     ScrapeName,
     SimpleEpisode,
     SimpleMedium
@@ -27,6 +28,15 @@ import {ScrapeType, Toc, TocEpisode, TocPart} from "./externals/types";
 import * as validate from "validate.js";
 import {checkTocContent, remapMediumPart} from "./externals/scraperTools";
 import {DefaultJobScraper} from "./externals/jobScraperManager";
+import {
+    episodeStorage,
+    externalListStorage,
+    externalUserStorage,
+    mediumStorage,
+    newsStorage,
+    partStorage,
+    storage
+} from "./database/storages/storage";
 
 const scraper = DefaultJobScraper;
 
@@ -41,7 +51,7 @@ async function processNews({link, rawNews}: { link: string, rawNews: News[] }): 
     multiSingle(rawNews, (item: News) => delete item.id);
 
     const newsKey = "news";
-    const newsPageInfo = await Storage.getPageInfo(link, newsKey);
+    const newsPageInfo = await storage.getPageInfo(link, newsKey);
 
     if (newsPageInfo.values.length) {
         const newPageInfos: string[] = [];
@@ -60,10 +70,10 @@ async function processNews({link, rawNews}: { link: string, rawNews: News[] }): 
             }
         });
         if (newsPageInfo.values.length || newPageInfos.length) {
-            await Storage.updatePageInfo(link, newsKey, newPageInfos, newsPageInfo.values);
+            await storage.updatePageInfo(link, newsKey, newPageInfos, newsPageInfo.values);
         }
     }
-    let news = await Storage.addNews(rawNews);
+    let news = await newsStorage.addNews(rawNews);
 
     if (Array.isArray(news)) {
         news = news.filter((value) => value);
@@ -97,18 +107,18 @@ async function getTocMedia(tocs: Toc[], uuid?: string)
 
         if (toc.mediumId) {
             // @ts-ignore
-            medium = await Storage.getSimpleMedium(toc.mediumId);
+            medium = await mediumStorage.getSimpleMedium(toc.mediumId);
         } else {
-            const likeMedium = await Storage.getLikeMedium({title: toc.title, link: ""});
+            const likeMedium = await mediumStorage.getLikeMedium({title: toc.title, link: ""});
             medium = likeMedium.medium;
         }
 
         if (!medium) {
-            medium = await Storage.addMedium({medium: toc.mediumType, title: toc.title}, uuid);
+            medium = await mediumStorage.addMedium({medium: toc.mediumType, title: toc.title}, uuid);
         }
 
         if (medium.id && toc.link) {
-            await Storage.addToc(medium.id, toc.link);
+            await mediumStorage.addToc(medium.id, toc.link);
         } else {
             console.log("missing toc and id for ", medium, " and ", toc);
         }
@@ -241,7 +251,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         value.episodeMap.set(episode.combiIndex, {tocEpisode: episode});
     });
     // @ts-ignore
-    const episodes: SimpleEpisode[] = await Storage.getMediumEpisodePerIndex(
+    const episodes: SimpleEpisode[] = await episodeStorage.getMediumEpisodePerIndex(
         value.part.mediumId,
         [...value.episodeMap.keys()]
     );
@@ -304,7 +314,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         if (!exec) {
             throw Error("invalid url for release: " + next.value.tocEpisode.url);
         }
-        const episodeReleases = await Storage.getReleasesByHost(knownEpisodeIds, exec[0]);
+        const episodeReleases = await episodeStorage.getReleasesByHost(knownEpisodeIds, exec[0]);
         const updateReleases: EpisodeRelease[] = [];
 
         const newReleases = nonNewIndices.map((index): EpisodeRelease | undefined => {
@@ -341,14 +351,14 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         }).filter((v) => v) as EpisodeRelease[];
 
         if (newReleases.length) {
-            await Storage.addRelease(newReleases);
+            await episodeStorage.addRelease(newReleases);
         }
         if (updateReleases.length) {
-            await Storage.updateRelease(updateReleases);
+            await episodeStorage.updateRelease(updateReleases);
         }
     }
     if (allEpisodes.length) {
-        await Storage.addEpisode(allEpisodes);
+        await episodeStorage.addEpisode(allEpisodes);
     }
 }
 
@@ -396,7 +406,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
             }
 
             const partIndices = [...indexPartsMap.keys()];
-            const parts = await Storage.getMediumPartsPerIndex(mediumId, partIndices);
+            const parts = await partStorage.getMediumPartsPerIndex(mediumId, partIndices);
 
             parts.forEach((value) => {
                 checkIndices(value);
@@ -420,7 +430,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
                         throw Error("something went wrong. got no value at this part index");
                     }
                     checkTocContent(partToc.tocPart, true);
-                    return Storage
+                    return partStorage
                     // @ts-ignore
                         .addPart({
                             mediumId,
@@ -452,7 +462,8 @@ async function addFeeds(feeds: string[]): Promise<void> {
     if (!feeds.length) {
         return;
     }
-    let scrapes = await Storage.getScrapes();
+    // TODO: 04.09.2019 get all feeds from jobs
+    let scrapes: ScrapeItem[] = [];
     scrapes = scrapes.filter((value) => value.type === ScrapeType.FEED);
 
     const scrapeFeeds = feeds.filter((feed) => !scrapes.find((value) => value.link === feed)).filter((value) => value);
@@ -483,7 +494,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
             link: value.title.link,
         };
     });
-    const currentLikeMedia = await Storage.getLikeMedium(likeMedia);
+    const currentLikeMedia = await mediumStorage.getLikeMedium(likeMedia);
 
     const foundLikeMedia = [];
 
@@ -510,7 +521,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
             storedMedia = await Promise.all(newMedia.map(
                 (scrapeMedium) => {
                     // noinspection JSCheckFunctionSignatures
-                    return Storage
+                    return mediumStorage
                         .addMedium({title: scrapeMedium.title.text, medium: scrapeMedium.medium})
                         .then((value) => {
                             return {
@@ -546,7 +557,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
     const promisePool = [];
 
     if (removedLists.length) {
-        Storage
+        externalListStorage
             .removeExternalList(result.external.uuid, removedLists)
             .then(() => {
                 if (!message.remove) {
@@ -561,7 +572,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
     }
 
     // add each new list to the storage
-    promisePool.push(...addedLists.map((value) => Storage
+    promisePool.push(...addedLists.map((value) => externalListStorage
         .addExternalList(result.external.uuid, {
             name: value.name,
             url: value.link,
@@ -585,7 +596,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
 
     promisePool.push(...renamedLists.map((value, index) => {
         const id = allLists[index].id;
-        return Storage
+        return externalListStorage
             .updateExternalList({
                 id,
                 name: value.name,
@@ -612,8 +623,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
         const scrapeList = lists[index];
 
         const removedMedia = [...externalList.items];
-        // @ts-ignore
-        const newMedia = scrapeList.media.filter((mediumId: number) => {
+        const newMedia = (scrapeList.media as number[]).filter((mediumId) => {
             const mediumIndex = removedMedia.indexOf(mediumId);
             if (mediumIndex < 0) {
                 return true;
@@ -622,7 +632,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
             return false;
         });
 
-        promisePool.push(...removedMedia.map((mediumId) => Storage
+        promisePool.push(...removedMedia.map((mediumId) => externalListStorage
             .removeItemFromExternalList(externalList.id, mediumId)
             .then(() => {
                 if (!message.remove) {
@@ -638,7 +648,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 logger.error(error);
             })));
 
-        promisePool.push(...newMedia.map((mediumId: number) => Storage
+        promisePool.push(...newMedia.map((mediumId: number) => externalListStorage
             .addItemToExternalList(externalList.id, mediumId)
             .then(() => {
                 if (!message.add) {
@@ -656,7 +666,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
     });
 
     // update externalUser with (new) cookies and a new lastScrape date (now)
-    promisePool.push(Storage
+    promisePool.push(externalUserStorage
     // @ts-ignore
         .updateExternalUser({
             uuid: result.external.uuid,
@@ -690,7 +700,7 @@ async function listHandler(result: {
     // add feeds to the storage and add them to the scraper
     await addFeeds(feeds);
 
-    const currentLists = await Storage.getExternalLists(result.external.uuid);
+    const currentLists = await externalListStorage.getExternalLists(result.external.uuid);
 
     // all available stored list, which lie on the same index as the scraped lists
     const allLists: ExternalList[] = [];

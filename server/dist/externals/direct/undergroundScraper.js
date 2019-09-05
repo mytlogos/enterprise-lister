@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const logger_1 = tslib_1.__importStar(require("../../logger"));
 const queueManager_1 = require("../queueManager");
-const database_1 = require("../../database/database");
 const tools_1 = require("../../tools");
+const storage_1 = require("../../database/storages/storage");
 exports.sourceType = "qidian_underground";
 async function scrapeNews() {
     const uri = "https://toc.qidianunderground.org/";
@@ -67,7 +67,7 @@ async function scrapeNews() {
 }
 // TODO: 25.06.2019 use caching for likeMedium?
 async function processMediumNews(mediumTitle, potentialNews) {
-    const likeMedia = await database_1.Storage.getLikeMedium({
+    const likeMedia = await storage_1.mediumStorage.getLikeMedium({
         title: mediumTitle,
         link: "",
         type: tools_1.MediaType.TEXT
@@ -76,7 +76,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
         return;
     }
     const mediumId = likeMedia.medium.id;
-    const latestReleases = await database_1.Storage.getLatestReleases(mediumId);
+    const latestReleases = await storage_1.episodeStorage.getLatestReleases(mediumId);
     const latestRelease = tools_1.max(latestReleases, (previous, current) => {
         const maxPreviousRelease = tools_1.max(previous.releases, "releaseDate");
         const maxCurrentRelease = tools_1.max(current.releases, "releaseDate");
@@ -84,9 +84,9 @@ async function processMediumNews(mediumTitle, potentialNews) {
             - ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0);
     });
     const chapIndexReg = /(\d+)\s*$/;
-    let standardPart = await database_1.Storage.getStandardPart(mediumId);
+    let standardPart = await storage_1.partStorage.getStandardPart(mediumId);
     if (!standardPart) {
-        standardPart = await database_1.Storage.createStandardPart(mediumId);
+        standardPart = await storage_1.partStorage.createStandardPart(mediumId);
     }
     let news;
     if (latestRelease) {
@@ -105,7 +105,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
                 return false;
             }
         });
-        const sourcedReleases = await database_1.Storage.getSourcedReleases(exports.sourceType, mediumId);
+        const sourcedReleases = await storage_1.episodeStorage.getSourcedReleases(exports.sourceType, mediumId);
         const toUpdateReleases = oldReleases.map((value) => {
             return {
                 title: value.title,
@@ -123,7 +123,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
             return foundRelease.url !== value.url;
         });
         if (toUpdateReleases.length) {
-            database_1.Storage.updateRelease(toUpdateReleases).catch(logger_1.logError);
+            storage_1.episodeStorage.updateRelease(toUpdateReleases).catch(logger_1.logError);
         }
     }
     else {
@@ -152,7 +152,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
         };
     });
     if (newEpisodes.length) {
-        await database_1.Storage.addEpisode(newEpisodes);
+        await storage_1.episodeStorage.addEpisode(newEpisodes);
     }
 }
 async function scrapeContent(urlString) {

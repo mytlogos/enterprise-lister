@@ -1,8 +1,8 @@
 import {DatabaseSchema, Migration} from "./databaseTypes";
-import {QueryContext} from "./queryContext";
 import {TableSchema} from "./tableSchema";
 import {Trigger} from "./trigger";
 import {equalsIgnore, getElseSet} from "../tools";
+import {DatabaseContext} from "./contexts/databaseContext";
 
 export class SchemaManager {
     private databaseName = "";
@@ -21,7 +21,7 @@ export class SchemaManager {
         this.migrations.push(...database.migrations);
     }
 
-    public async checkTableSchema(context: QueryContext): Promise<void> {
+    public async checkTableSchema(context: DatabaseContext): Promise<void> {
         // display all current tables
         const tables: any[] = await context.getTables();
 

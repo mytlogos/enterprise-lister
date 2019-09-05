@@ -4,9 +4,9 @@ const tslib_1 = require("tslib");
 const scraperTools_1 = require("./scraperTools");
 const jobManager_1 = require("../jobManager");
 const tools_1 = require("../tools");
-const database_1 = require("../database/database");
 const logger_1 = tslib_1.__importStar(require("../logger"));
 const types_1 = require("../types");
+const storage_1 = require("../database/storages/storage");
 class ScrapeJob {
     constructor(name, func, event) {
         this.name = name;
@@ -29,7 +29,7 @@ ScrapeJob.queueTocs = new ScrapeJob(types_1.ScrapeName.queueTocs, scraperTools_1
 ScrapeJob.remapMediaParts = new ScrapeJob(types_1.ScrapeName.remapMediaParts, scraperTools_1.remapMediaParts);
 ScrapeJob.queueExternalUser = new ScrapeJob(types_1.ScrapeName.queueExternalUser, scraperTools_1.queueExternalUser);
 // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
-const clearJobsOnStartPromise = database_1.Storage.stopJobs().catch(console.error);
+const clearJobsOnStartPromise = storage_1.jobStorage.stopJobs().catch(console.error);
 // tslint:disable-next-line:max-classes-per-file
 class JobScraperManager {
     constructor() {
@@ -67,7 +67,7 @@ class JobScraperManager {
             this.jobMap.delete(key);
         }
         this.queue.removeJob(job);
-        database_1.Storage.removeJob(key).catch(logger_1.logError);
+        storage_1.jobStorage.removeJob(key).catch(logger_1.logError);
     }
     async setup() {
         await clearJobsOnStartPromise;
@@ -149,7 +149,7 @@ class JobScraperManager {
             }
         });
         while (addJobs.length) {
-            await database_1.Storage.addJobs(addJobs);
+            await storage_1.jobStorage.addJobs(addJobs);
             addJobs.length = 0;
             waitForOtherRequest = waitForOtherRequest.filter((value) => {
                 if (isJobItem(value.runAfter)) {
@@ -182,7 +182,7 @@ class JobScraperManager {
     }
     async fetchJobs() {
         console.log("fetching jobs");
-        const scrapeBoard = await database_1.Storage.getJobs();
+        const scrapeBoard = await storage_1.jobStorage.getJobs();
         this.processJobItems(scrapeBoard);
     }
     processJobItems(items) {
@@ -299,7 +299,7 @@ class JobScraperManager {
             }
             this.jobMap.set(item.id, job);
             item.state = types_1.JobState.RUNNING;
-            await database_1.Storage.updateJobs(item);
+            await storage_1.jobStorage.updateJobs(item);
             console.log(`Job ${item.name ? item.name : item.id} is running now, ${new Date()}`);
         };
         job.onDone = async () => {
@@ -307,10 +307,10 @@ class JobScraperManager {
                 this.jobMap.delete(item.name);
             }
             this.jobMap.delete(item.id);
-            const newJobs = await database_1.Storage.getAfterJobs(item.id);
+            const newJobs = await storage_1.jobStorage.getAfterJobs(item.id);
             this.processJobItems(newJobs);
             if (item.deleteAfterRun) {
-                await database_1.Storage.removeJobs(item);
+                await storage_1.jobStorage.removeJobs(item);
             }
             else {
                 item.lastRun = new Date();
@@ -321,7 +321,7 @@ class JobScraperManager {
                     item.nextRun = new Date(item.lastRun.getTime() + item.interval);
                 }
                 item.state = types_1.JobState.WAITING;
-                await database_1.Storage.updateJobs(item);
+                await storage_1.jobStorage.updateJobs(item);
             }
             console.log(`Job ${item.name ? item.name : item.id} finished now, ${new Date()}`);
         };

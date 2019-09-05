@@ -6,7 +6,7 @@ import logger from "../../logger";
 import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "request";
 import {checkTocContent} from "../scraperTools";
-import {Storage} from "../../database/database";
+import {episodeStorage} from "../../database/storages/storage";
 
 const jar = request.jar();
 jar.setCookie(
@@ -84,7 +84,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const chapterId = exec[1];
     const urlString = `https://mangadex.org/api/?id=${chapterId}&server=null&type=chapter`;
     const jsonPromise: Promise<any> = loadJson(urlString);
-    const contentData: EpisodeContentData = await Storage.getEpisodeContent(chapterLink);
+    const contentData: EpisodeContentData = await episodeStorage.getEpisodeContent(chapterLink);
 
     if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
         logger.warn(

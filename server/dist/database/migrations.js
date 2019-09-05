@@ -38,7 +38,7 @@ exports.Migrations = [
             await context.addPrimaryKey("scrape_board", "link", "type");
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_1", "external_uuid", "external_user", "uuid");
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_3", "uuid", "user", "uuid");
-            await context.clearInvalidationTable();
+            await context.parentContext.clearInvalidationTable();
             await ignoreError(() => context.dropPrimaryKey("user_data_invalidation"), [databaseTypes_1.MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
             await context.addUnique("user_data_invalidation", "UNIQUE_NEWS", "news_id", "uuid");
             await context.addUnique("user_data_invalidation", "UNIQUE_MEDIUM", "medium_id", "uuid");

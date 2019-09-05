@@ -7,7 +7,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 const request = tslib_1.__importStar(require("request"));
 const scraperTools_1 = require("../scraperTools");
-const database_1 = require("../../database/database");
+const storage_1 = require("../../database/storages/storage");
 const jar = request.jar();
 jar.setCookie(`mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;`, "https://mangadex.org/", { secure: false });
 function loadJson(urlString) {
@@ -23,7 +23,7 @@ async function contentDownloadAdapter(chapterLink) {
     const chapterId = exec[1];
     const urlString = `https://mangadex.org/api/?id=${chapterId}&server=null&type=chapter`;
     const jsonPromise = loadJson(urlString);
-    const contentData = await database_1.Storage.getEpisodeContent(chapterLink);
+    const contentData = await storage_1.episodeStorage.getEpisodeContent(chapterLink);
     if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
         logger_1.default.warn("incoherent data, did not find any release with given url link, " +
             "which has a title, index and mediumTitle on: " + urlString);

@@ -134,9 +134,6 @@ const poolPromise = promise_mysql_1.default.createPool({
 });
 let errorAtStart = false;
 let running = false;
-/**
- * @type {Promise<Storage>|void}
- */
 let startPromise;
 /**
  * Checks the database for incorrect structure
@@ -148,7 +145,10 @@ function start() {
         try {
             const manager = new schemaManager_1.SchemaManager();
             manager.initTableSchema(databaseSchema_1.databaseSchema);
-            startPromise = inContext((context) => manager.checkTableSchema(context), true).catch((error) => {
+            // @ts-ignore
+            startPromise = inContext(
+            // @ts-ignore
+            (context) => manager.checkTableSchema(context), true).catch((error) => {
                 logger_1.default.error(error);
                 console.log(error);
                 errorAtStart = true;

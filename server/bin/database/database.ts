@@ -171,9 +171,6 @@ let errorAtStart = false;
 let running = false;
 
 
-/**
- * @type {Promise<Storage>|void}
- */
 let startPromise: Promise<void> | null;
 
 /**
@@ -186,7 +183,9 @@ function start(): void {
         try {
             const manager = new SchemaManager();
             manager.initTableSchema(databaseSchema);
+            // @ts-ignore
             startPromise = inContext(
+                // @ts-ignore
                 (context) => manager.checkTableSchema(context),
                 true,
             ).catch((error) => {

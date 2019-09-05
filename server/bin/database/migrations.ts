@@ -1,5 +1,5 @@
 import {Migration, MySqlErrorNo} from "./databaseTypes";
-import {QueryContext} from "./queryContext";
+import {DatabaseContext} from "./contexts/databaseContext";
 
 function ignoreError(func: () => Promise<void>, ignoreErrno: number[]): Promise<void> {
     return func().catch((reason) => {
@@ -13,7 +13,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 0,
         toVersion: 1,
-        async migrate(context: QueryContext): Promise<void> {
+        async migrate(context: DatabaseContext): Promise<void> {
             await ignoreError(async () => {
                     await context.addColumn(
                         "episode",
@@ -80,7 +80,7 @@ export const Migrations: Migration[] = [
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_1", "external_uuid", "external_user", "uuid");
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_3", "uuid", "user", "uuid");
 
-            await context.clearInvalidationTable();
+            await context.parentContext.clearInvalidationTable();
             await ignoreError(() => context.dropPrimaryKey("user_data_invalidation"),
                 [MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]
             );
@@ -97,7 +97,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 1,
         toVersion: 2,
-        async migrate(context: QueryContext): Promise<void> {
+        async migrate(context: DatabaseContext): Promise<void> {
             await ignoreError(() => context.addColumn(
                 "episode_release",
                 "locked BOOLEAN DEFAULT 0"
@@ -109,7 +109,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 2,
         toVersion: 3,
-        async migrate(context: QueryContext): Promise<void> {
+        async migrate(context: DatabaseContext): Promise<void> {
             await ignoreError(() => context.changeColumn(
                 "scrape_board",
                 "last_date",
@@ -121,7 +121,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 3,
         toVersion: 4,
-        async migrate(context: QueryContext): Promise<void> {
+        async migrate(context: DatabaseContext): Promise<void> {
             await context.alterColumn(
                 "episode_release",
                 "url varchar(767) not null",
@@ -147,7 +147,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 4,
         toVersion: 5,
-        async migrate(context: QueryContext): Promise<void> {
+        async migrate(context: DatabaseContext): Promise<void> {
             // empty migration as it adds trigger only
         }
     }

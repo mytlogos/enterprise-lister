@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const database_1 = require("../database/database");
 const listManager_1 = require("./listManager");
 const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promised"));
 const tools_1 = require("../tools");
@@ -17,6 +16,7 @@ const queueManager_1 = require("./queueManager");
 const counter_1 = require("../counter");
 const env_1 = tslib_1.__importDefault(require("../env"));
 const undergroundScraper_1 = require("./direct/undergroundScraper");
+const storage_1 = require("../database/storages/storage");
 // scrape at an interval of 5 min
 const interval = 5 * 60 * 1000;
 // this one is every 10s
@@ -144,24 +144,24 @@ exports.scrapeNews = async (adapter) => {
     };
 };
 async function processMediumNews(title, type, tocLink, update = false, potentialNews) {
-    const likeMedia = await database_1.Storage.getLikeMedium({ title, type });
+    const likeMedia = await storage_1.mediumStorage.getLikeMedium({ title, type });
     if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || !likeMedia.medium.id) {
         if (tocLink) {
-            await database_1.Storage.addMediumInWait({ title, medium: type, link: tocLink });
+            await storage_1.mediumInWaitStorage.addMediumInWait({ title, medium: type, link: tocLink });
         }
         return;
     }
     const mediumId = likeMedia.medium.id;
-    const latestReleases = await database_1.Storage.getLatestReleases(mediumId);
+    const latestReleases = await storage_1.episodeStorage.getLatestReleases(mediumId);
     const latestRelease = tools_1.max(latestReleases, (previous, current) => {
         const maxPreviousRelease = tools_1.max(previous.releases, "releaseDate");
         const maxCurrentRelease = tools_1.max(current.releases, "releaseDate");
         return ((maxPreviousRelease && maxPreviousRelease.releaseDate.getTime()) || 0)
             - ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0);
     });
-    let standardPart = await database_1.Storage.getStandardPart(mediumId);
+    let standardPart = await storage_1.partStorage.getStandardPart(mediumId);
     if (!standardPart) {
-        standardPart = await database_1.Storage.createStandardPart(mediumId);
+        standardPart = await storage_1.partStorage.createStandardPart(mediumId);
     }
     if (!standardPart || !standardPart.id) {
         throw Error(`could not create standard part for mediumId: '${mediumId}'`);
@@ -190,7 +190,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
             return value.episodeIndex;
         });
         if (oldEpisodeIndices.length) {
-            const episodes = await database_1.Storage.getMediumEpisodePerIndex(mediumId, oldEpisodeIndices);
+            const episodes = await storage_1.episodeStorage.getMediumEpisodePerIndex(mediumId, oldEpisodeIndices);
             const promises = episodes.map((value) => {
                 const index = tools_1.combiIndex(value);
                 const release = indexReleaseMap.get(index);
@@ -201,7 +201,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                     return Promise.resolve();
                 }
                 if (!value.id) {
-                    return database_1.Storage.addEpisode({
+                    return storage_1.episodeStorage.addEpisode({
                         id: 0,
                         // @ts-ignore
                         partId: standardPart.id,
@@ -211,12 +211,12 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                     }).then(() => undefined);
                 }
                 release.episodeId = value.id;
-                return database_1.Storage.addRelease(release).then(() => undefined);
+                return storage_1.episodeStorage.addRelease(release).then(() => undefined);
             });
             await Promise.all(promises);
         }
         if (update) {
-            const sourcedReleases = await database_1.Storage.getSourcedReleases(undergroundScraper_1.sourceType, mediumId);
+            const sourcedReleases = await storage_1.episodeStorage.getSourcedReleases(undergroundScraper_1.sourceType, mediumId);
             const toUpdateReleases = oldReleases.map((value) => {
                 return {
                     title: value.episodeTitle,
@@ -235,7 +235,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                 return foundRelease.url !== value.url;
             });
             if (toUpdateReleases.length) {
-                database_1.Storage.updateRelease(toUpdateReleases).catch(logger_1.logError);
+                storage_1.episodeStorage.updateRelease(toUpdateReleases).catch(logger_1.logError);
             }
         }
     }
@@ -261,10 +261,10 @@ async function processMediumNews(title, type, tocLink, update = false, potential
         };
     });
     if (newEpisodes.length) {
-        await database_1.Storage.addEpisode(newEpisodes);
+        await storage_1.episodeStorage.addEpisode(newEpisodes);
     }
     if (tocLink) {
-        await database_1.Storage.addToc(mediumId, tocLink);
+        await storage_1.mediumStorage.addToc(mediumId, tocLink);
     }
 }
 async function searchForTocJob(name, item) {
@@ -285,7 +285,7 @@ async function searchForToc(item, searcher) {
         throw Error("TocSearcher of mediumType: " + item.medium + " has no link");
     }
     const pageInfoKey = "search" + item.mediumId;
-    const result = await database_1.Storage.getPageInfo(link, pageInfoKey);
+    const result = await storage_1.storage.getPageInfo(link, pageInfoKey);
     const dates = result.values.map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getDate()));
     const maxDate = tools_1.maxValue(dates);
     if (maxDate && maxDate.toDateString() === new Date().toDateString()) {
@@ -297,7 +297,7 @@ async function searchForToc(item, searcher) {
         newToc = await searcher(item);
     }
     finally {
-        await database_1.Storage.updatePageInfo(link, pageInfoKey, [new Date().toDateString()], result.values);
+        await storage_1.storage.updatePageInfo(link, pageInfoKey, [new Date().toDateString()], result.values);
     }
     const tocs = [];
     if (newToc) {
@@ -440,8 +440,8 @@ function searchTocJob(id, tocSearch, availableTocs) {
     return searchJobs;
 }
 exports.checkTocsJob = async () => {
-    const mediaTocs = await database_1.Storage.getAllMediaTocs();
-    const tocSearchMedia = await database_1.Storage.getTocSearchMedia();
+    const mediaTocs = await storage_1.mediumStorage.getAllMediaTocs();
+    const tocSearchMedia = await storage_1.mediumStorage.getTocSearchMedia();
     const mediaWithTocs = new Map();
     const mediaWithoutTocs = mediaTocs
         .filter((value) => {
@@ -461,7 +461,7 @@ exports.checkTocsJob = async () => {
     }).flat(2);
     const promises = [...mediaWithTocs.entries()].map(async (value) => {
         const mediumId = value[0];
-        const indices = await database_1.Storage.getChapterIndices(mediumId);
+        const indices = await storage_1.episodeStorage.getChapterIndices(mediumId);
         const maxIndex = tools_1.maxValue(indices);
         if (!maxIndex || indices.length < maxIndex) {
             return searchTocJob(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
@@ -481,8 +481,8 @@ exports.checkTocsJob = async () => {
     return [newJobs1, newJobs2].flat(3).filter((value) => value);
 };
 exports.checkTocs = async () => {
-    const mediaTocs = await database_1.Storage.getAllMediaTocs();
-    const tocSearchMedia = await database_1.Storage.getTocSearchMedia();
+    const mediaTocs = await storage_1.mediumStorage.getAllMediaTocs();
+    const tocSearchMedia = await storage_1.mediumStorage.getTocSearchMedia();
     const mediaWithTocs = new Map();
     const mediaWithoutTocs = mediaTocs
         .filter((value) => {
@@ -502,7 +502,7 @@ exports.checkTocs = async () => {
     }).filter((value) => value);
     const promises = [...mediaWithTocs.entries()].map(async (value) => {
         const mediumId = value[0];
-        const indices = await database_1.Storage.getChapterIndices(mediumId);
+        const indices = await storage_1.episodeStorage.getChapterIndices(mediumId);
         const maxIndex = tools_1.maxValue(indices);
         if (!maxIndex || indices.length < maxIndex) {
             return searchToc(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
@@ -524,7 +524,7 @@ exports.checkTocs = async () => {
 };
 exports.queueTocsJob = async () => {
     // TODO: 02.09.2019 a perfect candidate to use stream on
-    const tocs = await database_1.Storage.getAllTocs();
+    const tocs = await storage_1.mediumStorage.getAllTocs();
     return tocs.map((value) => {
         return {
             runImmediately: true,
@@ -537,7 +537,7 @@ exports.queueTocsJob = async () => {
     });
 };
 exports.queueTocs = async () => {
-    await database_1.Storage.queueNewTocs();
+    await storage_1.storage.queueNewTocs();
 };
 exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
     console.log("scraping one time toc: " + link);
@@ -695,7 +695,7 @@ async function scrape(dependants = scrapeDependants, next = true) {
     const today = new Date();
     const todayString = today.toDateString();
     // every monday scan every available external user, if not scanned on same day
-    const externals = await database_1.Storage.getScrapeExternalUser();
+    const externals = await storage_1.externalUserStorage.getScrapeExternalUser();
     const listFinished = notify("list", externals.map((value) => exports.list(value)));
     allPromises.push(listFinished);
     // save current run for users for this monday, so that it does not scan again today
@@ -735,7 +735,7 @@ let scrapeDependants;
  * @return {Promise<void>}
  */
 async function setup() {
-    const scrapeBoard = await database_1.Storage.getScrapes();
+    const scrapeBoard = await storage_1.storage.getScrapes();
     const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [] };
     scrapeBoard.forEach((value) => {
         if (value.type === types_2.ScrapeType.NEWS) {
@@ -910,7 +910,7 @@ async function downloadEpisodes(episodes) {
             }
             catch (e) {
                 if (e.statusCode && (e.statusCode === 410 || e.statusCode === 404)) {
-                    database_1.Storage.deleteRelease(release).catch(logger_1.logError);
+                    storage_1.episodeStorage.deleteRelease(release).catch(logger_1.logError);
                 }
                 else {
                     logger_1.logError(e);
@@ -922,7 +922,7 @@ async function downloadEpisodes(episodes) {
             episodeContents = episodeContents.filter((value) => {
                 if (value.locked && value.index === tools_1.combiIndex(episode)) {
                     release.locked = true;
-                    database_1.Storage.updateRelease(release).catch(logger_1.logError);
+                    storage_1.episodeStorage.updateRelease(release).catch(logger_1.logError);
                     return false;
                 }
                 return value.content.filter((s) => s).length;
@@ -1111,7 +1111,7 @@ function on(event, callback) {
 }
 exports.on = on;
 async function remapMediaParts() {
-    const mediaIds = await database_1.Storage.getAllMedia();
+    const mediaIds = await storage_1.mediumStorage.getAllMedia();
     await Promise.all(mediaIds.map((mediumId) => remapMediumPart(mediumId)));
 }
 exports.remapMediaParts = remapMediaParts;
@@ -1120,18 +1120,18 @@ async function queueExternalUser() {
 }
 exports.queueExternalUser = queueExternalUser;
 async function remapMediumPart(mediumId) {
-    const parts = await database_1.Storage.getMediumPartIds(mediumId);
-    const standardPartId = await database_1.Storage.getStandardPartId(mediumId);
+    const parts = await storage_1.partStorage.getMediumPartIds(mediumId);
+    const standardPartId = await storage_1.partStorage.getStandardPartId(mediumId);
     // if there is no standard part, we return as there is no part to move from
     if (!standardPartId) {
-        await database_1.Storage.createStandardPart(mediumId);
+        await storage_1.partStorage.createStandardPart(mediumId);
         return;
     }
     const nonStandardPartIds = parts.filter((value) => value !== standardPartId);
-    const overLappingParts = await database_1.Storage.getOverLappingParts(standardPartId, nonStandardPartIds);
+    const overLappingParts = await storage_1.partStorage.getOverLappingParts(standardPartId, nonStandardPartIds);
     const promises = [];
     for (const overLappingPart of overLappingParts) {
-        promises.push(database_1.Storage.moveEpisodeToPart(standardPartId, overLappingPart));
+        promises.push(storage_1.episodeStorage.moveEpisodeToPart(standardPartId, overLappingPart));
     }
     await Promise.all(promises);
     /*const standardPartEpisodeIndices = await Storage.getPartsEpisodeIndices(standardPart.id);

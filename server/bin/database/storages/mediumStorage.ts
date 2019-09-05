@@ -1,0 +1,110 @@
+import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium} from "../../types";
+import {ContextCallback, queryContextProvider} from "./storageTools";
+import {storageInContext} from "./storage";
+import {MediumContext} from "../contexts/mediumContext";
+
+
+function inContext<T>(callback: ContextCallback<T, MediumContext>, transaction = true) {
+    return storageInContext(callback, transaction, (con) => queryContextProvider(con).mediumContext);
+}
+
+export class MediumStorage {
+    /**
+     * Adds a medium to the storage.
+     *
+     * @return {Promise<SimpleMedium>}
+     */
+    public addMedium(medium: SimpleMedium, uuid?: string): Promise<SimpleMedium> {
+        return inContext((context) => context.addMedium(medium, uuid));
+    }
+
+    /**
+     * Gets one or multiple media from the storage.
+     */
+    public getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]> {
+        // @ts-ignore
+        return inContext((context) => context.getMedium(id, uuid));
+    }
+
+    /**
+     * Gets one or multiple media from the storage.
+     */
+    public getAllMedia(): Promise<number[]> {
+        return inContext((context) => context.getAllMedia());
+    }
+
+    public getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
+    public getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;
+    /**
+     * Gets one or multiple media from the storage, which are like the input.
+     */
+    public getLikeMedium(likeMedia: LikeMediumQuery | LikeMediumQuery[]): Promise<LikeMedium | LikeMedium[]> {
+        // @ts-ignore
+        return inContext((context) => context.getLikeMedium(likeMedia));
+    }
+
+    /**
+     * Updates a medium from the storage.
+     */
+    public updateMedium(medium: SimpleMedium): Promise<boolean> {
+        return inContext((context) => context.updateMedium(medium));
+    }
+
+    /**
+     */
+    public addSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
+        return inContext((context) => context.addSynonyms(synonyms));
+    }
+
+    /**
+     */
+    public addToc(mediumId: number, link: string): Promise<void> {
+        return inContext((context) => context.addToc(mediumId, link));
+    }
+
+    /**
+     */
+    public getTocs(mediumId: number): Promise<string[]> {
+        return inContext((context) => context.getToc(mediumId));
+    }
+
+    /**
+     */
+    public getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {
+        return inContext((context) => context.getAllMediaTocs());
+    }
+
+    /**
+     */
+    public getAllTocs(): Promise<Array<{ link: string, id: number }>> {
+        return inContext((context) => context.getAllTocs());
+    }
+
+    public getTocSearchMedia(): Promise<TocSearchMedium[]> {
+        return inContext((context) => context.getTocSearchMedia());
+    }
+
+    public getTocSearchMedium(id: number): Promise<TocSearchMedium> {
+        return inContext((context) => context.getTocSearchMedium(id));
+    }
+
+    /**
+     *
+     */
+    public removeSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
+        return inContext((context) => context.removeSynonyms(synonyms));
+    }
+
+    /**
+     *
+     */
+    public getSynonyms(mediumId: number | number[]): Promise<Synonyms[]> {
+        return inContext((context) => context.getSynonyms(mediumId));
+    }
+
+
+    public getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]> {
+        return inContext((context) => context.getSimpleMedium(id));
+    }
+
+}

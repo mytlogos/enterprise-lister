@@ -2,8 +2,8 @@ import {EpisodeContent, Hook} from "../types";
 import {EpisodeNews, EpisodeRelease, LikeMedium, MultiSingle, News, SimpleEpisode} from "../../types";
 import logger, {logError} from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
-import {Storage} from "../../database/database";
 import {max, MediaType, sanitizeString} from "../../tools";
+import {episodeStorage, mediumStorage, partStorage} from "../../database/storages/storage";
 
 export const sourceType = "qidian_underground";
 
@@ -82,7 +82,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
 // TODO: 25.06.2019 use caching for likeMedium?
 async function processMediumNews(mediumTitle: string, potentialNews: News[]): Promise<void> {
-    const likeMedia: MultiSingle<LikeMedium> = await Storage.getLikeMedium({
+    const likeMedia: MultiSingle<LikeMedium> = await mediumStorage.getLikeMedium({
         title: mediumTitle,
         link: "",
         type: MediaType.TEXT
@@ -92,7 +92,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
         return;
     }
     const mediumId = likeMedia.medium.id;
-    const latestReleases: SimpleEpisode[] = await Storage.getLatestReleases(mediumId);
+    const latestReleases: SimpleEpisode[] = await episodeStorage.getLatestReleases(mediumId);
 
     const latestRelease = max(latestReleases, (previous, current) => {
         const maxPreviousRelease = max(previous.releases, "releaseDate");
@@ -103,10 +103,10 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
     });
 
     const chapIndexReg = /(\d+)\s*$/;
-    let standardPart = await Storage.getStandardPart(mediumId);
+    let standardPart = await partStorage.getStandardPart(mediumId);
 
     if (!standardPart) {
-        standardPart = await Storage.createStandardPart(mediumId);
+        standardPart = await partStorage.createStandardPart(mediumId);
     }
 
     let news: News[];
@@ -129,7 +129,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
             }
         });
 
-        const sourcedReleases = await Storage.getSourcedReleases(sourceType, mediumId);
+        const sourcedReleases = await episodeStorage.getSourcedReleases(sourceType, mediumId);
         const toUpdateReleases = oldReleases.map((value): EpisodeRelease => {
             return {
                 title: value.title,
@@ -148,7 +148,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
             return foundRelease.url !== value.url;
         });
         if (toUpdateReleases.length) {
-            Storage.updateRelease(toUpdateReleases).catch(logError);
+            episodeStorage.updateRelease(toUpdateReleases).catch(logError);
         }
     } else {
         news = potentialNews;
@@ -178,7 +178,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
     });
 
     if (newEpisodes.length) {
-        await Storage.addEpisode(newEpisodes);
+        await episodeStorage.addEpisode(newEpisodes);
     }
 }
 

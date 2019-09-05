@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const database_1 = require("./database/database");
+const storage_1 = require("./database/storages/storage");
 const listManager_1 = require("./externals/listManager");
 const stringify_stream_1 = tslib_1.__importDefault(require("stringify-stream"));
 const logger_1 = tslib_1.__importDefault(require("./logger"));
@@ -9,7 +9,7 @@ const scraperTools_1 = require("./externals/scraperTools");
 const tools_1 = require("./tools");
 const types_1 = require("./types");
 exports.getAllMedia = (req, res) => {
-    sendResult(res, database_1.Storage.getAllMedia());
+    sendResult(res, storage_1.mediumStorage.getAllMedia());
 };
 exports.putConsumeUnusedMedia = (req, res) => {
     const { mediumId, tocsMedia } = req.body;
@@ -17,7 +17,7 @@ exports.putConsumeUnusedMedia = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.consumeMediaInWait(mediumId, tocsMedia));
+    sendResult(res, storage_1.mediumInWaitStorage.consumeMediaInWait(mediumId, tocsMedia));
 };
 exports.postCreateFromUnusedMedia = (req, res) => {
     const { createMedium, tocsMedia, listId } = req.body;
@@ -25,10 +25,10 @@ exports.postCreateFromUnusedMedia = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.createFromMediaInWait(createMedium, tocsMedia, listId));
+    sendResult(res, storage_1.mediumInWaitStorage.createFromMediaInWait(createMedium, tocsMedia, listId));
 };
 exports.getUnusedMedia = (req, res) => {
-    sendResult(res, database_1.Storage.getMediaInWait());
+    sendResult(res, storage_1.mediumInWaitStorage.getMediaInWait());
 };
 exports.readNews = (req, res) => {
     const { uuid, read } = req.body;
@@ -37,7 +37,7 @@ exports.readNews = (req, res) => {
         return;
     }
     const currentlyReadNews = tools_1.stringToNumberList(read);
-    sendResult(res, database_1.Storage.markNewsRead(uuid, currentlyReadNews));
+    sendResult(res, storage_1.newsStorage.markNewsRead(uuid, currentlyReadNews));
 };
 exports.processReadEpisode = (req, res) => {
     const { uuid, result } = req.body;
@@ -45,7 +45,7 @@ exports.processReadEpisode = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.markEpisodeRead(uuid, result));
+    sendResult(res, storage_1.episodeStorage.markEpisodeRead(uuid, result));
 };
 exports.processProgress = (req, res) => {
     const { uuid, progress } = req.body;
@@ -53,7 +53,7 @@ exports.processProgress = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.setProgress(uuid, progress));
+    sendResult(res, storage_1.episodeStorage.setProgress(uuid, progress));
 };
 exports.refreshExternalUser = (req, res) => {
     const externalUuid = extractQueryParam(req, "externalUuid");
@@ -61,8 +61,8 @@ exports.refreshExternalUser = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    const externalUserWithCookies = database_1.Storage.getExternalUserWithCookies(externalUuid);
-    const storePromise = externalUserWithCookies.then((value) => database_1.Storage.addJobs({
+    const externalUserWithCookies = storage_1.externalUserStorage.getExternalUserWithCookies(externalUuid);
+    const storePromise = externalUserWithCookies.then((value) => storage_1.jobStorage.addJobs({
         type: types_1.ScrapeName.oneTimeUser,
         interval: -1,
         deleteAfterRun: true,
@@ -82,21 +82,21 @@ exports.processResult = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.processResult(req.body));
+    sendResult(res, storage_1.storage.processResult(req.body));
 };
 exports.saveResult = (req, res) => {
     if (!req.body) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.saveResult(req.body));
+    sendResult(res, storage_1.storage.saveResult(req.body));
 };
 exports.checkLogin = (req, res) => {
-    sendResult(res, database_1.Storage.loggedInUser(req.ip));
+    sendResult(res, storage_1.userStorage.loggedInUser(req.ip));
 };
 exports.getUser = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
-    sendResult(res, database_1.Storage.getUser(uuid, req.ip));
+    sendResult(res, storage_1.userStorage.getUser(uuid, req.ip));
 };
 exports.login = (req, res) => {
     const { userName, pw } = req.body;
@@ -104,7 +104,7 @@ exports.login = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.loginUser(userName, pw, req.ip));
+    sendResult(res, storage_1.userStorage.loginUser(userName, pw, req.ip));
 };
 exports.register = (req, res) => {
     const { userName, pw } = req.body;
@@ -112,7 +112,7 @@ exports.register = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.register(userName, pw, req.ip));
+    sendResult(res, storage_1.userStorage.register(userName, pw, req.ip));
 };
 exports.logout = (req, res) => {
     const { uuid } = req.body;
@@ -120,7 +120,7 @@ exports.logout = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.logoutUser(uuid, req.ip));
+    sendResult(res, storage_1.userStorage.logoutUser(uuid, req.ip));
 };
 exports.getInvalidated = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
@@ -128,13 +128,13 @@ exports.getInvalidated = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.getInvalidatedStream(uuid));
+    sendResult(res, storage_1.storage.getInvalidatedStream(uuid));
 };
 exports.addBookmarked = (req, res) => {
     const { uuid, bookmarked } = req.body;
     const protocol = /^https?:\/\//;
     if (bookmarked && bookmarked.length && bookmarked.every((url) => tools_1.isString(url) && protocol.test(url))) {
-        const storePromise = database_1.Storage.addJobs(bookmarked.map((link) => {
+        const storePromise = storage_1.jobStorage.addJobs(bookmarked.map((link) => {
             return {
                 name: `${types_1.ScrapeName.oneTimeToc}-${link}`,
                 type: types_1.ScrapeName.oneTimeToc,
@@ -157,7 +157,7 @@ exports.addToc = (req, res) => {
     const { uuid, toc, mediumId } = req.body;
     const protocol = /^https?:\/\//;
     if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-        const storePromise = database_1.Storage.addJobs({
+        const storePromise = storage_1.jobStorage.addJobs({
             name: `${types_1.ScrapeName.oneTimeToc}-${toc}`,
             type: types_1.ScrapeName.oneTimeToc,
             runImmediately: true,
@@ -183,7 +183,7 @@ exports.downloadEpisode = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage
+    sendResult(res, storage_1.episodeStorage
         .getEpisode(episodes, uuid)
         .then((fullEpisodes) => scraperTools_1.downloadEpisodes(fullEpisodes.filter((value) => value))));
 };
@@ -202,7 +202,7 @@ exports.getList = (req, res) => {
         listId = tools_1.stringToNumberList(listId);
     }
     media = tools_1.stringToNumberList(media);
-    sendResult(res, database_1.Storage.getList(listId, media, uuid));
+    sendResult(res, storage_1.internalListStorage.getList(listId, media, uuid));
 };
 exports.postList = (req, res) => {
     const { uuid, list } = req.body;
@@ -210,7 +210,7 @@ exports.postList = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.addList(uuid, list));
+    sendResult(res, storage_1.internalListStorage.addList(uuid, list));
 };
 exports.putList = (req, res) => {
     const { uuid, list } = req.body;
@@ -218,7 +218,8 @@ exports.putList = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.addList(uuid, list));
+    // TODO: 05.09.2019 should this not be update list?
+    sendResult(res, storage_1.internalListStorage.addList(uuid, list));
 };
 exports.deleteList = (req, res) => {
     const { listId, uuid } = req.body;
@@ -226,7 +227,7 @@ exports.deleteList = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.deleteList(listId, uuid));
+    sendResult(res, storage_1.internalListStorage.deleteList(listId, uuid));
 };
 exports.getListMedium = (req, res) => {
     const listId = extractQueryParam(req, "listId");
@@ -237,7 +238,7 @@ exports.getListMedium = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.getList(listId, media, uuid));
+    sendResult(res, storage_1.internalListStorage.getList(listId, media, uuid));
 };
 exports.postListMedium = (req, res) => {
     const { listId, mediumId, uuid } = req.body;
@@ -246,10 +247,10 @@ exports.postListMedium = (req, res) => {
         return;
     }
     // @ts-ignore
-    sendResult(res, database_1.Storage.addItemToList(listId, mediumId, uuid));
+    sendResult(res, storage_1.internalListStorage.addItemToList(listId, mediumId, uuid));
 };
 exports.putListMedium = (req, res) => {
-    const { oldListId, newListId, uuid } = req.body;
+    const { oldListId, newListId } = req.body;
     let { mediumId } = req.body;
     if (Number.isNaN(mediumId)) {
         if (tools_1.isString(mediumId)) {
@@ -267,10 +268,10 @@ exports.putListMedium = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.moveMedium(oldListId, newListId, mediumId, uuid));
+    sendResult(res, storage_1.internalListStorage.moveMedium(oldListId, newListId, mediumId));
 };
 exports.deleteListMedium = (req, res) => {
-    const { listId, uuid } = req.body;
+    const { listId } = req.body;
     let { mediumId } = req.body;
     // if it is a string, it is likely a list of episodeIds was send
     if (tools_1.isString(mediumId)) {
@@ -280,7 +281,7 @@ exports.deleteListMedium = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.removeMedium(listId, mediumId, uuid));
+    sendResult(res, storage_1.internalListStorage.removeMedium(listId, mediumId));
 };
 exports.getPart = (req, res) => {
     const mediumId = extractQueryParam(req, "mediumId");
@@ -294,36 +295,36 @@ exports.getPart = (req, res) => {
         if (!partId) {
             sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         }
-        sendResult(res, database_1.Storage.getParts(partId, uuid));
+        sendResult(res, storage_1.partStorage.getParts(partId, uuid));
     }
     else {
-        sendResult(res, database_1.Storage.getMediumParts(mediumId, uuid));
+        sendResult(res, storage_1.partStorage.getMediumParts(mediumId, uuid));
     }
 };
 exports.postPart = (req, res) => {
-    const { part, mediumId, uuid } = req.body;
+    const { part, mediumId } = req.body;
     if (!part || !mediumId) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
     part.mediumId = mediumId;
-    sendResult(res, database_1.Storage.addPart(part, uuid));
+    sendResult(res, storage_1.partStorage.addPart(part));
 };
 exports.putPart = (req, res) => {
-    const { part, uuid } = req.body;
+    const { part } = req.body;
     if (!part) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.updatePart(part, uuid));
+    sendResult(res, storage_1.partStorage.updatePart(part));
 };
 exports.deletePart = (req, res) => {
-    const { partId, uuid } = req.body;
+    const { partId } = req.body;
     if (!partId) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.deletePart(partId, uuid));
+    sendResult(res, storage_1.partStorage.deletePart(partId));
 };
 exports.getEpisode = (req, res) => {
     let episodeId = extractQueryParam(req, "episodeId");
@@ -336,10 +337,10 @@ exports.getEpisode = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.getEpisode(episodeId, uuid));
+    sendResult(res, storage_1.episodeStorage.getEpisode(episodeId, uuid));
 };
 exports.postEpisode = (req, res) => {
-    const { episode, partId, uuid } = req.body;
+    const { episode, partId } = req.body;
     if (!episode || (Array.isArray(episode) && !episode.length) || !partId) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
@@ -350,7 +351,7 @@ exports.postEpisode = (req, res) => {
     else {
         episode.partId = partId;
     }
-    sendResult(res, database_1.Storage.addEpisode(episode, uuid));
+    sendResult(res, storage_1.episodeStorage.addEpisode(episode));
 };
 exports.putEpisode = (req, res) => {
     const { episode, uuid } = req.body;
@@ -358,7 +359,7 @@ exports.putEpisode = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.updateEpisode(episode, uuid));
+    sendResult(res, episode.updateEpisode(episode, uuid));
 };
 exports.deleteEpisode = (req, res) => {
     const { episodeId, uuid } = req.body;
@@ -366,7 +367,7 @@ exports.deleteEpisode = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.deletePart(episodeId, uuid));
+    sendResult(res, storage_1.episodeStorage.deleteEpisode(episodeId));
 };
 exports.getExternalUser = (req, res) => {
     const externalUuid = extractQueryParam(req, "externalUuid");
@@ -375,7 +376,7 @@ exports.getExternalUser = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.getExternalUser(externalUuid));
+    sendResult(res, storage_1.externalUserStorage.getExternalUser(externalUuid));
 };
 exports.postExternalUser = (req, res) => {
     const { uuid, externalUser } = req.body;
@@ -391,7 +392,7 @@ exports.postExternalUser = (req, res) => {
         }
         delete externalUser.pwd;
         externalUser.cookies = listManager.stringifyCookies();
-        return database_1.Storage.addExternalUser(uuid, externalUser);
+        return storage_1.externalUserStorage.addExternalUser(uuid, externalUser);
     });
 };
 exports.deleteExternalUser = (req, res) => {
@@ -400,7 +401,7 @@ exports.deleteExternalUser = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.deleteExternalUser(externalUuid, uuid));
+    sendResult(res, storage_1.externalUserStorage.deleteExternalUser(externalUuid, uuid));
 };
 exports.putUser = (req, res) => {
     const { uuid, user } = req.body;
@@ -408,11 +409,11 @@ exports.putUser = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.updateUser(uuid, user));
+    sendResult(res, storage_1.userStorage.updateUser(uuid, user));
 };
 exports.deleteUser = (req, res) => {
     const { uuid } = req.body;
-    sendResult(res, database_1.Storage.deleteUser(uuid));
+    sendResult(res, storage_1.userStorage.deleteUser(uuid));
 };
 exports.getProgress = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
@@ -421,7 +422,7 @@ exports.getProgress = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.getProgress(uuid, episodeId));
+    sendResult(res, storage_1.episodeStorage.getProgress(uuid, episodeId));
 };
 exports.postProgress = (req, res) => {
     const { uuid, progress } = req.body;
@@ -435,7 +436,7 @@ exports.postProgress = (req, res) => {
     }
     try {
         const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
-        sendResult(res, database_1.Storage.addProgress(uuid, episodeId, progress, readDate));
+        sendResult(res, storage_1.episodeStorage.addProgress(uuid, episodeId, progress, readDate));
     }
     catch (e) {
         console.log(e);
@@ -450,7 +451,7 @@ exports.deleteProgress = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.removeProgress(uuid, episodeId));
+    sendResult(res, storage_1.episodeStorage.removeProgress(uuid, episodeId));
 };
 exports.getMedium = (req, res) => {
     let mediumId = extractQueryParam(req, "mediumId");
@@ -462,7 +463,7 @@ exports.getMedium = (req, res) => {
     if (!Number.isInteger(mediumId)) {
         mediumId = tools_1.stringToNumberList(mediumId);
     }
-    sendResult(res, database_1.Storage.getMedium(mediumId, uuid));
+    sendResult(res, storage_1.mediumStorage.getMedium(mediumId, uuid));
 };
 exports.postMedium = (req, res) => {
     const { uuid, medium } = req.body;
@@ -470,19 +471,19 @@ exports.postMedium = (req, res) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.addMedium(medium, uuid));
+    sendResult(res, storage_1.mediumStorage.addMedium(medium, uuid));
 };
 exports.putMedium = (req, res) => {
-    const { medium, uuid } = req.body;
+    const { medium } = req.body;
     if (!medium) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, database_1.Storage.updateMedium(medium, uuid));
+    sendResult(res, storage_1.mediumStorage.updateMedium(medium));
 };
 exports.getLists = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
-    sendResult(res, database_1.Storage.getUserLists(uuid));
+    sendResult(res, storage_1.internalListStorage.getUserLists(uuid));
 };
 exports.getNews = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
@@ -492,13 +493,13 @@ exports.getNews = (req, res) => {
     // if newsIds is specified, send only these news
     if (tools_1.isString(newsIds)) {
         newsIds = tools_1.stringToNumberList(newsIds);
-        sendResult(res, database_1.Storage.getNews({ uuid, newsIds }));
+        sendResult(res, storage_1.newsStorage.getNews({ uuid, newsIds }));
     }
     else {
         // else send it based on time
         from = !from || from === "null" ? undefined : new Date(from);
         to = !to || to === "null" ? undefined : new Date(to);
-        sendResult(res, database_1.Storage.getNews({ uuid, since: from, till: to }));
+        sendResult(res, storage_1.newsStorage.getNews({ uuid, since: from, till: to }));
     }
 };
 exports.authenticate = (req, res, next) => {
@@ -511,7 +512,7 @@ exports.authenticate = (req, res, next) => {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    database_1.Storage
+    storage_1.userStorage
         .userLoginStatus(req.ip, uuid, session)
         .then((result) => {
         if (result) {
