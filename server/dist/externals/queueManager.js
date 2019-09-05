@@ -73,7 +73,7 @@ function processRequest(uri, otherRequest, queueToUse = queues, limit) {
 }
 exports.queueRequest = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
-    return queue.push(() => toUseRequest.get(uri, options));
+    return queue.push(() => options && options.method ? toUseRequest(options) : toUseRequest.get(options));
 };
 exports.queueCheerioRequestBuffered = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
@@ -81,7 +81,7 @@ exports.queueCheerioRequestBuffered = (uri, options, otherRequest) => {
         options = { uri };
     }
     options.transform = transformCheerio;
-    return queue.push(() => toUseRequest.get(uri, options));
+    return queue.push(() => toUseRequest(uri, options));
 };
 function streamParse5(resolve, reject, uri, options) {
     // i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly
@@ -106,8 +106,7 @@ function streamParse5(resolve, reject, uri, options) {
     });
     const stream = new transform_1.BufferToStringStream();
     stream.on("data", (chunk) => console.log("first chunk:\n " + chunk.substring(0, 100)));
-    request_1.default
-        .get(uri, options)
+    request_1.default(uri, options)
         .on("response", (resp) => {
         resp.pause();
         if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
@@ -142,8 +141,7 @@ function streamHtmlParser2(resolve, reject, uri, options) {
         decodeEntities: true,
     }).on("error", (err) => reject(err));
     const stream = new transform_1.BufferToStringStream();
-    request_1.default
-        .get(uri, options)
+    request_1.default(uri, options)
         .on("response", (resp) => {
         resp.pause();
         if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {

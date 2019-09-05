@@ -90,7 +90,7 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
 export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): Promise<string> => {
 
     const {toUseRequest, queue} = processRequest(uri, otherRequest);
-    return queue.push(() => toUseRequest.get(uri, options));
+    return queue.push(() => options && options.method ? toUseRequest(options) : toUseRequest.get(options));
 };
 
 export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (uri, options, otherRequest):
@@ -102,7 +102,7 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (uri, op
         options = {uri};
     }
     options.transform = transformCheerio;
-    return queue.push(() => toUseRequest.get(uri, options));
+    return queue.push(() => toUseRequest(uri, options));
 };
 
 export type QueueRequest<T> = (uri: string, options?: Options, otherRequest?: Request) => Promise<T>;
@@ -131,8 +131,7 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
     });
     const stream = new BufferToStringStream();
     stream.on("data", (chunk: string) => console.log("first chunk:\n " + chunk.substring(0, 100)));
-    requestNative
-        .get(uri, options)
+    requestNative(uri, options)
         .on("response", (resp) => {
             resp.pause();
 
@@ -177,8 +176,7 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
         }).on("error", (err) => reject(err));
     const stream = new BufferToStringStream();
 
-    requestNative
-        .get(uri, options)
+    requestNative(uri, options)
         .on("response", (resp) => {
             resp.pause();
 
