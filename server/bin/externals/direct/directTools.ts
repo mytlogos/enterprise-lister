@@ -33,8 +33,8 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
     return [episodeContent];
 }
 
-export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
-                                searchLink: (parameter: string) => string, linkSelector: string) {
+export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
+                                       searchLink: (parameter: string) => string, linkSelector: string) {
     console.log(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
@@ -71,6 +71,80 @@ export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper,
         }
 
         if (tocLink) {
+            break;
+        }
+    }
+    if (tocLink) {
+        const tocs = await tocScraper(tocLink);
+
+        if (tocs && tocs.length) {
+            return tocs[0];
+        } else {
+            console.log("a possible toc link could not be scraped: " + tocLink);
+        }
+    } else {
+        console.log(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+    }
+    return;
+}
+
+export interface SearchResult {
+    value?: string;
+    done: boolean;
+}
+
+function searchForWords(
+    linkSelector: string,
+    medium: TocSearchMedium,
+    uri: string,
+    searchLink: (parameter: string) => string
+): (searchString: string) => Promise<SearchResult> {
+    return async (word: string): Promise<SearchResult> => {
+        const $ = await queueCheerioRequest(searchLink(word));
+
+        const links = $(linkSelector);
+
+        if (!links.length) {
+            return {done: true};
+        }
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+
+            const text = sanitizeString(linkElement.text());
+
+            if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
+                const tocLink = linkElement.attr("href");
+                return {value: url.resolve(uri, tocLink), done: true};
+            }
+        }
+        return {done: false};
+    };
+}
+
+export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
+                                searchLink: (searchString: string) => Promise<SearchResult>) {
+    console.log(`searching for ${medium.title} on ${uri}`);
+    const words = medium.title.split(/\s+/).filter((value) => value);
+    let tocLink = "";
+    let searchString = "";
+
+    for (let word of words) {
+        word = encodeURIComponent(word);
+
+        if (!word) {
+            continue;
+        }
+        searchString = searchString ? searchString + "+" + word : word;
+
+        if (searchString.length < 4) {
+            continue;
+        }
+
+        const result = await searchLink(searchString);
+        if (result.value) {
+            tocLink = url.resolve(uri, result.value);
+        }
+        if (result.done) {
             break;
         }
     }

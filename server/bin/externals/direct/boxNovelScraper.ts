@@ -4,7 +4,7 @@ import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
 import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent, searchToc} from "./directTools";
+import {getTextContent, SearchResult, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 
 interface NovelSearchResponse {
@@ -22,42 +22,40 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
         medium,
         tocAdapter,
         "https://boxnovel.com/",
-        (parameter) => `https://boxnovel.com/?s=${parameter}&post_type=wp-manga`,
-        ".post-title a"
+        (searchString) => searchAjax(searchString, medium)
     );
 }
 
-async function searchAjax(searchWords: string, medium: TocSearchMedium) {
+export async function searchAjax(searchWords: string, medium: TocSearchMedium): Promise<SearchResult> {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response: string;
-    // TODO: 19.08.2019 this may work, forgot to set http method before
-    // TODO: 26.08.2019 this does not work for any reason
     try {
-        const body = "action=wp-manga-search-manga&title=" + searchWords;
         response = await queueRequest(urlString, {
             url: urlString,
             headers: {
-                "Content-Length": body.length,
-                "Accept": "*/*",
                 "Content-Type": "application/x-www-form-urlencoded"
             },
             method: "POST",
-            body
+            body: "action=wp-manga-search-manga&title=" + searchWords
         });
     } catch (e) {
         console.log(e);
-        return;
+        return {done: true};
     }
     const parsed: NovelSearchResponse = JSON.parse(response);
 
     if (parsed.success && parsed.data && parsed.data.length) {
-        const foundItem = parsed.data.find((value) =>
-            equalsIgnore(value.title, medium.title)
-            || medium.synonyms.some((s) => equalsIgnore(value.title, s))
-        );
-        if (foundItem) {
-            return foundItem.url;
+        if (!parsed.data.length) {
+            return {done: true};
         }
+        for (const datum of parsed.data) {
+            if (equalsIgnore(datum.title, medium.title) || medium.synonyms.some((s) => equalsIgnore(datum.title, s))) {
+                return {value: datum.url, done: true};
+            }
+        }
+        return {done: false};
+    } else {
+        return {done: true};
     }
 }
 

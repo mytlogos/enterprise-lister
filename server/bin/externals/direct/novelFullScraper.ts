@@ -4,11 +4,11 @@ import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent, searchToc} from "./directTools";
+import {getTextContent, searchTocCheerio} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
-    return searchToc(
+    return searchTocCheerio(
         medium,
         tocAdapter,
         "https://novelfull.com/",

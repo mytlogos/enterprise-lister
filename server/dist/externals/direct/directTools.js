@@ -31,7 +31,7 @@ function getTextContent(novelTitle, episodeTitle, urlString, content) {
     return [episodeContent];
 }
 exports.getTextContent = getTextContent;
-async function searchToc(medium, tocScraper, uri, searchLink, linkSelector) {
+async function searchTocCheerio(medium, tocScraper, uri, searchLink, linkSelector) {
     console.log(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
@@ -60,6 +60,61 @@ async function searchToc(medium, tocScraper, uri, searchLink, linkSelector) {
             }
         }
         if (tocLink) {
+            break;
+        }
+    }
+    if (tocLink) {
+        const tocs = await tocScraper(tocLink);
+        if (tocs && tocs.length) {
+            return tocs[0];
+        }
+        else {
+            console.log("a possible toc link could not be scraped: " + tocLink);
+        }
+    }
+    else {
+        console.log(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+    }
+    return;
+}
+exports.searchTocCheerio = searchTocCheerio;
+function searchForWords(linkSelector, medium, uri, searchLink) {
+    return async (word) => {
+        const $ = await queueManager_1.queueCheerioRequest(searchLink(word));
+        const links = $(linkSelector);
+        if (!links.length) {
+            return { done: true };
+        }
+        for (let i = 0; i < links.length; i++) {
+            const linkElement = links.eq(i);
+            const text = tools_1.sanitizeString(linkElement.text());
+            if (tools_1.equalsIgnore(text, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
+                const tocLink = linkElement.attr("href");
+                return { value: url.resolve(uri, tocLink), done: true };
+            }
+        }
+        return { done: false };
+    };
+}
+async function searchToc(medium, tocScraper, uri, searchLink) {
+    console.log(`searching for ${medium.title} on ${uri}`);
+    const words = medium.title.split(/\s+/).filter((value) => value);
+    let tocLink = "";
+    let searchString = "";
+    for (let word of words) {
+        word = encodeURIComponent(word);
+        if (!word) {
+            continue;
+        }
+        searchString = searchString ? searchString + "+" + word : word;
+        if (searchString.length < 4) {
+            continue;
+        }
+        const result = await searchLink(searchString);
+        if (result.value) {
+            tocLink = url.resolve(uri, result.value);
+        }
+        if (result.done) {
             break;
         }
     }

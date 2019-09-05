@@ -244,9 +244,9 @@ async function scrapeToc(urlString) {
     return [toc];
 }
 async function tocSearchAdapter(search) {
-    return directTools_1.searchToc(search, scrapeToc, "http://mangahasu.se/", (parameter) => "http://mangahasu.se/advanced-search.html?keyword=" + parameter, "a.name-manga");
+    return directTools_1.searchToc(search, scrapeToc, "https://boxnovel.com/", (searchString) => scrapeSearch(searchString, search));
 }
-async function scrapeSearch(searchWords) {
+async function scrapeSearch(searchWords, medium) {
     const urlString = "http://mangahasu.se/search/autosearch";
     const body = "key=" + searchWords;
     // TODO: 26.08.2019 this does not work for any reason
@@ -259,7 +259,19 @@ async function scrapeSearch(searchWords) {
         method: "POST",
         body
     });
-    return $("a.a-item");
+    const links = $("a.a-item");
+    if (!links.length) {
+        return { done: true };
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+        const text = tools_1.sanitizeString(linkElement.text());
+        if (tools_1.equalsIgnore(text, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
+            const tocLink = linkElement.attr("href");
+            return { value: tocLink, done: true };
+        }
+    }
+    return { done: false };
 }
 scrapeNews.link = "http://mangahasu.se/";
 tocSearchAdapter.link = "http://mangahasu.se/";

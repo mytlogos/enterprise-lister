@@ -8,39 +8,42 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
-    return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (parameter) => `https://boxnovel.com/?s=${parameter}&post_type=wp-manga`, ".post-title a");
+    return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (searchString) => searchAjax(searchString, medium));
 }
 async function searchAjax(searchWords, medium) {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response;
-    // TODO: 19.08.2019 this may work, forgot to set http method before
-    // TODO: 26.08.2019 this does not work for any reason
     try {
-        const body = "action=wp-manga-search-manga&title=" + searchWords;
         response = await queueManager_1.queueRequest(urlString, {
             url: urlString,
             headers: {
-                "Content-Length": body.length,
-                "Accept": "*/*",
                 "Content-Type": "application/x-www-form-urlencoded"
             },
             method: "POST",
-            body
+            body: "action=wp-manga-search-manga&title=" + searchWords
         });
     }
     catch (e) {
         console.log(e);
-        return;
+        return { done: true };
     }
     const parsed = JSON.parse(response);
     if (parsed.success && parsed.data && parsed.data.length) {
-        const foundItem = parsed.data.find((value) => tools_1.equalsIgnore(value.title, medium.title)
-            || medium.synonyms.some((s) => tools_1.equalsIgnore(value.title, s)));
-        if (foundItem) {
-            return foundItem.url;
+        if (!parsed.data.length) {
+            return { done: true };
         }
+        for (const datum of parsed.data) {
+            if (tools_1.equalsIgnore(datum.title, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(datum.title, s))) {
+                return { value: datum.url, done: true };
+            }
+        }
+        return { done: false };
+    }
+    else {
+        return { done: true };
     }
 }
+exports.searchAjax = searchAjax;
 async function contentDownloadAdapter(urlString) {
     if (!urlString.match(/https:\/\/boxnovel\.com\/novel\/.+\/chapter-.+/)) {
         return [];

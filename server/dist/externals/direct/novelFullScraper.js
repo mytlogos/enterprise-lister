@@ -8,7 +8,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
-    return directTools_1.searchToc(medium, tocAdapter, "https://novelfull.com/", (parameter) => "http://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
+    return directTools_1.searchTocCheerio(medium, tocAdapter, "https://novelfull.com/", (parameter) => "http://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
 }
 async function contentDownloadAdapter(urlString) {
     if (!urlString.match(/^http:\/\/novelfull\.com\/.+\/.+\d+.+/)) {

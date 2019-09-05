@@ -3,9 +3,9 @@ import {EpisodeNews, News, TocSearchMedium} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {extractIndices, MediaType, sanitizeString} from "../../tools";
+import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
-import {searchToc} from "./directTools";
+import {SearchResult, searchToc} from "./directTools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
@@ -291,13 +291,12 @@ async function tocSearchAdapter(search: TocSearchMedium): Promise<Toc | undefine
     return searchToc(
         search,
         scrapeToc,
-        "http://mangahasu.se/",
-        (parameter) => "http://mangahasu.se/advanced-search.html?keyword=" + parameter,
-        "a.name-manga"
+        "https://boxnovel.com/",
+        (searchString) => scrapeSearch(searchString, search)
     );
 }
 
-async function scrapeSearch(searchWords: string) {
+async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promise<SearchResult> {
     const urlString = "http://mangahasu.se/search/autosearch";
 
     const body = "key=" + searchWords;
@@ -312,7 +311,23 @@ async function scrapeSearch(searchWords: string) {
         body
     });
 
-    return $("a.a-item");
+    const links = $("a.a-item");
+
+    if (!links.length) {
+        return {done: true};
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+
+        const text = sanitizeString(linkElement.text());
+
+        if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
+            const tocLink = linkElement.attr("href");
+            return {value: tocLink, done: true};
+        }
+    }
+
+    return {done: false};
 }
 
 scrapeNews.link = "http://mangahasu.se/";
