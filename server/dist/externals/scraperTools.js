@@ -6,105 +6,21 @@ const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promis
 const tools_1 = require("../tools");
 const types_1 = require("../types");
 const logger_1 = tslib_1.__importStar(require("../logger"));
-const types_2 = require("./types");
 const directScraper = tslib_1.__importStar(require("./direct/directScraper"));
 const url = tslib_1.__importStar(require("url"));
 const cache_1 = require("../cache");
 const validate = tslib_1.__importStar(require("validate.js"));
 const request_1 = tslib_1.__importDefault(require("request"));
 const queueManager_1 = require("./queueManager");
-const counter_1 = require("../counter");
 const env_1 = tslib_1.__importDefault(require("../env"));
 const undergroundScraper_1 = require("./direct/undergroundScraper");
 const storage_1 = require("../database/storages/storage");
-// scrape at an interval of 5 min
-const interval = 5 * 60 * 1000;
-// this one is every 10s
-// let interval = 10000;
-let paused = true;
 const redirects = [];
 const tocScraper = new Map();
 const episodeDownloader = new Map();
 const tocDiscovery = new Map();
 const newsAdapter = [];
 const nameHookMap = new Map();
-function activity(func) {
-    return (...args) => {
-        if (!env_1.default.measure) {
-            return func(args);
-        }
-        incActivity();
-        const result = func(...args);
-        // @ts-ignore
-        if (result && result.then) {
-            // @ts-ignore
-            result.then(() => decActivity());
-        }
-        else {
-            decActivity();
-        }
-        return result;
-    };
-}
-const counter = new counter_1.Counter();
-function incActivity() {
-    console.log("Active:" + counter.count("scrape"));
-}
-function decActivity() {
-    console.log("Active:" + counter.countDown("scrape"));
-}
-/**
- * Notifies event listener of events for each fulfilled
- * promise and calls the error listener for each rejected promise
- * for the corresponding error listener of the event.
- *
- * @param {string} key - event key
- * @param {Array<Promise<*>>} promises - promises to notify the listener if they resolve/reject
- * @return {Promise<void>} resolves if all promises are rejected or resolved
- */
-function notify(key, promises) {
-    return new Promise((resolve) => {
-        let fulfilled = 0;
-        if (!promises.length) {
-            resolve();
-            return;
-        }
-        promises.forEach((promise) => {
-            promise
-                .then((value) => {
-                if (env_1.default.stopScrapeEvents) {
-                    return;
-                }
-                const callbacks = tools_1.getElseSet(eventMap, key, () => []);
-                callbacks.forEach((cb) => cb(value));
-            })
-                .catch((error) => {
-                if (env_1.default.stopScrapeEvents) {
-                    return;
-                }
-                const callbacks = tools_1.getElseSet(eventMap, key + ":error", () => []);
-                callbacks.forEach((cb) => cb(error));
-            })
-                .finally(() => {
-                fulfilled++;
-                if (fulfilled === promises.length) {
-                    resolve();
-                }
-            });
-        });
-        const notifyTimeOut = 60000;
-        setTimeout(() => {
-            if (fulfilled < promises.length) {
-                logger_1.default.warn(`Key: '${key}' is taking too long (more than  ${notifyTimeOut}ms)`);
-                resolve();
-            }
-        }, notifyTimeOut);
-    });
-}
-/**
- * @type {string}
- */
-let lastListScrape;
 exports.scrapeNewsJob = async (name) => {
     const hook = nameHookMap.get(name);
     if (!hook) {
@@ -307,84 +223,6 @@ async function searchForToc(item, searcher) {
     return { tocs };
 }
 exports.searchForToc = searchForToc;
-function searchToc(id, tocSearch, availableTocs) {
-    const consumed = [];
-    const scraperJobs = [];
-    if (availableTocs) {
-        for (const availableToc of availableTocs) {
-            for (const entry of tocScraper.entries()) {
-                const [reg, scraper] = entry;
-                if (!consumed.includes(reg) && reg.test(availableToc)) {
-                    /*scraperJobs.push({
-                        type: "onetime_emittable",
-                        key: "toc",
-                        item: availableToc,
-                        cb: async (item) => {
-                            console.log("scraping one time: " + item);
-                            const tocs = await scraper(item);
-                            if (tocs) {
-                                tocs.forEach((value) => value.mediumId = id);
-                            }
-                            return {tocs};
-                        }
-                    } as OneTimeEmittableJob);*/
-                    consumed.push(reg);
-                    break;
-                }
-            }
-        }
-    }
-    const searchJobs = [];
-    if (tocSearch) {
-        for (const entry of tocDiscovery.entries()) {
-            const [reg, searcher] = entry;
-            let search = false;
-            if (tocSearch.hosts) {
-                for (const link of tocSearch.hosts) {
-                    if (!consumed.includes(reg) && reg.test(link)) {
-                        search = true;
-                        consumed.push(reg);
-                        break;
-                    }
-                }
-            }
-            if (!search && (!tools_1.hasMediaType(searcher.medium, tocSearch.medium) || !searcher.blindSearch)) {
-                continue;
-            }
-            searchJobs.push({
-                type: "onetime_emittable",
-                key: "toc",
-                item: tocSearch,
-                cb: (item) => searchForToc(item, searcher)
-            });
-        }
-    }
-    if (!searchJobs.length && !scraperJobs.length) {
-        console.log("did not find anything for: " + id, tocSearch);
-        return undefined;
-    }
-    for (let i = 0; i < searchJobs.length; i++) {
-        const job = searchJobs[i];
-        if (i === 0) {
-            continue;
-        }
-        const previousJob = searchJobs[i - 1];
-        previousJob.onDone = () => job;
-    }
-    for (let i = 0; i < scraperJobs.length; i++) {
-        const job = scraperJobs[i];
-        if (i === 0) {
-            const lastSearchJob = searchJobs[searchJobs.length - 1];
-            if (lastSearchJob) {
-                lastSearchJob.onDone = () => lastSearchJob;
-            }
-            continue;
-        }
-        const previousJob = scraperJobs[i - 1];
-        previousJob.onDone = () => job;
-    }
-    return searchJobs[0];
-}
 function searchTocJob(id, tocSearch, availableTocs) {
     const consumed = [];
     if (availableTocs) {
@@ -480,48 +318,6 @@ exports.checkTocsJob = async () => {
     const newJobs2 = await Promise.all(promises);
     return [newJobs1, newJobs2].flat(3).filter((value) => value);
 };
-exports.checkTocs = async () => {
-    const mediaTocs = await storage_1.mediumStorage.getAllMediaTocs();
-    const tocSearchMedia = await storage_1.mediumStorage.getTocSearchMedia();
-    const mediaWithTocs = new Map();
-    const mediaWithoutTocs = mediaTocs
-        .filter((value) => {
-        if (value.link) {
-            let links = mediaWithTocs.get(value.id);
-            if (!links) {
-                mediaWithTocs.set(value.id, links = []);
-            }
-            links.push(value.link);
-            return false;
-        }
-        return true;
-    })
-        .map((value) => value.id);
-    const newScraperJobs1 = mediaWithoutTocs.map((id) => {
-        return searchToc(id, tocSearchMedia.find((value) => value.mediumId === id));
-    }).filter((value) => value);
-    const promises = [...mediaWithTocs.entries()].map(async (value) => {
-        const mediumId = value[0];
-        const indices = await storage_1.episodeStorage.getChapterIndices(mediumId);
-        const maxIndex = tools_1.maxValue(indices);
-        if (!maxIndex || indices.length < maxIndex) {
-            return searchToc(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
-        }
-        let missingChapters;
-        for (let i = 1; i < maxIndex; i++) {
-            if (!indices.includes(i)) {
-                missingChapters = true;
-                break;
-            }
-        }
-        if (missingChapters) {
-            return searchToc(mediumId, tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId), value[1]);
-        }
-    });
-    const newScraperJobs2 = await Promise.all(promises);
-    const jobs = [newScraperJobs1, newScraperJobs2].flat(3);
-    return jobs.filter((value) => value);
-};
 exports.queueTocsJob = async () => {
     // TODO: 02.09.2019 a perfect candidate to use stream on
     const tocs = await storage_1.mediumStorage.getAllTocs();
@@ -571,12 +367,12 @@ exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
     console.log("toc scraped: " + link);
     return { tocs: allTocs, uuid };
 };
-exports.news = async (scrapeItem) => {
+exports.news = async (link) => {
     return {
-        link: scrapeItem.link,
+        link,
         result: [],
     };
-    // todo implement news scraping (from homepage, updates pages etc. which require page analyzing, NOT feed)
+    // todo implement news scraping (from home, updates pages etc. which require page analyzing, NOT feed or adapter)
 };
 exports.toc = async (value) => {
     const result = await exports.oneTimeToc(value);
@@ -661,56 +457,6 @@ function checkTocContent(content, allowMinusOne = false) {
     }
 }
 exports.checkTocContent = checkTocContent;
-/**
- * Scrape everything for one cycle, wait for a specified interval and scrape again.
- * Output is send per event listener.
- */
-async function scrape(dependants = scrapeDependants, next = true) {
-    if (paused) {
-        return;
-    }
-    const startTime = Date.now();
-    const tocFinished = notify("toc", dependants.tocs.map((value) => exports.toc(value)));
-    const newsFinished = notify("news", dependants.news.map((value) => exports.news(value)));
-    const feedFinished = notify("feed", dependants.feeds.map((value) => exports.feed(value)));
-    const newsAdapterFinished = notify("news", newsAdapter.map((adapter) => exports.scrapeNews(adapter)));
-    const oneTimeTocFinished = notify("toc", dependants.oneTimeTocs.map((value) => exports.oneTimeToc(value)))
-        .then(() => {
-        dependants.oneTimeTocs.length = 0;
-    });
-    const newUserFinished = notify("list", dependants.oneTimeUser.map((value) => exports.list(value)))
-        .then(() => {
-        dependants.oneTimeUser.length = 0;
-    });
-    const checkTocsFinished = exports.checkTocs().then(() => undefined);
-    const allPromises = [
-        tocFinished,
-        newsFinished,
-        newsAdapterFinished,
-        feedFinished,
-        newUserFinished,
-        oneTimeTocFinished,
-        checkTocsFinished,
-    ];
-    const today = new Date();
-    const todayString = today.toDateString();
-    // every monday scan every available external user, if not scanned on same day
-    const externals = await storage_1.externalUserStorage.getScrapeExternalUser();
-    const listFinished = notify("list", externals.map((value) => exports.list(value)));
-    allPromises.push(listFinished);
-    // save current run for users for this monday, so that it does not scan again today
-    lastListScrape = todayString;
-    // start next scrape cycle after all scrape parts are finished, regardless of errors or not
-    await Promise.all(allPromises);
-    const duration = Date.now() - startTime;
-    logger_1.default.info(`Scrape Cycle took ${duration} ms`);
-    if (next) {
-        setTimeout(() => scrape().catch((error) => {
-            console.log(error);
-            logger_1.default.error(error);
-        }), interval);
-    }
-}
 // TODO: 21.06.2019 save cache in database?
 const cache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
 const errorCache = new cache_1.Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
@@ -721,45 +467,24 @@ var ScrapeEvent;
     ScrapeEvent["NEWS"] = "news";
     ScrapeEvent["LIST"] = "list";
 })(ScrapeEvent = exports.ScrapeEvent || (exports.ScrapeEvent = {}));
-var ScrapeErrorEvent;
-(function (ScrapeErrorEvent) {
-    ScrapeErrorEvent["TOC"] = "toc:error";
-    ScrapeErrorEvent["FEED"] = "feed:error";
-    ScrapeErrorEvent["NEWS"] = "news:error";
-    ScrapeErrorEvent["LIST"] = "list:error";
-})(ScrapeErrorEvent = exports.ScrapeErrorEvent || (exports.ScrapeErrorEvent = {}));
-const eventMap = new Map();
-let scrapeDependants;
-/**
- *
- * @return {Promise<void>}
- */
-async function setup() {
-    const scrapeBoard = await storage_1.storage.getScrapes();
-    const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [] };
-    scrapeBoard.forEach((value) => {
-        if (value.type === types_2.ScrapeType.NEWS) {
-            dependants.news.push(value);
-        }
-        else if (value.type === types_2.ScrapeType.FEED) {
-            dependants.feeds.push(value.link);
-        }
-        else if (value.type === types_2.ScrapeType.TOC) {
-            dependants.tocs.push({ mediumId: value.mediumId, url: value.link, uuid: value.userId });
-        }
-    });
-    scrapeDependants = dependants;
-}
-exports.setup = setup;
 class ScraperHelper {
     constructor() {
-        this.redirects = [];
-        this.tocScraper = new Map();
-        this.episodeDownloader = new Map();
-        this.tocDiscovery = new Map();
-        this.newsAdapter = [];
         this.eventMap = new Map();
-        this.nameHookMap = new Map();
+    }
+    get redirects() {
+        return redirects;
+    }
+    get tocScraper() {
+        return tocScraper;
+    }
+    get episodeDownloader() {
+        return episodeDownloader;
+    }
+    get tocDiscovery() {
+        return tocDiscovery;
+    }
+    get newsAdapter() {
+        return newsAdapter;
     }
     on(event, callback) {
         const callbacks = tools_1.getElseSet(this.eventMap, event, () => []);
@@ -778,7 +503,7 @@ class ScraperHelper {
         this.registerHooks(directScraper.getHooks());
     }
     getHook(name) {
-        const hook = this.nameHookMap.get(name);
+        const hook = nameHookMap.get(name);
         if (!hook) {
             throw Error(`there is no hook with name: '${name}'`);
         }
@@ -790,10 +515,9 @@ class ScraperHelper {
             if (!value.name) {
                 throw Error("hook without name!");
             }
-            if (this.nameHookMap.has(value.name)) {
+            if (nameHookMap.has(value.name)) {
                 throw Error(`encountered hook with name '${value.name}' twice`);
             }
-            this.nameHookMap.set(value.name, value);
             nameHookMap.set(value.name, value);
             if (value.redirectReg) {
                 redirects.push(value.redirectReg);
@@ -803,61 +527,29 @@ class ScraperHelper {
             if (value.newsAdapter) {
                 value.newsAdapter.hookName = value.name;
                 newsAdapter.push(value.newsAdapter);
-                this.newsAdapter.push(value.newsAdapter);
             }
             if (value.domainReg) {
                 if (value.tocAdapter) {
                     value.tocAdapter.hookName = value.name;
                     tocScraper.set(value.domainReg, value.tocAdapter);
-                    this.tocScraper.set(value.domainReg, value.tocAdapter);
                 }
                 if (value.contentDownloadAdapter) {
                     value.contentDownloadAdapter.hookName = value.name;
                     episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
-                    this.episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
                 }
                 if (value.tocSearchAdapter) {
                     value.tocSearchAdapter.hookName = value.name;
                     tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
-                    this.tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
                 }
             }
             if (value.tocPattern && value.tocSearchAdapter) {
                 value.tocSearchAdapter.hookName = value.name;
                 tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
-                this.tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
             }
         });
     }
 }
 exports.ScraperHelper = ScraperHelper;
-function addDependant(dependant) {
-    const dependants = { feeds: [], tocs: [], oneTimeUser: [], oneTimeTocs: [], news: [], media: [] };
-    // @ts-ignore
-    tools_1.addMultiSingle(dependants.oneTimeUser, dependant.oneTimeUser);
-    // @ts-ignore
-    tools_1.addMultiSingle(dependants.oneTimeTocs, dependant.oneTimeToc);
-    // @ts-ignore
-    tools_1.addMultiSingle(dependants.feeds, dependant.feed);
-    tools_1.addMultiSingle(dependants.news, dependant.news);
-    tools_1.addMultiSingle(dependants.tocs, dependant.toc);
-    // kick of a cycle and if no error occurs: add it to permanent cycle
-    tools_1.delay(100)
-        .then(() => scrape(dependants, false))
-        .then(() => {
-        // @ts-ignore
-        // addMultiSingle(scrapeDependants.oneTimeUser, dependant.oneTimeUser);
-        // @ts-ignore
-        tools_1.addMultiSingle(scrapeDependants.feeds, dependant.feed);
-        tools_1.addMultiSingle(scrapeDependants.news, dependant.news);
-        tools_1.addMultiSingle(scrapeDependants.tocs, dependant.toc);
-    })
-        .catch((error) => {
-        console.log(error);
-        logger_1.default.error(error);
-    });
-}
-exports.addDependant = addDependant;
 let hookRegistered = false;
 async function downloadEpisodes(episodes) {
     if (!episodeDownloader.size && !hookRegistered) {
@@ -1045,19 +737,6 @@ function checkLink(link, linkKey) {
         });
     });
 }
-/**
- *
- * @param {Dependant} dependant
- */
-function remove(dependant) {
-    // @ts-ignore
-    tools_1.removeMultiSingle(scrapeDependants.oneTimeUser, dependant.oneTimeUser);
-    // @ts-ignore
-    tools_1.removeMultiSingle(scrapeDependants.feeds, dependant.feed);
-    tools_1.removeMultiSingle(scrapeDependants.news, dependant.news);
-    tools_1.removeMultiSingle(scrapeDependants.tocs, dependant.toc);
-}
-exports.remove = remove;
 function registerHooks(hook) {
     // @ts-ignore
     tools_1.multiSingle(hook, (value) => {
@@ -1080,36 +759,6 @@ function registerHooks(hook) {
         }
     });
 }
-exports.registerHooks = registerHooks;
-/**
- *
- */
-function pause() {
-    paused = true;
-}
-exports.pause = pause;
-function initHooks() {
-    registerHooks(listManager_1.getListManagerHooks());
-    registerHooks(directScraper.getHooks());
-}
-exports.initHooks = initHooks;
-/**
- *
- */
-function start() {
-    paused = false;
-    initHooks();
-    scrape().catch((error) => {
-        console.log(error);
-        logger_1.default.error(error);
-    });
-}
-exports.start = start;
-function on(event, callback) {
-    const callbacks = tools_1.getElseSet(eventMap, event, () => []);
-    callbacks.push(callback);
-}
-exports.on = on;
 async function remapMediaParts() {
     const mediaIds = await storage_1.mediumStorage.getAllMedia();
     await Promise.all(mediaIds.map((mediumId) => remapMediumPart(mediumId)));
@@ -1134,61 +783,6 @@ async function remapMediumPart(mediumId) {
         promises.push(storage_1.episodeStorage.moveEpisodeToPart(standardPartId, overLappingPart));
     }
     await Promise.all(promises);
-    /*const standardPartEpisodeIndices = await Storage.getPartsEpisodeIndices(standardPart.id);
-
-    const standardPartEpisodes = standardPartEpisodeIndices[0].episodes;
-
-    if (!standardPartEpisodes.length) {
-        return;
-    }
-    const partEpisodeIndices = await Storage.getPartsEpisodeIndices(nonStandardPartIds);
-    const partEpisodesIndicesMap = new Map<number, number[]>();
-    partEpisodeIndices.forEach((value) => {
-        partEpisodesIndicesMap.set(value.partId, value.episodes);
-    });
-
-    if (!standardPartEpisodes) {
-        logger.warn("could not find standardPartEpisodes even though it has a standard part");
-        return;
-    }
-    if (!standardPartEpisodes.length) {
-        return;
-    }
-    const episodePartMap = new Map<number, number>();
-
-    for (const episodeIndex of standardPartEpisodes) {
-        for (const part of parts) {
-            // skip standard parts here
-            if (part.totalIndex === -1) {
-                continue;
-            }
-            const episodeIndices = partEpisodesIndicesMap.get(part.id);
-
-            if (!episodeIndices) {
-                continue;
-            }
-            if (episodeIndices.find((value) => value === episodeIndex)) {
-                const partId = episodePartMap.get(episodeIndex);
-
-                if (partId != null && partId !== part.id) {
-                    throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.id}'`);
-                }
-                episodePartMap.set(episodeIndex, part.id);
-                break;
-            }
-        }
-    }
-    const partEpisodes = new Map<number, number[]>();
-    for (const [episodeIndex, partId] of episodePartMap.entries()) {
-        const episodesIndices = getElseSet(partEpisodes, partId, () => []);
-        episodesIndices.push(episodeIndex);
-    }
-
-    const promises = [];
-    for (const [partId, episodeIndices] of partEpisodes.entries()) {
-        promises.push(Storage.moveEpisodeToPart(standardPart.id, episodeIndices, partId));
-    }
-    await Promise.all(promises);*/
 }
 exports.remapMediumPart = remapMediumPart;
 //# sourceMappingURL=scraperTools.js.map
