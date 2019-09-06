@@ -21,9 +21,6 @@ const database = "enterprise";
  * A Class for consecutive queries on the same connection.
  */
 class QueryContext {
-    constructor(con) {
-        this.con = con;
-    }
     get databaseContext() {
         return this._databaseContext ? this._databaseContext : (this._databaseContext = new databaseContext_1.DatabaseContext(this));
     }
@@ -64,6 +61,9 @@ class QueryContext {
         return this._mediumInWaitContext
             ? this._mediumInWaitContext
             : (this._mediumInWaitContext = new mediumInWaitContext_1.MediumInWaitContext(this));
+    }
+    constructor(con) {
+        this.con = con;
     }
     /**
      *
@@ -218,7 +218,7 @@ class QueryContext {
      */
     query(query, parameter) {
         if (query.length > 20) {
-            // console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
         }
         return Promise.resolve()
             .then(() => this.con.query(query, parameter))

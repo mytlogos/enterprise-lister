@@ -116,6 +116,7 @@ function streamParse5(resolve, reject, uri, options) {
     // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
     //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
     //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
+    // @ts-ignore
     const parser = new parse5_parser_stream_1.default({ treeAdapter: parse5_1.default.treeAdapters.htmlparser2 });
     parser.on("finish", () => {
         if (parser.document && parser.document.children) {
@@ -195,7 +196,7 @@ exports.queueCheerioRequestStream = (uri, options) => {
     }
     return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
 };
-exports.queueCheerioRequest = exports.queueCheerioRequestBuffered;
+exports.queueCheerioRequest = exports.queueCheerioRequestStream;
 const transformCheerio = (body) => cheerio_1.default.load(body, { decodeEntities: false });
 const queueFullResponseWithLimit = (uri, options, otherRequest, queueToUse = queues, limit) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest, queueToUse, limit);

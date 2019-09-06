@@ -118,69 +118,6 @@ async function getTocMedia(tocs, uuid) {
     }));
     return media;
 }
-async function remapParts(indexPartsMap, mediumId) {
-    return scraperTools_1.remapMediumPart(mediumId);
-    /* const values = [...indexPartsMap.values()];
-
-     const standardTocPart = values.find((value) => value.tocPart.totalIndex === -1);
-     let standardPart;
-
-     if (!standardTocPart || !standardTocPart.part) {
-         standardPart = await Storage.getStandardPart(mediumId);
-
-         if (standardTocPart) {
-             standardTocPart.part = standardPart;
-         }
-     } else {
-         standardPart = standardTocPart.part;
-     }
-     // if there is no standard part, we return as there is no part to move from
-     if (!standardPart) {
-         return;
-     }
-     values.forEach((value) => {
-         if (!value.part) {
-             throw Error("tocPart without part!");
-         }
-     });
-     const [standardPartEpisodeIndices] = await Storage.getPartsEpisodeIndices(standardPart.id);
-
-     if (!standardPartEpisodeIndices) {
-         return;
-     }
-     const episodePartMap = new Map<number, number>();
-
-     for (const episodeIndex of standardPartEpisodeIndices.episodes) {
-         for (const part of values) {
-             // skip standard parts here
-             if (part.tocPart.totalIndex === -1) {
-                 continue;
-             }
-             if (!part.part) {
-                 throw Error("tocPart without part!");
-             }
-             if (part.tocPart.episodes.find((value) => value.totalIndex + (value.partialIndex || 0) === episodeIndex)) {
-                 const partId = episodePartMap.get(episodeIndex);
-                 if (partId != null && partId !== part.part.id) {
-                     throw Error(`episode ${episodeIndex} owned by multiple parts: '${partId}' and '${part.part.id}'`);
-                 }
-                 episodePartMap.set(episodeIndex, part.part.id);
-                 break;
-             }
-         }
-     }
-     const partEpisodes = new Map<number, number[]>();
-     for (const [episodeId, partId] of episodePartMap.entries()) {
-         const episodes = getElseSet(partEpisodes, partId, () => []);
-         episodes.push(episodeId);
-     }
-
-     const promises = [];
-     for (const [partId, episodeIds] of partEpisodes.entries()) {
-         promises.push(Storage.moveEpisodeToPart(standardPart.id, partId));
-     }
-     await Promise.all(promises);*/
-}
 async function addPartEpisodes(value) {
     if (!value.part || !value.part.id) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
@@ -352,7 +289,7 @@ async function tocHandler(result) {
         }));
         // 'moves' episodes from the standard part to other parts, if they own the episodes too
         try {
-            await remapParts(indexPartsMap, mediumId);
+            await scraperTools_1.remapMediumPart(mediumId);
         }
         catch (e) {
             console.error(e);
