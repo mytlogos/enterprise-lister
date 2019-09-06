@@ -6,7 +6,7 @@ const request_1 = tslib_1.__importDefault(require("request"));
 const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const parse5_parser_stream_1 = tslib_1.__importDefault(require("parse5-parser-stream"));
 const parse5_1 = tslib_1.__importDefault(require("parse5"));
-const htmlparser2_1 = tslib_1.__importStar(require("htmlparser2"));
+const htmlparser2 = tslib_1.__importStar(require("htmlparser2"));
 const transform_1 = require("../transform");
 class Queue {
     constructor(maxLimit = 1000) {
@@ -155,8 +155,8 @@ function streamParse5(resolve, reject, uri, options) {
 }
 function streamHtmlParser2(resolve, reject, uri, options) {
     // TODO: 22.06.2019 seems to produce sth bad, maybe some error in how i stream the buffer to string?
-    // TODO: 22.06.2019 seems to throw this error primarily (noticed there only) on webnovel.com, parts are messed up
-    const parser = new htmlparser2_1.default.WritableStream(new htmlparser2_1.DomHandler((error, dom) => {
+    // TODO: 22.06.2019 seems to produce this error primarily (noticed there only) on webnovel.com, parts are messed up
+    const parser = new htmlparser2.WritableStream(new htmlparser2.DomHandler((error, dom) => {
         // @ts-ignore
         const load = cheerio_1.default.load(dom);
         resolve(load);

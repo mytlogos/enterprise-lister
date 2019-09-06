@@ -7,7 +7,7 @@ export class BufferToStringStream extends stream.Transform {
 
 
     constructor() {
-        super({decodeStrings: false, encoding: "utf-8", allowHalfOpen: false});
+        super({decodeStrings: false, encoding: "utf-8"});
         this.decoder = new StringDecoder("utf-8");
     }
 
@@ -20,7 +20,6 @@ export class BufferToStringStream extends stream.Transform {
         } else {
             throw Error("This transform stream works only with buffer or string");
         }
-        this.push(data);
         callback(null, data);
     }
 }

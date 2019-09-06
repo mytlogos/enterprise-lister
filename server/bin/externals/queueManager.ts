@@ -3,7 +3,7 @@ import requestNative, {RequestAPI} from "request";
 import cheerio from "cheerio";
 import ParserStream from "parse5-parser-stream";
 import parse5 from "parse5";
-import htmlparser2, {DomHandler} from "htmlparser2";
+import * as htmlparser2 from "htmlparser2";
 import {BufferToStringStream} from "../transform";
 
 
@@ -184,9 +184,9 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
 
 function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri: string, options?: Options) {
     // TODO: 22.06.2019 seems to produce sth bad, maybe some error in how i stream the buffer to string?
-    // TODO: 22.06.2019 seems to throw this error primarily (noticed there only) on webnovel.com, parts are messed up
+    // TODO: 22.06.2019 seems to produce this error primarily (noticed there only) on webnovel.com, parts are messed up
     const parser = new htmlparser2.WritableStream(
-        new DomHandler(
+        new htmlparser2.DomHandler(
             (error, dom) => {
                 // @ts-ignore
                 const load = cheerio.load(dom);
