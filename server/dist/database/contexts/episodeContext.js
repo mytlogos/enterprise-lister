@@ -515,7 +515,7 @@ class EpisodeContext extends subContext_1.SubContext {
             };
         });
     }
-    async getMediumEpisodePerIndex(mediumId, index) {
+    async getMediumEpisodePerIndex(mediumId, index, ignoreRelease) {
         const episodes = await this.queryInList("SELECT episode.* FROM episode INNER JOIN part ON part.id=episode.part_id " +
             `WHERE medium_id =${promise_mysql_1.default.escape(mediumId)} AND episode.combiIndex`, index);
         if (!episodes || !episodes.length) {
@@ -528,7 +528,7 @@ class EpisodeContext extends subContext_1.SubContext {
             idMap.set(value.id, value);
             return value.id;
         });
-        const releases = await this.getReleases(episodeIds);
+        const releases = ignoreRelease ? [] : await this.getReleases(episodeIds);
         releases.forEach((value) => {
             const episode = idMap.get(value.episodeId);
             if (!episode) {

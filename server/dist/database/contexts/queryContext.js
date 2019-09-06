@@ -218,7 +218,7 @@ class QueryContext {
      */
     query(query, parameter) {
         if (query.length > 20) {
-            console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            // console.log(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
         }
         return Promise.resolve()
             .then(() => this.con.query(query, parameter))
@@ -356,7 +356,7 @@ class QueryContext {
     }
     queryStream(query, parameter) {
         if (query.length > 20) {
-            console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            // console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
         }
         return this.con.queryStream(query, parameter);
     }

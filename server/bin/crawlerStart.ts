@@ -15,7 +15,8 @@ import {
     ExternalList,
     JobRequest,
     LikeMedium,
-    MilliTime, MinPart,
+    MilliTime,
+    MinPart,
     News,
     Part,
     ScrapeItem,
@@ -159,6 +160,7 @@ async function getTocMedia(tocs: Toc[], uuid?: string)
     }));
     return media;
 }
+
 interface TocPartMapping {
     tocPart: TocPart;
     part?: MinPart;
@@ -178,7 +180,8 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
     // @ts-ignore
     const episodes: SimpleEpisode[] = await episodeStorage.getMediumEpisodePerIndex(
         value.part.mediumId,
-        [...value.episodeMap.keys()]
+        [...value.episodeMap.keys()],
+        true
     );
 
     episodes.forEach((episode) => {

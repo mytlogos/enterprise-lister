@@ -53,19 +53,12 @@ class EpisodeStorage {
     getReleasesByHost(episodeId, host) {
         return inContext((context) => context.getReleasesByHost(episodeId, host));
     }
-    /**
-     *
-     */
     getPartEpisodePerIndex(partId, index) {
         // @ts-ignore
         return inContext((context) => context.getPartEpisodePerIndex(partId, index));
     }
-    /**
-     *
-     */
-    // @ts-ignore
-    getMediumEpisodePerIndex(mediumId, index) {
-        return inContext((context) => context.getMediumEpisodePerIndex(mediumId, index));
+    getMediumEpisodePerIndex(mediumId, index, ignoreRelease = false) {
+        return inContext((context) => context.getMediumEpisodePerIndex(mediumId, index, ignoreRelease));
     }
     /**
      * Deletes an episode from the storage irreversibly.
@@ -73,12 +66,10 @@ class EpisodeStorage {
     deleteEpisode(id) {
         return inContext((context) => context.deleteEpisode(id));
     }
-    // @ts-ignore
     addRelease(releases) {
         // @ts-ignore
         return inContext((context) => context.addRelease(releases));
     }
-    // @ts-ignore
     updateRelease(releases) {
         return inContext((context) => context.updateRelease(releases));
     }

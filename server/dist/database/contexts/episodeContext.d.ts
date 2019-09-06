@@ -57,7 +57,7 @@ export declare class EpisodeContext extends SubContext {
     }>>;
     getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
     getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
-    getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
+    getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>, ignoreRelease: boolean): Promise<MultiSingle<SimpleEpisode>>;
     /**
      * Updates an episode from the storage.
      */

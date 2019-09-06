@@ -127,7 +127,7 @@ async function addPartEpisodes(value) {
         value.episodeMap.set(episode.combiIndex, { tocEpisode: episode });
     });
     // @ts-ignore
-    const episodes = await storage_1.episodeStorage.getMediumEpisodePerIndex(value.part.mediumId, [...value.episodeMap.keys()]);
+    const episodes = await storage_1.episodeStorage.getMediumEpisodePerIndex(value.part.mediumId, [...value.episodeMap.keys()], true);
     episodes.forEach((episode) => {
         if (!episode.id) {
             return;

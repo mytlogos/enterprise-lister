@@ -81,20 +81,22 @@ export class EpisodeStorage {
     /**
      *
      */
+    public getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
+    public getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
+
     public getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
         // @ts-ignore
         return inContext((context) => context.getPartEpisodePerIndex(partId, index));
     }
 
-    public getMediumEpisodePerIndex(mediumId: number, index: number): Promise<SimpleEpisode>;
-    public getMediumEpisodePerIndex(mediumId: number, index: number[]): Promise<SimpleEpisode[]>;
+    public getMediumEpisodePerIndex(mediumId: number, index: number, ignoreRelease?: boolean): Promise<SimpleEpisode>;
+    public getMediumEpisodePerIndex(mediumId: number, index: number[], ignoreRelease?: boolean)
+        : Promise<SimpleEpisode[]>;
 
-    /**
-     *
-     */
-    // @ts-ignore
-    public getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>> {
-        return inContext((context) => context.getMediumEpisodePerIndex(mediumId, index));
+    public getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>, ignoreRelease = false)
+        : Promise<MultiSingle<SimpleEpisode>> {
+
+        return inContext((context) => context.getMediumEpisodePerIndex(mediumId, index, ignoreRelease));
     }
 
     /**
@@ -104,13 +106,14 @@ export class EpisodeStorage {
         return inContext((context) => context.deleteEpisode(id));
     }
 
-    // @ts-ignore
+    public addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
+    public addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+
     public addRelease(releases: MultiSingle<EpisodeRelease>): Promise<MultiSingle<EpisodeRelease>> {
         // @ts-ignore
         return inContext((context) => context.addRelease(releases));
     }
 
-    // @ts-ignore
     public updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void> {
         return inContext((context) => context.updateRelease(releases));
     }

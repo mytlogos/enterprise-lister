@@ -685,7 +685,7 @@ export class EpisodeContext extends SubContext {
         });
     }
 
-    public async getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>)
+    public async getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>, ignoreRelease: boolean)
         : Promise<MultiSingle<SimpleEpisode>> {
 
         const episodes: any[] | undefined = await this.queryInList(
@@ -703,7 +703,7 @@ export class EpisodeContext extends SubContext {
             idMap.set(value.id, value);
             return value.id;
         });
-        const releases = await this.getReleases(episodeIds);
+        const releases = ignoreRelease ? [] : await this.getReleases(episodeIds);
         releases.forEach((value) => {
             const episode = idMap.get(value.episodeId);
             if (!episode) {

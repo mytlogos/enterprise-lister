@@ -28,14 +28,16 @@ export declare class EpisodeStorage {
     /**
      *
      */
-    getPartEpisodePerIndex(partId: number, index: MultiSingle<number>): Promise<MultiSingle<SimpleEpisode>>;
-    getMediumEpisodePerIndex(mediumId: number, index: number): Promise<SimpleEpisode>;
-    getMediumEpisodePerIndex(mediumId: number, index: number[]): Promise<SimpleEpisode[]>;
+    getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
+    getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
+    getMediumEpisodePerIndex(mediumId: number, index: number, ignoreRelease?: boolean): Promise<SimpleEpisode>;
+    getMediumEpisodePerIndex(mediumId: number, index: number[], ignoreRelease?: boolean): Promise<SimpleEpisode[]>;
     /**
      * Deletes an episode from the storage irreversibly.
      */
     deleteEpisode(id: number): Promise<boolean>;
-    addRelease(releases: MultiSingle<EpisodeRelease>): Promise<MultiSingle<EpisodeRelease>>;
+    addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
+    addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
     updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void>;
     getSourcedReleases(sourceType: string, mediumId: number): Promise<Array<{
         sourceType: string;
