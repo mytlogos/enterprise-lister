@@ -28,12 +28,14 @@ export interface TocSearchMedium {
     medium: MediaType;
     synonyms: string[];
 }
-export interface Part {
+export interface MinPart {
     id: number;
     title?: string;
     mediumId: number;
     totalIndex: number;
     partialIndex?: number;
+}
+export interface Part extends MinPart {
     episodes: Episode[] | number[];
 }
 export interface FullPart extends Part {

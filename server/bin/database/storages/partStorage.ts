@@ -1,4 +1,4 @@
-import {MultiSingle, Part, ShallowPart} from "../../types";
+import {MinPart, MultiSingle, Part, ShallowPart} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {PartContext} from "../contexts/partContext";
@@ -35,8 +35,8 @@ export class PartStorage {
      * Returns parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    public getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]> {
-        return inContext((context) => context.getMediumPartsPerIndex(mediumId, index, uuid));
+    public getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>): Promise<MinPart[]> {
+        return inContext((context) => context.getMediumPartsPerIndex(mediumId, index));
     }
 
     /**

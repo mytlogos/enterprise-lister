@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const subContext_1 = require("./subContext");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
-const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 class PartContext extends subContext_1.SubContext {
     async getStandardPartId(mediumId) {
@@ -82,7 +81,7 @@ class PartContext extends subContext_1.SubContext {
      * Returns all parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    async getMediumPartsPerIndex(mediumId, index, uuid) {
+    async getMediumPartsPerIndex(mediumId, index) {
         const parts = await this.queryInList("SELECT * FROM part " +
             `WHERE medium_id = ${promise_mysql_1.default.escape(mediumId)} AND combiIndex `, index);
         if (!parts || !parts.length) {
@@ -94,46 +93,6 @@ class PartContext extends subContext_1.SubContext {
             partIdMap.set(value.id, value);
             indexMap.set(value.combiIndex, true);
         });
-        const episodes = await this.queryInList("SELECT id, totalIndex, partialIndex, part_id as partId FROM episode WHERE part_id", parts, undefined, (value) => value.id);
-        if (episodes && episodes.length) {
-            const episodeIdMap = new Map();
-            const episodeIds = episodes.map((value) => {
-                episodeIdMap.set(value.id, value);
-                return value.id;
-            });
-            let fullEpisodes;
-            if (uuid) {
-                fullEpisodes = await this.parentContext.episodeContext.getEpisode(episodeIds, uuid);
-            }
-            else {
-                const releases = await this.parentContext.episodeContext.getReleases(episodeIds);
-                releases.forEach((value) => {
-                    const episode = episodeIdMap.get(value.episodeId);
-                    if (!episode) {
-                        throw Error("missing episode for release");
-                    }
-                    if (!episode.releases) {
-                        episode.releases = [];
-                    }
-                    episode.releases.push(value);
-                });
-                fullEpisodes = episodes;
-            }
-            fullEpisodes.forEach((value) => {
-                if (!value.releases) {
-                    value.releases = [];
-                }
-                const part = partIdMap.get(value.partId);
-                if (!part) {
-                    logger_1.default.warn(`unknown partId '${value.partId}', missing in partIdMap`);
-                    return;
-                }
-                if (!part.episodes) {
-                    part.episodes = [];
-                }
-                part.episodes.push(value);
-            });
-        }
         // @ts-ignore
         tools_1.multiSingle(index, (value) => {
             if (parts.every((part) => part.combiIndex !== value)) {
@@ -148,7 +107,6 @@ class PartContext extends subContext_1.SubContext {
                 totalIndex: value.totalIndex,
                 partialIndex: value.partialIndex,
                 title: value.title,
-                episodes: value.episodes || [],
                 mediumId: value.medium_id,
             };
         });

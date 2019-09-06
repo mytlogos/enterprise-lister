@@ -1,5 +1,5 @@
 import { SubContext } from "./subContext";
-import { MultiSingle, Part, ShallowPart } from "../../types";
+import { MinPart, MultiSingle, Part, ShallowPart } from "../../types";
 export declare class PartContext extends SubContext {
     getStandardPartId(mediumId: number): Promise<number | undefined>;
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
@@ -12,7 +12,7 @@ export declare class PartContext extends SubContext {
      * Returns all parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]>;
+    getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>): Promise<MinPart[]>;
     getParts(partId: number, uuid: string): Promise<Part>;
     getParts(partId: number[], uuid: string): Promise<Part[]>;
     getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]>;

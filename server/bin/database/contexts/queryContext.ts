@@ -294,7 +294,7 @@ export class QueryContext implements ConnectionContext {
      */
     public query(query: string, parameter?: any | any[]): Promise<any> {
         if (query.length > 20) {
-            // console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
         }
         return Promise.resolve()
             .then(() => this.con.query(query, parameter))

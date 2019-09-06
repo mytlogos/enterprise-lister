@@ -28,8 +28,8 @@ class PartStorage {
      * Returns parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    getMediumPartsPerIndex(mediumId, index, uuid) {
-        return inContext((context) => context.getMediumPartsPerIndex(mediumId, index, uuid));
+    getMediumPartsPerIndex(mediumId, index) {
+        return inContext((context) => context.getMediumPartsPerIndex(mediumId, index));
     }
     /**
      * Returns one or multiple parts with their episode.

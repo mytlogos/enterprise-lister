@@ -33,12 +33,15 @@ export interface TocSearchMedium {
     synonyms: string[];
 }
 
-export interface Part {
+export interface MinPart {
     id: number;
     title?: string;
     mediumId: number;
     totalIndex: number;
     partialIndex?: number;
+}
+
+export interface Part extends MinPart {
     episodes: Episode[] | number[];
 }
 

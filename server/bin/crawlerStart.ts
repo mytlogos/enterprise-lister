@@ -15,7 +15,7 @@ import {
     ExternalList,
     JobRequest,
     LikeMedium,
-    MilliTime,
+    MilliTime, MinPart,
     News,
     Part,
     ScrapeItem,
@@ -161,7 +161,7 @@ async function getTocMedia(tocs: Toc[], uuid?: string)
 }
 interface TocPartMapping {
     tocPart: TocPart;
-    part?: Part;
+    part?: MinPart;
     episodeMap: Map<number, {
         tocEpisode: TocEpisode, episode?: SimpleEpisode
     }>;

@@ -1,13 +1,6 @@
 import {SubContext} from "./subContext";
-import {
-    Episode, FullPart,
-    MultiSingle,
-    Part,
-    ShallowPart,
-    SimpleEpisode
-} from "../../types";
+import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisode} from "../../types";
 import mySql from "promise-mysql";
-import logger from "../../logger";
 import {combiIndex, multiSingle, separateIndex} from "../../tools";
 
 export class PartContext extends SubContext {
@@ -111,7 +104,7 @@ export class PartContext extends SubContext {
      * Returns all parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    public async getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]> {
+    public async getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>): Promise<MinPart[]> {
         const parts: any[] | undefined = await this.queryInList(
             "SELECT * FROM part " +
             `WHERE medium_id = ${mySql.escape(mediumId)} AND combiIndex `,
@@ -127,54 +120,6 @@ export class PartContext extends SubContext {
             indexMap.set(value.combiIndex, true);
         });
 
-        const episodes: any[] | undefined = await this.queryInList(
-            "SELECT id, totalIndex, partialIndex, part_id as partId FROM episode WHERE part_id",
-            parts,
-            undefined,
-            (value) => value.id
-        );
-        if (episodes && episodes.length) {
-            const episodeIdMap = new Map<number, any>();
-            const episodeIds = episodes.map((value) => {
-                episodeIdMap.set(value.id, value);
-                return value.id;
-            });
-
-            let fullEpisodes: any[];
-
-            if (uuid) {
-                fullEpisodes = await this.parentContext.episodeContext.getEpisode(episodeIds, uuid);
-            } else {
-                const releases = await this.parentContext.episodeContext.getReleases(episodeIds);
-                releases.forEach((value) => {
-                    const episode = episodeIdMap.get(value.episodeId);
-                    if (!episode) {
-                        throw Error("missing episode for release");
-                    }
-                    if (!episode.releases) {
-                        episode.releases = [];
-                    }
-
-                    episode.releases.push(value);
-                });
-                fullEpisodes = episodes;
-            }
-            fullEpisodes.forEach((value) => {
-                if (!value.releases) {
-                    value.releases = [];
-                }
-                const part = partIdMap.get(value.partId);
-                if (!part) {
-                    logger.warn(`unknown partId '${value.partId}', missing in partIdMap`);
-                    return;
-                }
-                if (!part.episodes) {
-                    part.episodes = [];
-                }
-                part.episodes.push(value);
-            });
-        }
-
         // @ts-ignore
         multiSingle(index, (value: number) => {
             if (parts.every((part) => part.combiIndex !== value)) {
@@ -184,13 +129,12 @@ export class PartContext extends SubContext {
         });
 
         // @ts-ignore
-        return parts.map((value) => {
+        return parts.map((value): MinPart => {
             return {
                 id: value.id,
                 totalIndex: value.totalIndex,
                 partialIndex: value.partialIndex,
                 title: value.title,
-                episodes: value.episodes || [],
                 mediumId: value.medium_id,
             };
         });

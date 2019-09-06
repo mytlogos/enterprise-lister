@@ -1,4 +1,4 @@
-import { MultiSingle, Part, ShallowPart } from "../../types";
+import { MinPart, MultiSingle, Part, ShallowPart } from "../../types";
 export declare class PartStorage {
     /**
      * Returns all parts of an medium with their episodes.
@@ -14,7 +14,7 @@ export declare class PartStorage {
      * Returns parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>, uuid?: string): Promise<Part[]>;
+    getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>): Promise<MinPart[]>;
     /**
      * Returns one or multiple parts with their episode.
      */
