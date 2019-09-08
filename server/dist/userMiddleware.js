@@ -8,6 +8,7 @@ const logger_1 = tslib_1.__importDefault(require("./logger"));
 const scraperTools_1 = require("./externals/scraperTools");
 const tools_1 = require("./tools");
 const types_1 = require("./types");
+const tunnel_1 = require("./tunnel");
 exports.getAllMedia = (req, res) => {
     sendResult(res, storage_1.mediumStorage.getAllMedia());
 };
@@ -90,6 +91,9 @@ exports.saveResult = (req, res) => {
         return;
     }
     sendResult(res, storage_1.storage.saveResult(req.body));
+};
+exports.getTunnel = (req, res) => {
+    sendResult(res, Promise.resolve(tunnel_1.getTunnelUrl()));
 };
 exports.checkLogin = (req, res) => {
     sendResult(res, storage_1.userStorage.loggedInUser(req.ip));

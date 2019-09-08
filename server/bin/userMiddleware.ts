@@ -1,8 +1,13 @@
 import {
-    episodeStorage, externalUserStorage, internalListStorage, jobStorage,
+    episodeStorage,
+    externalUserStorage,
+    internalListStorage,
+    jobStorage,
     mediumInWaitStorage,
     mediumStorage,
-    newsStorage, partStorage, storage,
+    newsStorage,
+    partStorage,
+    storage,
     userStorage
 } from "./database/storages/storage";
 import {factory} from "./externals/listManager";
@@ -13,6 +18,7 @@ import {downloadEpisodes} from "./externals/scraperTools";
 import {Errors, isError, isQuery, isString, stringToNumberList} from "./tools";
 import {JobRequest, ScrapeName} from "./types";
 import {TocRequest} from "./externals/types";
+import {getTunnelUrl} from "./tunnel";
 
 export const getAllMedia: Handler = (req, res) => {
     sendResult(res, mediumStorage.getAllMedia());
@@ -110,6 +116,9 @@ export const saveResult: Handler = (req, res) => {
     sendResult(res, storage.saveResult(req.body));
 };
 
+export const getTunnel: Handler = (req, res) => {
+    sendResult(res, Promise.resolve(getTunnelUrl()));
+};
 export const checkLogin: Handler = (req, res) => {
     sendResult(res, userStorage.loggedInUser(req.ip));
 };

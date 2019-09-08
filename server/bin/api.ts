@@ -10,6 +10,7 @@ export function apiRouter() {
     const router = Router();
     // check if an user is logged in for ip
     router.get("", UserApi.checkLogin);
+    router.get("/tunnel", UserApi.getTunnel);
 
     // login a user
     router.post("/login", UserApi.login);
