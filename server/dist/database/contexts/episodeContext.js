@@ -459,8 +459,8 @@ class EpisodeContext extends subContext_1.SubContext {
         });
         return episodes.map((episode) => {
             return {
-                progress: episode.progress == null ? episode.progress : 0,
-                readDate: episode.progress == null ? episode.read_date : null,
+                progress: episode.progress != null ? episode.progress : 0,
+                readDate: episode.progress != null ? episode.read_date : null,
                 id: episode.id,
                 partialIndex: episode.partialIndex,
                 partId: episode.part_id,

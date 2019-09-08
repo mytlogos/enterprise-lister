@@ -7,12 +7,12 @@ const tools_1 = require("../tools");
 const queueManager_1 = require("./queueManager");
 const tough_cookie_1 = require("tough-cookie");
 class NovelUpdates {
+    constructor() {
+        this.baseURI = "https://www.novelupdates.com/";
+    }
     static scrapeListRow(i, tableData) {
         const link = tableData.eq(i).children("a").first();
         return { text: link.text().trim(), link: link.attr("href") };
-    }
-    constructor() {
-        this.baseURI = "https://www.novelupdates.com/";
     }
     test(credentials) {
         return this.defaults
