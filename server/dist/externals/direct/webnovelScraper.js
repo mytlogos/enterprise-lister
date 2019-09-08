@@ -30,13 +30,19 @@ async function scrapeNews() {
         const mediumTitle = tools_1.sanitizeString(mediumElement.text());
         const titleElement = tableData.eq(2).children("a").first();
         const episodeTitle = tools_1.sanitizeString(titleElement.text());
-        const link = url.resolve(uri, titleElement.attr("href"));
         const textTime = tableData.eq(5).text().trim();
         const time = tools_1.relativeToAbsoluteTime(textTime);
         if (!time) {
             logger_1.default.warn(`could not parse time of webnovel news: '${textTime}'`);
             continue;
         }
+        const totalLink = url.resolve(uri, titleElement.attr("href"));
+        const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/\d+\/\d+\/).+/.exec(totalLink);
+        if (!linkGroup) {
+            logger_1.default.info(`unknown news url format on webnovel: ${totalLink}`);
+            continue;
+        }
+        const link = linkGroup[1];
         const groups = titlePattern.exec(episodeTitle);
         if (!groups || !groups[1]) {
             logger_1.default.info(`unknown news format on webnovel: ${episodeTitle}`);

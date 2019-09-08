@@ -41,7 +41,6 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const titleElement = tableData.eq(2).children("a").first();
         const episodeTitle = sanitizeString(titleElement.text());
 
-        const link = url.resolve(uri, titleElement.attr("href"));
         const textTime = tableData.eq(5).text().trim();
         const time = relativeToAbsoluteTime(textTime);
 
@@ -50,6 +49,13 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             continue;
         }
 
+        const totalLink = url.resolve(uri, titleElement.attr("href"));
+        const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/\d+\/\d+\/).+/.exec(totalLink);
+        if (!linkGroup) {
+            logger.info(`unknown news url format on webnovel: ${totalLink}`);
+            continue;
+        }
+        const link = linkGroup[1];
         const groups = titlePattern.exec(episodeTitle);
 
         if (!groups || !groups[1]) {
