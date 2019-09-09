@@ -16,6 +16,7 @@ const mediumContext_1 = require("./mediumContext");
 const partContext_1 = require("./partContext");
 const jobContext_1 = require("./jobContext");
 const mediumInWaitContext_1 = require("./mediumInWaitContext");
+const env_1 = tslib_1.__importDefault(require("../../env"));
 const database = "enterprise";
 /**
  * A Class for consecutive queries on the same connection.
@@ -217,7 +218,7 @@ class QueryContext {
      * @param parameter
      */
     query(query, parameter) {
-        if (query.length > 20) {
+        if (query.length > 20 && env_1.default.development) {
             console.log(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
         }
         return Promise.resolve()
@@ -355,7 +356,7 @@ class QueryContext {
         return this.query(`${query} IN (${placeholders.join(",")}) ${afterQuery ? afterQuery : ""};`, param);
     }
     queryStream(query, parameter) {
-        if (query.length > 20) {
+        if (query.length > 20 && env_1.default.development) {
             console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
         }
         return this.con.queryStream(query, parameter);

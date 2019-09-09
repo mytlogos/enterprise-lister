@@ -16,6 +16,7 @@ import {PartContext} from "./partContext";
 import {JobContext} from "./jobContext";
 import {MediumInWaitContext} from "./mediumInWaitContext";
 import {ConnectionContext} from "../databaseTypes";
+import env from "../../env";
 
 const database = "enterprise";
 
@@ -293,7 +294,7 @@ export class QueryContext implements ConnectionContext {
      * @param parameter
      */
     public query(query: string, parameter?: any | any[]): Promise<any> {
-        if (query.length > 20) {
+        if (query.length > 20 && env.development) {
             console.log(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
         }
         return Promise.resolve()
@@ -448,7 +449,7 @@ export class QueryContext implements ConnectionContext {
     }
 
     public queryStream(query: string, parameter?: any | any[]): Query {
-        if (query.length > 20) {
+        if (query.length > 20 && env.development) {
             console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
         }
         return this.con.queryStream(query, parameter);
