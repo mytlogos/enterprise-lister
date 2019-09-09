@@ -56,7 +56,8 @@
     "vuex": "latest",
     "websocket": "^1.0.29",
     "winston": "latest",
-    "localtunnel": "latest"
+    "localtunnel": "latest",
+    "tslib": "^1.10.0"
   },
   "devDependencies": {
     "@types/bcrypt-nodejs": "0.0.30",
