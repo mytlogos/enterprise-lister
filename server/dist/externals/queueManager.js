@@ -5,7 +5,6 @@ const cloudscraper_1 = tslib_1.__importDefault(require("cloudscraper"));
 const request_1 = tslib_1.__importDefault(require("request"));
 const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const parse5_parser_stream_1 = tslib_1.__importDefault(require("parse5-parser-stream"));
-const parse5_1 = tslib_1.__importDefault(require("parse5"));
 const htmlparser2 = tslib_1.__importStar(require("htmlparser2"));
 const transform_1 = require("../transform");
 class Queue {
@@ -117,7 +116,7 @@ function streamParse5(resolve, reject, uri, options) {
     //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
     //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
     // @ts-ignore
-    const parser = new parse5_parser_stream_1.default({ treeAdapter: parse5_1.default.treeAdapters.htmlparser2 });
+    const parser = new parse5_parser_stream_1.default({ treeAdapter: parse5_parser_stream_1.default.treeAdapters.htmlparser2 });
     parser.on("finish", () => {
         if (parser.document && parser.document.children) {
             // @ts-ignore

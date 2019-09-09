@@ -2,7 +2,6 @@ import request, {FullResponse, Options} from "cloudscraper";
 import requestNative, {RequestAPI} from "request";
 import cheerio from "cheerio";
 import ParserStream from "parse5-parser-stream";
-import parse5 from "parse5";
 import * as htmlparser2 from "htmlparser2";
 import {BufferToStringStream} from "../transform";
 
@@ -145,7 +144,7 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
     //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
     //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
     // @ts-ignore
-    const parser = new ParserStream<CheerioElement>({treeAdapter: parse5.treeAdapters.htmlparser2});
+    const parser = new ParserStream<CheerioElement>({treeAdapter: ParserStream.treeAdapters.htmlparser2});
     parser.on("finish", () => {
         if (parser.document && parser.document.children) {
             // @ts-ignore
