@@ -190,19 +190,18 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
         new htmlparser2.DomHandler(
             (error, dom) => {
                 // @ts-ignore
-                const load = cheerio.load(dom);
+                const load = cheerio.load(dom, {decodeEntities: false});
                 resolve(load);
             }, {
                 // FIXME: 02.09.2019 why does it not accept this property?
                 // @ts-ignore
                 withDomLvl1: true,
                 normalizeWhitespace: false,
-                // decodeEntities: true
             }
         )
         ,
         {
-            decodeEntities: true,
+            decodeEntities: false,
         }).on("error", (err) => reject(err));
     const stream = new BufferToStringStream();
 

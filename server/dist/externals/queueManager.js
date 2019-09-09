@@ -159,7 +159,7 @@ function streamHtmlParser2(resolve, reject, uri, options) {
     // TODO: 22.06.2019 seems to produce this error primarily (noticed there only) on webnovel.com, parts are messed up
     const parser = new htmlparser2.WritableStream(new htmlparser2.DomHandler((error, dom) => {
         // @ts-ignore
-        const load = cheerio_1.default.load(dom);
+        const load = cheerio_1.default.load(dom, { decodeEntities: false });
         resolve(load);
     }, {
         // FIXME: 02.09.2019 why does it not accept this property?
@@ -167,7 +167,7 @@ function streamHtmlParser2(resolve, reject, uri, options) {
         withDomLvl1: true,
         normalizeWhitespace: false,
     }), {
-        decodeEntities: true,
+        decodeEntities: false,
     }).on("error", (err) => reject(err));
     const stream = new transform_1.BufferToStringStream();
     request_1.default(uri, options)
