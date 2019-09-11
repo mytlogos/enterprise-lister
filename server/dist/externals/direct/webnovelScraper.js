@@ -26,7 +26,13 @@ async function scrapeNews() {
         const tableData = newsRow.children("td");
         const mediumElement = tableData.eq(1);
         const mediumTocLinkElement = mediumElement.children("a").first();
-        const mediumTocLink = url.resolve(uri, mediumTocLinkElement.attr("href"));
+        const mediumTocTotalLink = url.resolve(uri, mediumTocLinkElement.attr("href"));
+        const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/\d+\//.exec(mediumTocTotalLink);
+        if (!mediumTocLinkGroup) {
+            logger_1.default.info(`unknown toc link format on webnovel: ${mediumTocTotalLink}`);
+            continue;
+        }
+        const mediumTocLink = mediumTocLinkGroup[0];
         const mediumTitle = tools_1.sanitizeString(mediumElement.text());
         const titleElement = tableData.eq(2).children("a").first();
         const episodeTitle = tools_1.sanitizeString(titleElement.text());
