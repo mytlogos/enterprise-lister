@@ -460,12 +460,18 @@ exports.deleteProgress = (req, res) => {
 exports.getMedium = (req, res) => {
     let mediumId = extractQueryParam(req, "mediumId");
     const uuid = extractQueryParam(req, "uuid");
-    if (!mediumId) {
+    mediumId = Number(mediumId);
+    if (!mediumId && !Number.isNaN(mediumId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
     if (!Number.isInteger(mediumId)) {
+        mediumId = extractQueryParam(req, "mediumId");
         mediumId = tools_1.stringToNumberList(mediumId);
+    }
+    if (!mediumId) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, storage_1.mediumStorage.getMedium(mediumId, uuid));
 };

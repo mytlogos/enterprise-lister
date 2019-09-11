@@ -512,12 +512,19 @@ export const getMedium: Handler = (req, res) => {
     let mediumId = extractQueryParam(req, "mediumId");
     const uuid = extractQueryParam(req, "uuid");
 
-    if (!mediumId) {
+    mediumId = Number(mediumId);
+
+    if (!mediumId && !Number.isNaN(mediumId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
     if (!Number.isInteger(mediumId)) {
+        mediumId = extractQueryParam(req, "mediumId");
         mediumId = stringToNumberList(mediumId);
+    }
+    if (!mediumId) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     sendResult(res, mediumStorage.getMedium(mediumId, uuid));
 };
