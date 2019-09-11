@@ -29,7 +29,21 @@ async function contentDownloadAdapter(chapterLink) {
             "which has a title, index and mediumTitle on: " + urlString);
         return [];
     }
-    const jsonResponse = await jsonPromise;
+    let jsonResponse;
+    try {
+        jsonResponse = await jsonPromise;
+    }
+    catch (e) {
+        if (e.statusCode && e.statusCode === 409) {
+            return [{
+                    content: [],
+                    locked: true,
+                    episodeTitle: contentData.episodeTitle,
+                    index: contentData.index,
+                    mediumTitle: contentData.mediumTitle
+                }];
+        }
+    }
     if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
         logger_1.default.warn("changed chapter api format on mangadex " + urlString);
         return [];

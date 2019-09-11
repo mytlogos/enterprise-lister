@@ -93,7 +93,20 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
         );
         return [];
     }
-    const jsonResponse = await jsonPromise;
+    let jsonResponse: any;
+    try {
+        jsonResponse = await jsonPromise;
+    } catch (e) {
+        if (e.statusCode && e.statusCode === 409) {
+            return [{
+                content: [],
+                locked: true,
+                episodeTitle: contentData.episodeTitle,
+                index: contentData.index,
+                mediumTitle: contentData.mediumTitle
+            } as EpisodeContent];
+        }
+    }
 
     if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
         logger.warn("changed chapter api format on mangadex " + urlString);
