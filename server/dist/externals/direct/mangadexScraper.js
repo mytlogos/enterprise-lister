@@ -37,7 +37,6 @@ async function contentDownloadAdapter(chapterLink) {
         if (e.statusCode && e.statusCode === 409) {
             return [{
                     content: [],
-                    locked: true,
                     episodeTitle: contentData.episodeTitle,
                     index: contentData.index,
                     mediumTitle: contentData.mediumTitle
