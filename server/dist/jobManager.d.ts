@@ -30,6 +30,7 @@ export declare class JobQueue {
     clear(): void;
     isEmpty(): boolean;
     isFull(): boolean;
+    invalidRunning(end: Date, atLeast: number): boolean;
     private _done;
     private _fullQueue;
     private _overMemoryLimit;

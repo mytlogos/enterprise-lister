@@ -106,6 +106,13 @@ export class JobQueue {
         return this.activeJobs.length >= this.maxActive;
     }
 
+    public invalidRunning(end: Date, atLeast: number): boolean {
+        const nonEndingJobs = this.activeJobs.filter((value) => {
+            return value.startRun && value.startRun < end.getTime();
+        });
+        return nonEndingJobs.length >= atLeast;
+    }
+
     private _done(job: InternJob) {
         remove(this.activeJobs, job);
 

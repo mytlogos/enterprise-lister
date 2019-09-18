@@ -7,6 +7,7 @@ const tools_1 = require("../tools");
 const logger_1 = tslib_1.__importStar(require("../logger"));
 const types_1 = require("../types");
 const storage_1 = require("../database/storages/storage");
+const dns = tslib_1.__importStar(require("dns"));
 class ScrapeJob {
     constructor(name, func, event) {
         this.name = name;
@@ -30,6 +31,7 @@ ScrapeJob.remapMediaParts = new ScrapeJob(types_1.ScrapeName.remapMediaParts, sc
 ScrapeJob.queueExternalUser = new ScrapeJob(types_1.ScrapeName.queueExternalUser, scraperTools_1.queueExternalUser);
 // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
 const clearJobsOnStartPromise = storage_1.jobStorage.stopJobs().catch(console.error);
+const missingConnections = new Set();
 // tslint:disable-next-line:max-classes-per-file
 class JobScraperManager {
     constructor() {
@@ -115,7 +117,8 @@ class JobScraperManager {
             if (this.paused) {
                 return;
             }
-            this.fetchJobs().catch(console.error);
+            this.fetchJobs().catch(logger_1.logError);
+            this.checkRunningJobs().catch(logger_1.logError);
         }, 60000);
         this.fetchJobs().catch(console.error);
         if (this.intervalId) {
@@ -178,6 +181,32 @@ class JobScraperManager {
                     this.queueJob(key, job);
                 }
             }
+        }
+    }
+    async checkRunningJobs() {
+        const now = new Date();
+        try {
+            // @ts-ignore
+            await dns.promises.lookup("google.de");
+            const timeoutDates = [...missingConnections.values()];
+            const maxDate = tools_1.maxValue(timeoutDates);
+            now.setMinutes(-30);
+            // if there at least 5 jobs which started 30 min before but did not finish,
+            // when there is at least one timeout, stop this process (pm2 should restart it then again)
+            if (maxDate) {
+                if (maxDate < now && this.queue.invalidRunning(maxDate, 5)) {
+                    process.exit(1);
+                    return;
+                }
+                now.setHours(-2);
+                if (maxDate < now && this.queue.invalidRunning(maxDate, 1)) {
+                    process.exit(1);
+                    return;
+                }
+            }
+        }
+        catch (e) {
+            missingConnections.add(now);
         }
     }
     async fetchJobs() {

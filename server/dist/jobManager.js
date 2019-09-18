@@ -85,6 +85,12 @@ class JobQueue {
     isFull() {
         return this.activeJobs.length >= this.maxActive;
     }
+    invalidRunning(end, atLeast) {
+        const nonEndingJobs = this.activeJobs.filter((value) => {
+            return value.startRun && value.startRun < end.getTime();
+        });
+        return nonEndingJobs.length >= atLeast;
+    }
     _done(job) {
         tools_1.remove(this.activeJobs, job);
         if (job.startRun) {
