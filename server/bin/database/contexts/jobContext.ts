@@ -8,7 +8,7 @@ export class JobContext extends SubContext {
             limit = 50;
         }
         return this.query(
-            "SELECT * FROM jobs WHERE nextRun IS NOT NULL AND nextRun < NOW() AND state != 'running' LIMIT ?",
+            "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' order by nextRun LIMIT ?",
             limit
         );
     }

@@ -8,7 +8,7 @@ class JobContext extends subContext_1.SubContext {
         if (limit <= 0 || !limit) {
             limit = 50;
         }
-        return this.query("SELECT * FROM jobs WHERE nextRun IS NOT NULL AND nextRun < NOW() AND state != 'running' LIMIT ?", limit);
+        return this.query("SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' order by nextRun LIMIT ?", limit);
     }
     async stopJobs() {
         await this.query("UPDATE jobs SET state = ?", types_1.JobState.WAITING);
