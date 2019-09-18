@@ -18,7 +18,7 @@ class JobQueue {
         this.currentInterval = 1000;
         this.memoryLimit = memoryLimit;
         this.memorySize = memorySize;
-        this.maxActive = maxActive;
+        this.maxActive = maxActive < 0 ? 1 : maxActive;
     }
     get runningJobs() {
         return this.activeJobs.length;
@@ -81,6 +81,9 @@ class JobQueue {
     }
     isEmpty() {
         return (this.activeJobs.length + this.waitingJobs.length) === 0;
+    }
+    isFull() {
+        return this.activeJobs.length >= this.maxActive;
     }
     _done(job) {
         tools_1.remove(this.activeJobs, job);

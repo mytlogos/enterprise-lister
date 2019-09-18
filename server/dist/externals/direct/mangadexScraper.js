@@ -42,6 +42,9 @@ async function contentDownloadAdapter(chapterLink) {
                     mediumTitle: contentData.mediumTitle
                 }];
         }
+        else {
+            throw e;
+        }
     }
     if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
         logger_1.default.warn("changed chapter api format on mangadex " + urlString);

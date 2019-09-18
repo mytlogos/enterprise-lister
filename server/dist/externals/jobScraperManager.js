@@ -181,6 +181,10 @@ class JobScraperManager {
         }
     }
     async fetchJobs() {
+        if (this.queue.isFull()) {
+            console.log("skip fetching jobs");
+            return;
+        }
         console.log("fetching jobs");
         const scrapeBoard = await storage_1.jobStorage.getJobs();
         this.processJobItems(scrapeBoard);

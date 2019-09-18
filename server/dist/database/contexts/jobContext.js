@@ -43,10 +43,17 @@ class JobContext extends subContext_1.SubContext {
             ]);
             // the only reason it should fail to insert is when its name constraint is violated
             if (!result.insertId) {
-                return this.query("SELECT * FROM jobs WHERE name=?", value.name);
+                const queried = await this.query("SELECT id FROM jobs WHERE name=?", value.name);
+                if (!queried[0]) {
+                    throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
+                }
+                // @ts-ignore
+                value.id = queried[0].id;
             }
-            // @ts-ignore
-            value.id = result.insertId;
+            else {
+                // @ts-ignore
+                value.id = result.insertId;
+            }
             delete value.runImmediately;
             return value;
         });

@@ -17,8 +17,8 @@ import {Job, JobQueue} from "../jobManager";
 import {getElseSet, isString} from "../tools";
 import logger, {logError} from "../logger";
 import {JobItem, JobRequest, JobState, MilliTime, ScrapeName} from "../types";
-import Timeout = NodeJS.Timeout;
 import {jobStorage} from "../database/storages/storage";
+import Timeout = NodeJS.Timeout;
 
 class ScrapeJob {
     public static readonly toc = new ScrapeJob(ScrapeName.toc, toc, ScrapeEvent.TOC);
@@ -221,6 +221,10 @@ export class JobScraperManager {
     }
 
     private async fetchJobs(): Promise<void> {
+        if (this.queue.isFull()) {
+            console.log("skip fetching jobs");
+            return;
+        }
         console.log("fetching jobs");
         const scrapeBoard: JobItem[] = await jobStorage.getJobs();
         this.processJobItems(scrapeBoard);

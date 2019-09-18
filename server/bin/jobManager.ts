@@ -38,7 +38,7 @@ export class JobQueue {
     constructor({memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5} = {}) {
         this.memoryLimit = memoryLimit;
         this.memorySize = memorySize;
-        this.maxActive = maxActive;
+        this.maxActive = maxActive < 0 ? 1 : maxActive;
     }
 
     public addJob(job: JobCallback): Job {
@@ -100,6 +100,10 @@ export class JobQueue {
 
     public isEmpty(): boolean {
         return (this.activeJobs.length + this.waitingJobs.length) === 0;
+    }
+
+    public isFull() {
+        return this.activeJobs.length >= this.maxActive;
     }
 
     private _done(job: InternJob) {

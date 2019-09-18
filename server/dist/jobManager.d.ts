@@ -29,6 +29,7 @@ export declare class JobQueue {
     pause(): void;
     clear(): void;
     isEmpty(): boolean;
+    isFull(): boolean;
     private _done;
     private _fullQueue;
     private _overMemoryLimit;

@@ -104,6 +104,8 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
                 index: contentData.index,
                 mediumTitle: contentData.mediumTitle
             } as EpisodeContent];
+        } else {
+            throw e;
         }
     }
 
