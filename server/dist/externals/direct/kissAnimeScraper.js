@@ -143,7 +143,7 @@ async function scrapeToc(urlString) {
     }
     const uri = "https://kissanime.ru/";
     const content = [];
-    const chapReg = /Episode\s*((\d+)(\.(\d+))?)(\s*(.+))?/i;
+    const chapReg = /Episode\s*((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?(\s*(.+))?/i;
     for (let i = 0; i < episodeElements.length; i++) {
         const episodeElement = episodeElements.eq(i);
         const columns = episodeElement.children();
@@ -152,6 +152,9 @@ async function scrapeToc(urlString) {
         const titleString = tools_1.sanitizeString(titleElement.text());
         const episodeGroups = chapReg.exec(titleString);
         if (Number.isNaN(date.getDate()) || !episodeGroups) {
+            if (titleString.toLowerCase().includes("ova")) {
+                continue;
+            }
             logger_1.default.warn("changed episode format on kissAnime toc " + urlString);
             return [];
         }
@@ -161,8 +164,33 @@ async function scrapeToc(urlString) {
             throw Error(`changed format on kissAnime, got no indices for: '${titleString}'`);
         }
         let title = "Episode " + indices.combi;
-        if (episodeGroups[6]) {
-            title += " - " + episodeGroups[6];
+        if (episodeGroups[5]) {
+            const multiIndices = tools_1.extractIndices(episodeGroups, 6, 7, 9);
+            if (!multiIndices) {
+                throw Error(`changed format on kissAnime, got no indices for multi: '${titleString}'`);
+            }
+            if (indices.total < multiIndices.total) {
+                for (let totalIndex = indices.total + 1; totalIndex <= multiIndices.total; totalIndex++) {
+                    let multiTitle = "Episode " + totalIndex;
+                    if (episodeGroups[11]) {
+                        multiTitle += " - " + episodeGroups[11];
+                    }
+                    const multiEpisodeContent = {
+                        title: multiTitle,
+                        combiIndex: totalIndex,
+                        totalIndex,
+                        partialIndex: multiIndices.fraction,
+                        url: link,
+                        releaseDate: date
+                    };
+                    scraperTools_1.checkTocContent(multiEpisodeContent);
+                    content.push(multiEpisodeContent);
+                }
+            }
+            // TODO: 19.09.2019 implement multi episodes (Episode 940 - 942 (Special)
+        }
+        if (episodeGroups[11]) {
+            title += " - " + episodeGroups[11];
         }
         const episodeContent = {
             title,

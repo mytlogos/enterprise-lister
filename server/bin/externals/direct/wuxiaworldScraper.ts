@@ -27,7 +27,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const titleLink = newsRow.find("td:nth-child(2) a:first-child");
         const link = url.resolve(uri, titleLink.attr("href"));
 
-        const episodeTitle = sanitizeString(titleLink.text());
+        let episodeTitle = sanitizeString(titleLink.text());
 
         const timeStampElement = newsRow.find("td:last-child [data-timestamp]");
         const date = new Date(Number(timeStampElement.attr("data-timestamp")) * 1000);
@@ -49,13 +49,24 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             const match = episodeTitle.match(new RegExp(`(${abbrev}${abbrevTitleRegex}`, "i"));
 
             if (!abbrev || !match) {
-                logger.warn("changed title format on wuxiaworld");
-                return;
+                const linkGroup = /chapter-(\d+(\.(\d+))?)$/i.exec(link);
+
+                if (linkGroup) {
+                    regexResult = [];
+                    regexResult[9] = linkGroup[1];
+                    regexResult[10] = linkGroup[2];
+                    regexResult[12] = linkGroup[4];
+                    episodeTitle = linkGroup[2] + " - " + episodeTitle;
+                } else {
+                    logger.warn("changed title format on wuxiaworld");
+                    return;
+                }
+            } else {
+                regexResult = [];
+                regexResult[9] = match[2];
+                regexResult[10] = match[3];
+                regexResult[12] = match[5];
             }
-            regexResult = [];
-            regexResult[9] = match[2];
-            regexResult[10] = match[3];
-            regexResult[12] = match[5];
         }
         let partIndices;
 

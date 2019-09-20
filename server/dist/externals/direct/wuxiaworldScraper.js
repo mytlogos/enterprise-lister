@@ -21,7 +21,7 @@ async function scrapeNews() {
         const mediumTitle = tools_1.sanitizeString(mediumLinkElement.text());
         const titleLink = newsRow.find("td:nth-child(2) a:first-child");
         const link = url.resolve(uri, titleLink.attr("href"));
-        const episodeTitle = tools_1.sanitizeString(titleLink.text());
+        let episodeTitle = tools_1.sanitizeString(titleLink.text());
         const timeStampElement = newsRow.find("td:last-child [data-timestamp]");
         const date = new Date(Number(timeStampElement.attr("data-timestamp")) * 1000);
         if (date > new Date()) {
@@ -39,13 +39,25 @@ async function scrapeNews() {
             // workaround, as some titles have the abbreviation instead of chapter before the chapter index
             const match = episodeTitle.match(new RegExp(`(${abbrev}${abbrevTitleRegex}`, "i"));
             if (!abbrev || !match) {
-                logger_1.default.warn("changed title format on wuxiaworld");
-                return;
+                const linkGroup = /chapter-(\d+(\.(\d+))?)$/i.exec(link);
+                if (linkGroup) {
+                    regexResult = [];
+                    regexResult[9] = linkGroup[1];
+                    regexResult[10] = linkGroup[2];
+                    regexResult[12] = linkGroup[4];
+                    episodeTitle = linkGroup[2] + " - " + episodeTitle;
+                }
+                else {
+                    logger_1.default.warn("changed title format on wuxiaworld");
+                    return;
+                }
             }
-            regexResult = [];
-            regexResult[9] = match[2];
-            regexResult[10] = match[3];
-            regexResult[12] = match[5];
+            else {
+                regexResult = [];
+                regexResult[9] = match[2];
+                regexResult[10] = match[3];
+                regexResult[12] = match[5];
+            }
         }
         let partIndices;
         if (regexResult[3]) {
