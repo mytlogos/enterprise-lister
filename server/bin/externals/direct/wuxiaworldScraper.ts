@@ -132,13 +132,15 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
     const content: TocPart[] = [];
 
+    const chapTitleReg = /^\s*Chapter\s*((\d+)(\.(\d+))?)/;
+    const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.\-](\d+))?)\/?$/;
     for (let vIndex = 0; vIndex < volumes.length; vIndex++) {
-        const volumeElement = volumes.eq(vIndex);
 
+        const volumeElement = volumes.eq(vIndex);
         const volumeIndex = Number(volumeElement.find(".panel-heading .book").first().text().trim());
         const volumeTitle = sanitizeString(volumeElement.find(".panel-heading .title").first().text());
-        const volumeChapters = volumeElement.find(".chapter-item a");
 
+        const volumeChapters = volumeElement.find(".chapter-item a");
         if (Number.isNaN(volumeIndex)) {
             logger.warn("could not find volume index on: " + urlString);
             return [];
@@ -150,30 +152,42 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
-        checkTocContent(volume, true);
 
+        checkTocContent(volume, true);
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
             const link = url.resolve(uri, chapterElement.attr("href"));
+
             const title = sanitizeString(chapterElement.text());
+            const linkGroups = chapLinkReg.exec(link);
 
-            const chapterGroups = /^\s*Chapter\s*((\d+)(\.(\d+))?)/.exec(title);
+            let indices: { combi: number; total: number; fraction?: number; } | null = null;
 
-            if (chapterGroups && chapterGroups[2]) {
-                const indices = extractIndices(chapterGroups, 1, 2, 4);
-                if (!indices) {
-                    throw Error(`changed format on wuxiaworld, got no indices for: '${title}'`);
-                }
-                const chapterContent = {
-                    url: link,
-                    title,
-                    totalIndex: indices.total,
-                    partialIndex: indices.fraction,
-                    combiIndex: indices.combi
-                };
-                checkTocContent(chapterContent);
-                volume.episodes.push(chapterContent);
+            if (linkGroups) {
+                linkGroups[2] = linkGroups[2].replace("-", ".");
+                indices = extractIndices(linkGroups, 2, 3, 5);
             }
+
+            if (!indices) {
+                const chapterTitleGroups = chapTitleReg.exec(title);
+
+                if (chapterTitleGroups && chapterTitleGroups[2]) {
+                    indices = extractIndices(chapterTitleGroups, 1, 2, 4);
+                }
+            }
+            if (!indices) {
+                logger.warn(`changed format on wuxiaworld, got no indices on '${urlString}' for: '${title}'`);
+                continue;
+            }
+            const chapterContent = {
+                url: link,
+                title,
+                totalIndex: indices.total,
+                partialIndex: indices.fraction,
+                combiIndex: indices.combi
+            };
+            checkTocContent(chapterContent);
+            volume.episodes.push(chapterContent);
         }
 
         content.push(volume);

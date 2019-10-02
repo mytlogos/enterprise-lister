@@ -116,6 +116,8 @@ async function scrapeToc(urlString) {
     }
     const uri = "https://www.wuxiaworld.com/";
     const content = [];
+    const chapTitleReg = /^\s*Chapter\s*((\d+)(\.(\d+))?)/;
+    const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.\-](\d+))?)\/?$/;
     for (let vIndex = 0; vIndex < volumes.length; vIndex++) {
         const volumeElement = volumes.eq(vIndex);
         const volumeIndex = Number(volumeElement.find(".panel-heading .book").first().text().trim());
@@ -137,22 +139,31 @@ async function scrapeToc(urlString) {
             const chapterElement = volumeChapters.eq(cIndex);
             const link = url.resolve(uri, chapterElement.attr("href"));
             const title = tools_1.sanitizeString(chapterElement.text());
-            const chapterGroups = /^\s*Chapter\s*((\d+)(\.(\d+))?)/.exec(title);
-            if (chapterGroups && chapterGroups[2]) {
-                const indices = tools_1.extractIndices(chapterGroups, 1, 2, 4);
-                if (!indices) {
-                    throw Error(`changed format on wuxiaworld, got no indices for: '${title}'`);
-                }
-                const chapterContent = {
-                    url: link,
-                    title,
-                    totalIndex: indices.total,
-                    partialIndex: indices.fraction,
-                    combiIndex: indices.combi
-                };
-                scraperTools_1.checkTocContent(chapterContent);
-                volume.episodes.push(chapterContent);
+            const linkGroups = chapLinkReg.exec(link);
+            let indices = null;
+            if (linkGroups) {
+                linkGroups[2] = linkGroups[2].replace("-", ".");
+                indices = tools_1.extractIndices(linkGroups, 2, 3, 5);
             }
+            if (!indices) {
+                const chapterTitleGroups = chapTitleReg.exec(title);
+                if (chapterTitleGroups && chapterTitleGroups[2]) {
+                    indices = tools_1.extractIndices(chapterTitleGroups, 1, 2, 4);
+                }
+            }
+            if (!indices) {
+                logger_1.default.warn(`changed format on wuxiaworld, got no indices on '${urlString}' for: '${title}'`);
+                continue;
+            }
+            const chapterContent = {
+                url: link,
+                title,
+                totalIndex: indices.total,
+                partialIndex: indices.fraction,
+                combiIndex: indices.combi
+            };
+            scraperTools_1.checkTocContent(chapterContent);
+            volume.episodes.push(chapterContent);
         }
         content.push(volume);
     }
