@@ -9,14 +9,14 @@ if (Number.isNaN(port) || port <= 0 || port > 65535) {
     throw Error("invalid port number: " + port);
 }
 
-localtunnel(port, (err, tunnel) => {
+/*localtunnel(port, (err, tunnel) => {
     if (err) {
         logError(err);
     }
     if (tunnel) {
         tunneled = tunnel;
     }
-});
+});*/
 
 export function getTunnelUrl() {
     return tunneled && tunneled.url;
