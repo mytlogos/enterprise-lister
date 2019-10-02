@@ -9,6 +9,7 @@ const scraperTools_1 = require("./externals/scraperTools");
 const tools_1 = require("./tools");
 const types_1 = require("./types");
 const tunnel_1 = require("./tunnel");
+const env_1 = tslib_1.__importDefault(require("./env"));
 exports.getAllMedia = (req, res) => {
     sendResult(res, storage_1.mediumStorage.getAllMedia());
 };
@@ -95,6 +96,9 @@ exports.saveResult = (req, res) => {
 exports.getTunnel = (req, res) => {
     sendResult(res, Promise.resolve(tunnel_1.getTunnelUrl()));
 };
+exports.getDev = (req, res) => {
+    sendResult(res, Promise.resolve(Boolean(env_1.default.development)));
+};
 exports.checkLogin = (req, res) => {
     sendResult(res, storage_1.userStorage.loggedInUser(req.ip));
 };
@@ -150,7 +154,7 @@ exports.addBookmarked = (req, res) => {
                     uuid
                 })
             };
-        }));
+        })).then((value) => Array.isArray(value) ? !!value.length : !!value);
         sendResult(res, storePromise);
     }
     else {

@@ -12,6 +12,7 @@ function apiRouter() {
     // check if an user is logged in for ip
     router.get("", UserApi.checkLogin);
     router.get("/tunnel", UserApi.getTunnel);
+    router.get("/dev", UserApi.getDev);
     // login a user
     router.post("/login", UserApi.login);
     // register a new user

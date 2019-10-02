@@ -10,6 +10,7 @@ export declare const refreshExternalUser: Handler;
 export declare const processResult: Handler;
 export declare const saveResult: Handler;
 export declare const getTunnel: Handler;
+export declare const getDev: Handler;
 export declare const checkLogin: Handler;
 export declare const getUser: Handler;
 export declare const login: Handler;

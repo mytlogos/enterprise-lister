@@ -19,6 +19,7 @@ import {Errors, isError, isQuery, isString, stringToNumberList} from "./tools";
 import {JobRequest, ScrapeName} from "./types";
 import {TocRequest} from "./externals/types";
 import {getTunnelUrl} from "./tunnel";
+import env from "./env";
 
 export const getAllMedia: Handler = (req, res) => {
     sendResult(res, mediumStorage.getAllMedia());
@@ -119,6 +120,10 @@ export const saveResult: Handler = (req, res) => {
 export const getTunnel: Handler = (req, res) => {
     sendResult(res, Promise.resolve(getTunnelUrl()));
 };
+
+export const getDev: Handler = (req, res) => {
+    sendResult(res, Promise.resolve(Boolean(env.development)));
+};
 export const checkLogin: Handler = (req, res) => {
     sendResult(res, userStorage.loggedInUser(req.ip));
 };
@@ -182,7 +187,7 @@ export const addBookmarked: Handler = (req, res) => {
                     uuid
                 } as TocRequest)
             };
-        }));
+        })).then((value) => Array.isArray(value) ? !!value.length : !!value);
         sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
