@@ -151,7 +151,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("url VARCHAR(767) NOT NULL")
     .parseColumn("source_type VARCHAR(200)")
     .parseColumn("releaseDate DATETIME NOT NULL")
-    .parseMeta("PRIMARY KEY(episode_id)")
+    .parseMeta("PRIMARY KEY(episode_id, url)")
     .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
     .build();
 
