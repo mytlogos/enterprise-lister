@@ -234,6 +234,10 @@ async function search(searchWords) {
         const link = url.resolve("https://kissanime.ru/", linkElement.attr("href"));
         searchResults.push({ link, title: text });
     }
+    if (searchResults.length === 1 && searchResults[0].link === "https://kissanime.ru/Search/SearchSuggestx") {
+        // could lead to an unending loop, if the server returns always the same answer, which it should do only once
+        return search(searchWords);
+    }
     return searchResults;
 }
 scrapeNews.link = "https://kissanime.ru/";
