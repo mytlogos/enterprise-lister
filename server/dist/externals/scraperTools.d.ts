@@ -1,5 +1,5 @@
 import { ListScrapeResult } from "./listManager";
-import { Episode, JobRequest, News, TocSearchMedium } from "../types";
+import { Episode, JobRequest, News, SearchResult, TocSearchMedium } from "../types";
 import { ContentDownloader, DownloadContent, Hook, NewsScraper, Toc, TocContent, TocRequest, TocResult, TocScraper, TocSearchScraper } from "./types";
 export declare const scrapeNewsJob: (name: string) => Promise<{
     link: string;
@@ -69,6 +69,7 @@ export declare class ScraperHelper {
     getHook(name: string): Hook;
     private registerHooks;
 }
+export declare function search(title: string, medium: number): Promise<SearchResult[]>;
 export declare function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]>;
 export declare function remapMediaParts(): Promise<void>;
 export declare function queueExternalUser(): Promise<void>;

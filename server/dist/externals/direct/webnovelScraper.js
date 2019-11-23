@@ -222,9 +222,27 @@ async function searchToc(searchMedium) {
     console.log("scraping toc on webnovel successfully " + searchMedium.mediumId);
     return toc;
 }
+async function search(text) {
+    const uri = "https://www.webnovel.com";
+    const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(text);
+    const body = await loadBody(urlString);
+    const results = body("body > div.page  ul[class*=result] > li");
+    const searchResult = [];
+    for (let i = 0; i < results.length; i++) {
+        const result = results.eq(i);
+        const titleElement = result.find("h3 > a");
+        const coverElement = result.find("img");
+        const title = tools_1.sanitizeString(titleElement.text());
+        const coverUrl = url.resolve(uri, coverElement.attr("src"));
+        const link = url.resolve(uri, titleElement.attr("href"));
+        searchResult.push({ title, link, coverUrl });
+    }
+    return searchResult;
+}
 scrapeNews.link = "https://www.webnovel.com/";
 searchToc.link = "https://www.webnovel.com/";
 searchToc.medium = tools_1.MediaType.TEXT;
+search.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "webnovel",
@@ -235,7 +253,8 @@ function getHook() {
         newsAdapter: scrapeNews,
         contentDownloadAdapter: scrapeContent,
         tocAdapter: scrapeToc,
-        tocSearchAdapter: searchToc
+        tocSearchAdapter: searchToc,
+        searchAdapter: search
     };
 }
 exports.getHook = getHook;

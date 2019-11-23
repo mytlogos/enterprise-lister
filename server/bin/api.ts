@@ -45,6 +45,7 @@ function userRouter(): Router {
     router.get("/invalidated", UserApi.getInvalidated);
     router.post("/bookmarked", UserApi.addBookmarked);
     router.post("/toc", UserApi.addToc);
+    router.get("/search", UserApi.search);
     router.get("/download", UserApi.downloadEpisode);
     router.use("/medium", mediumRouter());
 

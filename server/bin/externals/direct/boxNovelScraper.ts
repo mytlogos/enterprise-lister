@@ -1,10 +1,10 @@
 import {EpisodeContent, Hook, Toc, TocContent, TocEpisode} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
 import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent, SearchResult, searchToc} from "./directTools";
+import {getTextContent, SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 
 interface NovelSearchResponse {
@@ -26,7 +26,34 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     );
 }
 
-export async function searchAjax(searchWords: string, medium: TocSearchMedium): Promise<SearchResult> {
+async function search(text: string): Promise<SearchResult[]> {
+    const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
+    let response: string;
+    const searchResults: SearchResult[] = [];
+    try {
+        response = await queueRequest(urlString, {
+            url: urlString,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            method: "POST",
+            body: "action=wp-manga-search-manga&title=" + text
+        });
+    } catch (e) {
+        console.log(e);
+        return searchResults;
+    }
+    const parsed: NovelSearchResponse = JSON.parse(response);
+
+    if (parsed.success && parsed.data && parsed.data.length) {
+        for (const datum of parsed.data) {
+            searchResults.push({link: datum.url, title: datum.title});
+        }
+    }
+    return searchResults;
+}
+
+export async function searchAjax(searchWords: string, medium: TocSearchMedium): Promise<TocSearchResult> {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response: string;
     try {
@@ -296,6 +323,7 @@ newsAdapter.link = "https://boxnovel.com";
 tocSearch.link = "https://boxnovel.com";
 tocSearch.medium = MediaType.TEXT;
 tocSearch.blindSearch = true;
+search.medium = MediaType.TEXT;
 
 
 export function getHook(): Hook {
@@ -307,5 +335,6 @@ export function getHook(): Hook {
         tocAdapter,
         tocSearchAdapter: tocSearch,
         newsAdapter,
+        searchAdapter: search,
     };
 }

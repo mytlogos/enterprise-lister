@@ -281,9 +281,24 @@ async function tocSearcher(medium) {
         }
     }
 }
+async function search(text) {
+    const word = encodeURIComponent(text);
+    const responseJson = await queueManager_1.queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + word);
+    const parsed = JSON.parse(responseJson);
+    const searchResult = [];
+    if (!parsed.result || !parsed.items || !parsed.items.length) {
+        return searchResult;
+    }
+    for (const item of parsed.items) {
+        const tocLink = "https://www.wuxiaworld.com/novel/" + item.slug;
+        searchResult.push({ coverUrl: item.coverUrl, link: tocLink, title: item.name });
+    }
+    return searchResult;
+}
 scrapeNews.link = "https://www.wuxiaworld.com/";
 tocSearcher.link = "https://www.wuxiaworld.com/";
 tocSearcher.medium = tools_1.MediaType.TEXT;
+search.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "wuxiaworld",
@@ -293,6 +308,7 @@ function getHook() {
         tocAdapter: scrapeToc,
         contentDownloadAdapter: scrapeContent,
         tocSearchAdapter: tocSearcher,
+        searchAdapter: search,
     };
 }
 exports.getHook = getHook;

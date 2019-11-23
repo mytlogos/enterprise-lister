@@ -10,6 +10,32 @@ const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
     return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (searchString) => searchAjax(searchString, medium));
 }
+async function search(text) {
+    const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
+    let response;
+    const searchResults = [];
+    try {
+        response = await queueManager_1.queueRequest(urlString, {
+            url: urlString,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            method: "POST",
+            body: "action=wp-manga-search-manga&title=" + text
+        });
+    }
+    catch (e) {
+        console.log(e);
+        return searchResults;
+    }
+    const parsed = JSON.parse(response);
+    if (parsed.success && parsed.data && parsed.data.length) {
+        for (const datum of parsed.data) {
+            searchResults.push({ link: datum.url, title: datum.title });
+        }
+    }
+    return searchResults;
+}
 async function searchAjax(searchWords, medium) {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response;
@@ -246,6 +272,7 @@ newsAdapter.link = "https://boxnovel.com";
 tocSearch.link = "https://boxnovel.com";
 tocSearch.medium = tools_1.MediaType.TEXT;
 tocSearch.blindSearch = true;
+search.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "boxnovel",
@@ -255,6 +282,7 @@ function getHook() {
         tocAdapter,
         tocSearchAdapter: tocSearch,
         newsAdapter,
+        searchAdapter: search,
     };
 }
 exports.getHook = getHook;

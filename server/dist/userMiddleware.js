@@ -10,6 +10,15 @@ const tools_1 = require("./tools");
 const types_1 = require("./types");
 const tunnel_1 = require("./tunnel");
 const env_1 = tslib_1.__importDefault(require("./env"));
+exports.search = (req, res) => {
+    const text = extractQueryParam(req, "text");
+    const medium = Number(extractQueryParam(req, "medium"));
+    if (Number.isNaN(medium) || !text) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, scraperTools_1.search(text, medium));
+};
 exports.getAllMedia = (req, res) => {
     sendResult(res, storage_1.mediumStorage.getAllMedia());
 };

@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import {equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
 import * as url from "url";
@@ -326,9 +326,31 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
     return toc;
 }
 
+async function search(text: string): Promise<SearchResult[]> {
+    const uri = "https://www.webnovel.com";
+    const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(text);
+    const body = await loadBody(urlString);
+    const results = body("body > div.page  ul[class*=result] > li");
+
+    const searchResult: SearchResult[] = [];
+
+    for (let i = 0; i < results.length; i++) {
+        const result = results.eq(i);
+        const titleElement = result.find("h3 > a");
+        const coverElement = result.find("img");
+        const title = sanitizeString(titleElement.text());
+        const coverUrl = url.resolve(uri, coverElement.attr("src"));
+        const link = url.resolve(uri, titleElement.attr("href"));
+
+        searchResult.push({title, link, coverUrl});
+    }
+    return searchResult;
+}
+
 scrapeNews.link = "https://www.webnovel.com/";
 searchToc.link = "https://www.webnovel.com/";
 searchToc.medium = MediaType.TEXT;
+search.medium = MediaType.TEXT;
 
 export function getHook(): Hook {
     return {
@@ -340,6 +362,7 @@ export function getHook(): Hook {
         newsAdapter: scrapeNews,
         contentDownloadAdapter: scrapeContent,
         tocAdapter: scrapeToc,
-        tocSearchAdapter: searchToc
+        tocSearchAdapter: searchToc,
+        searchAdapter: search
     };
 }

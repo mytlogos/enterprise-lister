@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
@@ -15,6 +15,31 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
         (parameter) => "http://novelfull.com/search?keyword=" + parameter,
         ".truyen-title a"
     );
+}
+
+async function search(text: string): Promise<SearchResult[]> {
+    const encodedText = encodeURIComponent(text);
+    const $ = await queueCheerioRequest("http://novelfull.com/search?keyword=" + encodedText);
+
+    const uri = "https://novelfull.com/";
+    const results = $(".col-truyen-main .row");
+    const searchResults: SearchResult[] = [];
+
+    for (let i = 0; i < results.length; i++) {
+        const resultElement = results.eq(i);
+        const linkElement = resultElement.find(".truyen-title a");
+        const authorElement = resultElement.find(".author");
+        const coverElement = resultElement.find("img.cover");
+
+        const coverLink = url.resolve(uri, coverElement.attr("src"));
+        const author = sanitizeString(authorElement.text());
+        const title = sanitizeString(linkElement.text());
+        let tocLink = linkElement.attr("href");
+        tocLink = url.resolve(uri, tocLink);
+
+        searchResults.push({title, link: tocLink, author, coverUrl: coverLink});
+    }
+    return searchResults;
 }
 
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
@@ -259,6 +284,7 @@ newsAdapter.link = "http://novelfull.com";
 tocSearch.link = "http://novelfull.com";
 tocSearch.medium = MediaType.TEXT;
 tocSearch.blindSearch = true;
+search.medium = MediaType.TEXT;
 
 export function getHook(): Hook {
     return {
@@ -268,6 +294,7 @@ export function getHook(): Hook {
         contentDownloadAdapter,
         tocAdapter,
         newsAdapter,
-        tocSearchAdapter: tocSearch
+        tocSearchAdapter: tocSearch,
+        searchAdapter: search
     };
 }

@@ -243,8 +243,8 @@ async function scrapeToc(urlString) {
     toc.content.push(...chapterContents);
     return [toc];
 }
-async function tocSearchAdapter(search) {
-    return directTools_1.searchToc(search, scrapeToc, "https://boxnovel.com/", (searchString) => scrapeSearch(searchString, search));
+async function tocSearchAdapter(searchMedium) {
+    return directTools_1.searchToc(searchMedium, scrapeToc, "https://mangahasu.se/", (searchString) => scrapeSearch(searchString, searchMedium));
 }
 async function scrapeSearch(searchWords, medium) {
     const urlString = "http://mangahasu.se/search/autosearch";
@@ -265,7 +265,8 @@ async function scrapeSearch(searchWords, medium) {
     }
     for (let i = 0; i < links.length; i++) {
         const linkElement = links.eq(i);
-        const text = tools_1.sanitizeString(linkElement.text());
+        const titleElement = linkElement.find(".name");
+        const text = tools_1.sanitizeString(titleElement.text());
         if (tools_1.equalsIgnore(text, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
             const tocLink = linkElement.attr("href");
             return { value: tocLink, done: true };
@@ -273,10 +274,42 @@ async function scrapeSearch(searchWords, medium) {
     }
     return { done: false };
 }
+async function search(searchWords) {
+    const urlString = "http://mangahasu.se/search/autosearch";
+    const body = "key=" + searchWords;
+    // TODO: 26.08.2019 this does not work for any reason
+    const $ = await queueManager_1.queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "mangahasu.se",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    const searchResults = [];
+    const links = $("a.a-item");
+    if (!links.length) {
+        return searchResults;
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+        const titleElement = linkElement.find(".name");
+        const authorElement = linkElement.find(".author");
+        const coverElement = linkElement.find("img");
+        const text = tools_1.sanitizeString(titleElement.text());
+        const link = url.resolve("http://mangahasu.se/", linkElement.attr("href"));
+        const author = tools_1.sanitizeString(authorElement.text());
+        const coverLink = coverElement.attr("src");
+        searchResults.push({ coverUrl: coverLink, author, link, title: text });
+    }
+    return searchResults;
+}
 scrapeNews.link = "http://mangahasu.se/";
 tocSearchAdapter.link = "http://mangahasu.se/";
 tocSearchAdapter.medium = tools_1.MediaType.IMAGE;
 tocSearchAdapter.blindSearch = true;
+search.medium = tools_1.MediaType.IMAGE;
 function getHook() {
     return {
         name: "mangahasu",
@@ -285,7 +318,8 @@ function getHook() {
         newsAdapter: scrapeNews,
         contentDownloadAdapter,
         tocSearchAdapter,
-        tocAdapter: scrapeToc
+        tocAdapter: scrapeToc,
+        searchAdapter: search
     };
 }
 exports.getHook = getHook;

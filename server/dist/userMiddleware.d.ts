@@ -1,4 +1,5 @@
 import { Handler } from "express";
+export declare const search: Handler;
 export declare const getAllMedia: Handler;
 export declare const putConsumeUnusedMedia: Handler;
 export declare const postCreateFromUnusedMedia: Handler;

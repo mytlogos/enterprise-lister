@@ -10,6 +10,26 @@ const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
     return directTools_1.searchTocCheerio(medium, tocAdapter, "https://novelfull.com/", (parameter) => "http://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
 }
+async function search(text) {
+    const encodedText = encodeURIComponent(text);
+    const $ = await queueManager_1.queueCheerioRequest("http://novelfull.com/search?keyword=" + encodedText);
+    const uri = "https://novelfull.com/";
+    const results = $(".col-truyen-main .row");
+    const searchResults = [];
+    for (let i = 0; i < results.length; i++) {
+        const resultElement = results.eq(i);
+        const linkElement = resultElement.find(".truyen-title a");
+        const authorElement = resultElement.find(".author");
+        const coverElement = resultElement.find("img.cover");
+        const coverLink = url.resolve(uri, coverElement.attr("src"));
+        const author = tools_1.sanitizeString(authorElement.text());
+        const title = tools_1.sanitizeString(linkElement.text());
+        let tocLink = linkElement.attr("href");
+        tocLink = url.resolve(uri, tocLink);
+        searchResults.push({ title, link: tocLink, author, coverUrl: coverLink });
+    }
+    return searchResults;
+}
 async function contentDownloadAdapter(urlString) {
     if (!urlString.match(/^http:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
         logger_1.default.warn("invalid chapter link for novelFull: " + urlString);
@@ -210,6 +230,7 @@ newsAdapter.link = "http://novelfull.com";
 tocSearch.link = "http://novelfull.com";
 tocSearch.medium = tools_1.MediaType.TEXT;
 tocSearch.blindSearch = true;
+search.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "novelfull",
@@ -218,7 +239,8 @@ function getHook() {
         contentDownloadAdapter,
         tocAdapter,
         newsAdapter,
-        tocSearchAdapter: tocSearch
+        tocSearchAdapter: tocSearch,
+        searchAdapter: search
     };
 }
 exports.getHook = getHook;

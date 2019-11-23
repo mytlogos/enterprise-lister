@@ -11,6 +11,7 @@ import {
     MultiSingle,
     News,
     ScrapeName,
+    SearchResult,
     SimpleEpisode,
     TocSearchMedium
 } from "../types";
@@ -21,6 +22,7 @@ import {
     EpisodeContent,
     Hook,
     NewsScraper,
+    SearchScraper,
     Toc,
     TocContent,
     TocRequest,
@@ -44,6 +46,7 @@ const tocScraper: Map<RegExp, TocScraper> = new Map();
 const episodeDownloader: Map<RegExp, ContentDownloader> = new Map();
 const tocDiscovery: Map<RegExp, TocSearchScraper> = new Map();
 const newsAdapter: NewsScraper[] = [];
+const searchAdapter: SearchScraper[] = [];
 const nameHookMap = new Map<string, Hook>();
 
 export const scrapeNewsJob = async (name: string): Promise<{ link: string, result: News[] }> => {
@@ -643,6 +646,10 @@ export class ScraperHelper {
                 value.newsAdapter.hookName = value.name;
                 newsAdapter.push(value.newsAdapter);
             }
+            if (value.searchAdapter) {
+                value.searchAdapter.hookName = value.name;
+                searchAdapter.push(value.searchAdapter);
+            }
             if (value.domainReg) {
                 if (value.tocAdapter) {
                     value.tocAdapter.hookName = value.name;
@@ -669,11 +676,27 @@ export class ScraperHelper {
 
 let hookRegistered = false;
 
-export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]> {
-    if (!episodeDownloader.size && !hookRegistered) {
+function checkHooks() {
+    if (!hookRegistered) {
         registerHooks(directScraper.getHooks());
         hookRegistered = true;
     }
+}
+
+export async function search(title: string, medium: number): Promise<SearchResult[]> {
+    checkHooks();
+    const promises: Array<Promise<SearchResult[]>> = [];
+    for (const searcher of searchAdapter) {
+        if (searcher.medium === medium) {
+            promises.push(searcher(title, medium));
+        }
+    }
+    const results = await Promise.all(promises);
+    return results.flat(1);
+}
+
+export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]> {
+    checkHooks();
     const entries = [...episodeDownloader.entries()];
 
     const downloadContents: Map<number, DownloadContent> = new Map();
@@ -878,24 +901,44 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
 function registerHooks(hook: Hook[] | Hook) {
     // @ts-ignore
     multiSingle(hook, (value: Hook) => {
+        if (!value.name) {
+            throw Error("hook without name!");
+        }
+        if (nameHookMap.has(value.name)) {
+            throw Error(`encountered hook with name '${value.name}' twice`);
+        }
+        nameHookMap.set(value.name, value);
+
         if (value.redirectReg) {
             redirects.push(value.redirectReg);
         }
         if (value.newsAdapter) {
+            value.newsAdapter.hookName = value.name;
             newsAdapter.push(value.newsAdapter);
+        }
+        if (value.searchAdapter) {
+            value.searchAdapter.hookName = value.name;
+            searchAdapter.push(value.searchAdapter);
         }
         if (value.domainReg) {
             if (value.tocAdapter) {
+                value.tocAdapter.hookName = value.name;
                 tocScraper.set(value.domainReg, value.tocAdapter);
             }
 
             if (value.contentDownloadAdapter) {
+                value.contentDownloadAdapter.hookName = value.name;
                 episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
             }
 
             if (value.tocSearchAdapter) {
+                value.tocSearchAdapter.hookName = value.name;
                 tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
             }
+        }
+        if (value.tocPattern && value.tocSearchAdapter) {
+            value.tocSearchAdapter.hookName = value.name;
+            tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
         }
     });
 }

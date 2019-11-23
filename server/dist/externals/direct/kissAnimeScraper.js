@@ -211,14 +211,41 @@ async function scrapeToc(urlString) {
     };
     return [toc];
 }
+async function search(searchWords) {
+    const urlString = "https://kissanime.ru/Search/SearchSuggestx";
+    const body = "type=Anime&keyword=" + searchWords;
+    const $ = await queueManager_1.queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "kissanime.ru",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    const searchResults = [];
+    const links = $("a");
+    if (!links.length) {
+        return searchResults;
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+        const text = tools_1.sanitizeString(linkElement.text());
+        const link = url.resolve("https://kissanime.ru/", linkElement.attr("href"));
+        searchResults.push({ link, title: text });
+    }
+    return searchResults;
+}
 scrapeNews.link = "https://kissanime.ru/";
+search.medium = tools_1.MediaType.VIDEO;
 function getHook() {
     return {
         name: "kissanime",
         medium: tools_1.MediaType.VIDEO,
         domainReg: /^https?:\/\/kissanime\.ru/,
         newsAdapter: scrapeNews,
-        tocAdapter: scrapeToc
+        tocAdapter: scrapeToc,
+        searchAdapter: search,
     };
 }
 exports.getHook = getHook;

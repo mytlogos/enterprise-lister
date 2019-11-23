@@ -1,5 +1,5 @@
 import {Hook, Toc, TocEpisode} from "../types";
-import {EpisodeNews, News} from "../../types";
+import {EpisodeNews, News, SearchResult} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
@@ -246,7 +246,39 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     return [toc];
 }
 
+async function search(searchWords: string): Promise<SearchResult[]> {
+    const urlString = "https://kissanime.ru/Search/SearchSuggestx";
+
+    const body = "type=Anime&keyword=" + searchWords;
+    const $ = await queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "kissanime.ru",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    const searchResults: SearchResult[] = [];
+    const links = $("a");
+
+    if (!links.length) {
+        return searchResults;
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+
+        const text = sanitizeString(linkElement.text());
+        const link = url.resolve("https://kissanime.ru/", linkElement.attr("href"));
+
+        searchResults.push({link, title: text});
+    }
+
+    return searchResults;
+}
+
 scrapeNews.link = "https://kissanime.ru/";
+search.medium = MediaType.VIDEO;
 
 export function getHook(): Hook {
     return {
@@ -254,6 +286,7 @@ export function getHook(): Hook {
         medium: MediaType.VIDEO,
         domainReg: /^https?:\/\/kissanime\.ru/,
         newsAdapter: scrapeNews,
-        tocAdapter: scrapeToc
+        tocAdapter: scrapeToc,
+        searchAdapter: search,
     };
 }

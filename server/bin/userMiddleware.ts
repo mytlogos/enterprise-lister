@@ -14,12 +14,24 @@ import {factory} from "./externals/listManager";
 import {Handler, Request, Response} from "express";
 import stringify from "stringify-stream";
 import logger from "./logger";
-import {downloadEpisodes} from "./externals/scraperTools";
+import {downloadEpisodes, search as searchMedium} from "./externals/scraperTools";
 import {Errors, isError, isQuery, isString, stringToNumberList} from "./tools";
 import {JobRequest, ScrapeName} from "./types";
 import {TocRequest} from "./externals/types";
 import {getTunnelUrl} from "./tunnel";
 import env from "./env";
+
+export const search: Handler = (req, res) => {
+    const text = extractQueryParam(req, "text");
+    const medium = Number(extractQueryParam(req, "medium"));
+
+    if (Number.isNaN(medium) || !text) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, searchMedium(text, medium));
+};
+
 
 export const getAllMedia: Handler = (req, res) => {
     sendResult(res, mediumStorage.getAllMedia());

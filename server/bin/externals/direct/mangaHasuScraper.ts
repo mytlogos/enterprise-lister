@@ -1,11 +1,11 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
 import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
-import {SearchResult, searchToc} from "./directTools";
+import {SearchResult as TocSearchResult, searchToc} from "./directTools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
@@ -287,16 +287,16 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     return [toc];
 }
 
-async function tocSearchAdapter(search: TocSearchMedium): Promise<Toc | undefined> {
+async function tocSearchAdapter(searchMedium: TocSearchMedium): Promise<Toc | undefined> {
     return searchToc(
-        search,
+        searchMedium,
         scrapeToc,
-        "https://boxnovel.com/",
-        (searchString) => scrapeSearch(searchString, search)
+        "https://mangahasu.se/",
+        (searchString) => scrapeSearch(searchString, searchMedium)
     );
 }
 
-async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promise<SearchResult> {
+async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promise<TocSearchResult> {
     const urlString = "http://mangahasu.se/search/autosearch";
 
     const body = "key=" + searchWords;
@@ -319,7 +319,8 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
     for (let i = 0; i < links.length; i++) {
         const linkElement = links.eq(i);
 
-        const text = sanitizeString(linkElement.text());
+        const titleElement = linkElement.find(".name");
+        const text = sanitizeString(titleElement.text());
 
         if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
             const tocLink = linkElement.attr("href");
@@ -330,10 +331,49 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
     return {done: false};
 }
 
+async function search(searchWords: string): Promise<SearchResult[]> {
+    const urlString = "http://mangahasu.se/search/autosearch";
+
+    const body = "key=" + searchWords;
+    // TODO: 26.08.2019 this does not work for any reason
+    const $ = await queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "mangahasu.se",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    const searchResults: SearchResult[] = [];
+    const links = $("a.a-item");
+
+    if (!links.length) {
+        return searchResults;
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+
+        const titleElement = linkElement.find(".name");
+        const authorElement = linkElement.find(".author");
+        const coverElement = linkElement.find("img");
+
+        const text = sanitizeString(titleElement.text());
+        const link = url.resolve("http://mangahasu.se/", linkElement.attr("href"));
+        const author = sanitizeString(authorElement.text());
+        const coverLink = coverElement.attr("src");
+
+        searchResults.push({coverUrl: coverLink, author, link, title: text});
+    }
+
+    return searchResults;
+}
+
 scrapeNews.link = "http://mangahasu.se/";
 tocSearchAdapter.link = "http://mangahasu.se/";
 tocSearchAdapter.medium = MediaType.IMAGE;
 tocSearchAdapter.blindSearch = true;
+search.medium = MediaType.IMAGE;
 
 export function getHook(): Hook {
     return {
@@ -343,6 +383,7 @@ export function getHook(): Hook {
         newsAdapter: scrapeNews,
         contentDownloadAdapter,
         tocSearchAdapter,
-        tocAdapter: scrapeToc
+        tocAdapter: scrapeToc,
+        searchAdapter: search
     };
 }

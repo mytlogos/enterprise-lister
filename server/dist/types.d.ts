@@ -1,5 +1,11 @@
 import { MediaType } from "./tools";
 import { ScrapeType } from "./externals/types";
+export interface SearchResult {
+    coverUrl?: string;
+    link: string;
+    title: string;
+    author?: string;
+}
 export interface SimpleMedium {
     id?: number;
     countryOfOrigin?: string;

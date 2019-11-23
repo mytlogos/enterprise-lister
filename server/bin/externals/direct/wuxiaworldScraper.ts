@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocPart} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import logger from "../../logger";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
@@ -321,6 +321,23 @@ async function tocSearcher(medium: TocSearchMedium): Promise<Toc | undefined> {
     }
 }
 
+async function search(text: string): Promise<SearchResult[]> {
+    const word = encodeURIComponent(text);
+    const responseJson = await queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + word);
+    const parsed: NovelSearchResponse = JSON.parse(responseJson);
+
+    const searchResult: SearchResult[] = [];
+
+    if (!parsed.result || !parsed.items || !parsed.items.length) {
+        return searchResult;
+    }
+    for (const item of parsed.items) {
+        const tocLink = "https://www.wuxiaworld.com/novel/" + item.slug;
+        searchResult.push({coverUrl: item.coverUrl, link: tocLink, title: item.name});
+    }
+    return searchResult;
+}
+
 interface NovelSearchResponse {
     result: boolean;
     items: NovelSearchItem[];
@@ -343,6 +360,7 @@ interface NovelSearchItem {
 scrapeNews.link = "https://www.wuxiaworld.com/";
 tocSearcher.link = "https://www.wuxiaworld.com/";
 tocSearcher.medium = MediaType.TEXT;
+search.medium = MediaType.TEXT;
 
 export function getHook(): Hook {
     return {
@@ -353,5 +371,6 @@ export function getHook(): Hook {
         tocAdapter: scrapeToc,
         contentDownloadAdapter: scrapeContent,
         tocSearchAdapter: tocSearcher,
+        searchAdapter: search,
     };
 }

@@ -20,6 +20,7 @@ const tocScraper = new Map();
 const episodeDownloader = new Map();
 const tocDiscovery = new Map();
 const newsAdapter = [];
+const searchAdapter = [];
 const nameHookMap = new Map();
 exports.scrapeNewsJob = async (name) => {
     const hook = nameHookMap.get(name);
@@ -528,6 +529,10 @@ class ScraperHelper {
                 value.newsAdapter.hookName = value.name;
                 newsAdapter.push(value.newsAdapter);
             }
+            if (value.searchAdapter) {
+                value.searchAdapter.hookName = value.name;
+                searchAdapter.push(value.searchAdapter);
+            }
             if (value.domainReg) {
                 if (value.tocAdapter) {
                     value.tocAdapter.hookName = value.name;
@@ -551,11 +556,26 @@ class ScraperHelper {
 }
 exports.ScraperHelper = ScraperHelper;
 let hookRegistered = false;
-async function downloadEpisodes(episodes) {
-    if (!episodeDownloader.size && !hookRegistered) {
+function checkHooks() {
+    if (!hookRegistered) {
         registerHooks(directScraper.getHooks());
         hookRegistered = true;
     }
+}
+async function search(title, medium) {
+    checkHooks();
+    const promises = [];
+    for (const searcher of searchAdapter) {
+        if (searcher.medium === medium) {
+            promises.push(searcher(title, medium));
+        }
+    }
+    const results = await Promise.all(promises);
+    return results.flat(1);
+}
+exports.search = search;
+async function downloadEpisodes(episodes) {
+    checkHooks();
     const entries = [...episodeDownloader.entries()];
     const downloadContents = new Map();
     for (const episode of episodes) {
@@ -740,22 +760,41 @@ function checkLink(link, linkKey) {
 function registerHooks(hook) {
     // @ts-ignore
     tools_1.multiSingle(hook, (value) => {
+        if (!value.name) {
+            throw Error("hook without name!");
+        }
+        if (nameHookMap.has(value.name)) {
+            throw Error(`encountered hook with name '${value.name}' twice`);
+        }
+        nameHookMap.set(value.name, value);
         if (value.redirectReg) {
             redirects.push(value.redirectReg);
         }
         if (value.newsAdapter) {
+            value.newsAdapter.hookName = value.name;
             newsAdapter.push(value.newsAdapter);
+        }
+        if (value.searchAdapter) {
+            value.searchAdapter.hookName = value.name;
+            searchAdapter.push(value.searchAdapter);
         }
         if (value.domainReg) {
             if (value.tocAdapter) {
+                value.tocAdapter.hookName = value.name;
                 tocScraper.set(value.domainReg, value.tocAdapter);
             }
             if (value.contentDownloadAdapter) {
+                value.contentDownloadAdapter.hookName = value.name;
                 episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
             }
             if (value.tocSearchAdapter) {
+                value.tocSearchAdapter.hookName = value.name;
                 tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
             }
+        }
+        if (value.tocPattern && value.tocSearchAdapter) {
+            value.tocSearchAdapter.hookName = value.name;
+            tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
         }
     });
 }
