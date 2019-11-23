@@ -1,21 +1,17 @@
 import {EpisodeContent, Hook, Toc, TocEpisode} from "../types";
-import {extractIndices, MediaType, sanitizeString} from "../../tools";
-import {EpisodeNews, News, SearchResult} from "../../types";
+import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
+import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import cheerio from "cheerio";
 import logger from "../../logger";
 import {CloudscraperOptions} from "cloudscraper";
 import * as url from "url";
 import {checkTocContent} from "../scraperTools";
-
-function loadBody(urlString: string, options?: CloudscraperOptions): Promise<CheerioStatic> {
-    // @ts-ignore
-    return queueCheerioRequest(urlString, options, defaultRequest);
-}
+import {SearchResult as TocSearchResult, searchToc} from "./directTools";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www10.gogoanime.io/";
-    const $ = await loadBody(uri);
+    const $ = await queueCheerioRequest(uri);
 
     const newsRows = $(".items li");
 
@@ -126,8 +122,27 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     return [toc];
 }
 
-async function searchToc() {
+async function scrapeSearch(searchString: string, searchMedium: TocSearchMedium): Promise<TocSearchResult> {
+    const searchResults = await search(searchString);
+    if (!searchResults || !searchResults.length) {
+        return {done: true};
+    }
+    for (const searchResult of searchResults) {
+        const title = searchResult.title;
+        if (equalsIgnore(title, searchMedium.title) || searchMedium.synonyms.some((s) => equalsIgnore(title, s))) {
+            return {value: searchResult.link, done: true};
+        }
+    }
+    return {done: false};
+}
 
+async function searchForToc(searchMedium: TocSearchMedium): Promise<Toc | undefined> {
+    return searchToc(
+        searchMedium,
+        scrapeToc,
+        "https://mangahasu.se/",
+        (searchString) => scrapeSearch(searchString, searchMedium)
+    );
 }
 
 async function search(searchWords: string): Promise<SearchResult[]> {
@@ -160,6 +175,9 @@ async function search(searchWords: string): Promise<SearchResult[]> {
 }
 
 scrapeNews.link = "https://www10.gogoanime.io/";
+searchForToc.link = "https://www10.gogoanime.io/";
+searchForToc.medium = MediaType.VIDEO;
+searchForToc.blindSearch = true;
 search.medium = MediaType.VIDEO;
 
 async function contentDownloader(link: string): Promise<EpisodeContent[]> {
@@ -189,5 +207,6 @@ export function getHook(): Hook {
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,
         contentDownloadAdapter: contentDownloader,
+        tocSearchAdapter: searchForToc,
     };
 }

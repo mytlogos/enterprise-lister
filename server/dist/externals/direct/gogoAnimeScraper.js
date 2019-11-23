@@ -7,13 +7,10 @@ const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const url = tslib_1.__importStar(require("url"));
 const scraperTools_1 = require("../scraperTools");
-function loadBody(urlString, options) {
-    // @ts-ignore
-    return queueManager_1.queueCheerioRequest(urlString, options, defaultRequest);
-}
+const directTools_1 = require("./directTools");
 async function scrapeNews() {
     const uri = "https://www10.gogoanime.io/";
-    const $ = await loadBody(uri);
+    const $ = await queueManager_1.queueCheerioRequest(uri);
     const newsRows = $(".items li");
     const news = [];
     const titlePattern = /Episode\s*((\d+)(\.(\d+))?)/i;
@@ -104,7 +101,21 @@ async function scrapeToc(urlString) {
     };
     return [toc];
 }
-async function searchToc() {
+async function scrapeSearch(searchString, searchMedium) {
+    const searchResults = await search(searchString);
+    if (!searchResults || !searchResults.length) {
+        return { done: true };
+    }
+    for (const searchResult of searchResults) {
+        const title = searchResult.title;
+        if (tools_1.equalsIgnore(title, searchMedium.title) || searchMedium.synonyms.some((s) => tools_1.equalsIgnore(title, s))) {
+            return { value: searchResult.link, done: true };
+        }
+    }
+    return { done: false };
+}
+async function searchForToc(searchMedium) {
+    return directTools_1.searchToc(searchMedium, scrapeToc, "https://mangahasu.se/", (searchString) => scrapeSearch(searchString, searchMedium));
 }
 async function search(searchWords) {
     const urlString = `https://ajax.apimovie.xyz/site/loadAjaxSearch?keyword=${encodeURIComponent(searchWords)}&id=-1&link_web=https%3A%2F%2Fwww10.gogoanime.io%2F`;
@@ -130,6 +141,9 @@ async function search(searchWords) {
     return searchResults;
 }
 scrapeNews.link = "https://www10.gogoanime.io/";
+searchForToc.link = "https://www10.gogoanime.io/";
+searchForToc.medium = tools_1.MediaType.VIDEO;
+searchForToc.blindSearch = true;
 search.medium = tools_1.MediaType.VIDEO;
 async function contentDownloader(link) {
     const episodeRegex = /https:\/\/www10\.gogoanime\.io\/.+-episode-(\d+)/;
@@ -154,6 +168,7 @@ function getHook() {
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,
         contentDownloadAdapter: contentDownloader,
+        tocSearchAdapter: searchForToc,
     };
 }
 exports.getHook = getHook;
