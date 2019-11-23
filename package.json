@@ -35,7 +35,7 @@
     "morgan": "^1.9.1",
     "mysql": "^2.17.1",
     "node-cache": "^4.2.1",
-    "npm": "^6.11.2",
+    "npm": "^6.13.1",
     "object-hash": "latest",
     "parse5-parser-stream": "latest",
     "promise-mysql": "^4.1.1",
