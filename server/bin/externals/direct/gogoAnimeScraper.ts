@@ -110,7 +110,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             title: `Episode ${i}`,
             combiIndex: i,
             totalIndex: i,
-            url: `https://www10.gogoanime.io/detective-conan-episode-${i}`,
+            url: `https://www10.gogoanime.io/${animeAlias}-episode-${i}`,
         };
         checkTocContent(episodeContent);
         content.push(episodeContent);
