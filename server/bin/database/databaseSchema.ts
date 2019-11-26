@@ -2,7 +2,7 @@ import {DataBaseBuilder} from "./databaseBuilder";
 import {TriggerEvent, TriggerTiming} from "./trigger";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder("enterprise", 5);
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 6);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")
@@ -251,6 +251,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("interval INT NOT NULL")
     .parseColumn("deleteAfterRun INT NOT NULL")
     .parseColumn("runAfter INT")
+    .parseColumn("runningSince DATETIME")
     .parseColumn("lastRun DATETIME")
     .parseColumn("nextRun DATETIME")
     .parseColumn("arguments TEXT")

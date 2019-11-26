@@ -87,6 +87,10 @@ export class JobContext extends SubContext {
                 updates.push("state = ?");
                 values.push(value.state);
 
+                // for now updateJobs is used only to switch between the running states running and waiting
+                updates.push("runningSince = ?");
+                values.push(value.state === JobState.RUNNING ? new Date() : null);
+
                 updates.push("lastRun = ?");
                 values.push(value.lastRun);
 
