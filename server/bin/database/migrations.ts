@@ -150,5 +150,15 @@ export const Migrations: Migration[] = [
         async migrate(context: DatabaseContext): Promise<void> {
             // empty migration as it adds trigger only
         }
+    },
+    {
+        fromVersion: 5,
+        toVersion: 6,
+        async migrate(context: DatabaseContext): Promise<void> {
+            await context.addColumn(
+                "jobs",
+                "runningSince DATETIME",
+            );
+        }
     }
 ];

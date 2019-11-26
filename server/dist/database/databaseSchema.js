@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const databaseBuilder_1 = require("./databaseBuilder");
 const trigger_1 = require("./trigger");
 const migrations_1 = require("./migrations");
-const dataBaseBuilder = new databaseBuilder_1.DataBaseBuilder("enterprise", 5);
+const dataBaseBuilder = new databaseBuilder_1.DataBaseBuilder("enterprise", 6);
 dataBaseBuilder.getTableBuilder()
     .setName("user")
     .setMain()
@@ -227,6 +227,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("interval INT NOT NULL")
     .parseColumn("deleteAfterRun INT NOT NULL")
     .parseColumn("runAfter INT")
+    .parseColumn("runningSince DATETIME")
     .parseColumn("lastRun DATETIME")
     .parseColumn("nextRun DATETIME")
     .parseColumn("arguments TEXT")

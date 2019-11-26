@@ -81,6 +81,13 @@ exports.Migrations = [
         async migrate(context) {
             // empty migration as it adds trigger only
         }
+    },
+    {
+        fromVersion: 5,
+        toVersion: 6,
+        async migrate(context) {
+            await context.addColumn("jobs", "runningSince DATETIME");
+        }
     }
 ];
 //# sourceMappingURL=migrations.js.map

@@ -530,7 +530,6 @@ class ScraperHelper {
                 newsAdapter.push(value.newsAdapter);
             }
             if (value.searchAdapter) {
-                value.searchAdapter.hookName = value.name;
                 searchAdapter.push(value.searchAdapter);
             }
             if (value.domainReg) {
@@ -775,7 +774,6 @@ function registerHooks(hook) {
             newsAdapter.push(value.newsAdapter);
         }
         if (value.searchAdapter) {
-            value.searchAdapter.hookName = value.name;
             searchAdapter.push(value.searchAdapter);
         }
         if (value.domainReg) {
