@@ -195,11 +195,13 @@ class JobScraperManager {
             // when there is at least one timeout, stop this process (pm2 should restart it then again)
             if (maxDate) {
                 if (maxDate < now && this.queue.invalidRunning(maxDate, 5)) {
+                    logger_1.logError("Restarting Process due to long running jobs");
                     process.exit(1);
                     return;
                 }
                 now.setHours(-2);
                 if (maxDate < now && this.queue.invalidRunning(maxDate, 1)) {
+                    logger_1.logError("Restarting Process due to long running jobs");
                     process.exit(1);
                     return;
                 }

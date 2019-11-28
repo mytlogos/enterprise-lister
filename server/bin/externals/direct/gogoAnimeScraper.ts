@@ -140,7 +140,7 @@ async function searchForToc(searchMedium: TocSearchMedium): Promise<Toc | undefi
     return searchToc(
         searchMedium,
         scrapeToc,
-        "https://mangahasu.se/",
+        "https://www10.gogoanime.io/",
         (searchString) => scrapeSearch(searchString, searchMedium)
     );
 }

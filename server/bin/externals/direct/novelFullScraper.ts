@@ -11,7 +11,7 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return searchTocCheerio(
         medium,
         tocAdapter,
-        "https://novelfull.com/",
+        "http://novelfull.com/",
         (parameter) => "http://novelfull.com/search?keyword=" + parameter,
         ".truyen-title a"
     );
@@ -21,7 +21,7 @@ async function search(text: string): Promise<SearchResult[]> {
     const encodedText = encodeURIComponent(text);
     const $ = await queueCheerioRequest("http://novelfull.com/search?keyword=" + encodedText);
 
-    const uri = "https://novelfull.com/";
+    const uri = "http://novelfull.com/";
     const results = $(".col-truyen-main .row");
     const searchResults: SearchResult[] = [];
 

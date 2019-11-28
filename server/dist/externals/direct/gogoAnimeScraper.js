@@ -115,7 +115,7 @@ async function scrapeSearch(searchString, searchMedium) {
     return { done: false };
 }
 async function searchForToc(searchMedium) {
-    return directTools_1.searchToc(searchMedium, scrapeToc, "https://mangahasu.se/", (searchString) => scrapeSearch(searchString, searchMedium));
+    return directTools_1.searchToc(searchMedium, scrapeToc, "https://www10.gogoanime.io/", (searchString) => scrapeSearch(searchString, searchMedium));
 }
 async function search(searchWords) {
     const urlString = `https://ajax.apimovie.xyz/site/loadAjaxSearch?keyword=${encodeURIComponent(searchWords)}&id=-1&link_web=https%3A%2F%2Fwww10.gogoanime.io%2F`;

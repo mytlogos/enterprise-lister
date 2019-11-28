@@ -8,12 +8,12 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
-    return directTools_1.searchTocCheerio(medium, tocAdapter, "https://novelfull.com/", (parameter) => "http://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
+    return directTools_1.searchTocCheerio(medium, tocAdapter, "http://novelfull.com/", (parameter) => "http://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
 }
 async function search(text) {
     const encodedText = encodeURIComponent(text);
     const $ = await queueManager_1.queueCheerioRequest("http://novelfull.com/search?keyword=" + encodedText);
-    const uri = "https://novelfull.com/";
+    const uri = "http://novelfull.com/";
     const results = $(".col-truyen-main .row");
     const searchResults = [];
     for (let i = 0; i < results.length; i++) {
