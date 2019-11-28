@@ -76,7 +76,7 @@
     "@types/mocha": "latest",
     "@types/morgan": "^1.7.37",
     "@types/mysql": "latest",
-    "@types/node": "11.9.5",
+    "@types/node": "11.15.3",
     "@types/node-cache": "latest",
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.17",
