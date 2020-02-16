@@ -20,6 +20,21 @@ export declare class PartStorage {
      */
     getParts(partsId: number | number[], uuid: string): Promise<Part[] | Part>;
     /**
+     * Returns a Map of Parts with their corresponding episodeIds.
+     */
+    getPartItems(partsId: number[]): Promise<{
+        [key: number]: number[];
+    }>;
+    /**
+     * Returns a Map of Parts with all of their Releases.
+     */
+    getPartReleases(partsId: number[]): Promise<{
+        [key: number]: Array<{
+            id: number;
+            link: string;
+        }>;
+    }>;
+    /**
      * Adds a part of an medium to the storage.
      */
     addPart(part: Part): Promise<Part>;

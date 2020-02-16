@@ -113,6 +113,31 @@ export class JobQueue {
         return nonEndingJobs.length >= atLeast;
     }
 
+    public getJobs(): OutsideJob[] {
+        const jobs = [];
+        for (const job of this.activeJobs) {
+            jobs.push({
+                active: job.active,
+                executed: job.executed,
+                jobId: job.jobId,
+                lastRun: job.lastRun,
+                running: job.running,
+                startRun: job.startRun,
+            });
+        }
+        for (const job of this.waitingJobs) {
+            jobs.push({
+                active: job.active,
+                executed: job.executed,
+                jobId: job.jobId,
+                lastRun: job.lastRun,
+                running: job.running,
+                startRun: job.startRun,
+            });
+        }
+        return jobs;
+    }
+
     private _done(job: InternJob) {
         remove(this.activeJobs, job);
 
@@ -232,6 +257,15 @@ export type JobCallback = ((done: () => void) => void | JobRequest | JobRequest[
 interface InternJob {
     readonly jobInfo: Job;
     readonly job: JobCallback;
+    jobId: number;
+    startRun?: number;
+    running?: boolean;
+    active: boolean;
+    executed: number;
+    lastRun: number | null;
+}
+
+export interface OutsideJob {
     jobId: number;
     startRun?: number;
     running?: boolean;

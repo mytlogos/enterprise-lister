@@ -5,5 +5,5 @@ export declare class TableParser {
     static parsePrimaryKey(table: TableSchema, tables: TableSchema[], schema: string): void;
     static parseUnique(table: TableSchema, tables: TableSchema[], data: string): void;
     static parseDataColumn(table: TableSchema, tables: TableSchema[], value: string): ColumnSchema | null;
-    private static _getDefaultValue;
+    private static _getExpressionValue;
 }

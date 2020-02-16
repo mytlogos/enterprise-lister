@@ -96,6 +96,16 @@ export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
     return value;
 }
 
+export function getElseSetObj<K, V>(map: object, key: string | number, valueCb: () => V): V {
+    // @ts-ignore
+    let value = map[key];
+    if (value == null) {
+        // @ts-ignore
+        map[key] = value = valueCb();
+    }
+    return value;
+}
+
 
 export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) => boolean): T[] {
     const uniques: T[] = [];
@@ -478,6 +488,19 @@ export function separateIndex(value: number): { totalIndex: number, partialIndex
         throw Error("invalid number");
     }
     return {totalIndex, partialIndex};
+}
+
+export function createCircularReplacer() {
+    const seen = new WeakSet();
+    return (key: any, value: any) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular Reference]";
+            }
+            seen.add(value);
+        }
+        return value;
+    };
 }
 
 export function ignore() {

@@ -22,7 +22,8 @@ export interface Migration {
 }
 
 export enum SqlFunction {
-    NOW = "NOW()"
+    NOW = "NOW()",
+    CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
 }
 
 export enum Modifier {
@@ -42,6 +43,7 @@ export enum ColumnType {
     CHAR = "CHAR",
     VARCHAR = "VARCHAR",
     DATETIME = "DATETIME",
+    TIMESTAMP = "TIMESTAMP",
     FLOAT = "FLOAT",
     INT = "INT"
 }

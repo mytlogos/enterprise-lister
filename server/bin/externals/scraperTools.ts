@@ -369,16 +369,18 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
         return searchTocJob(id, tocSearchMedia.find((value) => value.mediumId === id));
     }).flat(2) as JobRequest[];
 
+    const hooks = [...nameHookMap.values()];
     const promises = [...mediaWithTocs.entries()].map(async (value) => {
         const mediumId = value[0];
         const indices = await episodeStorage.getChapterIndices(mediumId);
-        const maxIndex = maxValue(indices);
 
+        const maxIndex = maxValue(indices);
+        const mediumTocs = value[1];
         if (!maxIndex || indices.length < maxIndex) {
             return searchTocJob(
                 mediumId,
                 tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),
-                value[1]
+                mediumTocs
             );
         }
         let missingChapters;
@@ -392,7 +394,14 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
             return searchTocJob(
                 mediumId,
                 tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),
-                value[1]
+                mediumTocs
+            );
+        }
+        if (mediumTocs.some((mediumToc) => hooks.every((hook) => !hook.domainReg || !hook.domainReg.test(mediumToc)))) {
+            return searchTocJob(
+                mediumId,
+                tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),
+                mediumTocs
             );
         }
     }).flat(2);

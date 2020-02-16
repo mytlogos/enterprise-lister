@@ -184,6 +184,12 @@ class Storage {
     queueNewTocs() {
         return inContext((context) => context.queueNewTocs());
     }
+    getStats(uuid) {
+        return inContext((context) => context.getStat(uuid));
+    }
+    getNew(uuid, date) {
+        return inContext((context) => context.getNew(uuid, date));
+    }
     /**
      *
      * @param result

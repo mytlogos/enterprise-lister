@@ -150,6 +150,44 @@ class PartContext extends subContext_1.SubContext {
             };
         });
     }
+    /**
+     * Returns all parts of an medium.
+     */
+    async getPartItems(partIds) {
+        if (!partIds.length) {
+            return {};
+        }
+        const episodesResult = await this.queryInList("SELECT id, part_id FROM episode WHERE part_id ", partIds);
+        const episodes = episodesResult || [];
+        const result = {};
+        episodes.forEach((value) => {
+            tools_1.getElseSetObj(result, value.part_id, () => []).push(value.id);
+        });
+        for (const partId of partIds) {
+            tools_1.getElseSetObj(result, partId, () => []);
+        }
+        return result;
+    }
+    /**
+     * Returns all parts of an medium.
+     */
+    async getPartReleases(partIds) {
+        if (!partIds.length) {
+            return {};
+        }
+        const episodesResult = await this.queryInList("SELECT id, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id ", partIds);
+        const episodes = episodesResult || [];
+        const result = {};
+        episodes.forEach((value) => {
+            const items = tools_1.getElseSetObj(result, value.part_id, () => []);
+            delete value.part_id;
+            items.push(value);
+        });
+        for (const partId of partIds) {
+            tools_1.getElseSetObj(result, partId, () => []);
+        }
+        return result;
+    }
     async getOverLappingParts(standardId, nonStandardPartIds) {
         if (!nonStandardPartIds.length) {
             return [];

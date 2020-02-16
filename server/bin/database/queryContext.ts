@@ -223,7 +223,7 @@ export class QueryContext {
     }
 
     public dropTrigger(trigger: string) {
-        return this.query("DROP TRIGGER ?", trigger);
+        return this.query(`DROP TRIGGER ${mySql.escapeId(trigger)};`);
     }
 
     public createTable(table: string, columns: string[]) {

@@ -13,6 +13,7 @@ export declare function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, 
 export declare function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void;
 export declare function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void;
 export declare function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V;
+export declare function getElseSetObj<K, V>(map: object, key: string | number, valueCb: () => V): V;
 export declare function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) => boolean): T[];
 export declare function isTocEpisode(tocContent: any): tocContent is TocEpisode;
 export declare function isTocPart(tocContent: any): tocContent is TocPart;
@@ -83,6 +84,7 @@ export declare function separateIndex(value: number): {
     totalIndex: number;
     partialIndex?: number;
 };
+export declare function createCircularReplacer(): (key: any, value: any) => any;
 export declare function ignore(): undefined;
 /**
  * Searches for a project directory by searching  current working directory

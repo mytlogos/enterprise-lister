@@ -139,6 +139,9 @@ class TableParser {
             case databaseTypes_1.ColumnType.DATETIME:
                 type = databaseTypes_1.ColumnType.DATETIME;
                 break;
+            case databaseTypes_1.ColumnType.TIMESTAMP:
+                type = databaseTypes_1.ColumnType.TIMESTAMP;
+                break;
             case databaseTypes_1.ColumnType.BOOLEAN:
                 type = databaseTypes_1.ColumnType.BOOLEAN;
                 break;
@@ -171,6 +174,7 @@ class TableParser {
         }
         const modifiers = [];
         let defaultValue;
+        let updateValue;
         for (let i = 2; i < parts.length; i++) {
             const modifierPart = parts[i];
             let modifier;
@@ -196,13 +200,28 @@ class TableParser {
                     break;
                 case "DEFAULT":
                     i++;
-                    const defaultValueObj = this._getDefaultValue(parts, i);
+                    const defaultValueObj = this._getExpressionValue(parts, i);
                     if (!defaultValueObj || !defaultValueObj.value) {
                         logger_1.default.warn(`no default value specified for '${name}' of ${table.name}`);
                         return null;
                     }
                     defaultValue = defaultValueObj.value;
                     i = defaultValueObj.index;
+                    break;
+                case "ON":
+                    i++;
+                    if (parts[i].toLowerCase() !== "update") {
+                        // for now skip all column 'triggers'? which are not triggered on update
+                        break;
+                    }
+                    i++;
+                    const updateValueObj = this._getExpressionValue(parts, i);
+                    if (!updateValueObj || !updateValueObj.value) {
+                        logger_1.default.warn(`no update value specified for '${name}' of ${table.name}`);
+                        return null;
+                    }
+                    updateValue = updateValueObj.value;
+                    i = updateValueObj.index;
                     break;
                 default:
                     logger_1.default.warn(`could not parse modifier for: '${modifierPart}'`);
@@ -212,11 +231,11 @@ class TableParser {
                 modifiers.push(modifier);
             }
         }
-        const column = new columnSchema_1.ColumnSchema(name, type, modifiers, typeSize, false, undefined, defaultValue);
+        const column = new columnSchema_1.ColumnSchema(name, type, modifiers, typeSize, false, undefined, defaultValue, undefined, updateValue);
         column.table = table;
         return column;
     }
-    static _getDefaultValue(columnParts, index) {
+    static _getExpressionValue(columnParts, index) {
         let defaultValue = columnParts[index];
         if (!defaultValue) {
             throw Error(`missing defaultValue in: '${columnParts.join(" ")}'`);
@@ -228,7 +247,7 @@ class TableParser {
                 const currentValue = columnParts[index];
                 defaultValue += " " + currentValue;
                 if (currentValue.startsWith("(")) {
-                    defaultValue += TableParser._getDefaultValue(columnParts, index);
+                    defaultValue += TableParser._getExpressionValue(columnParts, index);
                 }
                 else if (currentValue.endsWith(")")) {
                     foundClosingParenthesis = true;

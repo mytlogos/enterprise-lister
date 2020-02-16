@@ -1,5 +1,7 @@
 import { Handler } from "express";
 export declare const search: Handler;
+export declare const getStats: Handler;
+export declare const getNew: Handler;
 export declare const getAllMedia: Handler;
 export declare const putConsumeUnusedMedia: Handler;
 export declare const postCreateFromUnusedMedia: Handler;
@@ -30,6 +32,8 @@ export declare const postListMedium: Handler;
 export declare const putListMedium: Handler;
 export declare const deleteListMedium: Handler;
 export declare const getPart: Handler;
+export declare const getPartItems: Handler;
+export declare const getPartReleases: Handler;
 export declare const postPart: Handler;
 export declare const putPart: Handler;
 export declare const deletePart: Handler;

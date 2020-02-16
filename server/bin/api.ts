@@ -46,6 +46,8 @@ function userRouter(): Router {
     router.post("/bookmarked", UserApi.addBookmarked);
     router.post("/toc", UserApi.addToc);
     router.get("/search", UserApi.search);
+    router.get("/stats", UserApi.getStats);
+    router.get("/new", UserApi.getNew);
     router.get("/download", UserApi.downloadEpisode);
     router.use("/medium", mediumRouter());
 
@@ -159,6 +161,8 @@ function partRouter(): Router {
     partRoute.post(UserApi.postPart);
     partRoute.put(UserApi.putPart);
     partRoute.delete(UserApi.deletePart);
+    router.get("/items", UserApi.getPartItems);
+    router.get("/releases", UserApi.getPartReleases);
 
     return router;
 }

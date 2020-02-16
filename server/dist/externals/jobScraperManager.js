@@ -168,6 +168,9 @@ class JobScraperManager {
             logger_1.default.warn("could not add all depending jobs: " + JSON.stringify(waitForOtherRequest));
         }
     }
+    getJobs() {
+        return this.queue.getJobs();
+    }
     addDependant(jobsMap) {
         for (const [key, value] of jobsMap.entries()) {
             for (const job of value) {

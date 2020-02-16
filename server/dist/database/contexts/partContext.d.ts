@@ -15,6 +15,21 @@ export declare class PartContext extends SubContext {
     getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>): Promise<MinPart[]>;
     getParts(partId: number, uuid: string): Promise<Part>;
     getParts(partId: number[], uuid: string): Promise<Part[]>;
+    /**
+     * Returns all parts of an medium.
+     */
+    getPartItems(partIds: number[]): Promise<{
+        [key: number]: number[];
+    }>;
+    /**
+     * Returns all parts of an medium.
+     */
+    getPartReleases(partIds: number[]): Promise<{
+        [key: number]: Array<{
+            id: number;
+            url: string;
+        }>;
+    }>;
     getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]>;
     /**
      * Adds a part of an medium to the storage.

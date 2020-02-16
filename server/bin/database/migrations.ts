@@ -160,5 +160,28 @@ export const Migrations: Migration[] = [
                 "runningSince DATETIME",
             );
         }
+    },
+    {
+        fromVersion: 6,
+        toVersion: 7,
+        async migrate(context: DatabaseContext): Promise<void> {
+            // implicit drop of all triggers which insert rows in user_data_invalidation table
+            await Promise.all([
+                "reading_list",
+                "external_reading_list",
+                "medium",
+                "part",
+                "episode",
+                "episode_release",
+                "news_board",
+                "medium_in_wait",
+            ].map((value) => ignoreError(
+                () => context.addColumn(
+                    value,
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+                ),
+                [MySqlErrorNo.ER_DUP_FIELDNAME]
+            )));
+        }
     }
 ];

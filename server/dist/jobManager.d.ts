@@ -31,6 +31,7 @@ export declare class JobQueue {
     isEmpty(): boolean;
     isFull(): boolean;
     invalidRunning(end: Date, atLeast: number): boolean;
+    getJobs(): OutsideJob[];
     private _done;
     private _fullQueue;
     private _overMemoryLimit;
@@ -40,6 +41,14 @@ export declare class JobQueue {
     private executeCallback;
 }
 export declare type JobCallback = ((done: () => void) => void | JobRequest | JobRequest[]) | (() => Promise<void | JobRequest | JobRequest[]>);
+export interface OutsideJob {
+    jobId: number;
+    startRun?: number;
+    running?: boolean;
+    active: boolean;
+    executed: number;
+    lastRun: number | null;
+}
 export interface Job {
     onStart?: () => void | Promise<void>;
     onDone?: () => void | Promise<void>;

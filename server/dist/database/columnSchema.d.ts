@@ -9,7 +9,8 @@ export declare class ColumnSchema {
     readonly primaryKey?: boolean;
     readonly foreignKey?: ColumnSchema;
     readonly default?: string | SqlFunction;
+    readonly update?: string | SqlFunction;
     readonly primaryKeyTypeSize?: number;
-    constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean, foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number);
+    constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean, foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number, update?: string | SqlFunction);
     getSchema(): string;
 }

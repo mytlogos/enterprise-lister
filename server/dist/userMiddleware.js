@@ -19,6 +19,16 @@ exports.search = (req, res) => {
     }
     sendResult(res, scraperTools_1.search(text, medium));
 };
+exports.getStats = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, storage_1.storage.getStats(uuid));
+};
+exports.getNew = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    let date = extractQueryParam(req, "date");
+    date = date ? new Date(date) : undefined;
+    sendResult(res, storage_1.storage.getNew(uuid, date));
+};
 exports.getAllMedia = (req, res) => {
     sendResult(res, storage_1.mediumStorage.getAllMedia());
 };
@@ -311,12 +321,37 @@ exports.getPart = (req, res) => {
         }
         if (!partId) {
             sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+            return;
         }
         sendResult(res, storage_1.partStorage.getParts(partId, uuid));
     }
     else {
         sendResult(res, storage_1.partStorage.getMediumParts(mediumId, uuid));
     }
+};
+exports.getPartItems = (req, res) => {
+    let partId = extractQueryParam(req, "part");
+    // if it is a string, it is likely a list of partIds was send
+    if (tools_1.isString(partId)) {
+        partId = tools_1.stringToNumberList(partId);
+    }
+    if (!partId) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, storage_1.partStorage.getPartItems(partId));
+};
+exports.getPartReleases = (req, res) => {
+    let partId = extractQueryParam(req, "part");
+    // if it is a string, it is likely a list of partIds was send
+    if (tools_1.isString(partId)) {
+        partId = tools_1.stringToNumberList(partId);
+    }
+    if (!partId) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, storage_1.partStorage.getPartReleases(partId));
 };
 exports.postPart = (req, res) => {
     const { part, mediumId } = req.body;

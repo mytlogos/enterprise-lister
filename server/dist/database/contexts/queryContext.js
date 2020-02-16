@@ -361,6 +361,90 @@ class QueryContext {
         }
         return this.con.queryStream(query, parameter);
     }
+    async getNew(uuid, date = new Date(0)) {
+        const episodeReleasePromise = this.query("SELECT episode_id as episodeId, title, url, releaseDate, locked " +
+            "FROM episode_release WHERE updated_at > ?", date);
+        const episodePromise = this.query("SELECT id, part_id as partId, totalIndex, partialIndex, " +
+            "user_episode.progress, user_episode.read_date as readDate " +
+            "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
+            "WHERE (user_episode.user_uuid IS NULL OR user_episode.user_uuid = ?) " +
+            "AND (updated_at > ? OR read_date > ?)", [uuid, date, date]);
+        const partPromise = this.query("SELECT id, title, medium_id as mediumId, totalIndex, partialIndex FROM part WHERE updated_at > ?", date);
+        const mediumPromise = this.query("SELECT id, countryOfOrigin, languageOfOrigin, author, artist, title, " +
+            "medium, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium WHERE updated_at > ?", date);
+        const listPromise = this.query("SELECT id, name, medium FROM reading_list WHERE user_uuid=? AND updated_at > ?", [uuid, date]);
+        const exListPromise = this.query("SELECT list.id, list.name, list.user_uuid as uuid, list.medium, list.url " +
+            "FROM external_user INNER JOIN external_reading_list as list ON uuid=user_uuid " +
+            "WHERE local_uuid=? AND updated_at > ?", [uuid, date]);
+        const exUserPromise = this.query("SELECT name as identifier, uuid, service as type, local_uuid as localUuid " +
+            "FROM external_user WHERE local_uuid = ? AND updated_at > ?", [uuid, date]);
+        const mediumInWaitPromise = this.query("SELECT title, medium, link FROM medium_in_wait WHERE updated_at > ?", date);
+        const newsPromise = this.query("SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as `read` " +
+            "FROM news_board LEFT JOIN news_user ON id=news_id " +
+            "WHERE (user_id IS NULL OR user_id = ?) AND updated_at > ?", [uuid, date]);
+        return {
+            media: await mediumPromise,
+            releases: await episodeReleasePromise,
+            episodes: await episodePromise,
+            parts: await partPromise,
+            lists: await listPromise,
+            extLists: await exListPromise,
+            extUser: await exUserPromise,
+            mediaInWait: await mediumInWaitPromise,
+            news: await newsPromise.then((values) => {
+                values.forEach((value) => value.read = value.read === 1);
+                return values;
+            })
+        };
+    }
+    async getStat(uuid) {
+        const episodePromise = this.query("SELECT part_id, count(episode.id) as episodeCount, sum(episode.id) as episodeSum, count(url) as releaseCount " +
+            "FROM episode LEFT JOIN episode_release ON episode.id=episode_release.episode_id " +
+            "GROUP BY part_id");
+        const partPromise = this.query("SELECT part.id, medium_id FROM part ");
+        const listPromise = this.query("SELECT id, medium_id FROM reading_list LEFT JOIN list_medium ON reading_list.id=list_id WHERE user_uuid=?", uuid);
+        const exListPromise = this.query("SELECT id, medium_id FROM external_user INNER JOIN external_reading_list ON uuid=user_uuid LEFT JOIN external_list_medium ON external_reading_list.id=list_id WHERE local_uuid=?", uuid);
+        const extUserPromise = this.query("SELECT uuid, id FROM external_user LEFT JOIN external_reading_list ON uuid=user_uuid WHERE local_uuid=?", uuid);
+        const parts = await partPromise;
+        const episodes = await episodePromise;
+        const emptyPart = { episodeCount: 0, episodeSum: 0, releaseCount: 0 };
+        const partMap = new Map();
+        for (const episode of episodes) {
+            partMap.set(episode.part_id, episode);
+            delete episode.part_id;
+        }
+        const media = {};
+        const lists = {};
+        const extLists = {};
+        const extUser = {};
+        for (const part of parts) {
+            const mediumParts = tools_1.getElseSetObj(media, part.medium_id, () => new Object());
+            mediumParts[part.id] = tools_1.getElseSet(partMap, part.id, () => emptyPart);
+        }
+        for (const list of await listPromise) {
+            const listMedia = tools_1.getElseSetObj(lists, list.id, () => []);
+            if (list.medium_id != null) {
+                listMedia.push(list.medium_id);
+            }
+        }
+        for (const list of await exListPromise) {
+            const listMedia = tools_1.getElseSetObj(extLists, list.id, () => []);
+            if (list.medium_id != null) {
+                listMedia.push(list.medium_id);
+            }
+        }
+        for (const user of await extUserPromise) {
+            const userLists = tools_1.getElseSetObj(extUser, user.uuid, () => []);
+            userLists.push(user.id);
+        }
+        return {
+            media,
+            lists,
+            extLists,
+            extUser,
+        };
+    }
     // noinspection JSMethodCanBeStatic
     async _batchFunction(value, query, paramCallback, func) {
         const length = value.length;

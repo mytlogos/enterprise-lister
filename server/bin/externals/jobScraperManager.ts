@@ -13,7 +13,7 @@ import {
     searchForTocJob,
     toc
 } from "./scraperTools";
-import {Job, JobQueue} from "../jobManager";
+import {Job, JobQueue, OutsideJob} from "../jobManager";
 import {getElseSet, isString, maxValue} from "../tools";
 import logger, {logError} from "../logger";
 import {JobItem, JobRequest, JobState, MilliTime, ScrapeName} from "../types";
@@ -207,6 +207,10 @@ export class JobScraperManager {
         if (waitForOtherRequest.length) {
             logger.warn("could not add all depending jobs: " + JSON.stringify(waitForOtherRequest));
         }
+    }
+
+    public getJobs(): OutsideJob[] {
+        return this.queue.getJobs();
     }
 
     private addDependant(jobsMap: Map<ScrapeJob, JobItem[]>): void {

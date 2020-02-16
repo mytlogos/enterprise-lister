@@ -2,7 +2,6 @@ import {MinPart, MultiSingle, Part, ShallowPart} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {PartContext} from "../contexts/partContext";
-import {UserStorage} from "./userStorage";
 
 function inContext<T>(callback: ContextCallback<T, PartContext>, transaction = true) {
     return storageInContext(callback, transaction, (con) => queryContextProvider(con).partContext);
@@ -45,6 +44,22 @@ export class PartStorage {
     public getParts(partsId: number | number[], uuid: string): Promise<Part[] | Part> {
         // @ts-ignore
         return inContext((context) => context.getParts(partsId, uuid));
+    }
+
+    /**
+     * Returns a Map of Parts with their corresponding episodeIds.
+     */
+    public getPartItems(partsId: number[]): Promise<{ [key: number]: number[] }> {
+        // @ts-ignore
+        return inContext((context) => context.getPartItems(partsId));
+    }
+
+    /**
+     * Returns a Map of Parts with all of their Releases.
+     */
+    public getPartReleases(partsId: number[]): Promise<{ [key: number]: Array<{ id: number, link: string }> }> {
+        // @ts-ignore
+        return inContext((context) => context.getPartReleases(partsId));
     }
 
     /**

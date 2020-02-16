@@ -214,6 +214,14 @@ export class Storage {
         return inContext((context) => context.queueNewTocs());
     }
 
+    public getStats(uuid: string): Promise<any> {
+        return inContext((context) => context.getStat(uuid));
+    }
+
+    public getNew(uuid: string, date?: Date): Promise<any> {
+        return inContext((context) => context.getNew(uuid, date));
+    }
+
     /**
      *
      * @param result

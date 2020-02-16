@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var SqlFunction;
 (function (SqlFunction) {
     SqlFunction["NOW"] = "NOW()";
+    SqlFunction["CURRENT_TIMESTAMP"] = "CURRENT_TIMESTAMP";
 })(SqlFunction = exports.SqlFunction || (exports.SqlFunction = {}));
 var Modifier;
 (function (Modifier) {
@@ -22,6 +23,7 @@ var ColumnType;
     ColumnType["CHAR"] = "CHAR";
     ColumnType["VARCHAR"] = "VARCHAR";
     ColumnType["DATETIME"] = "DATETIME";
+    ColumnType["TIMESTAMP"] = "TIMESTAMP";
     ColumnType["FLOAT"] = "FLOAT";
     ColumnType["INT"] = "INT";
 })(ColumnType = exports.ColumnType || (exports.ColumnType = {}));

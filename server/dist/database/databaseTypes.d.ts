@@ -17,7 +17,8 @@ export interface Migration {
     migrate(context: DatabaseContext): Promise<void>;
 }
 export declare enum SqlFunction {
-    NOW = "NOW()"
+    NOW = "NOW()",
+    CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
 }
 export declare enum Modifier {
     PRIMARY_KEY = "PRIMARY_KEY",
@@ -35,6 +36,7 @@ export declare enum ColumnType {
     CHAR = "CHAR",
     VARCHAR = "VARCHAR",
     DATETIME = "DATETIME",
+    TIMESTAMP = "TIMESTAMP",
     FLOAT = "FLOAT",
     INT = "INT"
 }

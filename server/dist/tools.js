@@ -87,6 +87,16 @@ function getElseSet(map, key, valueCb) {
     return value;
 }
 exports.getElseSet = getElseSet;
+function getElseSetObj(map, key, valueCb) {
+    // @ts-ignore
+    let value = map[key];
+    if (value == null) {
+        // @ts-ignore
+        map[key] = value = valueCb();
+    }
+    return value;
+}
+exports.getElseSetObj = getElseSetObj;
 function unique(array, isEqualCb) {
     const uniques = [];
     if (isEqualCb) {
@@ -423,6 +433,19 @@ function separateIndex(value) {
     return { totalIndex, partialIndex };
 }
 exports.separateIndex = separateIndex;
+function createCircularReplacer() {
+    const seen = new WeakSet();
+    return (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular Reference]";
+            }
+            seen.add(value);
+        }
+        return value;
+    };
+}
+exports.createCircularReplacer = createCircularReplacer;
 function ignore() {
     return undefined;
 }

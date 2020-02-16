@@ -33,6 +33,8 @@ export declare class Storage {
     updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void>;
     removePageInfo(link: string, key?: string): Promise<void>;
     queueNewTocs(): Promise<void>;
+    getStats(uuid: string): Promise<any>;
+    getNew(uuid: string, date?: Date): Promise<any>;
     /**
      *
      * @param result

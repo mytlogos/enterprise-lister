@@ -1,7 +1,7 @@
 import {SubContext} from "./subContext";
 import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisode} from "../../types";
 import mySql from "promise-mysql";
-import {combiIndex, multiSingle, separateIndex} from "../../tools";
+import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
 
 export class PartContext extends SubContext {
     public async getStandardPartId(mediumId: number): Promise<number | undefined> {
@@ -188,6 +188,57 @@ export class PartContext extends SubContext {
                 mediumId: part.medium_id,
             };
         });
+    }
+
+    /**
+     * Returns all parts of an medium.
+     */
+    public async getPartItems(partIds: number[]): Promise<{ [key: number]: number[] }> {
+        if (!partIds.length) {
+            return {};
+        }
+        const episodesResult: Array<{ id: number, part_id: number }> | undefined = await this.queryInList(
+            "SELECT id, part_id FROM episode WHERE part_id ",
+            partIds
+        );
+
+        const episodes = episodesResult || [];
+        const result = {};
+
+        episodes.forEach((value) => {
+            (getElseSetObj(result, value.part_id, () => []) as number[]).push(value.id);
+        });
+        for (const partId of partIds) {
+            getElseSetObj(result, partId, () => []);
+        }
+        return result;
+    }
+
+    /**
+     * Returns all parts of an medium.
+     */
+    public async getPartReleases(partIds: number[]): Promise<{ [key: number]: Array<{ id: number, url: string }> }> {
+        if (!partIds.length) {
+            return {};
+        }
+        const episodesResult: Array<{ id: number, url: string, part_id: number }> | undefined = await this.queryInList(
+            "SELECT id, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id ",
+            partIds
+        );
+
+        const episodes = episodesResult || [];
+        const result = {};
+
+        episodes.forEach((value) => {
+            const items = getElseSetObj(result, value.part_id, () => []) as any[];
+            delete value.part_id;
+            items.push(value);
+        });
+
+        for (const partId of partIds) {
+            getElseSetObj(result, partId, () => []);
+        }
+        return result;
     }
 
     public async getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]> {

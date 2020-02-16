@@ -107,6 +107,8 @@ export declare class QueryContext implements ConnectionContext {
     multiInsert<T>(query: string, value: T | T[], paramCallback: ParamCallback<T>): Promise<any>;
     queryInList<T>(query: string, value: T | T[], afterQuery?: string, paramCallback?: ParamCallback<T>): Promise<any[] | undefined>;
     queryStream(query: string, parameter?: any | any[]): Query;
+    getNew(uuid: string, date?: Date): Promise<any>;
+    getStat(uuid: string): Promise<any>;
     private _batchFunction;
 }
 export {};

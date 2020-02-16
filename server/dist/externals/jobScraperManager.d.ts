@@ -1,3 +1,4 @@
+import { OutsideJob } from "../jobManager";
 import { JobRequest } from "../types";
 export declare class JobScraperManager {
     private paused;
@@ -14,6 +15,7 @@ export declare class JobScraperManager {
     pause(): void;
     stop(): void;
     addJobs(...jobs: JobRequest[]): Promise<void>;
+    getJobs(): OutsideJob[];
     private addDependant;
     private checkRunningJobs;
     private fetchJobs;

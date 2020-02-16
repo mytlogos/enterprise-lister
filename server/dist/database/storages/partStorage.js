@@ -39,6 +39,20 @@ class PartStorage {
         return inContext((context) => context.getParts(partsId, uuid));
     }
     /**
+     * Returns a Map of Parts with their corresponding episodeIds.
+     */
+    getPartItems(partsId) {
+        // @ts-ignore
+        return inContext((context) => context.getPartItems(partsId));
+    }
+    /**
+     * Returns a Map of Parts with all of their Releases.
+     */
+    getPartReleases(partsId) {
+        // @ts-ignore
+        return inContext((context) => context.getPartReleases(partsId));
+    }
+    /**
      * Adds a part of an medium to the storage.
      */
     addPart(part) {

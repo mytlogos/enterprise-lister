@@ -91,6 +91,30 @@ class JobQueue {
         });
         return nonEndingJobs.length >= atLeast;
     }
+    getJobs() {
+        const jobs = [];
+        for (const job of this.activeJobs) {
+            jobs.push({
+                active: job.active,
+                executed: job.executed,
+                jobId: job.jobId,
+                lastRun: job.lastRun,
+                running: job.running,
+                startRun: job.startRun,
+            });
+        }
+        for (const job of this.waitingJobs) {
+            jobs.push({
+                active: job.active,
+                executed: job.executed,
+                jobId: job.jobId,
+                lastRun: job.lastRun,
+                running: job.running,
+                startRun: job.startRun,
+            });
+        }
+        return jobs;
+    }
     _done(job) {
         tools_1.remove(this.activeJobs, job);
         if (job.startRun) {

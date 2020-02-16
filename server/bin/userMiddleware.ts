@@ -32,6 +32,17 @@ export const search: Handler = (req, res) => {
     sendResult(res, searchMedium(text, medium));
 };
 
+export const getStats: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, storage.getStats(uuid));
+};
+
+export const getNew: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    let date = extractQueryParam(req, "date");
+    date = date ? new Date(date) : undefined;
+    sendResult(res, storage.getNew(uuid, date));
+};
 
 export const getAllMedia: Handler = (req, res) => {
     sendResult(res, mediumStorage.getAllMedia());
@@ -361,11 +372,38 @@ export const getPart: Handler = (req, res) => {
         }
         if (!partId) {
             sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+            return;
         }
         sendResult(res, partStorage.getParts(partId, uuid));
     } else {
         sendResult(res, partStorage.getMediumParts(mediumId, uuid));
     }
+};
+export const getPartItems: Handler = (req, res) => {
+    let partId = extractQueryParam(req, "part");
+
+    // if it is a string, it is likely a list of partIds was send
+    if (isString(partId)) {
+        partId = stringToNumberList(partId);
+    }
+    if (!partId) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, partStorage.getPartItems(partId));
+};
+export const getPartReleases: Handler = (req, res) => {
+    let partId = extractQueryParam(req, "part");
+
+    // if it is a string, it is likely a list of partIds was send
+    if (isString(partId)) {
+        partId = stringToNumberList(partId);
+    }
+    if (!partId) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, partStorage.getPartReleases(partId));
 };
 export const postPart: Handler = (req, res) => {
     const {part, mediumId} = req.body;
