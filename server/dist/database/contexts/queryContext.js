@@ -399,7 +399,7 @@ class QueryContext {
         };
     }
     async getStat(uuid) {
-        const episodePromise = this.query("SELECT part_id, count(episode.id) as episodeCount, sum(episode.id) as episodeSum, count(url) as releaseCount " +
+        const episodePromise = this.query("SELECT part_id, count(distinct episode.id) as episodeCount, sum(distinct episode.id) as episodeSum, count(url) as releaseCount " +
             "FROM episode LEFT JOIN episode_release ON episode.id=episode_release.episode_id " +
             "GROUP BY part_id");
         const partPromise = this.query("SELECT part.id, medium_id FROM part ");

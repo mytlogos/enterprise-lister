@@ -522,7 +522,7 @@ export class QueryContext implements ConnectionContext {
 
     public async getStat(uuid: string): Promise<any> {
         const episodePromise = this.query(
-            "SELECT part_id, count(episode.id) as episodeCount, sum(episode.id) as episodeSum, count(url) as releaseCount " +
+            "SELECT part_id, count(distinct episode.id) as episodeCount, sum(distinct episode.id) as episodeSum, count(url) as releaseCount " +
             "FROM episode LEFT JOIN episode_release ON episode.id=episode_release.episode_id " +
             "GROUP BY part_id"
         );
