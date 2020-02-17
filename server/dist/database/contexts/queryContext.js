@@ -376,7 +376,7 @@ class QueryContext {
         const listPromise = this.query("SELECT id, name, medium FROM reading_list WHERE user_uuid=? AND updated_at > ?", [uuid, date]);
         const exListPromise = this.query("SELECT list.id, list.name, list.user_uuid as uuid, list.medium, list.url " +
             "FROM external_user INNER JOIN external_reading_list as list ON uuid=user_uuid " +
-            "WHERE local_uuid=? AND updated_at > ?", [uuid, date]);
+            "WHERE local_uuid=? AND list.updated_at > ?", [uuid, date]);
         const exUserPromise = this.query("SELECT name as identifier, uuid, service as type, local_uuid as localUuid " +
             "FROM external_user WHERE local_uuid = ? AND updated_at > ?", [uuid, date]);
         const mediumInWaitPromise = this.query("SELECT title, medium, link FROM medium_in_wait WHERE updated_at > ?", date);

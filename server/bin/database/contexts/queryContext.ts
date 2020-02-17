@@ -486,7 +486,7 @@ export class QueryContext implements ConnectionContext {
         const exListPromise = this.query(
             "SELECT list.id, list.name, list.user_uuid as uuid, list.medium, list.url " +
             "FROM external_user INNER JOIN external_reading_list as list ON uuid=user_uuid " +
-            "WHERE local_uuid=? AND updated_at > ?",
+            "WHERE local_uuid=? AND list.updated_at > ?",
             [uuid, date]
         );
         const exUserPromise = this.query(
