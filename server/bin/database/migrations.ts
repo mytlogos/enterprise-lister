@@ -182,6 +182,13 @@ export const Migrations: Migration[] = [
                 ),
                 [MySqlErrorNo.ER_DUP_FIELDNAME]
             )));
+            await ignoreError(
+                () => context.addColumn(
+                    "external_user",
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+                ),
+                [MySqlErrorNo.ER_DUP_FIELDNAME]
+            );
         }
     }
 ];
