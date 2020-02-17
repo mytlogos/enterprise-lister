@@ -38,7 +38,16 @@ let exitHandled = false;
 process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info(`Exit Program with Code: ${code}.`));
 function logError(reason) {
     console.log(reason);
-    logger.error(reason);
+    const seen = new WeakSet();
+    logger.error(JSON.stringify(reason, (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular reference]";
+            }
+            seen.add(value);
+        }
+        return value;
+    }));
 }
 exports.logError = logError;
 exports.default = logger;

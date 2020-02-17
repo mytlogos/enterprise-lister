@@ -44,7 +44,16 @@ process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info(`
 
 export function logError(reason: any) {
     console.log(reason);
-    logger.error(reason);
+    const seen = new WeakSet();
+    logger.error(JSON.stringify(reason, (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular reference]";
+            }
+            seen.add(value);
+        }
+        return value;
+    }));
 }
 
 export default logger;
