@@ -39,7 +39,7 @@ export class DatabaseContext extends SubContext {
     }
 
     public dropTrigger(trigger: string) {
-        return this.query(`DROP TRIGGER ${mySql.escapeId(trigger)};`);
+        return this.query(`DROP TRIGGER IF EXISTS ${mySql.escapeId(trigger)};`);
     }
 
     public createTable(table: string, columns: string[]) {

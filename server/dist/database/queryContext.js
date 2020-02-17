@@ -127,7 +127,7 @@ class QueryContext {
         return this.query(schema);
     }
     dropTrigger(trigger) {
-        return this.query(`DROP TRIGGER ${promise_mysql_1.default.escapeId(trigger)};`);
+        return this.query(`DROP TRIGGER IF EXISTS ${promise_mysql_1.default.escapeId(trigger)};`);
     }
     createTable(table, columns) {
         return this.query(`CREATE TABLE ${promise_mysql_1.default.escapeId(table)} (${columns.join(", ")});`);
