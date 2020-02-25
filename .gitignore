@@ -95,4 +95,5 @@ server/bin/externals/direct/wwSearchResponse.json
 src/**/*.vue.js
 src/**/*.vue.js.map
 *.bat
+*.gz
 /server/bin/ignore/
