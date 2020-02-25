@@ -477,7 +477,7 @@ export const news = async (link: string): Promise<{ link: string, result: News[]
 export const toc = async (value: TocRequest): Promise<TocResult> => {
     const result = await oneTimeToc(value);
     if (!result.tocs.length) {
-        throw Error("could not find toc for: " + value);
+        throw Error("could not find toc for: " + JSON.stringify(value));
     }
     // todo implement toc scraping which requires page analyzing
     return {

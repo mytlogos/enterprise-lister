@@ -383,7 +383,7 @@ exports.news = async (link) => {
 exports.toc = async (value) => {
     const result = await exports.oneTimeToc(value);
     if (!result.tocs.length) {
-        throw Error("could not find toc for: " + value);
+        throw Error("could not find toc for: " + JSON.stringify(value));
     }
     // todo implement toc scraping which requires page analyzing
     return {
