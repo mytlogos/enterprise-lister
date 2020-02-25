@@ -11,6 +11,9 @@ module.exports = {
             watch: false,
             out_file: "/dev/null",
             error_file: "/dev/null",
+            env: {
+                NODE_APP_NAME: "enterprise-server"
+            }
         },
         {
             name: "enterprise-crawler",
@@ -23,6 +26,9 @@ module.exports = {
             watch: false,
             out_file: "/dev/null",
             error_file: "/dev/null",
+            env: {
+                NODE_APP_NAME: "enterprise-crawler"
+            }
         }
     ],
 };
