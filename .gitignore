@@ -92,11 +92,7 @@ gen
 *.heapsnapshot
 server/bin/externals/direct/webnovelTocResponse 04.19.json
 server/bin/externals/direct/wwSearchResponse.json
-server/bin/moduleDeclaration/plato.d.ts
-server/bin/visualize.js
-server/bin/visualize.js.map
-server/bin/visualize.ts
 src/**/*.vue.js
 src/**/*.vue.js.map
-start server.bat
-/server/bin/monitor.ts
+*.bat
+/server/bin/ignore/
