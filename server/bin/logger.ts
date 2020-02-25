@@ -2,8 +2,9 @@ import winston, {format} from "winston";
 import {isString, jsonReplacer, stringify} from "./tools";
 
 let filePrefix: string;
-if (process.env.NODE_APP_NAME) {
-    filePrefix = process.env.NODE_APP_NAME.replace(/[^\w-_]/g, "") + "-";
+const appName = process.env.NODE_APP_NAME || process.env.name;
+if (appName) {
+    filePrefix = appName.replace(/[^\w-_]/g, "") + "-";
 } else {
     filePrefix = "";
 }

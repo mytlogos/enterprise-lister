@@ -4,8 +4,9 @@ const tslib_1 = require("tslib");
 const winston_1 = tslib_1.__importStar(require("winston"));
 const tools_1 = require("./tools");
 let filePrefix;
-if (process.env.NODE_APP_NAME) {
-    filePrefix = process.env.NODE_APP_NAME.replace(/[^\w-_]/g, "") + "-";
+const appName = process.env.NODE_APP_NAME || process.env.name;
+if (appName) {
+    filePrefix = appName.replace(/[^\w-_]/g, "") + "-";
 }
 else {
     filePrefix = "";
