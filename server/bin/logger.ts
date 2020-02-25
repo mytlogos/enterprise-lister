@@ -52,6 +52,16 @@ export function logError(reason: any) {
             }
             seen.add(value);
         }
+        if (value instanceof Error) {
+            const error: any = {};
+
+            Object.getOwnPropertyNames(value).forEach((errorKey) => {
+                // @ts-ignore
+                error[errorKey] = value[errorKey];
+            });
+
+            return error;
+        }
         return value;
     }));
 }
