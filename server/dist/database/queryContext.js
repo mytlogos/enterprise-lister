@@ -6,7 +6,7 @@ const types_1 = require("../types");
 const v1_1 = tslib_1.__importDefault(require("uuid/v1"));
 const v4_1 = tslib_1.__importDefault(require("uuid/v4"));
 const tools_1 = require("../tools");
-const logger_1 = tslib_1.__importStar(require("../logger"));
+const logger_1 = tslib_1.__importDefault(require("../logger"));
 const validate = tslib_1.__importStar(require("validate.js"));
 const databaseTypes_1 = require("./databaseTypes");
 /**
@@ -2355,7 +2355,7 @@ class QueryContext {
     }
     async getInvalidated(uuid) {
         const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.logError(reason));
+        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.default.error(reason));
         return result.map((value) => {
             return {
                 externalListId: value.external_list_id,
@@ -2376,7 +2376,7 @@ class QueryContext {
             "part_id as partId, episode_id as episodeId, user_uuid as userUuid," +
             "list_id as listId, news_id as newsId, uuid " +
             "FROM user_data_invalidation WHERE uuid=?", uuid).on("end", () => {
-            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.logError(reason));
+            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.default.error(reason));
         });
     }
     async getUserStream() {

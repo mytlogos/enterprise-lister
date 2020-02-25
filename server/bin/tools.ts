@@ -303,6 +303,33 @@ export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: Episo
         );
 }
 
+export function stringify(object: any) {
+    const seen = new WeakSet();
+    return JSON.stringify(object, (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular reference]";
+            }
+            seen.add(value);
+        }
+        return jsonReplacer(key, value);
+    });
+}
+
+export function jsonReplacer(key: any, value: any) {
+    if (value instanceof Error) {
+        const error: any = {};
+
+        Object.getOwnPropertyNames(value).forEach((errorKey) => {
+            // @ts-ignore
+            error[errorKey] = value[errorKey];
+        });
+
+        return error;
+    }
+    return value;
+}
+
 export function sanitizeString(s: string): string {
     if (!s) {
         return s;

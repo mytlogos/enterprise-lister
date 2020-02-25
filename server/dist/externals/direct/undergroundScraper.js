@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const logger_1 = tslib_1.__importStar(require("../../logger"));
+const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const queueManager_1 = require("../queueManager");
 const tools_1 = require("../../tools");
 const storage_1 = require("../../database/storages/storage");
@@ -123,7 +123,7 @@ async function processMediumNews(mediumTitle, potentialNews) {
             return foundRelease.url !== value.url;
         });
         if (toUpdateReleases.length) {
-            storage_1.episodeStorage.updateRelease(toUpdateReleases).catch(logger_1.logError);
+            storage_1.episodeStorage.updateRelease(toUpdateReleases).catch(logger_1.default.error);
         }
     }
     else {

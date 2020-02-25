@@ -24,7 +24,7 @@ import {
     SimpleEpisode,
     SimpleMedium
 } from "./types";
-import logger, {logError} from "./logger";
+import logger from "./logger";
 import {ScrapeType, Toc, TocEpisode, TocPart} from "./externals/types";
 import * as validate from "validate.js";
 import {checkTocContent, remapMediumPart} from "./externals/scraperTools";
@@ -94,7 +94,7 @@ async function feedHandler({link, result}: { link: string, result: News[] }): Pr
     try {
         await processNews({link, rawNews: result});
     } catch (e) {
-        logError(e);
+        logger.error(e);
     }
 }
 
@@ -380,7 +380,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
             // catch all errors from promises, so it will not affect others
         })
         .map((value) => value.catch((reason) => {
-            logError(reason);
+            logger.error(reason);
             return [];
         }));
     await Promise.all((await Promise.all(promises)).flat());
@@ -460,7 +460,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
                         });
                 }));
         } catch (e) {
-            logError(e);
+            logger.error(e);
             return [];
         }
 
@@ -492,7 +492,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 }
                 message.remove.externalList = removedLists;
             })
-            .catch((error) => logError(error));
+            .catch((error) => logger.error(error));
     }
 
     // add each new list to the storage
@@ -513,7 +513,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
             externalList.uuid = result.external.uuid;
             message.add.externalList.push(externalList);
         })
-        .catch((error) => logError(error))));
+        .catch((error) => logger.error(error))));
 
     promisePool.push(...renamedLists.map((value, index) => {
         const id = allLists[index].id;
@@ -533,7 +533,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
 
                 message.update.lists.push({external: true, id, name: value.name});
             })
-            .catch((error) => logError(error));
+            .catch((error) => logger.error(error));
     }));
 
     // check whether media were removed or added to the list
@@ -561,7 +561,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 }
                 message.remove.items.push({external: true, listId: externalList.id, mediumId});
             })
-            .catch((error) => logError(error))));
+            .catch((error) => logger.error(error))));
 
         promisePool.push(...newMedia.map((mediumId: number) => externalListStorage
             .addItemToExternalList(externalList.id, mediumId)
@@ -574,7 +574,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 }
                 message.add.items.push({external: true, listId: externalList.id, mediumId});
             })
-            .catch((error) => logError(error))));
+            .catch((error) => logger.error(error))));
     });
 
     // update externalUser with (new) cookies and a new lastScrape date (now)
@@ -585,7 +585,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
             cookies: result.external.cookies,
             lastScrape: new Date(),
         })
-        .catch((error: any) => logError(error)));
+        .catch((error: any) => logger.error(error)));
 
     await Promise.all(promisePool);
     return message;
@@ -671,24 +671,24 @@ async function newsHandler({link, result}: { link: string, result: News[] }) {
     try {
         await processNews({link, rawNews: result});
     } catch (e) {
-        logError(e);
+        logger.error(e);
     }
 }
 
-scraper.on("feed:error", (errorValue: any) => logError(errorValue));
-scraper.on("toc:error", (errorValue: any) => logError(errorValue));
-scraper.on("list:error", (errorValue: any) => logError(errorValue));
+scraper.on("feed:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("toc:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("list:error", (errorValue: any) => logger.error(errorValue));
 
-scraper.on("news:error", (errorValue: any) => logError(errorValue));
-scraper.on("news", (result) => newsHandler(result).catch((error) => logError(error)));
-scraper.on("toc", (result) => tocHandler(result).catch((error) => logError(error)));
-scraper.on("feed", (result) => feedHandler(result).catch((error) => logError(error)));
+scraper.on("news:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("news", (result) => newsHandler(result).catch((error) => logger.error(error)));
+scraper.on("toc", (result) => tocHandler(result).catch((error) => logger.error(error)));
+scraper.on("feed", (result) => feedHandler(result).catch((error) => logger.error(error)));
 
-scraper.on("list", (result) => listHandler(result).catch((error) => logError(error)));
+scraper.on("list", (result) => listHandler(result).catch((error) => logger.error(error)));
 
 export const startCrawler = (): void => {
     scraper
         .setup()
         .then(() => scraper.start())
-        .catch((error) => logError(error));
+        .catch((error) => logger.error(error));
 };

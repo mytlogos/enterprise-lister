@@ -4,7 +4,7 @@ const tslib_1 = require("tslib");
 const scraperTools_1 = require("./scraperTools");
 const jobManager_1 = require("../jobManager");
 const tools_1 = require("../tools");
-const logger_1 = tslib_1.__importStar(require("../logger"));
+const logger_1 = tslib_1.__importDefault(require("../logger"));
 const types_1 = require("../types");
 const storage_1 = require("../database/storages/storage");
 const dns = tslib_1.__importStar(require("dns"));
@@ -69,7 +69,7 @@ class JobScraperManager {
             this.jobMap.delete(key);
         }
         this.queue.removeJob(job);
-        storage_1.jobStorage.removeJob(key).catch(logger_1.logError);
+        storage_1.jobStorage.removeJob(key).catch(logger_1.default.error);
     }
     async setup() {
         await clearJobsOnStartPromise;
@@ -117,8 +117,8 @@ class JobScraperManager {
             if (this.paused) {
                 return;
             }
-            this.fetchJobs().catch(logger_1.logError);
-            this.checkRunningJobs().catch(logger_1.logError);
+            this.fetchJobs().catch(logger_1.default.error);
+            this.checkRunningJobs().catch(logger_1.default.error);
         }, 60000);
         this.fetchJobs().catch(console.error);
         if (this.intervalId) {
@@ -198,13 +198,13 @@ class JobScraperManager {
             // when there is at least one timeout, stop this process (pm2 should restart it then again)
             if (maxDate) {
                 if (maxDate < now && this.queue.invalidRunning(maxDate, 5)) {
-                    logger_1.logError("Restarting Process due to long running jobs");
+                    logger_1.default.error("Restarting Process due to long running jobs");
                     process.exit(1);
                     return;
                 }
                 now.setHours(-2);
                 if (maxDate < now && this.queue.invalidRunning(maxDate, 1)) {
-                    logger_1.logError("Restarting Process due to long running jobs");
+                    logger_1.default.error("Restarting Process due to long running jobs");
                     process.exit(1);
                     return;
                 }
@@ -324,10 +324,10 @@ class JobScraperManager {
             return;
         }
         if (Array.isArray(value)) {
-            this.addJobs(...value).catch(logger_1.logError);
+            this.addJobs(...value).catch(logger_1.default.error);
         }
         else {
-            this.addJobs(value).catch(logger_1.logError);
+            this.addJobs(value).catch(logger_1.default.error);
         }
     }
     setJobListener(job, item) {

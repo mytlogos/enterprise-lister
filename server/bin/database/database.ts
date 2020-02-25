@@ -30,7 +30,7 @@ import {
     TocSearchMedium,
     User
 } from "../types";
-import logger, {logError} from "../logger";
+import logger from "../logger";
 import {QueryContext} from "./queryContext";
 import {databaseSchema} from "./databaseSchema";
 import {delay, isQuery} from "../tools";
@@ -189,14 +189,14 @@ function start(): void {
                 (context) => manager.checkTableSchema(context),
                 true,
             ).catch((error) => {
-                logError(error);
+                logger.error(error);
                 errorAtStart = true;
                 return Promise.reject("Database error occurred while starting");
             });
         } catch (e) {
             errorAtStart = true;
             startPromise = Promise.reject("Error in database schema");
-            logError(e);
+            logger.error(e);
         }
     }
 }

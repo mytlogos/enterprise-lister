@@ -1,7 +1,7 @@
 import mySql from "promise-mysql";
 import env from "../../env";
 import {Invalidation, MetaResult, Result, ScrapeItem, User} from "../../types";
-import logger, {logError} from "../../logger";
+import logger from "../../logger";
 import {databaseSchema} from "../databaseSchema";
 import {delay, isQuery} from "../../tools";
 import {SchemaManager} from "../schemaManager";
@@ -171,14 +171,14 @@ function start(): void {
                 (context) => manager.checkTableSchema(context.databaseContext),
                 true,
             ).catch((error) => {
-                logError(error);
+                logger.error(error);
                 errorAtStart = true;
                 return Promise.reject("Database error occurred while starting");
             });
         } catch (e) {
             errorAtStart = true;
             startPromise = Promise.reject("Error in database schema");
-            logError(e);
+            logger.error(e);
         }
     }
 }

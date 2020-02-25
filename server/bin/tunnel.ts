@@ -1,5 +1,5 @@
 import localtunnel from "localtunnel";
-import {logError} from "./logger";
+import logger from "./logger";
 import env from "./env";
 
 let tunneled: localtunnel.Tunnel;
@@ -11,7 +11,7 @@ if (Number.isNaN(port) || port <= 0 || port > 65535) {
 
 /*localtunnel(port, (err, tunnel) => {
     if (err) {
-        logError(err);
+        logger.error(err);
     }
     if (tunnel) {
         tunneled = tunnel;

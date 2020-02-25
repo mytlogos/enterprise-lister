@@ -279,6 +279,31 @@ function equalsRelease(firstRelease, secondRelease) {
             && firstRelease.title === secondRelease.title);
 }
 exports.equalsRelease = equalsRelease;
+function stringify(object) {
+    const seen = new WeakSet();
+    return JSON.stringify(object, (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular reference]";
+            }
+            seen.add(value);
+        }
+        return jsonReplacer(key, value);
+    });
+}
+exports.stringify = stringify;
+function jsonReplacer(key, value) {
+    if (value instanceof Error) {
+        const error = {};
+        Object.getOwnPropertyNames(value).forEach((errorKey) => {
+            // @ts-ignore
+            error[errorKey] = value[errorKey];
+        });
+        return error;
+    }
+    return value;
+}
+exports.jsonReplacer = jsonReplacer;
 function sanitizeString(s) {
     if (!s) {
         return s;

@@ -3,7 +3,7 @@ import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
-import logger, {logError} from "../../logger";
+import logger from "../../logger";
 import {getTextContent, searchTocCheerio} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 
@@ -122,7 +122,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         }
         // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
         if (i > 300) {
-            logError(new Error(`Could not reach end of TOC '${toc.link}'`));
+            logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
             break;
         }
     }

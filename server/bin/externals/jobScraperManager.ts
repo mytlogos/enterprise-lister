@@ -15,7 +15,7 @@ import {
 } from "./scraperTools";
 import {Job, JobQueue, OutsideJob} from "../jobManager";
 import {getElseSet, isString, maxValue} from "../tools";
-import logger, {logError} from "../logger";
+import logger from "../logger";
 import {JobItem, JobRequest, JobState, MilliTime, ScrapeName} from "../types";
 import {jobStorage} from "../database/storages/storage";
 import * as dns from "dns";
@@ -95,7 +95,7 @@ export class JobScraperManager {
             this.jobMap.delete(key);
         }
         this.queue.removeJob(job);
-        jobStorage.removeJob(key).catch(logError);
+        jobStorage.removeJob(key).catch(logger.error);
     }
 
     public async setup(): Promise<void> {
@@ -151,8 +151,8 @@ export class JobScraperManager {
             if (this.paused) {
                 return;
             }
-            this.fetchJobs().catch(logError);
-            this.checkRunningJobs().catch(logError);
+            this.fetchJobs().catch(logger.error);
+            this.checkRunningJobs().catch(logger.error);
         }, 60000);
         this.fetchJobs().catch(console.error);
 
@@ -241,13 +241,13 @@ export class JobScraperManager {
             // when there is at least one timeout, stop this process (pm2 should restart it then again)
             if (maxDate) {
                 if (maxDate < now && this.queue.invalidRunning(maxDate, 5)) {
-                    logError("Restarting Process due to long running jobs");
+                    logger.error("Restarting Process due to long running jobs");
                     process.exit(1);
                     return;
                 }
                 now.setHours(-2);
                 if (maxDate < now && this.queue.invalidRunning(maxDate, 1)) {
-                    logError("Restarting Process due to long running jobs");
+                    logger.error("Restarting Process due to long running jobs");
                     process.exit(1);
                     return;
                 }
@@ -371,9 +371,9 @@ export class JobScraperManager {
             return;
         }
         if (Array.isArray(value)) {
-            this.addJobs(...value).catch(logError);
+            this.addJobs(...value).catch(logger.error);
         } else {
-            this.addJobs(value).catch(logError);
+            this.addJobs(value).catch(logger.error);
         }
     }
 

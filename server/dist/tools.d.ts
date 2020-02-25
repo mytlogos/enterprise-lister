@@ -31,6 +31,8 @@ export declare function min<T>(array: T[], comparator: keyof T | Comparator<T>):
 export declare function relativeToAbsoluteTime(relative: string): Date | null;
 export declare function delay(timeout?: number): Promise<void>;
 export declare function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease): boolean;
+export declare function stringify(object: any): string;
+export declare function jsonReplacer(key: any, value: any): any;
 export declare function sanitizeString(s: string): string;
 export declare function isString(value: any): value is string;
 export declare function stringToNumberList(s: string): number[];

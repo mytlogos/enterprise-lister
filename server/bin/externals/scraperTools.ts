@@ -15,7 +15,7 @@ import {
     SimpleEpisode,
     TocSearchMedium
 } from "../types";
-import logger, {logError} from "../logger";
+import logger from "../logger";
 import {
     ContentDownloader,
     DownloadContent,
@@ -210,7 +210,7 @@ async function processMediumNews(
                 return foundRelease.url !== value.url;
             });
             if (toUpdateReleases.length) {
-                episodeStorage.updateRelease(toUpdateReleases).catch(logError);
+                episodeStorage.updateRelease(toUpdateReleases).catch(logger.error);
             }
         }
     } else {
@@ -761,9 +761,9 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
                 episodeContents = await downloaderEntry[1](release.url);
             } catch (e) {
                 if (e.statusCode && (e.statusCode === 410 || e.statusCode === 404)) {
-                    episodeStorage.deleteRelease(release).catch(logError);
+                    episodeStorage.deleteRelease(release).catch(logger.error);
                 } else {
-                    logError(e);
+                    logger.error(e);
                 }
                 downloaderIndex = 0;
                 releaseIndex++;
@@ -773,7 +773,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
             episodeContents = episodeContents.filter((value) => {
                 if (value.locked && value.index === combiIndex(episode)) {
                     release.locked = true;
-                    episodeStorage.updateRelease(release).catch(logError);
+                    episodeStorage.updateRelease(release).catch(logger.error);
                     return false;
                 }
                 return value.content.filter((s) => s).length;

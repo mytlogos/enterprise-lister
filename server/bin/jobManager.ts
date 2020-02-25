@@ -1,5 +1,5 @@
 import {remove, removeLike} from "./tools";
-import {logError} from "./logger";
+import logger from "./logger";
 import {JobRequest} from "./types";
 import Timeout = NodeJS.Timeout;
 
@@ -195,14 +195,14 @@ export class JobQueue {
                 if (toExecute.jobInfo.onStart) {
                     await this
                         .executeCallback(toExecute.jobInfo.onStart)
-                        .catch((reason) => logError("On Start threw an error!: " + reason));
+                        .catch((reason) => logger.error("On Start threw an error!: " + reason));
                 }
                 console.log("executing job: " + toExecute.jobId);
                 return toExecute.job(() => this._done(toExecute));
             })
             .catch((reason) => {
                 remove(this.waitingJobs, toExecute);
-                console.error(reason);
+                logger.error(reason);
                 return reason;
             })
             .finally(() => {
@@ -210,7 +210,7 @@ export class JobQueue {
 
                 if (toExecute.jobInfo.onDone) {
                     this.executeCallback(toExecute.jobInfo.onDone)
-                        .catch((reason) => logError("On Done threw an error!: " + reason));
+                        .catch((reason) => logger.error("On Done threw an error!: " + reason));
                 }
             });
     }

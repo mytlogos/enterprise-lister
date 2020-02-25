@@ -5,7 +5,7 @@ const listManager_1 = require("./listManager");
 const feedparser_promised_1 = tslib_1.__importDefault(require("feedparser-promised"));
 const tools_1 = require("../tools");
 const types_1 = require("../types");
-const logger_1 = tslib_1.__importStar(require("../logger"));
+const logger_1 = tslib_1.__importDefault(require("../logger"));
 const directScraper = tslib_1.__importStar(require("./direct/directScraper"));
 const url = tslib_1.__importStar(require("url"));
 const cache_1 = require("../cache");
@@ -152,7 +152,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
                 return foundRelease.url !== value.url;
             });
             if (toUpdateReleases.length) {
-                storage_1.episodeStorage.updateRelease(toUpdateReleases).catch(logger_1.logError);
+                storage_1.episodeStorage.updateRelease(toUpdateReleases).catch(logger_1.default.error);
             }
         }
     }
@@ -626,10 +626,10 @@ async function downloadEpisodes(episodes) {
             }
             catch (e) {
                 if (e.statusCode && (e.statusCode === 410 || e.statusCode === 404)) {
-                    storage_1.episodeStorage.deleteRelease(release).catch(logger_1.logError);
+                    storage_1.episodeStorage.deleteRelease(release).catch(logger_1.default.error);
                 }
                 else {
-                    logger_1.logError(e);
+                    logger_1.default.error(e);
                 }
                 downloaderIndex = 0;
                 releaseIndex++;
@@ -638,7 +638,7 @@ async function downloadEpisodes(episodes) {
             episodeContents = episodeContents.filter((value) => {
                 if (value.locked && value.index === tools_1.combiIndex(episode)) {
                     release.locked = true;
-                    storage_1.episodeStorage.updateRelease(release).catch(logger_1.logError);
+                    storage_1.episodeStorage.updateRelease(release).catch(logger_1.default.error);
                     return false;
                 }
                 return value.content.filter((s) => s).length;

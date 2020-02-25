@@ -1,6 +1,6 @@
 import {EpisodeContent, Hook} from "../types";
 import {EpisodeNews, EpisodeRelease, LikeMedium, MultiSingle, News, SimpleEpisode} from "../../types";
-import logger, {logError} from "../../logger";
+import logger from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
 import {max, MediaType, sanitizeString} from "../../tools";
 import {episodeStorage, mediumStorage, partStorage} from "../../database/storages/storage";
@@ -148,7 +148,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
             return foundRelease.url !== value.url;
         });
         if (toUpdateReleases.length) {
-            episodeStorage.updateRelease(toUpdateReleases).catch(logError);
+            episodeStorage.updateRelease(toUpdateReleases).catch(logger.error);
         }
     } else {
         news = potentialNews;

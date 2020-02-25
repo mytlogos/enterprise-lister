@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const env_1 = tslib_1.__importDefault(require("../../env"));
-const logger_1 = require("../../logger");
+const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const databaseSchema_1 = require("../databaseSchema");
 const tools_1 = require("../../tools");
 const schemaManager_1 = require("../schemaManager");
@@ -147,7 +147,7 @@ function start() {
             const manager = new schemaManager_1.SchemaManager();
             manager.initTableSchema(databaseSchema_1.databaseSchema);
             startPromise = inContext((context) => manager.checkTableSchema(context.databaseContext), true).catch((error) => {
-                logger_1.logError(error);
+                logger_1.default.error(error);
                 errorAtStart = true;
                 return Promise.reject("Database error occurred while starting");
             });
@@ -155,7 +155,7 @@ function start() {
         catch (e) {
             errorAtStart = true;
             startPromise = Promise.reject("Error in database schema");
-            logger_1.logError(e);
+            logger_1.default.error(e);
         }
     }
 }

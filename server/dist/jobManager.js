@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const tools_1 = require("./tools");
-const logger_1 = require("./logger");
+const logger_1 = tslib_1.__importDefault(require("./logger"));
 var MemorySize;
 (function (MemorySize) {
     MemorySize[MemorySize["GB"] = 1073741824] = "GB";
@@ -168,21 +169,21 @@ class JobQueue {
             if (toExecute.jobInfo.onStart) {
                 await this
                     .executeCallback(toExecute.jobInfo.onStart)
-                    .catch((reason) => logger_1.logError("On Start threw an error!: " + reason));
+                    .catch((reason) => logger_1.default.error("On Start threw an error!: " + reason));
             }
             console.log("executing job: " + toExecute.jobId);
             return toExecute.job(() => this._done(toExecute));
         })
             .catch((reason) => {
             tools_1.remove(this.waitingJobs, toExecute);
-            console.error(reason);
+            logger_1.default.error(reason);
             return reason;
         })
             .finally(() => {
             this._done(toExecute);
             if (toExecute.jobInfo.onDone) {
                 this.executeCallback(toExecute.jobInfo.onDone)
-                    .catch((reason) => logger_1.logError("On Done threw an error!: " + reason));
+                    .catch((reason) => logger_1.default.error("On Done threw an error!: " + reason));
             }
         });
     }

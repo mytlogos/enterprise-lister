@@ -13,7 +13,7 @@ import {
 import {factory} from "./externals/listManager";
 import {Handler, Request, Response} from "express";
 import stringify from "stringify-stream";
-import logger, {logError} from "./logger";
+import logger from "./logger";
 import {downloadEpisodes, search as searchMedium} from "./externals/scraperTools";
 import {Errors, isError, isQuery, isString, stringToNumberList} from "./tools";
 import {JobRequest, ScrapeName} from "./types";
@@ -547,7 +547,7 @@ export const postProgress: Handler = (req, res) => {
         const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
         sendResult(res, episodeStorage.addProgress(uuid, episodeId, progress, readDate));
     } catch (e) {
-        logError(e);
+        logger.error(e);
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
     }
 };
@@ -645,7 +645,7 @@ export const authenticate: Handler = (req, res, next) => {
         })
         .catch((error) => {
             res.status(500).json({error: isError(error) ? error : Errors.INVALID_MESSAGE});
-            logError(error);
+            logger.error(error);
         });
 };
 
@@ -667,7 +667,7 @@ function sendResult(res: Response, promise: Promise<any>) {
                 .status(errorCode ? 400 : 500)
                 .json({error: errorCode ? error : Errors.INVALID_MESSAGE});
 
-            logError(error);
+            logger.error(error);
         });
 }
 

@@ -1,7 +1,7 @@
 import mySql, {Connection} from "promise-mysql";
 import {Invalidation, MetaResult, Result} from "../../types";
 import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle} from "../../tools";
-import logger, {logError} from "../../logger";
+import logger from "../../logger";
 import * as validate from "validate.js";
 import {Query} from "mysql";
 import {DatabaseContext} from "./databaseContext";
@@ -249,7 +249,7 @@ export class QueryContext implements ConnectionContext {
 
     public async getInvalidated(uuid: string): Promise<Invalidation[]> {
         const result: any[] = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logError(reason));
+        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger.error(reason));
         return result.map((value: any): Invalidation => {
             return {
                 externalListId: value.external_list_id,
@@ -274,7 +274,7 @@ export class QueryContext implements ConnectionContext {
             "FROM user_data_invalidation WHERE uuid=?",
             uuid
         ).on("end", () => {
-            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logError(reason));
+            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger.error(reason));
         });
     }
 
