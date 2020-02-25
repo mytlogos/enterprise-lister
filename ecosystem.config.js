@@ -9,8 +9,6 @@ module.exports = {
             autorestart: true,
             max_memory_restart: "200M",
             watch: false,
-            out_file: "/dev/null",
-            error_file: "/dev/null",
             env: {
                 NODE_APP_NAME: "enterprise-server"
             }
@@ -24,8 +22,6 @@ module.exports = {
             autorestart: true,
             max_memory_restart: "300M",
             watch: false,
-            out_file: "/dev/null",
-            error_file: "/dev/null",
             env: {
                 NODE_APP_NAME: "enterprise-crawler"
             }
