@@ -460,8 +460,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
                         });
                 }));
         } catch (e) {
-            console.log(e);
-            logger.error(e);
+            logError(e);
             return [];
         }
 
@@ -493,10 +492,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 }
                 message.remove.externalList = removedLists;
             })
-            .catch((error) => {
-                console.log(error);
-                logger.error(error);
-            });
+            .catch((error) => logError(error));
     }
 
     // add each new list to the storage
@@ -517,10 +513,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
             externalList.uuid = result.external.uuid;
             message.add.externalList.push(externalList);
         })
-        .catch((error) => {
-            console.log(error);
-            logger.error(error);
-        })));
+        .catch((error) => logError(error))));
 
     promisePool.push(...renamedLists.map((value, index) => {
         const id = allLists[index].id;
@@ -540,10 +533,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
 
                 message.update.lists.push({external: true, id, name: value.name});
             })
-            .catch((error) => {
-                console.log(error);
-                logger.error(error);
-            });
+            .catch((error) => logError(error));
     }));
 
     // check whether media were removed or added to the list
@@ -571,10 +561,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 }
                 message.remove.items.push({external: true, listId: externalList.id, mediumId});
             })
-            .catch((error) => {
-                console.log(error);
-                logger.error(error);
-            })));
+            .catch((error) => logError(error))));
 
         promisePool.push(...newMedia.map((mediumId: number) => externalListStorage
             .addItemToExternalList(externalList.id, mediumId)
@@ -587,10 +574,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 }
                 message.add.items.push({external: true, listId: externalList.id, mediumId});
             })
-            .catch((error) => {
-                console.log(error);
-                logger.error(error);
-            })));
+            .catch((error) => logError(error))));
     });
 
     // update externalUser with (new) cookies and a new lastScrape date (now)
@@ -601,10 +585,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
             cookies: result.external.cookies,
             lastScrape: new Date(),
         })
-        .catch((error: any) => {
-            console.log(error);
-            logger.error(error);
-        }));
+        .catch((error: any) => logError(error)));
 
     await Promise.all(promisePool);
     return message;
@@ -690,8 +671,7 @@ async function newsHandler({link, result}: { link: string, result: News[] }) {
     try {
         await processNews({link, rawNews: result});
     } catch (e) {
-        logger.error(e);
-        console.log(e);
+        logError(e);
     }
 }
 

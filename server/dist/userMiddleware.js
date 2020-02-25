@@ -4,7 +4,7 @@ const tslib_1 = require("tslib");
 const storage_1 = require("./database/storages/storage");
 const listManager_1 = require("./externals/listManager");
 const stringify_stream_1 = tslib_1.__importDefault(require("stringify-stream"));
-const logger_1 = tslib_1.__importDefault(require("./logger"));
+const logger_1 = require("./logger");
 const scraperTools_1 = require("./externals/scraperTools");
 const tools_1 = require("./tools");
 const types_1 = require("./types");
@@ -491,8 +491,7 @@ exports.postProgress = (req, res) => {
         sendResult(res, storage_1.episodeStorage.addProgress(uuid, episodeId, progress, readDate));
     }
     catch (e) {
-        console.log(e);
-        logger_1.default.error(e);
+        logger_1.logError(e);
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
     }
 };
@@ -582,7 +581,7 @@ exports.authenticate = (req, res, next) => {
     })
         .catch((error) => {
         res.status(500).json({ error: tools_1.isError(error) ? error : tools_1.Errors.INVALID_MESSAGE });
-        logger_1.default.error(error);
+        logger_1.logError(error);
     });
 };
 function sendResult(res, promise) {
@@ -603,8 +602,7 @@ function sendResult(res, promise) {
         res
             .status(errorCode ? 400 : 500)
             .json({ error: errorCode ? error : tools_1.Errors.INVALID_MESSAGE });
-        console.log(error);
-        logger_1.default.error(error);
+        logger_1.logError(error);
     });
 }
 function sendResultCall(res, callback) {

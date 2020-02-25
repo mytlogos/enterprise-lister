@@ -4,7 +4,7 @@ const tslib_1 = require("tslib");
 const queueManager_1 = require("../queueManager");
 const url = tslib_1.__importStar(require("url"));
 const tools_1 = require("../../tools");
-const logger_1 = tslib_1.__importDefault(require("../../logger"));
+const logger_1 = tslib_1.__importStar(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 async function tocSearch(medium) {
@@ -92,7 +92,7 @@ async function tocAdapter(tocLink) {
         }
         // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
         if (i > 300) {
-            logger_1.default.error(`Could not reach end of TOC '${toc.link}'`);
+            logger_1.logError(new Error(`Could not reach end of TOC '${toc.link}'`));
             break;
         }
     }

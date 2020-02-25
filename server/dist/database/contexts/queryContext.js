@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const tools_1 = require("../../tools");
-const logger_1 = tslib_1.__importDefault(require("../../logger"));
+const logger_1 = require("../../logger");
 const validate = tslib_1.__importStar(require("validate.js"));
 const databaseContext_1 = require("./databaseContext");
 const userContext_1 = require("./userContext");
@@ -179,10 +179,7 @@ class QueryContext {
     }
     async getInvalidated(uuid) {
         const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
-            console.log(reason);
-            logger_1.default.error(reason);
-        });
+        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.logError(reason));
         return result.map((value) => {
             return {
                 externalListId: value.external_list_id,
@@ -203,10 +200,7 @@ class QueryContext {
             "part_id as partId, episode_id as episodeId, user_uuid as userUuid," +
             "list_id as listId, news_id as newsId, uuid " +
             "FROM user_data_invalidation WHERE uuid=?", uuid).on("end", () => {
-            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => {
-                console.log(reason);
-                logger_1.default.error(reason);
-            });
+            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.logError(reason));
         });
     }
     clearInvalidationTable() {

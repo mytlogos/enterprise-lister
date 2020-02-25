@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const tools_1 = require("./tools");
 const types_1 = require("./types");
-const logger_1 = tslib_1.__importStar(require("./logger"));
+const logger_1 = require("./logger");
 const types_2 = require("./externals/types");
 const validate = tslib_1.__importStar(require("validate.js"));
 const scraperTools_1 = require("./externals/scraperTools");
@@ -372,8 +372,7 @@ async function processMedia(media, listType, userUuid) {
             }));
         }
         catch (e) {
-            console.log(e);
-            logger_1.default.error(e);
+            logger_1.logError(e);
             return [];
         }
         foundLikeMedia.push(...storedMedia);
@@ -393,10 +392,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
             }
             message.remove.externalList = removedLists;
         })
-            .catch((error) => {
-            console.log(error);
-            logger_1.default.error(error);
-        });
+            .catch((error) => logger_1.logError(error));
     }
     // add each new list to the storage
     promisePool.push(...addedLists.map((value) => storage_1.externalListStorage
@@ -416,10 +412,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
         externalList.uuid = result.external.uuid;
         message.add.externalList.push(externalList);
     })
-        .catch((error) => {
-        console.log(error);
-        logger_1.default.error(error);
-    })));
+        .catch((error) => logger_1.logError(error))));
     promisePool.push(...renamedLists.map((value, index) => {
         const id = allLists[index].id;
         return storage_1.externalListStorage
@@ -436,10 +429,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
             }
             message.update.lists.push({ external: true, id, name: value.name });
         })
-            .catch((error) => {
-            console.log(error);
-            logger_1.default.error(error);
-        });
+            .catch((error) => logger_1.logError(error));
     }));
     // check whether media were removed or added to the list
     allLists.forEach((externalList, index) => {
@@ -464,10 +454,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
             }
             message.remove.items.push({ external: true, listId: externalList.id, mediumId });
         })
-            .catch((error) => {
-            console.log(error);
-            logger_1.default.error(error);
-        })));
+            .catch((error) => logger_1.logError(error))));
         promisePool.push(...newMedia.map((mediumId) => storage_1.externalListStorage
             .addItemToExternalList(externalList.id, mediumId)
             .then(() => {
@@ -479,10 +466,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
             }
             message.add.items.push({ external: true, listId: externalList.id, mediumId });
         })
-            .catch((error) => {
-            console.log(error);
-            logger_1.default.error(error);
-        })));
+            .catch((error) => logger_1.logError(error))));
     });
     // update externalUser with (new) cookies and a new lastScrape date (now)
     promisePool.push(storage_1.externalUserStorage
@@ -492,10 +476,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
         cookies: result.external.cookies,
         lastScrape: new Date(),
     })
-        .catch((error) => {
-        console.log(error);
-        logger_1.default.error(error);
-    }));
+        .catch((error) => logger_1.logError(error)));
     await Promise.all(promisePool);
     return message;
 }
@@ -566,8 +547,7 @@ async function newsHandler({ link, result }) {
         await processNews({ link, rawNews: result });
     }
     catch (e) {
-        logger_1.default.error(e);
-        console.log(e);
+        logger_1.logError(e);
     }
 }
 scraper.on("feed:error", (errorValue) => logger_1.logError(errorValue));
