@@ -1,5 +1,6 @@
 import winston, {format} from "winston";
 import {isString, jsonReplacer, stringify} from "./tools";
+import {join as joinPath} from "path";
 
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
@@ -8,6 +9,8 @@ if (appName) {
 } else {
     filePrefix = "";
 }
+
+filePrefix = joinPath("logs", filePrefix);
 
 const logger = winston.createLogger({
     levels: winston.config.npm.levels,

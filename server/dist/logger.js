@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const winston_1 = tslib_1.__importStar(require("winston"));
 const tools_1 = require("./tools");
+const path_1 = require("path");
 let filePrefix;
 const appName = process.env.NODE_APP_NAME || process.env.name;
 if (appName) {
@@ -11,6 +12,7 @@ if (appName) {
 else {
     filePrefix = "";
 }
+filePrefix = path_1.join("logs", filePrefix);
 const logger = winston_1.default.createLogger({
     levels: winston_1.default.config.npm.levels,
     format: winston_1.format.combine(winston_1.format.timestamp({ format: "DD.MM.YYYY HH:mm:ss" }), winston_1.format.json({ replacer: tools_1.jsonReplacer })),
