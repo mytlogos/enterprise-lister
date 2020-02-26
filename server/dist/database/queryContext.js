@@ -2392,7 +2392,7 @@ class QueryContext {
      */
     query(query, parameter) {
         if (query.length > 20) {
-            logger_1.default.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger_1.default.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
         }
         return Promise.resolve()
             .then(() => this.con.query(query, parameter))
@@ -2610,7 +2610,7 @@ class QueryContext {
      */
     _queryStream(query, parameter) {
         if (query.length > 20) {
-            logger_1.default.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger_1.default.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
         }
         return this.con.queryStream(query, parameter);
     }

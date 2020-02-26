@@ -3092,7 +3092,7 @@ export class QueryContext {
      */
     public query(query: string, parameter?: any | any[]): Promise<any> {
         if (query.length > 20) {
-            logger.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
         }
         return Promise.resolve()
             .then(() => this.con.query(query, parameter))
@@ -3336,7 +3336,7 @@ export class QueryContext {
      */
     private _queryStream(query: string, parameter?: any | any[]): Query {
         if (query.length > 20) {
-            logger.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
         }
         return this.con.queryStream(query, parameter);
     }

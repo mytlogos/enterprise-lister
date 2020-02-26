@@ -444,7 +444,7 @@ export class QueryContext implements ConnectionContext {
 
     public queryStream(query: string, parameter?: any | any[]): Query {
         if (query.length > 20 && env.development) {
-            logger.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
         }
         return this.con.queryStream(query, parameter);
     }

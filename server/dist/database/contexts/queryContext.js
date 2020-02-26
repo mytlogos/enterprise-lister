@@ -351,7 +351,7 @@ class QueryContext {
     }
     queryStream(query, parameter) {
         if (query.length > 20 && env_1.default.development) {
-            logger_1.default.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger_1.default.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
         }
         return this.con.queryStream(query, parameter);
     }

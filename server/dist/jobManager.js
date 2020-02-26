@@ -168,7 +168,7 @@ class JobQueue {
             if (toExecute.jobInfo.onStart) {
                 await this
                     .executeCallback(toExecute.jobInfo.onStart)
-                    .catch((reason) => logger_1.default.error("On Start threw an error!: " + reason));
+                    .catch((reason) => logger_1.default.error("On Start threw an error!: " + tools_1.stringify(reason)));
             }
             logger_1.default.info("executing job: " + toExecute.jobId);
             return toExecute.job(() => this._done(toExecute));
@@ -182,7 +182,7 @@ class JobQueue {
             this._done(toExecute);
             if (toExecute.jobInfo.onDone) {
                 this.executeCallback(toExecute.jobInfo.onDone)
-                    .catch((reason) => logger_1.default.error("On Done threw an error!: " + reason));
+                    .catch((reason) => logger_1.default.error("On Done threw an error!: " + tools_1.stringify(reason)));
             }
         });
     }
