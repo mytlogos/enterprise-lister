@@ -27,6 +27,7 @@ export class JobContext extends SubContext {
 
     public async addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]> {
         const now = new Date();
+        const currentJobs: Array<{ id: number, name: string }> = await this.query("SELECT id, name FROM jobs");
         // @ts-ignore
         return promiseMultiSingle(jobs, async (value: JobRequest): Promise<JobItem | undefined> => {
             let args = value.arguments;
@@ -41,27 +42,28 @@ export class JobContext extends SubContext {
                 runAfter = value.runAfter.id;
             }
             const nextRun = value.runImmediately ? now : null;
-            const result = await this.query(
-                "INSERT IGNORE INTO jobs " +
-                "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`) " +
-                "VALUES (?,?,?,?,?,?,?,?)",
-                [
-                    value.type, value.name, JobState.WAITING, value.interval,
-                    value.deleteAfterRun, runAfter, args, nextRun
-                ]
-            );
-            // the only reason it should fail to insert is when its name constraint is violated
-            if (!result.insertId) {
-                const queried = await this.query("SELECT id FROM jobs WHERE name=?", value.name);
+            const foundJob = currentJobs.find((job) => job.name === value.name);
 
-                if (!queried[0]) {
-                    throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
-                }
+            if (foundJob) {
                 // @ts-ignore
-                value.id = queried[0].id;
+                value.id = foundJob.id;
             } else {
-                // @ts-ignore
-                value.id = result.insertId;
+                const result = await this.query(
+                    "INSERT IGNORE INTO jobs " +
+                    "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`) " +
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    [
+                        value.type, value.name, JobState.WAITING, value.interval,
+                        value.deleteAfterRun, runAfter, args, nextRun
+                    ]
+                );
+                // the only reason it should fail to insert is when its name constraint is violated
+                if (!result.insertId) {
+                    throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
+                } else {
+                    // @ts-ignore
+                    value.id = result.insertId;
+                }
             }
             delete value.runImmediately;
             return value as unknown as JobItem;
