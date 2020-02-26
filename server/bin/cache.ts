@@ -21,12 +21,10 @@ export class Cache extends NodeCache {
     }
 
     // @ts-ignore
-    public set<T>(key: string | number, value: T, cb?: Callback<boolean>): boolean;
+    public set<T>(key: NodeCache.Key, value: T): boolean;
 
-    // @ts-ignore
-    public set<T>(key: string | number, value: T, ttl: number | string, cb?: Callback<boolean>): boolean {
-        // @ts-ignore
-        const b = super.set(key, value, ttl, cb);
+    public set<T>(key: NodeCache.Key, value: T, ttl: number | string): boolean {
+        const b = super.set(key, value, ttl);
         this._trimSize();
         return b;
     }

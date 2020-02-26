@@ -13,10 +13,8 @@ class Cache extends node_cache_1.default {
     isFull() {
         return this.keys().length >= this.maxSize;
     }
-    // @ts-ignore
-    set(key, value, ttl, cb) {
-        // @ts-ignore
-        const b = super.set(key, value, ttl, cb);
+    set(key, value, ttl) {
+        const b = super.set(key, value, ttl);
         this._trimSize();
         return b;
     }
