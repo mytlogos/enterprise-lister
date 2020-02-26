@@ -4,6 +4,7 @@ const tslib_1 = require("tslib");
 const winston_1 = tslib_1.__importStar(require("winston"));
 const tools_1 = require("./tools");
 const path_1 = require("path");
+const env_1 = tslib_1.__importDefault(require("./env"));
 let filePrefix;
 const appName = process.env.NODE_APP_NAME || process.env.name;
 if (appName) {
@@ -13,8 +14,24 @@ else {
     filePrefix = "";
 }
 filePrefix = path_1.join("logs", filePrefix);
+let logLevel = process.env.NODE_LOG_LEVEL || process.env.LOG_LEVEL;
+if (logLevel) {
+    const logLevelNumber = Number(logLevel);
+    if (isNaN(logLevelNumber)) {
+        logLevel = logLevel.toLowerCase();
+        logLevel = logLevel in winston_1.default.config.npm.levels ? logLevel : "info";
+    }
+    else {
+        const foundLevel = Object.entries(winston_1.default.config.npm.levels).find((value) => value[1] === logLevelNumber);
+        logLevel = foundLevel ? foundLevel[0] : "info";
+    }
+}
+else {
+    logLevel = env_1.default.development ? "debug" : "info";
+}
 const logger = winston_1.default.createLogger({
     levels: winston_1.default.config.npm.levels,
+    level: logLevel,
     format: winston_1.format.combine(winston_1.format.timestamp({ format: "DD.MM.YYYY HH:mm:ss" }), winston_1.format.json({ replacer: tools_1.jsonReplacer })),
     exceptionHandlers: [
         new winston_1.default.transports.File({

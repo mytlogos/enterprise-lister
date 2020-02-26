@@ -1,6 +1,7 @@
 import winston, {format} from "winston";
 import {isString, jsonReplacer, stringify} from "./tools";
 import {join as joinPath} from "path";
+import env from "./env";
 
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
@@ -12,8 +13,24 @@ if (appName) {
 
 filePrefix = joinPath("logs", filePrefix);
 
+let logLevel = process.env.NODE_LOG_LEVEL || process.env.LOG_LEVEL;
+if (logLevel) {
+    const logLevelNumber = Number(logLevel);
+
+    if (isNaN(logLevelNumber)) {
+        logLevel = logLevel.toLowerCase();
+        logLevel = logLevel in winston.config.npm.levels ? logLevel : "info";
+    } else {
+        const foundLevel = Object.entries(winston.config.npm.levels).find((value) => value[1] === logLevelNumber);
+        logLevel = foundLevel ? foundLevel[0] : "info";
+    }
+} else {
+    logLevel = env.development ? "debug" : "info";
+}
+
 const logger = winston.createLogger({
     levels: winston.config.npm.levels,
+    level: logLevel,
     format: format.combine(
         format.timestamp({format: "DD.MM.YYYY HH:mm:ss"}),
         format.json({replacer: jsonReplacer})
