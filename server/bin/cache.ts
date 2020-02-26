@@ -25,6 +25,7 @@ export class Cache extends NodeCache {
 
     // @ts-ignore
     public set<T>(key: string | number, value: T, ttl: number | string, cb?: Callback<boolean>): boolean {
+        // @ts-ignore
         const b = super.set(key, value, ttl, cb);
         this._trimSize();
         return b;

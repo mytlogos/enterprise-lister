@@ -15,6 +15,7 @@ class Cache extends node_cache_1.default {
     }
     // @ts-ignore
     set(key, value, ttl, cb) {
+        // @ts-ignore
         const b = super.set(key, value, ttl, cb);
         this._trimSize();
         return b;
