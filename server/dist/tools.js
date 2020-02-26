@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const logger_1 = tslib_1.__importDefault(require("./logger"));
 const crypto_1 = tslib_1.__importDefault(require("crypto"));
 const crypto_2 = tslib_1.__importDefault(require("crypto"));
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
@@ -230,8 +229,7 @@ function relativeToAbsoluteTime(relative) {
     const absolute = new Date();
     const timeValue = value && value.match("an?") ? 1 : Number(value);
     if (Number.isNaN(timeValue)) {
-        logger_1.default.warn(`'${value}' is not a number`);
-        return null;
+        throw new Error(`'${value}' is not a number`);
     }
     if (/^(s|secs?|seconds?)$/.test(unit)) {
         absolute.setSeconds(absolute.getSeconds() - timeValue);
@@ -255,8 +253,7 @@ function relativeToAbsoluteTime(relative) {
         absolute.setFullYear(absolute.getFullYear() - timeValue);
     }
     else {
-        logger_1.default.info(`unknown time unit: '${unit}'`);
-        return null;
+        throw new Error(`unknown time unit: '${unit}'`);
     }
     return absolute;
 }

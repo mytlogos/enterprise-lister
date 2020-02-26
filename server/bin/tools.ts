@@ -1,4 +1,3 @@
-import logger from "./logger";
 import {EpisodeRelease, MultiSingle} from "./types";
 import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
@@ -251,8 +250,7 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
     const timeValue = value && value.match("an?") ? 1 : Number(value);
 
     if (Number.isNaN(timeValue)) {
-        logger.warn(`'${value}' is not a number`);
-        return null;
+        throw new Error(`'${value}' is not a number`);
     }
 
     if (/^(s|secs?|seconds?)$/.test(unit)) {
@@ -277,8 +275,7 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
         absolute.setFullYear(absolute.getFullYear() - timeValue);
 
     } else {
-        logger.info(`unknown time unit: '${unit}'`);
-        return null;
+        throw new Error(`unknown time unit: '${unit}'`);
     }
     return absolute;
 }
