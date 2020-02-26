@@ -6,6 +6,7 @@ import compression from "compression";
 // helps by preventing some known http vulnerabilities by setting http headers appropriately
 import helmet from "helmet";
 // own router
+import log from "./logger";
 import {apiRouter} from "./api";
 import {blockRequests} from "./timer";
 import emojiStrip from "emoji-strip";
@@ -16,7 +17,13 @@ export const app = express();
 const parentDirName = path.dirname(path.dirname(__dirname));
 
 app.use(blockRequests);
-app.use(logger("dev"));
+app.use(logger(":method :url :status :response-time ms - :res[content-length]", {
+    stream: {
+        write(str: string): void {
+            log.info(str.trim());
+        }
+    }
+}));
 app.use(helmet());
 app.use(compression());
 
