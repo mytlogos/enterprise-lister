@@ -1,9 +1,9 @@
 import stream from "stream";
 import {isString} from "./tools";
-import {NodeStringDecoder, StringDecoder} from "string_decoder";
+import {StringDecoder} from "string_decoder";
 
 export class BufferToStringStream extends stream.Transform {
-    private readonly decoder: NodeStringDecoder;
+    private readonly decoder: StringDecoder;
 
 
     constructor() {
