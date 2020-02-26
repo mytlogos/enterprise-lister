@@ -373,7 +373,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
             try {
                 await remapMediumPart(mediumId);
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
 
             return [...indexPartsMap.values()].map((value) => addPartEpisodes(value));

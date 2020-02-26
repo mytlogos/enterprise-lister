@@ -113,7 +113,7 @@ async function doTransaction<T, C extends ConnectionContext>(
                     if (transaction) {
                         context.rollback();
                     }
-                    console.error(err);
+                    logger.error(err);
                 })
                 .on("end", () => {
                     if (!error && transaction) {

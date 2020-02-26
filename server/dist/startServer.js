@@ -11,6 +11,7 @@ const database_1 = require("./database/database");
 require("./deviceVerificator");
 // start crawler (setup and start running)
 const os_1 = tslib_1.__importDefault(require("os"));
+const logger_1 = tslib_1.__importDefault(require("./logger"));
 const port = env_1.default.port || process.env.port;
 // first start storage
 database_1.startStorage();
@@ -40,11 +41,11 @@ function onError(error) {
     // handle specific listen errors with friendly messages
     switch (error.code) {
         case "EACCES":
-            console.error(bind + " requires elevated privileges");
+            logger_1.default.error(bind + " requires elevated privileges");
             process.exit(1);
             break;
         case "EADDRINUSE":
-            console.error(bind + " is already in use");
+            logger_1.default.error(bind + " is already in use");
             process.exit(1);
             break;
         default:

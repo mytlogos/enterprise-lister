@@ -292,7 +292,7 @@ async function tocHandler(result) {
             await scraperTools_1.remapMediumPart(mediumId);
         }
         catch (e) {
-            console.error(e);
+            logger_1.default.error(e);
         }
         return [...indexPartsMap.values()].map((value) => addPartEpisodes(value));
         // catch all errors from promises, so it will not affect others

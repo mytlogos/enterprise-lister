@@ -94,7 +94,7 @@ async function doTransaction(callback, context, transaction, attempts = 0) {
                 if (transaction) {
                     context.rollback();
                 }
-                console.error(err);
+                logger_1.default.error(err);
             })
                 .on("end", () => {
                 if (!error && transaction) {

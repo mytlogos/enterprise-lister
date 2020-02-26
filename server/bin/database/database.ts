@@ -132,7 +132,7 @@ async function doTransaction<T>(callback: ContextCallback<T>, context: QueryCont
                     if (transaction) {
                         context.rollback();
                     }
-                    console.error(err);
+                    logger.error(err);
                 })
                 .on("end", () => {
                     if (!error && transaction) {

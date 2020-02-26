@@ -30,7 +30,7 @@ ScrapeJob.queueTocs = new ScrapeJob(types_1.ScrapeName.queueTocs, scraperTools_1
 ScrapeJob.remapMediaParts = new ScrapeJob(types_1.ScrapeName.remapMediaParts, scraperTools_1.remapMediaParts);
 ScrapeJob.queueExternalUser = new ScrapeJob(types_1.ScrapeName.queueExternalUser, scraperTools_1.queueExternalUser);
 // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
-const clearJobsOnStartPromise = storage_1.jobStorage.stopJobs().catch(console.error);
+const clearJobsOnStartPromise = storage_1.jobStorage.stopJobs().catch(logger_1.default.error);
 const missingConnections = new Set();
 // tslint:disable-next-line:max-classes-per-file
 class JobScraperManager {
@@ -120,7 +120,7 @@ class JobScraperManager {
             this.fetchJobs().catch(logger_1.default.error);
             this.checkRunningJobs().catch(logger_1.default.error);
         }, 60000);
-        this.fetchJobs().catch(console.error);
+        this.fetchJobs().catch(logger_1.default.error);
         if (this.intervalId) {
             clearInterval(this.intervalId);
         }

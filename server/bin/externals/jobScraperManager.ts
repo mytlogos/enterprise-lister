@@ -48,7 +48,7 @@ class ScrapeJob {
 }
 
 // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
-const clearJobsOnStartPromise = jobStorage.stopJobs().catch(console.error);
+const clearJobsOnStartPromise = jobStorage.stopJobs().catch(logger.error);
 
 const missingConnections = new Set<Date>();
 
@@ -154,7 +154,7 @@ export class JobScraperManager {
             this.fetchJobs().catch(logger.error);
             this.checkRunningJobs().catch(logger.error);
         }, 60000);
-        this.fetchJobs().catch(console.error);
+        this.fetchJobs().catch(logger.error);
 
         if (this.intervalId) {
             clearInterval(this.intervalId);
