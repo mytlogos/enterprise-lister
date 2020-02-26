@@ -33,7 +33,7 @@ export class DatabaseContext extends SubContext {
         return this.query("SHOW TRIGGERS;");
     }
 
-    public createTrigger(trigger: Trigger): any {
+    public createTrigger(trigger: Trigger): Promise<any> {
         const schema = trigger.createSchema();
         return this.query(schema);
     }

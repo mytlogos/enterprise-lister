@@ -25,7 +25,7 @@ async function search(text) {
         });
     }
     catch (e) {
-        console.log(e);
+        logger_1.default.error(e);
         return searchResults;
     }
     const parsed = JSON.parse(response);
@@ -50,7 +50,7 @@ async function searchAjax(searchWords, medium) {
         });
     }
     catch (e) {
-        console.log(e);
+        logger_1.default.error(e);
         return { done: true };
     }
     const parsed = JSON.parse(response);

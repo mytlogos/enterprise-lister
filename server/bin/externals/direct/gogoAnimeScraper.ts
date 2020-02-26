@@ -30,14 +30,14 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const groups = titlePattern.exec(rawTitle);
 
         if (!groups) {
-            console.log(`Unknown KissAnime News Format: '${episodeTitleElement.text()}' for '${mediumTitle}'`);
+            logger.warn(`Unknown GogoAnime News Format: '${episodeTitleElement.text()}' for '${mediumTitle}'`);
             continue;
         }
 
         const episodeTitle = sanitizeString(groups[0]);
         const episodeIndices = extractIndices(groups, 1, 2, 4);
         if (!episodeIndices) {
-            logger.info(`unknown news format on kissanime: ${episodeTitle}`);
+            logger.warn(`unknown news format on gogoAnime: ${episodeTitle}`);
             continue;
         }
         news.push({

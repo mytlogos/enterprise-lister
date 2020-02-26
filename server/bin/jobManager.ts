@@ -143,13 +143,12 @@ export class JobQueue {
 
         if (job.startRun) {
             const now = new Date();
-            const iso = now.toISOString();
             const diffTime = now.getTime() - job.startRun;
-            console.log(`Job ${job.jobId} executed in ${diffTime} ms, ${job.executed} times on ${iso}`);
+            logger.info(`Job ${job.jobId} executed in ${diffTime} ms, ${job.executed} times`);
             job.lastRun = Date.now();
             job.startRun = 0;
         } else {
-            console.log("Cancelling already finished job");
+            logger.info("Cancelling already finished job");
         }
     }
 
@@ -167,11 +166,11 @@ export class JobQueue {
     private _queueJob(): void {
         if (this.isEmpty() && this.intervalId) {
             clearInterval(this.intervalId);
-            console.log("queue is empty");
+            logger.info("queue is empty");
             return;
         }
         if (!this.schedulableJobs || !this.queueActive || this._fullQueue() || this._overMemoryLimit()) {
-            console.log("ignoring: " + new Date());
+            logger.info("queue will not execute a new job this tick");
             this.setInterval(1000);
             return;
         }
@@ -197,7 +196,7 @@ export class JobQueue {
                         .executeCallback(toExecute.jobInfo.onStart)
                         .catch((reason) => logger.error("On Start threw an error!: " + reason));
                 }
-                console.log("executing job: " + toExecute.jobId);
+                logger.info("executing job: " + toExecute.jobId);
                 return toExecute.job(() => this._done(toExecute));
             })
             .catch((reason) => {

@@ -180,7 +180,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const groups = titlePattern.exec(title);
 
         if (!groups) {
-            console.log(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
+            logger.warn(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
             continue;
         }
 

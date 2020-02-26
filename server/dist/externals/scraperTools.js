@@ -36,10 +36,10 @@ exports.scrapeNews = async (adapter) => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
-    console.log(`Scraping for News with Adapter on '${adapter.link}'`);
+    logger_1.default.info(`Scraping for News with Adapter on '${adapter.link}'`);
     const rawNews = await adapter();
     if (rawNews && rawNews.episodes && rawNews.episodes.length) {
-        console.log(`Scraped ${rawNews.episodes.length} Episode News on '${adapter.link}'`);
+        logger_1.default.info(`Scraped ${rawNews.episodes.length} Episode News on '${adapter.link}'`);
         const episodeMap = rawNews.episodes.reduce((map, currentValue) => {
             const episodeNews = tools_1.getElseSet(map, currentValue.mediumTitle + "%" + currentValue.mediumType, () => []);
             episodeNews.push(currentValue);
@@ -185,7 +185,7 @@ async function processMediumNews(title, type, tocLink, update = false, potential
     }
 }
 async function searchForTocJob(name, item) {
-    console.log(`searching for toc on ${name} with ${item}`);
+    logger_1.default.info(`searching for toc on ${name} with ${JSON.stringify(item)}`);
     const hook = nameHookMap.get(name);
     if (!hook) {
         throw Error("no hook found for name: " + name);
@@ -265,7 +265,7 @@ function searchTocJob(id, tocSearch, availableTocs) {
         }
     }
     if (!searchJobs.length) {
-        console.log("did not find anything for: " + id, tocSearch);
+        logger_1.default.info(`did not find anything for: ${id} of ${JSON.stringify(tocSearch)}`);
         return [];
     }
     for (let i = 0; i < searchJobs.length; i++) {
@@ -342,7 +342,7 @@ exports.queueTocs = async () => {
     await storage_1.storage.queueNewTocs();
 };
 exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
-    console.log("scraping one time toc: " + link);
+    logger_1.default.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
     if (!path) {
         logger_1.default.warn(`malformed url: '${link}'`);
@@ -370,7 +370,7 @@ exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
     if (mediumId && allTocs.length === 1) {
         allTocs[0].mediumId = mediumId;
     }
-    console.log("toc scraped: " + link);
+    logger_1.default.info("toc scraped successfully: " + link);
     return { tocs: allTocs, uuid };
 };
 exports.news = async (link) => {
@@ -419,7 +419,7 @@ exports.list = async (value) => {
     }
 };
 exports.feed = async (feedLink) => {
-    console.log("scraping feed: ", feedLink);
+    logger_1.default.info(`scraping feed: ${feedLink}`);
     const startTime = Date.now();
     // noinspection JSValidateTypes
     return feedparser_promised_1.default.parse(feedLink)
@@ -435,7 +435,7 @@ exports.feed = async (feedLink) => {
     })))
         .then((value) => {
         const duration = Date.now() - startTime;
-        console.log(`scraping feed: ${feedLink} took ${duration} ms`);
+        logger_1.default.info(`scraping feed: ${feedLink} took ${duration} ms`);
         return {
             link: feedLink,
             result: value
@@ -498,7 +498,7 @@ class ScraperHelper {
     }
     emit(event, value) {
         if (env_1.default.stopScrapeEvents) {
-            console.log("not emitting events");
+            logger_1.default.info("not emitting events");
             return;
         }
         const callbacks = tools_1.getElseSet(this.eventMap, event, () => []);
@@ -807,6 +807,7 @@ async function remapMediaParts() {
 }
 exports.remapMediaParts = remapMediaParts;
 async function queueExternalUser() {
+    // TODO: 26.02.2020 implement this?
     console.log("queueing external user");
 }
 exports.queueExternalUser = queueExternalUser;

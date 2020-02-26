@@ -10,7 +10,7 @@ export declare class DatabaseContext extends SubContext {
     createDatabase(): Promise<void>;
     getTables(): Promise<any[]>;
     getTriggers(): Promise<DbTrigger[]>;
-    createTrigger(trigger: Trigger): any;
+    createTrigger(trigger: Trigger): Promise<any>;
     dropTrigger(trigger: string): Promise<any>;
     createTable(table: string, columns: string[]): Promise<any>;
     addColumn(tableName: string, columnDefinition: string): Promise<any>;

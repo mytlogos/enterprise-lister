@@ -289,13 +289,13 @@ export class QueryContext implements ConnectionContext {
      */
     public query(query: string, parameter?: any | any[]): Promise<any> {
         if (query.length > 20 && env.development) {
-            console.log(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
+            logger.debug(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
         }
         return Promise.resolve()
             .then(() => this.con.query(query, parameter))
             .then((value) => {
                 if (Array.isArray(value) && value.length > 1000) {
-                    console.log(`${value.length} Results for ${query}`);
+                    logger.debug(`${value.length} Results for ${query}`);
                 }
                 return value;
             });
@@ -444,7 +444,7 @@ export class QueryContext implements ConnectionContext {
 
     public queryStream(query: string, parameter?: any | any[]): Query {
         if (query.length > 20 && env.development) {
-            console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
         }
         return this.con.queryStream(query, parameter);
     }

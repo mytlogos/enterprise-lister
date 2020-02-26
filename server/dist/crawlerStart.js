@@ -80,7 +80,8 @@ async function getTocMedia(tocs, uuid) {
             await storage_1.mediumStorage.addToc(medium.id, toc.link);
         }
         else {
-            console.log("missing toc and id for ", medium, " and ", toc);
+            // TODO: 26.02.2020 what does this imply, should something be done? is this an error?
+            logger_1.default.warn(`missing toc and id for ${JSON.stringify(medium)} and ${JSON.stringify(toc)}`);
         }
         const mediumValue = tools_1.getElseSet(media, medium, () => {
             return {
@@ -228,7 +229,9 @@ async function tocHandler(result) {
     }
     const tocs = result.tocs;
     const uuid = result.uuid;
-    console.log(`handling toc: ${tocs} ${uuid}`);
+    logger_1.default.debug(`handling toc: ${tocs.map((value) => {
+        return { ...value, content: value.content.length };
+    })} ${uuid}`);
     if (!(tocs && tocs.length)) {
         return;
     }
@@ -264,7 +267,7 @@ async function tocHandler(result) {
             }
             const tocPart = indexPartsMap.get(tools_1.combiIndex(value));
             if (!tocPart) {
-                throw Error("something went wrong. got no value at this part index");
+                throw Error(`got no value at this part index: ${tools_1.combiIndex(value)} of ${JSON.stringify(value)}`);
             }
             tocPart.part = value;
         });
@@ -273,7 +276,7 @@ async function tocHandler(result) {
             .map((index) => {
             const partToc = indexPartsMap.get(index);
             if (!partToc) {
-                throw Error("something went wrong. got no value at this part index");
+                throw Error(`got no value at this part index: ${index}`);
             }
             scraperTools_1.checkTocContent(partToc.tocPart, true);
             return storage_1.partStorage

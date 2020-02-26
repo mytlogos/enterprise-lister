@@ -40,7 +40,7 @@ async function search(text: string): Promise<SearchResult[]> {
             body: "action=wp-manga-search-manga&title=" + text
         });
     } catch (e) {
-        console.log(e);
+        logger.error(e);
         return searchResults;
     }
     const parsed: NovelSearchResponse = JSON.parse(response);
@@ -66,7 +66,7 @@ export async function searchAjax(searchWords: string, medium: TocSearchMedium): 
             body: "action=wp-manga-search-manga&title=" + searchWords
         });
     } catch (e) {
-        console.log(e);
+        logger.error(e);
         return {done: true};
     }
     const parsed: NovelSearchResponse = JSON.parse(response);

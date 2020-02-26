@@ -45,7 +45,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         if (!groups) {
             // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
-            console.log(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
+            logger.warn(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
             continue;
         }
 

@@ -32,7 +32,7 @@ function getTextContent(novelTitle, episodeTitle, urlString, content) {
 }
 exports.getTextContent = getTextContent;
 async function searchTocCheerio(medium, tocScraper, uri, searchLink, linkSelector) {
-    console.log(`searching for ${medium.title} on ${uri}`);
+    logger_1.default.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
     let searchWords = "";
@@ -69,11 +69,11 @@ async function searchTocCheerio(medium, tocScraper, uri, searchLink, linkSelecto
             return tocs[0];
         }
         else {
-            console.log("a possible toc link could not be scraped: " + tocLink);
+            logger_1.default.warn("a possible toc link could not be scraped: " + tocLink);
         }
     }
     else {
-        console.log(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+        logger_1.default.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
     }
     return;
 }
@@ -97,7 +97,7 @@ function searchForWords(linkSelector, medium, uri, searchLink) {
     };
 }
 async function searchToc(medium, tocScraper, uri, searchLink) {
-    console.log(`searching for ${medium.title} on ${uri}`);
+    logger_1.default.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
     let searchString = "";
@@ -124,11 +124,11 @@ async function searchToc(medium, tocScraper, uri, searchLink) {
             return tocs[0];
         }
         else {
-            console.log("a possible toc link could not be scraped: " + tocLink);
+            logger_1.default.warn("a possible toc link could not be scraped: " + tocLink);
         }
     }
     else {
-        console.log(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+        logger_1.default.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
     }
     return;
 }

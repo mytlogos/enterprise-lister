@@ -23,13 +23,13 @@ async function scrapeNews() {
         const rawTitle = tools_1.sanitizeString(episodeTitleElement.text());
         const groups = titlePattern.exec(rawTitle);
         if (!groups) {
-            console.log(`Unknown KissAnime News Format: '${episodeTitleElement.text()}' for '${mediumTitle}'`);
+            logger_1.default.warn(`Unknown GogoAnime News Format: '${episodeTitleElement.text()}' for '${mediumTitle}'`);
             continue;
         }
         const episodeTitle = tools_1.sanitizeString(groups[0]);
         const episodeIndices = tools_1.extractIndices(groups, 1, 2, 4);
         if (!episodeIndices) {
-            logger_1.default.info(`unknown news format on kissanime: ${episodeTitle}`);
+            logger_1.default.warn(`unknown news format on gogoAnime: ${episodeTitle}`);
             continue;
         }
         news.push({

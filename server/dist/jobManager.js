@@ -120,14 +120,13 @@ class JobQueue {
         tools_1.remove(this.activeJobs, job);
         if (job.startRun) {
             const now = new Date();
-            const iso = now.toISOString();
             const diffTime = now.getTime() - job.startRun;
-            console.log(`Job ${job.jobId} executed in ${diffTime} ms, ${job.executed} times on ${iso}`);
+            logger_1.default.info(`Job ${job.jobId} executed in ${diffTime} ms, ${job.executed} times`);
             job.lastRun = Date.now();
             job.startRun = 0;
         }
         else {
-            console.log("Cancelling already finished job");
+            logger_1.default.info("Cancelling already finished job");
         }
     }
     _fullQueue() {
@@ -142,11 +141,11 @@ class JobQueue {
     _queueJob() {
         if (this.isEmpty() && this.intervalId) {
             clearInterval(this.intervalId);
-            console.log("queue is empty");
+            logger_1.default.info("queue is empty");
             return;
         }
         if (!this.schedulableJobs || !this.queueActive || this._fullQueue() || this._overMemoryLimit()) {
-            console.log("ignoring: " + new Date());
+            logger_1.default.info("queue will not execute a new job this tick");
             this.setInterval(1000);
             return;
         }
@@ -171,7 +170,7 @@ class JobQueue {
                     .executeCallback(toExecute.jobInfo.onStart)
                     .catch((reason) => logger_1.default.error("On Start threw an error!: " + reason));
             }
-            console.log("executing job: " + toExecute.jobId);
+            logger_1.default.info("executing job: " + toExecute.jobId);
             return toExecute.job(() => this._done(toExecute));
         })
             .catch((reason) => {

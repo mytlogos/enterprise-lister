@@ -63,7 +63,7 @@ const logger = winston_1.default.createLogger({
     ]
 });
 process.on("unhandledRejection", (reason, promise) => {
-    console.log(reason, promise);
+    logger.error(`Unhandled Rejection - Reason: ${tools_1.stringify(reason)} - Promise: ${tools_1.stringify(promise)}`);
 });
 let exitHandled = false;
 process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info(`Exit Program with Code: ${code}.`));

@@ -296,7 +296,7 @@ interface TocResponse {
 }
 
 async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined> {
-    console.log("start searching webnovel " + searchMedium.mediumId);
+    logger.info("start searching webnovel " + searchMedium.mediumId);
     const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(searchMedium.title);
     const body = await loadBody(urlString);
     const titles = body("body > div.page  ul[class*=result] > li > h3 > a");
@@ -322,7 +322,7 @@ async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined
         throw Error("invalid bookId");
     }
     const [toc] = await scrapeTocPage(bookId, searchMedium.mediumId);
-    console.log("scraping toc on webnovel successfully " + searchMedium.mediumId);
+    logger.info("scraping toc on webnovel successfully " + searchMedium.mediumId);
     return toc;
 }
 

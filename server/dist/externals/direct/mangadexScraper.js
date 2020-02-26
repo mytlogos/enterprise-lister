@@ -104,7 +104,7 @@ async function scrapeNews() {
         const date = new Date(timeStampElement.attr("datetime"));
         const groups = titlePattern.exec(title);
         if (!groups) {
-            console.log(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
+            logger_1.default.warn(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
             continue;
         }
         let episodeIndices;

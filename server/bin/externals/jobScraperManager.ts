@@ -259,12 +259,13 @@ export class JobScraperManager {
 
     private async fetchJobs(): Promise<void> {
         if (this.queue.isFull()) {
-            console.log("skip fetching jobs");
+            logger.info("skip fetching jobs, queue is full");
             return;
         }
-        console.log("fetching jobs");
+        logger.info(`start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
         const scrapeBoard: JobItem[] = await jobStorage.getJobs();
         this.processJobItems(scrapeBoard);
+        logger.info(`fetched jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
     }
 
     private processJobItems(items: JobItem[]) {
@@ -385,7 +386,7 @@ export class JobScraperManager {
             this.jobMap.set(item.id, job);
             item.state = JobState.RUNNING;
             await jobStorage.updateJobs(item);
-            console.log(`Job ${item.name ? item.name : item.id} is running now, ${new Date()}`);
+            logger.info(`Job ${item.name ? item.name : item.id} is running now`);
         };
         job.onDone = async () => {
             if (item.name) {
@@ -409,7 +410,7 @@ export class JobScraperManager {
                 item.state = JobState.WAITING;
                 await jobStorage.updateJobs(item);
             }
-            console.log(`Job ${item.name ? item.name : item.id} finished now, ${new Date()}`);
+            logger.info(`Job ${item.name ? item.name : item.id} finished now`);
         };
     }
 

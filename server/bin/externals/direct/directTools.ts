@@ -35,7 +35,7 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
 
 export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
                                        searchLink: (parameter: string) => string, linkSelector: string) {
-    console.log(`searching for ${medium.title} on ${uri}`);
+    logger.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
     let searchWords = "";
@@ -80,10 +80,10 @@ export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocS
         if (tocs && tocs.length) {
             return tocs[0];
         } else {
-            console.log("a possible toc link could not be scraped: " + tocLink);
+            logger.warn("a possible toc link could not be scraped: " + tocLink);
         }
     } else {
-        console.log(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+        logger.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
     }
     return;
 }
@@ -123,7 +123,7 @@ function searchForWords(
 
 export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
                                 searchLink: (searchString: string) => Promise<SearchResult>) {
-    console.log(`searching for ${medium.title} on ${uri}`);
+    logger.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
     let searchString = "";
@@ -154,10 +154,10 @@ export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper,
         if (tocs && tocs.length) {
             return tocs[0];
         } else {
-            console.log("a possible toc link could not be scraped: " + tocLink);
+            logger.warn("a possible toc link could not be scraped: " + tocLink);
         }
     } else {
-        console.log(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+        logger.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
     }
     return;
 }

@@ -121,7 +121,8 @@ async function getTocMedia(tocs: Toc[], uuid?: string)
         if (medium.id && toc.link) {
             await mediumStorage.addToc(medium.id, toc.link);
         } else {
-            console.log("missing toc and id for ", medium, " and ", toc);
+            // TODO: 26.02.2020 what does this imply, should something be done? is this an error?
+            logger.warn(`missing toc and id for ${JSON.stringify(medium)} and ${JSON.stringify(toc)}`);
         }
 
         const mediumValue = getElseSet(media, medium, () => {
@@ -297,7 +298,9 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
     }
     const tocs = result.tocs;
     const uuid = result.uuid;
-    console.log(`handling toc: ${tocs} ${uuid}`);
+    logger.debug(`handling toc: ${tocs.map((value) => {
+        return {...value, content: value.content.length};
+    })} ${uuid}`);
 
     if (!(tocs && tocs.length)) {
         return;
@@ -344,7 +347,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
                 const tocPart = indexPartsMap.get(combiIndex(value));
 
                 if (!tocPart) {
-                    throw Error("something went wrong. got no value at this part index");
+                    throw Error(`got no value at this part index: ${combiIndex(value)} of ${JSON.stringify(value)}`);
                 }
                 tocPart.part = value;
             });
@@ -355,11 +358,11 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
                     const partToc = indexPartsMap.get(index);
 
                     if (!partToc) {
-                        throw Error("something went wrong. got no value at this part index");
+                        throw Error(`got no value at this part index: ${index}`);
                     }
                     checkTocContent(partToc.tocPart, true);
                     return partStorage
-                    // @ts-ignore
+                        // @ts-ignore
                         .addPart({
                             mediumId,
                             title: partToc.tocPart.title,
@@ -579,7 +582,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
 
     // update externalUser with (new) cookies and a new lastScrape date (now)
     promisePool.push(externalUserStorage
-    // @ts-ignore
+        // @ts-ignore
         .updateExternalUser({
             uuid: result.external.uuid,
             cookies: result.external.cookies,

@@ -29,7 +29,7 @@ async function scrapeNews() {
         }
         const groups = titlePattern.exec(title);
         if (!groups) {
-            console.log(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
+            logger_1.default.warn(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
             continue;
         }
         let episodeIndices;

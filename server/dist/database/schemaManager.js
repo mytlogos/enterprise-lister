@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const tools_1 = require("../tools");
+const logger_1 = tslib_1.__importDefault(require("../logger"));
 class SchemaManager {
     constructor() {
         this.databaseName = "";
@@ -19,6 +21,7 @@ class SchemaManager {
         this.migrations.push(...database.migrations);
     }
     async checkTableSchema(context) {
+        logger_1.default.info("Starting Check on Storage Schema");
         // display all current tables
         const tables = await context.getTables();
         const enterpriseTableProperty = `Tables_in_${this.databaseName}`;
@@ -30,6 +33,8 @@ class SchemaManager {
             return context.createTable(schema.name, schema.columns);
         }));
         const dbTriggers = await context.getTriggers();
+        let triggerCreated = 0;
+        let triggerDeleted = 0;
         // create triggers which do not exist, and drops triggers which are not in schema
         await Promise.all(this.trigger
             .filter((trigger) => {
@@ -45,18 +50,20 @@ class SchemaManager {
             }
             return true;
         })
-            .map((trigger) => context.createTrigger(trigger)));
+            .map((trigger) => context.createTrigger(trigger).then(() => triggerCreated++)));
         // every trigger that is left over, is not in schema and ready to be dropped
         await Promise.all(dbTriggers
             .filter((value) => this.tables.find((table) => table.name === value.Table))
-            .map((value) => context.dropTrigger(value.Trigger)));
+            .map((value) => context.dropTrigger(value.Trigger).then(() => triggerDeleted++)));
         const versionResult = await context.getDatabaseVersion();
         let previousVersion = 0;
         if (versionResult && versionResult[0] && versionResult[0].version > 0) {
             previousVersion = versionResult[0].version;
         }
+        logger_1.default.info(`Created ${triggerCreated} Triggers and dropped ${triggerDeleted} Triggers`);
         const currentVersion = this.dataBaseVersion;
         if (currentVersion === previousVersion) {
+            logger_1.default.info("Storage Version is up-to-date");
             return;
         }
         else if (currentVersion < previousVersion) {
@@ -88,6 +95,7 @@ class SchemaManager {
         if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
             throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
         }
+        logger_1.default.info(`Starting Migration of Storage from ${previousVersion} to ${currentVersion}`);
         if (directMigration) {
             await directMigration.migrate(context);
         }
@@ -98,7 +106,7 @@ class SchemaManager {
         }
         // FIXME: 10.08.2019 inserting new database version does not seem to work
         await context.updateDatabaseVersion(currentVersion);
-        console.log(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
+        logger_1.default.info(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
     }
     getShortest(previousVersion) {
         const root = {

@@ -36,7 +36,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const groups = titlePattern.exec(title);
 
         if (!groups) {
-            console.log(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
+            logger.warn(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
             continue;
         }
 

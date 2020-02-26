@@ -213,13 +213,13 @@ class QueryContext {
      */
     query(query, parameter) {
         if (query.length > 20 && env_1.default.development) {
-            console.log(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
+            logger_1.default.debug(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
         }
         return Promise.resolve()
             .then(() => this.con.query(query, parameter))
             .then((value) => {
             if (Array.isArray(value) && value.length > 1000) {
-                console.log(`${value.length} Results for ${query}`);
+                logger_1.default.debug(`${value.length} Results for ${query}`);
             }
             return value;
         });
@@ -351,7 +351,7 @@ class QueryContext {
     }
     queryStream(query, parameter) {
         if (query.length > 20 && env_1.default.development) {
-            console.log(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
+            logger_1.default.debug(query, (parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30));
         }
         return this.con.queryStream(query, parameter);
     }
