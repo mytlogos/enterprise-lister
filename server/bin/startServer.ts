@@ -4,7 +4,7 @@ import debug from "debug";
 import {createServer, Server} from "http";
 import env from "./env";
 // start storage (connect to database)
-import {startStorage} from "./database/database";
+import {startStorage} from "./database/storages/storage";
 import "./deviceVerificator";
 // start crawler (setup and start running)
 import os from "os";

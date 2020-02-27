@@ -9,5 +9,6 @@ export declare class SchemaManager {
     private migrations;
     initTableSchema(database: DatabaseSchema): void;
     checkTableSchema(context: DatabaseContext): Promise<void>;
+    private checkSchema;
     private getShortest;
 }

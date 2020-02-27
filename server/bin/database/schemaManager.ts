@@ -1,7 +1,7 @@
 import {DatabaseSchema, Migration} from "./databaseTypes";
 import {TableSchema} from "./tableSchema";
 import {Trigger} from "./trigger";
-import {equalsIgnore, getElseSet} from "../tools";
+import {delay, equalsIgnore, getElseSet} from "../tools";
 import {DatabaseContext} from "./contexts/databaseContext";
 import logger from "../logger";
 
@@ -24,7 +24,29 @@ export class SchemaManager {
 
     public async checkTableSchema(context: DatabaseContext): Promise<void> {
         logger.info("Starting Check on Storage Schema");
+        const canMigrate = await context.startMigration();
+        if (!canMigrate) {
+            await (async function wait(retry = 0) {
+                if (retry > 9) {
+                    throw Error("cannot start migration check, as migration flag is still set after 10 retries");
+                }
+                logger.error("waiting");
+                await delay();
+
+                if (!await context.startMigration()) {
+                    await wait(retry + 1);
+                }
+            }());
+        }
         // display all current tables
+        try {
+            await this.checkSchema(context);
+        } finally {
+            await context.stopMigration();
+        }
+    }
+
+    private async checkSchema(context: DatabaseContext) {
         const tables: any[] = await context.getTables();
 
         const enterpriseTableProperty = `Tables_in_${this.databaseName}`;

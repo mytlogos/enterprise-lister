@@ -12,9 +12,18 @@ class DatabaseContext extends subContext_1.SubContext {
     getDatabaseVersion() {
         return this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
     }
+    async startMigration() {
+        return this
+            .query("UPDATE enterprise_database_info SET migrating=1;")
+            .then((value) => value && (value.changedRows === 1));
+    }
+    async stopMigration() {
+        return this
+            .query("UPDATE enterprise_database_info SET migrating=0;")
+            .then((value) => value && (value.changedRows === 1));
+    }
     async updateDatabaseVersion(version) {
-        await this.query("TRUNCATE enterprise_database_info;");
-        return this.query("INSERT INTO enterprise_database_info (version) VALUES (?);", version);
+        return this.query("UPDATE enterprise_database_info SET version=?;", version);
     }
     createDatabase() {
         return this.query(`CREATE DATABASE ${database};`).then(tools_1.ignore);
@@ -53,7 +62,7 @@ class DatabaseContext extends subContext_1.SubContext {
     dropIndex(tableName, indexName) {
         const index = promise_mysql_1.default.escapeId(indexName);
         const table = promise_mysql_1.default.escapeId(tableName);
-        return this.query(`DROP INDEX ${index} ON ${table};`);
+        return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`);
     }
     addForeignKey(tableName, constraintName, column, referencedTable, referencedColumn, onDelete, onUpdate) {
         const index = promise_mysql_1.default.escapeId(column);

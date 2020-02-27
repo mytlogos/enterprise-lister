@@ -7,14 +7,14 @@ const debug_1 = tslib_1.__importDefault(require("debug"));
 const http_1 = require("http");
 const env_1 = tslib_1.__importDefault(require("./env"));
 // start storage (connect to database)
-const database_1 = require("./database/database");
+const storage_1 = require("./database/storages/storage");
 require("./deviceVerificator");
 // start crawler (setup and start running)
 const os_1 = tslib_1.__importDefault(require("os"));
 const logger_1 = tslib_1.__importDefault(require("./logger"));
 const port = env_1.default.port || process.env.port;
 // first start storage
-database_1.startStorage();
+storage_1.startStorage();
 const debugMessenger = debug_1.default("enterprise-lister:server");
 /**
  * Get port from environment and store in Express.

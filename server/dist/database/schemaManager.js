@@ -22,7 +22,28 @@ class SchemaManager {
     }
     async checkTableSchema(context) {
         logger_1.default.info("Starting Check on Storage Schema");
+        const canMigrate = await context.startMigration();
+        if (!canMigrate) {
+            await (async function wait(retry = 0) {
+                if (retry > 9) {
+                    throw Error("cannot start migration check, as migration flag is still set after 10 retries");
+                }
+                logger_1.default.error("waiting");
+                await tools_1.delay();
+                if (!await context.startMigration()) {
+                    await wait(retry + 1);
+                }
+            }());
+        }
         // display all current tables
+        try {
+            await this.checkSchema(context);
+        }
+        finally {
+            await context.stopMigration();
+        }
+    }
+    async checkSchema(context) {
         const tables = await context.getTables();
         const enterpriseTableProperty = `Tables_in_${this.databaseName}`;
         // create tables which do not exist

@@ -6,6 +6,8 @@ export declare class DatabaseContext extends SubContext {
     getDatabaseVersion(): Promise<Array<{
         version: number;
     }>>;
+    startMigration(): Promise<boolean>;
+    stopMigration(): Promise<boolean>;
     updateDatabaseVersion(version: number): Promise<number>;
     createDatabase(): Promise<void>;
     getTables(): Promise<any[]>;

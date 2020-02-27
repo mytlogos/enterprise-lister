@@ -249,6 +249,7 @@ dataBaseBuilder.getTableBuilder()
 dataBaseBuilder.getTableBuilder()
     .setName("enterprise_database_info")
     .parseColumn("version INT UNSIGNED NOT NULL")
+    .parseColumn("migrating BOOLEAN NOT NULL DEFAULT 0")
     .build();
 
 dataBaseBuilder.getTableBuilder()
