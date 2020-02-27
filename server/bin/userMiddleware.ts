@@ -21,6 +21,10 @@ import {TocRequest} from "./externals/types";
 import {getTunnelUrl} from "./tunnel";
 import env from "./env";
 
+function isNumberOrArray(value: number | any[]) {
+    return Array.isArray(value) ? value.length : Number.isInteger(value);
+}
+
 export const search: Handler = (req, res) => {
     const text = extractQueryParam(req, "text");
     const medium = Number(extractQueryParam(req, "medium"));
@@ -62,7 +66,7 @@ export const putConsumeUnusedMedia: Handler = (req, res) => {
 export const postCreateFromUnusedMedia: Handler = (req, res) => {
     const {createMedium, tocsMedia, listId} = req.body;
 
-    if (!createMedium || listId <= 0) {
+    if (!createMedium || listId <= 0 || (tocsMedia && !Array.isArray(tocsMedia))) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -158,7 +162,7 @@ export const getUser: Handler = (req, res) => {
 export const login: Handler = (req, res) => {
     const {userName, pw} = req.body;
 
-    if (!userName || !pw) {
+    if (!userName || !isString(userName) || !pw || !isString(pw)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -168,7 +172,7 @@ export const login: Handler = (req, res) => {
 export const register: Handler = (req, res) => {
     const {userName, pw} = req.body;
 
-    if (!userName || !pw) {
+    if (!userName || !isString(userName) || !pw || !isString(pw)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -243,6 +247,11 @@ export const addToc: Handler = (req, res) => {
 export const downloadEpisode: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     const stringEpisode = extractQueryParam(req, "episode");
+
+    if (!stringEpisode || !isString(stringEpisode)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
     const episodes: number[] = stringToNumberList(stringEpisode);
 
     if (!episodes || !episodes.length) {
@@ -296,7 +305,7 @@ export const putList: Handler = (req, res) => {
 };
 export const deleteList: Handler = (req, res) => {
     const {listId, uuid} = req.body;
-    if (!listId) {
+    if (!listId || !Number.isInteger(listId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -306,9 +315,15 @@ export const getListMedium: Handler = (req, res) => {
     const listId = extractQueryParam(req, "listId");
     const uuid = extractQueryParam(req, "uuid");
     let media = extractQueryParam(req, "media");
+
+    if (!media || !isString(media)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+
     media = stringToNumberList(media);
 
-    if (!listId || !media || (Array.isArray(media) && !media.length)) {
+    if (!listId || (Array.isArray(media) && !media.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -317,10 +332,12 @@ export const getListMedium: Handler = (req, res) => {
 export const postListMedium: Handler = (req, res) => {
     const {listId, mediumId, uuid} = req.body;
 
-    if (!listId || !mediumId || (Array.isArray(mediumId) && !mediumId.length)) {
+    if (!listId || !Number.isInteger(listId)
+        || !mediumId || !isNumberOrArray(mediumId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
+    // TODO: 27.02.2020 use uuid to check that listId is owned by uuid
     // @ts-ignore
     sendResult(res, internalListStorage.addItemToList(listId, mediumId, uuid));
 };
@@ -328,7 +345,7 @@ export const putListMedium: Handler = (req, res) => {
     const {oldListId, newListId} = req.body;
     let {mediumId} = req.body;
 
-    if (Number.isNaN(mediumId)) {
+    if (!Number.isInteger(mediumId)) {
         if (isString(mediumId)) {
             mediumId = stringToNumberList(mediumId);
 
@@ -354,7 +371,7 @@ export const deleteListMedium: Handler = (req, res) => {
     if (isString(mediumId)) {
         mediumId = stringToNumberList(mediumId);
     }
-    if (!listId || !mediumId || (Array.isArray(mediumId) && !mediumId.length)) {
+    if (!listId || !mediumId || !isNumberOrArray(mediumId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -370,12 +387,16 @@ export const getPart: Handler = (req, res) => {
         if (isString(partId)) {
             partId = stringToNumberList(partId);
         }
-        if (!partId) {
+        if (!partId || (!Array.isArray(partId) && !Number.isInteger(partId))) {
             sendResult(res, Promise.reject(Errors.INVALID_INPUT));
             return;
         }
         sendResult(res, partStorage.getParts(partId, uuid));
     } else {
+        if (!Number.isInteger(mediumId)) {
+            sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+            return;
+        }
         sendResult(res, partStorage.getMediumParts(mediumId, uuid));
     }
 };
@@ -386,7 +407,7 @@ export const getPartItems: Handler = (req, res) => {
     if (isString(partId)) {
         partId = stringToNumberList(partId);
     }
-    if (!partId) {
+    if (!partId || !Array.isArray(partId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -399,7 +420,7 @@ export const getPartReleases: Handler = (req, res) => {
     if (isString(partId)) {
         partId = stringToNumberList(partId);
     }
-    if (!partId) {
+    if (!partId || !Array.isArray(partId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -407,7 +428,7 @@ export const getPartReleases: Handler = (req, res) => {
 };
 export const postPart: Handler = (req, res) => {
     const {part, mediumId} = req.body;
-    if (!part || !mediumId) {
+    if (!part || !mediumId || !Number.isInteger(mediumId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -424,7 +445,7 @@ export const putPart: Handler = (req, res) => {
 };
 export const deletePart: Handler = (req, res) => {
     const {partId} = req.body;
-    if (!partId) {
+    if (!partId || !Number.isInteger(partId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -438,7 +459,7 @@ export const getEpisode: Handler = (req, res) => {
     if (isString(episodeId)) {
         episodeId = stringToNumberList(episodeId);
     }
-    if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
+    if (!episodeId || !isNumberOrArray(episodeId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -446,7 +467,7 @@ export const getEpisode: Handler = (req, res) => {
 };
 export const postEpisode: Handler = (req, res) => {
     const {episode, partId} = req.body;
-    if (!episode || (Array.isArray(episode) && !episode.length) || !partId) {
+    if (!episode || (Array.isArray(episode) && !episode.length) || !partId || !Number.isInteger(partId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -466,7 +487,7 @@ export const putEpisode: Handler = (req, res) => {
     sendResult(res, episode.updateEpisode(episode, uuid));
 };
 export const deleteEpisode: Handler = (req, res) => {
-    const {episodeId, uuid} = req.body;
+    const {episodeId} = req.body;
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
@@ -526,7 +547,7 @@ export const deleteUser: Handler = (req, res) => {
 export const getProgress: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     const episodeId = extractQueryParam(req, "episodeId");
-    if (!episodeId) {
+    if (!episodeId || !Number.isInteger(episodeId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -536,12 +557,14 @@ export const getProgress: Handler = (req, res) => {
 export const postProgress: Handler = (req, res) => {
     const {uuid, progress} = req.body;
     let episodeId = req.body.episodeId;
-    if (!episodeId || progress == null) {
-        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-        return;
-    }
+
     if (isString(episodeId)) {
         episodeId = stringToNumberList(episodeId);
+    }
+
+    if (!episodeId || !isNumberOrArray(episodeId) || progress == null) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
     try {
         const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
@@ -556,7 +579,7 @@ export const putProgress: Handler = postProgress;
 
 export const deleteProgress: Handler = (req, res) => {
     const {uuid, episodeId} = req.body;
-    if (!episodeId) {
+    if (!episodeId || !Number.isInteger(episodeId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -576,7 +599,7 @@ export const getMedium: Handler = (req, res) => {
         mediumId = extractQueryParam(req, "mediumId");
         mediumId = stringToNumberList(mediumId);
     }
-    if (!mediumId) {
+    if (!mediumId || !isNumberOrArray(mediumId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
@@ -630,7 +653,7 @@ export const authenticate: Handler = (req, res, next) => {
         uuid = extractQueryParam(req, "uuid");
         session = extractQueryParam(req, "session");
     }
-    if (!uuid || !session) {
+    if (!uuid || !isString(uuid) || !session || !isString(session)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }

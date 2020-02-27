@@ -10,6 +10,9 @@ const tools_1 = require("./tools");
 const types_1 = require("./types");
 const tunnel_1 = require("./tunnel");
 const env_1 = tslib_1.__importDefault(require("./env"));
+function isNumberOrArray(value) {
+    return Array.isArray(value) ? value.length : Number.isInteger(value);
+}
 exports.search = (req, res) => {
     const text = extractQueryParam(req, "text");
     const medium = Number(extractQueryParam(req, "medium"));
@@ -42,7 +45,7 @@ exports.putConsumeUnusedMedia = (req, res) => {
 };
 exports.postCreateFromUnusedMedia = (req, res) => {
     const { createMedium, tocsMedia, listId } = req.body;
-    if (!createMedium || listId <= 0) {
+    if (!createMedium || listId <= 0 || (tocsMedia && !Array.isArray(tocsMedia))) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -127,7 +130,7 @@ exports.getUser = (req, res) => {
 };
 exports.login = (req, res) => {
     const { userName, pw } = req.body;
-    if (!userName || !pw) {
+    if (!userName || !tools_1.isString(userName) || !pw || !tools_1.isString(pw)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -135,7 +138,7 @@ exports.login = (req, res) => {
 };
 exports.register = (req, res) => {
     const { userName, pw } = req.body;
-    if (!userName || !pw) {
+    if (!userName || !tools_1.isString(userName) || !pw || !tools_1.isString(pw)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -205,6 +208,10 @@ exports.addToc = (req, res) => {
 exports.downloadEpisode = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     const stringEpisode = extractQueryParam(req, "episode");
+    if (!stringEpisode || !tools_1.isString(stringEpisode)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
     const episodes = tools_1.stringToNumberList(stringEpisode);
     if (!episodes || !episodes.length) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
@@ -250,7 +257,7 @@ exports.putList = (req, res) => {
 };
 exports.deleteList = (req, res) => {
     const { listId, uuid } = req.body;
-    if (!listId) {
+    if (!listId || !Number.isInteger(listId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -260,8 +267,12 @@ exports.getListMedium = (req, res) => {
     const listId = extractQueryParam(req, "listId");
     const uuid = extractQueryParam(req, "uuid");
     let media = extractQueryParam(req, "media");
+    if (!media || !tools_1.isString(media)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
     media = tools_1.stringToNumberList(media);
-    if (!listId || !media || (Array.isArray(media) && !media.length)) {
+    if (!listId || (Array.isArray(media) && !media.length)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -269,17 +280,19 @@ exports.getListMedium = (req, res) => {
 };
 exports.postListMedium = (req, res) => {
     const { listId, mediumId, uuid } = req.body;
-    if (!listId || !mediumId || (Array.isArray(mediumId) && !mediumId.length)) {
+    if (!listId || !Number.isInteger(listId)
+        || !mediumId || !isNumberOrArray(mediumId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
+    // TODO: 27.02.2020 use uuid to check that listId is owned by uuid
     // @ts-ignore
     sendResult(res, storage_1.internalListStorage.addItemToList(listId, mediumId, uuid));
 };
 exports.putListMedium = (req, res) => {
     const { oldListId, newListId } = req.body;
     let { mediumId } = req.body;
-    if (Number.isNaN(mediumId)) {
+    if (!Number.isInteger(mediumId)) {
         if (tools_1.isString(mediumId)) {
             mediumId = tools_1.stringToNumberList(mediumId);
             if (!mediumId.length) {
@@ -304,7 +317,7 @@ exports.deleteListMedium = (req, res) => {
     if (tools_1.isString(mediumId)) {
         mediumId = tools_1.stringToNumberList(mediumId);
     }
-    if (!listId || !mediumId || (Array.isArray(mediumId) && !mediumId.length)) {
+    if (!listId || !mediumId || !isNumberOrArray(mediumId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -319,13 +332,17 @@ exports.getPart = (req, res) => {
         if (tools_1.isString(partId)) {
             partId = tools_1.stringToNumberList(partId);
         }
-        if (!partId) {
+        if (!partId || (!Array.isArray(partId) && !Number.isInteger(partId))) {
             sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
             return;
         }
         sendResult(res, storage_1.partStorage.getParts(partId, uuid));
     }
     else {
+        if (!Number.isInteger(mediumId)) {
+            sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+            return;
+        }
         sendResult(res, storage_1.partStorage.getMediumParts(mediumId, uuid));
     }
 };
@@ -335,7 +352,7 @@ exports.getPartItems = (req, res) => {
     if (tools_1.isString(partId)) {
         partId = tools_1.stringToNumberList(partId);
     }
-    if (!partId) {
+    if (!partId || !Array.isArray(partId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -347,7 +364,7 @@ exports.getPartReleases = (req, res) => {
     if (tools_1.isString(partId)) {
         partId = tools_1.stringToNumberList(partId);
     }
-    if (!partId) {
+    if (!partId || !Array.isArray(partId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -355,7 +372,7 @@ exports.getPartReleases = (req, res) => {
 };
 exports.postPart = (req, res) => {
     const { part, mediumId } = req.body;
-    if (!part || !mediumId) {
+    if (!part || !mediumId || !Number.isInteger(mediumId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -372,7 +389,7 @@ exports.putPart = (req, res) => {
 };
 exports.deletePart = (req, res) => {
     const { partId } = req.body;
-    if (!partId) {
+    if (!partId || !Number.isInteger(partId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -385,7 +402,7 @@ exports.getEpisode = (req, res) => {
     if (tools_1.isString(episodeId)) {
         episodeId = tools_1.stringToNumberList(episodeId);
     }
-    if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
+    if (!episodeId || !isNumberOrArray(episodeId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -393,7 +410,7 @@ exports.getEpisode = (req, res) => {
 };
 exports.postEpisode = (req, res) => {
     const { episode, partId } = req.body;
-    if (!episode || (Array.isArray(episode) && !episode.length) || !partId) {
+    if (!episode || (Array.isArray(episode) && !episode.length) || !partId || !Number.isInteger(partId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -414,7 +431,7 @@ exports.putEpisode = (req, res) => {
     sendResult(res, episode.updateEpisode(episode, uuid));
 };
 exports.deleteEpisode = (req, res) => {
-    const { episodeId, uuid } = req.body;
+    const { episodeId } = req.body;
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
@@ -470,7 +487,7 @@ exports.deleteUser = (req, res) => {
 exports.getProgress = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     const episodeId = extractQueryParam(req, "episodeId");
-    if (!episodeId) {
+    if (!episodeId || !Number.isInteger(episodeId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -479,12 +496,12 @@ exports.getProgress = (req, res) => {
 exports.postProgress = (req, res) => {
     const { uuid, progress } = req.body;
     let episodeId = req.body.episodeId;
-    if (!episodeId || progress == null) {
-        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
-        return;
-    }
     if (tools_1.isString(episodeId)) {
         episodeId = tools_1.stringToNumberList(episodeId);
+    }
+    if (!episodeId || !isNumberOrArray(episodeId) || progress == null) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
     }
     try {
         const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
@@ -498,7 +515,7 @@ exports.postProgress = (req, res) => {
 exports.putProgress = exports.postProgress;
 exports.deleteProgress = (req, res) => {
     const { uuid, episodeId } = req.body;
-    if (!episodeId) {
+    if (!episodeId || !Number.isInteger(episodeId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -516,7 +533,7 @@ exports.getMedium = (req, res) => {
         mediumId = extractQueryParam(req, "mediumId");
         mediumId = tools_1.stringToNumberList(mediumId);
     }
-    if (!mediumId) {
+    if (!mediumId || !isNumberOrArray(mediumId)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
@@ -565,7 +582,7 @@ exports.authenticate = (req, res, next) => {
         uuid = extractQueryParam(req, "uuid");
         session = extractQueryParam(req, "session");
     }
-    if (!uuid || !session) {
+    if (!uuid || !tools_1.isString(uuid) || !session || !tools_1.isString(session)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }

@@ -19,6 +19,7 @@ export class ExternalUserStorage {
      * Deletes an external user from the storage.
      */
     public deleteExternalUser(externalUuid: string, uuid?: string): Promise<boolean> {
+        // TODO: 27.02.2020 use uuid to check if uuid owns externalUser
         return inContext((context) => context.deleteExternalUser(externalUuid));
 
     }
