@@ -28,7 +28,6 @@ class SchemaManager {
                 if (retry > 9) {
                     throw Error("cannot start migration check, as migration flag is still set after 10 retries");
                 }
-                logger_1.default.error("waiting");
                 await tools_1.delay();
                 if (!await context.startMigration()) {
                     await wait(retry + 1);
