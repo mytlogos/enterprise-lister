@@ -25,6 +25,10 @@ export class EpisodeStorage {
         return inContext((context) => context.getLatestReleases(mediumId));
     }
 
+    public getAssociatedEpisode(url: string): Promise<number> {
+        return inContext((context) => context.getAssociatedEpisode(url));
+    }
+
     /**
      */
     public getChapterIndices(mediumId: number): Promise<number[]> {

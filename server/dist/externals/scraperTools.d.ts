@@ -1,6 +1,10 @@
 import { ListScrapeResult } from "./listManager";
 import { Episode, JobRequest, News, SearchResult, TocSearchMedium } from "../types";
 import { ContentDownloader, DownloadContent, Hook, NewsScraper, Toc, TocContent, TocRequest, TocResult, TocScraper, TocSearchScraper } from "./types";
+export declare const filterScrapeAble: (urls: string) => {
+    available: string[];
+    unavailable: string[];
+};
 export declare const scrapeNewsJob: (name: string) => Promise<{
     link: string;
     result: News[];

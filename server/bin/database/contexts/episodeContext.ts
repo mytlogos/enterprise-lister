@@ -28,6 +28,18 @@ import {MySqlErrorNo} from "../databaseTypes";
 import {escapeLike} from "../storages/storageTools";
 
 export class EpisodeContext extends SubContext {
+
+    public async getAssociatedEpisode(url: string): Promise<number> {
+        const result: Array<{ id: number }> = await this.query(
+            "SELECT id FROM episode INNER JOIN episode_release ON episode.id=episode_release.episode_id WHERE url=?",
+            url
+        );
+        if (result.length === 1) {
+            return result[0].id;
+        }
+        return 0;
+    }
+
     /**
      *
      */

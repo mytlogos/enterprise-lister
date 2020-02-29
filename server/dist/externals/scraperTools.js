@@ -22,6 +22,32 @@ const tocDiscovery = new Map();
 const newsAdapter = [];
 const searchAdapter = [];
 const nameHookMap = new Map();
+exports.filterScrapeAble = (urls) => {
+    checkHooks();
+    const regs = [];
+    for (const entry of nameHookMap.entries()) {
+        if (entry[1].domainReg) {
+            regs.push(entry[1].domainReg);
+        }
+    }
+    const result = { available: [], unavailable: [] };
+    for (const link of urls) {
+        let found = false;
+        for (const reg of regs) {
+            if (reg.test(link)) {
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            result.available.push(link);
+        }
+        else {
+            result.unavailable.push(link);
+        }
+    }
+    return result;
+};
 exports.scrapeNewsJob = async (name) => {
     const hook = nameHookMap.get(name);
     if (!hook) {

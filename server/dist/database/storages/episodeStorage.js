@@ -12,6 +12,9 @@ class EpisodeStorage {
     getLatestReleases(mediumId) {
         return inContext((context) => context.getLatestReleases(mediumId));
     }
+    getAssociatedEpisode(url) {
+        return inContext((context) => context.getAssociatedEpisode(url));
+    }
     /**
      */
     getChapterIndices(mediumId) {

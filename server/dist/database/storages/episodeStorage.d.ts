@@ -4,6 +4,7 @@ export declare class EpisodeStorage {
      * Gets one or multiple media from the storage.
      */
     getLatestReleases(mediumId: number): Promise<SimpleEpisode[]>;
+    getAssociatedEpisode(url: string): Promise<number>;
     /**
      */
     getChapterIndices(mediumId: number): Promise<number[]>;

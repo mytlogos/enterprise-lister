@@ -8,6 +8,13 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const databaseTypes_1 = require("../databaseTypes");
 const storageTools_1 = require("../storages/storageTools");
 class EpisodeContext extends subContext_1.SubContext {
+    async getAssociatedEpisode(url) {
+        const result = await this.query("SELECT id FROM episode INNER JOIN episode_release ON episode.id=episode_release.episode_id WHERE url=?", url);
+        if (result.length === 1) {
+            return result[0].id;
+        }
+        return 0;
+    }
     /**
      *
      */

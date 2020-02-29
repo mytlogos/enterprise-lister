@@ -14,7 +14,7 @@ import {factory} from "./externals/listManager";
 import {Handler, Request, Response} from "express";
 import stringify from "stringify-stream";
 import logger from "./logger";
-import {downloadEpisodes, search as searchMedium} from "./externals/scraperTools";
+import {downloadEpisodes, filterScrapeAble, search as searchMedium} from "./externals/scraperTools";
 import {Errors, isError, isQuery, isString, stringToNumberList} from "./tools";
 import {JobRequest, ScrapeName} from "./types";
 import {TocRequest} from "./externals/types";
@@ -24,6 +24,16 @@ import env from "./env";
 function isNumberOrArray(value: number | any[]) {
     return Array.isArray(value) ? value.length : Number.isInteger(value);
 }
+
+export const getAssociatedEpisode: Handler = (req, res) => {
+    const url = extractQueryParam(req, "url");
+
+    if (!url || !isString(url) || !/^https?:\/\//.test(url)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, episodeStorage.getAssociatedEpisode(url));
+};
 
 export const search: Handler = (req, res) => {
     const text = extractQueryParam(req, "text");
@@ -202,7 +212,9 @@ export const addBookmarked: Handler = (req, res) => {
     const protocol = /^https?:\/\//;
 
     if (bookmarked && bookmarked.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
-        const storePromise = jobStorage.addJobs(bookmarked.map((link: string): JobRequest => {
+        const scrapeAble = filterScrapeAble(bookmarked);
+
+        const storePromise = jobStorage.addJobs(scrapeAble.available.map((link: string): JobRequest => {
             return {
                 name: `${ScrapeName.oneTimeToc}-${link}`,
                 type: ScrapeName.oneTimeToc,
@@ -214,7 +226,7 @@ export const addBookmarked: Handler = (req, res) => {
                     uuid
                 } as TocRequest)
             };
-        })).then((value) => Array.isArray(value) ? !!value.length : !!value);
+        })).then((value) => scrapeAble.unavailable);
         sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));

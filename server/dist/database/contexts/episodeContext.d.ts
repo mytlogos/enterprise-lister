@@ -1,6 +1,7 @@
 import { SubContext } from "./subContext";
 import { Episode, EpisodeContentData, EpisodeRelease, MultiSingle, ProgressResult, ReadEpisode, Result, SimpleEpisode, SimpleRelease } from "../../types";
 export declare class EpisodeContext extends SubContext {
+    getAssociatedEpisode(url: string): Promise<number>;
     /**
      *
      */

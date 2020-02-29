@@ -49,6 +49,34 @@ const newsAdapter: NewsScraper[] = [];
 const searchAdapter: SearchScraper[] = [];
 const nameHookMap = new Map<string, Hook>();
 
+export const filterScrapeAble = (urls: string): { available: string[], unavailable: string[] } => {
+    checkHooks();
+
+    const regs: RegExp[] = [];
+    for (const entry of nameHookMap.entries()) {
+        if (entry[1].domainReg) {
+            regs.push(entry[1].domainReg);
+        }
+    }
+    const result: { available: string[], unavailable: string[] } = {available: [], unavailable: []};
+
+    for (const link of urls) {
+        let found = false;
+        for (const reg of regs) {
+            if (reg.test(link)) {
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            result.available.push(link);
+        } else {
+            result.unavailable.push(link);
+        }
+    }
+    return result;
+};
+
 export const scrapeNewsJob = async (name: string): Promise<{ link: string, result: News[] }> => {
     const hook = nameHookMap.get(name);
     if (!hook) {

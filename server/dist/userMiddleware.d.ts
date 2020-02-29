@@ -1,4 +1,5 @@
 import { Handler } from "express";
+export declare const getAssociatedEpisode: Handler;
 export declare const search: Handler;
 export declare const getStats: Handler;
 export declare const getNew: Handler;

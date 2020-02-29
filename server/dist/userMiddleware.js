@@ -13,6 +13,14 @@ const env_1 = tslib_1.__importDefault(require("./env"));
 function isNumberOrArray(value) {
     return Array.isArray(value) ? value.length : Number.isInteger(value);
 }
+exports.getAssociatedEpisode = (req, res) => {
+    const url = extractQueryParam(req, "url");
+    if (!url || !tools_1.isString(url) || !/^https?:\/\//.test(url)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, storage_1.episodeStorage.getAssociatedEpisode(url));
+};
 exports.search = (req, res) => {
     const text = extractQueryParam(req, "text");
     const medium = Number(extractQueryParam(req, "medium"));
@@ -164,7 +172,8 @@ exports.addBookmarked = (req, res) => {
     const { uuid, bookmarked } = req.body;
     const protocol = /^https?:\/\//;
     if (bookmarked && bookmarked.length && bookmarked.every((url) => tools_1.isString(url) && protocol.test(url))) {
-        const storePromise = storage_1.jobStorage.addJobs(bookmarked.map((link) => {
+        const scrapeAble = scraperTools_1.filterScrapeAble(bookmarked);
+        const storePromise = storage_1.jobStorage.addJobs(scrapeAble.available.map((link) => {
             return {
                 name: `${types_1.ScrapeName.oneTimeToc}-${link}`,
                 type: types_1.ScrapeName.oneTimeToc,
@@ -176,7 +185,7 @@ exports.addBookmarked = (req, res) => {
                     uuid
                 })
             };
-        })).then((value) => Array.isArray(value) ? !!value.length : !!value);
+        })).then((value) => scrapeAble.unavailable);
         sendResult(res, storePromise);
     }
     else {
