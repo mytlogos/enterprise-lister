@@ -178,11 +178,12 @@ class MediumContext extends subContext_1.SubContext {
      * Updates a medium from the storage.
      */
     updateMedium(medium) {
+        const keys = [
+            "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
+            "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
+        ];
         return this.update("medium", (updates, values) => {
-            for (const key of Object.keys(medium)) {
-                if (key === "synonyms" || key === "id") {
-                    continue;
-                }
+            for (const key of keys) {
                 const value = medium[key];
                 if (value === null) {
                     updates.push(`${key} = NULL`);

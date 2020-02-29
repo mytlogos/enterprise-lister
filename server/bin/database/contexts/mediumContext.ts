@@ -218,11 +218,12 @@ export class MediumContext extends SubContext {
      * Updates a medium from the storage.
      */
     public updateMedium(medium: SimpleMedium): Promise<boolean> {
+        const keys = [
+            "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
+            "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
+        ];
         return this.update("medium", (updates, values) => {
-            for (const key of Object.keys(medium)) {
-                if (key === "synonyms" || key === "id") {
-                    continue;
-                }
+            for (const key of keys) {
                 const value = medium[key];
 
                 if (value === null) {
