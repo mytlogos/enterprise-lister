@@ -55,6 +55,7 @@ export interface SimpleEpisode {
     partId: number;
     totalIndex: number;
     partialIndex?: number;
+    combiIndex?: number;
     releases: EpisodeRelease[];
 }
 export interface Episode extends SimpleEpisode {

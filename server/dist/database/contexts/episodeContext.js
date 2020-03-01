@@ -34,6 +34,7 @@ class EpisodeContext extends subContext_1.SubContext {
                 partialIndex: rawEpisode.partialIndex,
                 partId: rawEpisode.part_id,
                 totalIndex: rawEpisode.totalIndex,
+                combiIndex: rawEpisode.combiIndex,
                 releases
             };
         }));
@@ -403,10 +404,16 @@ class EpisodeContext extends subContext_1.SubContext {
                 throw Error("episode without partId");
             }
             let insertId;
+            const episodeCombiIndex = episode.combiIndex == null ? tools_1.combiIndex(episode) : episode.combiIndex;
             try {
                 const result = await this.query("INSERT INTO episode " +
                     "(part_id, totalIndex, partialIndex, combiIndex) " +
-                    "VALUES (?,?,?,?);", [episode.partId, episode.totalIndex, episode.partialIndex, tools_1.combiIndex(episode)]);
+                    "VALUES (?,?,?,?);", [
+                    episode.partId,
+                    episode.totalIndex,
+                    episode.partialIndex,
+                    episodeCombiIndex
+                ]);
                 insertId = result.insertId;
             }
             catch (e) {
@@ -429,6 +436,7 @@ class EpisodeContext extends subContext_1.SubContext {
                 partId: episode.partId,
                 partialIndex: episode.partialIndex,
                 totalIndex: episode.totalIndex,
+                combiIndex: episodeCombiIndex,
                 releases: episode.releases,
                 progress: 0,
                 readDate: null,
@@ -472,6 +480,7 @@ class EpisodeContext extends subContext_1.SubContext {
                 partialIndex: episode.partialIndex,
                 partId: episode.part_id,
                 totalIndex: episode.totalIndex,
+                combiIndex: episode.combiIndex,
                 releases: episode.releases || [],
             };
         });
@@ -518,6 +527,7 @@ class EpisodeContext extends subContext_1.SubContext {
                 partId,
                 totalIndex: value.totalIndex,
                 partialIndex: value.partialIndex,
+                combiIndex: value.combiIndex,
                 releases: value.releases || []
             };
         });
@@ -560,6 +570,7 @@ class EpisodeContext extends subContext_1.SubContext {
                 partId: value.part_id,
                 totalIndex: value.totalIndex,
                 partialIndex: value.partialIndex,
+                combiIndex: value.combiIndex,
                 releases: value.releases || []
             };
         });
@@ -573,13 +584,17 @@ class EpisodeContext extends subContext_1.SubContext {
                 updates.push("part_id = ?");
                 values.push(episode.partId);
             }
-            if (episode.partialIndex) {
+            if (episode.partialIndex != null) {
                 updates.push("partialIndex = ?");
                 values.push(episode.partialIndex);
             }
-            if (episode.totalIndex) {
+            if (episode.totalIndex != null) {
                 updates.push("totalIndex = ?");
                 values.push(episode.totalIndex);
+            }
+            if (episode.totalIndex || episode.partialIndex) {
+                updates.push("combiIndex = ?");
+                values.push(episode.combiIndex == null ? tools_1.combiIndex(episode) : episode.combiIndex);
             }
         }, {
             column: "id", value: episode.id
