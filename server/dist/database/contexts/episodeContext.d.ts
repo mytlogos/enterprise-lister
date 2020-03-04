@@ -1,6 +1,9 @@
 import { SubContext } from "./subContext";
 import { Episode, EpisodeContentData, EpisodeRelease, MultiSingle, ProgressResult, ReadEpisode, Result, SimpleEpisode, SimpleRelease } from "../../types";
+import { Query } from "mysql";
 export declare class EpisodeContext extends SubContext {
+    getAll(uuid: any): Promise<Query>;
+    getAllReleases(): Promise<Query>;
     getAssociatedEpisode(url: string): Promise<number>;
     /**
      *

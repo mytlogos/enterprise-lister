@@ -37,6 +37,28 @@ class NewsContext extends subContext_1.SubContext {
     getLatestNews(domain) {
         return this.query("SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10", domain);
     }
+    async getAll(uuid) {
+        const newsResult = await this.query("SELECT * FROM news_board LEFT JOIN " +
+            "(SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) as news_user " +
+            "ON news_user.news_id=news_board.id " +
+            "WHERE id IN (" +
+            "SELECT news_id FROM news_medium WHERE medium_id IN(" +
+            "SELECT medium_id FROM list_medium WHERE list_id IN (" +
+            "SELECT id FROM reading_list WHERE user_uuid = ?) UNION SELECT medium_id FROM external_list_medium " +
+            "WHERE list_id IN (SELECT id from external_reading_list " +
+            "WHERE user_uuid IN (SELECT uuid FROM external_user WHERE local_uuid = ?" +
+            "))))" +
+            "ORDER BY date DESC LIMIT 100", [uuid, uuid, uuid]);
+        return newsResult.map((value) => {
+            return {
+                title: value.title,
+                date: value.date,
+                link: value.link,
+                id: value.id,
+                read: Boolean(value.read_news),
+            };
+        });
+    }
     /**
      *
      */

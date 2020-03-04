@@ -1,4 +1,5 @@
 import { LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium } from "../../types";
+import { Query } from "mysql";
 export declare class MediumStorage {
     /**
      * Adds a medium to the storage.
@@ -10,6 +11,7 @@ export declare class MediumStorage {
      * Gets one or multiple media from the storage.
      */
     getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]>;
+    getAllFull(): Promise<Query>;
     /**
      * Gets one or multiple media from the storage.
      */

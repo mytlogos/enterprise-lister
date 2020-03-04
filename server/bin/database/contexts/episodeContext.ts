@@ -26,8 +26,24 @@ import {
 import logger from "../../logger";
 import {MySqlErrorNo} from "../databaseTypes";
 import {escapeLike} from "../storages/storageTools";
+import {Query} from "mysql";
 
 export class EpisodeContext extends SubContext {
+    public async getAll(uuid: any): Promise<Query> {
+        return this.queryStream(
+            "SELECT episode.id, episode.partialIndex, episode.totalIndex, episode.combiIndex, " +
+            "episode.part_id as partId, coalesce(progress, 0) as progress, read_date as readDate " +
+            "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
+            `WHERE user_uuid IS NULL OR user_uuid=?`,
+            uuid
+        );
+    }
+
+    public async getAllReleases(): Promise<Query> {
+        return this.queryStream(
+            "SELECT episode_id as episodeId, source_type as sourceType, releaseDate, locked, url, title FROM episode_release"
+        );
+    }
 
     public async getAssociatedEpisode(url: string): Promise<number> {
         const result: Array<{ id: number }> = await this.query(

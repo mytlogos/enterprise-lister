@@ -2,6 +2,7 @@ import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMe
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {MediumContext} from "../contexts/mediumContext";
+import {Query} from "mysql";
 
 
 function inContext<T>(callback: ContextCallback<T, MediumContext>, transaction = true) {
@@ -24,6 +25,10 @@ export class MediumStorage {
     public getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]> {
         // @ts-ignore
         return inContext((context) => context.getMedium(id, uuid));
+    }
+
+    public getAllFull(): Promise<Query> {
+        return inContext((context) => context.getAllMediaFull());
     }
 
     /**

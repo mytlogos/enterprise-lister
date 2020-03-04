@@ -8,6 +8,7 @@ export declare class NewsStorage {
      * if insert was not successful (meaning it was an duplicate).
      */
     addNews(news: News | News[]): Promise<News | undefined | Array<News | undefined>>;
+    getAll(uuid: any): Promise<News[]>;
     /**
      *
      */

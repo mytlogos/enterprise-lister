@@ -6,6 +6,12 @@ function inContext(callback, transaction = true) {
     return storage_1.storageInContext(callback, transaction, (con) => storageTools_1.queryContextProvider(con).episodeContext);
 }
 class EpisodeStorage {
+    getAll(uuid) {
+        return inContext((context) => context.getAll(uuid));
+    }
+    getAllReleases() {
+        return inContext((context) => context.getAllReleases());
+    }
     /**
      * Gets one or multiple media from the storage.
      */

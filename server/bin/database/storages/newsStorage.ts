@@ -19,6 +19,10 @@ export class NewsStorage {
         return inContext((context) => context.addNews(news));
     }
 
+    public getAll(uuid: any): Promise<News[]> {
+        return inContext((context) => context.getAll(uuid));
+    }
+
     /**
      *
      */

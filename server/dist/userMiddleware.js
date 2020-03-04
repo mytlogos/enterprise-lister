@@ -585,6 +585,28 @@ exports.getNews = (req, res) => {
         sendResult(res, storage_1.newsStorage.getNews({ uuid, since: from, till: to }));
     }
 };
+exports.getAllNews = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, storage_1.newsStorage.getAll(uuid));
+};
+exports.getAllParts = (req, res) => {
+    sendResult(res, storage_1.partStorage.getAll());
+};
+exports.getAllMediaFull = (req, res) => {
+    sendResult(res, storage_1.mediumStorage.getAllFull());
+};
+exports.getAllLists = exports.getLists;
+exports.getAllExternalUser = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, storage_1.externalUserStorage.getAll(uuid));
+};
+exports.getAllEpisodes = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, storage_1.episodeStorage.getAll(uuid));
+};
+exports.getAllReleases = (req, res) => {
+    sendResult(res, storage_1.episodeStorage.getAllReleases());
+};
 exports.authenticate = (req, res, next) => {
     let { uuid, session } = req.body;
     if (!uuid || !session) {

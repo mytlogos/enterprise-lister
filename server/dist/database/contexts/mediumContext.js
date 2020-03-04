@@ -150,6 +150,12 @@ class MediumContext extends subContext_1.SubContext {
             };
         });
     }
+    async getAllMediaFull() {
+        return this.queryStream("SELECT " +
+            "id, countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium");
+    }
     async getAllMedia() {
         const result = await this.query("SELECT id FROM medium");
         return result.map((value) => value.id);

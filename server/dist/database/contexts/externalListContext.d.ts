@@ -1,6 +1,7 @@
 import { SubContext } from "./subContext";
 import { ExternalList } from "../../types";
 export declare class ExternalListContext extends SubContext {
+    getAll(uuid: string): Promise<ExternalList[]>;
     /**
      * Adds an external list of an user to the storage.
      *

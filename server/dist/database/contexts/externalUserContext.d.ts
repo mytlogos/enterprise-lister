@@ -1,6 +1,8 @@
 import { SubContext } from "./subContext";
 import { ExternalUser } from "../../types";
+import { Query } from "mysql";
 export declare class ExternalUserContext extends SubContext {
+    getAll(uuid: string): Promise<Query>;
     /**
      * Adds an external user of an user to the storage.
      */

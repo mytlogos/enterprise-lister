@@ -21,6 +21,9 @@ class MediumStorage {
         // @ts-ignore
         return inContext((context) => context.getMedium(id, uuid));
     }
+    getAllFull() {
+        return inContext((context) => context.getAllMediaFull());
+    }
     /**
      * Gets one or multiple media from the storage.
      */

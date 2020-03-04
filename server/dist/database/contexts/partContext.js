@@ -5,6 +5,9 @@ const subContext_1 = require("./subContext");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const tools_1 = require("../../tools");
 class PartContext extends subContext_1.SubContext {
+    async getAll() {
+        return this.queryStream("SELECT id, totalIndex, partialIndex, title, medium_id as mediumId FROM part");
+    }
     async getStandardPartId(mediumId) {
         const [standardPartResult] = await this.query("SELECT id FROM part WHERE medium_id = ? AND totalIndex=-1", mediumId);
         return standardPartResult ? standardPartResult.id : undefined;

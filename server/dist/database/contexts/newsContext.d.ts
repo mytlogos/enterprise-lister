@@ -12,6 +12,7 @@ export declare class NewsContext extends SubContext {
      */
     addNews(news: News | News[]): Promise<News | undefined | Array<News | undefined>>;
     getLatestNews(domain: string): Promise<News[]>;
+    getAll(uuid: any): Promise<News[]>;
     /**
      *
      */

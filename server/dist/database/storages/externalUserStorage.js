@@ -6,6 +6,9 @@ function inContext(callback, transaction = true) {
     return storage_1.storageInContext(callback, transaction, (con) => storageTools_1.queryContextProvider(con).externalUserContext);
 }
 class ExternalUserStorage {
+    getAll(uuid) {
+        return inContext((context) => context.getAll(uuid));
+    }
     /**
      * Adds an external user of an user to the storage.
      */

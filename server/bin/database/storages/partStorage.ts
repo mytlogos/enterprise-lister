@@ -2,12 +2,16 @@ import {MinPart, MultiSingle, Part, ShallowPart} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {PartContext} from "../contexts/partContext";
+import {Query} from "mysql";
 
 function inContext<T>(callback: ContextCallback<T, PartContext>, transaction = true) {
     return storageInContext(callback, transaction, (con) => queryContextProvider(con).partContext);
 }
 
 export class PartStorage {
+    public getAll(): Promise<Query> {
+        return inContext((context) => context.getAll());
+    }
     /**
      * Returns all parts of an medium with their episodes.
      */

@@ -1,5 +1,7 @@
 import { Episode, EpisodeContentData, EpisodeRelease, MultiSingle, ProgressResult, Result, SimpleEpisode, SimpleRelease } from "../../types";
 export declare class EpisodeStorage {
+    getAll(uuid: any): Promise<any>;
+    getAllReleases(): Promise<any>;
     /**
      * Gets one or multiple media from the storage.
      */

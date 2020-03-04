@@ -1,6 +1,8 @@
 import { SubContext } from "./subContext";
 import { MinPart, MultiSingle, Part, ShallowPart } from "../../types";
+import { Query } from "mysql";
 export declare class PartContext extends SubContext {
+    getAll(): Promise<Query>;
     getStandardPartId(mediumId: number): Promise<number | undefined>;
     getStandardPart(mediumId: number): Promise<ShallowPart | undefined>;
     getMediumPartIds(mediumId: number): Promise<number[]>;

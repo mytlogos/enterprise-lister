@@ -1,5 +1,6 @@
 import { SubContext } from "./subContext";
 import { LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium } from "../../types";
+import { Query } from "mysql";
 export declare class MediumContext extends SubContext {
     /**
      * Adds a medium to the storage.
@@ -10,6 +11,7 @@ export declare class MediumContext extends SubContext {
     getTocSearchMedium(id: number): Promise<TocSearchMedium>;
     getMedium(id: number, uuid: string): Promise<Medium>;
     getMedium(id: number[], uuid: string): Promise<Medium[]>;
+    getAllMediaFull(): Promise<Query>;
     getAllMedia(): Promise<number[]>;
     getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
     getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;

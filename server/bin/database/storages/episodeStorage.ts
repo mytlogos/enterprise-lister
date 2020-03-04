@@ -18,6 +18,14 @@ function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction 
 }
 
 export class EpisodeStorage {
+    public getAll(uuid: any): Promise<any> {
+        return inContext((context) => context.getAll(uuid));
+    }
+
+    public getAllReleases(): Promise<any> {
+        return inContext((context) => context.getAllReleases());
+    }
+
     /**
      * Gets one or multiple media from the storage.
      */

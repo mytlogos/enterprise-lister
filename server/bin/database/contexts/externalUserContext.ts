@@ -2,8 +2,27 @@ import {SubContext} from "./subContext";
 import {ExternalUser} from "../../types";
 import {Errors} from "../../tools";
 import uuidGenerator from "uuid/v1";
+import {Query} from "mysql";
 
 export class ExternalUserContext extends SubContext {
+    public async getAll(uuid: string): Promise<Query> {
+        const lists = await this.parentContext.externalListContext.getAll(uuid);
+        return this
+            .queryStream(
+                "SELECT uuid, local_uuid as localUuid, name as identifier, service as type FROM external_user " +
+                "WHERE local_uuid = ?;",
+                uuid
+            )
+            .on("result", (row) => {
+                row.lists = [];
+                for (const list of lists) {
+                    if (list.uuid === row.uuid) {
+                        row.lists.push(list);
+                    }
+                }
+            });
+    }
+
     /**
      * Adds an external user of an user to the storage.
      */

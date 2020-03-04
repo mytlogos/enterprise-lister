@@ -6,6 +6,9 @@ function inContext(callback, transaction = true) {
     return storage_1.storageInContext(callback, transaction, (con) => storageTools_1.queryContextProvider(con).partContext);
 }
 class PartStorage {
+    getAll() {
+        return inContext((context) => context.getAll());
+    }
     /**
      * Returns all parts of an medium with their episodes.
      */

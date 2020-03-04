@@ -2,6 +2,7 @@ import {SubContext} from "./subContext";
 import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium} from "../../types";
 import {Errors, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
+import {Query} from "mysql";
 
 export class MediumContext extends SubContext {
     /**
@@ -176,6 +177,15 @@ export class MediumContext extends SubContext {
                 unreadEpisodes: unReadResult.map((packet: any) => packet.id),
             };
         });
+    }
+
+    public async getAllMediaFull(): Promise<Query> {
+        return this.queryStream(
+            "SELECT " +
+            "id, countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium"
+        );
     }
 
     public async getAllMedia(): Promise<number[]> {

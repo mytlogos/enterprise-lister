@@ -2,8 +2,15 @@ import {SubContext} from "./subContext";
 import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisode} from "../../types";
 import mySql from "promise-mysql";
 import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
+import {Query} from "mysql";
 
 export class PartContext extends SubContext {
+    public async getAll(): Promise<Query> {
+        return this.queryStream(
+            "SELECT id, totalIndex, partialIndex, title, medium_id as mediumId FROM part"
+        );
+    }
+
     public async getStandardPartId(mediumId: number): Promise<number | undefined> {
         const [standardPartResult]: any = await this.query(
             "SELECT id FROM part WHERE medium_id = ? AND totalIndex=-1",

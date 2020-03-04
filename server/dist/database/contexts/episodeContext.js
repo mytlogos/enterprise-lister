@@ -8,6 +8,15 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const databaseTypes_1 = require("../databaseTypes");
 const storageTools_1 = require("../storages/storageTools");
 class EpisodeContext extends subContext_1.SubContext {
+    async getAll(uuid) {
+        return this.queryStream("SELECT episode.id, episode.partialIndex, episode.totalIndex, episode.combiIndex, " +
+            "episode.part_id as partId, coalesce(progress, 0) as progress, read_date as readDate " +
+            "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
+            `WHERE user_uuid IS NULL OR user_uuid=?`, uuid);
+    }
+    async getAllReleases() {
+        return this.queryStream("SELECT episode_id as episodeId, source_type as sourceType, releaseDate, locked, url, title FROM episode_release");
+    }
     async getAssociatedEpisode(url) {
         const result = await this.query("SELECT id FROM episode INNER JOIN episode_release ON episode.id=episode_release.episode_id WHERE url=?", url);
         if (result.length === 1) {

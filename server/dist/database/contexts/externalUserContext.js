@@ -5,6 +5,20 @@ const subContext_1 = require("./subContext");
 const tools_1 = require("../../tools");
 const v1_1 = tslib_1.__importDefault(require("uuid/v1"));
 class ExternalUserContext extends subContext_1.SubContext {
+    async getAll(uuid) {
+        const lists = await this.parentContext.externalListContext.getAll(uuid);
+        return this
+            .queryStream("SELECT uuid, local_uuid as localUuid, name as identifier, service as type FROM external_user " +
+            "WHERE local_uuid = ?;", uuid)
+            .on("result", (row) => {
+            row.lists = [];
+            for (const list of lists) {
+                if (list.uuid === row.uuid) {
+                    row.lists.push(list);
+                }
+            }
+        });
+    }
     /**
      * Adds an external user of an user to the storage.
      */

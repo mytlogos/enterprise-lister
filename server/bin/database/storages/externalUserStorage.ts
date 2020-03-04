@@ -2,12 +2,16 @@ import {ExternalUser} from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {ExternalUserContext} from "../contexts/externalUserContext";
+import {Query} from "mysql";
 
 function inContext<T>(callback: ContextCallback<T, ExternalUserContext>, transaction = true) {
     return storageInContext(callback, transaction, (con) => queryContextProvider(con).externalUserContext);
 }
 
 export class ExternalUserStorage {
+    public getAll(uuid: string): Promise<Query> {
+        return inContext((context) => context.getAll(uuid));
+    }
     /**
      * Adds an external user of an user to the storage.
      */

@@ -63,6 +63,8 @@ function userRouter(): Router {
 function newsRouter() {
     const router = Router();
     router.post("/read", UserApi.readNews);
+    router.get("/all", UserApi.getAllNews);
+
     // TODO: 30.06.2019 get Request does not want to work
     // TODO: 21.07.2019 update: testing this with intellij rest client does seem to work
     //  now is just needs to tested with the normal clients e.g. website and android app
@@ -74,6 +76,8 @@ function newsRouter() {
 function externalUserRouter() {
     const router = Router();
     router.get("/refresh", UserApi.refreshExternalUser);
+    router.get("/all", UserApi.getAllExternalUser);
+
     const externalUserRoute = router.route("");
     externalUserRoute.get(UserApi.getExternalUser);
     externalUserRoute.post(UserApi.postExternalUser);
@@ -86,6 +90,7 @@ function externalUserRouter() {
  */
 function listRouter(): Router {
     const router = Router();
+    router.get("/all", UserApi.getAllLists);
 
     const listMediumRoute = router.route("/medium");
     listMediumRoute.get(UserApi.getListMedium);
@@ -119,6 +124,7 @@ function mediumRouter(): Router {
 
     router.get("/unused", UserApi.getUnusedMedia);
     router.get("/all", UserApi.getAllMedia);
+    router.get("/allFull", UserApi.getAllMediaFull);
     router.put("/unused", UserApi.putConsumeUnusedMedia);
     router.post("/create", UserApi.postCreateFromUnusedMedia);
     router.use("/part", partRouter());
@@ -139,6 +145,8 @@ function mediumRouter(): Router {
 
 function episodeRouter() {
     const router = Router();
+    router.get("/all", UserApi.getAllEpisodes);
+    router.get("/releases/all", UserApi.getAllReleases);
 
     const episodeRoute = router.route("");
     episodeRoute.get(UserApi.getEpisode);
@@ -162,6 +170,7 @@ function partRouter(): Router {
     partRoute.post(UserApi.postPart);
     partRoute.put(UserApi.putPart);
     partRoute.delete(UserApi.deletePart);
+    router.get("/all", UserApi.getAllParts);
     router.get("/items", UserApi.getPartItems);
     router.get("/releases", UserApi.getPartReleases);
 

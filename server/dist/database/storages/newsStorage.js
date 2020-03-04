@@ -15,6 +15,9 @@ class NewsStorage {
     addNews(news) {
         return inContext((context) => context.addNews(news));
     }
+    getAll(uuid) {
+        return inContext((context) => context.getAll(uuid));
+    }
     /**
      *
      */

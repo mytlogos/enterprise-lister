@@ -3,6 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const subContext_1 = require("./subContext");
 const tools_1 = require("../../tools");
 class ExternalListContext extends subContext_1.SubContext {
+    async getAll(uuid) {
+        // FIXME: 03.03.2020 this query is invalid
+        const result = await this.query("SELECT el.id, el.user_uuid as uuid, el.name, el.medium, el.url " +
+            "FROM external_reading_list as el " +
+            "INNER JOIN external_user as eu ON el.user_uuid=eu.uuid " +
+            "WHERE eu.local_uuid = ?;", uuid);
+        // @ts-ignore
+        return Promise.all(result.map((value) => this.createShallowExternalList(value)));
+    }
     /**
      * Adds an external list of an user to the storage.
      *

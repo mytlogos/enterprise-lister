@@ -1,5 +1,7 @@
 import { MinPart, MultiSingle, Part, ShallowPart } from "../../types";
+import { Query } from "mysql";
 export declare class PartStorage {
+    getAll(): Promise<Query>;
     /**
      * Returns all parts of an medium with their episodes.
      */

@@ -658,6 +658,38 @@ export const getNews: Handler = (req, res) => {
     }
 };
 
+export const getAllNews: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, newsStorage.getAll(uuid));
+};
+
+
+export const getAllParts: Handler = (req, res) => {
+    sendResult(res, partStorage.getAll());
+};
+
+export const getAllMediaFull: Handler = (req, res) => {
+    sendResult(res, mediumStorage.getAllFull());
+};
+
+
+export const getAllLists: Handler = getLists;
+
+export const getAllExternalUser: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, externalUserStorage.getAll(uuid));
+};
+
+
+export const getAllEpisodes: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, episodeStorage.getAll(uuid));
+};
+
+export const getAllReleases: Handler = (req, res) => {
+    sendResult(res, episodeStorage.getAllReleases());
+};
+
 export const authenticate: Handler = (req, res, next) => {
     let {uuid, session} = req.body;
 
