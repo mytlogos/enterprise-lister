@@ -833,8 +833,35 @@ async function remapMediaParts() {
 }
 exports.remapMediaParts = remapMediaParts;
 async function queueExternalUser() {
-    // TODO: 26.02.2020 implement this?
-    console.log("queueing external user");
+    console.log("queueing all external user", arguments);
+    const externalUser = await storage_1.externalUserStorage.getScrapeExternalUser();
+    const promises = [];
+    for (const user of externalUser) {
+        const listManager = listManager_1.factory(user.type, user.cookies == null ? undefined : user.cookies);
+        promises.push(listManager
+            .test(user.identifier)
+            .then((value) => {
+            user.cookies = listManager.stringifyCookies();
+            return [value, user];
+        }));
+    }
+    const results = await Promise.all(promises);
+    return results
+        .filter((value) => value[0])
+        .map((value) => value[1])
+        .map((value) => {
+        return {
+            type: types_1.ScrapeName.oneTimeUser,
+            interval: -1,
+            deleteAfterRun: true,
+            runImmediately: true,
+            name: `${types_1.ScrapeName.oneTimeUser}-${value.uuid}`,
+            arguments: JSON.stringify({
+                uuid: value.uuid,
+                info: value.cookies
+            })
+        };
+    });
 }
 exports.queueExternalUser = queueExternalUser;
 async function remapMediumPart(mediumId) {

@@ -76,5 +76,5 @@ export declare class ScraperHelper {
 export declare function search(title: string, medium: number): Promise<SearchResult[]>;
 export declare function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]>;
 export declare function remapMediaParts(): Promise<void>;
-export declare function queueExternalUser(): Promise<void>;
+export declare function queueExternalUser(): Promise<JobRequest[]>;
 export declare function remapMediumPart(mediumId: number): Promise<void>;

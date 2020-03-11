@@ -26,12 +26,7 @@ export declare class ExternalUserStorage {
     /**
      *
      */
-    getScrapeExternalUser(): Promise<Array<{
-        userUuid: string;
-        type: number;
-        uuid: string;
-        cookies: string;
-    }>>;
+    getScrapeExternalUser(): Promise<ExternalUser[]>;
     /**
      * Updates an external user.
      */

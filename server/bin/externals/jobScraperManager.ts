@@ -28,7 +28,7 @@ class ScrapeJob {
     public static readonly feed = new ScrapeJob(ScrapeName.feed, feed, ScrapeEvent.FEED);
     public static readonly news = new ScrapeJob(ScrapeName.news, news, ScrapeEvent.NEWS);
     public static readonly newsAdapter = new ScrapeJob(ScrapeName.newsAdapter, scrapeNewsJob, ScrapeEvent.NEWS);
-    public static readonly oneTimeUser = new ScrapeJob(ScrapeName.oneTimeUser, list, ScrapeEvent.NEWS);
+    public static readonly oneTimeUser = new ScrapeJob(ScrapeName.oneTimeUser, list, ScrapeEvent.LIST);
     public static readonly checkTocs = new ScrapeJob(ScrapeName.checkTocs, checkTocsJob);
     public static readonly queueTocs = new ScrapeJob(ScrapeName.queueTocs, queueTocsJob);
     public static readonly remapMediaParts = new ScrapeJob(ScrapeName.remapMediaParts, remapMediaParts);

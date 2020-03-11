@@ -47,7 +47,7 @@ export class ExternalUserStorage {
     /**
      *
      */
-    public getScrapeExternalUser(): Promise<Array<{ userUuid: string, type: number, uuid: string, cookies: string }>> {
+    public getScrapeExternalUser(): Promise<ExternalUser[]> {
         return inContext((context) => context.getScrapeExternalUser());
     }
 

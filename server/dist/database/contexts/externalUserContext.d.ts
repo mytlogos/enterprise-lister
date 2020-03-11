@@ -27,12 +27,7 @@ export declare class ExternalUserContext extends SubContext {
     /**
      *
      */
-    getScrapeExternalUser(): Promise<Array<{
-        userUuid: string;
-        type: number;
-        uuid: string;
-        cookies: string;
-    }>>;
+    getScrapeExternalUser(): Promise<ExternalUser[]>;
     /**
      *  Creates a ExternalUser with
      *  shallow lists.

@@ -81,14 +81,17 @@ class ExternalUserContext extends subContext_1.SubContext {
      *
      */
     async getScrapeExternalUser() {
-        const result = await this.query("SELECT uuid, local_uuid, service, cookies FROM external_user " +
+        const result = await this.query("SELECT uuid, local_uuid, service, cookies, name, last_scrape FROM external_user " +
             "WHERE last_scrape IS NULL OR last_scrape > NOW() - 7");
         return result.map((value) => {
             return {
                 uuid: value.uuid,
-                userUuid: value.local_uuid,
+                localUuid: value.local_uuid,
                 type: value.service,
                 cookies: value.cookies,
+                identifier: value.name,
+                lastScrape: value.last_scrape && new Date(value.last_scrape),
+                lists: [],
             };
         });
     }

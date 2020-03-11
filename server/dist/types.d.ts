@@ -198,6 +198,16 @@ export interface EpisodeContentData {
     index: number;
     mediumTitle: string;
 }
+export declare enum ReleaseState {
+    Unknown = 0,
+    Ongoing = 1,
+    Hiatus = 2,
+    Discontinued = 3,
+    Dropped = 4,
+    Complete = 5
+}
+export declare type ExternalUserUuid = string;
+export declare type UserUuid = string;
 export declare enum ScrapeName {
     searchForToc = "searchForToc",
     toc = "toc",
