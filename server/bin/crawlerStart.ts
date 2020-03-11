@@ -115,7 +115,35 @@ async function getTocMedia(tocs: Toc[], uuid?: string)
         }
 
         if (!medium) {
-            medium = await mediumStorage.addMedium({medium: toc.mediumType, title: toc.title}, uuid);
+            const author = toc.authors ? toc.authors[0].name : undefined;
+            const artist = toc.artists ? toc.artists[0].name : undefined;
+            medium = await mediumStorage.addMedium({
+                medium: toc.mediumType,
+                title: toc.title,
+                author,
+                artist,
+                stateOrigin: toc.statusCOO,
+                stateTL: toc.statusTl,
+                languageOfOrigin: toc.langCOO,
+                lang: toc.langTL,
+            }, uuid);
+        } else {
+            const author = toc.authors ? toc.authors[0].name : undefined;
+            const artist = toc.artists ? toc.artists[0].name : undefined;
+            await mediumStorage.updateMedium({
+                id: medium.id as number,
+                medium: toc.mediumType,
+                author,
+                artist,
+                stateOrigin: toc.statusCOO,
+                stateTL: toc.statusTl,
+                languageOfOrigin: toc.langCOO,
+                lang: toc.langTL,
+            });
+        }
+
+        if (toc.synonyms) {
+            await mediumStorage.addSynonyms({mediumId: medium.id as number, synonym: toc.synonyms});
         }
 
         if (medium.id && toc.link) {
@@ -418,57 +446,78 @@ async function addFeeds(feeds: string[]): Promise<void> {
  *
  */
 async function processMedia(media: ScrapeMedium[], listType: number, userUuid: string): Promise<LikeMedium[]> {
-    // todo update the progress of each user
     const likeMedia = media.map((value) => {
         return {
             title: value.title.text,
             link: value.title.link,
         };
     });
-    const currentLikeMedia = await mediumStorage.getLikeMedium(likeMedia);
+    const currentLikeMedia: LikeMedium[] = await mediumStorage.getLikeMedium(likeMedia);
 
-    const foundLikeMedia = [];
+    const foundLikeMedia: LikeMedium[] = [];
+    const updateMediaPromises = [];
 
     // filter out the media which were found in the storage, leaving only the new ones
     const newMedia = media.filter((value) => {
         const likeMedium = Array.isArray(currentLikeMedia)
             ? currentLikeMedia.find((likedMedium) => {
                 return likedMedium.title === value.title.text
-                    && likedMedium.link === value.title.link;
+                    && likedMedium.link === value.title.link
+                    && likedMedium.medium;
             })
             : currentLikeMedia;
 
         if (likeMedium) {
             foundLikeMedia.push(likeMedium);
+            if (likeMedium.medium && likeMedium.medium.id) {
+                if (value.title.link) {
+                    updateMediaPromises.push(mediumStorage.addToc(likeMedium.medium.id, value.title.link));
+                }
+                // TODO: 09.03.2020 episode Indices are not relative to the medium, which makes it unusable atm
+                // if (value.current && ("partIndex" in value.current || "episodeIndex" in value.current)) {
+                //     updateMediaPromises.push(episodeStorage.markLowerIndicesRead(
+                //         userUuid,
+                //         likeMedium.medium.id,
+                //         value.current.partIndex,
+                //         value.current.episodeIndex
+                //     ));
+                // }
+            }
+            // todo update the progress of each user via value.latest, value.current
             return false;
         }
         return true;
     });
     // if there are new media, queue it for scraping,
     // after adding it to the storage and pushing it to foundLikeMedia
-    if (newMedia.length) {
-        let storedMedia: Array<{ title: string, link: string, medium: SimpleMedium }>;
-        try {
-            storedMedia = await Promise.all(newMedia.map(
-                (scrapeMedium) => {
-                    // noinspection JSCheckFunctionSignatures
-                    return mediumStorage
-                        .addMedium({title: scrapeMedium.title.text, medium: scrapeMedium.medium})
-                        .then((value) => {
-                            return {
-                                medium: value,
-                                title: scrapeMedium.title.text,
-                                link: scrapeMedium.title.link,
-                            };
-                        });
-                }));
-        } catch (e) {
-            logger.error(e);
-            return [];
-        }
-
-        foundLikeMedia.push(...storedMedia);
+    let storedMedia: Array<{ title: string, link: string, medium: SimpleMedium }>;
+    try {
+        storedMedia = await Promise.all(newMedia.map(
+            (scrapeMedium) => {
+                return mediumStorage
+                    .addMedium({
+                        title: scrapeMedium.title.text,
+                        medium: scrapeMedium.medium,
+                    })
+                    .then(async (value) => {
+                        if (value.id) {
+                            if (scrapeMedium.title.link) {
+                                await mediumStorage.addToc(value.id, scrapeMedium.title.link);
+                            }
+                        }
+                        return {
+                            medium: value,
+                            title: scrapeMedium.title.text,
+                            link: scrapeMedium.title.link,
+                        };
+                    });
+            }));
+    } catch (e) {
+        logger.error(e);
+        return [];
     }
+
+    foundLikeMedia.push(...storedMedia);
     return foundLikeMedia;
 }
 
@@ -483,18 +532,11 @@ interface ChangeContent {
 
 async function updateDatabase({removedLists, result, addedLists, renamedLists, allLists, lists}: ChangeContent) {
     // TODO: check if this whole message thing is solved with invalidation table from database
-    const message: any = {};
     const promisePool = [];
 
     if (removedLists.length) {
         externalListStorage
             .removeExternalList(result.external.uuid, removedLists)
-            .then(() => {
-                if (!message.remove) {
-                    message.remove = {};
-                }
-                message.remove.externalList = removedLists;
-            })
             .catch((error) => logger.error(error));
     }
 
@@ -506,16 +548,6 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
             medium: value.medium,
             items: value.media,
         } as ExternalList)
-        .then((externalList) => {
-            if (!message.add) {
-                message.add = {};
-            }
-            if (!message.add.externalList) {
-                message.add.externalList = [];
-            }
-            externalList.uuid = result.external.uuid;
-            message.add.externalList.push(externalList);
-        })
         .catch((error) => logger.error(error))));
 
     promisePool.push(...renamedLists.map((value, index) => {
@@ -525,17 +557,6 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
                 id,
                 name: value.name,
             } as ExternalList)
-            .then(() => {
-                if (!message.update) {
-                    message.update = {};
-                }
-
-                if (!message.update.lists) {
-                    message.update.lists = [];
-                }
-
-                message.update.lists.push({external: true, id, name: value.name});
-            })
             .catch((error) => logger.error(error));
     }));
 
@@ -553,30 +574,13 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
             return false;
         });
 
-        promisePool.push(...removedMedia.map((mediumId) => externalListStorage
-            .removeItemFromExternalList(externalList.id, mediumId)
-            .then(() => {
-                if (!message.remove) {
-                    message.remove = {};
-                }
-                if (!message.remove.items) {
-                    message.remove.items = [];
-                }
-                message.remove.items.push({external: true, listId: externalList.id, mediumId});
-            })
-            .catch((error) => logger.error(error))));
+        // TODO: 09.03.2020 externalLists will not be synchronized totally with
+        // promisePool.push(...removedMedia.map((mediumId) => externalListStorage
+        //     .removeItemFromExternalList(externalList.id, mediumId)
+        //     .catch((error) => logger.error(error))));
 
         promisePool.push(...newMedia.map((mediumId: number) => externalListStorage
             .addItemToExternalList(externalList.id, mediumId)
-            .then(() => {
-                if (!message.add) {
-                    message.add = {};
-                }
-                if (!message.add.items) {
-                    message.add.items = [];
-                }
-                message.add.items.push({external: true, listId: externalList.id, mediumId});
-            })
             .catch((error) => logger.error(error))));
     });
 
@@ -591,14 +595,13 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
         .catch((error: any) => logger.error(error)));
 
     await Promise.all(promisePool);
-    return message;
 }
 
 /**
  *
  */
 async function listHandler(result: {
-    external: { cookies: string, uuid: string, userUuid: string, type: number },
+    external: { cookies: string, uuid: ExternalUserUuid, userUuid: UserUuid, type: number },
     lists: ListScrapeResult;
 })
     : Promise<void> {
@@ -623,17 +626,19 @@ async function listHandler(result: {
 
     lists.forEach((scrapeList, index) => {
         // check whether there is some list with the same name
-        let listIndex = currentLists.findIndex((list) => list.name === scrapeList.name);
+        const listIndex = currentLists.findIndex((list) => list.name === scrapeList.name);
 
-        if (listIndex < 0) {
-            // check whether there is some list with the same link even if it is another name
-            listIndex = currentLists.findIndex((list) => list.url === scrapeList.link);
-
-            // list was renamed if link is the same
-            if (listIndex >= 0) {
-                renamedLists.push(scrapeList);
-            }
-        }
+        // TODO: 09.03.2020 with the current ListManager, the lists do not have different links,
+        //  so renaming lists cannot be detected
+        // if (listIndex < 0) {
+        //     // check whether there is some list with the same link even if it is another name
+        //     listIndex = currentLists.findIndex((list) => list.url === scrapeList.link);
+        //
+        //     // list was renamed if link is the same
+        //     if (listIndex >= 0) {
+        //         renamedLists.push(scrapeList);
+        //     }
+        // }
 
         // if scraped list is neither link or title matched, treat is as a newly added list
         if (listIndex < 0) {

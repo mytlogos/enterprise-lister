@@ -1,4 +1,4 @@
-import { EpisodeNews, News, SearchResult, TocSearchMedium } from "../types";
+import { EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium } from "../types";
 import { MediaType } from "../tools";
 import { JobCallback } from "../jobManager";
 export interface ScraperJob {
@@ -82,6 +82,18 @@ export interface Toc {
     partsOnly?: boolean;
     end?: boolean;
     link: string;
+    langCOO?: string;
+    langTL?: string;
+    statusCOO?: ReleaseState;
+    statusTl?: ReleaseState;
+    authors?: Array<{
+        name: string;
+        link: string;
+    }>;
+    artists?: Array<{
+        name: string;
+        link: string;
+    }>;
 }
 export interface EpisodeContent {
     mediumTitle: string;

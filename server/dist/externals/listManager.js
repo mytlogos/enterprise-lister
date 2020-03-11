@@ -6,6 +6,223 @@ const url_1 = tslib_1.__importDefault(require("url"));
 const tools_1 = require("../tools");
 const queueManager_1 = require("./queueManager");
 const tough_cookie_1 = require("tough-cookie");
+const logger_1 = tslib_1.__importDefault(require("../logger"));
+const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
+const types_1 = require("../types");
+class SimpleNovelUpdates {
+    static getListRelease(s) {
+        const episodeReg = /\s(v(\d+))?\s*(c(\d+)(-(\d+))?)?\s*(\(end\))?\s/;
+        const partGroup = 2;
+        const firstEpisodeGroup = 4;
+        const lastEpisodeGroup = 6;
+        const endGroup = 7;
+        const exec = episodeReg.exec(s);
+        if (!exec) {
+            return {};
+        }
+        else {
+            const lastEpisode = exec[lastEpisodeGroup];
+            const firstEpisode = exec[firstEpisodeGroup];
+            return {
+                end: exec[endGroup] != null,
+                partIndex: exec[partGroup] ? Number(exec[partGroup]) : undefined,
+                episodeIndex: lastEpisode ? Number(lastEpisode) : firstEpisode ? Number(firstEpisode) : undefined
+            };
+        }
+    }
+    static loadCheerio(link) {
+        return queueManager_1.queueCheerioRequest(link, { url: link });
+    }
+    static getStatusCoo(s) {
+        if (s.includes("\n")) {
+            return types_1.ReleaseState.Unknown;
+        }
+        const lower = s.toLowerCase();
+        if (lower.includes("discontinued")) {
+            return types_1.ReleaseState.Discontinued;
+        }
+        if (lower.includes("complete")) {
+            return types_1.ReleaseState.Complete;
+        }
+        if (lower.includes("ongoing")) {
+            return types_1.ReleaseState.Ongoing;
+        }
+        if (lower.includes("hiatus")) {
+            return types_1.ReleaseState.Hiatus;
+        }
+        if (lower.includes("dropped")) {
+            return types_1.ReleaseState.Dropped;
+        }
+        return types_1.ReleaseState.Unknown;
+    }
+    parseAndReplaceCookies(cookies) {
+        this.profile = cookies;
+        if (cookies) {
+            const exec = /^https?:\/\/www\.novelupdates\.com\/user\/(\d+)/.exec(cookies);
+            if (!exec) {
+                logger_1.default.error("data that is not profile link");
+            }
+            else {
+                this.id = exec[1];
+            }
+        }
+    }
+    async scrapeLists() {
+        if (!this.profile || !this.id) {
+            throw Error("no valid user data injected");
+        }
+        const result = { feed: [], lists: [], media: [] };
+        const [list, numberLists] = await this.scrapeList(0);
+        result.media.push(...list.media);
+        result.lists.push(list);
+        for (let i = 1; i < numberLists; i++) {
+            const [otherList, _] = await this.scrapeList(i);
+            result.media.push(...otherList.media);
+            result.lists.push(otherList);
+        }
+        return result;
+    }
+    async scrapeMedia(media) {
+        if (!media) {
+            return Promise.resolve([]);
+        }
+        return Promise.all(media.map(async (value) => {
+            await this.scrapeMedium(value);
+            return value;
+        }));
+    }
+    async scrapeMedium(medium) {
+        const link = medium.title.link;
+        const $ = await SimpleNovelUpdates.loadCheerio(link);
+        medium.title.text = $(".seriestitlenu").text().trim();
+        const synonyms = $("#editassociated").contents();
+        const lang = $("#showlang").text().trim();
+        const authors = $("#showauthors a");
+        const artists = $("#showartists a");
+        const statusCoo = $("#editstatus").text().trim();
+        const statusTL = $("#showtranslated").text().trim();
+        medium.synonyms = [];
+        for (let i = 0; i < synonyms.length; i += 2) {
+            const synonym = synonyms.eq(i).text().trim();
+            medium.synonyms.push(synonym);
+        }
+        medium.langCOO = lang;
+        medium.langTL = "English";
+        const releaseStatusCoo = SimpleNovelUpdates.getStatusCoo(statusCoo);
+        if (statusTL.toLowerCase() === "yes") {
+            medium.statusTl = types_1.ReleaseState.Complete;
+            medium.statusCOO = releaseStatusCoo === types_1.ReleaseState.Unknown ? types_1.ReleaseState.Complete : releaseStatusCoo;
+        }
+        else {
+            medium.statusTl = types_1.ReleaseState.Unknown;
+            medium.statusCOO = releaseStatusCoo;
+        }
+        if (authors.length) {
+            medium.authors = [];
+            for (let i = 0; i < authors.length; i++) {
+                const authorElement = authors.eq(i);
+                const author = {
+                    link: authorElement.attr("href"),
+                    name: authorElement.text().trim(),
+                };
+                medium.authors.push(author);
+            }
+        }
+        if (artists.length) {
+            medium.artists = [];
+            for (let i = 0; i < artists.length; i++) {
+                const artistElement = artists.eq(i);
+                const artist = {
+                    link: artistElement.attr("href"),
+                    name: artistElement.text().trim(),
+                };
+                medium.artists.push(artist);
+            }
+        }
+        const tableData = $("table#myTable tbody tr td");
+        if (!medium.latest) {
+            medium.latest = NovelUpdates.scrapeListRow(3, tableData);
+        }
+        // @ts-ignore
+        medium.latest.date = tableData.first().text().trim();
+    }
+    stringifyCookies() {
+        return this.profile ? this.profile : "";
+    }
+    async test(credentials) {
+        const identifier = tools_1.isString(credentials) ? credentials : credentials.identifier;
+        const urlString = "https://www.novelupdates.com/readlist/?uname=" + encodeURIComponent(identifier);
+        try {
+            const response = await queueManager_1.queueRequestFullResponse(urlString, {
+                url: urlString,
+                method: "POST"
+            });
+            const href = response.request.uri.href;
+            if (href && /^https?:\/\/www\.novelupdates\.com\/user\/\d+/.test(href)) {
+                this.profile = href;
+                return true;
+            }
+        }
+        catch (e) {
+            logger_1.default.error(e);
+            return false;
+        }
+        return false;
+    }
+    async scrapeList(page) {
+        const uri = "https://www.novelupdates.com/wp-admin/admin-ajax.php";
+        const response = await queueManager_1.queueRequest(uri, {
+            uri,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            method: "POST",
+            body: `action=nu_prevew&pagenum=${page}&intUserID=${this.id}&isMobile=`
+        });
+        const lastIndexOf = response.lastIndexOf("}");
+        if (!lastIndexOf) {
+            throw Error("expected a json object contained in message, got " + response);
+        }
+        const listData = JSON.parse(response.substring(0, lastIndexOf + 1));
+        const nameReg = />\s*(\w+)\s*<\s*\/\s*span\s*>/g;
+        const lists = [];
+        let exec;
+        // tslint:disable-next-line
+        while ((exec = nameReg.exec(listData.menu))) {
+            lists.push(exec[1]);
+        }
+        const rows = cheerio_1.default.load(listData.data)("table tbody tr");
+        const currentMedia = [];
+        const progressReg = /\[(.+)\/(.+)]/;
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows.eq(i);
+            const tableData = row.children();
+            const link = tableData.eq(1).children("a").first();
+            const title = { text: link.text().trim(), link: link.attr("href") };
+            const stand = tableData.eq(2).text();
+            const progressExec = progressReg.exec(stand);
+            if (!progressExec) {
+                logger_1.default.warn("cannot match medium progress on Novelupdate Reading List: " + stand);
+                continue;
+            }
+            const userProgress = progressExec[1];
+            const tlProgress = progressExec[2];
+            const userRelease = SimpleNovelUpdates.getListRelease(userProgress);
+            const tlRelease = SimpleNovelUpdates.getListRelease(tlProgress);
+            currentMedia.push({
+                title,
+                current: userRelease,
+                latest: tlRelease,
+                medium: tools_1.MediaType.TEXT,
+            });
+        }
+        return [
+            { link: this.profile, media: currentMedia, medium: tools_1.MediaType.TEXT, name: lists[page] },
+            lists.length
+        ];
+    }
+}
+// tslint:disable-next-line
 class NovelUpdates {
     constructor() {
         this.baseURI = "https://www.novelupdates.com/";
@@ -15,6 +232,10 @@ class NovelUpdates {
         return { text: link.text().trim(), link: link.attr("href") };
     }
     test(credentials) {
+        if (tools_1.isString(credentials)) {
+            // TODO: 10.03.2020 implement this maybe or scrap this class in favor of SimpleNovelUpdates class
+            return Promise.resolve(false);
+        }
         return this.defaults
             .get(this.baseURI)
             .then(() => this.defaults.post("https://www.novelupdates.com/login", {
@@ -107,7 +328,7 @@ class NovelUpdates {
         }
         medium.langCOO = lang;
         medium.langTL = "English";
-        medium.statusCOO = statusCOO;
+        // medium.statusCOO = statusCOO;
         if (authors.length) {
             medium.authors = [];
             for (let i = 0; i < authors.length; i++) {
@@ -134,6 +355,7 @@ class NovelUpdates {
         if (!medium.latest) {
             medium.latest = NovelUpdates.scrapeListRow(3, tableData);
         }
+        // @ts-ignore
         medium.latest.date = tableData.first().text().trim();
     }
     stringifyCookies() {
@@ -196,12 +418,46 @@ var ListType;
 (function (ListType) {
     ListType[ListType["NOVELUPDATES"] = 0] = "NOVELUPDATES";
 })(ListType = exports.ListType || (exports.ListType = {}));
+async function novelUpdatesTocAdapter(uri) {
+    /*const pageInfo = await storage.getPageInfo(uri, "scraped");
+
+    if (pageInfo.values) {
+        const date = new Date(pageInfo.values[0]);
+        if (!Number.isNaN(date.getTime()) && date.toDateString() === new Date().toDateString()) {
+            // do not search a toc on novelupdates twice a day
+            return [];
+        }
+    }*/
+    const medium = {
+        current: {},
+        latest: {},
+        medium: tools_1.MediaType.TEXT,
+        title: { text: "", link: uri }
+    };
+    await new SimpleNovelUpdates().scrapeMedium(medium);
+    // await storage.updatePageInfo(uri, "scraped", [new Date().toISOString()]);
+    const toc = {
+        content: [],
+        link: uri,
+        mediumType: medium.medium,
+        title: medium.title.text,
+        langCOO: medium.langCOO,
+        langTL: medium.langTL,
+        statusCOO: medium.statusCOO,
+        statusTl: medium.statusTl,
+        authors: medium.authors,
+        artists: medium.artists,
+    };
+    return [toc];
+}
 function getListManagerHooks() {
     return [
         {
             name: "novelupdates",
             medium: tools_1.MediaType.TEXT,
-            redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/
+            redirectReg: /https?:\/\/www\.novelupdates\.com\/extnu\/\d+\/?/,
+            domainReg: /^https?:\/\/www\.novelupdates\.com\//,
+            tocAdapter: novelUpdatesTocAdapter
         }
     ];
 }
@@ -209,7 +465,7 @@ exports.getListManagerHooks = getListManagerHooks;
 function factory(type, cookies) {
     let instance;
     if (type === ListType.NOVELUPDATES) {
-        instance = new NovelUpdates();
+        instance = new SimpleNovelUpdates();
     }
     if (!instance) {
         throw Error("unknown list manager");

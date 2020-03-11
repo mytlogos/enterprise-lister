@@ -25,6 +25,23 @@ export interface SimpleMedium {
     [key: string]: any;
 }
 
+export interface UpdateMedium {
+    id: number;
+    countryOfOrigin?: string;
+    languageOfOrigin?: string;
+    author?: string;
+    title?: string;
+    medium?: number;
+    artist?: string;
+    lang?: string;
+    stateOrigin?: number;
+    stateTL?: number;
+    series?: string;
+    universe?: string;
+
+    [key: string]: any;
+}
+
 export interface Medium extends SimpleMedium {
     parts?: number[];
     latestReleased: number[];

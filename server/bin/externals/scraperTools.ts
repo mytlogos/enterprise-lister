@@ -1,4 +1,4 @@
-import {factory, getListManagerHooks, ListScrapeResult} from "./listManager";
+import {factory, getListManagerHooks, ListScrapeResult, ListType} from "./listManager";
 import feedParserPromised from "feedparser-promised";
 import {combiIndex, getElseSet, hasMediaType, ignore, max, maxValue, MediaType, multiSingle} from "../tools";
 import {
@@ -41,7 +41,14 @@ import {FullResponse} from "cloudscraper";
 import {queueFastRequestFullResponse} from "./queueManager";
 import env from "../env";
 import {sourceType} from "./direct/undergroundScraper";
-import {episodeStorage, mediumInWaitStorage, mediumStorage, partStorage, storage} from "../database/storages/storage";
+import {
+    episodeStorage,
+    externalUserStorage,
+    mediumInWaitStorage,
+    mediumStorage,
+    partStorage,
+    storage
+} from "../database/storages/storage";
 
 const redirects: RegExp[] = [];
 const tocScraper: Map<RegExp, TocScraper> = new Map();
