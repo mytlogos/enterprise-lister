@@ -1,4 +1,4 @@
-import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium} from "../../types";
+import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium} from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {MediumContext} from "../contexts/mediumContext";
@@ -54,7 +54,7 @@ export class MediumStorage {
     /**
      * Updates a medium from the storage.
      */
-    public updateMedium(medium: SimpleMedium): Promise<boolean> {
+    public updateMedium(medium: UpdateMedium): Promise<boolean> {
         return inContext((context) => context.updateMedium(medium));
     }
 

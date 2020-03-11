@@ -191,6 +191,16 @@ class MediumContext extends subContext_1.SubContext {
             "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
             "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
         ];
+        // prevent anybody from removing most important data from media
+        if (medium.title != null && !medium.title) {
+            delete medium.title;
+        }
+        if (medium.medium != null && !medium.medium) {
+            delete medium.medium;
+        }
+        if (!Number.isInteger(medium.id) || medium.id <= 0) {
+            throw Error("invalid medium, id, title or medium is invalid: " + JSON.stringify(medium));
+        }
         return this.update("medium", (updates, values) => {
             for (const key of keys) {
                 const value = medium[key];

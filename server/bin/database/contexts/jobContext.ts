@@ -1,6 +1,9 @@
 import {SubContext} from "./subContext";
 import {JobItem, JobRequest, JobState} from "../../types";
 import {ignore, isString, promiseMultiSingle} from "../../tools";
+import logger from "../../logger";
+import mysql from "promise-mysql";
+import {escapeLike} from "../storages/storageTools";
 
 export class JobContext extends SubContext {
     public async removeJobLike(column: string, value: any): Promise<void> {

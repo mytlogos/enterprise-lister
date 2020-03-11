@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium} from "../../types";
+import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium} from "../../types";
 import {Errors, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
 import {Query} from "mysql";
@@ -231,11 +231,21 @@ export class MediumContext extends SubContext {
     /**
      * Updates a medium from the storage.
      */
-    public updateMedium(medium: SimpleMedium): Promise<boolean> {
+    public updateMedium(medium: UpdateMedium): Promise<boolean> {
         const keys = [
             "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
             "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
         ];
+        // prevent anybody from removing most important data from media
+        if (medium.title != null && !medium.title) {
+            delete medium.title;
+        }
+        if (medium.medium != null && !medium.medium) {
+            delete medium.medium;
+        }
+        if (!Number.isInteger(medium.id) || medium.id <= 0) {
+            throw Error("invalid medium, id, title or medium is invalid: " + JSON.stringify(medium));
+        }
         return this.update("medium", (updates, values) => {
             for (const key of keys) {
                 const value = medium[key];
