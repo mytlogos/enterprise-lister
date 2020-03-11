@@ -6,6 +6,9 @@ function inContext(callback, transaction = true) {
     return storage_1.storageInContext(callback, transaction, (con) => storageTools_1.queryContextProvider(con).mediumContext);
 }
 class MediumStorage {
+    removeToc(tocLink) {
+        return inContext((context) => context.removeToc(tocLink));
+    }
     /**
      * Adds a medium to the storage.
      *

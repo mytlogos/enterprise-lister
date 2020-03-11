@@ -4,6 +4,9 @@ const subContext_1 = require("./subContext");
 const tools_1 = require("../../tools");
 const storageTools_1 = require("../storages/storageTools");
 class MediumContext extends subContext_1.SubContext {
+    async removeToc(tocLink) {
+        await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
+    }
     /**
      * Adds a medium to the storage.
      */

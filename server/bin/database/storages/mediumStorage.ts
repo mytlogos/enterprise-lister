@@ -10,6 +10,9 @@ function inContext<T>(callback: ContextCallback<T, MediumContext>, transaction =
 }
 
 export class MediumStorage {
+    public removeToc(tocLink: string): Promise<void> {
+        return inContext((context) => context.removeToc(tocLink));
+    }
     /**
      * Adds a medium to the storage.
      *

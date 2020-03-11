@@ -2,6 +2,7 @@ import { SubContext } from "./subContext";
 import { LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium } from "../../types";
 import { Query } from "mysql";
 export declare class MediumContext extends SubContext {
+    removeToc(tocLink: string): Promise<void>;
     /**
      * Adds a medium to the storage.
      */

@@ -5,6 +5,8 @@ import {
     Episode,
     EpisodeNews,
     EpisodeRelease,
+    ExternalUser,
+    ExternalUserUuid,
     JobRequest,
     LikeMedium,
     MilliTime,

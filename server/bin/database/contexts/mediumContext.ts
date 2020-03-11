@@ -5,6 +5,10 @@ import {escapeLike} from "../storages/storageTools";
 import {Query} from "mysql";
 
 export class MediumContext extends SubContext {
+    public async removeToc(tocLink: string): Promise<void> {
+        await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
+    }
+
     /**
      * Adds a medium to the storage.
      */

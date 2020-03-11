@@ -6,6 +6,7 @@ import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitiz
 import logger from "../../logger";
 import {getTextContent, SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
+import {jobStorage, mediumStorage} from "../../database/storages/storage";
 
 interface NovelSearchResponse {
     success: boolean;
@@ -141,6 +142,17 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         return [];
     }
     const $ = await queueCheerioRequest(tocLink);
+
+    if ($("body.error404").length) {
+        logger.warn("toc will be removed, resource was seemingly deleted on: " + tocLink);
+        // TODO: 10.03.2020 remove any releases associated? with this toc
+        //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
+        //  and if there are to scrape them and delete any releases that are not contained in them
+        //  if there aren't any other tocs on this domain, remove all releases from that domain
+        await mediumStorage.removeToc(tocLink);
+        await jobStorage.removeJobLike("name", tocLink);
+        return [];
+    }
 
     const mediumTitleElement = $(".post-title h3");
     mediumTitleElement.find("span").remove();

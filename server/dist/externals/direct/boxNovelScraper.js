@@ -7,6 +7,7 @@ const tools_1 = require("../../tools");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
+const storage_1 = require("../../database/storages/storage");
 async function tocSearch(medium) {
     return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (searchString) => searchAjax(searchString, medium));
 }
@@ -116,6 +117,16 @@ async function tocAdapter(tocLink) {
         return [];
     }
     const $ = await queueManager_1.queueCheerioRequest(tocLink);
+    if ($("body.error404").length) {
+        logger_1.default.warn("toc will be removed, resource was seemingly deleted on: " + tocLink);
+        // TODO: 10.03.2020 remove any releases associated? with this toc
+        //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
+        //  and if there are to scrape them and delete any releases that are not contained in them
+        //  if there aren't any other tocs on this domain, remove all releases from that domain
+        await storage_1.mediumStorage.removeToc(tocLink);
+        await storage_1.jobStorage.removeJobLike("name", tocLink);
+        return [];
+    }
     const mediumTitleElement = $(".post-title h3");
     mediumTitleElement.find("span").remove();
     const mediumTitle = tools_1.sanitizeString(mediumTitleElement.text());
