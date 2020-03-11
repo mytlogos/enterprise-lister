@@ -706,6 +706,21 @@ class EpisodeContext extends subContext_1.SubContext {
             };
         });
     }
+    async markLowerIndicesRead(uuid, id, partInd, episodeInd) {
+        if (!uuid || !id || (partInd == null && episodeInd == null)) {
+            return;
+        }
+        // TODO: 09.03.2020 rework query and input, for now the episodeIndices are only relative to their parts mostly,
+        //  not always relative to the medium
+        await this.query("UPDATE user_episode, episode, part " +
+            "SET user_episode.progress=1 " +
+            "WHERE user_episode.episode_id=episode.id" +
+            "AND episode.part_id=part.id" +
+            "AND user_uuid = ?" +
+            "AND part.medium_id=?" +
+            "AND (? IS NOT NULL AND part.combiIndex < ?)" +
+            "AND episode.combiIndex < ?", [uuid, id, partInd, episodeInd]);
+    }
 }
 exports.EpisodeContext = EpisodeContext;
 //# sourceMappingURL=episodeContext.js.map

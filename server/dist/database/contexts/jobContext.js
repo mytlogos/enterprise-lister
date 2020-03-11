@@ -1,9 +1,29 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const tslib_1 = require("tslib");
 const subContext_1 = require("./subContext");
 const types_1 = require("../../types");
 const tools_1 = require("../../tools");
+const logger_1 = tslib_1.__importDefault(require("../../logger"));
+const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
+const storageTools_1 = require("../storages/storageTools");
 class JobContext extends subContext_1.SubContext {
+    async removeJobLike(column, value) {
+        if (value == null) {
+            logger_1.default.warn(`trying to delete jobs on column '${column}' without a value`);
+            return;
+        }
+        if (["type", "name", "arguments"].includes(column)) {
+            if (!tools_1.isString(value)) {
+                throw Error(`trying to delete jobs from column '${column}' without a string value: ${value}`);
+            }
+            const like = storageTools_1.escapeLike(value, {
+                noBoundaries: true,
+                singleQuotes: true
+            });
+            await this.query(`DELETE FROM jobs WHERE ${promise_mysql_1.default.escapeId(column)} LIKE ?`, like);
+        }
+    }
     async getJobs(limit = 50) {
         if (limit <= 0 || !limit) {
             limit = 50;

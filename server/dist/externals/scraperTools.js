@@ -421,18 +421,35 @@ exports.toc = async (value) => {
  * Scrapes ListWebsites and follows possible redirected pages.
  */
 exports.list = async (value) => {
-    const manager = listManager_1.factory(0, value.cookies);
+    // TODO: 10.03.2020 for now list scrape novelupdates only, later it should take listtype as an argument
+    const manager = listManager_1.factory(listManager_1.ListType.NOVELUPDATES, value.cookies);
     try {
         const lists = await manager.scrapeLists();
         const listsPromise = Promise.all(lists.lists.map(async (scrapedList) => scrapedList.link = await checkLink(scrapedList.link, scrapedList.name))).then(tools_1.ignore);
         const feedLinksPromise = Promise.all(lists.feed.map((feedLink) => checkLink(feedLink)));
         const mediaPromise = Promise.all(lists.media.map(async (medium) => {
             const titleLinkPromise = checkLink(medium.title.link, medium.title.text);
-            const currentLinkPromise = checkLink(medium.current.link, medium.current.text);
-            const latestLinkPromise = checkLink(medium.latest.link, medium.latest.text);
+            let currentLinkPromise;
+            if ("link" in medium.current && medium.current.link) {
+                currentLinkPromise = checkLink(medium.current.link, medium.current.text);
+            }
+            else {
+                currentLinkPromise = null;
+            }
+            let latestLinkPromise;
+            if ("link" in medium.latest && medium.latest.link) {
+                latestLinkPromise = checkLink(medium.latest.link, medium.latest.text);
+            }
+            else {
+                latestLinkPromise = null;
+            }
             medium.title.link = await titleLinkPromise;
-            medium.current.link = await currentLinkPromise;
-            medium.latest.link = await latestLinkPromise;
+            if ("link" in medium.current && currentLinkPromise) {
+                medium.current.link = await currentLinkPromise;
+            }
+            if ("link" in medium.latest && latestLinkPromise) {
+                medium.latest.link = await latestLinkPromise;
+            }
         })).then(tools_1.ignore);
         await listsPromise;
         await mediaPromise;
@@ -440,7 +457,6 @@ exports.list = async (value) => {
         return { external: value, lists };
     }
     catch (e) {
-        // noinspection ES6MissingAwait
         return Promise.reject({ ...value, error: e });
     }
 };

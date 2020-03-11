@@ -1,5 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var ReleaseState;
+(function (ReleaseState) {
+    ReleaseState[ReleaseState["Unknown"] = 0] = "Unknown";
+    ReleaseState[ReleaseState["Ongoing"] = 1] = "Ongoing";
+    ReleaseState[ReleaseState["Hiatus"] = 2] = "Hiatus";
+    ReleaseState[ReleaseState["Discontinued"] = 3] = "Discontinued";
+    ReleaseState[ReleaseState["Dropped"] = 4] = "Dropped";
+    ReleaseState[ReleaseState["Complete"] = 5] = "Complete";
+})(ReleaseState = exports.ReleaseState || (exports.ReleaseState = {}));
 var ScrapeName;
 (function (ScrapeName) {
     ScrapeName["searchForToc"] = "searchForToc";

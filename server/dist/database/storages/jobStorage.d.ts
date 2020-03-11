@@ -1,5 +1,6 @@
 import { JobItem, JobRequest } from "../../types";
 export declare class JobStorage {
+    removeJobLike(column: string, value: any): Promise<void>;
     stopJobs(): Promise<void>;
     getJobs(limit?: number): Promise<JobItem[]>;
     getAfterJobs(id: number): Promise<JobItem[]>;

@@ -78,4 +78,5 @@ export declare class EpisodeContext extends SubContext {
     getAllChapterLinks(mediumId: number): Promise<string[]>;
     getUnreadChapter(uuid: string): Promise<number[]>;
     getReadToday(uuid: string): Promise<ReadEpisode[]>;
+    markLowerIndicesRead(uuid: string, id: number, partInd?: number, episodeInd?: number): Promise<void>;
 }

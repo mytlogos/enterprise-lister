@@ -6,6 +6,9 @@ function inContext(callback, transaction = true) {
     return storage_1.storageInContext(callback, transaction, (con) => storageTools_1.queryContextProvider(con).jobContext);
 }
 class JobStorage {
+    removeJobLike(column, value) {
+        return inContext((context) => context.removeJobLike(column, value));
+    }
     stopJobs() {
         return inContext((context) => context.stopJobs());
     }

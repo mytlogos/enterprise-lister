@@ -519,10 +519,11 @@ export const toc = async (value: TocRequest): Promise<TocResult> => {
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export const list = async (value: { cookies: string, uuid: string; })
-    : Promise<{ external: { cookies: string, uuid: string }, lists: ListScrapeResult; }> => {
+export const list = async (value: { cookies: string, uuid: ExternalUserUuid; })
+    : Promise<{ external: { cookies: string, uuid: ExternalUserUuid }, lists: ListScrapeResult; }> => {
 
-    const manager = factory(0, value.cookies);
+    // TODO: 10.03.2020 for now list scrape novelupdates only, later it should take listtype as an argument
+    const manager = factory(ListType.NOVELUPDATES, value.cookies);
     try {
         const lists = await manager.scrapeLists();
         const listsPromise: Promise<void> = Promise.all(lists.lists.map(
@@ -533,12 +534,27 @@ export const list = async (value: { cookies: string, uuid: string; })
 
         const mediaPromise = Promise.all(lists.media.map(async (medium) => {
             const titleLinkPromise: Promise<string> = checkLink(medium.title.link, medium.title.text);
-            const currentLinkPromise: Promise<string> = checkLink(medium.current.link, medium.current.text);
-            const latestLinkPromise: Promise<string> = checkLink(medium.latest.link, medium.latest.text);
+
+            let currentLinkPromise: Promise<string> | null;
+            if ("link" in medium.current && medium.current.link) {
+                currentLinkPromise = checkLink(medium.current.link, medium.current.text);
+            } else {
+                currentLinkPromise = null;
+            }
+            let latestLinkPromise: Promise<string> | null;
+            if ("link" in medium.latest && medium.latest.link) {
+                latestLinkPromise = checkLink(medium.latest.link, medium.latest.text);
+            } else {
+                latestLinkPromise = null;
+            }
 
             medium.title.link = await titleLinkPromise;
-            medium.current.link = await currentLinkPromise;
-            medium.latest.link = await latestLinkPromise;
+            if ("link" in medium.current && currentLinkPromise) {
+                medium.current.link = await currentLinkPromise;
+            }
+            if ("link" in medium.latest && latestLinkPromise) {
+                medium.latest.link = await latestLinkPromise;
+            }
         })).then(ignore);
 
         await listsPromise;
@@ -546,7 +562,6 @@ export const list = async (value: { cookies: string, uuid: string; })
         lists.feed = await feedLinksPromise;
         return {external: value, lists};
     } catch (e) {
-        // noinspection ES6MissingAwait
         return Promise.reject({...value, error: e});
     }
 };

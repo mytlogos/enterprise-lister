@@ -75,4 +75,5 @@ export declare class EpisodeStorage {
      * Marks these news as read for the given user.
      */
     markEpisodeRead(uuid: string, result: Result): Promise<void>;
+    markLowerIndicesRead(uuid: string, id: number, partIndex?: number, episodeIndex?: number): Promise<void>;
 }

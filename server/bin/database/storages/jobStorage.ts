@@ -8,6 +8,9 @@ function inContext<T>(callback: ContextCallback<T, JobContext>, transaction = tr
 }
 
 export class JobStorage {
+    public removeJobLike(column: string, value: any): Promise<void> {
+        return inContext((context) => context.removeJobLike(column, value));
+    }
 
     public stopJobs(): Promise<void> {
         return inContext((context) => context.stopJobs());

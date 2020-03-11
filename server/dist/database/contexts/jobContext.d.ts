@@ -1,6 +1,7 @@
 import { SubContext } from "./subContext";
 import { JobItem, JobRequest } from "../../types";
 export declare class JobContext extends SubContext {
+    removeJobLike(column: string, value: any): Promise<void>;
     getJobs(limit?: number): Promise<JobItem[]>;
     stopJobs(): Promise<void>;
     getAfterJobs(id: number): Promise<JobItem[]>;

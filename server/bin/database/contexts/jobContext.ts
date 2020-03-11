@@ -3,6 +3,23 @@ import {JobItem, JobRequest, JobState} from "../../types";
 import {ignore, isString, promiseMultiSingle} from "../../tools";
 
 export class JobContext extends SubContext {
+    public async removeJobLike(column: string, value: any): Promise<void> {
+        if (value == null) {
+            logger.warn(`trying to delete jobs on column '${column}' without a value`);
+            return;
+        }
+        if (["type", "name", "arguments"].includes(column)) {
+            if (!isString(value)) {
+                throw Error(`trying to delete jobs from column '${column}' without a string value: ${value}`);
+            }
+            const like = escapeLike(value, {
+                noBoundaries: true,
+                singleQuotes: true
+            });
+            await this.query(`DELETE FROM jobs WHERE ${mysql.escapeId(column)} LIKE ?`, like);
+        }
+    }
+
     public async getJobs(limit = 50): Promise<JobItem[]> {
         if (limit <= 0 || !limit) {
             limit = 50;

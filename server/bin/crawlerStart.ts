@@ -12,7 +12,7 @@ import {
 import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {
     EpisodeRelease,
-    ExternalList,
+    ExternalList, ExternalUserUuid,
     JobRequest,
     LikeMedium,
     MilliTime,
@@ -22,7 +22,7 @@ import {
     ScrapeItem,
     ScrapeName,
     SimpleEpisode,
-    SimpleMedium
+    SimpleMedium, UserUuid
 } from "./types";
 import logger from "./logger";
 import {ScrapeType, Toc, TocEpisode, TocPart} from "./externals/types";

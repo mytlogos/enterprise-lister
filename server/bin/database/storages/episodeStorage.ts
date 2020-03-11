@@ -189,4 +189,8 @@ export class EpisodeStorage {
     public markEpisodeRead(uuid: string, result: Result): Promise<void> {
         return inContext((context) => context.markEpisodeRead(uuid, result));
     }
+
+    public markLowerIndicesRead(uuid: string, id: number, partIndex?: number, episodeIndex?: number): Promise<void> {
+        return inContext((context) => context.markLowerIndicesRead(uuid, id, partIndex, episodeIndex));
+    }
 }

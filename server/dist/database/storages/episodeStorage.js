@@ -130,6 +130,9 @@ class EpisodeStorage {
     markEpisodeRead(uuid, result) {
         return inContext((context) => context.markEpisodeRead(uuid, result));
     }
+    markLowerIndicesRead(uuid, id, partIndex, episodeIndex) {
+        return inContext((context) => context.markLowerIndicesRead(uuid, id, partIndex, episodeIndex));
+    }
 }
 exports.EpisodeStorage = EpisodeStorage;
 //# sourceMappingURL=episodeStorage.js.map
