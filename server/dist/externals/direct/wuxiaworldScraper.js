@@ -104,7 +104,7 @@ async function scrapeToc(urlString) {
     }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".content");
-    const novelTitle = tools_1.sanitizeString(contentElement.find("h4").first().text());
+    const novelTitle = tools_1.sanitizeString(contentElement.find("h2").first().text());
     const volumes = contentElement.find("#accordion > .panel");
     if (!volumes.length) {
         logger_1.default.warn("toc link with no volumes: " + urlString);

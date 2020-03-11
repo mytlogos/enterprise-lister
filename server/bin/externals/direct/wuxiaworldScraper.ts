@@ -117,7 +117,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".content");
-    const novelTitle = sanitizeString(contentElement.find("h4").first().text());
+    const novelTitle = sanitizeString(contentElement.find("h2").first().text());
     const volumes = contentElement.find("#accordion > .panel");
 
     if (!volumes.length) {
