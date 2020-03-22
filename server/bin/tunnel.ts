@@ -1,29 +1,40 @@
 import localtunnel from "localtunnel";
-import logger from "./logger";
 import env from "./env";
+import {internetTester, remove, stringify} from "./tools";
+import logger from "./logger";
 
-let tunneled: localtunnel.Tunnel;
+const tunnels: localtunnel.Tunnel[] = [];
 const port = Number(env.port || process.env.port);
 
 if (Number.isNaN(port) || port <= 0 || port > 65535) {
     throw Error("invalid port number: " + port);
 }
 
-/*localtunnel(port, (err, tunnel) => {
-    if (err) {
-        logger.error(err);
-    }
-    if (tunnel) {
-        tunneled = tunnel;
-    }
-});*/
-
-export function getTunnelUrl() {
-    return tunneled && tunneled.url;
+function requestTunnel(host?: string) {
+    localtunnel({port: 3000, host})
+        .then((tunnel) => {
+            tunnels.push(tunnel);
+            logger.info(`opening tunnel to ${tunnel.url}`);
+            tunnel.on("close", () => {
+                remove(tunnels, tunnel);
+                logger.info(`tunnel to ${tunnel.url} is closed`);
+            });
+            tunnel.on("error", (args) => logger.error(`error for tunnel to ${tunnel.url}: ${stringify(args)}`));
+        })
+        .catch((reason) => logger.error("failed opening a tunnel: " + stringify(reason)));
 }
 
-export function closeTunnel() {
-    if (tunneled) {
-        tunneled.close();
-    }
+internetTester.on("online", () => {
+    requestTunnel();
+    requestTunnel("http://serverless.social");
+});
+internetTester.on("offline", closeTunnel);
+process.on("beforeExit", closeTunnel);
+
+export function getTunnelUrls(): string[] {
+    return tunnels.map((tunnel) => tunnel.url);
+}
+
+export function closeTunnel(): void {
+    tunnels.forEach((tunnel) => tunnel.close());
 }

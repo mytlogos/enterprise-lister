@@ -18,7 +18,7 @@ import {downloadEpisodes, filterScrapeAble, search as searchMedium} from "./exte
 import {Errors, isError, isQuery, isString, stringToNumberList} from "./tools";
 import {JobRequest, ScrapeName} from "./types";
 import {TocRequest} from "./externals/types";
-import {getTunnelUrl} from "./tunnel";
+import {getTunnelUrls} from "./tunnel";
 import env from "./env";
 
 function isNumberOrArray(value: number | any[]) {
@@ -155,7 +155,7 @@ export const saveResult: Handler = (req, res) => {
 };
 
 export const getTunnel: Handler = (req, res) => {
-    sendResult(res, Promise.resolve(getTunnelUrl()));
+    sendResult(res, Promise.resolve(getTunnelUrls()));
 };
 
 export const getDev: Handler = (req, res) => {

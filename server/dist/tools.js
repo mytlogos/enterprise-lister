@@ -9,6 +9,8 @@ const bcrypt_nodejs_1 = tslib_1.__importDefault(require("bcrypt-nodejs"));
 const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
 const fs = tslib_1.__importStar(require("fs"));
 const path = tslib_1.__importStar(require("path"));
+const dns = tslib_1.__importStar(require("dns"));
+const events_1 = tslib_1.__importDefault(require("events"));
 function remove(array, item) {
     const index = array.indexOf(item);
     if (index < 0) {
@@ -494,4 +496,45 @@ function isQuery(value) {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
 exports.isQuery = isQuery;
+class InternetTesterImpl extends events_1.default {
+    constructor() {
+        super();
+        this.offline = undefined;
+        this.since = new Date();
+        this.checkInternet();
+    }
+    on(evt, listener) {
+        super.on(evt, listener);
+        if (this.offline != null && this.since != null) {
+            if (this.offline && evt === "offline") {
+                listener(this.since);
+            }
+            if (!this.offline && evt === "online") {
+                listener(this.since);
+            }
+        }
+        return this;
+    }
+    checkInternet() {
+        dns.promises.lookup("google.com")
+            .then(() => {
+            if (this.offline || this.offline == null) {
+                this.offline = false;
+                const since = new Date();
+                this.emit("online", this.since);
+                this.since = since;
+            }
+        })
+            .catch(() => {
+            if (!this.offline) {
+                this.offline = true;
+                const since = new Date();
+                this.emit("offline", this.since);
+                this.since = since;
+            }
+        })
+            .finally(() => setTimeout(() => this.checkInternet(), 1000));
+    }
+}
+exports.internetTester = new InternetTesterImpl();
 //# sourceMappingURL=tools.js.map

@@ -124,7 +124,7 @@ exports.saveResult = (req, res) => {
     sendResult(res, storage_1.storage.saveResult(req.body));
 };
 exports.getTunnel = (req, res) => {
-    sendResult(res, Promise.resolve(tunnel_1.getTunnelUrl()));
+    sendResult(res, Promise.resolve(tunnel_1.getTunnelUrls()));
 };
 exports.getDev = (req, res) => {
     sendResult(res, Promise.resolve(Boolean(env_1.default.development)));

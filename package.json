@@ -71,7 +71,7 @@
     "@types/htmlparser2": "^3.10.1",
     "@types/http-errors": "^1.6.3",
     "@types/jest": "^24.0.23",
-    "@types/localtunnel": "^1.9.0",
+    "@types/localtunnel": "^2.0.0",
     "@types/mocha": "latest",
     "@types/morgan": "^1.7.37",
     "@types/mysql": "latest",

@@ -9,6 +9,8 @@ import emojiStrip from "emoji-strip";
 import * as fs from "fs";
 import * as path from "path";
 import {Query} from "mysql";
+import * as dns from "dns";
+import EventEmitter from "events";
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -553,3 +555,54 @@ export function findProjectDirPath(file: string): string {
 export function isQuery(value: any): value is Query {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
+
+export interface InternetTester extends EventEmitter {
+    on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
+}
+
+class InternetTesterImpl extends EventEmitter implements InternetTester {
+    private offline?: boolean = undefined;
+    private since: Date = new Date();
+
+    constructor() {
+        super();
+        this.checkInternet();
+    }
+
+    public on(evt: "online" | "offline", listener: (previousSince: Date) => void): this {
+        super.on(evt, listener);
+
+        if (this.offline != null && this.since != null) {
+            if (this.offline && evt === "offline") {
+                listener(this.since);
+            }
+            if (!this.offline && evt === "online") {
+                listener(this.since);
+            }
+        }
+        return this;
+    }
+
+    private checkInternet() {
+        dns.promises.lookup("google.com")
+            .then(() => {
+                if (this.offline || this.offline == null) {
+                    this.offline = false;
+                    const since = new Date();
+                    this.emit("online", this.since);
+                    this.since = since;
+                }
+            })
+            .catch(() => {
+                if (!this.offline) {
+                    this.offline = true;
+                    const since = new Date();
+                    this.emit("offline", this.since);
+                    this.since = since;
+                }
+            })
+            .finally(() => setTimeout(() => this.checkInternet(), 1000));
+    }
+}
+
+export const internetTester: InternetTester = new InternetTesterImpl();

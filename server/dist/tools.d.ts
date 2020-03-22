@@ -1,6 +1,8 @@
+/// <reference types="node" />
 import { EpisodeRelease, MultiSingle } from "./types";
 import { TocEpisode, TocPart } from "./externals/types";
 import { Query } from "mysql";
+import EventEmitter from "events";
 export declare function remove<T>(array: T[], item: T): boolean;
 export declare function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean;
 export declare type ArrayCallback<T> = (value: T, index: number) => void;
@@ -96,4 +98,8 @@ export declare function ignore(): undefined;
  */
 export declare function findProjectDirPath(file: string): string;
 export declare function isQuery(value: any): value is Query;
+export interface InternetTester extends EventEmitter {
+    on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
+}
+export declare const internetTester: InternetTester;
 export {};
