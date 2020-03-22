@@ -24,12 +24,20 @@ function requestTunnel(host?: string) {
         .catch((reason) => logger.error("failed opening a tunnel: " + stringify(reason)));
 }
 
-internetTester.on("online", () => {
-    requestTunnel();
-    requestTunnel("http://serverless.social");
-});
-internetTester.on("offline", closeTunnel);
-process.on("beforeExit", closeTunnel);
+let started = false;
+
+export function startTunneling() {
+    if (started) {
+        return;
+    }
+    started = true;
+    internetTester.on("online", () => {
+        requestTunnel();
+        requestTunnel("http://serverless.social");
+    });
+    internetTester.on("offline", closeTunnel);
+    process.on("beforeExit", closeTunnel);
+}
 
 export function getTunnelUrls(): string[] {
     return tunnels.map((tunnel) => tunnel.url);

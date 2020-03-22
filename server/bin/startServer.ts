@@ -9,6 +9,7 @@ import "./deviceVerificator";
 // start crawler (setup and start running)
 import os from "os";
 import logger from "./logger";
+import {startTunneling} from "./tunnel";
 
 const port = env.port || process.env.port;
 // first start storage
@@ -63,6 +64,7 @@ function onError(error: any) {
  */
 function onListening() {
     const address = server.address();
+    startTunneling();
     if (address != null) {
         const bind = typeof address === "string"
             ? "pipe " + address

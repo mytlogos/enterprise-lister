@@ -12,6 +12,7 @@ require("./deviceVerificator");
 // start crawler (setup and start running)
 const os_1 = tslib_1.__importDefault(require("os"));
 const logger_1 = tslib_1.__importDefault(require("./logger"));
+const tunnel_1 = require("./tunnel");
 const port = env_1.default.port || process.env.port;
 // first start storage
 storage_1.startStorage();
@@ -57,6 +58,7 @@ function onError(error) {
  */
 function onListening() {
     const address = server.address();
+    tunnel_1.startTunneling();
     if (address != null) {
         const bind = typeof address === "string"
             ? "pipe " + address
