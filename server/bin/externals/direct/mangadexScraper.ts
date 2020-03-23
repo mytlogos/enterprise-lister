@@ -151,7 +151,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         if (!newsRow.has(".flag").length) {
             const mediumLinkElement = newsRow.find("a.manga_title");
-            currentMediumLink = url.resolve(uri, mediumLinkElement.attr("href"));
+            currentMediumLink = url.resolve(uri, mediumLinkElement.attr("href") as string);
             currentMedium = sanitizeString(mediumLinkElement.text());
             continue;
         }
@@ -166,7 +166,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             continue;
         }
         const titleElement = children.eq(1);
-        const link = url.resolve(uri, titleElement.children("a").attr("href"));
+        const link = url.resolve(uri, titleElement.children("a").attr("href") as string);
         const title = sanitizeString(titleElement.text());
 
         // ignore oneshots, they are not 'interesting' enough, e.g. too short
@@ -321,7 +321,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
 
             const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
 
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             let part: TocPart | undefined = indexPartMap.get(volIndices.combi);
 
@@ -360,7 +360,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             if (!chapIndices) {
                 throw Error(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
             }
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             const title = `Chapter ${chapIndices.combi}${chapGroups[5] ? " - " + chapGroups[7] : ""}`;
 
@@ -382,7 +382,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
     const nextPaging = $(".page-item:last-child:not(.disabled)");
 
     if (nextPaging.length) {
-        const link = nextPaging.find("a").attr("href");
+        const link = nextPaging.find("a").attr("href") as string;
         const nextPage = url.resolve(uri, link);
         return scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri, nextPage);
     }

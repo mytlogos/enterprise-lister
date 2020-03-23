@@ -94,6 +94,7 @@ export async function inContext<T>(callback: ContextCallback<T>, transaction = t
     return result;
 }
 
+// tslint:disable-next-line
 async function catchTransactionError<T>(transaction: boolean, context: QueryContext, e: any, attempts: number, callback: ContextCallback<T>) {
 // if it could not be commit due to error, roll back and rethrow error
     if (transaction) {
@@ -309,7 +310,7 @@ export interface Storage {
 
     getExternalList(id: number): Promise<ExternalList>;
 
-    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: (Date | null)): Promise<boolean>;
+    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean>;
 
     logoutUser(uuid: string, ip: string): Promise<boolean>;
 

@@ -168,7 +168,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         const newsRow = items.eq(i);
 
         const titleElement = newsRow.find("a");
-        const link = url.resolve(uri, titleElement.attr("href"));
+        const link = url.resolve(uri, titleElement.attr("href") as string);
 
         let episodeTitle = sanitizeString(titleElement.text());
 
@@ -256,7 +256,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
         const newsRow = items.eq(i);
 
         const mediumTitleElement = newsRow.find(".post-title a");
-        const tocLink = url.resolve(uri, mediumTitleElement.attr("href"));
+        const tocLink = url.resolve(uri, mediumTitleElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumTitleElement.text());
 
         const titleElement = newsRow.find(".chapter-item .chapter a");
@@ -264,7 +264,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
 
         for (let j = 0; j < titleElement.length; j++) {
             const chapterTitleElement = titleElement.eq(j);
-            const link = url.resolve(uri, chapterTitleElement.attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.attr("href") as string);
 
             const episodeTitle = sanitizeString(chapterTitleElement.text());
             const timeStampElement = timeElements.eq(j);

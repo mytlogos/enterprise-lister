@@ -47,7 +47,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         for (let j = 0; j < children.length; j++) {
             const titleElement = children.length > 1 ? children.eq(j) : children;
-            const link = titleElement.attr("href");
+            const link = titleElement.attr("href") as string;
 
             if (!link) {
                 logger.warn(`missing href attribute for '${mediumTitle}' on qidianUnderground`);

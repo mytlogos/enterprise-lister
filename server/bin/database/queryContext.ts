@@ -3047,7 +3047,9 @@ export class QueryContext {
 
     public async getInvalidated(uuid: string): Promise<Invalidation[]> {
         const result: any[] = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger.error(reason));
+        await this
+            .query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid)
+            .catch((reason) => logger.error(reason));
         return result.map((value: any): Invalidation => {
             return {
                 externalListId: value.external_list_id,
@@ -3072,7 +3074,8 @@ export class QueryContext {
             "FROM user_data_invalidation WHERE uuid=?",
             uuid
         ).on("end", () => {
-            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger.error(reason));
+            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid)
+                .catch((reason) => logger.error(reason));
         });
     }
 
@@ -3277,8 +3280,13 @@ export class QueryContext {
             return;
         }
         if (Array.isArray(value) && value.length > 100) {
-            // @ts-ignore
-            return await this._batchFunction(value, query, paramCallback, (q, v, p) => this._queryInList(q, v, afterQuery, p));
+            return await this._batchFunction(
+                value,
+                query,
+                paramCallback,
+                // @ts-ignore
+                (q, v, p) => this._queryInList(q, v, afterQuery, p)
+            );
         }
         const placeholders: string[] = [];
         const param: any[] = [];

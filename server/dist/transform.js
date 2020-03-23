@@ -24,6 +24,7 @@ class BufferToStringStream extends stream_1.default.Transform {
     }
 }
 exports.BufferToStringStream = BufferToStringStream;
+// tslint:disable-next-line
 class ObjectToStringStream extends stream_1.default.Transform {
     constructor() {
         super({

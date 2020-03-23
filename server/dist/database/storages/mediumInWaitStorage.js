@@ -9,6 +9,7 @@ class MediumInWaitStorage {
     getMediaInWait() {
         return inContext((context) => context.getMediaInWait());
     }
+    // tslint:disable-next-line
     createFromMediaInWait(createMedium, tocsMedia, listId) {
         return inContext((context) => context.createFromMediaInWait(createMedium, tocsMedia, listId));
     }

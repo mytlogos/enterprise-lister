@@ -49,7 +49,10 @@ export class MediumInWaitContext extends SubContext {
         if (!same || !same.length) {
             return false;
         }
-        await Promise.all(same.filter((value) => value).map((value) => this.parentContext.mediumContext.addToc(mediumId, value.link)));
+        await Promise.all(same
+            .filter((value) => value)
+            .map((value) => this.parentContext.mediumContext.addToc(mediumId, value.link))
+        );
 
         const synonyms: string[] = same.map((value) => sanitizeString(value.title));
 

@@ -46,6 +46,7 @@ app.get("/", (req, res) => {
 
 app.use((req: Request, res: Response) => {
     if (!req.path.startsWith("/api")) {
+        // @ts-ignore
         res.redirect(`/?redirect=${req.path}`);
     }
 });
@@ -58,10 +59,13 @@ app.use((req, res, next) => {
 // error handler
 app.use((err: HttpError, req: Request, res: Response) => {
     // set locals, only providing error in development
+    // @ts-ignore
     res.locals.message = err.message;
+    // @ts-ignore
     res.locals.error = req.app.get("env") === "development" ? err : {};
 
     // render the error page
+    // @ts-ignore
     res.sendStatus(err.status || 500);
 });
 

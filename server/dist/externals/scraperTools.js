@@ -267,17 +267,17 @@ function searchTocJob(id, tocSearch, availableTocs) {
     if (tocSearch) {
         for (const entry of tocDiscovery.entries()) {
             const [reg, searcher] = entry;
-            let search = false;
+            let searchFound = false;
             if (tocSearch.hosts) {
                 for (const link of tocSearch.hosts) {
                     if (!consumed.includes(reg) && reg.test(link)) {
-                        search = true;
+                        searchFound = true;
                         consumed.push(reg);
                         break;
                     }
                 }
             }
-            if (!search && (!tools_1.hasMediaType(searcher.medium, tocSearch.medium) || !searcher.blindSearch)) {
+            if (!searchFound && (!tools_1.hasMediaType(searcher.medium, tocSearch.medium) || !searcher.blindSearch)) {
                 continue;
             }
             searchJobs.push({

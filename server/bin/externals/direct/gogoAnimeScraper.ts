@@ -4,7 +4,6 @@ import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import cheerio from "cheerio";
 import logger from "../../logger";
-import {CloudscraperOptions} from "cloudscraper";
 import * as url from "url";
 import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc} from "./directTools";
@@ -21,7 +20,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const newsRow = newsRows.eq(i);
 
         const mediumElement = newsRow.find(".name a");
-        const link = url.resolve(uri, mediumElement.attr("href"));
+        const link = url.resolve(uri, mediumElement.attr("href") as string);
         const episodeTitleElement = newsRow.children(".episode");
 
         const mediumTitle = sanitizeString(mediumElement.text());
@@ -161,8 +160,8 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const coverElement = linkElement.find("[style]");
 
         const text = sanitizeString(linkElement.text());
-        const link = linkElement.attr("href");
-        const coverStyle = coverElement.attr("style");
+        const link = linkElement.attr("href") as string;
+        const coverStyle = coverElement.attr("style") as string;
         const exec = coverRegex.exec(coverStyle);
         if (!exec) {
             logger.warn(`On search gogoanime: Style with coverLink not matchable '${coverStyle}'`);
@@ -190,9 +189,9 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
     const $ = await queueCheerioRequest(link);
 
     const outSideLink = $(".download-anime + a");
-    const downloadPage = await queueCheerioRequest(outSideLink.attr("href"));
+    const downloadPage = await queueCheerioRequest(outSideLink.attr("href") as string);
 
-    const downloadLink = downloadPage(".dowload a").first().attr("href");
+    const downloadLink = downloadPage(".dowload a").first().attr("href") as string;
     const mediumTitle = sanitizeString($(".anime-info a").text());
 
     return [{content: [downloadLink], index: 1, mediumTitle, episodeTitle: `Episode ${exec[1]}`}];

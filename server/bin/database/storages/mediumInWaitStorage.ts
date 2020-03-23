@@ -14,6 +14,7 @@ export class MediumInWaitStorage {
         return inContext((context) => context.getMediaInWait());
     }
 
+    // tslint:disable-next-line
     public createFromMediaInWait(createMedium: MediumInWait, tocsMedia?: MediumInWait[], listId?: number): Promise<Medium> {
         return inContext((context) => context.createFromMediaInWait(createMedium, tocsMedia, listId));
     }

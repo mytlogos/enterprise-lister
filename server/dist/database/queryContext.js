@@ -2354,7 +2354,9 @@ class QueryContext {
     }
     async getInvalidated(uuid) {
         const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
-        await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.default.error(reason));
+        await this
+            .query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid)
+            .catch((reason) => logger_1.default.error(reason));
         return result.map((value) => {
             return {
                 externalListId: value.external_list_id,
@@ -2375,7 +2377,8 @@ class QueryContext {
             "part_id as partId, episode_id as episodeId, user_uuid as userUuid," +
             "list_id as listId, news_id as newsId, uuid " +
             "FROM user_data_invalidation WHERE uuid=?", uuid).on("end", () => {
-            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger_1.default.error(reason));
+            this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid)
+                .catch((reason) => logger_1.default.error(reason));
         });
     }
     async getUserStream() {
@@ -2557,8 +2560,9 @@ class QueryContext {
             return;
         }
         if (Array.isArray(value) && value.length > 100) {
+            return await this._batchFunction(value, query, paramCallback, 
             // @ts-ignore
-            return await this._batchFunction(value, query, paramCallback, (q, v, p) => this._queryInList(q, v, afterQuery, p));
+            (q, v, p) => this._queryInList(q, v, afterQuery, p));
         }
         const placeholders = [];
         const param = [];

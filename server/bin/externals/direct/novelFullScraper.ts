@@ -34,7 +34,7 @@ async function search(text: string): Promise<SearchResult[]> {
         const coverLink = url.resolve(uri, coverElement.attr("src"));
         const author = sanitizeString(authorElement.text());
         const title = sanitizeString(linkElement.text());
-        let tocLink = linkElement.attr("href");
+        let tocLink = linkElement.attr("href") as string;
         tocLink = url.resolve(uri, tocLink);
 
         searchResults.push({title, link: tocLink, author, coverUrl: coverLink});
@@ -148,7 +148,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
 
-        const link = url.resolve(uri, newsRow.attr("href"));
+        const link = url.resolve(uri, newsRow.attr("href") as string);
 
         const episodeTitle = sanitizeString(newsRow.text());
 
@@ -217,11 +217,11 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
         const newsRow = items.eq(i);
 
         const mediumTitleElement = newsRow.find(".col-title a");
-        const tocLink = url.resolve(uri, mediumTitleElement.attr("href"));
+        const tocLink = url.resolve(uri, mediumTitleElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumTitleElement.text());
 
         const titleElement = newsRow.find(".col-chap a");
-        const link = url.resolve(uri, titleElement.attr("href"));
+        const link = url.resolve(uri, titleElement.attr("href") as string);
 
         const episodeTitle = sanitizeString(titleElement.text());
 

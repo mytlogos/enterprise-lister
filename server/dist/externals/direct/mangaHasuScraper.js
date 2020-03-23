@@ -96,13 +96,13 @@ async function contentDownloadAdapter(chapterLink) {
     const episodeTitle = tools_1.sanitizeString(titleElement.text());
     const mediumTitle = tools_1.sanitizeString(mediumTitleElement.text());
     if (!episodeTitle || !mediumTitle) {
-        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger_1.default.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
     const exec = chapReg.exec(episodeTitle);
     if (!exec || !mediumTitle) {
-        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger_1.default.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const index = Number(exec[1]);

@@ -7,7 +7,6 @@ import {Hook, Toc} from "./types";
 import logger from "../logger";
 import cheerio from "cheerio";
 import {ReleaseState} from "../types";
-import {storage} from "../database/storages/storage";
 
 interface SimpleReadingList {
     menu: string;
@@ -145,7 +144,7 @@ class SimpleNovelUpdates implements ListManager {
             for (let i = 0; i < authors.length; i++) {
                 const authorElement = authors.eq(i);
                 const author = {
-                    link: authorElement.attr("href"),
+                    link: authorElement.attr("href") as string,
                     name: authorElement.text().trim(),
                 };
                 medium.authors.push(author);
@@ -157,7 +156,7 @@ class SimpleNovelUpdates implements ListManager {
             for (let i = 0; i < artists.length; i++) {
                 const artistElement = artists.eq(i);
                 const artist = {
-                    link: artistElement.attr("href"),
+                    link: artistElement.attr("href") as string,
                     name: artistElement.text().trim(),
                 };
                 medium.artists.push(artist);
@@ -233,7 +232,7 @@ class SimpleNovelUpdates implements ListManager {
             const tableData = row.children();
 
             const link = tableData.eq(1).children("a").first();
-            const title = {text: link.text().trim(), link: link.attr("href")};
+            const title = {text: link.text().trim(), link: link.attr("href") as string};
             const stand = tableData.eq(2).text();
 
             const progressExec = progressReg.exec(stand);
@@ -267,7 +266,7 @@ class NovelUpdates implements ListManager {
 
     public static scrapeListRow(i: number, tableData: Cheerio) {
         const link = tableData.eq(i).children("a").first();
-        return {text: link.text().trim(), link: link.attr("href")};
+        return {text: link.text().trim(), link: link.attr("href") as string};
     }
 
     public jar: any;
@@ -317,7 +316,7 @@ class NovelUpdates implements ListManager {
         for (let i = 1; i < listElement.length; i++) {
             const element = listElement.eq(i);
             const linkElement = element.children("a").first();
-            let link = linkElement.attr("href");
+            let link = linkElement.attr("href") as string;
             link = url.resolve(this.baseURI, link);
 
             const list: ScrapeList = {
@@ -354,7 +353,7 @@ class NovelUpdates implements ListManager {
 
         media = unique(media, (a, b) => b.title.link === a.title.link);
 
-        let feedLink = $(".l-content .seticon a:nth-child(3)").attr("href");
+        let feedLink = $(".l-content .seticon a:nth-child(3)").attr("href") as string;
         feedLink = url.resolve(this.baseURI, feedLink);
         feed.push(feedLink);
 
@@ -406,7 +405,7 @@ class NovelUpdates implements ListManager {
             for (let i = 0; i < authors.length; i++) {
                 const authorElement = authors.eq(i);
                 const author = {
-                    link: authorElement.attr("href"),
+                    link: authorElement.attr("href") as string,
                     name: authorElement.text().trim(),
                 };
                 medium.authors.push(author);
@@ -418,7 +417,7 @@ class NovelUpdates implements ListManager {
             for (let i = 0; i < artists.length; i++) {
                 const artistElement = artists.eq(i);
                 const artist = {
-                    link: artistElement.attr("href"),
+                    link: artistElement.attr("href") as string,
                     name: artistElement.text().trim(),
                 };
                 medium.artists.push(artist);
@@ -471,7 +470,7 @@ class NovelUpdates implements ListManager {
     }
 
     public scrapeList($: CheerioStatic, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {
-        let feedLink = $(".l-content .seticon a:nth-child(1)").attr("href");
+        let feedLink = $(".l-content .seticon a:nth-child(1)").attr("href") as string;
         feedLink = url.resolve(this.baseURI, feedLink);
         feed.push(feedLink);
 
@@ -588,9 +587,7 @@ export function getListManagerHooks(): Hook[] {
 }
 
 export interface ListManager {
-    test(credentials: { identifier: string, password: string }): Promise<boolean>;
-
-    test(identifier: string): Promise<boolean>;
+    test(credentials: { identifier: string, password: string } | string): Promise<boolean>;
 
     scrapeLists(): Promise<ListScrapeResult>;
 

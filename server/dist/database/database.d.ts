@@ -79,7 +79,7 @@ export interface Storage {
     addScrape(scrape: (ScrapeItem | ScrapeItem[])): Promise<boolean>;
     processResult(result: Result): Promise<MetaResult | MetaResult[]>;
     getExternalList(id: number): Promise<ExternalList>;
-    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: (Date | null)): Promise<boolean>;
+    addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean>;
     logoutUser(uuid: string, ip: string): Promise<boolean>;
     stop(): Promise<void>;
     addEpisode(episode: SimpleEpisode, uuid?: string): Promise<SimpleEpisode>;

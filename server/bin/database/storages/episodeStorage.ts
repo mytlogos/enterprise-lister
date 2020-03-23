@@ -158,6 +158,7 @@ export class EpisodeStorage {
     /**
      * Add progress of an user in regard to an episode to the storage.
      */
+    // tslint:disable-next-line
     public addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean> {
         return inContext((context) => context.addProgress(uuid, episodeId, progress, readDate));
     }

@@ -60,6 +60,7 @@ async function inContext(callback, transaction = true) {
     return result;
 }
 exports.inContext = inContext;
+// tslint:disable-next-line
 async function catchTransactionError(transaction, context, e, attempts, callback) {
     // if it could not be commit due to error, roll back and rethrow error
     if (transaction) {

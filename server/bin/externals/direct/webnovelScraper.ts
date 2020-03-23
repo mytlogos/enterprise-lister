@@ -35,7 +35,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         const mediumElement = tableData.eq(1);
         const mediumTocLinkElement = mediumElement.children("a").first();
-        const mediumTocTotalLink = url.resolve(uri, mediumTocLinkElement.attr("href"));
+        const mediumTocTotalLink = url.resolve(uri, mediumTocLinkElement.attr("href") as string);
         const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/\d+\//.exec(mediumTocTotalLink);
 
         if (!mediumTocLinkGroup) {
@@ -56,7 +56,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             continue;
         }
 
-        const totalLink = url.resolve(uri, titleElement.attr("href"));
+        const totalLink = url.resolve(uri, titleElement.attr("href") as string);
         const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/\d+\/\d+\/).+/.exec(totalLink);
         if (!linkGroup) {
             logger.info(`unknown news url format on webnovel: ${totalLink}`);
@@ -340,7 +340,7 @@ async function search(text: string): Promise<SearchResult[]> {
         const coverElement = result.find("img");
         const title = sanitizeString(titleElement.text());
         const coverUrl = url.resolve(uri, coverElement.attr("src"));
-        const link = url.resolve(uri, titleElement.attr("href"));
+        const link = url.resolve(uri, titleElement.attr("href") as string);
 
         searchResult.push({title, link, coverUrl});
     }

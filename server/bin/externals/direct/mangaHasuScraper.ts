@@ -23,8 +23,8 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         const mediumElement = children.eq(0);
         const titleElement = children.eq(1);
-        const link = url.resolve(baseUri, titleElement.attr("href"));
-        const mediumTocLink = url.resolve(baseUri, mediumElement.attr("href"));
+        const link = url.resolve(baseUri, titleElement.attr("href") as string);
+        const mediumTocLink = url.resolve(baseUri, mediumElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumElement.text());
         const title = sanitizeString(titleElement.text());
 
@@ -113,14 +113,14 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const mediumTitle = sanitizeString(mediumTitleElement.text());
 
     if (!episodeTitle || !mediumTitle) {
-        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
     const exec = chapReg.exec(episodeTitle);
 
     if (!exec || !mediumTitle) {
-        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const index = Number(exec[1]);
@@ -212,7 +212,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
             const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
 
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             if (!chapIndices) {
                 logger.warn("changed episode format on mangaHasu toc: got no index " + urlString);
@@ -254,7 +254,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             if (!chapIndices) {
                 throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
             }
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             let title = "Chapter " + chapIndices.combi;
 
@@ -323,7 +323,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
         const text = sanitizeString(titleElement.text());
 
         if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
-            const tocLink = linkElement.attr("href");
+            const tocLink = linkElement.attr("href") as string;
             return {value: tocLink, done: true};
         }
     }
@@ -359,7 +359,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const coverElement = linkElement.find("img");
 
         const text = sanitizeString(titleElement.text());
-        const link = url.resolve("http://mangahasu.se/", linkElement.attr("href"));
+        const link = url.resolve("http://mangahasu.se/", linkElement.attr("href") as string);
         const author = sanitizeString(authorElement.text());
         const coverLink = coverElement.attr("src");
 

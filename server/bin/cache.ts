@@ -1,4 +1,4 @@
-import NodeCache, {Callback} from "node-cache";
+import NodeCache from "node-cache";
 import {max} from "./tools";
 import logger from "./logger";
 

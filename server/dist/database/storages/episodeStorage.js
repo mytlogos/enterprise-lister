@@ -103,6 +103,7 @@ class EpisodeStorage {
     /**
      * Add progress of an user in regard to an episode to the storage.
      */
+    // tslint:disable-next-line
     addProgress(uuid, episodeId, progress, readDate) {
         return inContext((context) => context.addProgress(uuid, episodeId, progress, readDate));
     }

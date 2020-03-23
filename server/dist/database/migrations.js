@@ -36,6 +36,7 @@ exports.Migrations = [
             await context.addUnique("part", "UNIQUE_PART", "medium_id", "combiIndex");
             await context.dropPrimaryKey("scrape_board");
             await context.addPrimaryKey("scrape_board", "link", "type");
+            // tslint:disable-next-line
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_1", "external_uuid", "external_user", "uuid");
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_3", "uuid", "user", "uuid");
             await context.parentContext.clearInvalidationTable();

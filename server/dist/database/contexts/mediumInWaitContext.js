@@ -42,7 +42,9 @@ class MediumInWaitContext extends subContext_1.SubContext {
         if (!same || !same.length) {
             return false;
         }
-        await Promise.all(same.filter((value) => value).map((value) => this.parentContext.mediumContext.addToc(mediumId, value.link)));
+        await Promise.all(same
+            .filter((value) => value)
+            .map((value) => this.parentContext.mediumContext.addToc(mediumId, value.link)));
         const synonyms = same.map((value) => tools_1.sanitizeString(value.title));
         await this.parentContext.mediumContext.addSynonyms({ mediumId, synonym: synonyms });
         await this.deleteMediaInWait(same);

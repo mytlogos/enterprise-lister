@@ -48,8 +48,7 @@ export interface ListManager {
     test(credentials: {
         identifier: string;
         password: string;
-    }): Promise<boolean>;
-    test(identifier: string): Promise<boolean>;
+    } | string): Promise<boolean>;
     scrapeLists(): Promise<ListScrapeResult>;
     scrapeMedium(medium: ScrapeMedium): Promise<void>;
     scrapeMedia(media: ScrapeMedium[]): Promise<ScrapeMedium[]>;

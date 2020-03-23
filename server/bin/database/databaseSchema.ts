@@ -1,5 +1,4 @@
 import {DataBaseBuilder} from "./databaseBuilder";
-import {TriggerEvent, TriggerTiming} from "./trigger";
 import {Migrations} from "./migrations";
 
 const dataBaseBuilder = new DataBaseBuilder("enterprise", 7);

@@ -64,7 +64,7 @@ export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocS
             const text = sanitizeString(linkElement.text());
 
             if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
-                tocLink = linkElement.attr("href");
+                tocLink = linkElement.attr("href") as string;
                 tocLink = url.resolve(uri, tocLink);
                 break;
             }
@@ -113,7 +113,7 @@ function searchForWords(
             const text = sanitizeString(linkElement.text());
 
             if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
-                const tocLink = linkElement.attr("href");
+                const tocLink = linkElement.attr("href") as string;
                 return {value: url.resolve(uri, tocLink), done: true};
             }
         }

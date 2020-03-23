@@ -177,9 +177,8 @@ async function scrapeToc(urlString) {
         for (const entry of occurrence.entries()) {
             if (!maxEntry) {
                 maxEntry = entry;
-                continue;
             }
-            if (maxEntry[1] < entry[1]) {
+            else if (maxEntry[1] < entry[1]) {
                 maxEntry = entry;
             }
         }

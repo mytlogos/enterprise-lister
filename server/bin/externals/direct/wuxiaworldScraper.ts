@@ -21,11 +21,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const newsRow = newsRows.eq(i);
 
         const mediumLinkElement = newsRow.find("td:first-child .title a:first-child");
-        const tocLink = url.resolve(uri, mediumLinkElement.attr("href"));
+        const tocLink = url.resolve(uri, mediumLinkElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumLinkElement.text());
 
         const titleLink = newsRow.find("td:nth-child(2) a:first-child");
-        const link = url.resolve(uri, titleLink.attr("href"));
+        const link = url.resolve(uri, titleLink.attr("href") as string);
 
         let episodeTitle = sanitizeString(titleLink.text());
 
@@ -156,7 +156,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         checkTocContent(volume, true);
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
-            const link = url.resolve(uri, chapterElement.attr("href"));
+            const link = url.resolve(uri, chapterElement.attr("href") as string);
 
             const title = sanitizeString(chapterElement.text());
             const linkGroups = chapLinkReg.exec(link);
@@ -205,9 +205,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         for (const entry of occurrence.entries()) {
             if (!maxEntry) {
                 maxEntry = entry;
-                continue;
-            }
-            if (maxEntry[1] < entry[1]) {
+            } else if (maxEntry[1] < entry[1]) {
                 maxEntry = entry;
             }
         }

@@ -42,6 +42,7 @@ exports.app.get("/", (req, res) => {
 });
 exports.app.use((req, res) => {
     if (!req.path.startsWith("/api")) {
+        // @ts-ignore
         res.redirect(`/?redirect=${req.path}`);
     }
 });
@@ -52,9 +53,12 @@ exports.app.use((req, res, next) => {
 // error handler
 exports.app.use((err, req, res) => {
     // set locals, only providing error in development
+    // @ts-ignore
     res.locals.message = err.message;
+    // @ts-ignore
     res.locals.error = req.app.get("env") === "development" ? err : {};
     // render the error page
+    // @ts-ignore
     res.sendStatus(err.status || 500);
 });
 // todo what is with tls (https), cloudflare?
