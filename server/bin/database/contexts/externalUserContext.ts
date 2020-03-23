@@ -1,7 +1,7 @@
 import {SubContext} from "./subContext";
 import {ExternalUser} from "../../types";
 import {Errors} from "../../tools";
-import uuidGenerator from "uuid/v1";
+import {v1 as uuidGenerator} from "uuid";
 import {Query} from "mysql";
 
 export class ExternalUserContext extends SubContext {

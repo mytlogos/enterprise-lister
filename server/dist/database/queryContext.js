@@ -3,8 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const types_1 = require("../types");
-const v1_1 = tslib_1.__importDefault(require("uuid/v1"));
-const v4_1 = tslib_1.__importDefault(require("uuid/v4"));
+const uuid_1 = require("uuid");
 const tools_1 = require("../tools");
 const logger_1 = tslib_1.__importDefault(require("../logger"));
 const validate = tslib_1.__importStar(require("validate.js"));
@@ -202,7 +201,7 @@ class QueryContext {
             return Promise.reject(new Error(tools_1.Errors.USER_EXISTS_ALREADY));
         }
         // if userName is new, proceed to register
-        const id = v1_1.default();
+        const id = uuid_1.v1();
         const { salt, hash } = StandardHash.hash(password);
         // insert the full user and loginUser right after
         await this.query("INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);", [userName, id, salt, StandardHash.tag, hash]);
@@ -236,7 +235,7 @@ class QueryContext {
         // if there exists a session already for that device, remove it
         await this._delete("user_log", { column: "ip", value: ip });
         // generate session key
-        const session = v4_1.default();
+        const session = uuid_1.v4();
         const date = new Date().toISOString();
         await this.query("INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);", [uuid, ip, session, date]);
         return this._getUser(uuid, session);
@@ -1514,7 +1513,7 @@ class QueryContext {
             // @ts-ignore
             throw Error(tools_1.Errors.USER_EXISTS_ALREADY);
         }
-        const uuid = v1_1.default();
+        const uuid = uuid_1.v1();
         result = await this.query("INSERT INTO external_user " +
             "(name, uuid, local_uuid, service, cookies) " +
             "VALUES (?,?,?,?,?);", [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies]);

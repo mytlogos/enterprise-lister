@@ -31,8 +31,7 @@ import {
     TocSearchMedium,
     User
 } from "../types";
-import uuidGenerator from "uuid/v1";
-import sessionGenerator from "uuid/v4";
+import {v1 as uuidGenerator, v4 as sessionGenerator} from "uuid";
 import {
     allTypes,
     BcryptHash,

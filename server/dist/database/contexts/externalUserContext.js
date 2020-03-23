@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
 const subContext_1 = require("./subContext");
 const tools_1 = require("../../tools");
-const v1_1 = tslib_1.__importDefault(require("uuid/v1"));
+const uuid_1 = require("uuid");
 class ExternalUserContext extends subContext_1.SubContext {
     async getAll(uuid) {
         const lists = await this.parentContext.externalListContext.getAll(uuid);
@@ -31,7 +30,7 @@ class ExternalUserContext extends subContext_1.SubContext {
             // @ts-ignore
             throw Error(tools_1.Errors.USER_EXISTS_ALREADY);
         }
-        const uuid = v1_1.default();
+        const uuid = uuid_1.v1();
         result = await this.query("INSERT INTO external_user " +
             "(name, uuid, local_uuid, service, cookies) " +
             "VALUES (?,?,?,?,?);", [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies]);

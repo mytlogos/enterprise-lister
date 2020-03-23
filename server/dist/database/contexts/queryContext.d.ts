@@ -37,17 +37,17 @@ export declare class QueryContext implements ConnectionContext {
     private _mediumInWaitContext?;
     private _newsContext?;
     private _partContext?;
-    readonly databaseContext: DatabaseContext;
-    readonly userContext: UserContext;
-    readonly partContext: PartContext;
-    readonly mediumContext: MediumContext;
-    readonly episodeContext: EpisodeContext;
-    readonly newsContext: NewsContext;
-    readonly externalListContext: ExternalListContext;
-    readonly externalUserContext: ExternalUserContext;
-    readonly internalListContext: InternalListContext;
-    readonly jobContext: JobContext;
-    readonly mediumInWaitContext: MediumInWaitContext;
+    get databaseContext(): DatabaseContext;
+    get userContext(): UserContext;
+    get partContext(): PartContext;
+    get mediumContext(): MediumContext;
+    get episodeContext(): EpisodeContext;
+    get newsContext(): NewsContext;
+    get externalListContext(): ExternalListContext;
+    get externalUserContext(): ExternalUserContext;
+    get internalListContext(): InternalListContext;
+    get jobContext(): JobContext;
+    get mediumInWaitContext(): MediumInWaitContext;
     constructor(con: Connection);
     /**
      *

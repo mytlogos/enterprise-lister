@@ -1,10 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const tslib_1 = require("tslib");
 const subContext_1 = require("./subContext");
 const tools_1 = require("../../tools");
-const v1_1 = tslib_1.__importDefault(require("uuid/v1"));
-const v4_1 = tslib_1.__importDefault(require("uuid/v4"));
+const uuid_1 = require("uuid");
 /**
  * Checks whether the password equals to the given hash
  * of the specified algorithm.
@@ -49,7 +47,7 @@ class UserContext extends subContext_1.SubContext {
             return Promise.reject(new Error(tools_1.Errors.USER_EXISTS_ALREADY));
         }
         // if userName is new, proceed to register
-        const id = v1_1.default();
+        const id = uuid_1.v1();
         const { salt, hash } = StandardHash.hash(password);
         // insert the full user and loginUser right after
         await this.query("INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);", [userName, id, salt, StandardHash.tag, hash]);
@@ -83,7 +81,7 @@ class UserContext extends subContext_1.SubContext {
         // if there exists a session already for that device, remove it
         await this.delete("user_log", { column: "ip", value: ip });
         // generate session key
-        const session = v4_1.default();
+        const session = uuid_1.v4();
         const date = new Date().toISOString();
         await this.query("INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);", [uuid, ip, session, date]);
         return this._getUser(uuid, session);

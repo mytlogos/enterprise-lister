@@ -1,8 +1,7 @@
 import {SubContext} from "./subContext";
 import {SimpleUser, User} from "../../types";
 import {allTypes, BcryptHash, Errors, Hasher, Hashes} from "../../tools";
-import uuidGenerator from "uuid/v1";
-import sessionGenerator from "uuid/v4";
+import {v1 as uuidGenerator, v4 as sessionGenerator} from "uuid";
 
 /**
  * Checks whether the password equals to the given hash

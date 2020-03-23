@@ -62,11 +62,11 @@ export declare enum ScrapeEvent {
 }
 export declare class ScraperHelper {
     private readonly eventMap;
-    readonly redirects: RegExp[];
-    readonly tocScraper: Map<RegExp, TocScraper>;
-    readonly episodeDownloader: Map<RegExp, ContentDownloader>;
-    readonly tocDiscovery: Map<RegExp, TocSearchScraper>;
-    readonly newsAdapter: NewsScraper[];
+    get redirects(): RegExp[];
+    get tocScraper(): Map<RegExp, TocScraper>;
+    get episodeDownloader(): Map<RegExp, ContentDownloader>;
+    get tocDiscovery(): Map<RegExp, TocSearchScraper>;
+    get newsAdapter(): NewsScraper[];
     on(event: string, callback: (value: any) => void): void;
     emit(event: string, value: any): void;
     init(): void;

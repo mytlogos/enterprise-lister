@@ -15,9 +15,9 @@ export declare class JobQueue {
     private currentJobId;
     private intervalId;
     private currentInterval;
-    readonly runningJobs: number;
-    readonly schedulableJobs: number;
-    readonly totalJobs: number;
+    get runningJobs(): number;
+    get schedulableJobs(): number;
+    get totalJobs(): number;
     constructor({ memoryLimit, memorySize, maxActive }?: {
         memoryLimit?: number | undefined;
         memorySize?: MemorySize | undefined;
