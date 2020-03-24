@@ -14,7 +14,7 @@ import { JobContext } from "./jobContext";
 import { MediumInWaitContext } from "./mediumInWaitContext";
 import { ConnectionContext } from "../databaseTypes";
 declare type ParamCallback<T> = (value: T) => (any[] | any);
-declare type UpdateCallback = (updates: string[], values: any[]) => void;
+declare type UpdateCallback = (updates: string[], values: any[]) => void | Promise<void>;
 export interface DbTrigger {
     Trigger: string;
     Event: string;

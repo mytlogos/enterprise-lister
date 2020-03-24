@@ -259,7 +259,10 @@ class QueryContext {
         }
         const updates = [];
         const values = [];
-        cb(updates, values);
+        const updatePromise = cb(updates, values);
+        if (updatePromise && updatePromise.then) {
+            await updatePromise;
+        }
         if (!updates.length) {
             return Promise.resolve(false);
         }

@@ -333,7 +333,7 @@ const ShaHash = {
         const salt = crypto_1.default.randomBytes(Math.ceil(saltLength / 2))
             .toString("hex") // convert to hexadecimal format
             .slice(0, saltLength); // return required number of characters */
-        return { salt, hash: this.innerHash(text, salt) };
+        return Promise.resolve({ salt, hash: this.innerHash(text, salt) });
     },
     innerHash(text, salt) {
         const hash = crypto_1.default.createHash("sha512");
@@ -344,7 +344,7 @@ const ShaHash = {
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash, salt) {
-        return this.innerHash(text, salt) === hash;
+        return Promise.resolve(this.innerHash(text, salt) === hash);
     },
 };
 exports.Md5Hash = {
@@ -354,19 +354,21 @@ exports.Md5Hash = {
             .createHash("md5")
             .update(text)
             .digest("hex");
-        return { hash: newsHash };
+        return Promise.resolve({ hash: newsHash });
     },
     /**
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash) {
-        return this.hash(text).hash === hash;
+        return this.hash(text).then((hashValue) => hashValue.hash === hash);
     },
 };
 exports.BcryptHash = {
     tag: "bcrypt",
     hash(text) {
-        return { salt: undefined, hash: bcrypt_nodejs_1.default.hashSync(text) };
+        return bcryptjs_1.default.hash(text, 10).then((hash) => {
+            return { salt: undefined, hash };
+        });
     },
     /**
      * Checks whether the text hashes to the same hash.
@@ -376,10 +378,10 @@ exports.BcryptHash = {
      * @return boolean
      */
     equals(text, hash) {
-        return bcrypt_nodejs_1.default.compareSync(text, hash);
+        return bcryptjs_1.default.compare(text, hash);
     },
 };
-exports.Hashes = [ShaHash, exports.BcryptHash];
+exports.Hashes = [ShaHash, exports.Md5Hash, exports.BcryptHash];
 var Errors;
 (function (Errors) {
     Errors["USER_EXISTS_ALREADY"] = "USER_EXISTS_ALREADY";

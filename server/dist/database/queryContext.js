@@ -202,7 +202,7 @@ class QueryContext {
         }
         // if userName is new, proceed to register
         const id = uuid_1.v1();
-        const { salt, hash } = StandardHash.hash(password);
+        const { salt, hash } = await StandardHash.hash(password);
         // insert the full user and loginUser right after
         await this.query("INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);", [userName, id, salt, StandardHash.tag, hash]);
         // every user gets a standard list for everything that got no list assigned
@@ -229,7 +229,7 @@ class QueryContext {
         }
         const user = result[0];
         const uuid = user.uuid;
-        if (!verifyPassword(password, user.password, user.alg, user.salt)) {
+        if (!await verifyPassword(password, user.password, user.alg, user.salt)) {
             return Promise.reject(new Error(tools_1.Errors.INVALID_INPUT));
         }
         // if there exists a session already for that device, remove it
@@ -340,7 +340,7 @@ class QueryContext {
         if (user.newPassword && user.password) {
             await this.verifyPassword(uuid, user.password);
         }
-        return this._update("user", (updates, values) => {
+        return this._update("user", async (updates, values) => {
             if (user.name) {
                 updates.push("name = ?");
                 values.push(user.name);
@@ -349,7 +349,7 @@ class QueryContext {
                 if (!user.password) {
                     return Promise.reject(new Error(tools_1.Errors.INVALID_INPUT));
                 }
-                const { salt, hash } = StandardHash.hash(user.newPassword);
+                const { salt, hash } = await StandardHash.hash(user.newPassword);
                 updates.push("alg = ?");
                 values.push(StandardHash.tag);
                 updates.push("salt = ?");

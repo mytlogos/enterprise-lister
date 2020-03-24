@@ -355,9 +355,9 @@ interface Hash {
 export interface Hasher {
     tag: string;
 
-    hash(text: string, saltLength?: number): Hash;
+    hash(text: string, saltLength?: number): Promise<Hash>;
 
-    equals(text: string, hash: string, salt: string): boolean;
+    equals(text: string, hash: string, salt: string): Promise<boolean>;
 }
 
 interface ShaHasher extends Hasher {
@@ -373,11 +373,11 @@ const ShaHash: ShaHasher = {
      * @param {string} text
      * @return {{salt: string, hash: string}}
      */
-    hash(text: string, saltLength: number = 20): { salt: string, hash: string } {
+    hash(text: string, saltLength: number = 20): Promise<{ salt: string, hash: string }> {
         const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
             .toString("hex") // convert to hexadecimal format
             .slice(0, saltLength); // return required number of characters */
-        return {salt, hash: this.innerHash(text, salt)};
+        return Promise.resolve({salt, hash: this.innerHash(text, salt)});
     },
 
     innerHash(text, salt) {
@@ -391,7 +391,7 @@ const ShaHash: ShaHasher = {
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash, salt) {
-        return this.innerHash(text, salt) === hash;
+        return Promise.resolve(this.innerHash(text, salt) === hash);
     },
 };
 export const Md5Hash: Hasher = {
@@ -402,21 +402,23 @@ export const Md5Hash: Hasher = {
             .createHash("md5")
             .update(text)
             .digest("hex");
-        return {hash: newsHash};
+        return Promise.resolve({hash: newsHash});
     },
 
     /**
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash) {
-        return this.hash(text).hash === hash;
+        return this.hash(text).then((hashValue) => hashValue.hash === hash);
     },
 };
 export const BcryptHash: Hasher = {
     tag: "bcrypt",
 
     hash(text) {
-        return {salt: undefined, hash: bcrypt.hashSync(text)};
+        return bcrypt.hash(text, 10).then((hash) => {
+            return {salt: undefined, hash};
+        });
     },
 
     /**
@@ -427,10 +429,10 @@ export const BcryptHash: Hasher = {
      * @return boolean
      */
     equals(text, hash) {
-        return bcrypt.compareSync(text, hash);
+        return bcrypt.compare(text, hash);
     },
 };
-export const Hashes: Hasher[] = [ShaHash, BcryptHash];
+export const Hashes: Hasher[] = [ShaHash, Md5Hash, BcryptHash];
 
 export enum Errors {
     USER_EXISTS_ALREADY = "USER_EXISTS_ALREADY",

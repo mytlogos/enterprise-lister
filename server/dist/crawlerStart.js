@@ -23,8 +23,8 @@ async function processNews({ link, rawNews }) {
     const newsPageInfo = await storage_1.storage.getPageInfo(link, newsKey);
     if (newsPageInfo.values.length) {
         const newPageInfos = [];
-        rawNews = rawNews.filter((value) => {
-            const newsHash = tools_1.Md5Hash.hash(value.title + value.date).hash;
+        rawNews = await Promise.all(rawNews.filter(async (value) => {
+            const newsHash = (await tools_1.Md5Hash.hash(value.title + value.date)).hash;
             const index = newsPageInfo.values.findIndex((hash) => newsHash === hash);
             if (index >= 0) {
                 newsPageInfo.values.splice(index, 1);
@@ -34,7 +34,7 @@ async function processNews({ link, rawNews }) {
                 newPageInfos.push(newsHash);
                 return true;
             }
-        });
+        }));
         if (newsPageInfo.values.length || newPageInfos.length) {
             await storage_1.storage.updatePageInfo(link, newsKey, newPageInfos, newsPageInfo.values);
         }
