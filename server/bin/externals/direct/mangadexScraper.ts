@@ -175,7 +175,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         }
 
         const timeStampElement = children.eq(6).children("time").first();
-        const date = new Date(timeStampElement.attr("datetime"));
+        const date = new Date(timeStampElement.attr("datetime") as string);
 
         const groups = titlePattern.exec(title);
 
@@ -295,7 +295,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             continue;
         }
         const columns = chapter.children();
-        const timeString = columns.eq(3).attr("title");
+        const timeString = columns.eq(3).attr("title") as string;
         const time = new Date(timeString);
 
         if (!timeString || Number.isNaN(time.getTime())) {

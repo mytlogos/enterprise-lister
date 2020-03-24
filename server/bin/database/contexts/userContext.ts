@@ -16,7 +16,7 @@ import {v1 as uuidGenerator, v4 as sessionGenerator} from "uuid";
  * @return {boolean}
  * @private
  */
-const verifyPassword = (password: string, hash: string, alg: string, salt: string) => {
+const verifyPassword = (password: string, hash: string, alg: string, salt: string): Promise<boolean> => {
     const hashAlgorithm = Hashes.find((value) => value.tag === alg);
 
     if (!hashAlgorithm) {
@@ -52,7 +52,7 @@ export class UserContext extends SubContext {
         }
         // if userName is new, proceed to register
         const id = uuidGenerator();
-        const {salt, hash} = StandardHash.hash(password);
+        const {salt, hash} = await StandardHash.hash(password);
 
         // insert the full user and loginUser right after
         await this.query(
@@ -88,7 +88,7 @@ export class UserContext extends SubContext {
         const user = result[0];
         const uuid = user.uuid;
 
-        if (!verifyPassword(password, user.password, user.alg, user.salt)) {
+        if (!await verifyPassword(password, user.password, user.alg, user.salt)) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
         // if there exists a session already for that device, remove it
@@ -240,7 +240,7 @@ export class UserContext extends SubContext {
         if (user.newPassword && user.password) {
             await this.verifyPassword(uuid, user.password);
         }
-        return this.update("user", (updates, values) => {
+        return this.update("user", async (updates, values) => {
             if (user.name) {
                 updates.push("name = ?");
                 values.push(user.name);
@@ -250,7 +250,7 @@ export class UserContext extends SubContext {
                 if (!user.password) {
                     return Promise.reject(new Error(Errors.INVALID_INPUT));
                 }
-                const {salt, hash} = StandardHash.hash(user.newPassword);
+                const {salt, hash} = await StandardHash.hash(user.newPassword);
 
                 updates.push("alg = ?");
                 values.push(StandardHash.tag);

@@ -5,7 +5,7 @@ const crypto_1 = tslib_1.__importDefault(require("crypto"));
 const crypto_2 = tslib_1.__importDefault(require("crypto"));
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
 //  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
-const bcrypt_nodejs_1 = tslib_1.__importDefault(require("bcrypt-nodejs"));
+const bcryptjs_1 = tslib_1.__importDefault(require("bcryptjs"));
 const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
 const fs = tslib_1.__importStar(require("fs"));
 const path = tslib_1.__importStar(require("path"));

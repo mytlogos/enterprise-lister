@@ -12,7 +12,8 @@ import {
 import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {
     EpisodeRelease,
-    ExternalList, ExternalUserUuid,
+    ExternalList,
+    ExternalUserUuid,
     JobRequest,
     LikeMedium,
     MilliTime,
@@ -22,7 +23,8 @@ import {
     ScrapeItem,
     ScrapeName,
     SimpleEpisode,
-    SimpleMedium, UserUuid
+    SimpleMedium,
+    UserUuid
 } from "./types";
 import logger from "./logger";
 import {ScrapeType, Toc, TocEpisode, TocPart} from "./externals/types";
@@ -57,8 +59,8 @@ async function processNews({link, rawNews}: { link: string, rawNews: News[] }): 
     if (newsPageInfo.values.length) {
         const newPageInfos: string[] = [];
 
-        rawNews = rawNews.filter((value) => {
-            const newsHash = Md5Hash.hash(value.title + value.date).hash;
+        rawNews = await Promise.all(rawNews.filter(async (value) => {
+            const newsHash = (await Md5Hash.hash(value.title + value.date)).hash;
 
             const index = newsPageInfo.values.findIndex((hash) => newsHash === hash);
 
@@ -69,7 +71,7 @@ async function processNews({link, rawNews}: { link: string, rawNews: News[] }): 
                 newPageInfos.push(newsHash);
                 return true;
             }
-        });
+        }));
         if (newsPageInfo.values.length || newPageInfos.length) {
             await storage.updatePageInfo(link, newsKey, newPageInfos, newsPageInfo.values);
         }

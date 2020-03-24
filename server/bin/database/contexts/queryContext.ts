@@ -21,7 +21,7 @@ import env from "../../env";
 const database = "enterprise";
 
 type ParamCallback<T> = (value: T) => (any[] | any);
-type UpdateCallback = (updates: string[], values: any[]) => void;
+type UpdateCallback = (updates: string[], values: any[]) => void | Promise<void>;
 
 export interface DbTrigger {
     Trigger: string;
@@ -342,7 +342,10 @@ export class QueryContext implements ConnectionContext {
         const updates: string[] = [];
         const values: any[] = [];
 
-        cb(updates, values);
+        const updatePromise = cb(updates, values);
+        if (updatePromise && updatePromise.then) {
+            await updatePromise;
+        }
 
         if (!updates.length) {
             return Promise.resolve(false);
