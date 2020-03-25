@@ -321,7 +321,7 @@ function stringToNumberList(s) {
         .filter((value) => !Number.isNaN(value) && value);
 }
 exports.stringToNumberList = stringToNumberList;
-const ShaHash = {
+exports.ShaHash = {
     tag: "sha512",
     /**
      *
@@ -381,7 +381,7 @@ exports.BcryptHash = {
         return bcryptjs_1.default.compare(text, hash);
     },
 };
-exports.Hashes = [ShaHash, exports.Md5Hash, exports.BcryptHash];
+exports.Hashes = [exports.ShaHash, exports.Md5Hash, exports.BcryptHash];
 var Errors;
 (function (Errors) {
     Errors["USER_EXISTS_ALREADY"] = "USER_EXISTS_ALREADY";

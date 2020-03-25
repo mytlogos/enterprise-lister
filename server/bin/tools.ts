@@ -364,7 +364,7 @@ interface ShaHasher extends Hasher {
     innerHash(text: string, salt: string): string;
 }
 
-const ShaHash: ShaHasher = {
+export const ShaHash: ShaHasher = {
     tag: "sha512",
 
     /**
