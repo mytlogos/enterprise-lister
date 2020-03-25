@@ -300,9 +300,24 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
                 locked: episodeValue.tocEpisode.locked,
             };
             if (foundRelease) {
-                if (!equalsRelease(foundRelease, tocRelease)
-                    && foundRelease.releaseDate.toDateString() === tocRelease.releaseDate.toDateString()) {
-                    updateReleases.push(tocRelease);
+                // check in what way the releases differ, there are cases there
+                // only the time changes, as the same releases is extracted
+                // from a non changing relative Time value, thus having a later absolute time
+                if (!equalsRelease(foundRelease, tocRelease)) {
+                    const currentValue = tocRelease.releaseDate;
+                    tocRelease.releaseDate = foundRelease.releaseDate;
+
+                    if (equalsRelease(foundRelease, tocRelease)) {
+                        // differ only in the releaseDate
+                        // update only if the new version has an earlier date then the storage one
+                        if (currentValue < foundRelease.releaseDate) {
+                            updateReleases.push(tocRelease);
+                        }
+                    } else {
+                        // differ in anything else, excluding releaseDate, so restore value and update
+                        tocRelease.releaseDate = currentValue;
+                        updateReleases.push(tocRelease);
+                    }
                 }
                 return;
             }
