@@ -130,6 +130,76 @@ describe("testing tool.js", () => {
             items.should.not.contain(1);
         });
     });
+    describe("test removeLike", function () {
+    });
+    describe("test forEachArrayLike", function () {
+    });
+    describe("test promiseMultiSingle", function () {
+    });
+    describe("test multiSingle", function () {
+    });
+    describe("test addMultiSingle", function () {
+    });
+    describe("test removeMultiSingle", function () {
+    });
+    describe("test getElseSet", function () {
+    });
+    describe("test getElseSetObj", function () {
+    });
+    describe("test unique", function () {
+    });
+    describe("test isTocPart", function () {
+    });
+    describe("test isTocEpisode", function () {
+    });
+    describe("test some", function () {
+    });
+    describe("test equalsIgnore", function () {
+    });
+    describe("test contains", function () {
+    });
+    describe("test countOccurrence", function () {
+    });
+    describe("test max", function () {
+    });
+    describe("test maxValue", function () {
+    });
+    describe("test min", function () {
+    });
+    describe("test minValue", function () {
+    });
+    describe("test relativeToAbsoluteTime", function () {
+    });
+    describe("test delay", function () {
+    });
+    describe("test equalsRelease", function () {
+    });
+    describe("test stringify", function () {
+    });
+    describe("test sanitizeString", function () {
+    });
+    describe("test isString", function () {
+    });
+    describe("test stringToNumberList", function () {
+    });
+    describe("test isError", function () {
+    });
+    describe("test hasMediaType", function () {
+    });
+    describe("test allTypes", function () {
+    });
+    describe("test combiIndex", function () {
+    });
+    describe("test checkIndices", function () {
+    });
+    describe("test separateIndices", function () {
+    });
+    describe("test ignore", function () {
+    });
+    describe("test findProjectDirPath", function () {
+    });
+    describe("test isQuery", function () {
+    });
     describe("never call output functions", () => {
         it('should never call console', function () {
             for (const key of Object.keys(console)) {
