@@ -544,6 +544,9 @@ class InternetTesterImpl extends events_1.default.EventEmitter {
         }
         return this;
     }
+    isOnline() {
+        return !this.offline;
+    }
     checkInternet() {
         dns.promises.lookup("google.com")
             .then(() => {

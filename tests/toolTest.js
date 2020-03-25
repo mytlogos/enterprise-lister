@@ -9,13 +9,16 @@ chai.use(sinon_chai);
 chai.use(chaiAsPromised);
 chai.should();
 
+process.on("unhandledRejection", () => console.log("an unhandled rejection!"));
+process.on("uncaughtException", (args) => console.log("an unhandled exception!", args));
+
 describe("testing tool.js", () => {
     const sandbox = sinon.createSandbox();
     before("setting up", () => {
         for (const key of Object.keys(console)) {
             if (typeof console[key] === "function") {
                 // noinspection JSCheckFunctionSignatures
-                sandbox.stub(console, key);
+                sandbox.spy(console, key);
             }
         }
         for (const key of Object.keys(logger.default)) {
@@ -65,25 +68,50 @@ describe("testing tool.js", () => {
         let up = false;
 
         before(() => {
-            internetSandbox.stub(dns.promises, "lookup").callsFake(args => up);
+            internetSandbox.stub(dns.promises, "lookup").callsFake(() => up ? Promise.resolve() : Promise.reject());
+            internetSandbox.stub(tools.internetTester, "isOnline").callsFake(() => up);
         });
         after(() => internetSandbox.restore());
 
-        it('should fire online event within time limit', function (done) {
+        it('should fire online event within time limit', function () {
             this.timeout(3000);
-
-            tools.internetTester.on("online", () => {
-                done();
-            });
-            up = true;
+            return tools.delay(500).then(() => {
+                return new Promise((resolve, reject) => {
+                    try {
+                        tools.internetTester.isOnline().should.be.false;
+                        tools.internetTester.on("online", () => {
+                            tools.internetTester.isOnline().should.be.true;
+                            resolve();
+                        });
+                        up = true;
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            }).should.eventually.not.be.rejected;
         });
-        it('should fire offline event within time limit', function (done) {
+        it('should fire offline event within time limit', function () {
             this.timeout(3000);
-
-            tools.internetTester.on("offline", () => {
-                done();
-            });
-            up = false;
+            return tools.delay(500).then(() => {
+                return new Promise((resolve, reject) => {
+                    try {
+                        tools.internetTester.isOnline().should.be.true;
+                        tools.internetTester.on("offline", () => {
+                            tools.internetTester.isOnline().should.be.false;
+                            resolve();
+                        });
+                        up = false;
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            }).should.eventually.not.be.rejected;
+        });
+        // fixme this test is somewhat broken, sinon does not stub dns.promises.lookup correctly, original function still called
+        it('should be called at least once', async function () {
+            this.timeout(5000);
+            await tools.delay(500);
+            dns.promises.lookup.should.have.been.called
         });
     });
     describe("never call output functions", () => {
