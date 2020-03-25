@@ -114,6 +114,20 @@ describe("testing tool.js", () => {
             dns.promises.lookup.should.have.been.called
         });
     });
+    describe("test remove", function () {
+        it("should remove item with '===' equality", function () {
+            const items = [1, 2, 3, 4];
+            tools.remove(items, "1");
+            items.should.contain(1);
+
+            tools.remove(items, 1);
+            items.should.not.contain(1);
+
+            const emptyItems = [];
+            tools.remove(emptyItems, 1);
+            items.should.not.contain(1);
+        });
+    });
     describe("never call output functions", () => {
         it('should never call console', function () {
             for (const key of Object.keys(console)) {
