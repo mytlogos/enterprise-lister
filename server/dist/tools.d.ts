@@ -75,6 +75,7 @@ export declare enum MediaType {
 }
 export declare function hasMediaType(container: MediaType, testFor: MediaType): boolean;
 export declare function allTypes(): number;
+export declare function promisify<T>(callback: () => T): Promise<T>;
 export declare function combiIndex(value: {
     totalIndex: number;
     partialIndex?: number;

@@ -330,12 +330,23 @@ exports.ShaHash = {
      * @return {{salt: string, hash: string}}
      */
     hash(text, saltLength = 20) {
-        const salt = crypto_1.default.randomBytes(Math.ceil(saltLength / 2))
-            .toString("hex") // convert to hexadecimal format
-            .slice(0, saltLength); // return required number of characters */
-        return Promise.resolve({ salt, hash: this.innerHash(text, salt) });
+        return promisify(() => {
+            if (!Number.isInteger(saltLength)) {
+                throw TypeError(`'${saltLength}' not an integer`);
+            }
+            const salt = crypto_1.default.randomBytes(Math.ceil(saltLength / 2))
+                .toString("hex") // convert to hexadecimal format
+                .slice(0, saltLength); // return required number of characters */
+            return { salt, hash: this.innerHash(text, salt) };
+        });
     },
     innerHash(text, salt) {
+        if (!isString(text)) {
+            throw TypeError(`'${text}' not a string`);
+        }
+        if (!isString(salt)) {
+            throw TypeError(`'${salt}' not a string`);
+        }
         const hash = crypto_1.default.createHash("sha512");
         hash.update(salt + text);
         return hash.digest("hex");
@@ -344,17 +355,22 @@ exports.ShaHash = {
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash, salt) {
-        return Promise.resolve(this.innerHash(text, salt) === hash);
+        return promisify(() => this.innerHash(text, salt) === hash);
     },
 };
 exports.Md5Hash = {
     tag: "md5",
     hash(text) {
-        const newsHash = crypto_2.default
-            .createHash("md5")
-            .update(text)
-            .digest("hex");
-        return Promise.resolve({ hash: newsHash });
+        return promisify(() => {
+            if (!isString(text)) {
+                throw TypeError(`'${text}' not a string`);
+            }
+            const newsHash = crypto_2.default
+                .createHash("md5")
+                .update(text)
+                .digest("hex");
+            return { hash: newsHash };
+        });
     },
     /**
      * Checks whether the text hashes to the same hash.
@@ -414,6 +430,17 @@ function allTypes() {
         .reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
 }
 exports.allTypes = allTypes;
+function promisify(callback) {
+    return new Promise((resolve, reject) => {
+        try {
+            resolve(callback());
+        }
+        catch (e) {
+            reject(e);
+        }
+    });
+}
+exports.promisify = promisify;
 function combiIndex(value) {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
     if (Number.isNaN(combi)) {

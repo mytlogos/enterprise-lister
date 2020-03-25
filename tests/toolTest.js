@@ -52,9 +52,11 @@ describe("testing tool.js", () => {
                     await hashTool.equals(testString, hash.hash, hash.salt).should.eventually.be.true;
                 }
             });
-            it(`should throw ${hashTool.tag}'`, async function () {
-                await new Promise(() => hashTool.hash(undefined)).should.eventually.be.rejected;
-                await new Promise(() => hashTool.equals(undefined, "123", "123")).should.eventually.be.rejected;
+            it(`hash should throw ${hashTool.tag}'`, async function () {
+                await hashTool.hash(undefined).should.eventually.be.rejected;
+            });
+            it(`equals should throw ${hashTool.tag}'`, async function () {
+                await hashTool.equals(undefined, "123", "123").should.eventually.be.rejected;
             });
         }
     });

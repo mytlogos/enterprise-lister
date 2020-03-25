@@ -374,13 +374,24 @@ export const ShaHash: ShaHasher = {
      * @return {{salt: string, hash: string}}
      */
     hash(text: string, saltLength: number = 20): Promise<{ salt: string, hash: string }> {
-        const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
-            .toString("hex") // convert to hexadecimal format
-            .slice(0, saltLength); // return required number of characters */
-        return Promise.resolve({salt, hash: this.innerHash(text, salt)});
+        return promisify(() => {
+            if (!Number.isInteger(saltLength)) {
+                throw TypeError(`'${saltLength}' not an integer`);
+            }
+            const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
+                .toString("hex") // convert to hexadecimal format
+                .slice(0, saltLength); // return required number of characters */
+            return {salt, hash: this.innerHash(text, salt)};
+        });
     },
 
     innerHash(text, salt) {
+        if (!isString(text)) {
+            throw TypeError(`'${text}' not a string`);
+        }
+        if (!isString(salt)) {
+            throw TypeError(`'${salt}' not a string`);
+        }
         const hash = crypt.createHash("sha512");
         hash.update(salt + text);
         return hash.digest("hex");
@@ -391,18 +402,23 @@ export const ShaHash: ShaHasher = {
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash, salt) {
-        return Promise.resolve(this.innerHash(text, salt) === hash);
+        return promisify(() => this.innerHash(text, salt) === hash);
     },
 };
 export const Md5Hash: Hasher = {
     tag: "md5",
 
     hash(text: string) {
-        const newsHash = crypto
-            .createHash("md5")
-            .update(text)
-            .digest("hex");
-        return Promise.resolve({hash: newsHash});
+        return promisify(() => {
+            if (!isString(text)) {
+                throw TypeError(`'${text}' not a string`);
+            }
+            const newsHash = crypto
+                .createHash("md5")
+                .update(text)
+                .digest("hex");
+            return {hash: newsHash};
+        });
     },
 
     /**
@@ -465,6 +481,16 @@ export function hasMediaType(container: MediaType, testFor: MediaType) {
 export function allTypes() {
     return (Object.values(MediaType) as number[])
         .reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
+}
+
+export function promisify<T>(callback: () => T): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        try {
+            resolve(callback());
+        } catch (e) {
+            reject(e);
+        }
+    });
 }
 
 export function combiIndex(value: { totalIndex: number, partialIndex?: number }): number {
