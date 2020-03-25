@@ -498,7 +498,7 @@ function isQuery(value) {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
 exports.isQuery = isQuery;
-class InternetTesterImpl extends events_1.default {
+class InternetTesterImpl extends events_1.default.EventEmitter {
     constructor() {
         super();
         this.offline = undefined;

@@ -558,11 +558,11 @@ export function isQuery(value: any): value is Query {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
 
-export interface InternetTester extends EventEmitter {
+export interface InternetTester extends EventEmitter.EventEmitter {
     on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
 }
 
-class InternetTesterImpl extends EventEmitter implements InternetTester {
+class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTester {
     private offline?: boolean = undefined;
     private since: Date = new Date();
 

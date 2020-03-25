@@ -44,9 +44,13 @@ interface Hash {
 }
 export interface Hasher {
     tag: string;
-    hash(text: string, saltLength?: number): Hash;
-    equals(text: string, hash: string, salt: string): boolean;
+    hash(text: string, saltLength?: number): Promise<Hash>;
+    equals(text: string, hash: string, salt: string): Promise<boolean>;
 }
+interface ShaHasher extends Hasher {
+    innerHash(text: string, salt: string): string;
+}
+export declare const ShaHash: ShaHasher;
 export declare const Md5Hash: Hasher;
 export declare const BcryptHash: Hasher;
 export declare const Hashes: Hasher[];
@@ -98,7 +102,7 @@ export declare function ignore(): undefined;
  */
 export declare function findProjectDirPath(file: string): string;
 export declare function isQuery(value: any): value is Query;
-export interface InternetTester extends EventEmitter {
+export interface InternetTester extends EventEmitter.EventEmitter {
     on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
 }
 export declare const internetTester: InternetTester;
