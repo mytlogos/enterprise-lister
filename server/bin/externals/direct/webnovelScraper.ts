@@ -339,7 +339,7 @@ async function search(text: string): Promise<SearchResult[]> {
         const titleElement = result.find("h3 > a");
         const coverElement = result.find("img");
         const title = sanitizeString(titleElement.text());
-        const coverUrl = url.resolve(uri, coverElement.attr("src"));
+        const coverUrl = url.resolve(uri, coverElement.attr("src") as string);
         const link = url.resolve(uri, titleElement.attr("href") as string);
 
         searchResult.push({title, link, coverUrl});

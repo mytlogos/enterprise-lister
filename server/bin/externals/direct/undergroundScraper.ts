@@ -29,7 +29,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         }
 
         const timeStampElement = mediumElement.find(".timeago").first();
-        const date = new Date(timeStampElement.attr("title"));
+        const date = new Date(timeStampElement.attr("title") as string);
 
         if (date > now) {
             // due to summer time the zone of germany is utc+2,
