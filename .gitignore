@@ -38,7 +38,9 @@ build/Release
 node_modules/
 exampleData/
 binJs/
-tests/
+tests/api
+tests/results
+tests/trash
 changes.md
 features.md
 env.env
