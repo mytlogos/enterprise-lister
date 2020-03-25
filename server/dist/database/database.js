@@ -162,7 +162,7 @@ function start() {
         }
     }
 }
-// @ts-ignore
+throw Error("do not load me");
 exports.Storage = {
     /**
      * Closes the Storage.
