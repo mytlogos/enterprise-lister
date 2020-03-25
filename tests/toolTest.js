@@ -116,10 +116,12 @@ describe("testing tool.js", () => {
     });
     describe("test remove", function () {
         it("should remove item with '===' equality", function () {
-            const items = [1, 2, 3, 4];
+            const items = [1, 1, 2, 3, 4];
             tools.remove(items, "1");
-            items.should.contain(1);
+            items.should.contain(1).and.have.length(5);
 
+            tools.remove(items, 1);
+            items.should.contain(1);
             tools.remove(items, 1);
             items.should.not.contain(1);
 
