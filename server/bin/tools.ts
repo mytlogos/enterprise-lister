@@ -45,13 +45,16 @@ export function promiseMultiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>)
 export function promiseMultiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): Promise<R[]>;
 
 export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): Promise<MultiSingle<R>> {
+    if (typeof cb !== "function") {
+        return Promise.reject(new TypeError(`callback is not a function: '${cb}'`));
+    }
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
         return Promise.all(item.map((value: T, index) => Promise.resolve(cb(value, index, index < maxIndex))));
     }
     return new Promise((resolve, reject) => {
         try {
-            resolve(cb(item));
+            resolve(cb(item, 0, false));
         } catch (e) {
             reject(e);
         }

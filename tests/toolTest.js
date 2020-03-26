@@ -225,6 +225,41 @@ describe("testing tool.js", () => {
         });
     });
     describe("test promiseMultiSingle", function () {
+        it("should always return a promise", function () {
+            return Promise.all([
+                tools.promiseMultiSingle(null, () => null).should.be.a("promise"),
+                tools.promiseMultiSingle(null, null).catch(() => {
+                }).should.be.a("promise"),
+                tools.promiseMultiSingle([], null).catch(() => {
+                }).should.be.a("promise"),
+                tools.promiseMultiSingle([], () => 1).should.be.a("promise"),
+                tools.promiseMultiSingle(1, () => 1).should.be.a("promise"),
+                tools.promiseMultiSingle({0: 1, length: 1}, () => 1).should.be.a("promise"),
+            ]);
+        });
+        it("should throw if no callback provided", async function () {
+            await tools.promiseMultiSingle(null, null).should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle([], null).should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle([1, 2], null).should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle([1, 2], 1).should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle(2, 1).should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle(1, "1").should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle([1, 2], "1").should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle([1, 2], {callback: () => undefined}).should.be.rejectedWith(TypeError);
+            await tools.promiseMultiSingle(1, {callback: () => undefined}).should.be.rejectedWith(TypeError);
+        });
+        it("should always have 3 arguments, being an item, a number and a boolean", async function () {
+            const callback = sandbox.stub().callsFake(function () {
+                arguments.should.have.length(3);
+                arguments[1].should.be.finite.and.above(-1);
+                arguments[2].should.be.a("boolean");
+            });
+            await tools.promiseMultiSingle([1, 2], callback);
+            await tools.promiseMultiSingle(1, callback);
+            await tools.promiseMultiSingle(null, callback);
+            await tools.promiseMultiSingle(undefined, callback);
+            await tools.promiseMultiSingle([undefined, null, 1, {}, "3"], callback);
+        });
     });
     describe("test multiSingle", function () {
     });

@@ -36,13 +36,16 @@ function forEachArrayLike(arrayLike, callback, start = 0) {
 }
 exports.forEachArrayLike = forEachArrayLike;
 function promiseMultiSingle(item, cb) {
+    if (typeof cb !== "function") {
+        return Promise.reject(new TypeError(`callback is not a function: '${cb}'`));
+    }
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
         return Promise.all(item.map((value, index) => Promise.resolve(cb(value, index, index < maxIndex))));
     }
     return new Promise((resolve, reject) => {
         try {
-            resolve(cb(item));
+            resolve(cb(item, 0, false));
         }
         catch (e) {
             reject(e);
