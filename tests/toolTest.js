@@ -187,6 +187,41 @@ describe("testing tool.js", () => {
         });
     });
     describe("test forEachArrayLike", function () {
+        const arrayLikeSandbox = sinon.createSandbox();
+        let callback;
+
+        before(() => {
+            callback = arrayLikeSandbox.stub().callsFake(function () {
+                arguments.should.have.length(2);
+                arguments[1].should.be.finite;
+            });
+        });
+        afterEach(() => callback.reset());
+        after(() => arrayLikeSandbox.restore());
+
+        it("should equal the times called and length of arrayLike", function () {
+            const arrayLike = [1, 2, 3, 4];
+            tools.forEachArrayLike(arrayLike, callback);
+            callback.should.have.callCount(arrayLike.length);
+        });
+        it("should be called for each element once and in order", function () {
+            const arrayLike = [1, 2, 3, 4];
+            tools.forEachArrayLike(arrayLike, callback);
+
+            const firstCall = callback.getCall(0);
+            const secondCall = callback.getCall(1);
+            const thirdCall = callback.getCall(2);
+            const fourthCall = callback.getCall(3);
+
+            firstCall.should.be.calledBefore(secondCall).and.be.calledBefore(fourthCall);
+            secondCall.should.be.calledBefore(thirdCall);
+            thirdCall.should.be.calledBefore(fourthCall);
+
+            firstCall.should.be.calledWith(1, 0);
+            secondCall.should.be.calledWith(2, 1);
+            thirdCall.should.be.calledWith(3, 2);
+            fourthCall.should.be.calledWith(4, 3);
+        });
     });
     describe("test promiseMultiSingle", function () {
     });
