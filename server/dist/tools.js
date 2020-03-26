@@ -21,7 +21,7 @@ function remove(array, item) {
 }
 exports.remove = remove;
 function removeLike(array, equals) {
-    const index = array.findIndex(equals);
+    const index = array.findIndex((value) => equals(value));
     if (index < 0) {
         return false;
     }

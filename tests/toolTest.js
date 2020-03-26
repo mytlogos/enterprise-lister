@@ -116,21 +116,75 @@ describe("testing tool.js", () => {
     });
     describe("test remove", function () {
         it("should remove item with '===' equality", function () {
-            const items = [1, 1, 2, 3, 4];
+            const items = [1, 2, 3, undefined, 4, null];
             tools.remove(items, "1");
-            items.should.contain(1).and.have.length(5);
+            items.should.be.eql([1, 2, 3, undefined, 4, null]);
 
             tools.remove(items, 1);
-            items.should.contain(1);
+            items.should.be.eql([2, 3, undefined, 4, null]);
+
             tools.remove(items, 1);
-            items.should.not.contain(1);
+            items.should.be.eql([2, 3, undefined, 4, null]);
+
+            tools.remove(items, undefined);
+            items.should.be.eql([2, 3, 4, null]);
+
+            tools.remove(items, null);
+            items.should.be.eql([2, 3, 4]);
 
             const emptyItems = [];
             tools.remove(emptyItems, 1);
-            items.should.not.contain(1);
+            emptyItems.should.be.eql([]);
+        });
+        it("should remove the first item only", function () {
+            const items = [1, 2, 3, 1, 4];
+
+            tools.remove(items, 1);
+            items.should.be.eql([2, 3, 1, 4]);
+            tools.remove(items, 1);
+            items.should.be.eql([2, 3, 4]);
         });
     });
     describe("test removeLike", function () {
+        it("should remove item with defined equality", function () {
+            const items = [1, 2, 3, 4];
+            tools.removeLike(items, item => item === "1");
+            items.should.be.eql([1, 2, 3, 4]);
+            tools.removeLike(items, item => item == "1");
+            items.should.be.eql([2, 3, 4]);
+
+            tools.removeLike(items, item => item === 1);
+            items.should.be.eql([2, 3, 4]);
+
+            const emptyItems = [];
+            tools.removeLike(emptyItems, item => item === 1);
+            emptyItems.should.be.eql([]);
+        });
+        it("should remove the first item only", function () {
+            const items = [1, 2, 3, 1, 4];
+
+            tools.removeLike(items, item => item === 1);
+            items.should.be.eql([2, 3, 1, 4]);
+            tools.removeLike(items, item => item === 1);
+            items.should.be.eql([2, 3, 4]);
+        });
+        it("should have one argument only for callback", function () {
+            const items = [1, 2, 3, 1, 4];
+
+            const equals = function (item) {
+                arguments.length.should.be.equal(1);
+                arguments.length.should.not.be.equal("1");
+                return item === 1;
+            };
+            tools.removeLike(items, equals);
+            items.should.be.eql([2, 3, 1, 4]);
+            tools.removeLike(items, equals);
+            items.should.be.eql([2, 3, 4]);
+
+            const emptyItems = [];
+            tools.removeLike(emptyItems, equals);
+            emptyItems.should.be.eql([]);
+        });
     });
     describe("test forEachArrayLike", function () {
     });

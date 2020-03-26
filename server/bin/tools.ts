@@ -23,7 +23,7 @@ export function remove<T>(array: T[], item: T): boolean {
 }
 
 export function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean {
-    const index = array.findIndex(equals);
+    const index = array.findIndex((value) => equals(value));
     if (index < 0) {
         return false;
     }
