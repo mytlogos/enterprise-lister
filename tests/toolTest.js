@@ -200,12 +200,12 @@ describe("testing tool.js", () => {
         after(() => arrayLikeSandbox.restore());
 
         it("should equal the times called and length of arrayLike", function () {
-            const arrayLike = [1, 2, 3, 4];
+            const arrayLike = {0: 1, 1: 2, 2: 3, 3: 4, length: 4};
             tools.forEachArrayLike(arrayLike, callback);
             callback.should.have.callCount(arrayLike.length);
         });
         it("should be called for each element once and in order", function () {
-            const arrayLike = [1, 2, 3, 4];
+            const arrayLike = {0: 1, 1: 2, 2: 3, 3: 4, length: 4};
             tools.forEachArrayLike(arrayLike, callback);
 
             const firstCall = callback.getCall(0);
