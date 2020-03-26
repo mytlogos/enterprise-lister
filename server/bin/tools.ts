@@ -591,15 +591,19 @@ export interface InternetTester extends EventEmitter.EventEmitter {
     on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
 
     isOnline(): boolean;
+
+    stop(): void;
 }
 
 class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTester {
     private offline?: boolean = undefined;
     private since: Date = new Date();
+    private stopLoop = false;
 
     constructor() {
         super();
-        this.checkInternet();
+        // should never call catch callback
+        this.checkInternet().catch(console.error);
     }
 
     public on(evt: "online" | "offline", listener: (previousSince: Date) => void): this {
@@ -620,25 +624,30 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
         return !this.offline;
     }
 
-    private checkInternet() {
-        dns.promises.lookup("google.com")
-            .then(() => {
+    public stop() {
+        this.stopLoop = true;
+    }
+
+    private async checkInternet() {
+        while (!this.stopLoop) {
+            try {
+                await dns.promises.lookup("google.com");
                 if (this.offline || this.offline == null) {
                     this.offline = false;
                     const since = new Date();
                     this.emit("online", this.since);
                     this.since = since;
                 }
-            })
-            .catch(() => {
+            } catch (e) {
                 if (!this.offline) {
                     this.offline = true;
                     const since = new Date();
                     this.emit("offline", this.since);
                     this.since = since;
                 }
-            })
-            .finally(() => setTimeout(() => this.checkInternet(), 1000));
+            }
+            await delay(1000);
+        }
     }
 }
 

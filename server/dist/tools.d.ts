@@ -106,6 +106,7 @@ export declare function isQuery(value: any): value is Query;
 export interface InternetTester extends EventEmitter.EventEmitter {
     on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
     isOnline(): boolean;
+    stop(): void;
 }
 export declare const internetTester: InternetTester;
 export {};

@@ -533,7 +533,9 @@ class InternetTesterImpl extends events_1.default.EventEmitter {
         super();
         this.offline = undefined;
         this.since = new Date();
-        this.checkInternet();
+        this.stopLoop = false;
+        // should never call catch callback
+        this.checkInternet().catch(console.error);
     }
     on(evt, listener) {
         super.on(evt, listener);
@@ -550,25 +552,30 @@ class InternetTesterImpl extends events_1.default.EventEmitter {
     isOnline() {
         return !this.offline;
     }
-    checkInternet() {
-        dns.promises.lookup("google.com")
-            .then(() => {
-            if (this.offline || this.offline == null) {
-                this.offline = false;
-                const since = new Date();
-                this.emit("online", this.since);
-                this.since = since;
+    stop() {
+        this.stopLoop = true;
+    }
+    async checkInternet() {
+        while (!this.stopLoop) {
+            try {
+                await dns.promises.lookup("google.com");
+                if (this.offline || this.offline == null) {
+                    this.offline = false;
+                    const since = new Date();
+                    this.emit("online", this.since);
+                    this.since = since;
+                }
             }
-        })
-            .catch(() => {
-            if (!this.offline) {
-                this.offline = true;
-                const since = new Date();
-                this.emit("offline", this.since);
-                this.since = since;
+            catch (e) {
+                if (!this.offline) {
+                    this.offline = true;
+                    const since = new Date();
+                    this.emit("offline", this.since);
+                    this.since = since;
+                }
             }
-        })
-            .finally(() => setTimeout(() => this.checkInternet(), 1000));
+            await delay(1000);
+        }
     }
 }
 exports.internetTester = new InternetTesterImpl();

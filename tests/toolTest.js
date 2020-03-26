@@ -12,6 +12,7 @@ chai.should();
 
 process.on("unhandledRejection", () => console.log("an unhandled rejection!"));
 process.on("uncaughtException", (args) => console.log("an unhandled exception!", args));
+after(() => tools.internetTester.stop());
 
 describe("testing tool.js", () => {
     const sandbox = sinon.createSandbox();
