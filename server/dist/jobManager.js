@@ -209,9 +209,7 @@ class JobQueue {
         return new Promise((resolve, reject) => {
             try {
                 const result = callback();
-                if (result && result instanceof Promise) {
-                    resolve(result);
-                }
+                resolve(result);
             }
             catch (e) {
                 reject(e);
