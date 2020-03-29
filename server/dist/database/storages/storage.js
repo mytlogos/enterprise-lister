@@ -166,9 +166,10 @@ class Storage {
      * @return {Promise<void>}
      */
     stop() {
+        logger_1.default.info("Stopping Database");
         running = false;
         startPromise = null;
-        return Promise.resolve(poolPromise.then((value) => value.end()));
+        return poolPromise.then((value) => value.end()).then(() => logger_1.default.info("Database stopped now"));
     }
     getPageInfo(link, key) {
         return inContext((context) => context.getPageInfo(link, key));

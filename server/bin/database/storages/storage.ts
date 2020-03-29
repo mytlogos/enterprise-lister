@@ -191,9 +191,10 @@ export class Storage {
      * @return {Promise<void>}
      */
     public stop(): Promise<void> {
+        logger.info("Stopping Database");
         running = false;
         startPromise = null;
-        return Promise.resolve(poolPromise.then((value) => value.end()));
+        return poolPromise.then((value) => value.end()).then(() => logger.info("Database stopped now"));
     }
 
     public getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }> {
