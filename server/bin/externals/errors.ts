@@ -13,6 +13,8 @@ export class UrlError extends Error {
 
 // tslint:disable-next-line:max-classes-per-file
 export class MissingResourceError extends Error {
+    public name = "MissingResourceError";
+
     constructor(message: string) {
         super(message);
     }

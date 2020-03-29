@@ -7,6 +7,8 @@ const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const parse5_parser_stream_1 = tslib_1.__importDefault(require("parse5-parser-stream"));
 const htmlparser2 = tslib_1.__importStar(require("htmlparser2"));
 const transform_1 = require("../transform");
+const errors_1 = require("request-promise-native/errors");
+const errors_2 = require("./errors");
 class Queue {
     constructor(maxLimit = 1000) {
         this.maxLimit = maxLimit > 10 ? maxLimit : 10;
@@ -180,6 +182,14 @@ function streamHtmlParser2(resolve, reject, uri, options) {
             options.transform = transformCheerio;
             resolve(cloudscraper_1.default(options));
             return;
+        }
+        else if (resp.statusCode === 404) {
+            resp.destroy();
+            reject(new errors_2.MissingResourceError(uri));
+        }
+        else if (resp.statusCode >= 400 || resp.statusCode < 200) {
+            resp.destroy();
+            reject(new errors_1.StatusCodeError(resp.statusCode, "", options, resp));
         }
         resp.pipe(stream).pipe(parser);
     })

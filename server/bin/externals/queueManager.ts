@@ -4,6 +4,9 @@ import cheerio from "cheerio";
 import ParserStream from "parse5-parser-stream";
 import * as htmlparser2 from "htmlparser2";
 import {BufferToStringStream} from "../transform";
+import {StatusCodeError} from "request-promise-native/errors";
+import requestPromise from "request-promise-native";
+import {MissingResourceError} from "./errors";
 
 
 export class Queue {
@@ -217,6 +220,12 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
                 options.transform = transformCheerio;
                 resolve(request(options));
                 return;
+            } else if (resp.statusCode === 404) {
+                resp.destroy();
+                reject(new MissingResourceError(uri));
+            } else if (resp.statusCode >= 400 || resp.statusCode < 200) {
+                resp.destroy();
+                reject(new StatusCodeError(resp.statusCode, "", options as requestPromise.Options, resp));
             }
             resp.pipe(stream).pipe(parser);
         })
