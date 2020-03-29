@@ -6,8 +6,9 @@ import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitiz
 import logger from "../../logger";
 import {getTextContent, SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
-import {jobStorage, mediumStorage} from "../../database/storages/storage";
-import {UrlError} from "../errors";
+import {MissingResourceError, UrlError} from "../errors";
+import {StatusCodeError} from "cloudscraper/errors";
+import {StatusCodeError as RequestStatusCodeError} from "request-promise-native/errors";
 
 interface NovelSearchResponse {
     success: boolean;
@@ -142,7 +143,20 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
         throw new UrlError("not a valid toc url for boxnovel: " + tocLink);
     }
-    const $ = await queueCheerioRequest(tocLink);
+    let $: CheerioStatic;
+    try {
+        $ = await queueCheerioRequest(tocLink);
+    } catch (e) {
+        if (e instanceof StatusCodeError || e instanceof RequestStatusCodeError) {
+            if (e.statusCode === 404) {
+                throw new MissingResourceError(tocLink);
+            } else {
+                throw e;
+            }
+        } else {
+            throw e;
+        }
+    }
 
     if ($("body.error404").length) {
         logger.warn("toc will be removed, resource was seemingly deleted on: " + tocLink);
@@ -150,9 +164,9 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
         //  and if there are to scrape them and delete any releases that are not contained in them
         //  if there aren't any other tocs on this domain, remove all releases from that domain
-        await mediumStorage.removeToc(tocLink);
-        await jobStorage.removeJobLike("name", tocLink);
-        return [];
+        // await mediumStorage.removeToc(tocLink);
+        // await jobStorage.removeJobLike("name", tocLink);
+        throw new MissingResourceError(tocLink);
     }
 
     const mediumTitleElement = $(".post-title h3");
@@ -164,6 +178,8 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 
     const titleRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?\s*((\d+)(\.(\d+))?)/i;
     const linkRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?-((\d+)(\.(\d+))?)/i;
+
+    const seenEpisodes: Map<number, string> = new Map();
     let end;
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
@@ -225,6 +241,11 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         if (!episodeIndices) {
             throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
         }
+        const previousTitle = seenEpisodes.get(episodeIndices.combi);
+        if (previousTitle && previousTitle === episodeTitle) {
+            continue;
+        }
+        seenEpisodes.set(episodeIndices.combi, episodeTitle);
         const chapterContent = {
             combiIndex: episodeIndices.combi,
             totalIndex: episodeIndices.total,

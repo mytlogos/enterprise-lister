@@ -7,8 +7,9 @@ const tools_1 = require("../../tools");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
-const storage_1 = require("../../database/storages/storage");
 const errors_1 = require("../errors");
+const errors_2 = require("cloudscraper/errors");
+const errors_3 = require("request-promise-native/errors");
 async function tocSearch(medium) {
     return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (searchString) => searchAjax(searchString, medium));
 }
@@ -117,16 +118,32 @@ async function tocAdapter(tocLink) {
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
         throw new errors_1.UrlError("not a valid toc url for boxnovel: " + tocLink);
     }
-    const $ = await queueManager_1.queueCheerioRequest(tocLink);
+    let $;
+    try {
+        $ = await queueManager_1.queueCheerioRequest(tocLink);
+    }
+    catch (e) {
+        if (e instanceof errors_2.StatusCodeError || e instanceof errors_3.StatusCodeError) {
+            if (e.statusCode === 404) {
+                throw new errors_1.MissingResourceError(tocLink);
+            }
+            else {
+                throw e;
+            }
+        }
+        else {
+            throw e;
+        }
+    }
     if ($("body.error404").length) {
         logger_1.default.warn("toc will be removed, resource was seemingly deleted on: " + tocLink);
         // TODO: 10.03.2020 remove any releases associated? with this toc
         //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
         //  and if there are to scrape them and delete any releases that are not contained in them
         //  if there aren't any other tocs on this domain, remove all releases from that domain
-        await storage_1.mediumStorage.removeToc(tocLink);
-        await storage_1.jobStorage.removeJobLike("name", tocLink);
-        return [];
+        // await mediumStorage.removeToc(tocLink);
+        // await jobStorage.removeJobLike("name", tocLink);
+        throw new errors_1.MissingResourceError(tocLink);
     }
     const mediumTitleElement = $(".post-title h3");
     mediumTitleElement.find("span").remove();
@@ -135,6 +152,7 @@ async function tocAdapter(tocLink) {
     const items = $(".wp-manga-chapter");
     const titleRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?\s*((\d+)(\.(\d+))?)/i;
     const linkRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?-((\d+)(\.(\d+))?)/i;
+    const seenEpisodes = new Map();
     let end;
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
@@ -187,6 +205,11 @@ async function tocAdapter(tocLink) {
         if (!episodeIndices) {
             throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
         }
+        const previousTitle = seenEpisodes.get(episodeIndices.combi);
+        if (previousTitle && previousTitle === episodeTitle) {
+            continue;
+        }
+        seenEpisodes.set(episodeIndices.combi, episodeTitle);
         const chapterContent = {
             combiIndex: episodeIndices.combi,
             totalIndex: episodeIndices.total,
