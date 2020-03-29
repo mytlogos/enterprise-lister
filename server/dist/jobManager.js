@@ -15,7 +15,6 @@ class JobQueue {
         this.waitingJobs = [];
         this.activeJobs = [];
         this.queueActive = false;
-        this.currentJobId = 0;
         this.currentInterval = 1000;
         this.memoryLimit = memoryLimit;
         this.memorySize = memorySize;
@@ -32,12 +31,12 @@ class JobQueue {
     get totalJobs() {
         return this.waitingJobs.length + this.activeJobs.length;
     }
-    addJob(job) {
+    addJob(jobId, job) {
         const wasEmpty = this.isEmpty();
         let lastRun = null;
         const info = {};
         const internJob = {
-            jobId: this.currentJobId++,
+            jobId,
             executed: 0,
             active: true,
             job,
@@ -126,7 +125,7 @@ class JobQueue {
             job.startRun = 0;
         }
         else {
-            logger_1.default.info("Cancelling already finished job");
+            logger_1.default.info(`Cancelling already finished job ${job.jobId}`);
         }
     }
     _fullQueue() {
@@ -168,21 +167,21 @@ class JobQueue {
             if (toExecute.jobInfo.onStart) {
                 await this
                     .executeCallback(toExecute.jobInfo.onStart)
-                    .catch((reason) => logger_1.default.error("On Start threw an error!: " + tools_1.stringify(reason)));
+                    .catch((reason) => logger_1.default.error(`Job ${toExecute.jobId} onStart threw an error!: ${tools_1.stringify(reason)}`));
             }
             logger_1.default.info("executing job: " + toExecute.jobId);
             return toExecute.job(() => this._done(toExecute));
         })
             .catch((reason) => {
             tools_1.remove(this.waitingJobs, toExecute);
-            logger_1.default.error(reason);
+            logger_1.default.error(`Job ${toExecute.jobId} threw an error somewhere ${tools_1.stringify(reason)}`);
             return reason;
         })
             .finally(() => {
             this._done(toExecute);
             if (toExecute.jobInfo.onDone) {
                 this.executeCallback(toExecute.jobInfo.onDone)
-                    .catch((reason) => logger_1.default.error("On Done threw an error!: " + tools_1.stringify(reason)));
+                    .catch((reason) => logger_1.default.error(`Job ${toExecute.jobId} onDone threw an error!: ${tools_1.stringify(reason)}`));
             }
         });
     }

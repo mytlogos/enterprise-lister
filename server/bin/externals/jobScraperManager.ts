@@ -327,7 +327,7 @@ export class JobScraperManager {
     }
 
     private queueEmittableJob(jobType: ScrapeJob, item: JobItem) {
-        const job = this.queue.addJob(() => {
+        const job = this.queue.addJob(item.id, () => {
             if (!jobType.event) {
                 logger.warn("running emittable job without event name: " + jobType);
                 return Promise.resolve();
@@ -343,7 +343,7 @@ export class JobScraperManager {
     }
 
     private queueJob(jobType: ScrapeJob, item: JobItem) {
-        const job = this.queue.addJob(() => {
+        const job = this.queue.addJob(item.id, () => {
             if (Array.isArray(item.arguments)) {
                 this.processJobCallback(jobType.func(...item.arguments));
             } else {

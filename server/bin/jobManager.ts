@@ -17,7 +17,6 @@ export class JobQueue {
     private readonly waitingJobs: InternJob[] = [];
     private readonly activeJobs: InternJob[] = [];
     private queueActive = false;
-    private currentJobId = 0;
     private intervalId: Timeout | undefined;
     private currentInterval = 1000;
 
@@ -41,13 +40,13 @@ export class JobQueue {
         this.maxActive = maxActive < 0 ? 1 : maxActive;
     }
 
-    public addJob(job: JobCallback): Job {
+    public addJob(jobId: number, job: JobCallback): Job {
         const wasEmpty = this.isEmpty();
         let lastRun: number | null = null;
 
         const info: Job = {};
         const internJob: InternJob = {
-            jobId: this.currentJobId++,
+            jobId,
             executed: 0,
             active: true,
             job,
@@ -148,7 +147,7 @@ export class JobQueue {
             job.lastRun = Date.now();
             job.startRun = 0;
         } else {
-            logger.info("Cancelling already finished job");
+            logger.info(`Cancelling already finished job ${job.jobId}`);
         }
     }
 
@@ -194,14 +193,14 @@ export class JobQueue {
                 if (toExecute.jobInfo.onStart) {
                     await this
                         .executeCallback(toExecute.jobInfo.onStart)
-                        .catch((reason) => logger.error("On Start threw an error!: " + stringify(reason)));
+                        .catch((reason) => logger.error(`Job ${toExecute.jobId} onStart threw an error!: ${stringify(reason)}`));
                 }
                 logger.info("executing job: " + toExecute.jobId);
                 return toExecute.job(() => this._done(toExecute));
             })
             .catch((reason) => {
                 remove(this.waitingJobs, toExecute);
-                logger.error(reason);
+                logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(reason)}`);
                 return reason;
             })
             .finally(() => {
@@ -209,7 +208,7 @@ export class JobQueue {
 
                 if (toExecute.jobInfo.onDone) {
                     this.executeCallback(toExecute.jobInfo.onDone)
-                        .catch((reason) => logger.error("On Done threw an error!: " + stringify(reason)));
+                        .catch((reason) => logger.error(`Job ${toExecute.jobId} onDone threw an error!: ${stringify(reason)}`));
                 }
             });
     }

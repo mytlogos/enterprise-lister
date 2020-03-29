@@ -12,7 +12,6 @@ export declare class JobQueue {
     private readonly waitingJobs;
     private readonly activeJobs;
     private queueActive;
-    private currentJobId;
     private intervalId;
     private currentInterval;
     get runningJobs(): number;
@@ -23,7 +22,7 @@ export declare class JobQueue {
         memorySize?: MemorySize | undefined;
         maxActive?: number | undefined;
     });
-    addJob(job: JobCallback): Job;
+    addJob(jobId: number, job: JobCallback): Job;
     removeJob(job: Job): boolean;
     start(): void;
     pause(): void;
