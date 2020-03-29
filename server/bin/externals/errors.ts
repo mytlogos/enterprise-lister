@@ -6,6 +6,8 @@ class ScraperError extends Error {
 
 // tslint:disable-next-line:max-classes-per-file
 export class UrlError extends Error {
+    public name = "UrlError";
+
     constructor(message: string) {
         super(message);
     }

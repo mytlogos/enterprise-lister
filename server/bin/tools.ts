@@ -328,6 +328,12 @@ export function jsonReplacer(key: any, value: any) {
         });
 
         return error;
+    } else if (value instanceof Map) {
+        const map: any = {};
+        for (const [k, v] of value.entries()) {
+            map[JSON.stringify(k)] = v;
+        }
+        return map;
     }
     return value;
 }
