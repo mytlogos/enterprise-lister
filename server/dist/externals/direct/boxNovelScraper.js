@@ -8,6 +8,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 const storage_1 = require("../../database/storages/storage");
+const errors_1 = require("../errors");
 async function tocSearch(medium) {
     return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (searchString) => searchAjax(searchString, medium));
 }
@@ -114,7 +115,7 @@ async function contentDownloadAdapter(urlString) {
 async function tocAdapter(tocLink) {
     const uri = "https://boxnovel.com";
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
-        return [];
+        throw new errors_1.UrlError("not a valid toc url for boxnovel: " + tocLink);
     }
     const $ = await queueManager_1.queueCheerioRequest(tocLink);
     if ($("body.error404").length) {

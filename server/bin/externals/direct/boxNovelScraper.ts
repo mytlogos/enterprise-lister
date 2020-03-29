@@ -7,6 +7,7 @@ import logger from "../../logger";
 import {getTextContent, SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 import {jobStorage, mediumStorage} from "../../database/storages/storage";
+import {UrlError} from "../errors";
 
 interface NovelSearchResponse {
     success: boolean;
@@ -139,7 +140,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const uri = "https://boxnovel.com";
 
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
-        return [];
+        throw new UrlError("not a valid toc url for boxnovel: " + tocLink);
     }
     const $ = await queueCheerioRequest(tocLink);
 
