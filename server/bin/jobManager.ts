@@ -201,7 +201,6 @@ export class JobQueue {
             .catch((reason) => {
                 remove(this.waitingJobs, toExecute);
                 logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(reason)}`);
-                return reason;
             })
             .finally(() => {
                 this._done(toExecute);
