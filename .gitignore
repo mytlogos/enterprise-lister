@@ -38,7 +38,7 @@ build/Release
 node_modules/
 exampleData/
 binJs/
-tests/api
+tests/api_requests
 tests/results
 tests/trash
 changes.md

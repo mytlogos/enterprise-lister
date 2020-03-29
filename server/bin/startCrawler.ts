@@ -1,4 +1,4 @@
-import {startCrawler} from "./crawlerStart";
+import {startCrawler} from "./jobHandler";
 import {startStorage} from "./database/storages/storage";
 import logger from "./logger";
 
