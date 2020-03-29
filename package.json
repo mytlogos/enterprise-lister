@@ -1,6 +1,6 @@
 {
   "name": "enterprise-other",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "pm2": "pm2 start",
@@ -11,9 +11,7 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "test:e2e": "vue-cli-service test:e2e",
-    "test:unit": "vue-cli-service test:unit",
-    "build:live": "nodemon --watch 'server/**/*.ts' --exec ts-node server/bin/startServer.ts",
-    "buildServer": "tsc -p server/tsconfig.json"
+    "test:unit": "vue-cli-service test:unit"
   },
   "dependencies": {
     "bcrypt-nodejs": "0.0.3",
@@ -73,7 +71,6 @@
     "@types/helmet": "0.0.45",
     "@types/htmlparser2": "^3.10.1",
     "@types/http-errors": "^1.6.3",
-    "@types/jest": "^25.1.4",
     "@types/localtunnel": "^2.0.0",
     "@types/mocha": "^7.0.2",
     "@types/morgan": "^1.9.0",
@@ -88,21 +85,17 @@
     "@types/uuid": "^7.0.2",
     "@vue/cli-plugin-babel": "^4.2.3",
     "@vue/cli-plugin-typescript": "^4.2.3",
-    "@vue/cli-plugin-unit-jest": "^4.2.3",
     "@vue/cli-service": "^4.2.3",
     "@vue/test-utils": "^1.0.0-beta.32",
     "babel-core": "6.26.3",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
     "expect.js": "^0.3.1",
-    "jest": "^25.1.0",
     "mocha": "^7.1.1",
     "mocha-parallel-tests": "^2.3.0",
-    "nodemon": "^2.0.2",
     "sinon": "^9.0.1",
     "sinon-as-promised": "^4.0.3",
     "sinon-chai": "^3.5.0",
-    "ts-jest": "^25.2.1",
     "typescript": "^3.8.3",
     "vue-template-compiler": "^2.6.11"
   },
@@ -115,35 +108,5 @@
     "> 1%",
     "last 2 versions",
     "not ie <= 8"
-  ],
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "jsx",
-      "json",
-      "vue",
-      "ts",
-      "tsx"
-    ],
-    "transform": {
-      "^.+\\.vue$": "vue-jest",
-      ".+\\.(css|styl|less|sass|scss|svg|png|jpg|ttf|woff|woff2)$": "jest-transform-stub",
-      "^.+\\.tsx?$": "ts-jest"
-    },
-    "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/src/$1"
-    },
-    "snapshotSerializers": [
-      "jest-serializer-vue"
-    ],
-    "testMatch": [
-      "**/tests/unit/**/*.spec.(js|jsx|ts|tsx)|**/__tests__/*.(js|jsx|ts|tsx)"
-    ],
-    "testURL": "http://localhost/",
-    "globals": {
-      "ts-jest": {
-        "babelConfig": true
-      }
-    }
-  }
+  ]
 }
