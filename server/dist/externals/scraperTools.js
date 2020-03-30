@@ -15,6 +15,7 @@ const queueManager_1 = require("./queueManager");
 const env_1 = tslib_1.__importDefault(require("../env"));
 const undergroundScraper_1 = require("./direct/undergroundScraper");
 const storage_1 = require("../database/storages/storage");
+const errors_1 = require("./errors");
 const redirects = [];
 const tocScraper = new Map();
 const episodeDownloader = new Map();
@@ -371,8 +372,7 @@ exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
     logger_1.default.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
     if (!path) {
-        logger_1.default.warn(`malformed url: '${link}'`);
-        return { tocs: [], uuid };
+        throw new errors_1.UrlError(`malformed url: '${link}'`, link);
     }
     let allTocPromise;
     for (const entry of tocScraper.entries()) {

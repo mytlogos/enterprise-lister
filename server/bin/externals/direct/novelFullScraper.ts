@@ -6,6 +6,7 @@ import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from 
 import logger from "../../logger";
 import {getTextContent, searchTocCheerio} from "./directTools";
 import {checkTocContent} from "../scraperTools";
+import {UrlError} from "../errors";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return searchTocCheerio(
@@ -31,7 +32,7 @@ async function search(text: string): Promise<SearchResult[]> {
         const authorElement = resultElement.find(".author");
         const coverElement = resultElement.find("img.cover");
 
-        const coverLink = url.resolve(uri, coverElement.attr("src"));
+        const coverLink = url.resolve(uri, coverElement.attr("src") as string);
         const author = sanitizeString(authorElement.text());
         const title = sanitizeString(linkElement.text());
         let tocLink = linkElement.attr("href") as string;
@@ -71,7 +72,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 
     const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
     if (!linkMatch) {
-        return [];
+        throw new UrlError("not a valid toc url for NovelFull: " + tocLink, tocLink);
     }
     const toc: {
         title?: string;

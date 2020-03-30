@@ -7,6 +7,7 @@ const tools_1 = require("../../tools");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
+const errors_1 = require("../errors");
 async function tocSearch(medium) {
     return directTools_1.searchTocCheerio(medium, tocAdapter, "http://novelfull.com/", (parameter) => "http://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
 }
@@ -52,7 +53,7 @@ async function tocAdapter(tocLink) {
     const uri = "http://novelfull.com";
     const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
     if (!linkMatch) {
-        return [];
+        throw new errors_1.UrlError("not a valid toc url for NovelFull: " + tocLink, tocLink);
     }
     const toc = {
         link: tocLink,

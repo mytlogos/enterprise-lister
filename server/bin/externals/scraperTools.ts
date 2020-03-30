@@ -49,6 +49,7 @@ import {
     partStorage,
     storage
 } from "../database/storages/storage";
+import {UrlError} from "./errors";
 
 const redirects: RegExp[] = [];
 const tocScraper: Map<RegExp, TocScraper> = new Map();
@@ -469,8 +470,7 @@ export const oneTimeToc = async ({url: link, uuid, mediumId}: TocRequest)
     const path = url.parse(link).path;
 
     if (!path) {
-        logger.warn(`malformed url: '${link}'`);
-        return {tocs: [], uuid};
+        throw new UrlError(`malformed url: '${link}'`, link);
     }
     let allTocPromise: Promise<Toc[]> | undefined;
 

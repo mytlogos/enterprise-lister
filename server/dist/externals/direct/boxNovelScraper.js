@@ -116,7 +116,7 @@ async function contentDownloadAdapter(urlString) {
 async function tocAdapter(tocLink) {
     const uri = "https://boxnovel.com";
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
-        throw new errors_1.UrlError("not a valid toc url for boxnovel: " + tocLink);
+        throw new errors_1.UrlError("not a valid toc url for BoxNovel: " + tocLink, tocLink);
     }
     let $;
     try {
@@ -125,7 +125,7 @@ async function tocAdapter(tocLink) {
     catch (e) {
         if (e instanceof errors_2.StatusCodeError || e instanceof errors_3.StatusCodeError) {
             if (e.statusCode === 404) {
-                throw new errors_1.MissingResourceError(tocLink);
+                throw new errors_1.MissingResourceError("Toc not found on BoxNovel", tocLink);
             }
             else {
                 throw e;
@@ -136,14 +136,7 @@ async function tocAdapter(tocLink) {
         }
     }
     if ($("body.error404").length) {
-        logger_1.default.warn("toc will be removed, resource was seemingly deleted on: " + tocLink);
-        // TODO: 10.03.2020 remove any releases associated? with this toc
-        //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
-        //  and if there are to scrape them and delete any releases that are not contained in them
-        //  if there aren't any other tocs on this domain, remove all releases from that domain
-        // await mediumStorage.removeToc(tocLink);
-        // await jobStorage.removeJobLike("name", tocLink);
-        throw new errors_1.MissingResourceError(tocLink);
+        throw new errors_1.MissingResourceError("Toc not found on BoxNovel", tocLink);
     }
     const mediumTitleElement = $(".post-title h3");
     mediumTitleElement.find("span").remove();

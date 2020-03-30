@@ -35,11 +35,13 @@ import {
     episodeStorage,
     externalListStorage,
     externalUserStorage,
+    jobStorage,
     mediumStorage,
     newsStorage,
     partStorage,
     storage
 } from "./database/storages/storage";
+import {MissingResourceError, UrlError} from "./externals/errors";
 
 const scraper = DefaultJobScraper;
 
@@ -700,8 +702,26 @@ async function newsHandler({link, result}: { link: string, result: News[] }) {
     }
 }
 
+async function tocErrorHandler(error: Error) {
+    // TODO: 10.03.2020 remove any releases associated? with this toc
+    //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
+    //  and if there are to scrape them and delete any releases that are not contained in them
+    //  if there aren't any other tocs on this domain, remove all releases from that domain
+    if (error instanceof MissingResourceError) {
+        logger.warn("toc will be removed, resource was seemingly deleted from: " + error.resource);
+        await mediumStorage.removeToc(error.resource);
+        await jobStorage.removeJobLike("name", error.resource);
+    } else if (error instanceof UrlError) {
+        logger.warn("toc will be removed, url is not what the scraper expected: " + error.url);
+        await mediumStorage.removeToc(error.url);
+        await jobStorage.removeJobLike("name", error.url);
+    } else {
+        logger.error(error);
+    }
+}
+
 scraper.on("feed:error", (errorValue: any) => logger.error(errorValue));
-scraper.on("toc:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("toc:error", (errorValue: any) => tocErrorHandler(errorValue));
 scraper.on("list:error", (errorValue: any) => logger.error(errorValue));
 
 scraper.on("news:error", (errorValue: any) => logger.error(errorValue));
