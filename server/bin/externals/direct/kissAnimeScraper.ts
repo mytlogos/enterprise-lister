@@ -8,6 +8,7 @@ import * as request from "cloudscraper";
 import {CloudScraper, CloudscraperOptions} from "cloudscraper";
 import * as normalRequest from "request";
 import {checkTocContent} from "../scraperTools";
+import {UrlError} from "../errors";
 
 // @ts-ignore
 const jar = request.jar();
@@ -141,6 +142,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
  */
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+    const urlRegex = /^https?:\/\/kissanime\.ru\/Anime\/[^\/]+\/?$/;
+
+    if (!urlRegex.test(urlString)) {
+        throw new UrlError("invalid toc url for KissAnime: " + urlString, urlString);
+    }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#container > #leftside");
     const animeTitle = contentElement

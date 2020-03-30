@@ -6,6 +6,7 @@ const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const tools_1 = require("../../tools");
 const scraperTools_1 = require("../scraperTools");
+const errors_1 = require("../errors");
 async function scrapeNews() {
     const uri = "https://www.wuxiaworld.com/";
     const $ = await queueManager_1.queueCheerioRequest(uri);
@@ -101,6 +102,9 @@ async function scrapeNews() {
 async function scrapeToc(urlString) {
     if (urlString.endsWith("-preview")) {
         return [];
+    }
+    if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^\/]+\/?$/.test(urlString)) {
+        throw new errors_1.UrlError("not a toc link for WuxiaWorld: " + urlString, urlString);
     }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".content");

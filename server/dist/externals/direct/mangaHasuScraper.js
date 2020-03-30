@@ -7,6 +7,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 const scraperTools_1 = require("../scraperTools");
 const directTools_1 = require("./directTools");
+const errors_1 = require("../errors");
 async function scrapeNews() {
     // todo scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
@@ -128,8 +129,7 @@ async function contentDownloadAdapter(chapterLink) {
 }
 async function scrapeToc(urlString) {
     if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
-        logger_1.default.info("not a toc link for mangahasu: " + urlString);
-        return [];
+        throw new errors_1.UrlError("not a toc link for MangaHasu: " + urlString, urlString);
     }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");

@@ -5,6 +5,7 @@ import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
+import {UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.wuxiaworld.com/";
@@ -114,6 +115,9 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (urlString.endsWith("-preview")) {
         return [];
+    }
+    if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^\/]+\/?$/.test(urlString)) {
+        throw new UrlError("not a toc link for WuxiaWorld: " + urlString, urlString);
     }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".content");

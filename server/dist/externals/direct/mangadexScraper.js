@@ -8,6 +8,7 @@ const tools_1 = require("../../tools");
 const request = tslib_1.__importStar(require("request"));
 const scraperTools_1 = require("../scraperTools");
 const storage_1 = require("../../database/storages/storage");
+const errors_1 = require("../errors");
 const jar = request.jar();
 jar.setCookie(`mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;`, "https://mangadex.org/", { secure: false });
 function loadJson(urlString) {
@@ -157,6 +158,10 @@ async function scrapeNews() {
     return { episodes: episodeNews };
 }
 async function scrapeToc(urlString) {
+    const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^\/]+\/?$/;
+    if (!urlRegex.test(urlString)) {
+        throw new errors_1.UrlError("invalid toc url for MangaDex: " + urlString, urlString);
+    }
     const uri = "https://mangadex.org/";
     const indexPartMap = new Map();
     const toc = {

@@ -8,6 +8,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const url = tslib_1.__importStar(require("url"));
 const scraperTools_1 = require("../scraperTools");
 const directTools_1 = require("./directTools");
+const errors_1 = require("../errors");
 async function scrapeNews() {
     const uri = "https://www10.gogoanime.io/";
     const $ = await queueManager_1.queueCheerioRequest(uri);
@@ -50,11 +51,10 @@ async function scrapeNews() {
     return { episodes: news };
 }
 async function scrapeToc(urlString) {
-    const animeAliasReg = /https?:\/\/www10\.gogoanime\.io\/category\/(.+)/;
+    const animeAliasReg = /^https?:\/\/www10\.gogoanime\.io\/category\/(.+)/;
     const aliasExec = animeAliasReg.exec(urlString);
     if (!aliasExec) {
-        logger_1.default.warn("invalid toc url: " + urlString);
-        return [];
+        throw new errors_1.UrlError("invalid toc url for GogoAnime: " + urlString, urlString);
     }
     const animeAlias = aliasExec[1];
     const $ = await queueManager_1.queueCheerioRequest(urlString);

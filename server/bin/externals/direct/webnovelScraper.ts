@@ -6,6 +6,7 @@ import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as request from "request-promise-native";
 import {checkTocContent} from "../scraperTools";
+import {UrlError} from "../errors";
 
 const jar = request.jar();
 const defaultRequest = request.defaults({
@@ -91,8 +92,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const bookIdResult = /https?:\/\/(www\.)?webnovel\.com\/book\/(\d+)/.exec(urlString);
 
     if (!bookIdResult) {
-        logger.warn("WebNovel toc link has no bookIdResult: " + urlString);
-        return [];
+        throw new UrlError("WebNovel toc link has no bookIdResult: " + urlString, urlString);
     }
 
     const bookId = bookIdResult[2];

@@ -49,7 +49,7 @@ import {
     partStorage,
     storage
 } from "../database/storages/storage";
-import {UrlError} from "./errors";
+import {MissingResourceError, UrlError} from "./errors";
 
 const redirects: RegExp[] = [];
 const tocScraper: Map<RegExp, TocScraper> = new Map();
@@ -490,7 +490,16 @@ export const oneTimeToc = async ({url: link, uuid, mediumId}: TocRequest)
         return {tocs: [], uuid};
     }
 
-    const allTocs: Toc[] = await allTocPromise;
+    let allTocs: Toc[];
+    try {
+        allTocs = await allTocPromise;
+    } catch (e) {
+        if (e && e.statusCode === 404) {
+            throw new MissingResourceError("missing toc resource: " + link, link);
+        } else {
+            throw e;
+        }
+    }
 
     if (!allTocs.length) {
         logger.warn(`no tocs found on: '${link}'`);

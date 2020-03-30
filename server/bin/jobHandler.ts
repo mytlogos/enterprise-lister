@@ -707,16 +707,20 @@ async function tocErrorHandler(error: Error) {
     //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
     //  and if there are to scrape them and delete any releases that are not contained in them
     //  if there aren't any other tocs on this domain, remove all releases from that domain
-    if (error instanceof MissingResourceError) {
-        logger.warn("toc will be removed, resource was seemingly deleted from: " + error.resource);
-        await mediumStorage.removeToc(error.resource);
-        await jobStorage.removeJobLike("name", error.resource);
-    } else if (error instanceof UrlError) {
-        logger.warn("toc will be removed, url is not what the scraper expected: " + error.url);
-        await mediumStorage.removeToc(error.url);
-        await jobStorage.removeJobLike("name", error.url);
-    } else {
-        logger.error(error);
+    try {
+        if (error instanceof MissingResourceError) {
+            logger.warn("toc will be removed, resource was seemingly deleted from: " + error.resource);
+            await mediumStorage.removeToc(error.resource);
+            await jobStorage.removeJobLike("name", error.resource);
+        } else if (error instanceof UrlError) {
+            logger.warn("toc will be removed, url is not what the scraper expected: " + error.url);
+            await mediumStorage.removeToc(error.url);
+            await jobStorage.removeJobLike("name", error.url);
+        } else {
+            logger.error(error);
+        }
+    } catch (e) {
+        logger.error(e);
     }
 }
 

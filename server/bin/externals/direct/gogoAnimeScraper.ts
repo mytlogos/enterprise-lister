@@ -7,6 +7,7 @@ import logger from "../../logger";
 import * as url from "url";
 import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc} from "./directTools";
+import {UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www10.gogoanime.io/";
@@ -59,12 +60,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const animeAliasReg = /https?:\/\/www10\.gogoanime\.io\/category\/(.+)/;
+    const animeAliasReg = /^https?:\/\/www10\.gogoanime\.io\/category\/(.+)/;
     const aliasExec = animeAliasReg.exec(urlString);
 
     if (!aliasExec) {
-        logger.warn("invalid toc url: " + urlString);
-        return [];
+        throw new UrlError("invalid toc url for GogoAnime: " + urlString, urlString);
     }
     const animeAlias = aliasExec[1];
 

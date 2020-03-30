@@ -388,7 +388,18 @@ exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
         logger_1.default.warn(`no scraper found for: '${link}'`);
         return { tocs: [], uuid };
     }
-    const allTocs = await allTocPromise;
+    let allTocs;
+    try {
+        allTocs = await allTocPromise;
+    }
+    catch (e) {
+        if (e && e.statusCode === 404) {
+            throw new errors_1.MissingResourceError("missing toc resource: " + link, link);
+        }
+        else {
+            throw e;
+        }
+    }
     if (!allTocs.length) {
         logger_1.default.warn(`no tocs found on: '${link}'`);
         return { tocs: [], uuid };

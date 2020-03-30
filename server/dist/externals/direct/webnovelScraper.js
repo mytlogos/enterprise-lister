@@ -7,6 +7,7 @@ const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const request = tslib_1.__importStar(require("request-promise-native"));
 const scraperTools_1 = require("../scraperTools");
+const errors_1 = require("../errors");
 const jar = request.jar();
 const defaultRequest = request.defaults({
     jar
@@ -73,8 +74,7 @@ async function scrapeToc(urlString) {
     await initPromise;
     const bookIdResult = /https?:\/\/(www\.)?webnovel\.com\/book\/(\d+)/.exec(urlString);
     if (!bookIdResult) {
-        logger_1.default.warn("WebNovel toc link has no bookIdResult: " + urlString);
-        return [];
+        throw new errors_1.UrlError("WebNovel toc link has no bookIdResult: " + urlString, urlString);
     }
     const bookId = bookIdResult[2];
     return scrapeTocPage(bookId);

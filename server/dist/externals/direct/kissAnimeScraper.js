@@ -7,6 +7,7 @@ const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 const request = tslib_1.__importStar(require("cloudscraper"));
 const scraperTools_1 = require("../scraperTools");
+const errors_1 = require("../errors");
 // @ts-ignore
 const jar = request.jar();
 // @ts-ignore
@@ -125,6 +126,10 @@ async function scrapeNews() {
     }
  */
 async function scrapeToc(urlString) {
+    const urlRegex = /^https?:\/\/kissanime\.ru\/Anime\/[^\/]+\/?$/;
+    if (!urlRegex.test(urlString)) {
+        throw new errors_1.UrlError("invalid toc url for KissAnime: " + urlString, urlString);
+    }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
     const contentElement = $("#container > #leftside");
     const animeTitle = contentElement

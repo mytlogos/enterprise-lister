@@ -6,6 +6,7 @@ import logger from "../../logger";
 import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc} from "./directTools";
+import {UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
@@ -149,8 +150,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
-        logger.info("not a toc link for mangahasu: " + urlString);
-        return [];
+        throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
     }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".wrapper_content");

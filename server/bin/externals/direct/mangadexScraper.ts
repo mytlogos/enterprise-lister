@@ -7,6 +7,7 @@ import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "request";
 import {checkTocContent} from "../scraperTools";
 import {episodeStorage} from "../../database/storages/storage";
+import {UrlError} from "../errors";
 
 const jar = request.jar();
 jar.setCookie(
@@ -240,7 +241,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+    const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^\/]+\/?$/;
 
+    if (!urlRegex.test(urlString)) {
+        throw new UrlError("invalid toc url for MangaDex: " + urlString, urlString);
+    }
     const uri = "https://mangadex.org/";
 
     const indexPartMap: Map<number, TocPart> = new Map();
