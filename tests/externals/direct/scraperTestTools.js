@@ -26,7 +26,7 @@ exports.testGeneralToc = function testGeneralToc(toc) {
         }
         if (tools.isTocPart(tocContent)) {
             tocContent.episodes.should.be.an("array");
-            for (let j = 0; j < toc.content.length; j++) {
+            for (let j = 0; j < tocContent.episodes.length; j++) {
                 const episode = tocContent.episodes[j];
                 (() => scraperTools.checkTocContent(episode)).should.not.throw();
 
