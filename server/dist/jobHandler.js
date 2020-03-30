@@ -9,6 +9,7 @@ const validate = tslib_1.__importStar(require("validate.js"));
 const scraperTools_1 = require("./externals/scraperTools");
 const jobScraperManager_1 = require("./externals/jobScraperManager");
 const storage_1 = require("./database/storages/storage");
+const errors_1 = require("./externals/errors");
 const scraper = jobScraperManager_1.DefaultJobScraper;
 // todo fill out all of the event listener
 /**
@@ -576,8 +577,27 @@ async function newsHandler({ link, result }) {
         logger_1.default.error(e);
     }
 }
+async function tocErrorHandler(error) {
+    // TODO: 10.03.2020 remove any releases associated? with this toc
+    //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
+    //  and if there are to scrape them and delete any releases that are not contained in them
+    //  if there aren't any other tocs on this domain, remove all releases from that domain
+    if (error instanceof errors_1.MissingResourceError) {
+        logger_1.default.warn("toc will be removed, resource was seemingly deleted from: " + error.resource);
+        await storage_1.mediumStorage.removeToc(error.resource);
+        await storage_1.jobStorage.removeJobLike("name", error.resource);
+    }
+    else if (error instanceof errors_1.UrlError) {
+        logger_1.default.warn("toc will be removed, url is not what the scraper expected: " + error.url);
+        await storage_1.mediumStorage.removeToc(error.url);
+        await storage_1.jobStorage.removeJobLike("name", error.url);
+    }
+    else {
+        logger_1.default.error(error);
+    }
+}
 scraper.on("feed:error", (errorValue) => logger_1.default.error(errorValue));
-scraper.on("toc:error", (errorValue) => logger_1.default.error(errorValue));
+scraper.on("toc:error", (errorValue) => tocErrorHandler(errorValue));
 scraper.on("list:error", (errorValue) => logger_1.default.error(errorValue));
 scraper.on("news:error", (errorValue) => logger_1.default.error(errorValue));
 scraper.on("news", (result) => newsHandler(result).catch((error) => logger_1.default.error(error)));
@@ -590,4 +610,4 @@ exports.startCrawler = () => {
         .then(() => scraper.start())
         .catch((error) => logger_1.default.error(error));
 };
-//# sourceMappingURL=crawlerStart.js.map
+//# sourceMappingURL=jobHandler.js.map

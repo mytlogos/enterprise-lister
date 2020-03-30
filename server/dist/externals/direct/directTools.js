@@ -133,4 +133,6 @@ async function searchToc(medium, tocScraper, uri, searchLink) {
     return;
 }
 exports.searchToc = searchToc;
+function scrapeToc() {
+}
 //# sourceMappingURL=directTools.js.map
