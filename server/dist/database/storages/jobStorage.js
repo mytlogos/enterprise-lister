@@ -30,6 +30,9 @@ class JobStorage {
     updateJobs(jobs) {
         return inContext((context) => context.updateJobs(jobs));
     }
+    async getJobsInState(state) {
+        return inContext((context) => context.getJobsInState(state));
+    }
 }
 exports.JobStorage = JobStorage;
 //# sourceMappingURL=jobStorage.js.map

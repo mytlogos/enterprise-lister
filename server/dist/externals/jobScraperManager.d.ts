@@ -17,6 +17,7 @@ export declare class JobScraperManager {
     addJobs(...jobs: JobRequest[]): Promise<void>;
     getJobs(): OutsideJob[];
     private addDependant;
+    private checkCurrentVsStorage;
     private checkRunningJobs;
     private fetchJobs;
     private processJobItems;

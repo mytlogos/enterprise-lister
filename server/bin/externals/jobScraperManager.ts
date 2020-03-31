@@ -14,7 +14,7 @@ import {
     toc
 } from "./scraperTools";
 import {Job, JobQueue, OutsideJob} from "../jobManager";
-import {getElseSet, isString, maxValue} from "../tools";
+import {getElseSet, isString, maxValue, stringify} from "../tools";
 import logger from "../logger";
 import {JobItem, JobRequest, JobState, MilliTime, ScrapeName} from "../types";
 import {jobStorage} from "../database/storages/storage";
@@ -153,7 +153,8 @@ export class JobScraperManager {
             }
             this.fetchJobs().catch(logger.error);
             this.checkRunningJobs().catch(logger.error);
-        }, 60000);
+            this.checkCurrentVsStorage().catch(logger.error);
+        }, 60_000);
         this.fetchJobs().catch(logger.error);
 
         if (this.intervalId) {
@@ -223,6 +224,68 @@ export class JobScraperManager {
                     this.queueEmittableJob(key, job);
                 } else {
                     this.queueJob(key, job);
+                }
+            }
+        }
+    }
+
+    private async checkCurrentVsStorage() {
+        const runningJobs: JobItem[] = await jobStorage.getJobsInState(JobState.RUNNING);
+
+        // jobs which are marked as running in storage, while not running
+        const invalidJobs: JobItem[] = [];
+
+        const jobs = this.queue.getJobs();
+        const currentlyRunningJobIds = new Set();
+        for (const job of jobs) {
+            if (job.running) {
+                currentlyRunningJobIds.add(job.jobId);
+            }
+        }
+        for (const runningJob of runningJobs) {
+            if (!currentlyRunningJobIds.has(runningJob.id)) {
+                invalidJobs.push(runningJob);
+            }
+        }
+        if (invalidJobs.length) {
+            const identifier = [];
+            const removeJobs: JobItem[] = [];
+            const updateJobs = invalidJobs.filter((value) => {
+                identifier.push(value.name ? value.name : value.id);
+
+                if (value.deleteAfterRun) {
+                    removeJobs.push(value);
+                    return false;
+                }
+
+                delete value.deleteAfterRun;
+                delete value.arguments;
+                value.lastRun = new Date();
+
+                if (value.interval > 0) {
+                    if (value.interval < 60000) {
+                        value.interval = 60000;
+                    }
+                    value.nextRun = new Date(value.lastRun.getTime() + value.interval);
+                }
+                value.state = JobState.WAITING;
+                return true;
+            });
+            if (removeJobs.length) {
+                try {
+                    await jobStorage.removeJobs(removeJobs);
+                    logger.warn(`Removed ${removeJobs.length} Invalid Jobs: ${JSON.stringify(removeJobs)}`);
+                } catch (e) {
+                    logger.error("error while removing invalid Jobs" + stringify(e));
+                }
+            }
+            if (updateJobs.length) {
+                try {
+                    await jobStorage.updateJobs(updateJobs);
+                    const stringified = JSON.stringify(updateJobs);
+                    logger.warn(`Set ${updateJobs.length} Invalid Jobs back to 'waiting': ${stringified}`);
+                } catch (e) {
+                    logger.error("error while removing invalid Jobs" + stringify(e));
                 }
             }
         }

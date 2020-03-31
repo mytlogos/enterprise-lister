@@ -131,4 +131,11 @@ export class JobContext extends SubContext {
             });
         }).then(ignore);
     }
+
+    public getJobsInState(state: JobState): Promise<JobItem[]> {
+        return this.query(
+            "SELECT * FROM jobs WHERE state = ? order by nextRun",
+            state
+        );
+    }
 }

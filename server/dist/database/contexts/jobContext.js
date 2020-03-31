@@ -117,6 +117,9 @@ class JobContext extends subContext_1.SubContext {
             });
         }).then(tools_1.ignore);
     }
+    getJobsInState(state) {
+        return this.query("SELECT * FROM jobs WHERE state = ? order by nextRun", state);
+    }
 }
 exports.JobContext = JobContext;
 //# sourceMappingURL=jobContext.js.map

@@ -119,6 +119,7 @@ class JobScraperManager {
             }
             this.fetchJobs().catch(logger_1.default.error);
             this.checkRunningJobs().catch(logger_1.default.error);
+            this.checkCurrentVsStorage().catch(logger_1.default.error);
         }, 60000);
         this.fetchJobs().catch(logger_1.default.error);
         if (this.intervalId) {
@@ -182,6 +183,64 @@ class JobScraperManager {
                 }
                 else {
                     this.queueJob(key, job);
+                }
+            }
+        }
+    }
+    async checkCurrentVsStorage() {
+        const runningJobs = await storage_1.jobStorage.getJobsInState(types_1.JobState.RUNNING);
+        // jobs which are marked as running in storage, while not running
+        const invalidJobs = [];
+        const jobs = this.queue.getJobs();
+        const currentlyRunningJobIds = new Set();
+        for (const job of jobs) {
+            if (job.running) {
+                currentlyRunningJobIds.add(job.jobId);
+            }
+        }
+        for (const runningJob of runningJobs) {
+            if (!currentlyRunningJobIds.has(runningJob.id)) {
+                invalidJobs.push(runningJob);
+            }
+        }
+        if (invalidJobs.length) {
+            const identifier = [];
+            const removeJobs = [];
+            const updateJobs = invalidJobs.filter((value) => {
+                identifier.push(value.name ? value.name : value.id);
+                if (value.deleteAfterRun) {
+                    removeJobs.push(value);
+                    return false;
+                }
+                delete value.deleteAfterRun;
+                delete value.arguments;
+                value.lastRun = new Date();
+                if (value.interval > 0) {
+                    if (value.interval < 60000) {
+                        value.interval = 60000;
+                    }
+                    value.nextRun = new Date(value.lastRun.getTime() + value.interval);
+                }
+                value.state = types_1.JobState.WAITING;
+                return true;
+            });
+            if (removeJobs.length) {
+                try {
+                    await storage_1.jobStorage.removeJobs(removeJobs);
+                    logger_1.default.warn(`Removed ${removeJobs.length} Invalid Jobs: ${JSON.stringify(removeJobs)}`);
+                }
+                catch (e) {
+                    logger_1.default.error("error while removing invalid Jobs" + tools_1.stringify(e));
+                }
+            }
+            if (updateJobs.length) {
+                try {
+                    await storage_1.jobStorage.updateJobs(updateJobs);
+                    const stringified = JSON.stringify(updateJobs);
+                    logger_1.default.warn(`Set ${updateJobs.length} Invalid Jobs back to 'waiting': ${stringified}`);
+                }
+                catch (e) {
+                    logger_1.default.error("error while removing invalid Jobs" + tools_1.stringify(e));
                 }
             }
         }

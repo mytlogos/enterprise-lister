@@ -1,4 +1,4 @@
-import { JobItem, JobRequest } from "../../types";
+import { JobItem, JobRequest, JobState } from "../../types";
 export declare class JobStorage {
     removeJobLike(column: string, value: any): Promise<void>;
     stopJobs(): Promise<void>;
@@ -8,4 +8,5 @@ export declare class JobStorage {
     removeJobs(jobs: JobItem | JobItem[]): Promise<void>;
     removeJob(key: string | number): Promise<void>;
     updateJobs(jobs: JobItem | JobItem[]): Promise<void>;
+    getJobsInState(state: JobState): Promise<unknown>;
 }

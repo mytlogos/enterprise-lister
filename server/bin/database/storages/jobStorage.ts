@@ -1,4 +1,4 @@
-import {JobItem, JobRequest} from "../../types";
+import {JobItem, JobRequest, JobState} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {JobContext} from "../contexts/jobContext";
@@ -40,4 +40,7 @@ export class JobStorage {
         return inContext((context) => context.updateJobs(jobs));
     }
 
+    public async getJobsInState(state: JobState) {
+        return inContext((context) => context.getJobsInState(state));
+    }
 }

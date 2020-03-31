@@ -246,7 +246,7 @@ export interface JobItem {
     interval: number;
     deleteAfterRun: boolean;
     id: number;
-    name?: string;
+    name: string;
     runAfter?: number;
     nextRun?: Date;
     lastRun?: Date;

@@ -117,6 +117,7 @@ class JobQueue {
     }
     _done(job) {
         tools_1.remove(this.activeJobs, job);
+        job.running = false;
         if (job.startRun) {
             const now = new Date();
             const diffTime = now.getTime() - job.startRun;

@@ -1,5 +1,5 @@
 import { SubContext } from "./subContext";
-import { JobItem, JobRequest } from "../../types";
+import { JobItem, JobRequest, JobState } from "../../types";
 export declare class JobContext extends SubContext {
     removeJobLike(column: string, value: any): Promise<void>;
     getJobs(limit?: number): Promise<JobItem[]>;
@@ -9,4 +9,5 @@ export declare class JobContext extends SubContext {
     removeJobs(jobs: JobItem | JobItem[]): Promise<void>;
     removeJob(key: string | number): Promise<void>;
     updateJobs(jobs: JobItem | JobItem[]): Promise<void>;
+    getJobsInState(state: JobState): Promise<JobItem[]>;
 }
