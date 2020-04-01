@@ -212,8 +212,6 @@ class JobScraperManager {
                     removeJobs.push(value);
                     return false;
                 }
-                delete value.deleteAfterRun;
-                delete value.arguments;
                 value.lastRun = new Date();
                 if (value.interval > 0) {
                     if (value.interval < 60000) {

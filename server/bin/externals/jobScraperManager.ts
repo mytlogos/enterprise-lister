@@ -258,8 +258,6 @@ export class JobScraperManager {
                     return false;
                 }
 
-                delete value.deleteAfterRun;
-                delete value.arguments;
                 value.lastRun = new Date();
 
                 if (value.interval > 0) {
