@@ -185,7 +185,7 @@ function streamHtmlParser2(resolve, reject, uri, options) {
         }
         else if (resp.statusCode === 404) {
             resp.destroy();
-            reject(new errors_2.MissingResourceError(uri));
+            reject(new errors_2.MissingResourceError(uri, uri));
         }
         else if (resp.statusCode >= 400 || resp.statusCode < 200) {
             resp.destroy();

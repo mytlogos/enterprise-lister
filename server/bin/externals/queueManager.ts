@@ -222,7 +222,7 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
                 return;
             } else if (resp.statusCode === 404) {
                 resp.destroy();
-                reject(new MissingResourceError(uri));
+                reject(new MissingResourceError(uri, uri));
             } else if (resp.statusCode >= 400 || resp.statusCode < 200) {
                 resp.destroy();
                 reject(new StatusCodeError(resp.statusCode, "", options as requestPromise.Options, resp));
