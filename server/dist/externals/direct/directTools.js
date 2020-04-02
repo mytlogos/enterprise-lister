@@ -133,6 +133,68 @@ async function searchToc(medium, tocScraper, uri, searchLink) {
     return;
 }
 exports.searchToc = searchToc;
-function scrapeToc() {
+function isEpisodePiece(value) {
+    return value.releaseDate || value.locked;
 }
+function isPartPiece(value) {
+    return value.episodes;
+}
+function isInternalEpisode(value) {
+    return value.releaseDate || value.locked;
+}
+function isInternalPart(value) {
+    return value.episodes;
+}
+async function scrapeToc(pageGenerator) {
+    const volRegex = ["volume", "book", "season"];
+    const episodeRegex = ["episode", "chapter", "\\d+", "word \\d+"];
+    const maybeEpisode = ["ova"];
+    const optionalEpisode = ["xxx special chapter", "other tales", "interlude", "bonus", "SKILL SUMMARY", "CHARACTER INTRODUCTION", "side story", "ss", "intermission", "extra", "omake",];
+    const partEpisode = ["part", "3/5"];
+    const invalidEpisode = ["delete", "spam"];
+    const start = ["prologue", "prolog"];
+    const end = ["Epilogue", "finale"];
+    let hasParts = false;
+    let currentTotalIndex;
+    const contents = [];
+    const chapterRegex = /^\s*Chapter\s*((\d+)(\.(\d+))?)[-:\s]*(.*)/;
+    for await (const tocPiece of pageGenerator) {
+        const chapterGroups = chapterRegex.exec(tocPiece.title);
+        if (!chapterGroups) {
+            continue;
+        }
+        const indices = tools_1.extractIndices(chapterGroups, 1, 2, 4);
+        if (!indices) {
+            continue;
+        }
+        if (!isEpisodePiece(tocPiece)) {
+            continue;
+        }
+        const chapterContent = {
+            combiIndex: indices.combi,
+            totalIndex: indices.total,
+            partialIndex: indices.fraction,
+            url: tocPiece.url,
+            releaseDate: tocPiece.releaseDate || new Date(),
+            title: chapterGroups[5],
+            originalTitle: tocPiece.title
+        };
+        contents.push(chapterContent);
+    }
+    return contents.map((value) => {
+        if (!isInternalEpisode(value)) {
+            throw TypeError();
+        }
+        return {
+            title: value.title,
+            combiIndex: value.combiIndex,
+            partialIndex: value.partialIndex,
+            totalIndex: value.totalIndex,
+            url: value.url,
+            locked: value.locked || false,
+            releaseDate: value.releaseDate
+        };
+    });
+}
+exports.scrapeToc = scrapeToc;
 //# sourceMappingURL=directTools.js.map

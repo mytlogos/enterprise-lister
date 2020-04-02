@@ -1,7 +1,7 @@
 import logger from "../../logger";
-import {EpisodeContent, TocScraper} from "../types";
+import {EpisodeContent, TocContent, TocEpisode, TocScraper} from "../types";
 import {queueCheerioRequest} from "../queueManager";
-import {equalsIgnore, sanitizeString} from "../../tools";
+import {equalsIgnore, extractIndices, sanitizeString} from "../../tools";
 import * as url from "url";
 import {TocSearchMedium} from "../../types";
 
@@ -160,4 +160,108 @@ export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper,
         logger.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
     }
     return;
+}
+
+export interface TocPiece {
+    url?: string;
+    title: string;
+}
+
+export interface EpisodePiece extends TocPiece {
+    url: string;
+    releaseDate: Date;
+}
+
+export interface PartPiece extends TocPiece {
+    episodes: any[];
+}
+
+interface InternalTocContent {
+    title: string;
+    originalTitle: string;
+    combiIndex: number;
+    totalIndex: number;
+    partialIndex?: number;
+}
+
+interface InternalTocEpisode extends InternalTocContent {
+    url: string;
+    releaseDate?: Date;
+    locked?: boolean;
+}
+
+interface InternalTocPart extends InternalTocContent {
+    episodes: TocEpisode[];
+}
+
+function isEpisodePiece(value: TocPiece | any): value is EpisodePiece {
+    return value.releaseDate || value.locked;
+}
+
+function isPartPiece(value: TocPiece | any): value is PartPiece {
+    return value.episodes;
+}
+
+function isInternalEpisode(value: TocContent | any): value is InternalTocEpisode {
+    return value.releaseDate || value.locked;
+}
+
+function isInternalPart(value: TocContent | any): value is InternalTocPart {
+    return value.episodes;
+}
+
+export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
+    const volRegex = ["volume", "book", "season"];
+    const episodeRegex = ["episode", "chapter", "\\d+", "word \\d+"];
+    const maybeEpisode = ["ova"];
+    const optionalEpisode = ["xxx special chapter", "other tales", "interlude", "bonus", "SKILL SUMMARY", "CHARACTER INTRODUCTION", "side story", "ss", "intermission", "extra", "omake", /*"oneshot"*/];
+    const partEpisode = ["part", "3/5"];
+    const invalidEpisode = ["delete", "spam"];
+    const start = ["prologue", "prolog"];
+    const end = ["Epilogue", "finale"];
+    let hasParts = false;
+    let currentTotalIndex;
+    const contents: InternalTocContent[] = [];
+    const chapterRegex = /^\s*Chapter\s*((\d+)(\.(\d+))?)[-:\s]*(.*)/;
+
+    for await (const tocPiece of pageGenerator) {
+        const chapterGroups = chapterRegex.exec(tocPiece.title);
+        if (!chapterGroups) {
+            continue;
+        }
+        const indices = extractIndices(chapterGroups, 1, 2, 4);
+
+        if (!indices) {
+            continue;
+        }
+
+        if (!isEpisodePiece(tocPiece)) {
+            continue;
+        }
+
+        const chapterContent = {
+            combiIndex: indices.combi,
+            totalIndex: indices.total,
+            partialIndex: indices.fraction,
+            url: tocPiece.url,
+            releaseDate: tocPiece.releaseDate || new Date(),
+            title: chapterGroups[5],
+            originalTitle: tocPiece.title
+        } as InternalTocEpisode;
+        contents.push(chapterContent);
+    }
+    return contents.map((value): TocContent => {
+        if (!isInternalEpisode(value)) {
+            throw TypeError();
+        }
+        return {
+            title: value.title,
+            combiIndex: value.combiIndex,
+            partialIndex: value.partialIndex,
+            totalIndex: value.totalIndex,
+            url: value.url,
+            locked: value.locked || false,
+            releaseDate: value.releaseDate
+        } as TocEpisode;
+    });
 }
