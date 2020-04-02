@@ -158,6 +158,7 @@ async function scrapeToc(pageGenerator) {
     let currentTotalIndex;
     const contents = [];
     const chapterRegex = /^\s*Chapter\s*((\d+)(\.(\d+))?)[-:\s]*(.*)/;
+    const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
     for await (const tocPiece of pageGenerator) {
         const chapterGroups = chapterRegex.exec(tocPiece.title);
         if (!chapterGroups) {
@@ -170,13 +171,28 @@ async function scrapeToc(pageGenerator) {
         if (!isEpisodePiece(tocPiece)) {
             continue;
         }
+        let title = chapterGroups[5];
+        const partGroups = partRegex.exec(tocPiece.title);
+        if (partGroups) {
+            const part = Number.parseInt(partGroups[2] || partGroups[4], 10);
+            if (Number.isInteger(part)) {
+                if (indices.fraction == null) {
+                    indices.fraction = part;
+                    indices.combi = tools_1.combiIndex({ totalIndex: indices.total, partialIndex: indices.fraction });
+                    title = title.substring(0, partGroups.index - (tocPiece.title.length - title.length)).trim();
+                }
+                else {
+                    logger_1.default.warn("Episode Part defined with existing EpisodePartialIndex");
+                }
+            }
+        }
         const chapterContent = {
             combiIndex: indices.combi,
             totalIndex: indices.total,
             partialIndex: indices.fraction,
             url: tocPiece.url,
             releaseDate: tocPiece.releaseDate || new Date(),
-            title: chapterGroups[5],
+            title: title,
             originalTitle: tocPiece.title
         };
         contents.push(chapterContent);

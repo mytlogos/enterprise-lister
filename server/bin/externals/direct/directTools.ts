@@ -1,7 +1,7 @@
 import logger from "../../logger";
 import {EpisodeContent, TocContent, TocEpisode, TocScraper} from "../types";
 import {queueCheerioRequest} from "../queueManager";
-import {equalsIgnore, extractIndices, sanitizeString} from "../../tools";
+import {combiIndex, equalsIgnore, extractIndices, sanitizeString} from "../../tools";
 import * as url from "url";
 import {TocSearchMedium} from "../../types";
 
@@ -223,6 +223,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
     let currentTotalIndex;
     const contents: InternalTocContent[] = [];
     const chapterRegex = /^\s*Chapter\s*((\d+)(\.(\d+))?)[-:\s]*(.*)/;
+    const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
 
     for await (const tocPiece of pageGenerator) {
         const chapterGroups = chapterRegex.exec(tocPiece.title);
@@ -238,14 +239,29 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         if (!isEpisodePiece(tocPiece)) {
             continue;
         }
+        let title = chapterGroups[5];
+        const partGroups = partRegex.exec(tocPiece.title);
 
+        if (partGroups) {
+            const part = Number.parseInt(partGroups[2] || partGroups[4], 10);
+
+            if (Number.isInteger(part)) {
+                if (indices.fraction == null) {
+                    indices.fraction = part;
+                    indices.combi = combiIndex({totalIndex: indices.total, partialIndex: indices.fraction});
+                    title = title.substring(0, partGroups.index - (tocPiece.title.length - title.length)).trim();
+                } else {
+                    logger.warn("Episode Part defined with existing EpisodePartialIndex");
+                }
+            }
+        }
         const chapterContent = {
             combiIndex: indices.combi,
             totalIndex: indices.total,
             partialIndex: indices.fraction,
             url: tocPiece.url,
             releaseDate: tocPiece.releaseDate || new Date(),
-            title: chapterGroups[5],
+            title: title,
             originalTitle: tocPiece.title
         } as InternalTocEpisode;
         contents.push(chapterContent);
