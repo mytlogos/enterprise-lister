@@ -153,7 +153,7 @@ export class JobScraperManager {
             }
             this.fetchJobs().catch(logger.error);
             this.checkRunningJobs().catch(logger.error);
-            this.checkCurrentVsStorage().catch(logger.error);
+            this.checkCurrentVsStorage().then(() => this.checkRunningStorageJobs()).catch(logger.error);
         }, 60_000);
         this.fetchJobs().catch(logger.error);
 
@@ -315,6 +315,23 @@ export class JobScraperManager {
             }
         } catch (e) {
             missingConnections.add(now);
+        }
+    }
+
+    private async checkRunningStorageJobs() {
+        const runningJobs: JobItem[] = await jobStorage.getJobsInState(JobState.RUNNING);
+        const twoHoursAgo = new Date();
+        twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+        for (const runningJob of runningJobs) {
+            if (!runningJob.runningSince) {
+                logger.warn(`job ${runningJob.id} in state 'RUNNING' without a start date`);
+                continue;
+            }
+
+            if (runningJob.runningSince < twoHoursAgo) {
+                logger.error(`Cannot finish jobs properly, StorageRunning: ${runningJobs.length}, QueueRunning: ${this.queue.runningJobs} - exiting application with error code 1`);
+                process.exit(1);
+            }
         }
     }
 

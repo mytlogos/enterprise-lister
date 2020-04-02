@@ -119,7 +119,7 @@ class JobScraperManager {
             }
             this.fetchJobs().catch(logger_1.default.error);
             this.checkRunningJobs().catch(logger_1.default.error);
-            this.checkCurrentVsStorage().catch(logger_1.default.error);
+            this.checkCurrentVsStorage().then(() => this.checkRunningStorageJobs()).catch(logger_1.default.error);
         }, 60000);
         this.fetchJobs().catch(logger_1.default.error);
         if (this.intervalId) {
@@ -269,6 +269,21 @@ class JobScraperManager {
         }
         catch (e) {
             missingConnections.add(now);
+        }
+    }
+    async checkRunningStorageJobs() {
+        const runningJobs = await storage_1.jobStorage.getJobsInState(types_1.JobState.RUNNING);
+        const twoHoursAgo = new Date();
+        twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+        for (const runningJob of runningJobs) {
+            if (!runningJob.runningSince) {
+                logger_1.default.warn(`job ${runningJob.id} in state 'RUNNING' without a start date`);
+                continue;
+            }
+            if (runningJob.runningSince < twoHoursAgo) {
+                logger_1.default.error(`Cannot finish jobs properly, StorageRunning: ${runningJobs.length}, QueueRunning: ${this.queue.runningJobs} - exiting application with error code 1`);
+                process.exit(1);
+            }
         }
     }
     async fetchJobs() {

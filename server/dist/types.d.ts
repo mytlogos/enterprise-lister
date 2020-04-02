@@ -248,6 +248,7 @@ export interface JobItem {
     id: number;
     name: string;
     runAfter?: number;
+    runningSince?: Date;
     nextRun?: Date;
     lastRun?: Date;
     arguments?: string;

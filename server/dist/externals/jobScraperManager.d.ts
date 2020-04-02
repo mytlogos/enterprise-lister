@@ -19,6 +19,7 @@ export declare class JobScraperManager {
     private addDependant;
     private checkCurrentVsStorage;
     private checkRunningJobs;
+    private checkRunningStorageJobs;
     private fetchJobs;
     private processJobItems;
     private queueEmittableJob;
