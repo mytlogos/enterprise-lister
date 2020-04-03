@@ -180,7 +180,7 @@ describe("testing scrapeToc", () => {
             yield {url: "", title: "C2:  I am HitchCock1", releaseDate: now};
             yield {url: "", title: "2.5:  I am HitchCock1", releaseDate: now};
             yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "c4 -  I am HitchCock3 Part 1", releaseDate: now};
+            yield {url: "", title: "c4 -  I am HitchCock3 [1/2]", releaseDate: now};
             yield {url: "", title: "4 -  I am HitchCock3 Part 2", releaseDate: now};
         })();
 
