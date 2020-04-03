@@ -145,6 +145,26 @@ function isInternalEpisode(value) {
 function isInternalPart(value) {
     return value.episodes;
 }
+function externalizeTocEpisode(value) {
+    return {
+        title: value.title,
+        combiIndex: value.combiIndex,
+        partialIndex: value.partialIndex,
+        totalIndex: value.totalIndex,
+        url: value.url,
+        locked: value.locked || false,
+        releaseDate: value.releaseDate
+    };
+}
+function externalizeTocPart(internalTocPart) {
+    return {
+        title: internalTocPart.title,
+        combiIndex: internalTocPart.combiIndex,
+        partialIndex: internalTocPart.partialIndex,
+        totalIndex: internalTocPart.totalIndex,
+        episodes: internalTocPart.episodes.map(externalizeTocEpisode)
+    };
+}
 async function scrapeToc(pageGenerator) {
     const volRegex = ["volume", "book", "season"];
     const episodeRegex = ["episode", "chapter", "\\d+", "word \\d+"];
@@ -157,10 +177,36 @@ async function scrapeToc(pageGenerator) {
     let hasParts = false;
     let currentTotalIndex;
     const contents = [];
-    const chapterRegex = /^\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
+    const volumeRegex = /volume[\s.]*((\d+)(\.(\d+))?)/i;
+    const chapterRegex = /\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
     const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
+    const volumeMap = new Map();
     for await (const tocPiece of pageGenerator) {
-        const chapterGroups = chapterRegex.exec(tocPiece.title);
+        let title = tocPiece.title;
+        const volumeGroups = volumeRegex.exec(title);
+        let volume;
+        if (volumeGroups) {
+            const volIndices = tools_1.extractIndices(volumeGroups, 1, 2, 4);
+            if (volIndices) {
+                const beforeMatch = title.substring(0, volumeGroups.index);
+                const afterMatch = title.substring(volumeGroups.index + volumeGroups[0].length);
+                title = beforeMatch + afterMatch;
+                volume = volumeMap.get(volIndices.combi);
+                if (!volume) {
+                    volume = {
+                        combiIndex: volIndices.combi,
+                        totalIndex: volIndices.total,
+                        partialIndex: volIndices.fraction,
+                        title: "",
+                        originalTitle: "",
+                        episodes: []
+                    };
+                    contents.push(volume);
+                    volumeMap.set(volIndices.combi, volume);
+                }
+            }
+        }
+        const chapterGroups = chapterRegex.exec(title);
         if (!chapterGroups) {
             continue;
         }
@@ -171,7 +217,7 @@ async function scrapeToc(pageGenerator) {
         if (!isEpisodePiece(tocPiece)) {
             continue;
         }
-        let title = chapterGroups[8];
+        title = chapterGroups[8];
         const partGroups = partRegex.exec(tocPiece.title);
         if (partGroups) {
             const part = Number.parseInt(partGroups[2] || partGroups[4], 10);
@@ -195,21 +241,23 @@ async function scrapeToc(pageGenerator) {
             title,
             originalTitle: tocPiece.title
         };
-        contents.push(chapterContent);
+        if (volume) {
+            volume.episodes.push(chapterContent);
+        }
+        else {
+            contents.push(chapterContent);
+        }
     }
     return contents.map((value) => {
-        if (!isInternalEpisode(value)) {
+        if (isInternalEpisode(value)) {
+            return externalizeTocEpisode(value);
+        }
+        else if (isInternalPart(value)) {
+            return externalizeTocPart(value);
+        }
+        else {
             throw TypeError();
         }
-        return {
-            title: value.title,
-            combiIndex: value.combiIndex,
-            partialIndex: value.partialIndex,
-            totalIndex: value.totalIndex,
-            url: value.url,
-            locked: value.locked || false,
-            releaseDate: value.releaseDate
-        };
     });
 }
 exports.scrapeToc = scrapeToc;

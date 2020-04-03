@@ -1,5 +1,5 @@
 import logger from "../../logger";
-import {EpisodeContent, TocContent, TocEpisode, TocScraper} from "../types";
+import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper} from "../types";
 import {queueCheerioRequest} from "../queueManager";
 import {combiIndex, equalsIgnore, extractIndices, sanitizeString} from "../../tools";
 import * as url from "url";
@@ -191,7 +191,7 @@ interface InternalTocEpisode extends InternalTocContent {
 }
 
 interface InternalTocPart extends InternalTocContent {
-    episodes: TocEpisode[];
+    episodes: InternalTocEpisode[];
 }
 
 function isEpisodePiece(value: TocPiece | any): value is EpisodePiece {
@@ -210,6 +210,28 @@ function isInternalPart(value: TocContent | any): value is InternalTocPart {
     return value.episodes;
 }
 
+function externalizeTocEpisode(value: InternalTocEpisode): TocEpisode {
+    return {
+        title: value.title,
+        combiIndex: value.combiIndex,
+        partialIndex: value.partialIndex,
+        totalIndex: value.totalIndex,
+        url: value.url,
+        locked: value.locked || false,
+        releaseDate: value.releaseDate
+    };
+}
+
+function externalizeTocPart(internalTocPart: InternalTocPart): TocPart {
+    return {
+        title: internalTocPart.title,
+        combiIndex: internalTocPart.combiIndex,
+        partialIndex: internalTocPart.partialIndex,
+        totalIndex: internalTocPart.totalIndex,
+        episodes: internalTocPart.episodes.map(externalizeTocEpisode)
+    };
+}
+
 export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
     const volRegex = ["volume", "book", "season"];
     const episodeRegex = ["episode", "chapter", "\\d+", "word \\d+"];
@@ -222,11 +244,40 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
     let hasParts = false;
     let currentTotalIndex;
     const contents: InternalTocContent[] = [];
-    const chapterRegex = /^\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
+    const volumeRegex = /volume[\s.]*((\d+)(\.(\d+))?)/i;
+    const chapterRegex = /\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
     const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
+    const volumeMap: Map<number, InternalTocPart> = new Map();
 
     for await (const tocPiece of pageGenerator) {
-        const chapterGroups = chapterRegex.exec(tocPiece.title);
+        let title = tocPiece.title;
+        const volumeGroups = volumeRegex.exec(title);
+        let volume: InternalTocPart | undefined;
+        if (volumeGroups) {
+            const volIndices = extractIndices(volumeGroups, 1, 2, 4);
+
+            if (volIndices) {
+                const beforeMatch = title.substring(0, volumeGroups.index);
+                const afterMatch = title.substring(volumeGroups.index + volumeGroups[0].length);
+                title = beforeMatch + afterMatch;
+
+                volume = volumeMap.get(volIndices.combi);
+
+                if (!volume) {
+                    volume = {
+                        combiIndex: volIndices.combi,
+                        totalIndex: volIndices.total,
+                        partialIndex: volIndices.fraction,
+                        title: "",
+                        originalTitle: "",
+                        episodes: []
+                    } as InternalTocPart;
+                    contents.push(volume);
+                    volumeMap.set(volIndices.combi, volume);
+                }
+            }
+        }
+        const chapterGroups = chapterRegex.exec(title);
         if (!chapterGroups) {
             continue;
         }
@@ -239,7 +290,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         if (!isEpisodePiece(tocPiece)) {
             continue;
         }
-        let title = chapterGroups[8];
+        title = chapterGroups[8];
         const partGroups = partRegex.exec(tocPiece.title);
 
         if (partGroups) {
@@ -264,20 +315,20 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
             title,
             originalTitle: tocPiece.title
         } as InternalTocEpisode;
-        contents.push(chapterContent);
+
+        if (volume) {
+            volume.episodes.push(chapterContent);
+        } else {
+            contents.push(chapterContent);
+        }
     }
     return contents.map((value): TocContent => {
-        if (!isInternalEpisode(value)) {
+        if (isInternalEpisode(value)) {
+            return externalizeTocEpisode(value);
+        } else if (isInternalPart(value)) {
+            return externalizeTocPart(value);
+        } else {
             throw TypeError();
         }
-        return {
-            title: value.title,
-            combiIndex: value.combiIndex,
-            partialIndex: value.partialIndex,
-            totalIndex: value.totalIndex,
-            url: value.url,
-            locked: value.locked || false,
-            releaseDate: value.releaseDate
-        } as TocEpisode;
     });
 }
