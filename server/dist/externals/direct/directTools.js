@@ -157,7 +157,7 @@ async function scrapeToc(pageGenerator) {
     let hasParts = false;
     let currentTotalIndex;
     const contents = [];
-    const chapterRegex = /^\s*Chapter\s*((\d+)(\.(\d+))?)[-:\s]*(.*)/;
+    const chapterRegex = /^\s*[Chapter]{0,7}[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
     const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
     for await (const tocPiece of pageGenerator) {
         const chapterGroups = chapterRegex.exec(tocPiece.title);
