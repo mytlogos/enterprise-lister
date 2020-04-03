@@ -244,7 +244,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
     let hasParts = false;
     let currentTotalIndex;
     const contents: InternalTocContent[] = [];
-    const volumeRegex = /volume[\s.]*((\d+)(\.(\d+))?)/i;
+    const volumeRegex = /v[olume]{0,5}[\s.]*((\d+)(\.(\d+))?)/i;
     const chapterRegex = /\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
     const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
     const volumeMap: Map<number, InternalTocPart> = new Map();
