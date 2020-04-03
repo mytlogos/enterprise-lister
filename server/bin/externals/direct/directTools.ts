@@ -244,9 +244,10 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
     let hasParts = false;
     let currentTotalIndex;
     const contents: InternalTocContent[] = [];
-    const volumeRegex = /v[olume]{0,5}[\s.]*((\d+)(\.(\d+))?)/i;
-    const chapterRegex = /\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
+    const volumeRegex = /^(.*)(v[olume]{0,5}[\s.]*((\d+)(\.(\d+))?)[-:\s]*)(.*)$/i;
+    const chapterRegex = /(^|\W)[\s-]*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
     const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
+    const trimTitle = /^([-:\s]+)?(.+?)([-:\s]+)?$/i;
     const volumeMap: Map<number, InternalTocPart> = new Map();
 
     for await (const tocPiece of pageGenerator) {
@@ -254,11 +255,11 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         const volumeGroups = volumeRegex.exec(title);
         let volume: InternalTocPart | undefined;
         if (volumeGroups) {
-            const volIndices = extractIndices(volumeGroups, 1, 2, 4);
+            const volIndices = extractIndices(volumeGroups, 3, 4, 6);
 
             if (volIndices) {
-                const beforeMatch = title.substring(0, volumeGroups.index);
-                const afterMatch = title.substring(volumeGroups.index + volumeGroups[0].length);
+                const beforeMatch = volumeGroups[1];
+                const afterMatch = volumeGroups[7];
                 title = beforeMatch + afterMatch;
 
                 volume = volumeMap.get(volIndices.combi);
@@ -281,7 +282,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         if (!chapterGroups) {
             continue;
         }
-        const indices = extractIndices(chapterGroups, 4, 5, 7);
+        const indices = extractIndices(chapterGroups, 5, 6, 8);
 
         if (!indices) {
             continue;
@@ -290,7 +291,14 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         if (!isEpisodePiece(tocPiece)) {
             continue;
         }
-        title = chapterGroups[8];
+        if (volume) {
+            volume.title = title.substring(0, chapterGroups.index);
+            const trimGroups = trimTitle.exec(volume.title);
+            if (trimGroups) {
+                volume.title = trimGroups[2];
+            }
+        }
+        title = chapterGroups[9];
         const partGroups = partRegex.exec(tocPiece.title);
 
         if (partGroups) {

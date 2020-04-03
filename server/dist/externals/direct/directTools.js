@@ -177,19 +177,20 @@ async function scrapeToc(pageGenerator) {
     let hasParts = false;
     let currentTotalIndex;
     const contents = [];
-    const volumeRegex = /v[olume]{0,5}[\s.]*((\d+)(\.(\d+))?)/i;
-    const chapterRegex = /\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
+    const volumeRegex = /^(.*)(v[olume]{0,5}[\s.]*((\d+)(\.(\d+))?)[-:\s]*)(.*)$/i;
+    const chapterRegex = /(^|\W)[\s-]*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
     const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
+    const trimTitle = /^([-:\s]+)?(.+?)([-:\s]+)?$/i;
     const volumeMap = new Map();
     for await (const tocPiece of pageGenerator) {
         let title = tocPiece.title;
         const volumeGroups = volumeRegex.exec(title);
         let volume;
         if (volumeGroups) {
-            const volIndices = tools_1.extractIndices(volumeGroups, 1, 2, 4);
+            const volIndices = tools_1.extractIndices(volumeGroups, 3, 4, 6);
             if (volIndices) {
-                const beforeMatch = title.substring(0, volumeGroups.index);
-                const afterMatch = title.substring(volumeGroups.index + volumeGroups[0].length);
+                const beforeMatch = volumeGroups[1];
+                const afterMatch = volumeGroups[7];
                 title = beforeMatch + afterMatch;
                 volume = volumeMap.get(volIndices.combi);
                 if (!volume) {
@@ -210,14 +211,21 @@ async function scrapeToc(pageGenerator) {
         if (!chapterGroups) {
             continue;
         }
-        const indices = tools_1.extractIndices(chapterGroups, 4, 5, 7);
+        const indices = tools_1.extractIndices(chapterGroups, 5, 6, 8);
         if (!indices) {
             continue;
         }
         if (!isEpisodePiece(tocPiece)) {
             continue;
         }
-        title = chapterGroups[8];
+        if (volume) {
+            volume.title = title.substring(0, chapterGroups.index);
+            const trimGroups = trimTitle.exec(volume.title);
+            if (trimGroups) {
+                volume.title = trimGroups[2];
+            }
+        }
+        title = chapterGroups[9];
         const partGroups = partRegex.exec(tocPiece.title);
         if (partGroups) {
             const part = Number.parseInt(partGroups[2] || partGroups[4], 10);
