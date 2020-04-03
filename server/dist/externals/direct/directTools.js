@@ -157,21 +157,21 @@ async function scrapeToc(pageGenerator) {
     let hasParts = false;
     let currentTotalIndex;
     const contents = [];
-    const chapterRegex = /^\s*[Chapter]{0,7}[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
-    const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
+    const chapterRegex = /^\s*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
+    const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
     for await (const tocPiece of pageGenerator) {
         const chapterGroups = chapterRegex.exec(tocPiece.title);
         if (!chapterGroups) {
             continue;
         }
-        const indices = tools_1.extractIndices(chapterGroups, 1, 2, 4);
+        const indices = tools_1.extractIndices(chapterGroups, 4, 5, 7);
         if (!indices) {
             continue;
         }
         if (!isEpisodePiece(tocPiece)) {
             continue;
         }
-        let title = chapterGroups[5];
+        let title = chapterGroups[8];
         const partGroups = partRegex.exec(tocPiece.title);
         if (partGroups) {
             const part = Number.parseInt(partGroups[2] || partGroups[4], 10);
@@ -192,7 +192,7 @@ async function scrapeToc(pageGenerator) {
             partialIndex: indices.fraction,
             url: tocPiece.url,
             releaseDate: tocPiece.releaseDate || new Date(),
-            title: title,
+            title,
             originalTitle: tocPiece.title
         };
         contents.push(chapterContent);
