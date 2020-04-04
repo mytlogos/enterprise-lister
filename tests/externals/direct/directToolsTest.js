@@ -768,4 +768,70 @@ describe("testing scrapeToc", () => {
             }
         ])
     });
+    it("should extract correct toc: title prefix with different volume namings and chapter", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {title: "I am a cool Book", mediumType: 1};
+            yield {url: "", title: "I am a cool Book: Volume1 Chapter 586 -  All That Labor Work", releaseDate: now};
+            yield {url: "", title: "I am a cool Book: Book1 Chapter 587 -  Plan of Annihilation", releaseDate: now};
+            yield {url: "", title: "I am a cool Book: Book 2 Chapter 588 - Plan of Annihilation", releaseDate: now};
+            yield {url: "", title: "I am a cool Book: Season 2 Chapter 589 - Plan of Annihilation", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "",
+                combiIndex: 1,
+                totalIndex: 1,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "All That Labor Work",
+                        combiIndex: 586,
+                        totalIndex: 586,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 587,
+                        totalIndex: 587,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            },
+            {
+                title: "",
+                combiIndex: 2,
+                totalIndex: 2,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 588,
+                        totalIndex: 588,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 589,
+                        totalIndex: 589,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            }
+        ])
+    });
 });
