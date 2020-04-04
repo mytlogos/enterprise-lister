@@ -710,4 +710,62 @@ describe("testing scrapeToc", () => {
             }
         ])
     });
+    it("should extract correct toc: title prefix with full form mixed with full short form with title", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {title: "I am a cool Book", mediumType: 1};
+            yield {url: "", title: "I am a cool Book: Chapter 586 - V54C3P3 – All That Labor Work", releaseDate: now};
+            yield {url: "", title: "I am a cool Book: Chapter 587 - V54C4P1- Plan of Annihilation", releaseDate: now};
+            yield {url: "", title: "I am a cool Book: Chapter 588 - V54C4P2- Plan of Annihilation", releaseDate: now};
+            yield {url: "", title: "I am a cool Book: Chapter 589 - V54C4P3- Plan of Annihilation", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "",
+                combiIndex: 54,
+                totalIndex: 54,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "All That Labor Work",
+                        combiIndex: 586,
+                        totalIndex: 586,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 587,
+                        totalIndex: 587,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 588,
+                        totalIndex: 588,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 589,
+                        totalIndex: 589,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            }
+        ])
+    });
 });

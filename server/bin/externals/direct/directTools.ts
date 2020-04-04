@@ -1,9 +1,9 @@
 import logger from "../../logger";
 import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper} from "../types";
 import {queueCheerioRequest} from "../queueManager";
-import {combiIndex, equalsIgnore, extractIndices, sanitizeString} from "../../tools";
+import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as url from "url";
-import {TocSearchMedium} from "../../types";
+import {ReleaseState, TocSearchMedium} from "../../types";
 
 export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string) {
     if (!novelTitle || !episodeTitle) {
@@ -163,17 +163,50 @@ export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper,
 }
 
 export interface TocPiece {
-    url?: string;
+    readonly title: string;
+}
+
+export interface TocMetaPiece extends TocPiece {
+    readonly mediumId?: number;
+    readonly synonyms?: string[];
+    readonly mediumType: MediaType;
+    readonly end?: boolean;
+    readonly link: string;
+    readonly langCOO?: string;
+    readonly langTL?: string;
+    readonly statusCOO: ReleaseState;
+    readonly statusTl: ReleaseState;
+    readonly authors?: Array<{ name: string, link: string }>;
+    readonly artists?: Array<{ name: string, link: string }>;
+}
+
+export interface TocContentPiece extends TocPiece {
+    readonly url?: string;
+}
+
+export interface EpisodePiece extends TocContentPiece {
+    readonly url: string;
+    readonly releaseDate: Date;
+}
+
+export interface PartPiece extends TocContentPiece {
+     readonly episodes: any[];
+}
+
+interface InternalToc {
     title: string;
-}
-
-export interface EpisodePiece extends TocPiece {
-    url: string;
-    releaseDate: Date;
-}
-
-export interface PartPiece extends TocPiece {
-    episodes: any[];
+    content: InternalTocContent[];
+    synonyms?: string[];
+    mediumType: MediaType;
+    partsOnly?: boolean;
+    end?: boolean;
+    link: string;
+    langCOO?: string;
+    langTL?: string;
+    statusCOO: ReleaseState;
+    statusTl: ReleaseState;
+    authors?: Array<{ name: string, link: string }>;
+    artists?: Array<{ name: string, link: string }>;
 }
 
 interface InternalTocContent {
@@ -200,12 +233,16 @@ interface InternalTocPart extends InternalTocContent {
     episodes: InternalTocEpisode[];
 }
 
-function isEpisodePiece(value: TocPiece | any): value is EpisodePiece {
+function isEpisodePiece(value: any): value is EpisodePiece {
     return value.releaseDate || value.locked;
 }
 
-function isPartPiece(value: TocPiece | any): value is PartPiece {
+function isPartPiece(value: any): value is PartPiece {
     return value.episodes;
+}
+
+function isTocMetaPiece(value: any): value is TocMetaPiece {
+    return Number.isInteger(value.mediumType);
 }
 
 function isInternalEpisode(value: TocContent | any): value is InternalTocEpisode {
@@ -255,10 +292,38 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
     const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
     const trimTitle = /^([-:\s]+)?(.+?)([-:\s]+)?$/i;
     const volumeMap: Map<number, InternalTocPart> = new Map();
+    const scrapeState: TocScrapeState = {
+        volumeRegex: /v[olume]{0,5}[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
+        separatorRegex: /[-:]/g,
+        chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
+        partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
+        trimRegex: /^[\s:–-]+|[\s:–-]+$/g,
+        endRegex: /end/g,
+        startRegex: /start/g,
+        order: "unknown",
+        volumeMap: new Map<number, InternalTocPart>()
+    };
 
     // normalWay(pageGenerator, volumeRegex, volumeMap, contents, chapterRegex, trimTitle, partRegex);
     for await (const tocPiece of pageGenerator) {
-        const tocContent = mark(tocPiece, volumeMap);
+        if (isTocMetaPiece(tocPiece)) {
+            scrapeState.tocMeta = {
+                artists: tocPiece.artists,
+                authors: tocPiece.authors,
+                content: [],
+                end: tocPiece.end,
+                langCOO: tocPiece.langCOO,
+                langTL: tocPiece.langTL,
+                link: tocPiece.link,
+                mediumType: tocPiece.mediumType,
+                statusCOO: tocPiece.statusCOO,
+                statusTl: tocPiece.statusTl,
+                synonyms: tocPiece.synonyms,
+                title: tocPiece.title
+            };
+            continue;
+        }
+        const tocContent = mark(tocPiece, scrapeState);
         contents.push(...tocContent);
     }
     return contents.map((value): TocContent => {
@@ -297,25 +362,37 @@ interface TocScrapeState {
     chapterRegex: RegExp;
     partRegex: RegExp;
     separatorRegex: RegExp;
+    trimRegex: RegExp;
     startRegex: RegExp;
     endRegex: RegExp;
     order: "asc" | "desc" | "unknown";
     volumeMap: Map<number, InternalTocPart>;
+    tocMeta?: InternalToc;
 }
 
-function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): InternalTocContent[] {
-    const volumeRegex = /v[olume]{0,5}[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
-    const separatorRegex = /[-:]/g;
-    const chapterRegex = /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
-    const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g;
-    const trimRegex = /^[\s:–-]+|[\s:–-]+$/g;
+function mark(tocPiece: TocContentPiece, state: TocScrapeState): InternalTocContent[] {
+    const volumeRegex = state.volumeRegex;
+    const separatorRegex = state.separatorRegex;
+    const chapterRegex = state.chapterRegex;
+    const partRegex = state.partRegex;
+    const trimRegex = state.trimRegex;
+    let title = tocPiece.title;
 
+    if (state.tocMeta) {
+        const index = title.indexOf(state.tocMeta.title);
+
+        if (index >= 0) {
+            const before = title.substring(0, index).replace(trimRegex, "");
+            const after = title.substring(index + state.tocMeta.title.length).replace(trimRegex, "");
+            title = before + after;
+        }
+    }
     const matches: TocMatch[] = [];
 
-    markWithRegex(volumeRegex, tocPiece.title, "volume", matches);
-    // markWithRegex(separatorRegex, tocPiece.title, "separator", matches);
-    markWithRegex(chapterRegex, tocPiece.title, "episode", matches);
-    markWithRegex(partRegex, tocPiece.title, "part", matches);
+    markWithRegex(volumeRegex, title, "volume", matches);
+    // markWithRegex(separatorRegex, title, "separator", matches);
+    markWithRegex(chapterRegex, title, "episode", matches);
+    markWithRegex(partRegex, title, "part", matches);
 
     matches.sort((a, b) => a.from - b.from);
     let possibleEpisode: InternalTocEpisode | undefined;
@@ -414,7 +491,7 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
 
             if (volIndices) {
                 usedMatches.push(match);
-                possibleVolume = volumeMap.get(volIndices.combi);
+                possibleVolume = state.volumeMap.get(volIndices.combi);
 
                 if (!possibleVolume) {
                     possibleVolume = {
@@ -426,14 +503,13 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
                         episodes: []
                     } as InternalTocPart;
                     newVolume = true;
-                    volumeMap.set(volIndices.combi, possibleVolume);
+                    state.volumeMap.set(volIndices.combi, possibleVolume);
                 }
             } else {
                 logger.warn("got a volume match but no indices");
             }
         }
     }
-    let title = tocPiece.title;
 
     for (let i = 0; i < usedMatches.length; i++) {
         const usedMatch = usedMatches[i];

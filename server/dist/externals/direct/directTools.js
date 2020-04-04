@@ -139,6 +139,9 @@ function isEpisodePiece(value) {
 function isPartPiece(value) {
     return value.episodes;
 }
+function isTocMetaPiece(value) {
+    return Number.isInteger(value.mediumType);
+}
 function isInternalEpisode(value) {
     return value.releaseDate || value.locked;
 }
@@ -182,9 +185,37 @@ async function scrapeToc(pageGenerator) {
     const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
     const trimTitle = /^([-:\s]+)?(.+?)([-:\s]+)?$/i;
     const volumeMap = new Map();
+    const scrapeState = {
+        volumeRegex: /v[olume]{0,5}[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
+        separatorRegex: /[-:]/g,
+        chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
+        partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
+        trimRegex: /^[\s:–-]+|[\s:–-]+$/g,
+        endRegex: /end/g,
+        startRegex: /start/g,
+        order: "unknown",
+        volumeMap: new Map()
+    };
     // normalWay(pageGenerator, volumeRegex, volumeMap, contents, chapterRegex, trimTitle, partRegex);
     for await (const tocPiece of pageGenerator) {
-        const tocContent = mark(tocPiece, volumeMap);
+        if (isTocMetaPiece(tocPiece)) {
+            scrapeState.tocMeta = {
+                artists: tocPiece.artists,
+                authors: tocPiece.authors,
+                content: [],
+                end: tocPiece.end,
+                langCOO: tocPiece.langCOO,
+                langTL: tocPiece.langTL,
+                link: tocPiece.link,
+                mediumType: tocPiece.mediumType,
+                statusCOO: tocPiece.statusCOO,
+                statusTl: tocPiece.statusTl,
+                synonyms: tocPiece.synonyms,
+                title: tocPiece.title
+            };
+            continue;
+        }
+        const tocContent = mark(tocPiece, scrapeState);
         contents.push(...tocContent);
     }
     return contents.map((value) => {
@@ -208,17 +239,26 @@ function markWithRegex(regExp, title, type, matches) {
         matches.push({ match, from: match.index, to: match.index + match[0].length, ignore: false, remove: true, type });
     }
 }
-function mark(tocPiece, volumeMap) {
-    const volumeRegex = /v[olume]{0,5}[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
-    const separatorRegex = /[-:]/g;
-    const chapterRegex = /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
-    const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g;
-    const trimRegex = /^[\s:–-]+|[\s:–-]+$/g;
+function mark(tocPiece, state) {
+    const volumeRegex = state.volumeRegex;
+    const separatorRegex = state.separatorRegex;
+    const chapterRegex = state.chapterRegex;
+    const partRegex = state.partRegex;
+    const trimRegex = state.trimRegex;
+    let title = tocPiece.title;
+    if (state.tocMeta) {
+        const index = title.indexOf(state.tocMeta.title);
+        if (index >= 0) {
+            const before = title.substring(0, index).replace(trimRegex, "");
+            const after = title.substring(index + state.tocMeta.title.length).replace(trimRegex, "");
+            title = before + after;
+        }
+    }
     const matches = [];
-    markWithRegex(volumeRegex, tocPiece.title, "volume", matches);
-    // markWithRegex(separatorRegex, tocPiece.title, "separator", matches);
-    markWithRegex(chapterRegex, tocPiece.title, "episode", matches);
-    markWithRegex(partRegex, tocPiece.title, "part", matches);
+    markWithRegex(volumeRegex, title, "volume", matches);
+    // markWithRegex(separatorRegex, title, "separator", matches);
+    markWithRegex(chapterRegex, title, "episode", matches);
+    markWithRegex(partRegex, title, "part", matches);
     matches.sort((a, b) => a.from - b.from);
     let possibleEpisode;
     let possibleVolume;
@@ -315,7 +355,7 @@ function mark(tocPiece, volumeMap) {
             const volIndices = tools_1.extractIndices(match.match, 2, 3, 5);
             if (volIndices) {
                 usedMatches.push(match);
-                possibleVolume = volumeMap.get(volIndices.combi);
+                possibleVolume = state.volumeMap.get(volIndices.combi);
                 if (!possibleVolume) {
                     possibleVolume = {
                         combiIndex: volIndices.combi,
@@ -326,7 +366,7 @@ function mark(tocPiece, volumeMap) {
                         episodes: []
                     };
                     newVolume = true;
-                    volumeMap.set(volIndices.combi, possibleVolume);
+                    state.volumeMap.set(volIndices.combi, possibleVolume);
                 }
             }
             else {
@@ -334,7 +374,6 @@ function mark(tocPiece, volumeMap) {
             }
         }
     }
-    let title = tocPiece.title;
     for (let i = 0; i < usedMatches.length; i++) {
         const usedMatch = usedMatches[i];
         if (!usedMatch.remove) {
