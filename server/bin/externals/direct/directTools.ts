@@ -292,7 +292,7 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
     const separatorRegex = /[-:]/g;
     const chapterRegex = /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
     const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g;
-    const trimRegex = /^[\s:-]+|[\s:-]+$/g;
+    const trimRegex = /^[\s:–-]+|[\s:–-]+$/g;
 
     const matches: TocMatch[] = [];
 
@@ -407,6 +407,9 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
             followingUsedMatch.to -= removedLength;
         }
         title = before + after;
+    }
+    if (possibleEpisode && !possibleEpisode.title && title) {
+        possibleEpisode.title = title.replace(trimRegex, "");
     }
     if (possibleVolume) {
         if (possibleEpisode) {

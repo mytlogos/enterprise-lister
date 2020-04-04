@@ -215,7 +215,7 @@ function mark(tocPiece, volumeMap) {
     const separatorRegex = /[-:]/g;
     const chapterRegex = /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
     const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g;
-    const trimRegex = /^[\s:-]+|[\s:-]+$/g;
+    const trimRegex = /^[\s:–-]+|[\s:–-]+$/g;
     const matches = [];
     markWithRegex(volumeRegex, tocPiece.title, "volume", matches);
     // markWithRegex(separatorRegex, tocPiece.title, "separator", matches);
@@ -322,6 +322,9 @@ function mark(tocPiece, volumeMap) {
             followingUsedMatch.to -= removedLength;
         }
         title = before + after;
+    }
+    if (possibleEpisode && !possibleEpisode.title && title) {
+        possibleEpisode.title = title.replace(trimRegex, "");
     }
     if (possibleVolume) {
         if (possibleEpisode) {

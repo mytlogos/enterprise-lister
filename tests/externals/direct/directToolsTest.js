@@ -596,4 +596,61 @@ describe("testing scrapeToc", () => {
             },
         ])
     });
+    it("should extract correct toc: full short form with title", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {url: "", title: "V54C3P3 – All That Labor Work", releaseDate: now};
+            yield {url: "", title: "V54C4P1- Plan of Annihilation", releaseDate: now};
+            yield {url: "", title: "V54C4P2- Plan of Annihilation", releaseDate: now};
+            yield {url: "", title: "V54C4P3- Plan of Annihilation", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "",
+                combiIndex: 54,
+                totalIndex: 54,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "All That Labor Work",
+                        combiIndex: 3.3,
+                        totalIndex: 3,
+                        partialIndex: 3,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 4.1,
+                        totalIndex: 4,
+                        partialIndex: 1,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 4.2,
+                        totalIndex: 4,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "Plan of Annihilation",
+                        combiIndex: 4.3,
+                        totalIndex: 4,
+                        partialIndex: 3,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            }
+        ])
+    });
 });
