@@ -211,9 +211,9 @@ function markWithRegex(regExp, title, type, matches) {
     }
 }
 function mark(tocPiece, volumeMap) {
-    const volumeRegex = /v[olume]{0,5}[\s.]*((\d+)(\.(\d+))?)/ig;
+    const volumeRegex = /v[olume]{0,5}[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
     const separatorRegex = /[-:]/g;
-    const chapterRegex = /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((\d+)(\.(\d+))?)/ig;
+    const chapterRegex = /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
     const partRegex = /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g;
     const trimRegex = /^[\s:-]+|[\s:-]+$/g;
     const matches = [];
@@ -228,7 +228,11 @@ function mark(tocPiece, volumeMap) {
     const usedMatches = [];
     for (const match of matches) {
         if (!possibleEpisode && match.type === "episode") {
-            const indices = tools_1.extractIndices(match.match, 5, 6, 8);
+            if (match.match[10]) {
+                // it matches the pattern for an invalid episode
+                return undefined;
+            }
+            const indices = tools_1.extractIndices(match.match, 6, 7, 9);
             if (!indices) {
                 continue;
             }
@@ -267,7 +271,11 @@ function mark(tocPiece, volumeMap) {
             }
         }
         else if (!possibleVolume && match.type === "volume") {
-            const volIndices = tools_1.extractIndices(match.match, 1, 2, 4);
+            if (match.match[6]) {
+                // it matches the pattern for an invalid episode
+                return undefined;
+            }
+            const volIndices = tools_1.extractIndices(match.match, 2, 3, 5);
             if (volIndices) {
                 usedMatches.push(match);
                 possibleVolume = volumeMap.get(volIndices.combi);
