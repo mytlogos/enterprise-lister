@@ -188,6 +188,7 @@ interface InternalTocEpisode extends InternalTocContent {
     url: string;
     releaseDate?: Date;
     locked?: boolean;
+    match: TocMatch;
 }
 
 interface InternalTocPart extends InternalTocContent {
@@ -285,6 +286,7 @@ interface TocMatch {
     from: number;
     to: number;
     type: TocMatchType;
+    ignore: boolean;
 }
 
 function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): InternalTocContent | undefined {
@@ -307,11 +309,17 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
     let newVolume = false;
     const usedMatches: TocMatch[] = [];
 
-    for (const match of matches) {
-        if (!possibleEpisode && match.type === "episode") {
+    for (let i = 0; i < matches.length; i++) {
+        const match = matches[i];
+        if (match.type === "episode") {
             if (match.match[10]) {
                 // it matches the pattern for an invalid episode
                 return undefined;
+            }
+            if (possibleEpisode) {
+                match.ignore = true;
+                usedMatches.push(match);
+                continue;
             }
             const indices = extractIndices(match.match, 6, 7, 9);
 
@@ -329,12 +337,27 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
                 url: tocPiece.url,
                 releaseDate: tocPiece.releaseDate || new Date(),
                 title: "",
-                originalTitle: tocPiece.title
+                originalTitle: tocPiece.title,
+                match
             } as InternalTocEpisode;
         } else if (possibleEpisode && match.type === "part") {
             const wrappingMatch = usedMatches.find((value) => value.from <= match.from && value.to >= match.to);
             // there exists a match which wraps the current one, so skip this one
             if (wrappingMatch) {
+                continue;
+            }
+            let refersToCurrentEpisode = true;
+            for (let j = i; j >= 0; j--) {
+                const previousMatch = matches[j];
+                if (previousMatch.type === "episode") {
+                    // noinspection JSUnusedAssignment
+                    refersToCurrentEpisode = previousMatch === possibleEpisode.match;
+                    break;
+                }
+            }
+            if (!refersToCurrentEpisode) {
+                match.ignore = true;
+                usedMatches.push(match);
                 continue;
             }
             const part = Number.parseInt(match.match[2] || match.match[4], 10);
@@ -388,16 +411,18 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
 
         const removedLength = title.length - (before.length + after.length);
 
-        let contentTitle: string;
-        if ((i + 1) < usedMatches.length) {
-            contentTitle = title.substring(usedMatch.to, usedMatches[i + 1].from).replace(trimRegex, "");
-        } else {
-            contentTitle = after;
-        }
-        if (usedMatch.type === "volume" && possibleVolume) {
-            possibleVolume.title = contentTitle;
-        } else if (usedMatch.type === "episode" && possibleEpisode) {
-            possibleEpisode.title = contentTitle;
+        if (!usedMatch.ignore) {
+            let contentTitle: string;
+            if ((i + 1) < usedMatches.length) {
+                contentTitle = title.substring(usedMatch.to, usedMatches[i + 1].from).replace(trimRegex, "");
+            } else {
+                contentTitle = after;
+            }
+            if (usedMatch.type === "volume" && possibleVolume) {
+                possibleVolume.title = contentTitle;
+            } else if (usedMatch.type === "episode" && possibleEpisode) {
+                possibleEpisode.title = contentTitle;
+            }
         }
 
         for (let j = i + 1; j < usedMatches.length; j++) {

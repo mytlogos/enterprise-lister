@@ -226,11 +226,17 @@ function mark(tocPiece, volumeMap) {
     let possibleVolume;
     let newVolume = false;
     const usedMatches = [];
-    for (const match of matches) {
-        if (!possibleEpisode && match.type === "episode") {
+    for (let i = 0; i < matches.length; i++) {
+        const match = matches[i];
+        if (match.type === "episode") {
             if (match.match[10]) {
                 // it matches the pattern for an invalid episode
                 return undefined;
+            }
+            if (possibleEpisode) {
+                match.ignore = true;
+                usedMatches.push(match);
+                continue;
             }
             const indices = tools_1.extractIndices(match.match, 6, 7, 9);
             if (!indices) {
@@ -247,13 +253,28 @@ function mark(tocPiece, volumeMap) {
                 url: tocPiece.url,
                 releaseDate: tocPiece.releaseDate || new Date(),
                 title: "",
-                originalTitle: tocPiece.title
+                originalTitle: tocPiece.title,
+                match
             };
         }
         else if (possibleEpisode && match.type === "part") {
             const wrappingMatch = usedMatches.find((value) => value.from <= match.from && value.to >= match.to);
             // there exists a match which wraps the current one, so skip this one
             if (wrappingMatch) {
+                continue;
+            }
+            let refersToCurrentEpisode = true;
+            for (let j = i; j >= 0; j--) {
+                const previousMatch = matches[j];
+                if (previousMatch.type === "episode") {
+                    // noinspection JSUnusedAssignment
+                    refersToCurrentEpisode = previousMatch === possibleEpisode.match;
+                    break;
+                }
+            }
+            if (!refersToCurrentEpisode) {
+                match.ignore = true;
+                usedMatches.push(match);
                 continue;
             }
             const part = Number.parseInt(match.match[2] || match.match[4], 10);
@@ -303,18 +324,20 @@ function mark(tocPiece, volumeMap) {
         const before = title.substring(0, usedMatch.from).replace(trimRegex, "");
         const after = title.substring(usedMatch.to).replace(trimRegex, "");
         const removedLength = title.length - (before.length + after.length);
-        let contentTitle;
-        if ((i + 1) < usedMatches.length) {
-            contentTitle = title.substring(usedMatch.to, usedMatches[i + 1].from).replace(trimRegex, "");
-        }
-        else {
-            contentTitle = after;
-        }
-        if (usedMatch.type === "volume" && possibleVolume) {
-            possibleVolume.title = contentTitle;
-        }
-        else if (usedMatch.type === "episode" && possibleEpisode) {
-            possibleEpisode.title = contentTitle;
+        if (!usedMatch.ignore) {
+            let contentTitle;
+            if ((i + 1) < usedMatches.length) {
+                contentTitle = title.substring(usedMatch.to, usedMatches[i + 1].from).replace(trimRegex, "");
+            }
+            else {
+                contentTitle = after;
+            }
+            if (usedMatch.type === "volume" && possibleVolume) {
+                possibleVolume.title = contentTitle;
+            }
+            else if (usedMatch.type === "episode" && possibleEpisode) {
+                possibleEpisode.title = contentTitle;
+            }
         }
         for (let j = i + 1; j < usedMatches.length; j++) {
             const followingUsedMatch = usedMatches[j];
