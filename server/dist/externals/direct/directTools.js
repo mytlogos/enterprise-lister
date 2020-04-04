@@ -169,23 +169,16 @@ function externalizeTocPart(internalTocPart) {
     };
 }
 async function scrapeToc(pageGenerator) {
-    const volRegex = ["volume", "book", "season"];
-    const episodeRegex = ["episode", "chapter", "\\d+", "word \\d+"];
     const maybeEpisode = ["ova"];
     const optionalEpisode = ["xxx special chapter", "other tales", "interlude", "bonus", "SKILL SUMMARY", "CHARACTER INTRODUCTION", "side story", "ss", "intermission", "extra", "omake",];
-    const partEpisode = ["part", "3/5"];
-    const invalidEpisode = ["delete", "spam"];
     const start = ["prologue", "prolog"];
     const end = ["Epilogue", "finale"];
-    const hasParts = false;
-    let currentTotalIndex;
     const contents = [];
-    const volumeRegex = /^(.*)(v[olume]{0,5}[\s.]*((\d+)(\.(\d+))?)[-:\s]*)(.*)$/i;
-    const chapterRegex = /(^|\W)[\s-]*(c[hapter]{0,6}|(ep[isode]{0,5})|(word))?[\s.]*((\d+)(\.(\d+))?)[-:\s]*(.*)/i;
-    const partRegex = /([^a-zA-Z]P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/;
-    const trimTitle = /^([-:\s]+)?(.+?)([-:\s]+)?$/i;
-    const volumeMap = new Map();
     const scrapeState = {
+        unusedPieces: [],
+        ascendingCount: 0,
+        descendingCount: 0,
+        hasParts: false,
         volumeRegex: /(v[olume]{0,5}|s[eason]{0,5}|b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
         separatorRegex: /[-:]/g,
         chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
@@ -196,7 +189,6 @@ async function scrapeToc(pageGenerator) {
         order: "unknown",
         volumeMap: new Map()
     };
-    // normalWay(pageGenerator, volumeRegex, volumeMap, contents, chapterRegex, trimTitle, partRegex);
     for await (const tocPiece of pageGenerator) {
         if (isTocMetaPiece(tocPiece)) {
             scrapeState.tocMeta = {
@@ -218,6 +210,7 @@ async function scrapeToc(pageGenerator) {
         const tocContent = mark(tocPiece, scrapeState);
         contents.push(...tocContent);
     }
+    adjustTocContents(contents, scrapeState);
     return contents.map((value) => {
         if (isInternalEpisode(value)) {
             return externalizeTocEpisode(value);
@@ -239,9 +232,75 @@ function markWithRegex(regExp, title, type, matches) {
         matches.push({ match, from: match.index, to: match.index + match[0].length, ignore: false, remove: true, type });
     }
 }
+function adjustPartialIndices(contentIndex, contents, ascending) {
+    const content = contents[contentIndex];
+    const partialLimit = content.partCount;
+    if (partialLimit) {
+        const totalIndex = content.totalIndex;
+        const currentPartialIndex = content.partialIndex;
+        if (currentPartialIndex == null) {
+            logger_1.default.warn("partialLimit but no partialIndex for: " + tools_1.stringify(content));
+        }
+        else {
+            for (let j = contentIndex + 1; j < contents.length; j++) {
+                const next = contents[j];
+                if (next.totalIndex !== totalIndex) {
+                    break;
+                }
+                const nextPartialIndex = currentPartialIndex + (ascending ? 1 : -1);
+                if (nextPartialIndex < 1) {
+                    break;
+                }
+                if (next.partialIndex != null && next.partialIndex !== nextPartialIndex) {
+                    logger_1.default.warn(`trying to overwrite partialIndex on existing one with ${nextPartialIndex}: ${tools_1.stringify(content)}`);
+                }
+                else {
+                    next.partialIndex = nextPartialIndex;
+                    next.combiIndex = tools_1.combiIndex(next);
+                }
+            }
+            for (let j = contentIndex - 1; j >= 0; j--) {
+                const previous = contents[j];
+                if (previous.totalIndex !== totalIndex) {
+                    break;
+                }
+                const nextPartialIndex = currentPartialIndex + (ascending ? -1 : 1);
+                if (nextPartialIndex < 1) {
+                    break;
+                }
+                if (previous.partialIndex != null && previous.partialIndex !== nextPartialIndex) {
+                    logger_1.default.warn("trying to overwrite partialIndex on existing one: " + tools_1.stringify(content));
+                }
+                else {
+                    previous.partialIndex = nextPartialIndex;
+                    previous.combiIndex = tools_1.combiIndex(previous);
+                }
+            }
+        }
+    }
+}
+function adjustTocContents(contents, state) {
+    const ascending = state.ascendingCount > state.descendingCount;
+    if (state.ascendingCount > state.descendingCount) {
+        state.order = "asc";
+    }
+    else {
+        state.order = "desc";
+    }
+    for (let i = 0; i < contents.length; i++) {
+        const content = contents[i];
+        if (isInternalEpisode(content)) {
+            adjustPartialIndices(i, contents, ascending);
+        }
+        else if (isInternalPart(content)) {
+            for (let j = 0; j < content.episodes.length; j++) {
+                adjustPartialIndices(j, content.episodes, ascending);
+            }
+        }
+    }
+}
 function mark(tocPiece, state) {
     const volumeRegex = state.volumeRegex;
-    const separatorRegex = state.separatorRegex;
     const chapterRegex = state.chapterRegex;
     const partRegex = state.partRegex;
     const trimRegex = state.trimRegex;
@@ -337,8 +396,13 @@ function mark(tocPiece, state) {
             if (Number.isInteger(part)) {
                 // noinspection JSUnusedAssignment
                 if (possibleEpisode.partialIndex == null) {
+                    if (match.match[5]) {
+                        // noinspection JSUnusedAssignment
+                        possibleEpisode.partCount = Number.parseInt(match.match[5], 10);
+                    }
                     // noinspection JSUnusedAssignment
                     possibleEpisode.partialIndex = part;
+                    // noinspection JSUnusedAssignment
                     possibleEpisode.combiIndex = tools_1.combiIndex(possibleEpisode);
                     usedMatches.push(match);
                 }
@@ -354,6 +418,7 @@ function mark(tocPiece, state) {
             }
             const volIndices = tools_1.extractIndices(match.match, 3, 4, 6);
             if (volIndices) {
+                state.hasParts = true;
                 usedMatches.push(match);
                 possibleVolume = state.volumeMap.get(volIndices.combi);
                 if (!possibleVolume) {
@@ -408,6 +473,26 @@ function mark(tocPiece, state) {
         possibleEpisode.title = title.replace(trimRegex, "");
     }
     const result = [];
+    if (possibleEpisode) {
+        if (state.lastCombiIndex != null) {
+            if (state.lastCombiIndex < possibleEpisode.combiIndex) {
+                state.ascendingCount++;
+            }
+            else if (state.lastCombiIndex > possibleEpisode.combiIndex) {
+                state.descendingCount++;
+            }
+        }
+        state.lastCombiIndex = possibleEpisode.combiIndex;
+        for (const unusedPiece of state.unusedPieces) {
+            if (!unusedPiece.before) {
+                unusedPiece.before = possibleEpisode;
+            }
+        }
+    }
+    else {
+        state.unusedPieces.push({ ...tocPiece, after: state.lastExtracted });
+    }
+    state.lastExtracted = possibleEpisode || possibleVolume || state.lastExtracted;
     if (possibleVolume) {
         if (possibleEpisode) {
             possibleVolume.episodes.push(possibleEpisode);
