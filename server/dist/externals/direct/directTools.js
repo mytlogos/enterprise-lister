@@ -185,9 +185,7 @@ async function scrapeToc(pageGenerator) {
     // normalWay(pageGenerator, volumeRegex, volumeMap, contents, chapterRegex, trimTitle, partRegex);
     for await (const tocPiece of pageGenerator) {
         const tocContent = mark(tocPiece, volumeMap);
-        if (tocContent) {
-            contents.push(tocContent);
-        }
+        contents.push(...tocContent);
     }
     return contents.map((value) => {
         if (isInternalEpisode(value)) {
@@ -207,7 +205,7 @@ function markWithRegex(regExp, title, type, matches) {
         throw Error("Need a Regex with global Flag enabled, else it will crash");
     }
     for (let match = regExp.exec(title); match; match = regExp.exec(title)) {
-        matches.push({ match, from: match.index, to: match.index + match[0].length, type });
+        matches.push({ match, from: match.index, to: match.index + match[0].length, ignore: false, remove: true, type });
     }
 }
 function mark(tocPiece, volumeMap) {
@@ -231,18 +229,36 @@ function mark(tocPiece, volumeMap) {
         if (match.type === "episode") {
             if (match.match[10]) {
                 // it matches the pattern for an invalid episode
-                return undefined;
-            }
-            if (possibleEpisode) {
-                match.ignore = true;
-                usedMatches.push(match);
-                continue;
+                return [];
             }
             const indices = tools_1.extractIndices(match.match, 6, 7, 9);
             if (!indices) {
                 continue;
             }
             if (!isEpisodePiece(tocPiece)) {
+                continue;
+            }
+            if (possibleEpisode) {
+                let hasDirectVolume = false;
+                for (let j = i - 1; j >= 0; j--) {
+                    const type = matches[j].type;
+                    if (type === "episode" || type === "part") {
+                        break;
+                    }
+                    if (type === "volume") {
+                        hasDirectVolume = true;
+                        break;
+                    }
+                }
+                if (hasDirectVolume) {
+                    possibleEpisode.relativeIndices = {
+                        combiIndex: indices.combi,
+                        partialIndex: indices.fraction,
+                        totalIndex: indices.total
+                    };
+                }
+                match.ignore = true;
+                usedMatches.push(match);
                 continue;
             }
             usedMatches.push(match);
@@ -294,7 +310,7 @@ function mark(tocPiece, volumeMap) {
         else if (!possibleVolume && match.type === "volume") {
             if (match.match[6]) {
                 // it matches the pattern for an invalid episode
-                return undefined;
+                return [];
             }
             const volIndices = tools_1.extractIndices(match.match, 2, 3, 5);
             if (volIndices) {
@@ -321,6 +337,9 @@ function mark(tocPiece, volumeMap) {
     let title = tocPiece.title;
     for (let i = 0; i < usedMatches.length; i++) {
         const usedMatch = usedMatches[i];
+        if (!usedMatch.remove) {
+            continue;
+        }
         const before = title.substring(0, usedMatch.from).replace(trimRegex, "");
         const after = title.substring(usedMatch.to).replace(trimRegex, "");
         const removedLength = title.length - (before.length + after.length);
@@ -349,14 +368,18 @@ function mark(tocPiece, volumeMap) {
     if (possibleEpisode && !possibleEpisode.title && title) {
         possibleEpisode.title = title.replace(trimRegex, "");
     }
+    const result = [];
     if (possibleVolume) {
         if (possibleEpisode) {
             possibleVolume.episodes.push(possibleEpisode);
         }
-        return newVolume ? possibleVolume : undefined;
+        if (newVolume) {
+            result.push(possibleVolume);
+        }
     }
-    else {
-        return possibleEpisode;
+    else if (possibleEpisode) {
+        result.push(possibleEpisode);
     }
+    return result;
 }
 //# sourceMappingURL=directTools.js.map

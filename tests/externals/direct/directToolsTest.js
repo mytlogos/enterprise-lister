@@ -652,7 +652,8 @@ describe("testing scrapeToc", () => {
                 ]
             }
         ])
-    });it("should extract correct toc: full form mixed with full short form with title", async function () {
+    });
+    it("should extract correct toc: full form mixed with full short form with title", async function () {
         const now = new Date();
         const generator = (async function* testGenerator() {
             yield {url: "", title: "Chapter 586 - V54C3P3 – All That Labor Work", releaseDate: now};

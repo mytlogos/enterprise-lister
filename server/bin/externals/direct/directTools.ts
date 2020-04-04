@@ -189,6 +189,11 @@ interface InternalTocEpisode extends InternalTocContent {
     releaseDate?: Date;
     locked?: boolean;
     match: TocMatch;
+    relativeIndices?: {
+        combiIndex: number;
+        totalIndex: number;
+        partialIndex?: number;
+    };
 }
 
 interface InternalTocPart extends InternalTocContent {
@@ -254,10 +259,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
     // normalWay(pageGenerator, volumeRegex, volumeMap, contents, chapterRegex, trimTitle, partRegex);
     for await (const tocPiece of pageGenerator) {
         const tocContent = mark(tocPiece, volumeMap);
-
-        if (tocContent) {
-            contents.push(tocContent);
-        }
+        contents.push(...tocContent);
     }
     return contents.map((value): TocContent => {
         if (isInternalEpisode(value)) {
@@ -277,7 +279,7 @@ function markWithRegex(regExp: RegExp, title: string, type: TocMatchType, matche
         throw Error("Need a Regex with global Flag enabled, else it will crash");
     }
     for (let match = regExp.exec(title); match; match = regExp.exec(title)) {
-        matches.push({match, from: match.index, to: match.index + match[0].length, type});
+        matches.push({match, from: match.index, to: match.index + match[0].length, ignore: false, remove: true, type});
     }
 }
 
@@ -287,9 +289,21 @@ interface TocMatch {
     to: number;
     type: TocMatchType;
     ignore: boolean;
+    remove: boolean;
 }
 
-function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): InternalTocContent | undefined {
+interface TocScrapeState {
+    volumeRegex: RegExp;
+    chapterRegex: RegExp;
+    partRegex: RegExp;
+    separatorRegex: RegExp;
+    startRegex: RegExp;
+    endRegex: RegExp;
+    order: "asc" | "desc" | "unknown";
+    volumeMap: Map<number, InternalTocPart>;
+}
+
+function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): InternalTocContent[] {
     const volumeRegex = /v[olume]{0,5}[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
     const separatorRegex = /[-:]/g;
     const chapterRegex = /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig;
@@ -314,12 +328,7 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
         if (match.type === "episode") {
             if (match.match[10]) {
                 // it matches the pattern for an invalid episode
-                return undefined;
-            }
-            if (possibleEpisode) {
-                match.ignore = true;
-                usedMatches.push(match);
-                continue;
+                return [];
             }
             const indices = extractIndices(match.match, 6, 7, 9);
 
@@ -327,6 +336,29 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
                 continue;
             }
             if (!isEpisodePiece(tocPiece)) {
+                continue;
+            }
+            if (possibleEpisode) {
+                let hasDirectVolume = false;
+                for (let j = i - 1; j >= 0; j--) {
+                    const type = matches[j].type;
+                    if (type === "episode" || type === "part") {
+                        break;
+                    }
+                    if (type === "volume") {
+                        hasDirectVolume = true;
+                        break;
+                    }
+                }
+                if (hasDirectVolume) {
+                    possibleEpisode.relativeIndices = {
+                        combiIndex: indices.combi,
+                        partialIndex: indices.fraction,
+                        totalIndex: indices.total
+                    };
+                }
+                match.ignore = true;
+                usedMatches.push(match);
                 continue;
             }
             usedMatches.push(match);
@@ -376,7 +408,7 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
         } else if (!possibleVolume && match.type === "volume") {
             if (match.match[6]) {
                 // it matches the pattern for an invalid episode
-                return undefined;
+                return [];
             }
             const volIndices = extractIndices(match.match, 2, 3, 5);
 
@@ -405,6 +437,10 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
 
     for (let i = 0; i < usedMatches.length; i++) {
         const usedMatch = usedMatches[i];
+
+        if (!usedMatch.remove) {
+            continue;
+        }
 
         const before = title.substring(0, usedMatch.from).replace(trimRegex, "");
         const after = title.substring(usedMatch.to).replace(trimRegex, "");
@@ -436,12 +472,16 @@ function mark(tocPiece: TocPiece, volumeMap: Map<number, InternalTocPart>): Inte
     if (possibleEpisode && !possibleEpisode.title && title) {
         possibleEpisode.title = title.replace(trimRegex, "");
     }
+    const result: InternalTocContent[] = [];
     if (possibleVolume) {
         if (possibleEpisode) {
             possibleVolume.episodes.push(possibleEpisode);
         }
-        return newVolume ? possibleVolume : undefined;
-    } else {
-        return possibleEpisode;
+        if (newVolume) {
+            result.push(possibleVolume);
+        }
+    } else if (possibleEpisode) {
+        result.push(possibleEpisode);
     }
+    return result;
 }
