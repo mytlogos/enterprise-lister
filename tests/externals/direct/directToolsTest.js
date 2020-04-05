@@ -4,6 +4,10 @@ const sinon_chai = require("sinon-chai");
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
 const directTools = require("../../../server/dist/externals/direct/directTools");
+const tools = require("../../../server/dist/tools");
+after(() => {
+    tools.internetTester.stop();
+});
 
 chai.use(sinon_chai);
 chai.use(chaiAsPromised);
