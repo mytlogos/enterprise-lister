@@ -269,7 +269,7 @@ function isInternalEpisode(value: TocContent | any): value is InternalTocEpisode
 }
 
 function isInternalPart(value: TocContent | any): value is InternalTocPart {
-    return value.episodes;
+    return Array.isArray(value.episodes);
 }
 
 function externalizeTocEpisode(value: InternalTocEpisode): TocEpisode {
@@ -572,14 +572,32 @@ function adjustTocContents(contents: InternalTocContent[], state: TocScrapeState
     insertUnusedEndPieces(state, contents, ascending, unusedEpisodePieces);
     insertUnusedMiddlePieces(state, contents, ascending, unusedEpisodePieces);
 
+    let currentVolume: InternalTocPart | undefined;
     for (let i = 0; i < contents.length; i++) {
         const content = contents[i];
 
         if (isInternalEpisode(content)) {
             adjustPartialIndices(i, contents, ascending);
+            if (currentVolume) {
+                currentVolume.episodes.push(content);
+                contents.splice(i, 1);
+                i--;
+            }
         } else if (isInternalPart(content)) {
             for (let j = 0; j < content.episodes.length; j++) {
                 adjustPartialIndices(j, content.episodes, ascending);
+            }
+            if (ascending) {
+                currentVolume = content;
+            } else {
+                for (let j = i - 1; j >= 0; j--) {
+                    const previousContent = contents[j];
+                    if (isInternalPart(previousContent)) {
+                        break;
+                    }
+                    contents.splice(j, 1);
+                    content.episodes.unshift(previousContent as InternalTocEpisode);
+                }
             }
         }
     }
