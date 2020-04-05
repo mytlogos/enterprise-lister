@@ -907,4 +907,364 @@ describe("testing scrapeToc", () => {
             }
         ])
     });
+    it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing ascending story", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {title: "I am a cool Book", mediumType: 1, end: undefined};
+            yield {url: "", title: "I am a Intermission1", releaseDate: now};
+            yield {url: "", title: "I am a Intermission2", releaseDate: now};
+            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
+            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
+            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
+            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
+            yield {url: "", title: "I am a Intermission3", releaseDate: now};
+            yield {url: "", title: "I am a Intermission4", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "I am a Intermission1",
+                combiIndex: 0.1,
+                totalIndex: 0,
+                partialIndex: 1,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission2",
+                combiIndex: 0.2,
+                totalIndex: 0,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission3",
+                combiIndex: 0.3,
+                totalIndex: 0,
+                partialIndex: 3,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission4",
+                combiIndex: 0.4,
+                totalIndex: 0,
+                partialIndex: 4,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 1,
+                totalIndex: 1,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 2.2,
+                totalIndex: 2,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock2",
+                combiIndex: 3,
+                totalIndex: 3,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock3",
+                combiIndex: 4.2,
+                totalIndex: 4,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            }
+        ])
+    });
+    it("should extract correct toc: chapter indices with non main story chapters at the ends with finished ascending story", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {title: "I am a cool Book", mediumType: 1, end: true};
+            yield {url: "", title: "I am a Intermission1", releaseDate: now};
+            yield {url: "", title: "I am a Intermission2", releaseDate: now};
+            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
+            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
+            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
+            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
+            yield {url: "", title: "I am a Intermission3", releaseDate: now};
+            yield {url: "", title: "I am a Intermission4", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "I am a Intermission1",
+                combiIndex: 0.1,
+                totalIndex: 0,
+                partialIndex: 1,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission2",
+                combiIndex: 0.2,
+                totalIndex: 0,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 1,
+                totalIndex: 1,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 2.2,
+                totalIndex: 2,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock2",
+                combiIndex: 3,
+                totalIndex: 3,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock3",
+                combiIndex: 4.2,
+                totalIndex: 4,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission3",
+                combiIndex: 4.3,
+                totalIndex: 4,
+                partialIndex: 3,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission4",
+                combiIndex: 4.4,
+                totalIndex: 4,
+                partialIndex: 4,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+        ])
+    });
+    it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing descending story", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {title: "I am a cool Book", mediumType: 1, end: undefined};
+            yield {url: "", title: "I am a Intermission4", releaseDate: now};
+            yield {url: "", title: "I am a Intermission3", releaseDate: now};
+            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
+            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
+            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
+            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
+            yield {url: "", title: "I am a Intermission2", releaseDate: now};
+            yield {url: "", title: "I am a Intermission1", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "I am HitchCock3",
+                combiIndex: 4.2,
+                totalIndex: 4,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock2",
+                combiIndex: 3,
+                totalIndex: 3,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 2.2,
+                totalIndex: 2,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 1,
+                totalIndex: 1,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission4",
+                combiIndex: 0.4,
+                totalIndex: 0,
+                partialIndex: 4,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission3",
+                combiIndex: 0.3,
+                totalIndex: 0,
+                partialIndex: 3,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission2",
+                combiIndex: 0.2,
+                totalIndex: 0,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission1",
+                combiIndex: 0.1,
+                totalIndex: 0,
+                partialIndex: 1,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+        ])
+    });
+    it("should extract correct toc: chapter indices with non main story chapters at the ends with finished descending story", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {title: "I am a cool Book", mediumType: 1, end: true};
+            yield {url: "", title: "I am a Intermission4", releaseDate: now};
+            yield {url: "", title: "I am a Intermission3", releaseDate: now};
+            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
+            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
+            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
+            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
+            yield {url: "", title: "I am a Intermission2", releaseDate: now};
+            yield {url: "", title: "I am a Intermission1", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "I am a Intermission4",
+                combiIndex: 4.4,
+                totalIndex: 4,
+                partialIndex: 4,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission3",
+                combiIndex: 4.3,
+                totalIndex: 4,
+                partialIndex: 3,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock3",
+                combiIndex: 4.2,
+                totalIndex: 4,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock2",
+                combiIndex: 3,
+                totalIndex: 3,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 2.2,
+                totalIndex: 2,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am HitchCock1",
+                combiIndex: 1,
+                totalIndex: 1,
+                partialIndex: undefined,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission2",
+                combiIndex: 0.2,
+                totalIndex: 0,
+                partialIndex: 2,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+            {
+                title: "I am a Intermission1",
+                combiIndex: 0.1,
+                totalIndex: 0,
+                partialIndex: 1,
+                locked: false,
+                url: "",
+                releaseDate: now
+            },
+        ])
+    });
 });

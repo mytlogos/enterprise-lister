@@ -1,7 +1,7 @@
 import logger from "../../logger";
 import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper} from "../types";
 import {queueCheerioRequest} from "../queueManager";
-import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
+import {combiIndex, equalsIgnore, extractIndices, max, MediaType, min, sanitizeString, stringify} from "../../tools";
 import * as url from "url";
 import {ReleaseState, TocSearchMedium} from "../../types";
 
@@ -184,7 +184,12 @@ export interface TocContentPiece extends TocPiece {
     readonly url?: string;
 }
 
-type UnusedPiece<R> = { after?: InternalTocContent; before?: InternalTocContent; } & R;
+interface Node {
+    after?: InternalTocContent;
+    before?: InternalTocContent;
+}
+
+type UnusedPiece<R> = Node & R;
 
 export interface EpisodePiece extends TocContentPiece {
     readonly url: string;
@@ -223,7 +228,7 @@ interface InternalTocEpisode extends InternalTocContent {
     url: string;
     releaseDate?: Date;
     locked?: boolean;
-    match: TocMatch;
+    match: TocMatch | null;
     partCount?: number;
     relativeIndices?: {
         combiIndex: number;
@@ -386,12 +391,15 @@ function adjustPartialIndices(contentIndex: number, contents: InternalTocContent
             for (let j = contentIndex + 1; j < contents.length; j++) {
                 const next = contents[j];
 
+                if (!isInternalEpisode(next) || !next.match) {
+                    continue;
+                }
                 if (next.totalIndex !== totalIndex) {
                     break;
                 }
                 const nextPartialIndex = currentPartialIndex + (ascending ? 1 : -1);
 
-                if (nextPartialIndex < 1) {
+                if (nextPartialIndex < 1 || nextPartialIndex > partialLimit) {
                     break;
                 }
                 if (next.partialIndex != null && next.partialIndex !== nextPartialIndex) {
@@ -404,12 +412,15 @@ function adjustPartialIndices(contentIndex: number, contents: InternalTocContent
             for (let j = contentIndex - 1; j >= 0; j--) {
                 const previous = contents[j];
 
+                if (!isInternalEpisode(previous) || !previous.match) {
+                    continue;
+                }
                 if (previous.totalIndex !== totalIndex) {
                     break;
                 }
                 const nextPartialIndex = currentPartialIndex + (ascending ? -1 : 1);
 
-                if (nextPartialIndex < 1) {
+                if (nextPartialIndex < 1 || nextPartialIndex > partialLimit) {
                     break;
                 }
                 if (previous.partialIndex != null && previous.partialIndex !== nextPartialIndex) {
@@ -423,6 +434,29 @@ function adjustPartialIndices(contentIndex: number, contents: InternalTocContent
     }
 }
 
+type EpisodePieceConverter = (value: EpisodePiece, index: number, array: EpisodePiece[]) => InternalTocEpisode;
+
+function getConvertToTocEpisode(ascending: boolean, totalIndex: number, partialIndex: number): EpisodePieceConverter {
+    return (value: EpisodePiece, index: number, array: EpisodePiece[]): InternalTocEpisode => {
+        if (!ascending) {
+            index = array.length - 1 - index;
+        }
+        const episode = {
+            combiIndex: 0,
+            totalIndex,
+            partialIndex: partialIndex + index,
+            title: value.title,
+            url: value.url,
+            match: null,
+            locked: false,
+            releaseDate: value.releaseDate,
+            originalTitle: value.title
+        };
+        episode.combiIndex = combiIndex(episode);
+        return episode;
+    };
+}
+
 function adjustTocContents(contents: InternalTocContent[], state: TocScrapeState): void {
     const ascending = state.ascendingCount > state.descendingCount;
 
@@ -430,6 +464,56 @@ function adjustTocContents(contents: InternalTocContent[], state: TocScrapeState
         state.order = "asc";
     } else {
         state.order = "desc";
+    }
+
+    const unusedEpisodePieces = state.unusedPieces.filter(isEpisodePiece);
+
+    let endingsFilter: (value: UnusedPiece<TocContentPiece>) => boolean;
+    if (state.tocMeta && state.tocMeta.end) {
+        let endFilter: (value: UnusedPiece<TocContentPiece>) => boolean;
+        let insertFunction: (...values: InternalTocEpisode[]) => void;
+
+        let latest = max(contents, "combiIndex");
+
+        if (latest && isInternalPart(latest)) {
+            latest = max(latest.episodes, "combiIndex");
+        }
+
+        const sidePartialIndex = latest ? (latest.partialIndex || 0) + 1 : 1;
+
+        if (ascending) {
+            endingsFilter = (value) => !value.after;
+            endFilter = (value) => !value.before;
+            insertFunction = contents.push;
+        } else {
+            endingsFilter = (value) => !value.before;
+            endFilter = (value) => !value.after;
+            insertFunction = contents.unshift;
+        }
+        const endSideEpisodes = unusedEpisodePieces
+            .filter(endFilter)
+            .map(getConvertToTocEpisode(ascending, latest ? latest.totalIndex : 0, sidePartialIndex));
+
+        insertFunction.apply(contents, endSideEpisodes);
+    } else {
+        endingsFilter = (value) => !value.before || !value.after;
+    }
+    let earliest = min(contents, "combiIndex");
+
+    if (earliest && isInternalPart(earliest)) {
+        earliest = min(earliest.episodes, "combiIndex");
+    }
+
+    const startSidePartialIndex = earliest && earliest.totalIndex === 0 ? (earliest.partialIndex || 0) + 1 : 1;
+
+    const startSideEpisodes = unusedEpisodePieces
+        .filter(endingsFilter)
+        .map(getConvertToTocEpisode(ascending, 0, startSidePartialIndex));
+
+    if (ascending) {
+        contents.unshift(...startSideEpisodes);
+    } else {
+        contents.push(...startSideEpisodes);
     }
 
     for (let i = 0; i < contents.length; i++) {

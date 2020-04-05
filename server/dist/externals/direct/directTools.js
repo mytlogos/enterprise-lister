@@ -244,11 +244,14 @@ function adjustPartialIndices(contentIndex, contents, ascending) {
         else {
             for (let j = contentIndex + 1; j < contents.length; j++) {
                 const next = contents[j];
+                if (!isInternalEpisode(next) || !next.match) {
+                    continue;
+                }
                 if (next.totalIndex !== totalIndex) {
                     break;
                 }
                 const nextPartialIndex = currentPartialIndex + (ascending ? 1 : -1);
-                if (nextPartialIndex < 1) {
+                if (nextPartialIndex < 1 || nextPartialIndex > partialLimit) {
                     break;
                 }
                 if (next.partialIndex != null && next.partialIndex !== nextPartialIndex) {
@@ -261,11 +264,14 @@ function adjustPartialIndices(contentIndex, contents, ascending) {
             }
             for (let j = contentIndex - 1; j >= 0; j--) {
                 const previous = contents[j];
+                if (!isInternalEpisode(previous) || !previous.match) {
+                    continue;
+                }
                 if (previous.totalIndex !== totalIndex) {
                     break;
                 }
                 const nextPartialIndex = currentPartialIndex + (ascending ? -1 : 1);
-                if (nextPartialIndex < 1) {
+                if (nextPartialIndex < 1 || nextPartialIndex > partialLimit) {
                     break;
                 }
                 if (previous.partialIndex != null && previous.partialIndex !== nextPartialIndex) {
@@ -279,6 +285,26 @@ function adjustPartialIndices(contentIndex, contents, ascending) {
         }
     }
 }
+function getConvertToTocEpisode(ascending, totalIndex, partialIndex) {
+    return (value, index, array) => {
+        if (!ascending) {
+            index = array.length - 1 - index;
+        }
+        const episode = {
+            combiIndex: 0,
+            totalIndex,
+            partialIndex: partialIndex + index,
+            title: value.title,
+            url: value.url,
+            match: null,
+            locked: false,
+            releaseDate: value.releaseDate,
+            originalTitle: value.title
+        };
+        episode.combiIndex = tools_1.combiIndex(episode);
+        return episode;
+    };
+}
 function adjustTocContents(contents, state) {
     const ascending = state.ascendingCount > state.descendingCount;
     if (state.ascendingCount > state.descendingCount) {
@@ -286,6 +312,48 @@ function adjustTocContents(contents, state) {
     }
     else {
         state.order = "desc";
+    }
+    const unusedEpisodePieces = state.unusedPieces.filter(isEpisodePiece);
+    let endingsFilter;
+    if (state.tocMeta && state.tocMeta.end) {
+        let endFilter;
+        let insertFunction;
+        let latest = tools_1.max(contents, "combiIndex");
+        if (latest && isInternalPart(latest)) {
+            latest = tools_1.max(latest.episodes, "combiIndex");
+        }
+        const sidePartialIndex = latest ? (latest.partialIndex || 0) + 1 : 1;
+        if (ascending) {
+            endingsFilter = (value) => !value.after;
+            endFilter = (value) => !value.before;
+            insertFunction = contents.push;
+        }
+        else {
+            endingsFilter = (value) => !value.before;
+            endFilter = (value) => !value.after;
+            insertFunction = contents.unshift;
+        }
+        const endSideEpisodes = unusedEpisodePieces
+            .filter(endFilter)
+            .map(getConvertToTocEpisode(ascending, latest ? latest.totalIndex : 0, sidePartialIndex));
+        insertFunction.apply(contents, endSideEpisodes);
+    }
+    else {
+        endingsFilter = (value) => !value.before || !value.after;
+    }
+    let earliest = tools_1.min(contents, "combiIndex");
+    if (earliest && isInternalPart(earliest)) {
+        earliest = tools_1.min(earliest.episodes, "combiIndex");
+    }
+    const startSidePartialIndex = earliest && earliest.totalIndex === 0 ? (earliest.partialIndex || 0) + 1 : 1;
+    const startSideEpisodes = unusedEpisodePieces
+        .filter(endingsFilter)
+        .map(getConvertToTocEpisode(ascending, 0, startSidePartialIndex));
+    if (ascending) {
+        contents.unshift(...startSideEpisodes);
+    }
+    else {
+        contents.push(...startSideEpisodes);
     }
     for (let i = 0; i < contents.length; i++) {
         const content = contents[i];
