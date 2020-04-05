@@ -1,7 +1,17 @@
 import logger from "../../logger";
 import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper} from "../types";
 import {queueCheerioRequest} from "../queueManager";
-import {combiIndex, equalsIgnore, extractIndices, max, MediaType, min, sanitizeString, stringify} from "../../tools";
+import {
+    combiIndex,
+    equalsIgnore,
+    extractIndices,
+    getElseSet,
+    max,
+    MediaType,
+    min,
+    sanitizeString,
+    stringify
+} from "../../tools";
 import * as url from "url";
 import {ReleaseState, TocSearchMedium} from "../../types";
 
@@ -190,6 +200,7 @@ interface Node {
 }
 
 type UnusedPiece<R> = Node & R;
+type UnusedEpisode = UnusedPiece<EpisodePiece>;
 
 export interface EpisodePiece extends TocContentPiece {
     readonly url: string;
@@ -457,20 +468,11 @@ function getConvertToTocEpisode(ascending: boolean, totalIndex: number, partialI
     };
 }
 
-function adjustTocContents(contents: InternalTocContent[], state: TocScrapeState): void {
-    const ascending = state.ascendingCount > state.descendingCount;
-
-    if (state.ascendingCount > state.descendingCount) {
-        state.order = "asc";
-    } else {
-        state.order = "desc";
-    }
-
-    const unusedEpisodePieces = state.unusedPieces.filter(isEpisodePiece);
-
-    let endingsFilter: (value: UnusedPiece<TocContentPiece>) => boolean;
+// tslint:disable-next-line
+function insertUnusedEndPieces(state: TocScrapeState, contents: InternalTocContent[], ascending: boolean, unusedEpisodePieces: UnusedEpisode[]) {
+    let endingsFilter: (value: UnusedEpisode) => boolean;
     if (state.tocMeta && state.tocMeta.end) {
-        let endFilter: (value: UnusedPiece<TocContentPiece>) => boolean;
+        let endFilter: (value: UnusedEpisode) => boolean;
         let insertFunction: (...values: InternalTocEpisode[]) => void;
 
         let latest = max(contents, "combiIndex");
@@ -515,6 +517,60 @@ function adjustTocContents(contents: InternalTocContent[], state: TocScrapeState
     } else {
         contents.push(...startSideEpisodes);
     }
+}
+
+// tslint:disable-next-line
+function insertUnusedMiddlePieces(state: TocScrapeState, contents: InternalTocContent[], ascending: boolean, unusedEpisodePieces: UnusedEpisode[]) {
+    // map has insertion order, so it is fine to use it
+    const rangeEpisodeMap: Map<InternalTocContent, UnusedEpisode[]> = new Map();
+
+    const middlePieces = unusedEpisodePieces.filter((value) => value.after && value.before);
+
+    for (const unused of middlePieces) {
+        const episodes = getElseSet(rangeEpisodeMap, unused.after, () => []);
+        episodes.push(unused);
+    }
+    const startKey = ascending ? "after" : "before";
+    const endKey = ascending ? "before" : "after";
+
+    for (const range of rangeEpisodeMap.values()) {
+        let start: InternalTocContent | undefined;
+        let end: InternalTocContent | undefined;
+        let index = 0;
+        let converter: EpisodePieceConverter | undefined;
+        let startIndex: number | undefined;
+
+        for (const unusedEpisode of range) {
+            if (!start && !end) {
+                start = unusedEpisode[startKey] as InternalTocContent;
+                end = unusedEpisode[endKey] as InternalTocContent;
+                converter = getConvertToTocEpisode(ascending, start.totalIndex, (start.partialIndex || 0) + 1);
+                startIndex = contents.indexOf(start);
+            } else if (start !== unusedEpisode[startKey] || end !== unusedEpisode[endKey]) {
+                logger.warn("different episode boundaries detected for an unused one: " + stringify(unusedEpisode));
+                continue;
+            }
+            const internalTocEpisode = (converter as EpisodePieceConverter)(unusedEpisode, index, range);
+            const insertIndex = (startIndex as number) + index + (ascending ? 1 : 0);
+            contents.splice(insertIndex, 0, internalTocEpisode);
+            index++;
+        }
+    }
+}
+
+function adjustTocContents(contents: InternalTocContent[], state: TocScrapeState): void {
+    const ascending = state.ascendingCount > state.descendingCount;
+
+    if (state.ascendingCount > state.descendingCount) {
+        state.order = "asc";
+    } else {
+        state.order = "desc";
+    }
+
+    const unusedEpisodePieces = state.unusedPieces.filter(isEpisodePiece);
+
+    insertUnusedEndPieces(state, contents, ascending, unusedEpisodePieces);
+    insertUnusedMiddlePieces(state, contents, ascending, unusedEpisodePieces);
 
     for (let i = 0; i < contents.length; i++) {
         const content = contents[i];

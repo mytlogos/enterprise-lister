@@ -305,15 +305,8 @@ function getConvertToTocEpisode(ascending, totalIndex, partialIndex) {
         return episode;
     };
 }
-function adjustTocContents(contents, state) {
-    const ascending = state.ascendingCount > state.descendingCount;
-    if (state.ascendingCount > state.descendingCount) {
-        state.order = "asc";
-    }
-    else {
-        state.order = "desc";
-    }
-    const unusedEpisodePieces = state.unusedPieces.filter(isEpisodePiece);
+// tslint:disable-next-line
+function insertUnusedEndPieces(state, contents, ascending, unusedEpisodePieces) {
     let endingsFilter;
     if (state.tocMeta && state.tocMeta.end) {
         let endFilter;
@@ -355,6 +348,53 @@ function adjustTocContents(contents, state) {
     else {
         contents.push(...startSideEpisodes);
     }
+}
+// tslint:disable-next-line
+function insertUnusedMiddlePieces(state, contents, ascending, unusedEpisodePieces) {
+    // map has insertion order, so it is fine to use it
+    const rangeEpisodeMap = new Map();
+    const middlePieces = unusedEpisodePieces.filter((value) => value.after && value.before);
+    for (const unused of middlePieces) {
+        const episodes = tools_1.getElseSet(rangeEpisodeMap, unused.after, () => []);
+        episodes.push(unused);
+    }
+    const startKey = ascending ? "after" : "before";
+    const endKey = ascending ? "before" : "after";
+    for (const range of rangeEpisodeMap.values()) {
+        let start;
+        let end;
+        let index = 0;
+        let converter;
+        let startIndex;
+        for (const unusedEpisode of range) {
+            if (!start && !end) {
+                start = unusedEpisode[startKey];
+                end = unusedEpisode[endKey];
+                converter = getConvertToTocEpisode(ascending, start.totalIndex, (start.partialIndex || 0) + 1);
+                startIndex = contents.indexOf(start);
+            }
+            else if (start !== unusedEpisode[startKey] || end !== unusedEpisode[endKey]) {
+                logger_1.default.warn("different episode boundaries detected for an unused one: " + tools_1.stringify(unusedEpisode));
+                continue;
+            }
+            const internalTocEpisode = converter(unusedEpisode, index, range);
+            const insertIndex = startIndex + index + (ascending ? 1 : 0);
+            contents.splice(insertIndex, 0, internalTocEpisode);
+            index++;
+        }
+    }
+}
+function adjustTocContents(contents, state) {
+    const ascending = state.ascendingCount > state.descendingCount;
+    if (state.ascendingCount > state.descendingCount) {
+        state.order = "asc";
+    }
+    else {
+        state.order = "desc";
+    }
+    const unusedEpisodePieces = state.unusedPieces.filter(isEpisodePiece);
+    insertUnusedEndPieces(state, contents, ascending, unusedEpisodePieces);
+    insertUnusedMiddlePieces(state, contents, ascending, unusedEpisodePieces);
     for (let i = 0; i < contents.length; i++) {
         const content = contents[i];
         if (isInternalEpisode(content)) {
