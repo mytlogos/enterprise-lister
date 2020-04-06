@@ -534,7 +534,7 @@ function insertUnusedEndPieces(state: TocScrapeState, contents: InternalTocConte
 }
 
 // tslint:disable-next-line
-function insertIntoPart(insertEpisode: InternalTocEpisode, part: InternalTocPart, state: TocScrapeState, partIndex: number, index: number, ascending: boolean) {
+function insertIntoPart(insertEpisode: InternalTocEpisode, part: InternalTocPart, state: TocScrapeState, partIndex: number, index: number) {
     const volumeTitleIndex = insertEpisode.title.indexOf(part.title);
 
     if (volumeTitleIndex >= 0) {
@@ -543,7 +543,7 @@ function insertIntoPart(insertEpisode: InternalTocEpisode, part: InternalTocPart
             .substring(volumeTitleIndex + part.title.length)
             .replace(state.trimRegex, "");
 
-        const insertIndex = (partIndex as number) + index + (ascending ? 0 : 0);
+        const insertIndex = partIndex + index;
         part.episodes.splice(insertIndex, 0, insertEpisode);
         return true;
     }
@@ -636,15 +636,15 @@ function insertUnusedMiddlePieces(state: TocScrapeState, contents: InternalTocCo
 
             if (part) {
                 const partIndex = ascending ? 0 : part.episodes.length;
-                addedToVolume = insertIntoPart(internalTocEpisode, part, state, partIndex, index, ascending);
+                addedToVolume = insertIntoPart(internalTocEpisode, part, state, partIndex, index);
             }
             if (isInternalPart(start) && !addedToVolume) {
-                addedToVolume = insertIntoPart(internalTocEpisode, start, state, 0, index, ascending);
+                addedToVolume = insertIntoPart(internalTocEpisode, start, state, 0, index);
             } else if (isInternalEpisode(start) && start.part && partStartIndex != null && !addedToVolume) {
-                addedToVolume = insertIntoPart(internalTocEpisode, start.part, state, partStartIndex, index, ascending);
+                addedToVolume = insertIntoPart(internalTocEpisode, start.part, state, partStartIndex, index);
             }
             if (isInternalEpisode(end) && end.part && partEndIndex != null && !addedToVolume) {
-                addedToVolume = insertIntoPart(internalTocEpisode, end.part, state, partEndIndex, index, ascending);
+                addedToVolume = insertIntoPart(internalTocEpisode, end.part, state, partEndIndex, index);
             }
             if (!addedToVolume) {
                 const insertIndex = (startIndex as number) + index + (ascending ? 1 : 0);
