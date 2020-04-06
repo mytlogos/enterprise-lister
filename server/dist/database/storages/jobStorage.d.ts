@@ -8,5 +8,5 @@ export declare class JobStorage {
     removeJobs(jobs: JobItem | JobItem[]): Promise<void>;
     removeJob(key: string | number): Promise<void>;
     updateJobs(jobs: JobItem | JobItem[]): Promise<void>;
-    getJobsInState(state: JobState): Promise<unknown>;
+    getJobsInState(state: JobState): Promise<JobItem[]>;
 }

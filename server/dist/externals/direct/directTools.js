@@ -335,13 +335,25 @@ function insertUnusedEndPieces(state, contents, ascending, unusedEpisodePieces) 
         endingsFilter = (value) => !value.before || !value.after;
     }
     let earliest = tools_1.min(contents, "combiIndex");
+    let partTitle;
     if (earliest && isInternalPart(earliest)) {
+        contents = earliest.episodes;
+        partTitle = earliest.title;
         earliest = tools_1.min(earliest.episodes, "combiIndex");
     }
     const startSidePartialIndex = earliest && earliest.totalIndex === 0 ? (earliest.partialIndex || 0) + 1 : 1;
     const startSideEpisodes = unusedEpisodePieces
         .filter(endingsFilter)
         .map(getConvertToTocEpisode(ascending, 0, startSidePartialIndex));
+    if (partTitle) {
+        const title = partTitle;
+        startSideEpisodes.forEach((value) => {
+            const index = value.title.indexOf(title);
+            if (index >= 0) {
+                value.title = value.title.substring(index + title.length).replace(state.trimRegex, "");
+            }
+        });
+    }
     if (ascending) {
         contents.unshift(...startSideEpisodes);
     }
@@ -350,12 +362,26 @@ function insertUnusedEndPieces(state, contents, ascending, unusedEpisodePieces) 
     }
 }
 // tslint:disable-next-line
+function insertIntoPart(insertEpisode, part, state, partIndex, index, ascending) {
+    const volumeTitleIndex = insertEpisode.title.indexOf(part.title);
+    if (volumeTitleIndex >= 0) {
+        insertEpisode.title = insertEpisode
+            .title
+            .substring(volumeTitleIndex + part.title.length)
+            .replace(state.trimRegex, "");
+        const insertIndex = partIndex + index + (ascending ? 0 : 0);
+        part.episodes.splice(insertIndex, 0, insertEpisode);
+        return true;
+    }
+    return false;
+}
+// tslint:disable-next-line
 function insertUnusedMiddlePieces(state, contents, ascending, unusedEpisodePieces) {
     // map has insertion order, so it is fine to use it
     const rangeEpisodeMap = new Map();
     const middlePieces = unusedEpisodePieces.filter((value) => value.after && value.before);
     for (const unused of middlePieces) {
-        const episodes = tools_1.getElseSet(rangeEpisodeMap, unused.after, () => []);
+        const episodes = tools_1.getElseSet(rangeEpisodeMap, unused.part || unused.after, () => []);
         episodes.push(unused);
     }
     const startKey = ascending ? "after" : "before";
@@ -366,20 +392,92 @@ function insertUnusedMiddlePieces(state, contents, ascending, unusedEpisodePiece
         let index = 0;
         let converter;
         let startIndex;
+        let partStartIndex;
+        let partEndIndex;
+        let part;
         for (const unusedEpisode of range) {
+            const currentStart = unusedEpisode[startKey];
+            const currentEnd = unusedEpisode[endKey];
             if (!start && !end) {
-                start = unusedEpisode[startKey];
-                end = unusedEpisode[endKey];
-                converter = getConvertToTocEpisode(ascending, start.totalIndex, (start.partialIndex || 0) + 1);
+                start = currentStart;
+                end = currentEnd;
+                part = unusedEpisode.part || (isInternalPart(start) ? start : part);
+                if (part) {
+                    const episode = part.episodes.reduce((previous, current) => {
+                        // tslint:disable-next-line
+                        const previousTotalIndex = (previous.relativeIndices != null && previous.relativeIndices.totalIndex) || previous.totalIndex;
+                        // tslint:disable-next-line
+                        const previousPartialIndex = (previous.relativeIndices != null && previous.relativeIndices.partialIndex) || previous.totalIndex;
+                        // tslint:disable-next-line
+                        const nextTotalIndex = (current.relativeIndices != null && current.relativeIndices.totalIndex) || current.totalIndex;
+                        // tslint:disable-next-line
+                        const nextPartialIndex = (current.relativeIndices != null && current.relativeIndices.partialIndex) || current.totalIndex;
+                        if (previousTotalIndex === 0 && nextTotalIndex === 0) {
+                            if (previousPartialIndex < nextPartialIndex) {
+                                return current;
+                            }
+                            else {
+                                return previous;
+                            }
+                        }
+                        else if (previousTotalIndex === 0) {
+                            return previous;
+                        }
+                        else {
+                            return current;
+                        }
+                    });
+                    let startPartialIndex;
+                    if (episode) {
+                        if (episode.totalIndex === 0) {
+                            startPartialIndex = episode.partialIndex;
+                        }
+                        else if (episode.relativeIndices != null && episode.relativeIndices.totalIndex === 0) {
+                            startPartialIndex = episode.relativeIndices.partialIndex;
+                        }
+                        else {
+                            startPartialIndex = 0;
+                        }
+                    }
+                    else {
+                        startPartialIndex = 0;
+                    }
+                    converter = getConvertToTocEpisode(ascending, 0, (startPartialIndex || 0) + 1);
+                }
+                else {
+                    converter = getConvertToTocEpisode(ascending, start.totalIndex, (start.partialIndex || 0) + 1);
+                }
+                if (isInternalEpisode(start) && start.part) {
+                    partStartIndex = start.part.episodes.indexOf(start);
+                }
+                if (isInternalEpisode(end) && end.part) {
+                    partEndIndex = end.part.episodes.indexOf(end);
+                }
                 startIndex = contents.indexOf(start);
             }
-            else if (start !== unusedEpisode[startKey] || end !== unusedEpisode[endKey]) {
+            else if ((start !== currentStart || end !== currentEnd) && part !== unusedEpisode.part) {
                 logger_1.default.warn("different episode boundaries detected for an unused one: " + tools_1.stringify(unusedEpisode));
                 continue;
             }
             const internalTocEpisode = converter(unusedEpisode, index, range);
-            const insertIndex = startIndex + index + (ascending ? 1 : 0);
-            contents.splice(insertIndex, 0, internalTocEpisode);
+            let addedToVolume = false;
+            if (part) {
+                const partIndex = ascending ? 0 : part.episodes.length;
+                addedToVolume = insertIntoPart(internalTocEpisode, part, state, partIndex, index, ascending);
+            }
+            if (isInternalPart(start) && !addedToVolume) {
+                addedToVolume = insertIntoPart(internalTocEpisode, start, state, 0, index, ascending);
+            }
+            else if (isInternalEpisode(start) && start.part && partStartIndex != null && !addedToVolume) {
+                addedToVolume = insertIntoPart(internalTocEpisode, start.part, state, partStartIndex, index, ascending);
+            }
+            if (isInternalEpisode(end) && end.part && partEndIndex != null && !addedToVolume) {
+                addedToVolume = insertIntoPart(internalTocEpisode, end.part, state, partEndIndex, index, ascending);
+            }
+            if (!addedToVolume) {
+                const insertIndex = startIndex + index + (ascending ? 1 : 0);
+                contents.splice(insertIndex, 0, internalTocEpisode);
+            }
             index++;
         }
     }
@@ -401,6 +499,7 @@ function adjustTocContents(contents, state) {
         if (isInternalEpisode(content)) {
             adjustPartialIndices(i, contents, ascending);
             if (currentVolume) {
+                content.part = currentVolume;
                 currentVolume.episodes.push(content);
                 contents.splice(i, 1);
                 i--;
@@ -420,7 +519,9 @@ function adjustTocContents(contents, state) {
                         break;
                     }
                     contents.splice(j, 1);
-                    content.episodes.unshift(previousContent);
+                    const episode = previousContent;
+                    episode.part = content;
+                    content.episodes.unshift(episode);
                 }
             }
         }
@@ -583,7 +684,9 @@ function mark(tocPiece, state) {
                 contentTitle = after;
             }
             if (usedMatch.type === "volume" && possibleVolume) {
-                possibleVolume.title = contentTitle;
+                if (!possibleVolume.title || possibleVolume.title.includes(contentTitle)) {
+                    possibleVolume.title = contentTitle;
+                }
             }
             else if (usedMatch.type === "episode" && possibleEpisode) {
                 possibleEpisode.title = contentTitle;
@@ -617,11 +720,13 @@ function mark(tocPiece, state) {
         }
     }
     else {
-        state.unusedPieces.push({ ...tocPiece, after: state.lastExtracted });
+        const after = newVolume ? possibleVolume : state.lastExtracted;
+        state.unusedPieces.push({ ...tocPiece, after, part: possibleVolume });
     }
     state.lastExtracted = possibleEpisode || possibleVolume || state.lastExtracted;
     if (possibleVolume) {
         if (possibleEpisode) {
+            possibleEpisode.part = possibleVolume;
             possibleVolume.episodes.push(possibleEpisode);
         }
         if (newVolume) {

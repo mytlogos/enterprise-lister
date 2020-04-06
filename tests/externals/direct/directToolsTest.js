@@ -1659,4 +1659,214 @@ describe("testing scrapeToc", () => {
             },
         ])
     });
+    it("should extract correct toc: non main episode with volume definition between with descending story", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {url: "", title: "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]", releaseDate: now};
+            yield {url: "", title: "Volume 2 I have a Title2: Chapter. 3 -  I am HitchCock2", releaseDate: now};
+            yield {url: "", title: "Volume 2 I have a Title2 - I am a Intermission4", releaseDate: now};
+            yield {url: "", title: "Volume 2 I have a Title2 I am a Intermission3", releaseDate: now};
+            yield {url: "", title: "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2", releaseDate: now};
+            yield {url: "", title: "Volume 1:  I have a Title1 C1:  I am HitchCock1", releaseDate: now};
+            yield {url: "", title: "Volume 1 I have a Title1 - I am a Intermission2", releaseDate: now};
+            yield {url: "", title: "Volume 1 I have a Title1 I am a Intermission1", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "I have a Title2",
+                combiIndex: 2,
+                totalIndex: 2,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "I am HitchCock3",
+                        combiIndex: 4.2,
+                        totalIndex: 4,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am HitchCock2",
+                        combiIndex: 3,
+                        totalIndex: 3,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am a Intermission4",
+                        combiIndex: 0.2,
+                        totalIndex: 0,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am a Intermission3",
+                        combiIndex: 0.1,
+                        totalIndex: 0,
+                        partialIndex: 1,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            },
+            {
+                title: "I have a Title1",
+                combiIndex: 1,
+                totalIndex: 1,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "I am HitchCock1",
+                        combiIndex: 2.2,
+                        totalIndex: 2,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am HitchCock1",
+                        combiIndex: 1,
+                        totalIndex: 1,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am a Intermission2",
+                        combiIndex: 0.2,
+                        totalIndex: 0,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am a Intermission1",
+                        combiIndex: 0.1,
+                        totalIndex: 0,
+                        partialIndex: 1,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            },
+        ])
+    });
+    it("should extract correct toc: non main episode with volume definition between with ascending story", async function () {
+        const now = new Date();
+        const generator = (async function* testGenerator() {
+            yield {url: "", title: "Volume 1 I have a Title1 I am a Intermission1", releaseDate: now};
+            yield {url: "", title: "Volume 1 I have a Title1 - I am a Intermission2", releaseDate: now};
+            yield {url: "", title: "Volume 1:  I have a Title1 C1:  I am HitchCock1", releaseDate: now};
+            yield {url: "", title: "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2", releaseDate: now};
+            yield {url: "", title: "Volume 2 I have a Title2 I am a Intermission3", releaseDate: now};
+            yield {url: "", title: "Volume 2 I have a Title2 - I am a Intermission4", releaseDate: now};
+            yield {url: "", title: "Volume 2 I have a Title2: Chapter. 3 -  I am HitchCock2", releaseDate: now};
+            yield {url: "", title: "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]", releaseDate: now};
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.deep.equal([
+            {
+                title: "I have a Title1",
+                combiIndex: 1,
+                totalIndex: 1,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "I am a Intermission1",
+                        combiIndex: 0.1,
+                        totalIndex: 0,
+                        partialIndex: 1,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am a Intermission2",
+                        combiIndex: 0.2,
+                        totalIndex: 0,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am HitchCock1",
+                        combiIndex: 1,
+                        totalIndex: 1,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am HitchCock1",
+                        combiIndex: 2.2,
+                        totalIndex: 2,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            },
+            {
+                title: "I have a Title2",
+                combiIndex: 2,
+                totalIndex: 2,
+                partialIndex: undefined,
+                episodes: [
+                    {
+                        title: "I am a Intermission3",
+                        combiIndex: 0.1,
+                        totalIndex: 0,
+                        partialIndex: 1,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am a Intermission4",
+                        combiIndex: 0.2,
+                        totalIndex: 0,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am HitchCock2",
+                        combiIndex: 3,
+                        totalIndex: 3,
+                        partialIndex: undefined,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                    {
+                        title: "I am HitchCock3",
+                        combiIndex: 4.2,
+                        totalIndex: 4,
+                        partialIndex: 2,
+                        locked: false,
+                        url: "",
+                        releaseDate: now
+                    },
+                ]
+            },
+        ])
+    });
 });
