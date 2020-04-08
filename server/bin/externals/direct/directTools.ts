@@ -486,6 +486,8 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         for (const content of contents) {
             if (isInternalPart(content)) {
                 result.push(content);
+            } else if (isInternalEpisode(content) && !content.part) {
+                result.push(content);
             }
         }
     }
@@ -767,6 +769,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
             }
             if (volume) {
                 episodeInserter.call(volume.episodes, node);
+                node.part = volume;
                 const titleIndex = node.title.indexOf(volume.title);
                 if (titleIndex >= 0) {
                     node.title = node.title.substring(titleIndex + volume.title.length).replace(state.trimRegex, "");
@@ -914,7 +917,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                     // noinspection JSUnusedAssignment
                     possibleEpisode.combiIndex = combiIndex(possibleEpisode);
                     usedMatches.push(match);
-                } else {
+                } else if (part !== possibleEpisode.partialIndex) {
                     logger.warn("Episode Part defined with existing EpisodePartialIndex");
                 }
             }

@@ -2082,7 +2082,7 @@ describe("testing scrapeToc", () => {
             },
         ])
     });
-    it("should extract correct toc: for an example toc from boxnovel", async function () {
+    it("should extract correct toc: for an example toc with half hearted chapter-volume-chapter format", async function () {
         const generator = (async function* testGenerator() {
             const content = await fs.promises.readFile("tests/resources/boxnovel-281.html", "utf8");
             const $ = cheerio.load(content);
@@ -2286,5 +2286,82 @@ describe("testing scrapeToc", () => {
                 ]
             },
         ])
+    });
+    it("should extract correct toc: for an example toc with descending index and sometimes partialindex", async function () {
+        const generator = (async function* testGenerator() {
+            const content = await fs.promises.readFile("tests/resources/boxnovel-173.html", "utf8");
+            const $ = cheerio.load(content);
+            const mediumTitleElement = $(".post-title h3");
+            mediumTitleElement.find("span").remove();
+            const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
+
+            const items = $(".wp-manga-chapter");
+
+            const releaseStatusString = $(".post-status .post-content_item:nth-child(2) .summary-content").text().trim().toLowerCase();
+
+            let end;
+            if (releaseStatusString === "ongoing") {
+                end = false;
+            } else if (releaseStatusString === "completed") {
+                end = true;
+            }
+            const tocMeta = {
+                title: mediumTitle,
+                mediumType: tools.MediaType.TEXT,
+                end,
+            };
+            yield tocMeta;
+            for (let i = 0; i < items.length; i++) {
+                const newsRow = items.eq(i);
+
+                const titleElement = newsRow.find("a");
+                const link = titleElement.attr("href");
+
+                const timeStampElement = newsRow.find(".chapter-release-date");
+                const dateString = timeStampElement.text().trim();
+                const lowerDate = dateString.toLowerCase();
+
+                let date;
+                if (lowerDate.includes("now") || lowerDate.includes("ago")) {
+                    date = tools.relativeToAbsoluteTime(dateString);
+                } else {
+                    date = new Date(dateString);
+                }
+
+                yield {title: titleElement.text(), url: link, releaseDate: date};
+            }
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.be.an("array");
+
+        let currentEpisodeIndex = 210;
+        let episodesCount = 0;
+
+        for (const content of contents) {
+            content.should.have.property("title");
+
+            if (content.episodes) {
+                content.episodes.should.be.an("array");
+
+                for (const episode of content.episodes) {
+                    episode.should.have.property("title");
+                    episode.combiIndex.should.be.at.most(currentEpisodeIndex);
+                    episode.should.have.property("url");
+                    episode.should.have.property("locked", false);
+                    episode.should.have.property("releaseDate");
+                    currentEpisodeIndex = episode.combiIndex;
+                    episodesCount++;
+                }
+            } else {
+                episodesCount++;
+                content.combiIndex.should.be.at.most(currentEpisodeIndex);
+                content.should.have.property("url");
+                content.should.have.property("locked", false);
+                content.should.have.property("releaseDate");
+                currentEpisodeIndex = content.combiIndex;
+            }
+        }
+        episodesCount.should.equal(342);
     });
 });

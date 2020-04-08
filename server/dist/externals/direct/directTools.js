@@ -350,6 +350,9 @@ async function scrapeToc(pageGenerator) {
             if (isInternalPart(content)) {
                 result.push(content);
             }
+            else if (isInternalEpisode(content) && !content.part) {
+                result.push(content);
+            }
         }
     }
     return result.map((value) => {
@@ -599,6 +602,7 @@ function adjustTocContentsLinked(contents, state) {
             }
             if (volume) {
                 episodeInserter.call(volume.episodes, node);
+                node.part = volume;
                 const titleIndex = node.title.indexOf(volume.title);
                 if (titleIndex >= 0) {
                     node.title = node.title.substring(titleIndex + volume.title.length).replace(state.trimRegex, "");
@@ -736,7 +740,7 @@ function mark(tocPiece, state) {
                     possibleEpisode.combiIndex = tools_1.combiIndex(possibleEpisode);
                     usedMatches.push(match);
                 }
-                else {
+                else if (part !== possibleEpisode.partialIndex) {
                     logger_1.default.warn("Episode Part defined with existing EpisodePartialIndex");
                 }
             }
