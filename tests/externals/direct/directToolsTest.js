@@ -5,6 +5,9 @@ const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
 const directTools = require("../../../server/dist/externals/direct/directTools");
 const tools = require("../../../server/dist/tools");
+const fs = require("fs");
+const cheerio = require("cheerio");
+
 after(() => {
     tools.internetTester.stop();
 });
@@ -2078,5 +2081,78 @@ describe("testing scrapeToc", () => {
                 ]
             },
         ])
+    });
+    it("should extract correct toc: for an example toc from boxnovel", async function () {
+        const generator = (async function* testGenerator() {
+            const content = await fs.promises.readFile("tests/resources/boxnovel-281.html", "utf8");
+            const $ = cheerio.load(content);
+            const mediumTitleElement = $(".post-title h3");
+            mediumTitleElement.find("span").remove();
+            const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
+
+            const items = $(".wp-manga-chapter");
+
+            const releaseStatusString = $(".post-status .post-content_item:nth-child(2) .summary-content").text().trim().toLowerCase();
+
+            let end;
+            if (releaseStatusString === "ongoing") {
+                end = false;
+            } else if (releaseStatusString === "completed") {
+                end = true;
+            }
+            const tocMeta = {
+                title: mediumTitle,
+                mediumType: tools.MediaType.TEXT,
+                end,
+            };
+            yield tocMeta;
+            for (let i = 0; i < items.length; i++) {
+                const newsRow = items.eq(i);
+
+                const titleElement = newsRow.find("a");
+                const link = titleElement.attr("href");
+
+                const timeStampElement = newsRow.find(".chapter-release-date");
+                const dateString = timeStampElement.text().trim();
+                const lowerDate = dateString.toLowerCase();
+
+                let date;
+                if (lowerDate.includes("now") || lowerDate.includes("ago")) {
+                    date = tools.relativeToAbsoluteTime(dateString);
+                } else {
+                    date = new Date(dateString);
+                }
+
+                yield {title: titleElement.text(), url: link, releaseDate: date};
+            }
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.be.an("array");
+        contents.should.have.length(8);
+
+        let currentEpisodeIndex = 175;
+        let currentVolumeIndex = 8;
+
+        for (const content of contents) {
+            content.should.have.property("title", "");
+            content.should.have.property("combiIndex", currentVolumeIndex);
+            content.should.have.property("totalIndex", currentVolumeIndex);
+            content.should.have.property("partialIndex", undefined);
+            content.should.have.property("episodes");
+            content.episodes.should.be.an("array");
+
+            for (const episode of content.episodes) {
+                episode.should.have.property("title", "");
+                episode.should.have.property("combiIndex", currentEpisodeIndex);
+                episode.should.have.property("totalIndex", currentEpisodeIndex);
+                episode.should.have.property("partialIndex", undefined);
+                episode.should.have.property("url");
+                episode.should.have.property("locked", false);
+                episode.should.have.property("releaseDate");
+                currentEpisodeIndex--;
+            }
+            currentVolumeIndex--;
+        }
     });
 });

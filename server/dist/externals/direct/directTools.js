@@ -313,7 +313,7 @@ async function scrapeToc(pageGenerator) {
         separatorRegex: /[-:]/g,
         chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
         partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
-        trimRegex: /^[\s:–-]+|[\s:–-]+$/g,
+        trimRegex: /^[\s:–,-]+|[\s:–,-]+$/g,
         endRegex: /end/g,
         startRegex: /start/g,
         order: "unknown",
@@ -612,7 +612,7 @@ function mark(tocPiece, state) {
     const chapterRegex = state.chapterRegex;
     const partRegex = state.partRegex;
     const trimRegex = state.trimRegex;
-    let title = tocPiece.title;
+    let title = tocPiece.title.replace(trimRegex, "");
     if (state.tocMeta) {
         const index = title.indexOf(state.tocMeta.title);
         if (index >= 0) {
