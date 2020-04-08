@@ -311,7 +311,7 @@ async function scrapeToc(pageGenerator) {
         hasParts: false,
         volumeRegex: /(v[olume]{0,5}|s[eason]{0,5}|b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
         separatorRegex: /[-:]/g,
-        chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
+        chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/ig,
         partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
         trimRegex: /^[\s:–,-]+|[\s:–,-]+$/g,
         endRegex: /end/g,
@@ -623,29 +623,29 @@ function mark(tocPiece, state) {
     }
     const matches = [];
     markWithRegex(volumeRegex, title, "volume", matches);
-    // markWithRegex(separatorRegex, title, "separator", matches);
     markWithRegex(chapterRegex, title, "episode", matches);
     markWithRegex(partRegex, title, "part", matches);
     matches.sort((a, b) => a.from - b.from);
-    let possibleEpisode;
+    const possibleEpisodes = [];
     let possibleVolume;
     let newVolume = false;
     const usedMatches = [];
     for (let i = 0; i < matches.length; i++) {
         const match = matches[i];
         if (match.type === "episode") {
-            if (match.match[10]) {
+            if (match.match[16]) {
                 // it matches the pattern for an invalid episode
                 return [];
             }
-            const indices = tools_1.extractIndices(match.match, 6, 7, 9);
+            const indices = tools_1.extractIndices(match.match, 7, 8, 10);
+            const secondaryIndices = tools_1.extractIndices(match.match, 12, 13, 15);
             if (!indices) {
                 continue;
             }
             if (!isEpisodePiece(tocPiece)) {
                 continue;
             }
-            if (possibleEpisode) {
+            if (possibleEpisodes.length) {
                 let hasDirectVolume = false;
                 for (let j = i - 1; j >= 0; j--) {
                     const type = matches[j].type;
@@ -658,35 +658,56 @@ function mark(tocPiece, state) {
                     }
                 }
                 if (hasDirectVolume) {
-                    possibleEpisode.relativeIndices = {
-                        combiIndex: indices.combi,
-                        partialIndex: indices.fraction,
-                        totalIndex: indices.total
-                    };
+                    for (const possibleEpisode of possibleEpisodes) {
+                        possibleEpisode.relativeIndices = {
+                            combiIndex: indices.combi,
+                            partialIndex: indices.fraction,
+                            totalIndex: indices.total
+                        };
+                    }
                 }
                 match.ignore = true;
                 usedMatches.push(match);
                 continue;
             }
             usedMatches.push(match);
-            possibleEpisode = {
-                type: "episode",
-                combiIndex: indices.combi,
-                totalIndex: indices.total,
-                partialIndex: indices.fraction,
-                url: tocPiece.url,
-                releaseDate: tocPiece.releaseDate || new Date(),
-                title: "",
-                originalTitle: tocPiece.title,
-                match
-            };
+            if (secondaryIndices) {
+                // for now ignore any fraction, normally it should only have the format of 1-4, not 1.1-1.4 or similar
+                for (let index = indices.total; index <= secondaryIndices.total; index++) {
+                    possibleEpisodes.push({
+                        type: "episode",
+                        combiIndex: index,
+                        totalIndex: index,
+                        partialIndex: undefined,
+                        url: tocPiece.url,
+                        releaseDate: tocPiece.releaseDate || new Date(),
+                        title: "",
+                        originalTitle: tocPiece.title,
+                        match
+                    });
+                }
+            }
+            else {
+                possibleEpisodes.push({
+                    type: "episode",
+                    combiIndex: indices.combi,
+                    totalIndex: indices.total,
+                    partialIndex: indices.fraction,
+                    url: tocPiece.url,
+                    releaseDate: tocPiece.releaseDate || new Date(),
+                    title: "",
+                    originalTitle: tocPiece.title,
+                    match
+                });
+            }
         }
-        else if (possibleEpisode && match.type === "part") {
+        else if (possibleEpisodes.length === 1 && match.type === "part") {
             const wrappingMatch = usedMatches.find((value) => value.from <= match.from && value.to >= match.to);
             // there exists a match which wraps the current one, so skip this one
             if (wrappingMatch) {
                 continue;
             }
+            const possibleEpisode = possibleEpisodes[0];
             let refersToCurrentEpisode = true;
             for (let j = i; j >= 0; j--) {
                 const previousMatch = matches[j];
@@ -770,8 +791,8 @@ function mark(tocPiece, state) {
                     possibleVolume.title = contentTitle;
                 }
             }
-            else if (usedMatch.type === "episode" && possibleEpisode) {
-                possibleEpisode.title = contentTitle;
+            else if (usedMatch.type === "episode" && possibleEpisodes.length) {
+                possibleEpisodes.forEach((value) => value.title = contentTitle);
             }
         }
         for (let j = i + 1; j < usedMatches.length; j++) {
@@ -781,31 +802,33 @@ function mark(tocPiece, state) {
         }
         title = before + after;
     }
-    if (possibleEpisode && !possibleEpisode.title && title) {
-        possibleEpisode.title = title.replace(trimRegex, "");
-    }
-    if (possibleEpisode) {
+    possibleEpisodes.forEach((possibleEpisode) => {
+        if (!possibleEpisode.title && title) {
+            possibleEpisode.title = title.replace(trimRegex, "");
+        }
+    });
+    if (possibleEpisodes.length) {
         if (state.lastCombiIndex != null) {
-            if (state.lastCombiIndex < possibleEpisode.combiIndex) {
+            if (state.lastCombiIndex < possibleEpisodes[0].combiIndex) {
                 state.ascendingCount++;
             }
-            else if (state.lastCombiIndex > possibleEpisode.combiIndex) {
+            else if (state.lastCombiIndex > possibleEpisodes[0].combiIndex) {
                 state.descendingCount++;
             }
         }
-        state.lastCombiIndex = possibleEpisode.combiIndex;
+        state.lastCombiIndex = possibleEpisodes[0].combiIndex;
     }
     const result = [];
     if (possibleVolume) {
-        if (possibleEpisode) {
-            possibleEpisode.part = possibleVolume;
+        if (possibleEpisodes.length) {
+            possibleEpisodes.forEach((possibleEpisode) => possibleEpisode.part = possibleVolume);
         }
         if (newVolume) {
             result.push(possibleVolume);
         }
     }
-    if (possibleEpisode) {
-        result.push(possibleEpisode);
+    if (possibleEpisodes.length) {
+        result.push(...possibleEpisodes);
     }
     else if (isEpisodePiece(tocPiece)) {
         result.push({ type: "unusedPiece", ...tocPiece, part: possibleVolume });
