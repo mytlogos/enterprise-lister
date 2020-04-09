@@ -1072,18 +1072,18 @@ describe("testing scrapeToc", () => {
             },
             {
                 title: "I am a Intermission3",
-                combiIndex: 4.3,
+                combiIndex: 4.301,
                 totalIndex: 4,
-                partialIndex: 3,
+                partialIndex: 301,
                 locked: false,
                 url: "",
                 releaseDate: now
             },
             {
                 title: "I am a Intermission4",
-                combiIndex: 4.4,
+                combiIndex: 4.302,
                 totalIndex: 4,
-                partialIndex: 4,
+                partialIndex: 302,
                 locked: false,
                 url: "",
                 releaseDate: now
@@ -1198,18 +1198,18 @@ describe("testing scrapeToc", () => {
         contents.should.deep.equal([
             {
                 title: "I am a Intermission4",
-                combiIndex: 4.4,
+                combiIndex: 4.302,
                 totalIndex: 4,
-                partialIndex: 4,
+                partialIndex: 302,
                 locked: false,
                 url: "",
                 releaseDate: now
             },
             {
                 title: "I am a Intermission3",
-                combiIndex: 4.3,
+                combiIndex: 4.301,
                 totalIndex: 4,
-                partialIndex: 3,
+                partialIndex: 301,
                 locked: false,
                 url: "",
                 releaseDate: now
@@ -1305,18 +1305,18 @@ describe("testing scrapeToc", () => {
             },
             {
                 title: "I am a Intermission1",
-                combiIndex: 2.3,
+                combiIndex: 2.301,
                 totalIndex: 2,
-                partialIndex: 3,
+                partialIndex: 301,
                 locked: false,
                 url: "",
                 releaseDate: now
             },
             {
                 title: "I am a Intermission2",
-                combiIndex: 2.4,
+                combiIndex: 2.302,
                 totalIndex: 2,
-                partialIndex: 4,
+                partialIndex: 302,
                 locked: false,
                 url: "",
                 releaseDate: now
@@ -1332,18 +1332,18 @@ describe("testing scrapeToc", () => {
             },
             {
                 title: "I am a Intermission3",
-                combiIndex: 3.1,
+                combiIndex: 3.101,
                 totalIndex: 3,
-                partialIndex: 1,
+                partialIndex: 101,
                 locked: false,
                 url: "",
                 releaseDate: now
             },
             {
                 title: "I am a Intermission4",
-                combiIndex: 3.2,
+                combiIndex: 3.102,
                 totalIndex: 3,
-                partialIndex: 2,
+                partialIndex: 102,
                 locked: false,
                 url: "",
                 releaseDate: now
@@ -1385,18 +1385,18 @@ describe("testing scrapeToc", () => {
             },
             {
                 title: "I am a Intermission4",
-                combiIndex: 3.2,
+                combiIndex: 3.102,
                 totalIndex: 3,
-                partialIndex: 2,
+                partialIndex: 102,
                 locked: false,
                 url: "",
                 releaseDate: now
             },
             {
                 title: "I am a Intermission3",
-                combiIndex: 3.1,
+                combiIndex: 3.101,
                 totalIndex: 3,
-                partialIndex: 1,
+                partialIndex: 101,
                 locked: false,
                 url: "",
                 releaseDate: now
@@ -1412,18 +1412,18 @@ describe("testing scrapeToc", () => {
             },
             {
                 title: "I am a Intermission2",
-                combiIndex: 2.4,
+                combiIndex: 2.302,
                 totalIndex: 2,
-                partialIndex: 4,
+                partialIndex: 302,
                 locked: false,
                 url: "",
                 releaseDate: now
             },
             {
                 title: "I am a Intermission1",
-                combiIndex: 2.3,
+                combiIndex: 2.301,
                 totalIndex: 2,
-                partialIndex: 3,
+                partialIndex: 301,
                 locked: false,
                 url: "",
                 releaseDate: now
@@ -1482,18 +1482,18 @@ describe("testing scrapeToc", () => {
                     },
                     {
                         title: "I am a Intermission4",
-                        combiIndex: 3.2,
+                        combiIndex: 3.102,
                         totalIndex: 3,
-                        partialIndex: 2,
+                        partialIndex: 102,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission3",
-                        combiIndex: 3.1,
+                        combiIndex: 3.101,
                         totalIndex: 3,
-                        partialIndex: 1,
+                        partialIndex: 101,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -1517,18 +1517,18 @@ describe("testing scrapeToc", () => {
                 episodes: [
                     {
                         title: "I am a Intermission2",
-                        combiIndex: 2.4,
+                        combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 4,
+                        partialIndex: 302,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission1",
-                        combiIndex: 2.3,
+                        combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 3,
+                        partialIndex: 301,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -1598,18 +1598,18 @@ describe("testing scrapeToc", () => {
                     },
                     {
                         title: "I am a Intermission1",
-                        combiIndex: 2.3,
+                        combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 3,
+                        partialIndex: 301,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission2",
-                        combiIndex: 2.4,
+                        combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 4,
+                        partialIndex: 302,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -1633,18 +1633,18 @@ describe("testing scrapeToc", () => {
                     },
                     {
                         title: "I am a Intermission3",
-                        combiIndex: 3.1,
+                        combiIndex: 3.101,
                         totalIndex: 3,
-                        partialIndex: 1,
+                        partialIndex: 101,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission4",
-                        combiIndex: 3.2,
+                        combiIndex: 3.102,
                         totalIndex: 3,
-                        partialIndex: 2,
+                        partialIndex: 102,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -1703,18 +1703,18 @@ describe("testing scrapeToc", () => {
                     },
                     {
                         title: "I am a Intermission4",
-                        combiIndex: 2.4,
+                        combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 4,
+                        partialIndex: 302,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission3",
-                        combiIndex: 2.3,
+                        combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 3,
+                        partialIndex: 301,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -1834,18 +1834,18 @@ describe("testing scrapeToc", () => {
                 episodes: [
                     {
                         title: "I am a Intermission3",
-                        combiIndex: 2.3,
+                        combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 3,
+                        partialIndex: 301,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission4",
-                        combiIndex: 2.4,
+                        combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 4,
+                        partialIndex: 302,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -1913,18 +1913,18 @@ describe("testing scrapeToc", () => {
                     },
                     {
                         title: "I am a Intermission4",
-                        combiIndex: 2.4,
+                        combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 4,
+                        partialIndex: 302,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission3",
-                        combiIndex: 2.3,
+                        combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 3,
+                        partialIndex: 301,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -2044,18 +2044,18 @@ describe("testing scrapeToc", () => {
                 episodes: [
                     {
                         title: "I am a Intermission3",
-                        combiIndex: 2.3,
+                        combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 3,
+                        partialIndex: 301,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission4",
-                        combiIndex: 2.4,
+                        combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 4,
+                        partialIndex: 302,
                         locked: false,
                         url: "",
                         releaseDate: now
@@ -2222,18 +2222,18 @@ describe("testing scrapeToc", () => {
                 episodes: [
                     {
                         title: "I am a Intermission3",
-                        combiIndex: 2.3,
+                        combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 3,
+                        partialIndex: 301,
                         locked: false,
                         url: "",
                         releaseDate: now
                     },
                     {
                         title: "I am a Intermission4",
-                        combiIndex: 2.4,
+                        combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 4,
+                        partialIndex: 302,
                         locked: false,
                         url: "",
                         releaseDate: now
