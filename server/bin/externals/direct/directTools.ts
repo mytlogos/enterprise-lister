@@ -717,15 +717,18 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
         index++;
     }
     let lastSeenEpisode: InternalTocEpisode | undefined;
-    let offset = 1;
+    let offset = 101;
     for (const content of contents.iterate(ascending)) {
         if (isInternalEpisode(content)) {
             lastSeenEpisode = content;
-            offset = 1;
+            offset = 101;
             continue;
         }
         if (lastSeenEpisode && isUnusedPiece(content)) {
-            const partialIndex = lastSeenEpisode.partialIndex || 0;
+            const partialIndex = (lastSeenEpisode.partialIndex || 0) * 100;
+            if ((offset % 10) === 0) {
+                offset++;
+            }
             const internalTocEpisode = convertToTocEpisode(lastSeenEpisode.totalIndex, partialIndex, offset, content);
             contents.replace(content, internalTocEpisode);
             offset++;

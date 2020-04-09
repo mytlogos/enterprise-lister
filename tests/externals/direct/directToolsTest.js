@@ -2364,4 +2364,73 @@ describe("testing scrapeToc", () => {
         }
         episodesCount.should.equal(342);
     });
+    it("should extract correct toc: for an example toc with chaotic, but ordered format, sometimes volume, sometimes not with sometimes partialIndex and sometimes no index", async function () {
+        const generator = (async function* testGenerator() {
+            const now = new Date();
+            for (let i = 1; i <= 7; i++) {
+                const content = await fs.promises.readFile(`tests/resources/novelfull-122-${i}.html`, "utf8");
+                const $ = cheerio.load(content);
+                const mediumTitleElement = $(".desc .title").first();
+                const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
+
+                const items = $(".list-chapter li a");
+
+                const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
+
+                let end;
+                if (releaseStatusString === "ongoing") {
+                    end = false;
+                } else if (releaseStatusString === "completed") {
+                    end = true;
+                }
+                const tocMeta = {
+                    title: mediumTitle,
+                    mediumType: tools.MediaType.TEXT,
+                    end,
+                };
+                yield tocMeta;
+
+                for (let i = 0; i < items.length; i++) {
+                    const newsRow = items.eq(i);
+                    const link = newsRow.attr("href");
+                    const episodeTitle = tools.sanitizeString(newsRow.text());
+                    yield {title: episodeTitle, url: link, releaseDate: now};
+                }
+            }
+        })();
+
+        const contents = await directTools.scrapeToc(generator);
+        contents.should.be.an("array");
+
+        let currentEpisodeIndex = 1;
+        let episodesCount = 0;
+
+        for (const content of contents) {
+            content.should.have.property("title");
+
+            if (content.episodes) {
+                content.episodes.should.be.an("array");
+
+                for (const episode of content.episodes) {
+                    episode.should.have.property("title");
+                    if (episode.combiIndex !== 200 && episode.totalIndex !== 219) {
+                        episode.combiIndex.should.be.at.least(currentEpisodeIndex);
+                    }
+                    episode.should.have.property("url");
+                    episode.should.have.property("locked", false);
+                    episode.should.have.property("releaseDate");
+                    currentEpisodeIndex = episode.combiIndex;
+                    episodesCount++;
+                }
+            } else {
+                episodesCount++;
+                content.combiIndex.should.be.at.least(currentEpisodeIndex);
+                content.should.have.property("url");
+                content.should.have.property("locked", false);
+                content.should.have.property("releaseDate");
+                currentEpisodeIndex = content.combiIndex;
+            }
+        }
+        episodesCount.should.equal(325);
+    });
 });
