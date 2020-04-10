@@ -2479,7 +2479,6 @@ describe("testing scrapeToc", () => {
 
             if (content.episodes) {
                 content.episodes.should.be.an("array");
-                currentEpisodeIndex = 0;
 
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");

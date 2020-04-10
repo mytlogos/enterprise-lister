@@ -598,9 +598,16 @@ function adjustTocContentsLinked(contents, state) {
     }
     volume = undefined;
     const episodeInserter = ascending ? Array.prototype.push : Array.prototype.unshift;
+    let lastVolume;
+    let lastVolumeLastEpisode;
+    let currentVolumeChecked = false;
+    let hasRelativeIndices = false;
     for (const node of contents.iterate(ascending)) {
         if (isInternalPart(node)) {
+            lastVolume = volume;
+            lastVolumeLastEpisode = lastVolume && lastVolume.episodes[lastVolume.episodes.length - 1];
             volume = node;
+            currentVolumeChecked = false;
         }
         else if (isInternalEpisode(node)) {
             if (node.partCount) {
@@ -613,6 +620,37 @@ function adjustTocContentsLinked(contents, state) {
                 const titleIndex = node.title.indexOf(volume.title);
                 if (titleIndex >= 0) {
                     node.title = node.title.substring(titleIndex + volume.title.length).replace(state.trimRegex, "");
+                }
+                if (node.match && !currentVolumeChecked) {
+                    if (lastVolumeLastEpisode) {
+                        hasRelativeIndices = lastVolumeLastEpisode.combiIndex > node.combiIndex;
+                    }
+                    else {
+                        hasRelativeIndices = false;
+                    }
+                    currentVolumeChecked = true;
+                }
+                const isPreviousVolume = lastVolume && lastVolume.combiIndex < volume.combiIndex;
+                const previous = ascending ? node.previous : node.next;
+                if (isPreviousVolume && hasRelativeIndices && !node.relativeIndices && previous && lastVolumeLastEpisode) {
+                    let lastEpisode;
+                    if (isInternalPart(previous) && lastVolumeLastEpisode) {
+                        lastEpisode = lastVolumeLastEpisode;
+                    }
+                    else if (isInternalEpisode(previous)) {
+                        lastEpisode = previous;
+                    }
+                    const difference = lastEpisode && Math.abs(lastEpisode.totalIndex - node.totalIndex) > 10;
+                    if (lastEpisode && (lastEpisode.combiIndex > node.combiIndex || difference)) {
+                        node.relativeIndices = {
+                            totalIndex: node.totalIndex,
+                            partialIndex: node.partialIndex,
+                            combiIndex: node.combiIndex
+                        };
+                        node.totalIndex += lastVolumeLastEpisode.totalIndex;
+                        node.combiIndex += lastVolumeLastEpisode.totalIndex;
+                        node.partialIndex = undefined;
+                    }
                 }
             }
         }
