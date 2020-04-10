@@ -282,7 +282,7 @@ function isInternalPart(value) {
 function externalizeTocEpisode(value) {
     return {
         title: value.title,
-        combiIndex: value.combiIndex,
+        combiIndex: tools_1.combiIndex(value),
         partialIndex: value.partialIndex,
         totalIndex: value.totalIndex,
         url: value.url,
@@ -320,7 +320,9 @@ async function scrapeToc(pageGenerator) {
         order: "unknown",
         volumeMap: new Map()
     };
+    let entries = 0;
     for await (const tocPiece of pageGenerator) {
+        entries++;
         if (isTocMetaPiece(tocPiece)) {
             scrapeState.tocMeta = {
                 artists: tocPiece.artists,
@@ -642,6 +644,23 @@ function adjustTocContentsLinked(contents, state) {
                     }
                     const difference = lastEpisode && Math.abs(lastEpisode.totalIndex - node.totalIndex) > 10;
                     if (lastEpisode && (lastEpisode.combiIndex > node.combiIndex || difference)) {
+                        if (!node.match) {
+                            let unusedOnlyToVolume = false;
+                            for (const previousContent of contents.iterate(!ascending, node)) {
+                                if (isInternalEpisode(previousContent) && previousContent.match) {
+                                    unusedOnlyToVolume = false;
+                                    break;
+                                }
+                                else if (isInternalPart(previousContent)) {
+                                    unusedOnlyToVolume = true;
+                                    break;
+                                }
+                            }
+                            if (unusedOnlyToVolume) {
+                                node.totalIndex = 0;
+                                node.combiIndex = tools_1.combiIndex(node);
+                            }
+                        }
                         node.relativeIndices = {
                             totalIndex: node.totalIndex,
                             partialIndex: node.partialIndex,
@@ -649,7 +668,6 @@ function adjustTocContentsLinked(contents, state) {
                         };
                         node.totalIndex += lastVolumeLastEpisode.totalIndex;
                         node.combiIndex += lastVolumeLastEpisode.totalIndex;
-                        node.partialIndex = undefined;
                     }
                 }
             }
@@ -771,12 +789,18 @@ function mark(tocPiece, state) {
                     break;
                 }
             }
+            const part = Number.parseInt(match.match[2] || match.match[4], 10);
             if (!refersToCurrentEpisode) {
                 match.ignore = true;
+                const previousMatch = usedMatches[usedMatches.length - 1];
+                if (previousMatch && previousMatch.type === "episode" && previousMatch.to === match.from) {
+                    if (possibleEpisode.relativeIndices && Number.isInteger(part)) {
+                        possibleEpisode.relativeIndices.partialIndex = part;
+                    }
+                }
                 usedMatches.push(match);
                 continue;
             }
-            const part = Number.parseInt(match.match[2] || match.match[4], 10);
             if (Number.isInteger(part)) {
                 // noinspection JSUnusedAssignment
                 if (possibleEpisode.partialIndex == null) {
