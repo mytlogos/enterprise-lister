@@ -312,8 +312,9 @@ async function scrapeToc(pageGenerator) {
         volumeRegex: /(v[olume]{0,5}|s[eason]{0,5}|b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
         separatorRegex: /[-:]/g,
         chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/ig,
+        volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-\s*((\d+)(\.(\d+))?)?/ig,
         partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
-        trimRegex: /^[\s:–,-]+|[\s:–,-]+$/g,
+        trimRegex: /^[\s:–,.-]+|[\s:–,.-]+$/g,
         endRegex: /end/g,
         startRegex: /start/g,
         order: "unknown",
@@ -368,12 +369,15 @@ async function scrapeToc(pageGenerator) {
     });
 }
 exports.scrapeToc = scrapeToc;
-function markWithRegex(regExp, title, type, matches) {
+function markWithRegex(regExp, title, type, matches, matchAfter) {
     if (!regExp.flags.includes("g")) {
         throw Error("Need a Regex with global Flag enabled, else it will crash");
     }
     for (let match = regExp.exec(title); match; match = regExp.exec(title)) {
         matches.push({ match, from: match.index, to: match.index + match[0].length, ignore: false, remove: true, type });
+        if (matchAfter) {
+            regExp.lastIndex = matchAfter(match);
+        }
     }
 }
 function adjustPartialIndices(contentIndex, contents, ascending) {
@@ -617,6 +621,7 @@ function adjustTocContentsLinked(contents, state) {
 function mark(tocPiece, state) {
     const volumeRegex = state.volumeRegex;
     const chapterRegex = state.chapterRegex;
+    const volumeChapterRegex = state.volumeChapterRegex;
     const partRegex = state.partRegex;
     const trimRegex = state.trimRegex;
     let title = tocPiece.title.replace(trimRegex, "");
@@ -631,6 +636,9 @@ function mark(tocPiece, state) {
     const matches = [];
     markWithRegex(volumeRegex, title, "volume", matches);
     markWithRegex(chapterRegex, title, "episode", matches);
+    markWithRegex(volumeChapterRegex, title, "volumeChapter", matches, (reg) => {
+        return reg.index + reg[2].length;
+    });
     markWithRegex(partRegex, title, "part", matches);
     matches.sort((a, b) => a.from - b.from);
     const possibleEpisodes = [];
@@ -678,7 +686,8 @@ function mark(tocPiece, state) {
                 continue;
             }
             usedMatches.push(match);
-            if (secondaryIndices) {
+            const partialWrappingMatch = matches.find((value) => match.from <= value.from && value.to > match.to);
+            if (secondaryIndices && !partialWrappingMatch) {
                 // for now ignore any fraction, normally it should only have the format of 1-4, not 1.1-1.4 or similar
                 for (let index = indices.total; index <= secondaryIndices.total; index++) {
                     possibleEpisodes.push({
@@ -748,6 +757,70 @@ function mark(tocPiece, state) {
                 }
             }
         }
+        else if (match.type === "volumeChapter") {
+            if (matches[i + 1] && matches[i + 1].type === "volumeChapter") {
+                continue;
+            }
+            const volIndices = tools_1.extractIndices(match.match, 2, 3, 5);
+            const chapIndices = tools_1.extractIndices(match.match, 6, 7, 9);
+            if (!volIndices) {
+                continue;
+            }
+            if (!isEpisodePiece(tocPiece)) {
+                continue;
+            }
+            if (possibleEpisodes.length === 1 && possibleEpisodes[0].combiIndex === volIndices.combi && !chapIndices) {
+                continue;
+            }
+            if (!possibleVolume) {
+                state.hasParts = true;
+                match.ignore = true;
+                usedMatches.push(match);
+                possibleVolume = state.volumeMap.get(volIndices.combi);
+                if (!possibleVolume) {
+                    possibleVolume = {
+                        type: "part",
+                        combiIndex: volIndices.combi,
+                        totalIndex: volIndices.total,
+                        partialIndex: volIndices.fraction,
+                        title: "",
+                        originalTitle: "",
+                        episodes: []
+                    };
+                    newVolume = true;
+                    state.volumeMap.set(volIndices.combi, possibleVolume);
+                }
+            }
+            else if (possibleVolume.combiIndex !== volIndices.combi) {
+                continue;
+            }
+            else {
+                usedMatches.push(match);
+            }
+            if (!chapIndices) {
+                continue;
+            }
+            if (possibleEpisodes.length === 1) {
+                possibleEpisodes[0].relativeIndices = {
+                    combiIndex: chapIndices.combi,
+                    totalIndex: chapIndices.total,
+                    partialIndex: chapIndices.fraction
+                };
+            }
+            else if (!possibleEpisodes.length) {
+                possibleEpisodes.push({
+                    type: "episode",
+                    combiIndex: chapIndices.combi,
+                    totalIndex: chapIndices.total,
+                    partialIndex: chapIndices.fraction,
+                    url: tocPiece.url,
+                    releaseDate: tocPiece.releaseDate || new Date(),
+                    title: "",
+                    originalTitle: tocPiece.title,
+                    match
+                });
+            }
+        }
         else if (!possibleVolume && match.type === "volume") {
             if (match.match[7]) {
                 // it matches the pattern for an invalid episode
@@ -788,7 +861,8 @@ function mark(tocPiece, state) {
         if (!usedMatch.ignore) {
             let contentTitle;
             if ((i + 1) < usedMatches.length) {
-                contentTitle = title.substring(usedMatch.to, usedMatches[i + 1].from).replace(trimRegex, "");
+                const maxEnd = Math.max(usedMatches[i + 1].from, usedMatch.to);
+                contentTitle = title.substring(usedMatch.to, maxEnd).replace(trimRegex, "");
             }
             else {
                 contentTitle = after;
