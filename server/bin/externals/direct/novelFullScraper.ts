@@ -44,7 +44,7 @@ async function search(text: string): Promise<SearchResult[]> {
 }
 
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
-    if (!urlString.match(/^http:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
+    if (!urlString.match(/^https?:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
         logger.warn("invalid chapter link for novelFull: " + urlString);
         return [];
     }

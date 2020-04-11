@@ -33,7 +33,7 @@ async function search(text) {
     return searchResults;
 }
 async function contentDownloadAdapter(urlString) {
-    if (!urlString.match(/^http:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
+    if (!urlString.match(/^https?:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
         logger_1.default.warn("invalid chapter link for novelFull: " + urlString);
         return [];
     }
