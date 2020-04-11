@@ -1,10 +1,10 @@
 import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
-import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import {extractIndices, isTocEpisode, isTocPart, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent, searchTocCheerio} from "./directTools";
+import {EpisodePiece, getTextContent, scrapeToc, searchTocCheerio, TocMetaPiece, TocPiece} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
@@ -12,17 +12,17 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return searchTocCheerio(
         medium,
         tocAdapter,
-        "http://novelfull.com/",
-        (parameter) => "http://novelfull.com/search?keyword=" + parameter,
+        "https://novelfull.com/",
+        (parameter) => "https://novelfull.com/search?keyword=" + parameter,
         ".truyen-title a"
     );
 }
 
 async function search(text: string): Promise<SearchResult[]> {
     const encodedText = encodeURIComponent(text);
-    const $ = await queueCheerioRequest("http://novelfull.com/search?keyword=" + encodedText);
+    const $ = await queueCheerioRequest("https://novelfull.com/search?keyword=" + encodedText);
 
-    const uri = "http://novelfull.com/";
+    const uri = "https://novelfull.com/";
     const results = $(".col-truyen-main .row");
     const searchResults: SearchResult[] = [];
 
@@ -68,7 +68,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 }
 
 async function tocAdapter(tocLink: string): Promise<Toc[]> {
-    const uri = "http://novelfull.com";
+    const uri = "https://novelfull.com";
 
     const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
     if (!linkMatch) {
@@ -86,7 +86,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         link: tocLink,
         mediumType: MediaType.TEXT
     };
-    tocLink = `http://novelfull.com/index.php/${linkMatch[1]}?page=`;
+    tocLink = `https://novelfull.com/index.php/${linkMatch[1]}?page=`;
 
     for (let i = 1; ; i++) {
         const $ = await queueCheerioRequest(tocLink + i);
@@ -205,7 +205,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
 }
 
 async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
-    const uri = "http://novelfull.com";
+    const uri = "https://novelfull.com";
     const $ = await queueCheerioRequest(uri);
     const items = $("#list-index .list-new .row");
 
@@ -281,8 +281,8 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
     return {episodes: episodeNews};
 }
 
-newsAdapter.link = "http://novelfull.com";
-tocSearch.link = "http://novelfull.com";
+newsAdapter.link = "https://novelfull.com";
+tocSearch.link = "https://novelfull.com";
 tocSearch.medium = MediaType.TEXT;
 tocSearch.blindSearch = true;
 search.medium = MediaType.TEXT;
@@ -293,7 +293,7 @@ export function getHook(): Hook {
         medium: MediaType.TEXT,
         domainReg: /https?:\/\/novelfull\.com/,
         contentDownloadAdapter,
-        tocAdapter,
+        tocAdapter: tocAdapterTooled,
         newsAdapter,
         tocSearchAdapter: tocSearch,
         searchAdapter: search
