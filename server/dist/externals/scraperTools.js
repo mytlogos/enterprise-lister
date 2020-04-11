@@ -678,7 +678,7 @@ async function downloadEpisodes(episodes) {
                 episodeContents = await downloaderEntry[1](release.url);
             }
             catch (e) {
-                if (e.statusCode && (e.statusCode === 410 || e.statusCode === 404)) {
+                if (e instanceof errors_1.MissingResourceError || (e.statusCode && (e.statusCode === 410 || e.statusCode === 404))) {
                     storage_1.episodeStorage.deleteRelease(release).catch(logger_1.default.error);
                 }
                 else {

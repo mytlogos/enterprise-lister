@@ -821,7 +821,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
             try {
                 episodeContents = await downloaderEntry[1](release.url);
             } catch (e) {
-                if (e.statusCode && (e.statusCode === 410 || e.statusCode === 404)) {
+                if (e instanceof MissingResourceError || (e.statusCode && (e.statusCode === 410 || e.statusCode === 404))) {
                     episodeStorage.deleteRelease(release).catch(logger.error);
                 } else {
                     logger.error(e);
