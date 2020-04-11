@@ -472,7 +472,11 @@ function adjustPartialIndicesLinked(node, ascending, contents) {
             break;
         }
         if (content.partialIndex != null && content.partialIndex !== currentPartialIndex) {
-            logger_1.default.warn(`trying to overwrite partialIndex on existing one with ${currentPartialIndex}: ${tools_1.stringify(content)}`);
+            logger_1.default.warn(`trying to overwrite partialIndex on existing one with ${currentPartialIndex}: ${tools_1.stringify({
+                ...content,
+                next: null,
+                previous: null
+            })}`);
         }
         else {
             content.partialIndex = currentPartialIndex;

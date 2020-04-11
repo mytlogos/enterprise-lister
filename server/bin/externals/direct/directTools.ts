@@ -645,7 +645,11 @@ function adjustPartialIndicesLinked(node: InternalTocEpisode, ascending: boolean
             break;
         }
         if (content.partialIndex != null && content.partialIndex !== currentPartialIndex) {
-            logger.warn(`trying to overwrite partialIndex on existing one with ${currentPartialIndex}: ${stringify(content)}`);
+            logger.warn(`trying to overwrite partialIndex on existing one with ${currentPartialIndex}: ${stringify({
+                ...content,
+                next: null,
+                previous: null
+            })}`);
         } else {
             content.partialIndex = currentPartialIndex;
             content.combiIndex = combiIndex(content);
