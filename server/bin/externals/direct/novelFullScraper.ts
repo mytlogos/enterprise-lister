@@ -67,6 +67,93 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     return getTextContent(novelTitle, episodeTitle, urlString, content);
 }
 
+function extractTocSnippet($: CheerioStatic, link: string): Toc {
+    let end = false;
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+    const releaseStateElement = $(".info > div:nth-child(4) > a:nth-child(2)");
+
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    if (releaseStateString.includes("complete")) {
+        end = true;
+        releaseState = ReleaseState.Complete;
+    } else if (releaseStateString === "ongoing") {
+        end = false;
+        releaseState = ReleaseState.Ongoing;
+    }
+    const mediumTitleElement = $(".desc .title").first();
+    const mediumTitle = sanitizeString(mediumTitleElement.text());
+    return {
+        content: [],
+        mediumType: MediaType.TEXT,
+        end,
+        // statusTl: releaseState,
+        title: mediumTitle,
+        link
+    };
+}
+
+async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
+    const uri = "https://novelfull.com";
+
+    const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
+    if (!linkMatch) {
+        throw new UrlError("not a valid toc url for NovelFull: " + tocLink, tocLink);
+    }
+    let toc: Toc | undefined;
+    const pagedTocLink = `https://novelfull.com/index.php/${linkMatch[1]}?page=`;
+    const now = new Date();
+
+    const contents: TocContent[] = await scrapeToc((async function* itemGenerator(): AsyncGenerator<TocPiece, void> {
+        for (let i = 1; ; i++) {
+            const $ = await queueCheerioRequest(pagedTocLink + i);
+
+            if (!toc) {
+                toc = extractTocSnippet($, tocLink);
+                yield toc as TocMetaPiece;
+            }
+            const items = $(".list-chapter li a");
+
+            for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+                const newsRow = items.eq(itemIndex);
+                const link = url.resolve(uri, newsRow.attr("href") as string);
+                const episodeTitle = sanitizeString(newsRow.text());
+                yield {title: episodeTitle, url: link, releaseDate: now} as EpisodePiece;
+            }
+
+            if ($(".pagination .last.disabled, .pagination .next.disabled").length) {
+                break;
+            }
+
+            // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
+            if (i > 300) {
+                logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
+                break;
+            }
+        }
+    })());
+    for (const content of contents) {
+        if (isTocPart(content)) {
+            if (!content.title) {
+                content.title = `Volume ${content.combiIndex}`;
+            }
+            for (const episode of content.episodes) {
+                if (!episode.title) {
+                    episode.title = `Chapter ${episode.combiIndex}`;
+                }
+            }
+        } else if (isTocEpisode(content)) {
+            if (!content.title) {
+                content.title = `Chapter ${content.combiIndex}`;
+            }
+        }
+    }
+    if (toc) {
+        toc.content = contents;
+        return [toc];
+    }
+    return [];
+}
+
 async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const uri = "https://novelfull.com";
 
