@@ -376,6 +376,7 @@ interface InternalTocEpisode extends InternalTocContent {
     match: TocMatch | null;
     partCount?: number;
     part?: InternalTocPart;
+    episodeRange?: number;
     relativeIndices?: {
         combiIndex: number;
         totalIndex: number;
@@ -665,6 +666,28 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
     } else {
         state.order = "desc";
     }
+    const rangeInserter = ascending ? contents.insertAfter : contents.insertBefore;
+    const nextNeighbourKey = ascending ? "next" : "previous";
+    for (const content of contents.iterate(ascending)) {
+        if (!isInternalEpisode(content)) {
+            continue;
+        }
+        if (!content.episodeRange) {
+            continue;
+        }
+        const next = content[nextNeighbourKey] as Node;
+        if (isInternalEpisode(next) && next.combiIndex < content.episodeRange) {
+            continue;
+        }
+        let insertNeighbour = content;
+        for (let i = content.totalIndex + 1; i <= content.episodeRange; i++) {
+            const episode = {...content, next: undefined, previous: undefined} as InternalTocEpisode;
+            episode.totalIndex = i;
+            episode.combiIndex = combiIndex(episode);
+            rangeInserter.call(contents, episode, insertNeighbour);
+            insertNeighbour = episode;
+        }
+    }
     if (!state.tocMeta || !state.tocMeta.end) {
         let possibleStartNode: Node | undefined;
         let volumeEncountered = false;
@@ -928,34 +951,22 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
             usedMatches.push(match);
             const partialWrappingMatch = matches.find((value) => match.from <= value.from && value.to > match.to);
 
+            const episode = {
+                type: "episode",
+                combiIndex: indices.combi,
+                totalIndex: indices.total,
+                partialIndex: indices.fraction,
+                url: tocPiece.url,
+                releaseDate: tocPiece.releaseDate || new Date(),
+                title: "",
+                originalTitle: tocPiece.title,
+                match
+            } as InternalTocEpisode;
             if (secondaryIndices && !partialWrappingMatch) {
                 // for now ignore any fraction, normally it should only have the format of 1-4, not 1.1-1.4 or similar
-                for (let index = indices.total; index <= secondaryIndices.total; index++) {
-                    possibleEpisodes.push({
-                        type: "episode",
-                        combiIndex: index,
-                        totalIndex: index,
-                        partialIndex: undefined,
-                        url: tocPiece.url,
-                        releaseDate: tocPiece.releaseDate || new Date(),
-                        title: "",
-                        originalTitle: tocPiece.title,
-                        match
-                    } as InternalTocEpisode);
-                }
-            } else {
-                possibleEpisodes.push({
-                    type: "episode",
-                    combiIndex: indices.combi,
-                    totalIndex: indices.total,
-                    partialIndex: indices.fraction,
-                    url: tocPiece.url,
-                    releaseDate: tocPiece.releaseDate || new Date(),
-                    title: "",
-                    originalTitle: tocPiece.title,
-                    match
-                } as InternalTocEpisode);
+                episode.episodeRange = secondaryIndices.total;
             }
+            possibleEpisodes.push(episode);
         } else if (possibleEpisodes.length === 1 && match.type === "part") {
             const wrappingMatch = usedMatches.find((value) => value.from <= match.from && value.to >= match.to);
             // there exists a match which wraps the current one, so skip this one

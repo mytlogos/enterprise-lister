@@ -492,6 +492,28 @@ function adjustTocContentsLinked(contents, state) {
     else {
         state.order = "desc";
     }
+    const rangeInserter = ascending ? contents.insertAfter : contents.insertBefore;
+    const nextNeighbourKey = ascending ? "next" : "previous";
+    for (const content of contents.iterate(ascending)) {
+        if (!isInternalEpisode(content)) {
+            continue;
+        }
+        if (!content.episodeRange) {
+            continue;
+        }
+        const next = content[nextNeighbourKey];
+        if (isInternalEpisode(next) && next.combiIndex < content.episodeRange) {
+            continue;
+        }
+        let insertNeighbour = content;
+        for (let i = content.totalIndex + 1; i <= content.episodeRange; i++) {
+            const episode = { ...content, next: undefined, previous: undefined };
+            episode.totalIndex = i;
+            episode.combiIndex = tools_1.combiIndex(episode);
+            rangeInserter.call(contents, episode, insertNeighbour);
+            insertNeighbour = episode;
+        }
+    }
     if (!state.tocMeta || !state.tocMeta.end) {
         let possibleStartNode;
         let volumeEncountered = false;
@@ -747,35 +769,22 @@ function mark(tocPiece, state) {
             }
             usedMatches.push(match);
             const partialWrappingMatch = matches.find((value) => match.from <= value.from && value.to > match.to);
+            const episode = {
+                type: "episode",
+                combiIndex: indices.combi,
+                totalIndex: indices.total,
+                partialIndex: indices.fraction,
+                url: tocPiece.url,
+                releaseDate: tocPiece.releaseDate || new Date(),
+                title: "",
+                originalTitle: tocPiece.title,
+                match
+            };
             if (secondaryIndices && !partialWrappingMatch) {
                 // for now ignore any fraction, normally it should only have the format of 1-4, not 1.1-1.4 or similar
-                for (let index = indices.total; index <= secondaryIndices.total; index++) {
-                    possibleEpisodes.push({
-                        type: "episode",
-                        combiIndex: index,
-                        totalIndex: index,
-                        partialIndex: undefined,
-                        url: tocPiece.url,
-                        releaseDate: tocPiece.releaseDate || new Date(),
-                        title: "",
-                        originalTitle: tocPiece.title,
-                        match
-                    });
-                }
+                episode.episodeRange = secondaryIndices.total;
             }
-            else {
-                possibleEpisodes.push({
-                    type: "episode",
-                    combiIndex: indices.combi,
-                    totalIndex: indices.total,
-                    partialIndex: indices.fraction,
-                    url: tocPiece.url,
-                    releaseDate: tocPiece.releaseDate || new Date(),
-                    title: "",
-                    originalTitle: tocPiece.title,
-                    match
-                });
-            }
+            possibleEpisodes.push(episode);
         }
         else if (possibleEpisodes.length === 1 && match.type === "part") {
             const wrappingMatch = usedMatches.find((value) => value.from <= match.from && value.to >= match.to);
