@@ -1006,7 +1006,13 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
             if (matches[i + 1] && matches[i + 1].type === "volumeChapter") {
                 continue;
             }
+            const wrappingMatch = matches.find((value) => {
+                return value !== match && value.from <= match.from && match.to <= value.to;
+            });
 
+            if (wrappingMatch) {
+                continue;
+            }
             const volIndices = extractIndices(match.match, 2, 3, 5);
             const chapIndices = extractIndices(match.match, 6, 7, 9);
 
