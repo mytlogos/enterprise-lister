@@ -12,6 +12,7 @@ export class PartStorage {
     public getAll(): Promise<Query> {
         return inContext((context) => context.getAll());
     }
+
     /**
      * Returns all parts of an medium with their episodes.
      */
@@ -61,7 +62,7 @@ export class PartStorage {
     /**
      * Returns a Map of Parts with all of their Releases.
      */
-    public getPartReleases(partsId: number[]): Promise<{ [key: number]: Array<{ id: number, link: string }> }> {
+    public getPartReleases(partsId: number[]): Promise<{ [key: number]: Array<{ id: number, url: string }> }> {
         // @ts-ignore
         return inContext((context) => context.getPartReleases(partsId));
     }

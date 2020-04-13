@@ -33,7 +33,7 @@ export declare class PartStorage {
     getPartReleases(partsId: number[]): Promise<{
         [key: number]: Array<{
             id: number;
-            link: string;
+            url: string;
         }>;
     }>;
     /**
