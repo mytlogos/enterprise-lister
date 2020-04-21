@@ -5,6 +5,7 @@ const winston_1 = tslib_1.__importStar(require("winston"));
 const tools_1 = require("./tools");
 const path_1 = require("path");
 const env_1 = tslib_1.__importDefault(require("./env"));
+const asyncStorage_1 = require("./asyncStorage");
 let filePrefix;
 const appName = process.env.NODE_APP_NAME || process.env.name;
 if (appName) {
@@ -73,7 +74,12 @@ const logger = winston_1.default.createLogger({
                     }
                     // truncate for console output
                     info.message = info.message.substring(0, 2000);
-                    return `${info.timestamp} [${info.label || ""}] ${info.level}: ${info.message}`;
+                    const store = asyncStorage_1.getStore();
+                    const label = info.label || [];
+                    if (store && store.get("label")) {
+                        label.push(...store.get("label"));
+                    }
+                    return `${info.timestamp} [${info.label.join(",") || ""}] ${info.level}: ${info.message}`;
                 }
             })),
         })

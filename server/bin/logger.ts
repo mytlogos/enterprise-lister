@@ -2,6 +2,7 @@ import winston, {format} from "winston";
 import {isString, jsonReplacer, stringify} from "./tools";
 import {join as joinPath} from "path";
 import env from "./env";
+import {getStore} from "./asyncStorage";
 
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
@@ -77,7 +78,12 @@ const logger = winston.createLogger({
                         }
                         // truncate for console output
                         info.message = info.message.substring(0, 2000);
-                        return `${info.timestamp} [${info.label || ""}] ${info.level}: ${info.message}`;
+                        const store = getStore();
+                        const label = info.label || [];
+                        if (store && store.get("label")) {
+                            label.push(...store.get("label"));
+                        }
+                        return `${info.timestamp} [${info.label.join(",") || ""}] ${info.level}: ${info.message}`;
                     }
                 })
             ),

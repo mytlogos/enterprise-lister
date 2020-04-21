@@ -19,6 +19,7 @@ import logger from "../logger";
 import {JobItem, JobRequest, JobState, MilliTime, ScrapeName} from "../types";
 import {jobStorage} from "../database/storages/storage";
 import * as dns from "dns";
+import {getStore} from "../asyncStorage";
 import Timeout = NodeJS.Timeout;
 
 class ScrapeJob {
@@ -54,6 +55,12 @@ const missingConnections = new Set<Date>();
 
 // tslint:disable-next-line:max-classes-per-file
 export class JobScraperManager {
+
+    private static initStore(item: JobItem) {
+        const store = getStore();
+        store.set("label", [`job-${item.id}-${item.name}`]);
+    }
+
     public automatic = true;
     private paused = true;
     private readonly helper = new ScraperHelper();
@@ -424,6 +431,7 @@ export class JobScraperManager {
 
     private queueEmittableJob(jobType: ScrapeJob, item: JobItem) {
         const job = this.queue.addJob(item.id, () => {
+            JobScraperManager.initStore(item);
             if (!jobType.event) {
                 logger.warn("running emittable job without event name: " + jobType);
                 return Promise.resolve();
@@ -440,6 +448,7 @@ export class JobScraperManager {
 
     private queueJob(jobType: ScrapeJob, item: JobItem) {
         const job = this.queue.addJob(item.id, () => {
+            JobScraperManager.initStore(item);
             if (Array.isArray(item.arguments)) {
                 this.processJobCallback(jobType.func(...item.arguments));
             } else {

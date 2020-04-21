@@ -1,6 +1,7 @@
 import {remove, removeLike, stringify} from "./tools";
 import logger from "./logger";
 import {JobRequest} from "./types";
+import {runSync} from "./asyncStorage";
 import Timeout = NodeJS.Timeout;
 
 export enum MemorySize {
@@ -196,7 +197,7 @@ export class JobQueue {
                         .catch((reason) => logger.error(`Job ${toExecute.jobId} onStart threw an error!: ${stringify(reason)}`));
                 }
                 logger.info("executing job: " + toExecute.jobId);
-                return toExecute.job(() => this._done(toExecute));
+                return runSync(() => toExecute.job(() => this._done(toExecute)));
             })
             .catch((reason) => {
                 remove(this.waitingJobs, toExecute);

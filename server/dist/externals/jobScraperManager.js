@@ -8,6 +8,7 @@ const logger_1 = tslib_1.__importDefault(require("../logger"));
 const types_1 = require("../types");
 const storage_1 = require("../database/storages/storage");
 const dns = tslib_1.__importStar(require("dns"));
+const asyncStorage_1 = require("../asyncStorage");
 class ScrapeJob {
     constructor(name, func, event) {
         this.name = name;
@@ -42,6 +43,10 @@ class JobScraperManager {
         this.jobMap = new Map();
         this.nameIdList = [];
         this.helper.init();
+    }
+    static initStore(item) {
+        const store = asyncStorage_1.getStore();
+        store.set("label", [`job-${item.id}-${item.name}`]);
     }
     on(event, callback) {
         this.helper.on(event, callback);
@@ -372,6 +377,7 @@ class JobScraperManager {
     }
     queueEmittableJob(jobType, item) {
         const job = this.queue.addJob(item.id, () => {
+            JobScraperManager.initStore(item);
             if (!jobType.event) {
                 logger_1.default.warn("running emittable job without event name: " + jobType);
                 return Promise.resolve();
@@ -388,6 +394,7 @@ class JobScraperManager {
     }
     queueJob(jobType, item) {
         const job = this.queue.addJob(item.id, () => {
+            JobScraperManager.initStore(item);
             if (Array.isArray(item.arguments)) {
                 this.processJobCallback(jobType.func(...item.arguments));
             }

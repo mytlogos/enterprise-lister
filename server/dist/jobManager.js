@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
 const tools_1 = require("./tools");
 const logger_1 = tslib_1.__importDefault(require("./logger"));
+const asyncStorage_1 = require("./asyncStorage");
 var MemorySize;
 (function (MemorySize) {
     MemorySize[MemorySize["GB"] = 1073741824] = "GB";
@@ -171,7 +172,7 @@ class JobQueue {
                     .catch((reason) => logger_1.default.error(`Job ${toExecute.jobId} onStart threw an error!: ${tools_1.stringify(reason)}`));
             }
             logger_1.default.info("executing job: " + toExecute.jobId);
-            return toExecute.job(() => this._done(toExecute));
+            return asyncStorage_1.runSync(() => toExecute.job(() => this._done(toExecute)));
         })
             .catch((reason) => {
             tools_1.remove(this.waitingJobs, toExecute);

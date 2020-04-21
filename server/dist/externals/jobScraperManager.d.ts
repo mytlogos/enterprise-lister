@@ -1,6 +1,7 @@
 import { OutsideJob } from "../jobManager";
 import { JobRequest } from "../types";
 export declare class JobScraperManager {
+    private static initStore;
     automatic: boolean;
     private paused;
     private readonly helper;
