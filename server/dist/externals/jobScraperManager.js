@@ -35,6 +35,7 @@ const missingConnections = new Set();
 // tslint:disable-next-line:max-classes-per-file
 class JobScraperManager {
     constructor() {
+        this.automatic = true;
         this.paused = true;
         this.helper = new scraperTools_1.ScraperHelper();
         this.queue = new jobManager_1.JobQueue({ maxActive: 200 });
@@ -108,13 +109,16 @@ class JobScraperManager {
             deleteAfterRun: false,
             runImmediately: true
         });
-        this.addJobs(...jobs);
+        await this.addJobs(...jobs);
     }
     start() {
         this.paused = false;
         this.queue.start();
         const interval = setInterval(() => {
             if (this.paused) {
+                return;
+            }
+            if (!this.automatic) {
                 return;
             }
             this.fetchJobs().catch(logger_1.default.error);
@@ -140,6 +144,16 @@ class JobScraperManager {
         if (this.intervalId) {
             clearInterval(this.intervalId);
         }
+    }
+    /**
+     * Mainly for test purposes
+     * @param jobIds
+     */
+    async runJobs(...jobIds) {
+        logger_1.default.info(`start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
+        const jobs = await storage_1.jobStorage.getJobsById(jobIds);
+        this.processJobItems(jobs);
+        logger_1.default.info(`fetched jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
     }
     async addJobs(...jobs) {
         let waitForOtherRequest = [];

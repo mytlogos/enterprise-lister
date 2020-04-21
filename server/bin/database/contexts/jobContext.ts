@@ -33,6 +33,13 @@ export class JobContext extends SubContext {
         );
     }
 
+    public getJobsById(jobIds: number[]): Promise<JobItem[]> {
+        return this.queryInList(
+            "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND id ",
+            jobIds
+        ) as Promise<JobItem[]>;
+    }
+
     public async stopJobs(): Promise<void> {
         await this.query("UPDATE jobs SET state = ?", JobState.WAITING);
         await this.query("CREATE TEMPORARY TABLE tmp_jobs (id INT UNSIGNED NOT NULL)");
