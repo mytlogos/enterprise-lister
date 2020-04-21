@@ -18,6 +18,9 @@ class JobStorage {
     getJobsById(jobIds) {
         return inContext((context) => context.getJobsById(jobIds));
     }
+    getJobsByName(names) {
+        return inContext((context) => context.getJobsByName(names));
+    }
     getAfterJobs(id) {
         return inContext((context) => context.getAfterJobs(id));
     }

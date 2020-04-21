@@ -33,6 +33,9 @@ class JobContext extends subContext_1.SubContext {
     getJobsById(jobIds) {
         return this.queryInList("SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND id ", jobIds);
     }
+    getJobsByName(names) {
+        return this.queryInList("SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND name ", names);
+    }
     async stopJobs() {
         await this.query("UPDATE jobs SET state = ?", types_1.JobState.WAITING);
         await this.query("CREATE TEMPORARY TABLE tmp_jobs (id INT UNSIGNED NOT NULL)");

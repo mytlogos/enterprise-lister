@@ -745,7 +745,7 @@ export class ScraperHelper {
 
 let hookRegistered = false;
 
-function checkHooks() {
+export function checkHooks() {
     if (!hookRegistered) {
         registerHooks(directScraper.getHooks());
         hookRegistered = true;

@@ -70,7 +70,7 @@ export class JobScraperManager {
         this.helper.on(event, callback);
     }
 
-    public removeDependant(key: number | string): void {
+    public async removeDependant(key: number | string): Promise<void> {
         const job = this.jobMap.get(key);
         if (!job) {
             logger.warn("tried to remove non existant job");
@@ -96,7 +96,7 @@ export class JobScraperManager {
             this.jobMap.delete(key);
         }
         this.queue.removeJob(job);
-        jobStorage.removeJob(key).catch(logger.error);
+        return jobStorage.removeJob(key).catch(logger.error);
     }
 
     public async setup(): Promise<void> {
@@ -351,6 +351,9 @@ export class JobScraperManager {
     }
 
     private async fetchJobs(): Promise<void> {
+        if (!this.automatic) {
+            return;
+        }
         if (this.queue.isFull()) {
             logger.info("skip fetching jobs, queue is full");
             return;
@@ -524,4 +527,4 @@ function isJobItem(value: any): value is JobItem {
 }
 
 export const DefaultJobScraper = new JobScraperManager();
-DefaultJobScraper.start();
+// DefaultJobScraper.start();

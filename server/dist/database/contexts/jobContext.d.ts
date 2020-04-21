@@ -4,6 +4,7 @@ export declare class JobContext extends SubContext {
     removeJobLike(column: string, value: any): Promise<void>;
     getJobs(limit?: number): Promise<JobItem[]>;
     getJobsById(jobIds: number[]): Promise<JobItem[]>;
+    getJobsByName(names: string[]): Promise<JobItem[]>;
     stopJobs(): Promise<void>;
     getAfterJobs(id: number): Promise<JobItem[]>;
     addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]>;

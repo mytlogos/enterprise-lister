@@ -24,6 +24,10 @@ export class JobStorage {
         return inContext((context) => context.getJobsById(jobIds));
     }
 
+    public getJobsByName(names: string[]): Promise<JobItem[]> {
+        return inContext((context) => context.getJobsByName(names));
+    }
+
     public getAfterJobs(id: number): Promise<JobItem[]> {
         return inContext((context) => context.getAfterJobs(id));
     }

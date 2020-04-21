@@ -73,6 +73,7 @@ export declare class ScraperHelper {
     getHook(name: string): Hook;
     private registerHooks;
 }
+export declare function checkHooks(): void;
 export declare function search(title: string, medium: number): Promise<SearchResult[]>;
 export declare function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]>;
 export declare function remapMediaParts(): Promise<void>;

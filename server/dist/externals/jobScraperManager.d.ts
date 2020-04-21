@@ -10,7 +10,7 @@ export declare class JobScraperManager {
     private intervalId;
     constructor();
     on(event: string, callback: (value: any) => void): void;
-    removeDependant(key: number | string): void;
+    removeDependant(key: number | string): Promise<void>;
     setup(): Promise<void>;
     start(): void;
     pause(): void;

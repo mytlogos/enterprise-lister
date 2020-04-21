@@ -46,7 +46,7 @@ class JobScraperManager {
     on(event, callback) {
         this.helper.on(event, callback);
     }
-    removeDependant(key) {
+    async removeDependant(key) {
         const job = this.jobMap.get(key);
         if (!job) {
             logger_1.default.warn("tried to remove non existant job");
@@ -70,7 +70,7 @@ class JobScraperManager {
             this.jobMap.delete(key);
         }
         this.queue.removeJob(job);
-        storage_1.jobStorage.removeJob(key).catch(logger_1.default.error);
+        return storage_1.jobStorage.removeJob(key).catch(logger_1.default.error);
     }
     async setup() {
         await clearJobsOnStartPromise;
@@ -301,6 +301,9 @@ class JobScraperManager {
         }
     }
     async fetchJobs() {
+        if (!this.automatic) {
+            return;
+        }
         if (this.queue.isFull()) {
             logger_1.default.info("skip fetching jobs, queue is full");
             return;
@@ -467,5 +470,5 @@ function isJobItem(value) {
     return value && value.id;
 }
 exports.DefaultJobScraper = new JobScraperManager();
-exports.DefaultJobScraper.start();
+// DefaultJobScraper.start();
 //# sourceMappingURL=jobScraperManager.js.map

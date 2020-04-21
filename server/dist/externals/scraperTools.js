@@ -619,6 +619,7 @@ function checkHooks() {
         hookRegistered = true;
     }
 }
+exports.checkHooks = checkHooks;
 async function search(title, medium) {
     checkHooks();
     const promises = [];
