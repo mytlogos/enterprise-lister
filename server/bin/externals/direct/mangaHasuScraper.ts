@@ -6,7 +6,7 @@ import logger from "../../logger";
 import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc} from "./directTools";
-import {UrlError} from "../errors";
+import {MissingResourceError, UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
@@ -107,6 +107,9 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
     const $ = await queueCheerioRequest(chapterLink);
+    if ($("head > title").text() === "Page not found!") {
+        throw new MissingResourceError("Missing Toc on NovelFull", chapterLink);
+    }
     const mediumTitleElement = $(".breadcrumb li:nth-child(2) a");
     const titleElement = $(".breadcrumb span");
 
@@ -153,6 +156,9 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
     }
     const $ = await queueCheerioRequest(urlString);
+    if ($("head > title").text() === "Page not found!") {
+        throw new MissingResourceError("Missing Toc on NovelFull", urlString);
+    }
     const contentElement = $(".wrapper_content");
     const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().text());
     // todo process metadata and get more (like author)

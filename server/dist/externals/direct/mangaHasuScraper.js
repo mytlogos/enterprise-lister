@@ -92,6 +92,9 @@ async function scrapeNews() {
 }
 async function contentDownloadAdapter(chapterLink) {
     const $ = await queueManager_1.queueCheerioRequest(chapterLink);
+    if ($("head > title").text() === "Page not found!") {
+        throw new errors_1.MissingResourceError("Missing Toc on NovelFull", chapterLink);
+    }
     const mediumTitleElement = $(".breadcrumb li:nth-child(2) a");
     const titleElement = $(".breadcrumb span");
     const episodeTitle = tools_1.sanitizeString(titleElement.text());
@@ -132,6 +135,9 @@ async function scrapeToc(urlString) {
         throw new errors_1.UrlError("not a toc link for MangaHasu: " + urlString, urlString);
     }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
+    if ($("head > title").text() === "Page not found!") {
+        throw new errors_1.MissingResourceError("Missing Toc on NovelFull", urlString);
+    }
     const contentElement = $(".wrapper_content");
     const mangaTitle = tools_1.sanitizeString(contentElement.find(".info-title h1").first().text());
     // todo process metadata and get more (like author)
