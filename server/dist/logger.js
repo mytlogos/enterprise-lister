@@ -74,12 +74,8 @@ const logger = winston_1.default.createLogger({
                     }
                     // truncate for console output
                     info.message = info.message.substring(0, 2000);
-                    const store = asyncStorage_1.getStore();
                     const label = info.label || [];
-                    if (store && store.get("label")) {
-                        label.push(...store.get("label"));
-                    }
-                    return `${info.timestamp} [${info.label.join(",") || ""}] ${info.level}: ${info.message}`;
+                    return `${info.timestamp} ${info.level}: ${info.message} [${label.join(",") || ""}]`;
                 }
             })),
         })
@@ -92,7 +88,21 @@ let exitHandled = false;
 process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info(`Exit Program with Code: ${code}.`));
 function log(level, value, meta) {
     if (Object.prototype.toString.call(meta) !== "[object Object]") {
-        meta = { label: meta };
+        let label;
+        if (Array.isArray(meta)) {
+            label = meta;
+        }
+        else {
+            label = [tools_1.stringify(meta)];
+        }
+        meta = { label };
+    }
+    else if (!meta.label) {
+        meta.label = [];
+    }
+    const store = asyncStorage_1.getStore();
+    if (store && store.get("label")) {
+        meta.label.push(...store.get("label"));
     }
     logger.log(level, tools_1.stringify(value), meta);
 }

@@ -120,9 +120,10 @@ class JobQueue {
         tools_1.remove(this.activeJobs, job);
         job.running = false;
         if (job.startRun) {
-            const now = new Date();
-            const diffTime = now.getTime() - job.startRun;
-            logger_1.default.info(`Job ${job.jobId} executed in ${diffTime} ms, ${job.executed} times`);
+            const store = asyncStorage_1.getStore();
+            const running = store.get("running");
+            const waiting = store.get("waiting");
+            logger_1.default.info(`Job ${job.jobId} executed in running ${running} ms and waiting ${waiting} ms, ${job.executed} times`);
             job.lastRun = Date.now();
             job.startRun = 0;
         }
@@ -163,7 +164,8 @@ class JobQueue {
         toExecute.running = true;
         this.activeJobs.push(toExecute);
         toExecute.startRun = Date.now();
-        this
+        const store = new Map();
+        asyncStorage_1.runAsync(store, () => this
             .executeCallback(async () => {
             toExecute.executed++;
             if (toExecute.jobInfo.onStart) {
@@ -172,7 +174,7 @@ class JobQueue {
                     .catch((reason) => logger_1.default.error(`Job ${toExecute.jobId} onStart threw an error!: ${tools_1.stringify(reason)}`));
             }
             logger_1.default.info("executing job: " + toExecute.jobId);
-            return asyncStorage_1.runSync(() => toExecute.job(() => this._done(toExecute)));
+            return toExecute.job(() => this._done(toExecute));
         })
             .catch((reason) => {
             tools_1.remove(this.waitingJobs, toExecute);
@@ -184,7 +186,7 @@ class JobQueue {
                 this.executeCallback(toExecute.jobInfo.onDone)
                     .catch((reason) => logger_1.default.error(`Job ${toExecute.jobId} onDone threw an error!: ${tools_1.stringify(reason)}`));
             }
-        });
+        }));
     }
     setInterval(duration) {
         if (!duration) {

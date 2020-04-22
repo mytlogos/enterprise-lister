@@ -78,12 +78,8 @@ const logger = winston.createLogger({
                         }
                         // truncate for console output
                         info.message = info.message.substring(0, 2000);
-                        const store = getStore();
                         const label = info.label || [];
-                        if (store && store.get("label")) {
-                            label.push(...store.get("label"));
-                        }
-                        return `${info.timestamp} [${info.label.join(",") || ""}] ${info.level}: ${info.message}`;
+                        return `${info.timestamp} ${info.level}: ${info.message} [${label.join(",") || ""}]`;
                     }
                 })
             ),
@@ -99,7 +95,20 @@ process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info(`
 
 function log(level: string, value: any, meta?: any) {
     if (Object.prototype.toString.call(meta) !== "[object Object]") {
-        meta = {label: meta};
+        let label;
+        if (Array.isArray(meta)) {
+            label = meta;
+        } else {
+            label = [stringify(meta)];
+        }
+        meta = {label};
+    } else if (!meta.label) {
+        meta.label = [];
+    }
+    const store = getStore();
+
+    if (store && store.get("label")) {
+        meta.label.push(...store.get("label"));
     }
     logger.log(level, stringify(value), meta);
 }
