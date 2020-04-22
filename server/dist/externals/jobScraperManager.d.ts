@@ -1,8 +1,9 @@
 import { OutsideJob } from "../jobManager";
-import { JobRequest } from "../types";
+import { JobItem, JobRequest } from "../types";
 export declare class JobScraperManager {
     private static initStore;
     automatic: boolean;
+    filter: undefined | ((item: JobItem) => boolean);
     private paused;
     private readonly helper;
     private readonly queue;

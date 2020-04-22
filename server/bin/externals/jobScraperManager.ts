@@ -62,6 +62,7 @@ export class JobScraperManager {
     }
 
     public automatic = true;
+    public filter: undefined | ((item: JobItem) => boolean);
     private paused = true;
     private readonly helper = new ScraperHelper();
     private readonly queue = new JobQueue({maxActive: 200});
@@ -240,6 +241,9 @@ export class JobScraperManager {
         for (const [key, value] of jobsMap.entries()) {
             for (const job of value) {
                 if (this.jobMap.has(job.id)) {
+                    continue;
+                }
+                if (this.filter && !this.filter(job)) {
                     continue;
                 }
                 if (key.event) {

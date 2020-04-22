@@ -197,6 +197,9 @@ class JobScraperManager {
                 if (this.jobMap.has(job.id)) {
                     continue;
                 }
+                if (this.filter && !this.filter(job)) {
+                    continue;
+                }
                 if (key.event) {
                     this.queueEmittableJob(key, job);
                 }
