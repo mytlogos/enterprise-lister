@@ -147,7 +147,20 @@ class JobQueue {
             return;
         }
         if (!this.schedulableJobs || !this.queueActive || this._fullQueue() || this._overMemoryLimit()) {
-            logger_1.default.info("queue will not execute a new job this tick");
+            let reason = "i dont know the reason";
+            if (!this.schedulableJobs) {
+                reason = "No Schedulable Jobs";
+            }
+            else if (!this.queueActive) {
+                reason = "Queue is not active";
+            }
+            else if (this._fullQueue()) {
+                reason = "Queue is full";
+            }
+            else if (this._overMemoryLimit()) {
+                reason = "Over Memory Limit";
+            }
+            logger_1.default.info(`queue will not execute a new job this tick: '${reason}'`);
             this.setInterval(1000);
             return;
         }
