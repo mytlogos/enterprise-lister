@@ -610,6 +610,7 @@ scraper.on("toc", (result) => tocHandler(result).catch((error) => logger_1.defau
 scraper.on("feed", (result) => feedHandler(result).catch((error) => logger_1.default.error(error)));
 scraper.on("list", (result) => listHandler(result).catch((error) => logger_1.default.error(error)));
 exports.startCrawler = () => {
+    scraper.filter = (item) => item.name.includes("novelfull");
     scraper
         .setup()
         .then(() => scraper.start())
