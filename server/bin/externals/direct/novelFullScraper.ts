@@ -11,7 +11,7 @@ import {UrlError} from "../errors";
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
     return searchTocCheerio(
         medium,
-        tocAdapter,
+        tocAdapterTooled,
         "https://novelfull.com/",
         (parameter) => "https://novelfull.com/search?keyword=" + parameter,
         ".truyen-title a"

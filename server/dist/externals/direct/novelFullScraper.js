@@ -10,7 +10,7 @@ const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
 const errors_1 = require("../errors");
 async function tocSearch(medium) {
-    return directTools_1.searchTocCheerio(medium, tocAdapter, "https://novelfull.com/", (parameter) => "https://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
+    return directTools_1.searchTocCheerio(medium, tocAdapterTooled, "https://novelfull.com/", (parameter) => "https://novelfull.com/search?keyword=" + parameter, ".truyen-title a");
 }
 async function search(text) {
     const encodedText = encodeURIComponent(text);
