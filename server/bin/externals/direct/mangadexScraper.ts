@@ -288,6 +288,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
     }
 
     toc.title = mangaTitle;
+    const ignoreTitles = /oneshot/i;
 
     const chapters = contentElement.find(".chapter-container .chapter-row");
 
@@ -383,7 +384,10 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             checkTocContent(chapterContent);
             toc.content.push(chapterContent);
         } else {
-            logger.warn("volume - chapter format changed on mangadex: recognized neither of them " + urlString);
+            if (chapterTitle.match(ignoreTitles)) {
+                continue;
+            }
+            logger.warn(`volume - chapter format changed on mangadex: recognized neither of them: '${chapterTitle}', ${urlString}`);
             return true;
         }
     }
