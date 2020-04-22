@@ -277,7 +277,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                              indexPartMap: Map<number, TocPart>, uri: string, urlString: string): Promise<boolean> {
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#content");
-    if (contentElement.find(".alert-danger").text().match(/Manga .+? not available/)) {
+    if (contentElement.find(".alert-danger").text().match(/Manga .+? (not available)|(does not exist)/i)) {
         throw new MissingResourceError("Missing ToC on MangaDex", urlString);
     }
     const mangaTitle = sanitizeString(contentElement.find("h6.card-header").first().text());
@@ -288,7 +288,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
     }
 
     toc.title = mangaTitle;
-    const ignoreTitles = /oneshot/i;
+    const ignoreTitles = /(oneshot)|(special.+chapter)/i;
 
     const chapters = contentElement.find(".chapter-container .chapter-row");
 
