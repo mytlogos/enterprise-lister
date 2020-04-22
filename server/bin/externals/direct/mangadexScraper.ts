@@ -7,7 +7,7 @@ import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "request";
 import {checkTocContent} from "../scraperTools";
 import {episodeStorage} from "../../database/storages/storage";
-import {UrlError} from "../errors";
+import {MissingResourceError, UrlError} from "../errors";
 
 const jar = request.jar();
 jar.setCookie(
@@ -277,6 +277,9 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                              indexPartMap: Map<number, TocPart>, uri: string, urlString: string): Promise<boolean> {
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#content");
+    if (contentElement.find(".alert-danger").text().match(/Manga .+? not available/)) {
+        throw new MissingResourceError("Missing ToC on MangaDex", urlString);
+    }
     const mangaTitle = sanitizeString(contentElement.find("h6.card-header").first().text());
     // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");
     if (!mangaTitle) {
