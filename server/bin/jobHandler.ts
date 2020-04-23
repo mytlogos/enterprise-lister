@@ -317,7 +317,11 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
                         }
                     } else {
                         // differ in anything else, excluding releaseDate, so restore value and update
-                        tocRelease.releaseDate = currentValue;
+                        if (currentValue < foundRelease.releaseDate) {
+                            tocRelease.releaseDate = currentValue;
+                        } else {
+                            tocRelease.releaseDate = foundRelease.releaseDate;
+                        }
                         updateReleases.push(tocRelease);
                     }
                 }
