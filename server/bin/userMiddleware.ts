@@ -25,6 +25,41 @@ function isNumberOrArray(value: number | any[]) {
     return Array.isArray(value) ? value.length : Number.isInteger(value);
 }
 
+function isInvalidId(id: any): boolean {
+    return !Number.isInteger(id) || id < 1;
+}
+
+function isInvalidSimpleMedium(medium: any): boolean {
+    return medium.title == null || !isString(medium.title)
+        // valid medium types are 1-8
+        || !Number.isInteger(medium.medium) || medium.medium < 1 || medium.medium > 8;
+}
+
+export const postSplitMedium: Handler = (req, res) => {
+    const {sourceId, destinationMedium, toc} = req.body;
+    if (isInvalidId(sourceId)
+        || !destinationMedium
+        || isInvalidSimpleMedium(destinationMedium)
+        || !/^https?:\/\//.test(toc)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    } else {
+        sendResult(res, mediumStorage.splitMedium(sourceId, destinationMedium, toc));
+    }
+};
+
+export const postTransferToc: Handler = (req, res) => {
+    const {sourceId, destinationId, toc} = req.body;
+    if (isInvalidId(sourceId)
+        || isInvalidId(destinationId)
+        || !/^https?:\/\//.test(toc)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    } else {
+        sendResult(res, mediumStorage.transferToc(sourceId, destinationId, toc));
+    }
+};
+
 export const getAssociatedEpisode: Handler = (req, res) => {
     const url = extractQueryParam(req, "url");
 
@@ -723,14 +758,17 @@ function sendResult(res: Response, promise: Promise<any>) {
                 result
                     .stream({objectMode: true, highWaterMark: 10})
                     .pipe(stringify({open: "[", close: "]"}))
+                    // @ts-ignore
                     .pipe(res);
             } else {
+                // @ts-ignore
                 res.json(result);
             }
         })
         .catch((error) => {
             const errorCode = isError(error);
             res
+                // @ts-ignore
                 .status(errorCode ? 400 : 500)
                 .json({error: errorCode ? error : Errors.INVALID_MESSAGE});
 

@@ -127,6 +127,8 @@ function mediumRouter(): Router {
     router.get("/allFull", UserApi.getAllMediaFull);
     router.put("/unused", UserApi.putConsumeUnusedMedia);
     router.post("/create", UserApi.postCreateFromUnusedMedia);
+    router.post("/split", UserApi.postSplitMedium);
+    router.post("/transfer", UserApi.postTransferToc);
     router.use("/part", partRouter());
 
     const mediumRoute = router.route("");

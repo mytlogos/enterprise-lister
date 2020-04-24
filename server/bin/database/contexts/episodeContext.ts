@@ -458,6 +458,16 @@ export class EpisodeContext extends SubContext {
         ) as Promise<SimpleRelease[]>;
     }
 
+    public getEpisodeLinksByMedium(mediumId: number): Promise<SimpleRelease[]> {
+        return this.query(
+            "SELECT episode_id as episodeId, url FROM episode_release " +
+            "inner join episode on episode.id=episode_release.episode_id " +
+            "inner join part on part.id=episode.part_id " +
+            "WHERE medium_id = ?;",
+            mediumId
+        ) as Promise<SimpleRelease[]>;
+    }
+
     public getSourcedReleases(sourceType: string, mediumId: number):
         Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
         return this

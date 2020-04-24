@@ -13,6 +13,7 @@ export class MediumStorage {
     public removeToc(tocLink: string): Promise<void> {
         return inContext((context) => context.removeToc(tocLink));
     }
+
     /**
      * Adds a medium to the storage.
      *
@@ -115,4 +116,11 @@ export class MediumStorage {
         return inContext((context) => context.getSimpleMedium(id));
     }
 
+    public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean> {
+        return inContext((context) => context.splitMedium(sourceMediumId, destMedium, toc));
+    }
+
+    public async transferToc(sourceMediumId: number, destMediumId: number, toc: string): Promise<boolean> {
+        return inContext((context) => context.transferToc(sourceMediumId, destMediumId, toc));
+    }
 }

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const subContext_1 = require("./subContext");
 const tools_1 = require("../../tools");
 const storageTools_1 = require("../storages/storageTools");
+const mysql_1 = require("mysql");
 class MediumContext extends subContext_1.SubContext {
     async removeToc(tocLink) {
         await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
@@ -269,6 +270,112 @@ class MediumContext extends subContext_1.SubContext {
     }
     getAllTocs() {
         return this.query("SELECT medium_id as id, link FROM medium_toc");
+    }
+    async splitMedium(sourceMediumId, destMedium, toc) {
+        if (!destMedium || !destMedium.medium || !destMedium.title) {
+            return Promise.reject(new Error(tools_1.Errors.INVALID_INPUT));
+        }
+        const result = await this.query("INSERT IGNORE INTO medium(medium, title) VALUES (?,?);", [destMedium.medium, destMedium.title]);
+        if (!Number.isInteger(result.insertId)) {
+            throw Error(`invalid ID: ${result.insertId}`);
+        }
+        let mediumId;
+        // medium exists already if insertId == 0
+        if (result.insertId === 0) {
+            const realMedium = await this.query("SELECT id FROM medium WHERE (medium, title) = (?,?);", [destMedium.medium, destMedium.title]);
+            if (!realMedium.length) {
+                throw Error("Expected a MediumId, but got nothing");
+            }
+            mediumId = realMedium[0].id;
+        }
+        else {
+            await this.parentContext.partContext.createStandardPart(result.insertId);
+            mediumId = result.insertId;
+        }
+        return this.transferToc(sourceMediumId, mediumId, toc);
+    }
+    async transferToc(sourceMediumId, destMediumId, toc) {
+        const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(toc);
+        if (!domainRegMatch) {
+            throw Error("Invalid Toc, Unable to extract Domain: " + toc);
+        }
+        const domain = domainRegMatch[1];
+        const standardPartId = await this.parentContext.partContext.getStandardPartId(destMediumId);
+        if (!standardPartId) {
+            throw Error("medium does not have a standard part");
+        }
+        const updatedTocResult = await this.query("UPDATE IGNORE medium_toc SET medium_id = ? WHERE (medium_id, link) = (?,?);", [destMediumId, sourceMediumId, toc]);
+        const releases = await this.parentContext.episodeContext.getEpisodeLinksByMedium(sourceMediumId);
+        const episodeMap = new Map();
+        const valueCb = () => [];
+        for (const release of releases) {
+            tools_1.getElseSet(episodeMap, release.episodeId, valueCb).push(release.url);
+        }
+        const copyEpisodes = [];
+        const removeEpisodesAfter = [];
+        for (const [episodeId, links] of episodeMap.entries()) {
+            const toMoveCount = tools_1.count(links, (value) => value.includes(domain));
+            if (toMoveCount) {
+                copyEpisodes.push(episodeId);
+                if (links.length === toMoveCount) {
+                    removeEpisodesAfter.push(episodeId);
+                }
+            }
+        }
+        // add the episodes of the releases
+        const copyEpisodesResult = await this.queryInList("INSERT IGNORE INTO episode" +
+            " (part_id, totalIndex, partialIndex, combiIndex, updated_at)" +
+            ` SELECT ${mysql_1.escape(standardPartId)}, episode.totalIndex, episode.partialIndex, episode.combiIndex, episode.updated_at` +
+            " FROM episode INNER JOIN part ON part.id=episode.part_id" +
+            ` WHERE part.medium_id = ${mysql_1.escape(sourceMediumId)} AND episode.id`, copyEpisodes);
+        const updatedReleaseResult = await this.query("UPDATE episode_release, episode as src_e, episode as dest_e, part" +
+            " SET episode_release.episode_id = dest_e.id" +
+            " WHERE episode_release.episode_id = src_e.id" +
+            " AND src_e.part_id = part.id" +
+            " AND part.medium_id = ?" +
+            " AND dest_e.part_id = ?" +
+            " AND src_e.combiIndex = dest_e.combiIndex" +
+            " AND locate(?,episode_release.url) > 0;", [sourceMediumId, standardPartId, domain]);
+        const updatedProgressResult = await this.queryInList("UPDATE user_episode, episode as src_e, episode as dest_e, part" +
+            " SET user_episode.episode_id = dest_e.id" +
+            " WHERE user_episode.episode_id = src_e.id" +
+            " AND src_e.part_id = part.id" +
+            ` AND part.medium_id = ${mysql_1.escape(sourceMediumId)}` +
+            ` AND dest_e.part_id = ${mysql_1.escape(standardPartId)}` +
+            " AND src_e.combiIndex = dest_e.combiIndex" +
+            " AND src_e.id", removeEpisodesAfter);
+        const updatedResultResult = await this.queryInList("UPDATE result_episode, episode as src_e, episode as dest_e, part" +
+            " SET result_episode.episode_id = dest_e.id" +
+            " WHERE result_episode.episode_id = src_e.id" +
+            " AND src_e.part_id = part.id" +
+            ` AND part.medium_id = ${mysql_1.escape(sourceMediumId)}` +
+            ` AND dest_e.part_id = ${mysql_1.escape(standardPartId)}` +
+            " AND src_e.combiIndex = dest_e.combiIndex" +
+            " AND src_e.id", removeEpisodesAfter);
+        const deletedEpisodesResult = await this.queryInList("DELETE FROM episode WHERE episode.id", removeEpisodesAfter);
+        const copiedOnlyEpisodes = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
+        const copiedProgressResult = await this.queryInList("INSERT IGNORE INTO user_episode" +
+            " (user_uuid, episode_id, progress, read_date)" +
+            " SELECT user_episode.user_uuid, dest_e.id, user_episode.progress, user_episode.read_date" +
+            " FROM user_episode, episode as src_e, episode as dest_e, part" +
+            " WHERE user_episode.episode_id = src_e.id" +
+            " AND src_e.part_id = part.id" +
+            ` AND part.medium_id = ${mysql_1.escape(sourceMediumId)}` +
+            ` AND dest_e.part_id = ${mysql_1.escape(standardPartId)}` +
+            " AND src_e.combiIndex = dest_e.combiIndex" +
+            " AND src_e.id", copiedOnlyEpisodes);
+        const copiedResultResult = await this.queryInList("INSERT IGNORE INTO result_episode" +
+            " (novel, chapter, chapIndex, volIndex, volume, episode_id)" +
+            " SELECT result_episode.novel, result_episode.chapter, result_episode.chapIndex," +
+            " result_episode.volIndex, result_episode.volume, dest_e.id" +
+            " FROM result_episode, episode as src_e, episode as dest_e, part" +
+            " WHERE result_episode.episode_id = src_e.id" +
+            " AND src_e.part_id = part.id" +
+            ` AND part.medium_id = ${mysql_1.escape(sourceMediumId)}` +
+            ` AND dest_e.part_id = ${mysql_1.escape(standardPartId)}` +
+            " AND src_e.combiIndex = dest_e.combiIndex" +
+            " AND src_e.id", copiedOnlyEpisodes);
+        return true;
     }
 }
 exports.MediumContext = MediumContext;

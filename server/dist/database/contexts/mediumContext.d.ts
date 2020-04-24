@@ -33,4 +33,6 @@ export declare class MediumContext extends SubContext {
         link: string;
         id: number;
     }>>;
+    splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean>;
+    transferToc(sourceMediumId: number, destMediumId: number, toc: string): Promise<boolean>;
 }

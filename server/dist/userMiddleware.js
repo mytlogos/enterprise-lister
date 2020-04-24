@@ -13,6 +13,39 @@ const env_1 = tslib_1.__importDefault(require("./env"));
 function isNumberOrArray(value) {
     return Array.isArray(value) ? value.length : Number.isInteger(value);
 }
+function isInvalidId(id) {
+    return !Number.isInteger(id) || id < 1;
+}
+function isInvalidSimpleMedium(medium) {
+    return medium.title == null || !tools_1.isString(medium.title)
+        // valid medium types are 1-8
+        || !Number.isInteger(medium.medium) || medium.medium < 1 || medium.medium > 8;
+}
+exports.postSplitMedium = (req, res) => {
+    const { sourceId, destinationMedium, toc } = req.body;
+    if (isInvalidId(sourceId)
+        || !destinationMedium
+        || isInvalidSimpleMedium(destinationMedium)
+        || !/^https?:\/\//.test(toc)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    else {
+        sendResult(res, storage_1.mediumStorage.splitMedium(sourceId, destinationMedium, toc));
+    }
+};
+exports.postTransferToc = (req, res) => {
+    const { sourceId, destinationId, toc } = req.body;
+    if (isInvalidId(sourceId)
+        || isInvalidId(destinationId)
+        || !/^https?:\/\//.test(toc)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    else {
+        sendResult(res, storage_1.mediumStorage.transferToc(sourceId, destinationId, toc));
+    }
+};
 exports.getAssociatedEpisode = (req, res) => {
     const url = extractQueryParam(req, "url");
     if (!url || !tools_1.isString(url) || !/^https?:\/\//.test(url)) {
@@ -639,15 +672,18 @@ function sendResult(res, promise) {
             result
                 .stream({ objectMode: true, highWaterMark: 10 })
                 .pipe(stringify_stream_1.default({ open: "[", close: "]" }))
+                // @ts-ignore
                 .pipe(res);
         }
         else {
+            // @ts-ignore
             res.json(result);
         }
     })
         .catch((error) => {
         const errorCode = tools_1.isError(error);
         res
+            // @ts-ignore
             .status(errorCode ? 400 : 500)
             .json({ error: errorCode ? error : tools_1.Errors.INVALID_MESSAGE });
         logger_1.default.error(error);

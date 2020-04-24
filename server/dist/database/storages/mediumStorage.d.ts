@@ -55,4 +55,6 @@ export declare class MediumStorage {
      */
     getSynonyms(mediumId: number | number[]): Promise<Synonyms[]>;
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
+    splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean>;
+    transferToc(sourceMediumId: number, destMediumId: number, toc: string): Promise<boolean>;
 }

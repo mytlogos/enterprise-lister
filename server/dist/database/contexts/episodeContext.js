@@ -327,6 +327,12 @@ class EpisodeContext extends subContext_1.SubContext {
     getEpisodeLinks(episodeIds) {
         return this.queryInList("SELECT episode_id as episodeId, url FROM episode_release WHERE episode_id ", episodeIds);
     }
+    getEpisodeLinksByMedium(mediumId) {
+        return this.query("SELECT episode_id as episodeId, url FROM episode_release " +
+            "inner join episode on episode.id=episode_release.episode_id " +
+            "inner join part on part.id=episode.part_id " +
+            "WHERE medium_id = ?;", mediumId);
+    }
     getSourcedReleases(sourceType, mediumId) {
         return this
             .query("SELECT url, episode_release.title FROM episode_release " +

@@ -42,6 +42,7 @@ export declare class EpisodeContext extends SubContext {
     addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
     addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
     getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]>;
+    getEpisodeLinksByMedium(mediumId: number): Promise<SimpleRelease[]>;
     getSourcedReleases(sourceType: string, mediumId: number): Promise<Array<{
         sourceType: string;
         url: string;

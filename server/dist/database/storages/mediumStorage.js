@@ -92,6 +92,12 @@ class MediumStorage {
     getSimpleMedium(id) {
         return inContext((context) => context.getSimpleMedium(id));
     }
+    async splitMedium(sourceMediumId, destMedium, toc) {
+        return inContext((context) => context.splitMedium(sourceMediumId, destMedium, toc));
+    }
+    async transferToc(sourceMediumId, destMediumId, toc) {
+        return inContext((context) => context.transferToc(sourceMediumId, destMediumId, toc));
+    }
 }
 exports.MediumStorage = MediumStorage;
 //# sourceMappingURL=mediumStorage.js.map
