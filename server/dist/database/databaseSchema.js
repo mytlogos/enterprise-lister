@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const databaseBuilder_1 = require("./databaseBuilder");
 const migrations_1 = require("./migrations");
-const dataBaseBuilder = new databaseBuilder_1.DataBaseBuilder("enterprise", 7);
+const dataBaseBuilder = new databaseBuilder_1.DataBaseBuilder("enterprise", 8);
 dataBaseBuilder.getTableBuilder()
     .setName("user")
     .setMain()
@@ -84,6 +84,7 @@ dataBaseBuilder.getTableBuilder()
     .setName("medium_toc")
     .parseColumn("medium_id INT UNSIGNED")
     .parseColumn("link VARCHAR(767) NOT NULL")
+    .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     .parseMeta("PRIMARY KEY(medium_id, link)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
     .build();

@@ -35,6 +35,25 @@ function isInvalidSimpleMedium(medium: any): boolean {
         || !Number.isInteger(medium.medium) || medium.medium < 1 || medium.medium > 8;
 }
 
+export const getToc: Handler = (req, res) => {
+    let media = extractQueryParam(req, "mediumId");
+
+    if (!media) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    if (isString(media)) {
+        media = stringToNumberList(media);
+    } else if (isInvalidId(media)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    } else {
+        media = [media];
+    }
+
+    sendResult(res, mediumStorage.getMediumTocs(media));
+};
+
 export const postSplitMedium: Handler = (req, res) => {
     const {sourceId, destinationMedium, toc} = req.body;
     if (isInvalidId(sourceId)

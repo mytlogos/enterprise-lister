@@ -1,5 +1,14 @@
 import {SubContext} from "./subContext";
-import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium} from "../../types";
+import {
+    LikeMedium,
+    LikeMediumQuery,
+    Medium,
+    MediumToc,
+    SimpleMedium,
+    Synonyms,
+    TocSearchMedium,
+    UpdateMedium
+} from "../../types";
 import {count, Errors, getElseSet, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
 import {escape, Query} from "mysql";
@@ -322,6 +331,13 @@ export class MediumContext extends SubContext {
     public async getToc(mediumId: number): Promise<string[]> {
         const resultArray: any[] = await this.query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
         return resultArray.map((value) => value.link).filter((value) => value);
+    }
+
+    public getMediumTocs(mediumId: number[]): Promise<MediumToc[]> {
+        return this.queryInList(
+            "SELECT medium_id as mediumId, link FROM medium_toc WHERE medium_id ",
+            mediumId
+        ) as Promise<MediumToc[]>;
     }
 
     public getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {

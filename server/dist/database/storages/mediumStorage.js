@@ -63,6 +63,11 @@ class MediumStorage {
     }
     /**
      */
+    getMediumTocs(mediumId) {
+        return inContext((context) => context.getMediumTocs(mediumId));
+    }
+    /**
+     */
     getAllMediaTocs() {
         return inContext((context) => context.getAllMediaTocs());
     }

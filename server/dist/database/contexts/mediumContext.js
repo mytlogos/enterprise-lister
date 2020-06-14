@@ -265,6 +265,9 @@ class MediumContext extends subContext_1.SubContext {
         const resultArray = await this.query("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
         return resultArray.map((value) => value.link).filter((value) => value);
     }
+    getMediumTocs(mediumId) {
+        return this.queryInList("SELECT medium_id as mediumId, link FROM medium_toc WHERE medium_id ", mediumId);
+    }
     getAllMediaTocs() {
         return this.query("SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id");
     }

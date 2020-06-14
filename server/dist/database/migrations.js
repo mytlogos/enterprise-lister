@@ -107,6 +107,13 @@ exports.Migrations = [
             ].map((value) => ignoreError(() => context.addColumn(value, "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME])));
             await ignoreError(() => context.addColumn("external_user", "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
         }
+    },
+    {
+        fromVersion: 7,
+        toVersion: 8,
+        async migrate(context) {
+            await ignoreError(() => context.addColumn("medium_toc", "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+        }
     }
 ];
 //# sourceMappingURL=migrations.js.map

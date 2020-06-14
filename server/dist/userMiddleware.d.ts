@@ -1,4 +1,5 @@
 import { Handler } from "express";
+export declare const getToc: Handler;
 export declare const postSplitMedium: Handler;
 export declare const postTransferToc: Handler;
 export declare const getAssociatedEpisode: Handler;

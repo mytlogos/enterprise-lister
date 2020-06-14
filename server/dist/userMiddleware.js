@@ -21,6 +21,24 @@ function isInvalidSimpleMedium(medium) {
         // valid medium types are 1-8
         || !Number.isInteger(medium.medium) || medium.medium < 1 || medium.medium > 8;
 }
+exports.getToc = (req, res) => {
+    let media = extractQueryParam(req, "mediumId");
+    if (!media) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    if (tools_1.isString(media)) {
+        media = tools_1.stringToNumberList(media);
+    }
+    else if (isInvalidId(media)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    else {
+        media = [media];
+    }
+    sendResult(res, storage_1.mediumStorage.getMediumTocs(media));
+};
 exports.postSplitMedium = (req, res) => {
     const { sourceId, destinationMedium, toc } = req.body;
     if (isInvalidId(sourceId)

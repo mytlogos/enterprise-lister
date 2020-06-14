@@ -1,7 +1,7 @@
 import {DataBaseBuilder} from "./databaseBuilder";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder("enterprise", 7);
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 8);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")
@@ -92,6 +92,7 @@ dataBaseBuilder.getTableBuilder()
     .setName("medium_toc")
     .parseColumn("medium_id INT UNSIGNED")
     .parseColumn("link VARCHAR(767) NOT NULL")
+    .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     .parseMeta("PRIMARY KEY(medium_id, link)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
     .build();

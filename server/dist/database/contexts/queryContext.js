@@ -383,7 +383,9 @@ class QueryContext {
         const newsPromise = this.query("SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as `read` " +
             "FROM news_board LEFT JOIN news_user ON id=news_id " +
             "WHERE (user_id IS NULL OR user_id = ?) AND updated_at > ?", [uuid, date]);
+        const tocPromise = this.query("SELECT medium_id as mediumId, link FROM medium_toc WHERE updated_at > ?", date);
         return {
+            tocs: await tocPromise,
             media: await mediumPromise,
             releases: await episodeReleasePromise,
             episodes: await episodePromise,
@@ -406,6 +408,8 @@ class QueryContext {
         const listPromise = this.query("SELECT id, medium_id FROM reading_list LEFT JOIN list_medium ON reading_list.id=list_id WHERE user_uuid=?", uuid);
         const exListPromise = this.query("SELECT id, medium_id FROM external_user INNER JOIN external_reading_list ON uuid=user_uuid LEFT JOIN external_list_medium ON external_reading_list.id=list_id WHERE local_uuid=?", uuid);
         const extUserPromise = this.query("SELECT uuid, id FROM external_user LEFT JOIN external_reading_list ON uuid=user_uuid WHERE local_uuid=?", uuid);
+        const tocPromise = this.query("SELECT medium_id, count(link) as count FROM medium_toc GROUP BY medium_id;");
+        const tocs = await tocPromise;
         const parts = await partPromise;
         const episodes = await episodePromise;
         const emptyPart = { episodeCount: 0, episodeSum: 0, releaseCount: 0 };
@@ -415,9 +419,18 @@ class QueryContext {
             delete episode.part_id;
         }
         const media = {};
+        const mediaStats = {};
         const lists = {};
         const extLists = {};
         const extUser = {};
+        for (const toc of tocs) {
+            const mediumParts = tools_1.getElseSetObj(mediaStats, toc.medium_id, () => {
+                return {
+                    tocs: 0
+                };
+            });
+            mediumParts.tocs = toc.count;
+        }
         for (const part of parts) {
             const mediumParts = tools_1.getElseSetObj(media, part.medium_id, () => new Object());
             mediumParts[part.id] = tools_1.getElseSet(partMap, part.id, () => emptyPart);
@@ -440,6 +453,7 @@ class QueryContext {
         }
         return {
             media,
+            mediaStats,
             lists,
             extLists,
             extUser,

@@ -49,6 +49,10 @@ export interface TocSearchMedium {
     medium: MediaType;
     synonyms: string[];
 }
+export interface MediumToc {
+    mediumId: number;
+    link: string;
+}
 export interface MinPart {
     id: number;
     title?: string;

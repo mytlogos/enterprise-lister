@@ -40,6 +40,7 @@ function userRouter() {
     router.post("/bookmarked", UserApi.addBookmarked);
     router.get("/associated", UserApi.getAssociatedEpisode);
     router.post("/toc", UserApi.addToc);
+    router.get("/toc", UserApi.getToc);
     router.get("/search", UserApi.search);
     router.get("/stats", UserApi.getStats);
     router.get("/new", UserApi.getNew);

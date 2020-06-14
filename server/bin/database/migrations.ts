@@ -191,5 +191,18 @@ export const Migrations: Migration[] = [
                 [MySqlErrorNo.ER_DUP_FIELDNAME]
             );
         }
+    },
+    {
+        fromVersion: 7,
+        toVersion: 8,
+        async migrate(context: DatabaseContext): Promise<void> {
+            await ignoreError(
+                () => context.addColumn(
+                    "medium_toc",
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+                ),
+                [MySqlErrorNo.ER_DUP_FIELDNAME]
+            );
+        }
     }
 ];

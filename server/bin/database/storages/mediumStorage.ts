@@ -1,4 +1,13 @@
-import {LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium} from "../../types";
+import {
+    LikeMedium,
+    LikeMediumQuery,
+    Medium,
+    MediumToc,
+    SimpleMedium,
+    Synonyms,
+    TocSearchMedium,
+    UpdateMedium
+} from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {MediumContext} from "../contexts/mediumContext";
@@ -75,6 +84,12 @@ export class MediumStorage {
      */
     public getTocs(mediumId: number): Promise<string[]> {
         return inContext((context) => context.getToc(mediumId));
+    }
+
+    /**
+     */
+    public getMediumTocs(mediumId: number[]): Promise<MediumToc[]> {
+        return inContext((context) => context.getMediumTocs(mediumId));
     }
 
     /**

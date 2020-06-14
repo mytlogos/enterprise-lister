@@ -504,7 +504,12 @@ export class QueryContext implements ConnectionContext {
             "WHERE (user_id IS NULL OR user_id = ?) AND updated_at > ?",
             [uuid, date]
         );
+        const tocPromise = this.query(
+            "SELECT medium_id as mediumId, link FROM medium_toc WHERE updated_at > ?",
+            date
+        );
         return {
+            tocs: await tocPromise,
             media: await mediumPromise,
             releases: await episodeReleasePromise,
             episodes: await episodePromise,
@@ -541,6 +546,11 @@ export class QueryContext implements ConnectionContext {
             "SELECT uuid, id FROM external_user LEFT JOIN external_reading_list ON uuid=user_uuid WHERE local_uuid=?",
             uuid
         );
+        const tocPromise: Promise<Array<{ medium_id: number, count: number }>> = this.query(
+            "SELECT medium_id, count(link) as count FROM medium_toc GROUP BY medium_id;"
+        );
+
+        const tocs = await tocPromise;
         const parts = await partPromise;
         const episodes = await episodePromise;
         const emptyPart = {episodeCount: 0, episodeSum: 0, releaseCount: 0};
@@ -551,9 +561,19 @@ export class QueryContext implements ConnectionContext {
             delete episode.part_id;
         }
         const media = {};
+        const mediaStats = {};
         const lists = {};
         const extLists = {};
         const extUser = {};
+
+        for (const toc of tocs) {
+            const mediumParts = getElseSetObj(mediaStats, toc.medium_id, () => {
+                return {
+                    tocs: 0
+                };
+            });
+            mediumParts.tocs = toc.count;
+        }
 
         for (const part of parts) {
             const mediumParts: any = getElseSetObj(media, part.medium_id, () => new Object());
@@ -581,6 +601,7 @@ export class QueryContext implements ConnectionContext {
         }
         return {
             media,
+            mediaStats,
             lists,
             extLists,
             extUser,
