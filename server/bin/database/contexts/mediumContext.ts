@@ -340,7 +340,61 @@ export class MediumContext extends SubContext {
         ) as Promise<MediumToc[]>;
     }
 
-    public removeMediumToc(mediumId: number, link: string): Promise<boolean> {
+    public async removeMediumToc(mediumId: number, link: string): Promise<boolean> {
+        const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(link);
+
+        if (!domainRegMatch) {
+            throw Error("Invalid Toc, Unable to extract Domain: " + link);
+        }
+
+        const domain = domainRegMatch[1];
+
+        const releases = await this.parentContext.episodeContext.getEpisodeLinksByMedium(mediumId);
+        const episodeMap: Map<number, string[]> = new Map();
+        const valueCb = () => [];
+
+        for (const release of releases) {
+            getElseSet(episodeMap, release.episodeId, valueCb).push(release.url);
+        }
+        const removeEpisodesAfter: number[] = [];
+
+        for (const [episodeId, links] of episodeMap.entries()) {
+            const toMoveCount = count(links, (value) => value.includes(domain));
+
+            if (toMoveCount) {
+                if (links.length === toMoveCount) {
+                    removeEpisodesAfter.push(episodeId);
+                }
+            }
+        }
+        const updatedReleaseResult = await this.query(
+            "DELETE episode as e, part as p FROM episode_release" +
+            " WHERE episode_release.episode_id = e.id" +
+            " AND e.part_id = p.id" +
+            " AND p.medium_id = ?" +
+            " AND locate(?,episode_release.url) > 0;",
+            [mediumId, domain]
+        );
+        const updatedProgressResult = await this.queryInList(
+            "DELETE episode as e part as p FROM user_episode" +
+            " WHERE user_episode.episode_id = e.id" +
+            " AND e.part_id = p.id" +
+            ` AND p.medium_id = ${escape(mediumId)}` +
+            " AND e.id",
+            removeEpisodesAfter
+        );
+        const updatedResultResult = await this.queryInList(
+            "DELETE episode as e, part as p FROM result_episode" +
+            " WHERE result_episode.episode_id = e.id" +
+            " AND e.part_id = p.id" +
+            ` AND p.medium_id = ${escape(mediumId)}` +
+            " AND e.id",
+            removeEpisodesAfter
+        );
+        const deletedEpisodesResult = await this.queryInList(
+            "DELETE FROM episode WHERE episode.id",
+            removeEpisodesAfter
+        );
         return this.delete(
             "medium_toc",
             {column: "mediumId", value: mediumId},
