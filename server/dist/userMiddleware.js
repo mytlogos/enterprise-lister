@@ -267,7 +267,7 @@ exports.addToc = (req, res) => {
                 uuid,
                 mediumId
             })
-        });
+        }).then(() => true);
         sendResult(res, storePromise);
     }
     else {

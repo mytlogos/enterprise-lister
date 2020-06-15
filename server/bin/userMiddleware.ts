@@ -315,7 +315,7 @@ export const addToc: Handler = (req, res) => {
                 uuid,
                 mediumId
             } as TocRequest)
-        });
+        }).then(() => true);
         sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
