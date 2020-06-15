@@ -273,6 +273,7 @@ class MediumContext extends subContext_1.SubContext {
         if (!domainRegMatch) {
             throw Error("Invalid Toc, Unable to extract Domain: " + link);
         }
+        await this.parentContext.jobContext.removeJobLike("name", `toc-${mediumId}-${link}`);
         const domain = domainRegMatch[1];
         const releases = await this.parentContext.episodeContext.getEpisodeLinksByMedium(mediumId);
         const episodeMap = new Map();
