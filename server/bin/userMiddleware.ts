@@ -55,8 +55,10 @@ export const getToc: Handler = (req, res) => {
 };
 
 export const deleteToc: Handler = (req, res) => {
-    const mediumId = extractQueryParam(req, "mediumId");
+    let mediumId = extractQueryParam(req, "mediumId");
     const link = extractQueryParam(req, "link");
+
+    mediumId = Number.parseInt(mediumId, 10);
 
     if (isInvalidId(mediumId) || !link || !isString(link)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));

@@ -40,8 +40,9 @@ exports.getToc = (req, res) => {
     sendResult(res, storage_1.mediumStorage.getMediumTocs(media));
 };
 exports.deleteToc = (req, res) => {
-    const mediumId = extractQueryParam(req, "mediumId");
+    let mediumId = extractQueryParam(req, "mediumId");
     const link = extractQueryParam(req, "link");
+    mediumId = Number.parseInt(mediumId, 10);
     if (isInvalidId(mediumId) || !link || !tools_1.isString(link)) {
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
