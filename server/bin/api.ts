@@ -47,6 +47,7 @@ function userRouter(): Router {
     router.get("/associated", UserApi.getAssociatedEpisode);
     router.post("/toc", UserApi.addToc);
     router.get("/toc", UserApi.getToc);
+    router.delete("/toc", UserApi.deleteToc);
     router.get("/search", UserApi.search);
     router.get("/stats", UserApi.getStats);
     router.get("/new", UserApi.getNew);

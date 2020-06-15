@@ -12,6 +12,7 @@ import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {MediumContext} from "../contexts/mediumContext";
 import {Query} from "mysql";
+import {lookupService} from "dns";
 
 
 function inContext<T>(callback: ContextCallback<T, MediumContext>, transaction = true) {
@@ -90,6 +91,12 @@ export class MediumStorage {
      */
     public getMediumTocs(mediumId: number[]): Promise<MediumToc[]> {
         return inContext((context) => context.getMediumTocs(mediumId));
+    }
+
+    /**
+     */
+    public removeMediumToc(mediumId: number, link: string): Promise<boolean> {
+        return inContext((context) => context.removeMediumToc(mediumId, link));
     }
 
     /**

@@ -340,6 +340,14 @@ export class MediumContext extends SubContext {
         ) as Promise<MediumToc[]>;
     }
 
+    public removeMediumToc(mediumId: number, link: string): Promise<boolean> {
+        return this.delete(
+            "medium_toc",
+            {column: "mediumId", value: mediumId},
+            {column: "link", value: link}
+        );
+    }
+
     public getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {
         return this.query(
             "SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id"

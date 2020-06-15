@@ -37,6 +37,9 @@ export declare class MediumStorage {
     getMediumTocs(mediumId: number[]): Promise<MediumToc[]>;
     /**
      */
+    removeMediumToc(mediumId: number, link: string): Promise<boolean>;
+    /**
+     */
     getAllMediaTocs(): Promise<Array<{
         link?: string;
         id: number;

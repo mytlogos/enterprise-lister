@@ -68,6 +68,11 @@ class MediumStorage {
     }
     /**
      */
+    removeMediumToc(mediumId, link) {
+        return inContext((context) => context.removeMediumToc(mediumId, link));
+    }
+    /**
+     */
     getAllMediaTocs() {
         return inContext((context) => context.getAllMediaTocs());
     }

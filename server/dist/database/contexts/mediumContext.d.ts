@@ -26,6 +26,7 @@ export declare class MediumContext extends SubContext {
     addToc(mediumId: number, link: string): Promise<void>;
     getToc(mediumId: number): Promise<string[]>;
     getMediumTocs(mediumId: number[]): Promise<MediumToc[]>;
+    removeMediumToc(mediumId: number, link: string): Promise<boolean>;
     getAllMediaTocs(): Promise<Array<{
         link?: string;
         id: number;

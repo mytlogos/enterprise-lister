@@ -54,6 +54,18 @@ export const getToc: Handler = (req, res) => {
     sendResult(res, mediumStorage.getMediumTocs(media));
 };
 
+export const deleteToc: Handler = (req, res) => {
+    const mediumId = extractQueryParam(req, "mediumId");
+    const link = extractQueryParam(req, "link");
+
+    if (isInvalidId(mediumId) || !link || !isString(link)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+
+    sendResult(res, mediumStorage.removeMediumToc(mediumId, link));
+};
+
 export const postSplitMedium: Handler = (req, res) => {
     const {sourceId, destinationMedium, toc} = req.body;
     if (isInvalidId(sourceId)

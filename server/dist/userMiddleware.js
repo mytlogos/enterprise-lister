@@ -39,6 +39,15 @@ exports.getToc = (req, res) => {
     }
     sendResult(res, storage_1.mediumStorage.getMediumTocs(media));
 };
+exports.deleteToc = (req, res) => {
+    const mediumId = extractQueryParam(req, "mediumId");
+    const link = extractQueryParam(req, "link");
+    if (isInvalidId(mediumId) || !link || !tools_1.isString(link)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, storage_1.mediumStorage.removeMediumToc(mediumId, link));
+};
 exports.postSplitMedium = (req, res) => {
     const { sourceId, destinationMedium, toc } = req.body;
     if (isInvalidId(sourceId)

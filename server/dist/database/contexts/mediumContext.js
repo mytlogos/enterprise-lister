@@ -268,6 +268,9 @@ class MediumContext extends subContext_1.SubContext {
     getMediumTocs(mediumId) {
         return this.queryInList("SELECT medium_id as mediumId, link FROM medium_toc WHERE medium_id ", mediumId);
     }
+    removeMediumToc(mediumId, link) {
+        return this.delete("medium_toc", { column: "mediumId", value: mediumId }, { column: "link", value: link });
+    }
     getAllMediaTocs() {
         return this.query("SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id");
     }
