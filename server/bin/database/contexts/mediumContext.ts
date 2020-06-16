@@ -369,24 +369,24 @@ export class MediumContext extends SubContext {
             }
         }
         const updatedReleaseResult = await this.query(
-            "DELETE episode_release FROM episode as e, part as p" +
-            " WHERE episode_release.episode_id = e.id" +
+            "DELETE er FROM episode_release as er, episode as e, part as p" +
+            " WHERE er.episode_id = e.id" +
             " AND e.part_id = p.id" +
             " AND p.medium_id = ?" +
-            " AND locate(?,episode_release.url) > 0;",
+            " AND locate(?,er.url) > 0;",
             [mediumId, domain]
         );
         const updatedProgressResult = await this.queryInList(
-            "DELETE user_episode FROM episode as e part as p" +
-            " WHERE user_episode.episode_id = e.id" +
+            "DELETE ue FROM user_episode as ue, episode as e part as p" +
+            " WHERE ue.episode_id = e.id" +
             " AND e.part_id = p.id" +
             ` AND p.medium_id = ${escape(mediumId)}` +
             " AND e.id",
             removeEpisodesAfter
         );
         const updatedResultResult = await this.queryInList(
-            "DELETE result_episode FROM episode as e, part as p" +
-            " WHERE result_episode.episode_id = e.id" +
+            "DELETE re FROM result_episode as re, episode as e, part as p" +
+            " WHERE re.episode_id = e.id" +
             " AND e.part_id = p.id" +
             ` AND p.medium_id = ${escape(mediumId)}` +
             " AND e.id",
