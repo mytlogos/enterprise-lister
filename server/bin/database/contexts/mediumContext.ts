@@ -481,7 +481,7 @@ export class MediumContext extends SubContext {
         );
         const deletedMediumResult = await this.query(
             "DELETE FROM medium" +
-            " WHERE medium_id = ?",
+            " WHERE id = ?",
             sourceMediumId
         );
         return true;
