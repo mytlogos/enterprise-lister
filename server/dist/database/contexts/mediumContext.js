@@ -306,7 +306,7 @@ class MediumContext extends subContext_1.SubContext {
             ` AND p.medium_id = ${mysql_1.escape(mediumId)}` +
             " AND e.id", removeEpisodesAfter);
         const deletedEpisodesResult = await this.queryInList("DELETE FROM episode WHERE episode.id", removeEpisodesAfter);
-        return this.delete("medium_toc", { column: "mediumId", value: mediumId }, { column: "link", value: link });
+        return this.delete("medium_toc", { column: "medium_id", value: mediumId }, { column: "link", value: link });
     }
     getAllMediaTocs() {
         return this.query("SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id");

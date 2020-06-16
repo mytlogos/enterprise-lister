@@ -398,7 +398,7 @@ export class MediumContext extends SubContext {
         );
         return this.delete(
             "medium_toc",
-            {column: "mediumId", value: mediumId},
+            {column: "medium_id", value: mediumId},
             {column: "link", value: link}
         );
     }
