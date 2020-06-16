@@ -432,6 +432,8 @@ export class MediumContext extends SubContext {
             .map((toc) => this.transferToc(sourceMediumId, destMediumId, toc))
         );
 
+        // remove all tocs of source
+        await this.delete("medium_toc", {column: "medium_id", value: sourceMediumId});
         await this.query(
             "UPDATE IGNORE list_medium SET medium_id=? WHERE medium_id=?",
             [destMediumId, sourceMediumId]

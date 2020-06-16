@@ -330,6 +330,8 @@ class MediumContext extends subContext_1.SubContext {
         await Promise.all(sourceTocs
             .filter((toc) => !destTocs.includes(toc))
             .map((toc) => this.transferToc(sourceMediumId, destMediumId, toc)));
+        // remove all tocs of source
+        await this.delete("medium_toc", { column: "medium_id", value: sourceMediumId });
         await this.query("UPDATE IGNORE list_medium SET medium_id=? WHERE medium_id=?", [destMediumId, sourceMediumId]);
         await this.delete("list_medium", { column: "medium_id", value: sourceMediumId });
         await this.query("UPDATE IGNORE external_list_medium SET medium_id=? WHERE medium_id=?", [destMediumId, sourceMediumId]);
