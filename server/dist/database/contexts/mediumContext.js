@@ -324,9 +324,12 @@ class MediumContext extends subContext_1.SubContext {
         // the tocs will be transferred and do not need to be moved manually here
         // transferring the tocs should remove any related jobs,
         // and toc jobs should be the only jobs related directly to an medium
-        const tocs = await this.getToc(sourceMediumId);
-        // transfer tocs and all related episodes
-        await Promise.all(tocs.map((toc) => this.transferToc(sourceMediumId, destMediumId, toc)));
+        const sourceTocs = await this.getToc(sourceMediumId);
+        const destTocs = await this.getToc(destMediumId);
+        // transfer unknown tocs and all related episodes
+        await Promise.all(sourceTocs
+            .filter((toc) => !destTocs.includes(toc))
+            .map((toc) => this.transferToc(sourceMediumId, destMediumId, toc)));
         await this.query("UPDATE IGNORE list_medium SET medium_id=? WHERE medium_id=?", [destMediumId, sourceMediumId]);
         await this.delete("list_medium", { column: "medium_id", value: sourceMediumId });
         await this.query("UPDATE IGNORE external_list_medium SET medium_id=? WHERE medium_id=?", [destMediumId, sourceMediumId]);
