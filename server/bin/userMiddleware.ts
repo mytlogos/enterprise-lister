@@ -68,6 +68,17 @@ export const deleteToc: Handler = (req, res) => {
     sendResult(res, mediumStorage.removeMediumToc(mediumId, link));
 };
 
+export const postMergeMedia: Handler = (req, res) => {
+    const {sourceId, destinationId} = req.body;
+    if (isInvalidId(sourceId)
+        || isInvalidId(sourceId)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    } else {
+        sendResult(res, mediumStorage.mergeMedia(sourceId, destinationId));
+    }
+};
+
 export const postSplitMedium: Handler = (req, res) => {
     const {sourceId, destinationMedium, toc} = req.body;
     if (isInvalidId(sourceId)

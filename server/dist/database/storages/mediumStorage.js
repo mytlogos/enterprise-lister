@@ -102,6 +102,9 @@ class MediumStorage {
     getSimpleMedium(id) {
         return inContext((context) => context.getSimpleMedium(id));
     }
+    async mergeMedia(sourceMediumId, destMedium) {
+        return inContext((context) => context.mergeMedia(sourceMediumId, destMedium));
+    }
     async splitMedium(sourceMediumId, destMedium, toc) {
         return inContext((context) => context.splitMedium(sourceMediumId, destMedium, toc));
     }

@@ -49,6 +49,17 @@ exports.deleteToc = (req, res) => {
     }
     sendResult(res, storage_1.mediumStorage.removeMediumToc(mediumId, link));
 };
+exports.postMergeMedia = (req, res) => {
+    const { sourceId, destinationId } = req.body;
+    if (isInvalidId(sourceId)
+        || isInvalidId(sourceId)) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
+    else {
+        sendResult(res, storage_1.mediumStorage.mergeMedia(sourceId, destinationId));
+    }
+};
 exports.postSplitMedium = (req, res) => {
     const { sourceId, destinationMedium, toc } = req.body;
     if (isInvalidId(sourceId)

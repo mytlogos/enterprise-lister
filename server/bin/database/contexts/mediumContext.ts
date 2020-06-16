@@ -413,6 +413,76 @@ export class MediumContext extends SubContext {
         return this.query("SELECT medium_id as id, link FROM medium_toc");
     }
 
+    public async mergeMedia(sourceMediumId: number, destMediumId: number): Promise<boolean> {
+        // transfer all tocs from source to dest and with it all associated episodes
+        // add source title as synonym for dest
+        // remove any jobs related to source
+        // replace or ignore source id with dest id in:
+        //  list_medium, external_list_medium, medium_synonyms, news_medium
+        // the parts will be dropped for source id, the next job for dest should correct that again if possible
+        // the tocs will be transferred and do not need to be moved manually here
+        // transferring the tocs should remove any related jobs,
+        // and toc jobs should be the only jobs related directly to an medium
+        const tocs = await this.getToc(sourceMediumId);
+
+        // transfer tocs and all related episodes
+        await Promise.all(tocs.map((toc) => this.transferToc(sourceMediumId, destMediumId, toc)));
+
+        await this.query(
+            "UPDATE IGNORE list_medium SET medium_id=? WHERE medium_id=?",
+            [destMediumId, sourceMediumId]
+        );
+        await this.delete("list_medium", {column: "medium_id", value: sourceMediumId});
+        await this.query(
+            "UPDATE IGNORE external_list_medium SET medium_id=? WHERE medium_id=?",
+            [destMediumId, sourceMediumId]
+        );
+        await this.delete("external_list_medium", {column: "medium_id", value: sourceMediumId});
+        await this.query(
+            "UPDATE IGNORE medium_synonyms SET medium_id=? WHERE medium_id=?",
+            [destMediumId, sourceMediumId]
+        );
+        await this.delete("medium_synonyms", {column: "medium_id", value: sourceMediumId});
+        await this.query(
+            "UPDATE IGNORE news_medium SET medium_id=? WHERE medium_id=?",
+            [destMediumId, sourceMediumId]
+        );
+        await this.delete("news_medium", {column: "medium_id", value: sourceMediumId});
+        const deletedReleaseResult = await this.query(
+            "DELETE er FROM episode_release as er, episode as e, part as p" +
+            " WHERE er.episode_id = e.id" +
+            " AND e.part_id = p.id" +
+            " AND p.medium_id = ?",
+            sourceMediumId
+        );
+        const deletedProgressResult = await this.query(
+            "DELETE ue FROM user_episode as ue, episode as e, part as p" +
+            " WHERE ue.episode_id = e.id" +
+            " AND e.part_id = p.id" +
+            " AND p.medium_id = ?",
+            sourceMediumId
+        );
+        const deletedResultResult = await this.query(
+            "DELETE re FROM result_episode as re, episode as e, part as p" +
+            " WHERE re.episode_id = e.id" +
+            " AND e.part_id = p.id" +
+            " AND p.medium_id = ?",
+            sourceMediumId
+        );
+        const deletedEpisodesResult = await this.query(
+            "DELETE e FROM episode as e, part as p" +
+            " WHERE e.part_id = p.id" +
+            " AND p.medium_id = ?",
+            sourceMediumId
+        );
+        const deletedMediumResult = await this.query(
+            "DELETE FROM medium" +
+            " WHERE medium_id = ?",
+            sourceMediumId
+        );
+        return true;
+    }
+
     public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean> {
         if (!destMedium || !destMedium.medium || !destMedium.title) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
@@ -451,6 +521,7 @@ export class MediumContext extends SubContext {
 
         const domain = domainRegMatch[1];
 
+        await this.parentContext.jobContext.removeJobLike("name", `toc-${sourceMediumId}-${toc}`);
         const standardPartId = await this.parentContext.partContext.getStandardPartId(destMediumId);
 
         if (!standardPartId) {

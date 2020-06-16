@@ -130,6 +130,7 @@ function mediumRouter(): Router {
     router.put("/unused", UserApi.putConsumeUnusedMedia);
     router.post("/create", UserApi.postCreateFromUnusedMedia);
     router.post("/split", UserApi.postSplitMedium);
+    router.post("/merge", UserApi.postMergeMedia);
     router.post("/transfer", UserApi.postTransferToc);
     router.use("/part", partRouter());
 
