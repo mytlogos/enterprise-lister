@@ -295,7 +295,7 @@ class MediumContext extends subContext_1.SubContext {
             " AND e.part_id = p.id" +
             " AND p.medium_id = ?" +
             " AND locate(?,er.url) > 0;", [mediumId, domain]);
-        const updatedProgressResult = await this.queryInList("DELETE ue FROM user_episode as ue, episode as e part as p" +
+        const updatedProgressResult = await this.queryInList("DELETE ue FROM user_episode as ue, episode as e, part as p" +
             " WHERE ue.episode_id = e.id" +
             " AND e.part_id = p.id" +
             ` AND p.medium_id = ${mysql_1.escape(mediumId)}` +

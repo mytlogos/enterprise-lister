@@ -377,7 +377,7 @@ export class MediumContext extends SubContext {
             [mediumId, domain]
         );
         const updatedProgressResult = await this.queryInList(
-            "DELETE ue FROM user_episode as ue, episode as e part as p" +
+            "DELETE ue FROM user_episode as ue, episode as e, part as p" +
             " WHERE ue.episode_id = e.id" +
             " AND e.part_id = p.id" +
             ` AND p.medium_id = ${escape(mediumId)}` +
