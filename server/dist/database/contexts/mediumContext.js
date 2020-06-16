@@ -355,6 +355,8 @@ class MediumContext extends subContext_1.SubContext {
         const deletedEpisodesResult = await this.query("DELETE e FROM episode as e, part as p" +
             " WHERE e.part_id = p.id" +
             " AND p.medium_id = ?", sourceMediumId);
+        const deletedPartResult = await this.query("DELETE FROM part" +
+            " WHERE medium_id = ?", sourceMediumId);
         const deletedMediumResult = await this.query("DELETE FROM medium" +
             " WHERE id = ?", sourceMediumId);
         return true;
