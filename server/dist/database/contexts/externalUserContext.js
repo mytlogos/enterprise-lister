@@ -61,8 +61,13 @@ class ExternalUserContext extends subContext_1.SubContext {
      * Gets an external user.
      */
     async getExternalUser(externalUuid) {
-        const resultArray = await this.query("SELECT * FROM external_user WHERE uuid = ?;", externalUuid);
-        return this.createShallowExternalUser(resultArray[0]);
+        return tools_1.promiseMultiSingle(externalUuid, async (value) => {
+            const resultArray = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
+            if (!resultArray.length) {
+                throw Error("No result found for given uuid");
+            }
+            return this.createShallowExternalUser(resultArray[0]);
+        });
     }
     /**
      * Gets an external user with cookies, without items.

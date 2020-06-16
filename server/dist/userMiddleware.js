@@ -520,13 +520,28 @@ exports.deleteEpisode = (req, res) => {
     sendResult(res, storage_1.episodeStorage.deleteEpisode(episodeId));
 };
 exports.getExternalUser = (req, res) => {
-    const externalUuid = extractQueryParam(req, "externalUuid");
-    if (!externalUuid) {
+    const externalUuidString = extractQueryParam(req, "externalUuid");
+    if (!externalUuidString || !tools_1.isString(externalUuidString)) {
         // TODO: 23.07.2019 check if valid uuid
         sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, storage_1.externalUserStorage.getExternalUser(externalUuid));
+    try {
+        let externalUuid;
+        if (externalUuidString.startsWith("[") && externalUuidString.endsWith("]")) {
+            externalUuid = externalUuidString
+                .substr(1, externalUuidString.length - 2)
+                .split(",").map((value) => value.trim());
+        }
+        else {
+            externalUuid = externalUuidString;
+        }
+        sendResult(res, storage_1.externalUserStorage.getExternalUser(externalUuid));
+    }
+    catch (e) {
+        sendResult(res, Promise.reject(tools_1.Errors.INVALID_INPUT));
+        return;
+    }
 };
 exports.postExternalUser = (req, res) => {
     const { uuid, externalUser } = req.body;

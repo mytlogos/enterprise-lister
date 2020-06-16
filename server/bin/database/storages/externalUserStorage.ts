@@ -31,7 +31,7 @@ export class ExternalUserStorage {
     /**
      * Gets an external user.
      */
-    public getExternalUser(uuid: string): Promise<ExternalUser> {
+    public getExternalUser(uuid: string | string[]): Promise<ExternalUser | ExternalUser[]> {
         return inContext((context) => context.getExternalUser(uuid));
     }
 

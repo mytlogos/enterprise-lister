@@ -586,13 +586,27 @@ export const deleteEpisode: Handler = (req, res) => {
     sendResult(res, episodeStorage.deleteEpisode(episodeId));
 };
 export const getExternalUser: Handler = (req, res) => {
-    const externalUuid = extractQueryParam(req, "externalUuid");
-    if (!externalUuid) {
+    const externalUuidString = extractQueryParam(req, "externalUuid");
+
+    if (!externalUuidString || !isString(externalUuidString)) {
         // TODO: 23.07.2019 check if valid uuid
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, externalUserStorage.getExternalUser(externalUuid));
+    try {
+        let externalUuid;
+        if (externalUuidString.startsWith("[") && externalUuidString.endsWith("]")) {
+            externalUuid = externalUuidString
+                .substr(1, externalUuidString.length - 2)
+                .split(",").map((value) => value.trim());
+        } else {
+            externalUuid = externalUuidString;
+        }
+        sendResult(res, externalUserStorage.getExternalUser(externalUuid));
+    } catch (e) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
 };
 export const postExternalUser: Handler = (req, res) => {
     const {uuid, externalUser} = req.body;

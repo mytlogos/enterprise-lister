@@ -13,7 +13,7 @@ export declare class ExternalUserStorage {
     /**
      * Gets an external user.
      */
-    getExternalUser(uuid: string): Promise<ExternalUser>;
+    getExternalUser(uuid: string | string[]): Promise<ExternalUser | ExternalUser[]>;
     /**
      * Gets an external user with cookies, without items.
      */

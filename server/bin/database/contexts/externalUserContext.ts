@@ -1,6 +1,6 @@
 import {SubContext} from "./subContext";
 import {ExternalUser} from "../../types";
-import {Errors} from "../../tools";
+import {Errors, promiseMultiSingle} from "../../tools";
 import {v1 as uuidGenerator} from "uuid";
 import {Query} from "mysql";
 
@@ -77,9 +77,14 @@ export class ExternalUserContext extends SubContext {
     /**
      * Gets an external user.
      */
-    public async getExternalUser(externalUuid: string): Promise<ExternalUser> {
-        const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", externalUuid);
-        return this.createShallowExternalUser(resultArray[0]);
+    public async getExternalUser(externalUuid: string | string[]): Promise<ExternalUser | ExternalUser[]> {
+        return promiseMultiSingle(externalUuid, async (value) => {
+            const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
+            if (!resultArray.length) {
+                throw Error("No result found for given uuid");
+            }
+            return this.createShallowExternalUser(resultArray[0]);
+        });
     }
 
     /**

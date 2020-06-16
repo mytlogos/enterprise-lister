@@ -14,7 +14,7 @@ export declare class ExternalUserContext extends SubContext {
     /**
      * Gets an external user.
      */
-    getExternalUser(externalUuid: string): Promise<ExternalUser>;
+    getExternalUser(externalUuid: string | string[]): Promise<ExternalUser | ExternalUser[]>;
     /**
      * Gets an external user with cookies, without items.
      */
