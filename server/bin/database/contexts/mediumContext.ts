@@ -369,7 +369,7 @@ export class MediumContext extends SubContext {
             }
         }
         const updatedReleaseResult = await this.query(
-            "DELETE episode as e, part as p FROM episode_release" +
+            "DELETE episode_release FROM episode as e, part as p" +
             " WHERE episode_release.episode_id = e.id" +
             " AND e.part_id = p.id" +
             " AND p.medium_id = ?" +
@@ -377,7 +377,7 @@ export class MediumContext extends SubContext {
             [mediumId, domain]
         );
         const updatedProgressResult = await this.queryInList(
-            "DELETE episode as e part as p FROM user_episode" +
+            "DELETE user_episode FROM episode as e part as p" +
             " WHERE user_episode.episode_id = e.id" +
             " AND e.part_id = p.id" +
             ` AND p.medium_id = ${escape(mediumId)}` +
@@ -385,7 +385,7 @@ export class MediumContext extends SubContext {
             removeEpisodesAfter
         );
         const updatedResultResult = await this.queryInList(
-            "DELETE episode as e, part as p FROM result_episode" +
+            "DELETE result_episode FROM episode as e, part as p" +
             " WHERE result_episode.episode_id = e.id" +
             " AND e.part_id = p.id" +
             ` AND p.medium_id = ${escape(mediumId)}` +
