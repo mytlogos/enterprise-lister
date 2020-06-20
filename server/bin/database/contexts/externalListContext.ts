@@ -117,7 +117,7 @@ export class ExternalListContext extends SubContext {
     public async getExternalUserLists(uuid: string): Promise<ExternalList[]> {
         const result = await this.query(
             "SELECT id, name, user_uuid as uuid, medium, url" +
-            " FROM external_reading_list WHERE uuid = ?;",
+            " FROM external_reading_list WHERE user_uuid = ?;",
             uuid
         );
         // @ts-ignore
