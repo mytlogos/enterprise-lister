@@ -16,6 +16,139 @@ chai.use(sinon_chai);
 chai.use(chaiAsPromised);
 chai.should();
 
+/**
+ * @typedef {AsyncGenerator<{mediumType: MediaType.TEXT, end: boolean, title: string}|{releaseDate, title: string, url: string}, void, *>} TocGenerator
+ */
+
+/**
+ *
+ * @param {string[]} pages
+ * @return TocGenerator
+ */
+async function* novelfullGenerator(pages) {
+    const now = new Date();
+    let tocYielded = false;
+    for (const page of pages) {
+        const content = await fs.promises.readFile(page, "utf8");
+        const $ = cheerio.load(content);
+        const mediumTitleElement = $(".desc .title").first();
+        const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
+
+        const items = $(".list-chapter li a");
+
+        const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
+
+        let end;
+        if (releaseStatusString === "ongoing") {
+            end = false;
+        } else if (releaseStatusString === "completed") {
+            end = true;
+        }
+        if (!tocYielded) {
+            const tocMeta = {
+                title: mediumTitle,
+                mediumType: tools.MediaType.TEXT,
+                end,
+            };
+            yield tocMeta;
+            tocYielded = true;
+        }
+
+        for (let i = 0; i < items.length; i++) {
+            const newsRow = items.eq(i);
+            const link = newsRow.attr("href");
+            const episodeTitle = tools.sanitizeString(newsRow.text());
+            yield {title: episodeTitle, url: link, releaseDate: now};
+        }
+    }
+}
+
+/**
+ * @typedef Case
+ * @property {string[]} pages
+ * @property {"novelfull"} domain
+ * @property {boolean} hasParts
+ * @property {boolean} hasLocked
+ * @property {number} numberEpisodes
+ * @property {number} lastIndex
+ */
+
+/**
+ *
+ * @param {string} path
+ * @return {Promise<Case>}
+ */
+async function readCase(path) {
+    const fileContent = await fs.promises.readFile("tests/externals/direct/cases/" + path, "utf8");
+    return JSON.parse(fileContent);
+}
+
+/**
+ *
+ * @param {string} casePath
+ * @return {Promise<void>}
+ */
+async function testCase(casePath) {
+    const testCase = await readCase(casePath);
+
+    /**
+     * @type {TocGenerator}
+     */
+    let generator;
+    if (testCase.domain === "novelfull") {
+        generator = novelfullGenerator(testCase.pages);
+    } else {
+        throw Error(`no known generator for domain ${testCase.domain}`);
+    }
+
+    const contents = await directTools.scrapeToc(generator);
+    contents.should.be.an("array");
+
+    let currentEpisodeIndex = 0;
+    let episodesCount = 0;
+
+    for (const content of contents) {
+        content.should.have.property("title");
+
+        if (content.episodes) {
+            content.episodes.should.be.an("array");
+
+            for (const episode of content.episodes) {
+                testCase.hasParts.should.not.equal(false);
+                episode.should.have.property("title");
+                episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+                episode.combiIndex.should.be.at.least(currentEpisodeIndex);
+                episode.should.have.property("url");
+
+                if (!testCase.hasLocked) {
+                    episode.should.have.property("locked", false);
+                } else {
+                    // todo check that it is either true/false?
+                }
+                episode.should.have.property("releaseDate");
+                currentEpisodeIndex = episode.combiIndex;
+                episodesCount++;
+            }
+        } else {
+            episodesCount++;
+            content.combiIndex.should.be.at.least(currentEpisodeIndex);
+            content.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+            content.should.have.property("url");
+
+            if (!testCase.hasLocked) {
+                content.should.have.property("locked", false);
+            } else {
+                // todo check that it is either true/false?
+            }
+
+            content.should.have.property("releaseDate");
+            currentEpisodeIndex = content.combiIndex;
+        }
+    }
+    currentEpisodeIndex.should.equal(testCase.lastIndex);
+    episodesCount.should.equal(testCase.numberEpisodes);
+}
+
 describe("testing scrapeToc", () => {
     it("should extract correct toc: chapter indices only", async function () {
         const now = new Date();
@@ -2722,5 +2855,8 @@ describe("testing scrapeToc", () => {
         }
         currentEpisodeIndex.should.equal(551);
         episodesCount.should.equal(551);
+    });
+    it("should extract correct toc: for the monk toc on novelfull", async function () {
+        await testCase("novelfull-monk.json");
     });
 });

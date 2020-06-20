@@ -445,7 +445,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         ascendingCount: 0,
         descendingCount: 0,
         hasParts: false,
-        volumeRegex: /(v[olume]{0,5}|s[eason]{0,5}|b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
+        volumeRegex: /(v[olume]{0,5}|(^|\d+|\B|\s+)s[eason]{0,5}|(^|\d+|\B|\s+)b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
         separatorRegex: /[-:]/g,
         chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/ig,
         volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-\s*((\d+)(\.(\d+))?)?/ig,
@@ -1083,11 +1083,11 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                 } as InternalTocEpisode);
             }
         } else if (!possibleVolume && match.type === "volume") {
-            if (match.match[7]) {
+            if (match.match[9]) {
                 // it matches the pattern for an invalid episode
                 return [];
             }
-            const volIndices = extractIndices(match.match, 3, 4, 6);
+            const volIndices = extractIndices(match.match, 5, 6, 7);
 
             if (volIndices) {
                 state.hasParts = true;
