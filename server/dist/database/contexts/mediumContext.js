@@ -443,14 +443,14 @@ class MediumContext extends subContext_1.SubContext {
             ` AND dest_e.part_id = ${mysql_1.escape(standardPartId)}` +
             " AND src_e.combiIndex = dest_e.combiIndex" +
             " AND src_e.id", removeEpisodesAfter);
-        const deletedReleasesResult = await this.queryInList("DELETE FROM episode_release as er" +
-            " WHERE er.episode_id", removeEpisodesAfter);
-        const deletedUserEpisodesResult = await this.queryInList("DELETE FROM user_episode as ue" +
-            " WHERE ue.episode_id", removeEpisodesAfter);
-        const deletedResultEpisodesResult = await this.queryInList("DELETE FROM result_episode as re" +
-            " WHERE re.episode_id", removeEpisodesAfter);
-        const deletedEpisodesResult = await this.queryInList("DELETE FROM episode as e" +
-            " WHERE e.id", removeEpisodesAfter);
+        const deletedReleasesResult = await this.queryInList("DELETE FROM episode_release" +
+            " WHERE episode_id", removeEpisodesAfter);
+        const deletedUserEpisodesResult = await this.queryInList("DELETE FROM user_episode" +
+            " WHERE episode_id", removeEpisodesAfter);
+        const deletedResultEpisodesResult = await this.queryInList("DELETE FROM result_episode" +
+            " WHERE episode_id", removeEpisodesAfter);
+        const deletedEpisodesResult = await this.queryInList("DELETE FROM episode" +
+            " WHERE id", removeEpisodesAfter);
         const copiedOnlyEpisodes = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
         const copiedProgressResult = await this.queryInList("INSERT IGNORE INTO user_episode" +
             " (user_uuid, episode_id, progress, read_date)" +

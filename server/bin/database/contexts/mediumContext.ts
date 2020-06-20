@@ -607,23 +607,23 @@ export class MediumContext extends SubContext {
             removeEpisodesAfter
         );
         const deletedReleasesResult = await this.queryInList(
-            "DELETE FROM episode_release as er" +
-            " WHERE er.episode_id",
+            "DELETE FROM episode_release" +
+            " WHERE episode_id",
             removeEpisodesAfter
         );
         const deletedUserEpisodesResult = await this.queryInList(
-            "DELETE FROM user_episode as ue" +
-            " WHERE ue.episode_id",
+            "DELETE FROM user_episode" +
+            " WHERE episode_id",
             removeEpisodesAfter
         );
         const deletedResultEpisodesResult = await this.queryInList(
-            "DELETE FROM result_episode as re" +
-            " WHERE re.episode_id",
+            "DELETE FROM result_episode" +
+            " WHERE episode_id",
             removeEpisodesAfter
         );
         const deletedEpisodesResult = await this.queryInList(
-            "DELETE FROM episode as e" +
-            " WHERE e.id",
+            "DELETE FROM episode" +
+            " WHERE id",
             removeEpisodesAfter
         );
         const copiedOnlyEpisodes: number[] = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
