@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
+const types_1 = require("../../types");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
@@ -154,10 +155,20 @@ async function scrapeToc(urlString) {
     const partContents = [];
     const indexPartMap = new Map();
     const chapterContents = [];
+    let releaseState = types_1.ReleaseState.Unknown;
+    const releaseStateElement = $("div.col-md-12:nth-child(5) > span:nth-child(2) > a:nth-child(1)");
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    if (releaseStateString.includes("complete")) {
+        releaseState = types_1.ReleaseState.Complete;
+    }
+    else if (releaseStateString.includes("ongoing")) {
+        releaseState = types_1.ReleaseState.Ongoing;
+    }
     const toc = {
         link: urlString,
         content: [],
         title: mangaTitle,
+        statusTl: releaseState,
         mediumType: tools_1.MediaType.IMAGE
     };
     const endReg = /\[END]\s*$/i;

@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocContent, TocEpisode} from "../types";
-import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
 import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
@@ -250,11 +250,23 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         checkTocContent(chapterContent);
         content.push(chapterContent);
     }
+    const releaseStateElement = $("div.post-content_item:nth-child(2) > div:nth-child(2)");
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+
+    if (releaseStateString.includes("complete")) {
+        end = true;
+        releaseState = ReleaseState.Complete;
+    } else if (releaseStateString.includes("ongoing")) {
+        end = false;
+        releaseState = ReleaseState.Ongoing;
+    }
     return [{
         link: tocLink,
         content,
         title: mediumTitle,
         end,
+        statusTl: releaseState,
         mediumType: MediaType.TEXT
     }];
 }

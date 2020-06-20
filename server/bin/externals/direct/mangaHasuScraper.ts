@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
@@ -178,11 +178,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const partContents: TocPart[] = [];
     const indexPartMap: Map<number, TocPart> = new Map();
     const chapterContents: TocEpisode[] = [];
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+    const releaseStateElement = $("div.col-md-12:nth-child(5) > span:nth-child(2) > a:nth-child(1)");
 
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    if (releaseStateString.includes("complete")) {
+        releaseState = ReleaseState.Complete;
+    } else if (releaseStateString.includes("ongoing")) {
+        releaseState = ReleaseState.Ongoing;
+    }
     const toc: Toc = {
         link: urlString,
         content: [],
         title: mangaTitle,
+        statusTl: releaseState,
         mediumType: MediaType.IMAGE
     };
 

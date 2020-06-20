@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
+const types_1 = require("../../types");
 const queueManager_1 = require("../queueManager");
 const url = tslib_1.__importStar(require("url"));
 const tools_1 = require("../../tools");
@@ -214,11 +215,23 @@ async function tocAdapter(tocLink) {
         scraperTools_1.checkTocContent(chapterContent);
         content.push(chapterContent);
     }
+    const releaseStateElement = $("div.post-content_item:nth-child(2) > div:nth-child(2)");
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    let releaseState = types_1.ReleaseState.Unknown;
+    if (releaseStateString.includes("complete")) {
+        end = true;
+        releaseState = types_1.ReleaseState.Complete;
+    }
+    else if (releaseStateString.includes("ongoing")) {
+        end = false;
+        releaseState = types_1.ReleaseState.Ongoing;
+    }
     return [{
             link: tocLink,
             content,
             title: mediumTitle,
             end,
+            statusTl: releaseState,
             mediumType: tools_1.MediaType.TEXT
         }];
 }

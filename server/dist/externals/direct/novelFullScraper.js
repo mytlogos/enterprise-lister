@@ -59,7 +59,7 @@ function extractTocSnippet($, link) {
         end = true;
         releaseState = types_1.ReleaseState.Complete;
     }
-    else if (releaseStateString === "ongoing") {
+    else if (releaseStateString.includes("ongoing")) {
         end = false;
         releaseState = types_1.ReleaseState.Ongoing;
     }
@@ -69,7 +69,7 @@ function extractTocSnippet($, link) {
         content: [],
         mediumType: tools_1.MediaType.TEXT,
         end,
-        // statusTl: releaseState,
+        statusTl: releaseState,
         title: mediumTitle,
         link
     };

@@ -76,7 +76,7 @@ function extractTocSnippet($: CheerioStatic, link: string): Toc {
     if (releaseStateString.includes("complete")) {
         end = true;
         releaseState = ReleaseState.Complete;
-    } else if (releaseStateString === "ongoing") {
+    } else if (releaseStateString.includes("ongoing")) {
         end = false;
         releaseState = ReleaseState.Ongoing;
     }
@@ -86,7 +86,7 @@ function extractTocSnippet($: CheerioStatic, link: string): Toc {
         content: [],
         mediumType: MediaType.TEXT,
         end,
-        // statusTl: releaseState,
+        statusTl: releaseState,
         title: mediumTitle,
         link
     };

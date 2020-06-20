@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeContentData, EpisodeNews, News} from "../../types";
+import {EpisodeContentData, EpisodeNews, News, ReleaseState} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import logger from "../../logger";
@@ -288,6 +288,30 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
     }
 
     toc.title = mangaTitle;
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+    let releaseStateElement = null;
+    const tocInfoElements = $("div.m-0");
+    for (let i = 0; i < tocInfoElements.length; i++) {
+        const infoElement = tocInfoElements.eq(i);
+        const children = infoElement.children();
+
+        if (children.eq(0).text().toLocaleLowerCase().includes("status:")) {
+            releaseStateElement = children.eq(1);
+            break;
+        }
+    }
+
+    if (releaseStateElement) {
+        const releaseStateString = releaseStateElement.text().toLowerCase();
+        if (releaseStateString.includes("complete")) {
+            releaseState = ReleaseState.Complete;
+        } else if (releaseStateString.includes("ongoing")) {
+            releaseState = ReleaseState.Ongoing;
+        } else if (releaseStateString.includes("hiatus")) {
+            releaseState = ReleaseState.Hiatus;
+        }
+    }
+    toc.statusTl = releaseState;
     const ignoreTitles = /(oneshot)|(special.+chapter)/i;
 
     const chapters = contentElement.find(".chapter-container .chapter-row");

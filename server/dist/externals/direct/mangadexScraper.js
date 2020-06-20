@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
+const types_1 = require("../../types");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
@@ -195,6 +196,30 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
         return true;
     }
     toc.title = mangaTitle;
+    let releaseState = types_1.ReleaseState.Unknown;
+    let releaseStateElement = null;
+    const tocInfoElements = $("div.m-0");
+    for (let i = 0; i < tocInfoElements.length; i++) {
+        const infoElement = tocInfoElements.eq(i);
+        const children = infoElement.children();
+        if (children.eq(0).text().toLocaleLowerCase().includes("status:")) {
+            releaseStateElement = children.eq(1);
+            break;
+        }
+    }
+    if (releaseStateElement) {
+        const releaseStateString = releaseStateElement.text().toLowerCase();
+        if (releaseStateString.includes("complete")) {
+            releaseState = types_1.ReleaseState.Complete;
+        }
+        else if (releaseStateString.includes("ongoing")) {
+            releaseState = types_1.ReleaseState.Ongoing;
+        }
+        else if (releaseStateString.includes("hiatus")) {
+            releaseState = types_1.ReleaseState.Hiatus;
+        }
+    }
+    toc.statusTl = releaseState;
     const ignoreTitles = /(oneshot)|(special.+chapter)/i;
     const chapters = contentElement.find(".chapter-container .chapter-row");
     if (!chapters.length) {
