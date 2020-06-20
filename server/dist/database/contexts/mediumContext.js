@@ -443,7 +443,12 @@ class MediumContext extends subContext_1.SubContext {
             ` AND dest_e.part_id = ${mysql_1.escape(standardPartId)}` +
             " AND src_e.combiIndex = dest_e.combiIndex" +
             " AND src_e.id", removeEpisodesAfter);
-        const deletedEpisodesResult = await this.queryInList("DELETE FROM episode WHERE episode.id", removeEpisodesAfter);
+        const deletedEpisodesResult = await this.queryInList("DELETE e, er, ue, re" +
+            " FROM episode as e" +
+            " LEFT JOIN episode_release as er ON er.episode_id=e.id" +
+            " LEFT JOIN result_episode as re ON re.episode_id=e.id" +
+            " LEFT JOIN user_episode as ue ON ue.episode_id=e.id" +
+            " WHERE episode.id", removeEpisodesAfter);
         const copiedOnlyEpisodes = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
         const copiedProgressResult = await this.queryInList("INSERT IGNORE INTO user_episode" +
             " (user_uuid, episode_id, progress, read_date)" +

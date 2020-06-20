@@ -607,7 +607,12 @@ export class MediumContext extends SubContext {
             removeEpisodesAfter
         );
         const deletedEpisodesResult = await this.queryInList(
-            "DELETE FROM episode WHERE episode.id",
+            "DELETE e, er, ue, re" +
+            " FROM episode as e" +
+            " LEFT JOIN episode_release as er ON er.episode_id=e.id" +
+            " LEFT JOIN result_episode as re ON re.episode_id=e.id" +
+            " LEFT JOIN user_episode as ue ON ue.episode_id=e.id" +
+            " WHERE episode.id",
             removeEpisodesAfter
         );
         const copiedOnlyEpisodes: number[] = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
