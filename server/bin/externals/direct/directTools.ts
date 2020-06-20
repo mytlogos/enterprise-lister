@@ -448,7 +448,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         volumeRegex: /(v[olume]{0,5}|(^|\d+|\B|\s+)s[eason]{0,5}|(^|\d+|\B|\s+)b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/ig,
         separatorRegex: /[-:]/g,
         chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/ig,
-        volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-\s*((\d+)(\.(\d+))?)?/ig,
+        volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-(\s*((\d+)(\.(\d+))?)|\s)/ig,
         partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
         trimRegex: /^[\s:–,.-]+|[\s:–,.-]+$/g,
         endRegex: /end/g,
@@ -1017,6 +1017,14 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
             if (matches[i + 1] && matches[i + 1].type === "volumeChapter") {
                 continue;
             }
+            const previousMatch = matches[i - 1];
+            // it overlaps with a previous volume match like 'Book 15 - 15',
+            // where 'Book 15' is a previous 'volume' match
+            // and 15 - 15 would be the current match, this would be a misclassified match
+            if (previousMatch && previousMatch.type === "volume"
+                && previousMatch.from <= match.from && previousMatch.to >= match.from) {
+                continue;
+            }
             const wrappingMatch = matches.find((value) => {
                 return value !== match && value.from <= match.from && match.to <= value.to;
             });
@@ -1025,7 +1033,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                 continue;
             }
             const volIndices = extractIndices(match.match, 2, 3, 5);
-            const chapIndices = extractIndices(match.match, 6, 7, 9);
+            const chapIndices = extractIndices(match.match, 7, 8, 10);
 
             if (!volIndices) {
                 continue;

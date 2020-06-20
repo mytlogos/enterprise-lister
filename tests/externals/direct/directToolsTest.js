@@ -2859,4 +2859,7 @@ describe("testing scrapeToc", () => {
     it("should extract correct toc: for the monk toc on novelfull", async function () {
         await testCase("novelfull-monk.json");
     });
+    it("should extract correct toc: for the renegade toc on novelfull", async function () {
+        await testCase("novelfull-renegade.json");
+    });
 });
