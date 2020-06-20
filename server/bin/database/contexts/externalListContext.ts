@@ -115,7 +115,11 @@ export class ExternalListContext extends SubContext {
      * Gets an array of all lists of an user.
      */
     public async getExternalUserLists(uuid: string): Promise<ExternalList[]> {
-        const result = await this.query("SELECT * FROM external_reading_list WHERE user_uuid = ?;", uuid);
+        const result = await this.query(
+            "SELECT id, name, user_uuid as uuid, medium, url" +
+            " FROM external_reading_list WHERE uuid = ?;",
+            uuid
+        );
         // @ts-ignore
         return Promise.all(result.map((value: any) => this.createShallowExternalList(value)));
     }
