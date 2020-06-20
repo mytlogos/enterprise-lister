@@ -574,7 +574,7 @@ export class MediumContext extends SubContext {
             copyEpisodes
         );
         const updatedReleaseResult = await this.query(
-            "UPDATE episode_release, episode as src_e, episode as dest_e, part" +
+            "UPDATE IGNORE episode_release, episode as src_e, episode as dest_e, part" +
             " SET episode_release.episode_id = dest_e.id" +
             " WHERE episode_release.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
@@ -585,7 +585,7 @@ export class MediumContext extends SubContext {
             [sourceMediumId, standardPartId, domain]
         );
         const updatedProgressResult = await this.queryInList(
-            "UPDATE user_episode, episode as src_e, episode as dest_e, part" +
+            "UPDATE IGNORE user_episode, episode as src_e, episode as dest_e, part" +
             " SET user_episode.episode_id = dest_e.id" +
             " WHERE user_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
@@ -596,7 +596,7 @@ export class MediumContext extends SubContext {
             removeEpisodesAfter
         );
         const updatedResultResult = await this.queryInList(
-            "UPDATE result_episode, episode as src_e, episode as dest_e, part" +
+            "UPDATE IGNORE result_episode, episode as src_e, episode as dest_e, part" +
             " SET result_episode.episode_id = dest_e.id" +
             " WHERE result_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +

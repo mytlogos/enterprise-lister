@@ -419,7 +419,7 @@ class MediumContext extends subContext_1.SubContext {
             ` SELECT ${mysql_1.escape(standardPartId)}, episode.totalIndex, episode.partialIndex, episode.combiIndex, episode.updated_at` +
             " FROM episode INNER JOIN part ON part.id=episode.part_id" +
             ` WHERE part.medium_id = ${mysql_1.escape(sourceMediumId)} AND episode.id`, copyEpisodes);
-        const updatedReleaseResult = await this.query("UPDATE episode_release, episode as src_e, episode as dest_e, part" +
+        const updatedReleaseResult = await this.query("UPDATE IGNORE episode_release, episode as src_e, episode as dest_e, part" +
             " SET episode_release.episode_id = dest_e.id" +
             " WHERE episode_release.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
@@ -427,7 +427,7 @@ class MediumContext extends subContext_1.SubContext {
             " AND dest_e.part_id = ?" +
             " AND src_e.combiIndex = dest_e.combiIndex" +
             " AND locate(?,episode_release.url) > 0;", [sourceMediumId, standardPartId, domain]);
-        const updatedProgressResult = await this.queryInList("UPDATE user_episode, episode as src_e, episode as dest_e, part" +
+        const updatedProgressResult = await this.queryInList("UPDATE IGNORE user_episode, episode as src_e, episode as dest_e, part" +
             " SET user_episode.episode_id = dest_e.id" +
             " WHERE user_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
@@ -435,7 +435,7 @@ class MediumContext extends subContext_1.SubContext {
             ` AND dest_e.part_id = ${mysql_1.escape(standardPartId)}` +
             " AND src_e.combiIndex = dest_e.combiIndex" +
             " AND src_e.id", removeEpisodesAfter);
-        const updatedResultResult = await this.queryInList("UPDATE result_episode, episode as src_e, episode as dest_e, part" +
+        const updatedResultResult = await this.queryInList("UPDATE IGNORE result_episode, episode as src_e, episode as dest_e, part" +
             " SET result_episode.episode_id = dest_e.id" +
             " WHERE result_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
