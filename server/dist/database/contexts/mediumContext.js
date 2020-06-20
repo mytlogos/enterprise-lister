@@ -448,7 +448,7 @@ class MediumContext extends subContext_1.SubContext {
             " LEFT JOIN episode_release as er ON er.episode_id=e.id" +
             " LEFT JOIN result_episode as re ON re.episode_id=e.id" +
             " LEFT JOIN user_episode as ue ON ue.episode_id=e.id" +
-            " WHERE episode.id", removeEpisodesAfter);
+            " WHERE e.id", removeEpisodesAfter);
         const copiedOnlyEpisodes = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
         const copiedProgressResult = await this.queryInList("INSERT IGNORE INTO user_episode" +
             " (user_uuid, episode_id, progress, read_date)" +

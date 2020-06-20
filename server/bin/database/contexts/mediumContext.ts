@@ -612,7 +612,7 @@ export class MediumContext extends SubContext {
             " LEFT JOIN episode_release as er ON er.episode_id=e.id" +
             " LEFT JOIN result_episode as re ON re.episode_id=e.id" +
             " LEFT JOIN user_episode as ue ON ue.episode_id=e.id" +
-            " WHERE episode.id",
+            " WHERE e.id",
             removeEpisodesAfter
         );
         const copiedOnlyEpisodes: number[] = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
