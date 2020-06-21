@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
+const types_1 = require("../../types");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
@@ -208,10 +209,32 @@ async function scrapeToc(urlString) {
         scraperTools_1.checkTocContent(episodeContent);
         content.push(episodeContent);
     }
+    const infoElements = $("div.bigBarContainer:nth-child(1) span.info");
+    let releaseStateElement = null;
+    for (let i = 0; i < infoElements.length; i++) {
+        const element = infoElements.eq(i);
+        if (element.text().toLocaleLowerCase().includes("status")) {
+            releaseStateElement = element.parent();
+        }
+    }
+    let releaseState = types_1.ReleaseState.Unknown;
+    if (releaseStateElement) {
+        const releaseStateString = releaseStateElement.text().toLowerCase();
+        if (releaseStateString.includes("complete")) {
+            releaseState = types_1.ReleaseState.Complete;
+        }
+        else if (releaseStateString.includes("ongoing")) {
+            releaseState = types_1.ReleaseState.Ongoing;
+        }
+        else if (releaseStateString.includes("hiatus")) {
+            releaseState = types_1.ReleaseState.Hiatus;
+        }
+    }
     const toc = {
         link: urlString,
         content,
         title: animeTitle,
+        statusTl: releaseState,
         mediumType: tools_1.MediaType.VIDEO
     };
     return [toc];

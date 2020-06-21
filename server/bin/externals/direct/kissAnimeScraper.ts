@@ -1,5 +1,5 @@
 import {Hook, Toc, TocEpisode} from "../types";
-import {EpisodeNews, News, SearchResult} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
@@ -241,11 +241,33 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         checkTocContent(episodeContent);
         content.push(episodeContent);
     }
+    const infoElements = $("div.bigBarContainer:nth-child(1) span.info");
+    let releaseStateElement = null;
 
+    for (let i = 0; i < infoElements.length; i++) {
+        const element = infoElements.eq(i);
+
+        if (element.text().toLocaleLowerCase().includes("status")) {
+            releaseStateElement = element.parent();
+        }
+    }
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+
+    if (releaseStateElement) {
+        const releaseStateString = releaseStateElement.text().toLowerCase();
+        if (releaseStateString.includes("complete")) {
+            releaseState = ReleaseState.Complete;
+        } else if (releaseStateString.includes("ongoing")) {
+            releaseState = ReleaseState.Ongoing;
+        } else if (releaseStateString.includes("hiatus")) {
+            releaseState = ReleaseState.Hiatus;
+        }
+    }
     const toc: Toc = {
         link: urlString,
         content,
         title: animeTitle,
+        statusTl: releaseState,
         mediumType: MediaType.VIDEO
     };
 

@@ -196,7 +196,6 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
         return true;
     }
     toc.title = mangaTitle;
-    let releaseState = types_1.ReleaseState.Unknown;
     let releaseStateElement = null;
     const tocInfoElements = $("div.m-0");
     for (let i = 0; i < tocInfoElements.length; i++) {
@@ -207,6 +206,7 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
             break;
         }
     }
+    let releaseState = types_1.ReleaseState.Unknown;
     if (releaseStateElement) {
         const releaseStateString = releaseStateElement.text().toLowerCase();
         if (releaseStateString.includes("complete")) {

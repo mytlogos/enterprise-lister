@@ -288,7 +288,6 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
     }
 
     toc.title = mangaTitle;
-    let releaseState: ReleaseState = ReleaseState.Unknown;
     let releaseStateElement = null;
     const tocInfoElements = $("div.m-0");
     for (let i = 0; i < tocInfoElements.length; i++) {
@@ -300,6 +299,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             break;
         }
     }
+    let releaseState: ReleaseState = ReleaseState.Unknown;
 
     if (releaseStateElement) {
         const releaseStateString = releaseStateElement.text().toLowerCase();
