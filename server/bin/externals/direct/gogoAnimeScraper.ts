@@ -133,7 +133,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         }
     }
     const toc: Toc = {
-        link: `https://www.gogoanime.io/category/${urlString}`,
+        link: `https://www.gogoanime.io/category/${animeAlias}`,
         content,
         title: animeTitle,
         statusTl: releaseState,
