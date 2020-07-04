@@ -11,7 +11,7 @@ const scraperTools_1 = require("../scraperTools");
 const directTools_1 = require("./directTools");
 const errors_1 = require("../errors");
 async function scrapeNews() {
-    const uri = "https://www10.gogoanime.io/";
+    const uri = "https://www.gogoanime.io/";
     const $ = await queueManager_1.queueCheerioRequest(uri);
     const newsRows = $(".items li");
     const news = [];
@@ -52,7 +52,7 @@ async function scrapeNews() {
     return { episodes: news };
 }
 async function scrapeToc(urlString) {
-    const animeAliasReg = /^https?:\/\/www10\.gogoanime\.io\/category\/(.+)/;
+    const animeAliasReg = /^https?:\/\/www\d*\.gogoanime\.io\/category\/(.+)/;
     const aliasExec = animeAliasReg.exec(urlString);
     if (!aliasExec) {
         throw new errors_1.UrlError("invalid toc url for GogoAnime: " + urlString, urlString);
@@ -89,7 +89,7 @@ async function scrapeToc(urlString) {
             title: `Episode ${i}`,
             combiIndex: i,
             totalIndex: i,
-            url: `https://www10.gogoanime.io/${animeAlias}-episode-${i}`,
+            url: `https://www.gogoanime.io/${animeAlias}-episode-${i}`,
         };
         scraperTools_1.checkTocContent(episodeContent);
         content.push(episodeContent);
@@ -116,7 +116,7 @@ async function scrapeToc(urlString) {
         }
     }
     const toc = {
-        link: urlString,
+        link: `https://www.gogoanime.io/category/${urlString}`,
         content,
         title: animeTitle,
         statusTl: releaseState,
@@ -138,10 +138,10 @@ async function scrapeSearch(searchString, searchMedium) {
     return { done: false };
 }
 async function searchForToc(searchMedium) {
-    return directTools_1.searchToc(searchMedium, scrapeToc, "https://www10.gogoanime.io/", (searchString) => scrapeSearch(searchString, searchMedium));
+    return directTools_1.searchToc(searchMedium, scrapeToc, "https://www.gogoanime.io/", (searchString) => scrapeSearch(searchString, searchMedium));
 }
 async function search(searchWords) {
-    const urlString = `https://ajax.apimovie.xyz/site/loadAjaxSearch?keyword=${encodeURIComponent(searchWords)}&id=-1&link_web=https%3A%2F%2Fwww10.gogoanime.io%2F`;
+    const urlString = `https://ajax.apimovie.xyz/site/loadAjaxSearch?keyword=${encodeURIComponent(searchWords)}&id=-1&link_web=https%3A%2F%2Fwww.gogoanime.io%2F`;
     const response = await queueManager_1.queueRequest(urlString);
     const responseJson = JSON.parse(response);
     const $ = cheerio_1.default.load(responseJson.content);
@@ -163,13 +163,13 @@ async function search(searchWords) {
     }
     return searchResults;
 }
-scrapeNews.link = "https://www10.gogoanime.io/";
-searchForToc.link = "https://www10.gogoanime.io/";
+scrapeNews.link = "https://www.gogoanime.io/";
+searchForToc.link = "https://www.gogoanime.io/";
 searchForToc.medium = tools_1.MediaType.VIDEO;
 searchForToc.blindSearch = true;
 search.medium = tools_1.MediaType.VIDEO;
 async function contentDownloader(link) {
-    const episodeRegex = /https:\/\/www10\.gogoanime\.io\/.+-episode-(\d+)/;
+    const episodeRegex = /https:\/\/www\d*\.gogoanime\.io\/.+-episode-(\d+)/;
     const exec = episodeRegex.exec(link);
     if (!exec) {
         logger_1.default.warn(`invalid gogoanime episode link: '${link}'`);
@@ -186,7 +186,7 @@ function getHook() {
     return {
         name: "gogoanime",
         medium: tools_1.MediaType.VIDEO,
-        domainReg: /^https?:\/\/www10\.gogoanime\.io/,
+        domainReg: /^https?:\/\/www\d*\.gogoanime\.io/,
         searchAdapter: search,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,
