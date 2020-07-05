@@ -142,7 +142,7 @@ export class MediumStorage {
         return inContext((context) => context.mergeMedia(sourceMediumId, destMedium));
     }
 
-    public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean> {
+    public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<number> {
         return inContext((context) => context.splitMedium(sourceMediumId, destMedium, toc));
     }
 

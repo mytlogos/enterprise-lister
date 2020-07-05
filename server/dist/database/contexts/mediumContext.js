@@ -382,7 +382,8 @@ class MediumContext extends subContext_1.SubContext {
             await this.parentContext.partContext.createStandardPart(result.insertId);
             mediumId = result.insertId;
         }
-        return this.transferToc(sourceMediumId, mediumId, toc);
+        const success = await this.transferToc(sourceMediumId, mediumId, toc);
+        return success ? mediumId : 0;
     }
     async transferToc(sourceMediumId, destMediumId, toc) {
         const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(toc);

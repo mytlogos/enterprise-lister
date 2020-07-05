@@ -62,6 +62,6 @@ export declare class MediumStorage {
     getSynonyms(mediumId: number | number[]): Promise<Synonyms[]>;
     getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]>;
     mergeMedia(sourceMediumId: number, destMedium: number): Promise<boolean>;
-    splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean>;
+    splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<number>;
     transferToc(sourceMediumId: number, destMediumId: number, toc: string): Promise<boolean>;
 }

@@ -494,7 +494,7 @@ export class MediumContext extends SubContext {
         return true;
     }
 
-    public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean> {
+    public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<number> {
         if (!destMedium || !destMedium.medium || !destMedium.title) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -520,7 +520,8 @@ export class MediumContext extends SubContext {
             await this.parentContext.partContext.createStandardPart(result.insertId);
             mediumId = result.insertId;
         }
-        return this.transferToc(sourceMediumId, mediumId, toc);
+        const success = await this.transferToc(sourceMediumId, mediumId, toc);
+        return success ? mediumId : 0;
     }
 
     public async transferToc(sourceMediumId: number, destMediumId: number, toc: string): Promise<boolean> {

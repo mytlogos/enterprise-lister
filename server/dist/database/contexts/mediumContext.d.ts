@@ -36,6 +36,6 @@ export declare class MediumContext extends SubContext {
         id: number;
     }>>;
     mergeMedia(sourceMediumId: number, destMediumId: number): Promise<boolean>;
-    splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<boolean>;
+    splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<number>;
     transferToc(sourceMediumId: number, destMediumId: number, toc: string): Promise<boolean>;
 }
