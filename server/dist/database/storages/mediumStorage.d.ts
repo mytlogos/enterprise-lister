@@ -1,4 +1,4 @@
-import { FullMediumToc, LikeMedium, LikeMediumQuery, Medium, MediumToc, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium } from "../../types";
+import { FullMediumToc, LikeMedium, LikeMediumQuery, Medium, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium } from "../../types";
 import { Query } from "mysql";
 export declare class MediumStorage {
     removeToc(tocLink: string): Promise<void>;
@@ -38,7 +38,7 @@ export declare class MediumStorage {
     getTocs(mediumId: number): Promise<string[]>;
     /**
      */
-    getMediumTocs(mediumId: number[]): Promise<MediumToc[]>;
+    getMediumTocs(mediumId: number[]): Promise<FullMediumToc[]>;
     /**
      */
     removeMediumToc(mediumId: number, link: string): Promise<boolean>;

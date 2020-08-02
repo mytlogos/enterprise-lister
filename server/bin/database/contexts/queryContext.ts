@@ -505,7 +505,10 @@ export class QueryContext implements ConnectionContext {
             [uuid, date]
         );
         const tocPromise = this.query(
-            "SELECT medium_id as mediumId, link FROM medium_toc WHERE updated_at > ?",
+            "SELECT id, medium_id as mediumId, link, " +
+            "countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium_toc WHERE updated_at > ?",
             date
         );
         return {

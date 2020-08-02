@@ -96,7 +96,7 @@ export class MediumStorage {
 
     /**
      */
-    public getMediumTocs(mediumId: number[]): Promise<MediumToc[]> {
+    public getMediumTocs(mediumId: number[]): Promise<FullMediumToc[]> {
         return inContext((context) => context.getMediumTocs(mediumId));
     }
 

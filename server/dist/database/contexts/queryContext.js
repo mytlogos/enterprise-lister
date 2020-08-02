@@ -383,7 +383,10 @@ class QueryContext {
         const newsPromise = this.query("SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as `read` " +
             "FROM news_board LEFT JOIN news_user ON id=news_id " +
             "WHERE (user_id IS NULL OR user_id = ?) AND updated_at > ?", [uuid, date]);
-        const tocPromise = this.query("SELECT medium_id as mediumId, link FROM medium_toc WHERE updated_at > ?", date);
+        const tocPromise = this.query("SELECT id, medium_id as mediumId, link, " +
+            "countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium_toc WHERE updated_at > ?", date);
         return {
             tocs: await tocPromise,
             media: await mediumPromise,

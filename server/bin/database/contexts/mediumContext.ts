@@ -243,7 +243,7 @@ export class MediumContext extends SubContext {
      */
     public updateMediumToc(mediumToc: FullMediumToc): Promise<boolean> {
         const keys = [
-            "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
+            "countryOfOrigin", "languageOfOrigin", "author", "title", "medium",
             "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
         ];
 
@@ -277,7 +277,7 @@ export class MediumContext extends SubContext {
      */
     public updateMedium(medium: UpdateMedium): Promise<boolean> {
         const keys = [
-            "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
+            "countryOfOrigin", "languageOfOrigin", "author", "title", "medium",
             "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
         ];
         // prevent anybody from removing most important data from media
@@ -368,11 +368,14 @@ export class MediumContext extends SubContext {
         return resultArray.map((value) => value.link).filter((value) => value);
     }
 
-    public getMediumTocs(mediumId: number[]): Promise<MediumToc[]> {
+    public getMediumTocs(mediumId: number[]): Promise<FullMediumToc[]> {
         return this.queryInList(
-            "SELECT medium_id as mediumId, link FROM medium_toc WHERE medium_id ",
+            "SELECT id, medium_id as mediumId, link, " +
+            "countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium_toc WHERE medium_id ",
             mediumId
-        ) as Promise<MediumToc[]>;
+        ) as Promise<FullMediumToc[]>;
     }
 
     public async removeMediumToc(mediumId: number, link: string): Promise<boolean> {

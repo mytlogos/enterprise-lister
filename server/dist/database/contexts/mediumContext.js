@@ -189,7 +189,7 @@ class MediumContext extends subContext_1.SubContext {
      */
     updateMediumToc(mediumToc) {
         const keys = [
-            "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
+            "countryOfOrigin", "languageOfOrigin", "author", "title", "medium",
             "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
         ];
         if (tools_1.invalidId(mediumToc.mediumId) || !mediumToc.link) {
@@ -221,7 +221,7 @@ class MediumContext extends subContext_1.SubContext {
      */
     updateMedium(medium) {
         const keys = [
-            "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
+            "countryOfOrigin", "languageOfOrigin", "author", "title", "medium",
             "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
         ];
         // prevent anybody from removing most important data from media
@@ -298,7 +298,10 @@ class MediumContext extends subContext_1.SubContext {
         return resultArray.map((value) => value.link).filter((value) => value);
     }
     getMediumTocs(mediumId) {
-        return this.queryInList("SELECT medium_id as mediumId, link FROM medium_toc WHERE medium_id ", mediumId);
+        return this.queryInList("SELECT id, medium_id as mediumId, link, " +
+            "countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium_toc WHERE medium_id ", mediumId);
     }
     async removeMediumToc(mediumId, link) {
         const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(link);
