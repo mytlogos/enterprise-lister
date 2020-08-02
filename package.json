@@ -11,7 +11,8 @@
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",
     "test:e2e": "vue-cli-service test:e2e",
-    "test:unit": "vue-cli-service test:unit"
+    "test:unit": "vue-cli-service test:unit",
+    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./tests/*.js ./tests/database/**/*.js ./tests/externals/**/*.js"
   },
   "dependencies": {
     "@rmp135/sql-ts": "^1.5.2",
