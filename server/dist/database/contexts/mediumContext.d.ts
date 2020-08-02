@@ -1,5 +1,5 @@
 import { SubContext } from "./subContext";
-import { LikeMedium, LikeMediumQuery, Medium, MediumToc, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium } from "../../types";
+import { FullMediumToc, LikeMedium, LikeMediumQuery, Medium, MediumToc, SimpleMedium, Synonyms, TocSearchMedium, UpdateMedium } from "../../types";
 import { Query } from "mysql";
 export declare class MediumContext extends SubContext {
     removeToc(tocLink: string): Promise<void>;
@@ -16,6 +16,10 @@ export declare class MediumContext extends SubContext {
     getAllMedia(): Promise<number[]>;
     getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
     getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;
+    /**
+     * Updates a medium from the storage.
+     */
+    updateMediumToc(mediumToc: FullMediumToc): Promise<boolean>;
     /**
      * Updates a medium from the storage.
      */

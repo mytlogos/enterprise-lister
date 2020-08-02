@@ -1,4 +1,5 @@
 import {
+    FullMediumToc,
     LikeMedium,
     LikeMediumQuery,
     Medium,
@@ -12,7 +13,6 @@ import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {MediumContext} from "../contexts/mediumContext";
 import {Query} from "mysql";
-import {lookupService} from "dns";
 
 
 function inContext<T>(callback: ContextCallback<T, MediumContext>, transaction = true) {
@@ -67,6 +67,13 @@ export class MediumStorage {
      */
     public updateMedium(medium: UpdateMedium): Promise<boolean> {
         return inContext((context) => context.updateMedium(medium));
+    }
+
+    /**
+     * Updates a mediumToc from the storage.
+     */
+    public updateMediumToc(medium: FullMediumToc): Promise<boolean> {
+        return inContext((context) => context.updateMediumToc(medium));
     }
 
     /**

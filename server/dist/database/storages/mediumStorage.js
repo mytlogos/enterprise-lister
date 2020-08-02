@@ -47,6 +47,12 @@ class MediumStorage {
         return inContext((context) => context.updateMedium(medium));
     }
     /**
+     * Updates a mediumToc from the storage.
+     */
+    updateMediumToc(medium) {
+        return inContext((context) => context.updateMediumToc(medium));
+    }
+    /**
      */
     addSynonyms(synonyms) {
         return inContext((context) => context.addSynonyms(synonyms));

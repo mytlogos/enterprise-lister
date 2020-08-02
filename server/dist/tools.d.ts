@@ -103,6 +103,7 @@ export declare function ignore(): undefined;
  */
 export declare function findProjectDirPath(file: string): string;
 export declare function isQuery(value: any): value is Query;
+export declare function invalidId(id: any): boolean;
 export interface InternetTester extends EventEmitter.EventEmitter {
     on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
     isOnline(): boolean;

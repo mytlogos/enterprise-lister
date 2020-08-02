@@ -70,7 +70,7 @@ class DatabaseContext extends subContext_1.SubContext {
         const refTable = promise_mysql_1.default.escapeId(referencedTable);
         const refColumn = promise_mysql_1.default.escapeId(referencedColumn);
         const name = promise_mysql_1.default.escapeId(constraintName);
-        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+        let query = `ALTER TABLE ${table} ADD FOREIGN KEY ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
         if (onDelete) {
             query += " ON DELETE " + onDelete;
         }

@@ -535,6 +535,10 @@ function isQuery(value) {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
 exports.isQuery = isQuery;
+function invalidId(id) {
+    return !Number.isInteger(id) || id <= 0;
+}
+exports.invalidId = invalidId;
 class InternetTesterImpl extends events_1.default.EventEmitter {
     constructor() {
         super();

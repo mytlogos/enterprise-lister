@@ -1,7 +1,7 @@
 import {DataBaseBuilder} from "./databaseBuilder";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder("enterprise", 8);
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 9);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")
@@ -92,8 +92,21 @@ dataBaseBuilder.getTableBuilder()
     .setName("medium_toc")
     .parseColumn("medium_id INT UNSIGNED")
     .parseColumn("link VARCHAR(767) NOT NULL")
+    .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
+    .parseColumn("countryOfOrigin VARCHAR(200)")
+    .parseColumn("languageOfOrigin VARCHAR(200)")
+    .parseColumn("author VARCHAR(200)")
+    .parseColumn("artist VARCHAR(200)")
+    .parseColumn("title VARCHAR(200) NOT NULL")
+    .parseColumn("medium INT NOT NULL")
+    .parseColumn("lang VARCHAR(200)")
+    .parseColumn("stateOrigin INT")
+    .parseColumn("stateTL INT")
+    .parseColumn("series VARCHAR(200)")
+    .parseColumn("universe VARCHAR(200)")
     .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-    .parseMeta("PRIMARY KEY(medium_id, link)")
+    .parseMeta("PRIMARY KEY(id)")
+    .parseMeta("UNIQUE(medium_id, link)")
     .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
     .build();
 
@@ -154,6 +167,7 @@ dataBaseBuilder.getTableBuilder()
 dataBaseBuilder.getTableBuilder()
     .setName("episode_release")
     .parseColumn("episode_id INT UNSIGNED NOT NULL")
+    .parseColumn("toc_id INT UNSIGNED")
     .parseColumn("title TEXT NOT NULL")
     .parseColumn("url VARCHAR(767) NOT NULL")
     .parseColumn("source_type VARCHAR(200)")
@@ -161,6 +175,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     .parseMeta("PRIMARY KEY(episode_id, url)")
     .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
+    .parseMeta("FOREIGN KEY(toc_id) REFERENCES medium_toc(id)")
     .build();
 
 dataBaseBuilder.getTableBuilder()

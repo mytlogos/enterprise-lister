@@ -89,7 +89,7 @@ export class DatabaseContext extends SubContext {
         const refTable = mySql.escapeId(referencedTable);
         const refColumn = mySql.escapeId(referencedColumn);
         const name = mySql.escapeId(constraintName);
-        let query = `ALTER TABLE ${table} ADD FOREIGN KEY IF ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+        let query = `ALTER TABLE ${table} ADD FOREIGN KEY ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
 
         if (onDelete) {
             query += " ON DELETE " + onDelete;

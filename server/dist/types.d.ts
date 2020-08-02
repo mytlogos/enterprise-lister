@@ -53,6 +53,21 @@ export interface MediumToc {
     mediumId: number;
     link: string;
 }
+export interface FullMediumToc extends MediumToc {
+    id: number;
+    countryOfOrigin?: string;
+    languageOfOrigin?: string;
+    author?: string;
+    title?: string;
+    medium?: number;
+    artist?: string;
+    lang?: string;
+    stateOrigin?: number;
+    stateTL?: number;
+    series?: string;
+    universe?: string;
+    [key: string]: any;
+}
 export interface MinPart {
     id: number;
     title?: string;

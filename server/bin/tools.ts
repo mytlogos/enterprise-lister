@@ -593,6 +593,10 @@ export function isQuery(value: any): value is Query {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
 
+export function invalidId(id: any): boolean {
+    return !Number.isInteger(id) || id <= 0;
+}
+
 export interface InternetTester extends EventEmitter.EventEmitter {
     on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
 

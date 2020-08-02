@@ -91,8 +91,10 @@ async function getTocMedia(tocs, uuid) {
         else {
             const author = toc.authors ? toc.authors[0].name : undefined;
             const artist = toc.artists ? toc.artists[0].name : undefined;
-            await storage_1.mediumStorage.updateMedium({
-                id: medium.id,
+            await storage_1.mediumStorage.updateMediumToc({
+                id: 0,
+                mediumId: medium.id,
+                link: toc.link,
                 medium: toc.mediumType,
                 author,
                 artist,

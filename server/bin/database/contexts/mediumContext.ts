@@ -1,5 +1,6 @@
 import {SubContext} from "./subContext";
 import {
+    FullMediumToc,
     LikeMedium,
     LikeMediumQuery,
     Medium,
@@ -9,7 +10,7 @@ import {
     TocSearchMedium,
     UpdateMedium
 } from "../../types";
-import {count, Errors, getElseSet, ignore, multiSingle, promiseMultiSingle} from "../../tools";
+import {count, Errors, getElseSet, ignore, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
 import {escape, Query} from "mysql";
 
@@ -235,6 +236,40 @@ export class MediumContext extends SubContext {
                 link: value.link,
             };
         });
+    }
+
+    /**
+     * Updates a medium from the storage.
+     */
+    public updateMediumToc(mediumToc: FullMediumToc): Promise<boolean> {
+        const keys = [
+            "countryOfOrigin?", "languageOfOrigin", "author", "title", "medium",
+            "artist", "lang", "stateOrigin", "stateTL", "series", "universe"
+        ];
+
+        if (invalidId(mediumToc.mediumId) || !mediumToc.link) {
+            throw Error("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
+        }
+        const conditions = [];
+
+        if (invalidId(mediumToc.id)) {
+            conditions.push({column: "medium_id", value: mediumToc.mediumId});
+            conditions.push({column: "link", value: mediumToc.link});
+        } else {
+            conditions.push({column: "id", value: mediumToc.id});
+        }
+        return this.update("medium_toc", (updates, values) => {
+            for (const key of keys) {
+                const value = mediumToc[key];
+
+                if (value === null) {
+                    updates.push(`${key} = NULL`);
+                } else if (value != null) {
+                    updates.push(`${key} = ?`);
+                    values.push(value);
+                }
+            }
+        }, ...conditions);
     }
 
     /**

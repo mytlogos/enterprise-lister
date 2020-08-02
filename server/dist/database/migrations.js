@@ -114,6 +114,35 @@ exports.Migrations = [
         async migrate(context) {
             await ignoreError(() => context.addColumn("medium_toc", "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
         }
+    },
+    {
+        fromVersion: 8,
+        toVersion: 9,
+        async migrate(context) {
+            await ignoreError(() => context.dropForeignKey("medium_toc", "medium_toc_ibfk_1"), [databaseTypes_1.MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
+            await ignoreError(() => context.dropPrimaryKey("medium_toc"), [databaseTypes_1.MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
+            await Promise.all([
+                "id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY",
+                "countryOfOrigin VARCHAR(200)",
+                "languageOfOrigin VARCHAR(200)",
+                "author VARCHAR(200)",
+                "artist VARCHAR(200)",
+                "title VARCHAR(200) NOT NULL",
+                "medium INT NOT NULL",
+                "lang VARCHAR(200)",
+                "stateOrigin INT",
+                "stateTL INT",
+                "series VARCHAR(200)",
+                "universe VARCHAR(200)"
+            ].map((value) => ignoreError(() => context.addColumn("medium_toc", value), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME])));
+            // no error should occur as primary is dropped before if available
+            // context.addPrimaryKey("medium_toc", "id");
+            // no error should occur as foreign key is dropped before if available
+            context.addForeignKey("medium_toc", "medium_toc_ibfk_1", "medium_id", "medium", "id");
+            await ignoreError(() => context.addUnique("medium_toc", "UNIQUE_TOC", "medium_id", "link"), [databaseTypes_1.MySqlErrorNo.ER_DUP_KEYNAME]);
+            await ignoreError(() => context.addColumn("episode_release", "toc_id INT UNSIGNED"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+            await ignoreError(() => context.addForeignKey("episode_release", "episode_release_ibfk_2", "toc_id", "medium_toc", "id"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+        }
     }
 ];
 //# sourceMappingURL=migrations.js.map
