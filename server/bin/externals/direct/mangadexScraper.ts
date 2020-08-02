@@ -1,12 +1,13 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeContentData, EpisodeNews, News} from "../../types";
+import {EpisodeContentData, EpisodeNews, News, ReleaseState} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import logger from "../../logger";
 import {extractIndices, MediaType, sanitizeString} from "../../tools";
 import * as request from "request";
 import {checkTocContent} from "../scraperTools";
-import {Storage} from "../../database/database";
+import {episodeStorage} from "../../database/storages/storage";
+import {MissingResourceError, UrlError} from "../errors";
 
 const jar = request.jar();
 jar.setCookie(
@@ -84,7 +85,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const chapterId = exec[1];
     const urlString = `https://mangadex.org/api/?id=${chapterId}&server=null&type=chapter`;
     const jsonPromise: Promise<any> = loadJson(urlString);
-    const contentData: EpisodeContentData = await Storage.getEpisodeContent(chapterLink);
+    const contentData: EpisodeContentData = await episodeStorage.getEpisodeContent(chapterLink);
 
     if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
         logger.warn(
@@ -93,7 +94,21 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
         );
         return [];
     }
-    const jsonResponse = await jsonPromise;
+    let jsonResponse: any;
+    try {
+        jsonResponse = await jsonPromise;
+    } catch (e) {
+        if (e.statusCode && e.statusCode === 409) {
+            return [{
+                content: [],
+                episodeTitle: contentData.episodeTitle,
+                index: contentData.index,
+                mediumTitle: contentData.mediumTitle
+            } as EpisodeContent];
+        } else {
+            throw e;
+        }
+    }
 
     if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
         logger.warn("changed chapter api format on mangadex " + urlString);
@@ -137,7 +152,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         if (!newsRow.has(".flag").length) {
             const mediumLinkElement = newsRow.find("a.manga_title");
-            currentMediumLink = url.resolve(uri, mediumLinkElement.attr("href"));
+            currentMediumLink = url.resolve(uri, mediumLinkElement.attr("href") as string);
             currentMedium = sanitizeString(mediumLinkElement.text());
             continue;
         }
@@ -152,7 +167,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             continue;
         }
         const titleElement = children.eq(1);
-        const link = url.resolve(uri, titleElement.children("a").attr("href"));
+        const link = url.resolve(uri, titleElement.children("a").attr("href") as string);
         const title = sanitizeString(titleElement.text());
 
         // ignore oneshots, they are not 'interesting' enough, e.g. too short
@@ -161,12 +176,12 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         }
 
         const timeStampElement = children.eq(6).children("time").first();
-        const date = new Date(timeStampElement.attr("datetime"));
+        const date = new Date(timeStampElement.attr("datetime") as string);
 
         const groups = titlePattern.exec(title);
 
         if (!groups) {
-            console.log(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
+            logger.warn(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
             continue;
         }
 
@@ -226,7 +241,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+    const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^\/]+\/?$/;
 
+    if (!urlRegex.test(urlString)) {
+        throw new UrlError("invalid toc url for MangaDex: " + urlString, urlString);
+    }
     const uri = "https://mangadex.org/";
 
     const indexPartMap: Map<number, TocPart> = new Map();
@@ -258,6 +277,9 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                              indexPartMap: Map<number, TocPart>, uri: string, urlString: string): Promise<boolean> {
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#content");
+    if (contentElement.find(".alert-danger").text().match(/Manga .+? (not available)|(does not exist)/i)) {
+        throw new MissingResourceError("Missing ToC on MangaDex", urlString);
+    }
     const mangaTitle = sanitizeString(contentElement.find("h6.card-header").first().text());
     // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");
     if (!mangaTitle) {
@@ -266,6 +288,31 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
     }
 
     toc.title = mangaTitle;
+    let releaseStateElement = null;
+    const tocInfoElements = $("div.m-0");
+    for (let i = 0; i < tocInfoElements.length; i++) {
+        const infoElement = tocInfoElements.eq(i);
+        const children = infoElement.children();
+
+        if (children.eq(0).text().toLocaleLowerCase().includes("status:")) {
+            releaseStateElement = children.eq(1);
+            break;
+        }
+    }
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+
+    if (releaseStateElement) {
+        const releaseStateString = releaseStateElement.text().toLowerCase();
+        if (releaseStateString.includes("complete")) {
+            releaseState = ReleaseState.Complete;
+        } else if (releaseStateString.includes("ongoing")) {
+            releaseState = ReleaseState.Ongoing;
+        } else if (releaseStateString.includes("hiatus")) {
+            releaseState = ReleaseState.Hiatus;
+        }
+    }
+    toc.statusTl = releaseState;
+    const ignoreTitles = /(oneshot)|(special.+chapter)/i;
 
     const chapters = contentElement.find(".chapter-container .chapter-row");
 
@@ -281,7 +328,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             continue;
         }
         const columns = chapter.children();
-        const timeString = columns.eq(3).attr("title");
+        const timeString = columns.eq(3).attr("title") as string;
         const time = new Date(timeString);
 
         if (!timeString || Number.isNaN(time.getTime())) {
@@ -307,7 +354,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
 
             const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
 
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             let part: TocPart | undefined = indexPartMap.get(volIndices.combi);
 
@@ -346,7 +393,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             if (!chapIndices) {
                 throw Error(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
             }
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             const title = `Chapter ${chapIndices.combi}${chapGroups[5] ? " - " + chapGroups[7] : ""}`;
 
@@ -361,14 +408,17 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             checkTocContent(chapterContent);
             toc.content.push(chapterContent);
         } else {
-            logger.warn("volume - chapter format changed on mangadex: recognized neither of them " + urlString);
+            if (chapterTitle.match(ignoreTitles)) {
+                continue;
+            }
+            logger.warn(`volume - chapter format changed on mangadex: recognized neither of them: '${chapterTitle}', ${urlString}`);
             return true;
         }
     }
     const nextPaging = $(".page-item:last-child:not(.disabled)");
 
     if (nextPaging.length) {
-        const link = nextPaging.find("a").attr("href");
+        const link = nextPaging.find("a").attr("href") as string;
         const nextPage = url.resolve(uri, link);
         return scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri, nextPage);
     }

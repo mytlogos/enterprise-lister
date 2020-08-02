@@ -6,7 +6,7 @@ import {TableParser} from "./tableParser";
 import {equalsIgnore, getElseSet, isString, unique} from "../tools";
 import mySql from "promise-mysql";
 import {MultiSingle} from "../types";
-import {QueryContext} from "./queryContext";
+import {DatabaseContext} from "./contexts/databaseContext";
 import * as validate from "validate.js";
 import {Counter} from "../counter";
 
@@ -19,7 +19,7 @@ interface StateProcessor {
 
     initTableSchema(database: DatabaseSchema): void;
 
-    checkTableSchema(context: QueryContext): Promise<void>;
+    checkTableSchema(context: DatabaseContext): Promise<void>;
 
     validateQuery(query: string, parameter: any): Promise<void>;
 }
@@ -45,7 +45,7 @@ interface StateProcessorImpl extends StateProcessor {
 
     startRound(): Promise<string[]>;
 
-    checkTableSchema(context: QueryContext): Promise<void>;
+    checkTableSchema(context: DatabaseContext): Promise<void>;
 
     checkTables(tables: any, track: string[], ignore: string[]): void;
 
@@ -650,7 +650,7 @@ const StateProcessorImpl: StateProcessorImpl = {
     },
 
 
-    async checkTableSchema(context: QueryContext): Promise<void> {
+    async checkTableSchema(context: DatabaseContext): Promise<void> {
         // display all current tables
         const tables: any[] = await context.getTables();
 

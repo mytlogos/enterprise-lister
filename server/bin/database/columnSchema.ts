@@ -11,10 +11,12 @@ export class ColumnSchema {
     public readonly primaryKey?: boolean;
     public readonly foreignKey?: ColumnSchema;
     public readonly default?: string | SqlFunction;
+    public readonly update?: string | SqlFunction;
     public readonly primaryKeyTypeSize?: number;
 
     constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean,
-                foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number) {
+                foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number,
+                update?: string | SqlFunction) {
 
         this.name = name;
         this.type = type;
@@ -23,25 +25,42 @@ export class ColumnSchema {
         this.primaryKey = primaryKey;
         this.foreignKey = foreignKey;
         this.default = defaultV;
+        this.update = update;
         this.primaryKeyTypeSize = primaryKeyTypeSize;
         this.table = null;
     }
 
 
     public getSchema(): string {
-        const thisDef = this.default;
-        let defValue: string | SqlFunction.NOW = " ";
+        // @ts-ignore
+        let defValue: string | SqlFunction = " ";
 
-        if (thisDef) {
+        if (this.default) {
             const values = Object.values(SqlFunction);
             // @ts-ignore
-            if (values.includes(thisDef.trim())) {
-                defValue += "DEFAULT " + thisDef;
+            if (values.includes(this.default.trim())) {
+                defValue += "DEFAULT " + this.default;
             } else {
-                defValue += mySql.escape(thisDef);
+                // todo shouldn't this be "DEFAULT" + mysql.escape(this.default)?
+                defValue += mySql.escape(this.default);
             }
         }
+
+        // @ts-ignore
+        let updateValue: string | SqlFunction = " ";
+
+        if (this.update) {
+            const values = Object.values(SqlFunction);
+            // @ts-ignore
+            if (values.includes(this.update.trim())) {
+                updateValue += "ON UPDATE " + this.update;
+            } else {
+                // todo shouldn't this be "ON UPDATE " + mysql.escape(this.default)?
+                updateValue += mySql.escape(this.update);
+            }
+        }
+        // todo instead of testing for VARCHAR, test for a group of columns or if just typeSize is defined?
         const type = this.type === ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
-        return `${mySql.escapeId(this.name)} ${type} ${this.modifiers.join(" ")}${defValue}`;
+        return `${mySql.escapeId(this.name)} ${type} ${this.modifiers.join(" ")}${defValue}${updateValue}`;
     }
 }

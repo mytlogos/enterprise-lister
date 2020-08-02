@@ -1,7 +1,7 @@
 import { TableSchema } from "./tableSchema";
 import { MediaType } from "../tools";
 import { Trigger } from "./trigger";
-import { QueryContext } from "./queryContext";
+import { DatabaseContext } from "./contexts/databaseContext";
 export interface DatabaseSchema {
     readonly version: number;
     readonly triggers: ReadonlyArray<Trigger>;
@@ -14,10 +14,11 @@ export interface DatabaseSchema {
 export interface Migration {
     readonly fromVersion: number;
     readonly toVersion: number;
-    migrate(context: QueryContext): Promise<void>;
+    migrate(context: DatabaseContext): Promise<void>;
 }
 export declare enum SqlFunction {
-    NOW = "NOW()"
+    NOW = "NOW()",
+    CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
 }
 export declare enum Modifier {
     PRIMARY_KEY = "PRIMARY_KEY",
@@ -35,6 +36,7 @@ export declare enum ColumnType {
     CHAR = "CHAR",
     VARCHAR = "VARCHAR",
     DATETIME = "DATETIME",
+    TIMESTAMP = "TIMESTAMP",
     FLOAT = "FLOAT",
     INT = "INT"
 }
@@ -51,9 +53,27 @@ export interface MediumInWait {
     medium: MediaType;
     link: string;
 }
+export interface ConnectionContext {
+    startTransaction(): Promise<void>;
+    commit(): Promise<void>;
+    rollback(): Promise<void>;
+}
 export declare enum MySqlErrorNo {
     ER_BAD_FIELD_ERROR = 1054,
     ER_DUP_FIELDNAME = 1060,
+    ER_DUP_KEYNAME = 1061,
     ER_DUP_ENTRY = 1062,
+    ER_MULTIPLE_PRI_KEY = 1068,
     ER_CANT_DROP_FIELD_OR_KEY = 1091
+}
+export interface ChangeUser {
+    name?: string;
+    newPassword?: string;
+    password?: string;
+}
+export interface NewsItemRequest {
+    uuid: string;
+    since?: Date;
+    till?: Date;
+    newsIds?: number[];
 }

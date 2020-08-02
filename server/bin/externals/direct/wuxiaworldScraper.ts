@@ -1,10 +1,11 @@
 import {EpisodeContent, Hook, Toc, TocPart} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
 import logger from "../../logger";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
+import {UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.wuxiaworld.com/";
@@ -21,13 +22,13 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const newsRow = newsRows.eq(i);
 
         const mediumLinkElement = newsRow.find("td:first-child .title a:first-child");
-        const tocLink = url.resolve(uri, mediumLinkElement.attr("href"));
+        const tocLink = url.resolve(uri, mediumLinkElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumLinkElement.text());
 
         const titleLink = newsRow.find("td:nth-child(2) a:first-child");
-        const link = url.resolve(uri, titleLink.attr("href"));
+        const link = url.resolve(uri, titleLink.attr("href") as string);
 
-        const episodeTitle = sanitizeString(titleLink.text());
+        let episodeTitle = sanitizeString(titleLink.text());
 
         const timeStampElement = newsRow.find("td:last-child [data-timestamp]");
         const date = new Date(Number(timeStampElement.attr("data-timestamp")) * 1000);
@@ -49,13 +50,24 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             const match = episodeTitle.match(new RegExp(`(${abbrev}${abbrevTitleRegex}`, "i"));
 
             if (!abbrev || !match) {
-                logger.warn("changed title format on wuxiaworld");
-                return;
+                const linkGroup = /chapter-(\d+(\.(\d+))?)$/i.exec(link);
+
+                if (linkGroup) {
+                    regexResult = [];
+                    regexResult[9] = linkGroup[1];
+                    regexResult[10] = linkGroup[2];
+                    regexResult[12] = linkGroup[4];
+                    episodeTitle = linkGroup[2] + " - " + episodeTitle;
+                } else {
+                    logger.warn("changed title format on wuxiaworld");
+                    return;
+                }
+            } else {
+                regexResult = [];
+                regexResult[9] = match[2];
+                regexResult[10] = match[3];
+                regexResult[12] = match[5];
             }
-            regexResult = [];
-            regexResult[9] = match[2];
-            regexResult[10] = match[3];
-            regexResult[12] = match[5];
         }
         let partIndices;
 
@@ -104,9 +116,12 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (urlString.endsWith("-preview")) {
         return [];
     }
+    if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^\/]+\/?$/.test(urlString)) {
+        throw new UrlError("not a toc link for WuxiaWorld: " + urlString, urlString);
+    }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".content");
-    const novelTitle = sanitizeString(contentElement.find("h4").first().text());
+    const novelTitle = sanitizeString(contentElement.find("h2").first().text());
     const volumes = contentElement.find("#accordion > .panel");
 
     if (!volumes.length) {
@@ -121,13 +136,15 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
     const content: TocPart[] = [];
 
+    const chapTitleReg = /^\s*Chapter\s*((\d+)(\.(\d+))?)/;
+    const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.\-](\d+))?)\/?$/;
     for (let vIndex = 0; vIndex < volumes.length; vIndex++) {
-        const volumeElement = volumes.eq(vIndex);
 
+        const volumeElement = volumes.eq(vIndex);
         const volumeIndex = Number(volumeElement.find(".panel-heading .book").first().text().trim());
         const volumeTitle = sanitizeString(volumeElement.find(".panel-heading .title").first().text());
-        const volumeChapters = volumeElement.find(".chapter-item a");
 
+        const volumeChapters = volumeElement.find(".chapter-item a");
         if (Number.isNaN(volumeIndex)) {
             logger.warn("could not find volume index on: " + urlString);
             return [];
@@ -139,30 +156,42 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             combiIndex: volumeIndex,
             totalIndex: volumeIndex
         };
-        checkTocContent(volume, true);
 
+        checkTocContent(volume, true);
         for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
             const chapterElement = volumeChapters.eq(cIndex);
-            const link = url.resolve(uri, chapterElement.attr("href"));
+            const link = url.resolve(uri, chapterElement.attr("href") as string);
+
             const title = sanitizeString(chapterElement.text());
+            const linkGroups = chapLinkReg.exec(link);
 
-            const chapterGroups = /^\s*Chapter\s*((\d+)(\.(\d+))?)/.exec(title);
+            let indices: { combi: number; total: number; fraction?: number; } | null = null;
 
-            if (chapterGroups && chapterGroups[2]) {
-                const indices = extractIndices(chapterGroups, 1, 2, 4);
-                if (!indices) {
-                    throw Error(`changed format on wuxiaworld, got no indices for: '${title}'`);
-                }
-                const chapterContent = {
-                    url: link,
-                    title,
-                    totalIndex: indices.total,
-                    partialIndex: indices.fraction,
-                    combiIndex: indices.combi
-                };
-                checkTocContent(chapterContent);
-                volume.episodes.push(chapterContent);
+            if (linkGroups) {
+                linkGroups[2] = linkGroups[2].replace("-", ".");
+                indices = extractIndices(linkGroups, 2, 3, 5);
             }
+
+            if (!indices) {
+                const chapterTitleGroups = chapTitleReg.exec(title);
+
+                if (chapterTitleGroups && chapterTitleGroups[2]) {
+                    indices = extractIndices(chapterTitleGroups, 1, 2, 4);
+                }
+            }
+            if (!indices) {
+                logger.warn(`changed format on wuxiaworld, got no indices on '${urlString}' for: '${title}'`);
+                continue;
+            }
+            const chapterContent = {
+                url: link,
+                title,
+                totalIndex: indices.total,
+                partialIndex: indices.fraction,
+                combiIndex: indices.combi
+            };
+            checkTocContent(chapterContent);
+            volume.episodes.push(chapterContent);
         }
 
         content.push(volume);
@@ -180,9 +209,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         for (const entry of occurrence.entries()) {
             if (!maxEntry) {
                 maxEntry = entry;
-                continue;
-            }
-            if (maxEntry[1] < entry[1]) {
+            } else if (maxEntry[1] < entry[1]) {
                 maxEntry = entry;
             }
         }
@@ -296,6 +323,23 @@ async function tocSearcher(medium: TocSearchMedium): Promise<Toc | undefined> {
     }
 }
 
+async function search(text: string): Promise<SearchResult[]> {
+    const word = encodeURIComponent(text);
+    const responseJson = await queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + word);
+    const parsed: NovelSearchResponse = JSON.parse(responseJson);
+
+    const searchResult: SearchResult[] = [];
+
+    if (!parsed.result || !parsed.items || !parsed.items.length) {
+        return searchResult;
+    }
+    for (const item of parsed.items) {
+        const tocLink = "https://www.wuxiaworld.com/novel/" + item.slug;
+        searchResult.push({coverUrl: item.coverUrl, link: tocLink, title: item.name});
+    }
+    return searchResult;
+}
+
 interface NovelSearchResponse {
     result: boolean;
     items: NovelSearchItem[];
@@ -318,6 +362,7 @@ interface NovelSearchItem {
 scrapeNews.link = "https://www.wuxiaworld.com/";
 tocSearcher.link = "https://www.wuxiaworld.com/";
 tocSearcher.medium = MediaType.TEXT;
+search.medium = MediaType.TEXT;
 
 export function getHook(): Hook {
     return {
@@ -328,5 +373,6 @@ export function getHook(): Hook {
         tocAdapter: scrapeToc,
         contentDownloadAdapter: scrapeContent,
         tocSearchAdapter: tocSearcher,
+        searchAdapter: search,
     };
 }

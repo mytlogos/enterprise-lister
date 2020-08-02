@@ -1,5 +1,11 @@
 import { MediaType } from "./tools";
 import { ScrapeType } from "./externals/types";
+export interface SearchResult {
+    coverUrl?: string;
+    link: string;
+    title: string;
+    author?: string;
+}
 export interface SimpleMedium {
     id?: number;
     countryOfOrigin?: string;
@@ -7,6 +13,21 @@ export interface SimpleMedium {
     author?: string;
     title: string;
     medium: number;
+    artist?: string;
+    lang?: string;
+    stateOrigin?: number;
+    stateTL?: number;
+    series?: string;
+    universe?: string;
+    [key: string]: any;
+}
+export interface UpdateMedium {
+    id: number;
+    countryOfOrigin?: string;
+    languageOfOrigin?: string;
+    author?: string;
+    title?: string;
+    medium?: number;
     artist?: string;
     lang?: string;
     stateOrigin?: number;
@@ -28,12 +49,33 @@ export interface TocSearchMedium {
     medium: MediaType;
     synonyms: string[];
 }
-export interface Part {
+export interface MediumToc {
+    mediumId: number;
+    link: string;
+}
+export interface FullMediumToc extends MediumToc {
+    id: number;
+    countryOfOrigin?: string;
+    languageOfOrigin?: string;
+    author?: string;
+    title?: string;
+    medium?: number;
+    artist?: string;
+    lang?: string;
+    stateOrigin?: number;
+    stateTL?: number;
+    series?: string;
+    universe?: string;
+    [key: string]: any;
+}
+export interface MinPart {
     id: number;
     title?: string;
     mediumId: number;
     totalIndex: number;
     partialIndex?: number;
+}
+export interface Part extends MinPart {
     episodes: Episode[] | number[];
 }
 export interface FullPart extends Part {
@@ -47,6 +89,7 @@ export interface SimpleEpisode {
     partId: number;
     totalIndex: number;
     partialIndex?: number;
+    combiIndex?: number;
     releases: EpisodeRelease[];
 }
 export interface Episode extends SimpleEpisode {
@@ -189,6 +232,16 @@ export interface EpisodeContentData {
     index: number;
     mediumTitle: string;
 }
+export declare enum ReleaseState {
+    Unknown = 0,
+    Ongoing = 1,
+    Hiatus = 2,
+    Discontinued = 3,
+    Dropped = 4,
+    Complete = 5
+}
+export declare type ExternalUserUuid = string;
+export declare type UserUuid = string;
 export declare enum ScrapeName {
     searchForToc = "searchForToc",
     toc = "toc",
@@ -212,8 +265,9 @@ export interface JobItem {
     interval: number;
     deleteAfterRun: boolean;
     id: number;
-    name?: string;
+    name: string;
     runAfter?: number;
+    runningSince?: Date;
     nextRun?: Date;
     lastRun?: Date;
     arguments?: string;

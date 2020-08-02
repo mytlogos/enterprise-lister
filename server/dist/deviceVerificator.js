@@ -4,17 +4,17 @@ const tslib_1 = require("tslib");
 const dgram_1 = tslib_1.__importDefault(require("dgram"));
 const tools_1 = require("./tools");
 const env_1 = tslib_1.__importDefault(require("./env"));
+const logger_1 = tslib_1.__importDefault(require("./logger"));
 const PORT = 3001;
 const server = dgram_1.default.createSocket("udp4");
 server.on("listening", () => {
     const address = server.address();
     server.setBroadcast(true);
     if (tools_1.isString(address)) {
-        console.log("is String");
-        console.log("UDP Server listening on " + address);
+        logger_1.default.info("UDP Server listening on " + address);
     }
     else {
-        console.log("UDP Server listening on " + address.address + ":" + address.port);
+        logger_1.default.info("UDP Server listening on " + address.address + ":" + address.port);
     }
 });
 server.on("message", (message, remote) => {
@@ -22,8 +22,9 @@ server.on("message", (message, remote) => {
         return;
     }
     const decoded = message.toString();
+    logger_1.default.info(`UDP Message received: ${remote.address}:${remote.port} - ${decoded}`);
     if ("DISCOVER_SERVER_REQUEST_ENTERPRISE" === decoded) {
-        console.log(`server was discovered in ${env_1.default.development} and ${process.env.NODE_ENV}`);
+        logger_1.default.info(`server was discovered in ${env_1.default.development} and ${process.env.NODE_ENV}`);
         const response = "ENTERPRISE_" + (env_1.default.development ? "DEV" : "PROD");
         const buffer = Buffer.from(response);
         const client = dgram_1.default.createSocket("udp4");
@@ -31,11 +32,10 @@ server.on("message", (message, remote) => {
             if (err) {
                 throw err;
             }
-            console.log(`UDP message '${buffer.toString()}' sent to ${remote.address}:${remote.port}`);
+            logger_1.default.info(`UDP message '${buffer.toString()}' sent to ${remote.address}:${remote.port}`);
             client.close();
         });
     }
-    console.log(remote.address + ":" + remote.port + " - " + message);
 });
 server.bind(PORT);
 //# sourceMappingURL=deviceVerificator.js.map

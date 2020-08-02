@@ -13,11 +13,13 @@ import {
     searchForTocJob,
     toc
 } from "./scraperTools";
-import {Job, JobQueue} from "../jobManager";
-import {getElseSet, isString} from "../tools";
-import {Storage} from "../database/database";
-import logger, {logError} from "../logger";
+import {Job, JobQueue, OutsideJob} from "../jobManager";
+import {getElseSet, isString, maxValue, stringify} from "../tools";
+import logger from "../logger";
 import {JobItem, JobRequest, JobState, MilliTime, ScrapeName} from "../types";
+import {jobStorage} from "../database/storages/storage";
+import * as dns from "dns";
+import {getStore} from "../asyncStorage";
 import Timeout = NodeJS.Timeout;
 
 class ScrapeJob {
@@ -27,7 +29,7 @@ class ScrapeJob {
     public static readonly feed = new ScrapeJob(ScrapeName.feed, feed, ScrapeEvent.FEED);
     public static readonly news = new ScrapeJob(ScrapeName.news, news, ScrapeEvent.NEWS);
     public static readonly newsAdapter = new ScrapeJob(ScrapeName.newsAdapter, scrapeNewsJob, ScrapeEvent.NEWS);
-    public static readonly oneTimeUser = new ScrapeJob(ScrapeName.oneTimeUser, list, ScrapeEvent.NEWS);
+    public static readonly oneTimeUser = new ScrapeJob(ScrapeName.oneTimeUser, list, ScrapeEvent.LIST);
     public static readonly checkTocs = new ScrapeJob(ScrapeName.checkTocs, checkTocsJob);
     public static readonly queueTocs = new ScrapeJob(ScrapeName.queueTocs, queueTocsJob);
     public static readonly remapMediaParts = new ScrapeJob(ScrapeName.remapMediaParts, remapMediaParts);
@@ -47,10 +49,20 @@ class ScrapeJob {
 }
 
 // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
-const clearJobsOnStartPromise = Storage.stopJobs().catch(console.error);
+const clearJobsOnStartPromise = jobStorage.stopJobs().catch(logger.error);
+
+const missingConnections = new Set<Date>();
 
 // tslint:disable-next-line:max-classes-per-file
 export class JobScraperManager {
+
+    private static initStore(item: JobItem) {
+        const store = getStore();
+        store.set("label", [`job-${item.id}-${item.name}`]);
+    }
+
+    public automatic = true;
+    public filter: undefined | ((item: JobItem) => boolean);
     private paused = true;
     private readonly helper = new ScraperHelper();
     private readonly queue = new JobQueue({maxActive: 200});
@@ -66,7 +78,7 @@ export class JobScraperManager {
         this.helper.on(event, callback);
     }
 
-    public removeDependant(key: number | string): void {
+    public async removeDependant(key: number | string): Promise<void> {
         const job = this.jobMap.get(key);
         if (!job) {
             logger.warn("tried to remove non existant job");
@@ -92,7 +104,7 @@ export class JobScraperManager {
             this.jobMap.delete(key);
         }
         this.queue.removeJob(job);
-        Storage.removeJob(key).catch(logError);
+        return jobStorage.removeJob(key).catch(logger.error);
     }
 
     public async setup(): Promise<void> {
@@ -137,7 +149,7 @@ export class JobScraperManager {
                 runImmediately: true
             }
         );
-        this.addJobs(...jobs);
+        await this.addJobs(...jobs);
     }
 
     public start(): void {
@@ -148,9 +160,14 @@ export class JobScraperManager {
             if (this.paused) {
                 return;
             }
-            this.fetchJobs().catch(console.error);
-        }, 60000);
-        this.fetchJobs().catch(console.error);
+            if (!this.automatic) {
+                return;
+            }
+            this.fetchJobs().catch(logger.error);
+            this.checkRunningJobs().catch(logger.error);
+            this.checkCurrentVsStorage().then(() => this.checkRunningStorageJobs()).catch(logger.error);
+        }, 60_000);
+        this.fetchJobs().catch(logger.error);
 
         if (this.intervalId) {
             clearInterval(this.intervalId);
@@ -176,6 +193,17 @@ export class JobScraperManager {
         }
     }
 
+    /**
+     * Mainly for test purposes
+     * @param jobIds
+     */
+    public async runJobs(...jobIds: number[]) {
+        logger.info(`start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
+        const jobs = await jobStorage.getJobsById(jobIds);
+        this.processJobItems(jobs);
+        logger.info(`fetched jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
+    }
+
     public async addJobs(...jobs: JobRequest[]) {
         let waitForOtherRequest: JobRequest[] = [];
         const addJobs = jobs.filter((value) => {
@@ -188,7 +216,7 @@ export class JobScraperManager {
         });
 
         while (addJobs.length) {
-            await Storage.addJobs(addJobs);
+            await jobStorage.addJobs(addJobs);
             addJobs.length = 0;
             waitForOtherRequest = waitForOtherRequest.filter((value) => {
                 if (isJobItem(value.runAfter)) {
@@ -205,10 +233,17 @@ export class JobScraperManager {
         }
     }
 
+    public getJobs(): OutsideJob[] {
+        return this.queue.getJobs();
+    }
+
     private addDependant(jobsMap: Map<ScrapeJob, JobItem[]>): void {
         for (const [key, value] of jobsMap.entries()) {
             for (const job of value) {
                 if (this.jobMap.has(job.id)) {
+                    continue;
+                }
+                if (this.filter && !this.filter(job)) {
                     continue;
                 }
                 if (key.event) {
@@ -220,10 +255,124 @@ export class JobScraperManager {
         }
     }
 
+    private async checkCurrentVsStorage() {
+        const runningJobs: JobItem[] = await jobStorage.getJobsInState(JobState.RUNNING);
+
+        // jobs which are marked as running in storage, while not running
+        const invalidJobs: JobItem[] = [];
+
+        const jobs = this.queue.getJobs();
+        const currentlyRunningJobIds = new Set();
+        for (const job of jobs) {
+            if (job.running) {
+                currentlyRunningJobIds.add(job.jobId);
+            }
+        }
+        for (const runningJob of runningJobs) {
+            if (!currentlyRunningJobIds.has(runningJob.id)) {
+                invalidJobs.push(runningJob);
+            }
+        }
+        if (invalidJobs.length) {
+            const identifier = [];
+            const removeJobs: JobItem[] = [];
+            const updateJobs = invalidJobs.filter((value) => {
+                identifier.push(value.name ? value.name : value.id);
+
+                if (value.deleteAfterRun) {
+                    removeJobs.push(value);
+                    return false;
+                }
+
+                value.lastRun = new Date();
+
+                if (value.interval > 0) {
+                    if (value.interval < 60000) {
+                        value.interval = 60000;
+                    }
+                    value.nextRun = new Date(value.lastRun.getTime() + value.interval);
+                }
+                value.state = JobState.WAITING;
+                return true;
+            });
+            if (removeJobs.length) {
+                try {
+                    await jobStorage.removeJobs(removeJobs);
+                    logger.warn(`Removed ${removeJobs.length} Invalid Jobs: ${JSON.stringify(removeJobs)}`);
+                } catch (e) {
+                    logger.error("error while removing invalid Jobs" + stringify(e));
+                }
+            }
+            if (updateJobs.length) {
+                try {
+                    await jobStorage.updateJobs(updateJobs);
+                    const stringified = JSON.stringify(updateJobs);
+                    logger.warn(`Set ${updateJobs.length} Invalid Jobs back to 'waiting': ${stringified}`);
+                } catch (e) {
+                    logger.error("error while removing invalid Jobs" + stringify(e));
+                }
+            }
+        }
+    }
+
+    private async checkRunningJobs() {
+        const now = new Date();
+        try {
+            // @ts-ignore
+            await dns.promises.lookup("google.de");
+            const timeoutDates = [...missingConnections.values()];
+            const maxDate = maxValue(timeoutDates);
+
+            now.setMinutes(-30);
+            // if there at least 5 jobs which started 30 min before but did not finish,
+            // when there is at least one timeout, stop this process (pm2 should restart it then again)
+            if (maxDate) {
+                if (maxDate < now && this.queue.invalidRunning(maxDate, 5)) {
+                    logger.error("Restarting Process due to long running jobs");
+                    process.exit(1);
+                    return;
+                }
+                now.setHours(-2);
+                if (maxDate < now && this.queue.invalidRunning(maxDate, 1)) {
+                    logger.error("Restarting Process due to long running jobs");
+                    process.exit(1);
+                    return;
+                }
+            }
+        } catch (e) {
+            missingConnections.add(now);
+        }
+    }
+
+    private async checkRunningStorageJobs() {
+        const runningJobs: JobItem[] = await jobStorage.getJobsInState(JobState.RUNNING);
+        const twoHoursAgo = new Date();
+        twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
+        for (const runningJob of runningJobs) {
+            if (!runningJob.runningSince) {
+                logger.warn(`job ${runningJob.id} in state 'RUNNING' without a start date`);
+                continue;
+            }
+
+            if (runningJob.runningSince < twoHoursAgo) {
+                logger.error(`Cannot finish jobs properly, StorageRunning: ${runningJobs.length}, QueueRunning: ${this.queue.runningJobs} - exiting application with error code 1`);
+                process.exit(1);
+            }
+        }
+    }
+
     private async fetchJobs(): Promise<void> {
-        console.log("fetching jobs");
-        const scrapeBoard: JobItem[] = await Storage.getJobs();
+        if (!this.automatic) {
+            return;
+        }
+        if (this.queue.isFull()) {
+            logger.info("skip fetching jobs, queue is full");
+            return;
+        }
+        logger.info(`start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
+        const scrapeBoard: JobItem[] = await jobStorage.getJobs();
         this.processJobItems(scrapeBoard);
+        logger.info(`fetched jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
     }
 
     private processJobItems(items: JobItem[]) {
@@ -285,7 +434,8 @@ export class JobScraperManager {
     }
 
     private queueEmittableJob(jobType: ScrapeJob, item: JobItem) {
-        const job = this.queue.addJob(() => {
+        const job = this.queue.addJob(item.id, () => {
+            JobScraperManager.initStore(item);
             if (!jobType.event) {
                 logger.warn("running emittable job without event name: " + jobType);
                 return Promise.resolve();
@@ -301,7 +451,8 @@ export class JobScraperManager {
     }
 
     private queueJob(jobType: ScrapeJob, item: JobItem) {
-        const job = this.queue.addJob(() => {
+        const job = this.queue.addJob(item.id, () => {
+            JobScraperManager.initStore(item);
             if (Array.isArray(item.arguments)) {
                 this.processJobCallback(jobType.func(...item.arguments));
             } else {
@@ -330,9 +481,9 @@ export class JobScraperManager {
             return;
         }
         if (Array.isArray(value)) {
-            this.addJobs(...value).catch(logError);
+            this.addJobs(...value).catch(logger.error);
         } else {
-            this.addJobs(value).catch(logError);
+            this.addJobs(value).catch(logger.error);
         }
     }
 
@@ -343,19 +494,19 @@ export class JobScraperManager {
             }
             this.jobMap.set(item.id, job);
             item.state = JobState.RUNNING;
-            await Storage.updateJobs(item);
-            console.log(`Job ${item.name ? item.name : item.id} is running now, ${new Date()}`);
+            await jobStorage.updateJobs(item);
+            logger.info(`Job ${item.name ? item.name : item.id} is running now`);
         };
         job.onDone = async () => {
             if (item.name) {
                 this.jobMap.delete(item.name);
             }
             this.jobMap.delete(item.id);
-            const newJobs = await Storage.getAfterJobs(item.id);
+            const newJobs = await jobStorage.getAfterJobs(item.id);
             this.processJobItems(newJobs);
 
             if (item.deleteAfterRun) {
-                await Storage.removeJobs(item);
+                await jobStorage.removeJobs(item);
             } else {
                 item.lastRun = new Date();
 
@@ -366,9 +517,9 @@ export class JobScraperManager {
                     item.nextRun = new Date(item.lastRun.getTime() + item.interval);
                 }
                 item.state = JobState.WAITING;
-                await Storage.updateJobs(item);
+                await jobStorage.updateJobs(item);
             }
-            console.log(`Job ${item.name ? item.name : item.id} finished now, ${new Date()}`);
+            logger.info(`Job ${item.name ? item.name : item.id} finished now`);
         };
     }
 
@@ -389,4 +540,4 @@ function isJobItem(value: any): value is JobItem {
 }
 
 export const DefaultJobScraper = new JobScraperManager();
-DefaultJobScraper.start();
+// DefaultJobScraper.start();

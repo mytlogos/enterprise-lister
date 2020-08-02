@@ -1,11 +1,12 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {extractIndices, MediaType, sanitizeString} from "../../tools";
+import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
-import {searchToc} from "./directTools";
+import {SearchResult as TocSearchResult, searchToc} from "./directTools";
+import {MissingResourceError, UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
@@ -23,8 +24,8 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         const mediumElement = children.eq(0);
         const titleElement = children.eq(1);
-        const link = url.resolve(baseUri, titleElement.attr("href"));
-        const mediumTocLink = url.resolve(baseUri, mediumElement.attr("href"));
+        const link = url.resolve(baseUri, titleElement.attr("href") as string);
+        const mediumTocLink = url.resolve(baseUri, mediumElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumElement.text());
         const title = sanitizeString(titleElement.text());
 
@@ -36,7 +37,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
         const groups = titlePattern.exec(title);
 
         if (!groups) {
-            console.log(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
+            logger.warn(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
             continue;
         }
 
@@ -106,6 +107,9 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
     const $ = await queueCheerioRequest(chapterLink);
+    if ($("head > title").text() === "Page not found!") {
+        throw new MissingResourceError("Missing Toc on NovelFull", chapterLink);
+    }
     const mediumTitleElement = $(".breadcrumb li:nth-child(2) a");
     const titleElement = $(".breadcrumb span");
 
@@ -113,14 +117,14 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const mediumTitle = sanitizeString(mediumTitleElement.text());
 
     if (!episodeTitle || !mediumTitle) {
-        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
     const exec = chapReg.exec(episodeTitle);
 
     if (!exec || !mediumTitle) {
-        logger.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const index = Number(exec[1]);
@@ -149,10 +153,12 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
-        logger.info("not a toc link for mangahasu: " + urlString);
-        return [];
+        throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
     }
     const $ = await queueCheerioRequest(urlString);
+    if ($("head > title").text() === "Page not found!") {
+        throw new MissingResourceError("Missing Toc on NovelFull", urlString);
+    }
     const contentElement = $(".wrapper_content");
     const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().text());
     // todo process metadata and get more (like author)
@@ -172,11 +178,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const partContents: TocPart[] = [];
     const indexPartMap: Map<number, TocPart> = new Map();
     const chapterContents: TocEpisode[] = [];
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+    const releaseStateElement = $("div.col-md-12:nth-child(5) > span:nth-child(2) > a:nth-child(1)");
 
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    if (releaseStateString.includes("complete")) {
+        releaseState = ReleaseState.Complete;
+    } else if (releaseStateString.includes("ongoing")) {
+        releaseState = ReleaseState.Ongoing;
+    }
     const toc: Toc = {
         link: urlString,
         content: [],
         title: mangaTitle,
+        statusTl: releaseState,
         mediumType: MediaType.IMAGE
     };
 
@@ -212,7 +227,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
             const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
 
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             if (!chapIndices) {
                 logger.warn("changed episode format on mangaHasu toc: got no index " + urlString);
@@ -254,7 +269,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             if (!chapIndices) {
                 throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
             }
-            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
             let title = "Chapter " + chapIndices.combi;
 
@@ -287,17 +302,16 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     return [toc];
 }
 
-async function tocSearchAdapter(search: TocSearchMedium): Promise<Toc | undefined> {
+async function tocSearchAdapter(searchMedium: TocSearchMedium): Promise<Toc | undefined> {
     return searchToc(
-        search,
+        searchMedium,
         scrapeToc,
-        "http://mangahasu.se/",
-        (parameter) => "http://mangahasu.se/advanced-search.html?keyword=" + parameter,
-        "a.name-manga"
+        "https://mangahasu.se/",
+        (searchString) => scrapeSearch(searchString, searchMedium)
     );
 }
 
-async function scrapeSearch(searchWords: string) {
+async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promise<TocSearchResult> {
     const urlString = "http://mangahasu.se/search/autosearch";
 
     const body = "key=" + searchWords;
@@ -312,13 +326,69 @@ async function scrapeSearch(searchWords: string) {
         body
     });
 
-    return $("a.a-item");
+    const links = $("a.a-item");
+
+    if (!links.length) {
+        return {done: true};
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+
+        const titleElement = linkElement.find(".name");
+        const text = sanitizeString(titleElement.text());
+
+        if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
+            const tocLink = linkElement.attr("href") as string;
+            return {value: tocLink, done: true};
+        }
+    }
+
+    return {done: false};
+}
+
+async function search(searchWords: string): Promise<SearchResult[]> {
+    const urlString = "http://mangahasu.se/search/autosearch";
+
+    const body = "key=" + searchWords;
+    // TODO: 26.08.2019 this does not work for any reason
+    const $ = await queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "mangahasu.se",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    const searchResults: SearchResult[] = [];
+    const links = $("a.a-item");
+
+    if (!links.length) {
+        return searchResults;
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+
+        const titleElement = linkElement.find(".name");
+        const authorElement = linkElement.find(".author");
+        const coverElement = linkElement.find("img");
+
+        const text = sanitizeString(titleElement.text());
+        const link = url.resolve("http://mangahasu.se/", linkElement.attr("href") as string);
+        const author = sanitizeString(authorElement.text());
+        const coverLink = coverElement.attr("src");
+
+        searchResults.push({coverUrl: coverLink, author, link, title: text});
+    }
+
+    return searchResults;
 }
 
 scrapeNews.link = "http://mangahasu.se/";
 tocSearchAdapter.link = "http://mangahasu.se/";
 tocSearchAdapter.medium = MediaType.IMAGE;
 tocSearchAdapter.blindSearch = true;
+search.medium = MediaType.IMAGE;
 
 export function getHook(): Hook {
     return {
@@ -328,6 +398,7 @@ export function getHook(): Hook {
         newsAdapter: scrapeNews,
         contentDownloadAdapter,
         tocSearchAdapter,
-        tocAdapter: scrapeToc
+        tocAdapter: scrapeToc,
+        searchAdapter: search
     };
 }

@@ -6,6 +6,7 @@ import compression from "compression";
 // helps by preventing some known http vulnerabilities by setting http headers appropriately
 import helmet from "helmet";
 // own router
+import log from "./logger";
 import {apiRouter} from "./api";
 import {blockRequests} from "./timer";
 import emojiStrip from "emoji-strip";
@@ -16,7 +17,13 @@ export const app = express();
 const parentDirName = path.dirname(path.dirname(__dirname));
 
 app.use(blockRequests);
-app.use(logger("dev"));
+app.use(logger(":method :url :status :response-time ms - :res[content-length]", {
+    stream: {
+        write(str: string): void {
+            log.info(str.trim());
+        }
+    }
+}));
 app.use(helmet());
 app.use(compression());
 
@@ -39,6 +46,7 @@ app.get("/", (req, res) => {
 
 app.use((req: Request, res: Response) => {
     if (!req.path.startsWith("/api")) {
+        // @ts-ignore
         res.redirect(`/?redirect=${req.path}`);
     }
 });
@@ -51,10 +59,13 @@ app.use((req, res, next) => {
 // error handler
 app.use((err: HttpError, req: Request, res: Response) => {
     // set locals, only providing error in development
+    // @ts-ignore
     res.locals.message = err.message;
+    // @ts-ignore
     res.locals.error = req.app.get("env") === "development" ? err : {};
 
     // render the error page
+    // @ts-ignore
     res.sendStatus(err.status || 500);
 });
 

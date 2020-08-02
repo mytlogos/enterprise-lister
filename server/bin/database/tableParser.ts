@@ -169,6 +169,9 @@ export class TableParser {
             case ColumnType.DATETIME:
                 type = ColumnType.DATETIME;
                 break;
+            case ColumnType.TIMESTAMP:
+                type = ColumnType.TIMESTAMP;
+                break;
             case ColumnType.BOOLEAN:
                 type = ColumnType.BOOLEAN;
                 break;
@@ -200,6 +203,7 @@ export class TableParser {
         }
         const modifiers: Modifier[] = [];
         let defaultValue: string | undefined;
+        let updateValue: string | undefined;
 
         for (let i = 2; i < parts.length; i++) {
             const modifierPart = parts[i];
@@ -226,7 +230,7 @@ export class TableParser {
                     break;
                 case "DEFAULT":
                     i++;
-                    const defaultValueObj = this._getDefaultValue(parts, i);
+                    const defaultValueObj = this._getExpressionValue(parts, i);
 
                     if (!defaultValueObj || !defaultValueObj.value) {
                         logger.warn(`no default value specified for '${name}' of ${table.name}`);
@@ -234,6 +238,22 @@ export class TableParser {
                     }
                     defaultValue = defaultValueObj.value;
                     i = defaultValueObj.index;
+                    break;
+                case "ON":
+                    i++;
+                    if (parts[i].toLowerCase() !== "update") {
+                        // for now skip all column 'triggers'? which are not triggered on update
+                        break;
+                    }
+                    i++;
+                    const updateValueObj = this._getExpressionValue(parts, i);
+
+                    if (!updateValueObj || !updateValueObj.value) {
+                        logger.warn(`no update value specified for '${name}' of ${table.name}`);
+                        return null;
+                    }
+                    updateValue = updateValueObj.value;
+                    i = updateValueObj.index;
                     break;
                 default:
                     logger.warn(`could not parse modifier for: '${modifierPart}'`);
@@ -243,12 +263,15 @@ export class TableParser {
                 modifiers.push(modifier);
             }
         }
-        const column = new ColumnSchema(name, type, modifiers, typeSize, false, undefined, defaultValue);
+        const column = new ColumnSchema(
+            name, type, modifiers, typeSize,
+            false, undefined, defaultValue, undefined, updateValue
+        );
         column.table = table;
         return column;
     }
 
-    private static _getDefaultValue(columnParts: string[], index: number): { index: number, value: string } {
+    private static _getExpressionValue(columnParts: string[], index: number): { index: number, value: string } {
         let defaultValue = columnParts[index];
 
         if (!defaultValue) {
@@ -263,7 +286,7 @@ export class TableParser {
                 defaultValue += " " + currentValue;
 
                 if (currentValue.startsWith("(")) {
-                    defaultValue += TableParser._getDefaultValue(columnParts, index);
+                    defaultValue += TableParser._getExpressionValue(columnParts, index);
                 } else if (currentValue.endsWith(")")) {
                     foundClosingParenthesis = true;
                     break;

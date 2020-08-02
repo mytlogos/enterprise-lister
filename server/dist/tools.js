@@ -1,15 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
-const logger_1 = tslib_1.__importDefault(require("./logger"));
 const crypto_1 = tslib_1.__importDefault(require("crypto"));
 const crypto_2 = tslib_1.__importDefault(require("crypto"));
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
 //  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
-const bcrypt_nodejs_1 = tslib_1.__importDefault(require("bcrypt-nodejs"));
+const bcryptjs_1 = tslib_1.__importDefault(require("bcryptjs"));
 const emoji_strip_1 = tslib_1.__importDefault(require("emoji-strip"));
 const fs = tslib_1.__importStar(require("fs"));
 const path = tslib_1.__importStar(require("path"));
+const dns = tslib_1.__importStar(require("dns"));
+const events_1 = tslib_1.__importDefault(require("events"));
 function remove(array, item) {
     const index = array.indexOf(item);
     if (index < 0) {
@@ -20,7 +21,7 @@ function remove(array, item) {
 }
 exports.remove = remove;
 function removeLike(array, equals) {
-    const index = array.findIndex(equals);
+    const index = array.findIndex((value) => equals(value));
     if (index < 0) {
         return false;
     }
@@ -35,13 +36,16 @@ function forEachArrayLike(arrayLike, callback, start = 0) {
 }
 exports.forEachArrayLike = forEachArrayLike;
 function promiseMultiSingle(item, cb) {
+    if (typeof cb !== "function") {
+        return Promise.reject(new TypeError(`callback is not a function: '${cb}'`));
+    }
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
         return Promise.all(item.map((value, index) => Promise.resolve(cb(value, index, index < maxIndex))));
     }
     return new Promise((resolve, reject) => {
         try {
-            resolve(cb(item));
+            resolve(cb(item, 0, false));
         }
         catch (e) {
             reject(e);
@@ -87,6 +91,16 @@ function getElseSet(map, key, valueCb) {
     return value;
 }
 exports.getElseSet = getElseSet;
+function getElseSetObj(map, key, valueCb) {
+    // @ts-ignore
+    let value = map[key];
+    if (value == null) {
+        // @ts-ignore
+        map[key] = value = valueCb();
+    }
+    return value;
+}
+exports.getElseSetObj = getElseSetObj;
 function unique(array, isEqualCb) {
     const uniques = [];
     if (isEqualCb) {
@@ -220,8 +234,7 @@ function relativeToAbsoluteTime(relative) {
     const absolute = new Date();
     const timeValue = value && value.match("an?") ? 1 : Number(value);
     if (Number.isNaN(timeValue)) {
-        logger_1.default.warn(`'${value}' is not a number`);
-        return null;
+        throw new Error(`'${value}' is not a number`);
     }
     if (/^(s|secs?|seconds?)$/.test(unit)) {
         absolute.setSeconds(absolute.getSeconds() - timeValue);
@@ -245,8 +258,7 @@ function relativeToAbsoluteTime(relative) {
         absolute.setFullYear(absolute.getFullYear() - timeValue);
     }
     else {
-        logger_1.default.info(`unknown time unit: '${unit}'`);
-        return null;
+        throw new Error(`unknown time unit: '${unit}'`);
     }
     return absolute;
 }
@@ -269,6 +281,38 @@ function equalsRelease(firstRelease, secondRelease) {
             && firstRelease.title === secondRelease.title);
 }
 exports.equalsRelease = equalsRelease;
+function stringify(object) {
+    const seen = new WeakSet();
+    return JSON.stringify(object, (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular reference]";
+            }
+            seen.add(value);
+        }
+        return jsonReplacer(key, value);
+    });
+}
+exports.stringify = stringify;
+function jsonReplacer(key, value) {
+    if (value instanceof Error) {
+        const error = {};
+        Object.getOwnPropertyNames(value).forEach((errorKey) => {
+            // @ts-ignore
+            error[errorKey] = value[errorKey];
+        });
+        return error;
+    }
+    else if (value instanceof Map) {
+        const map = {};
+        for (const [k, v] of value.entries()) {
+            map[JSON.stringify(k)] = v;
+        }
+        return map;
+    }
+    return value;
+}
+exports.jsonReplacer = jsonReplacer;
 function sanitizeString(s) {
     if (!s) {
         return s;
@@ -287,7 +331,7 @@ function stringToNumberList(s) {
         .filter((value) => !Number.isNaN(value) && value);
 }
 exports.stringToNumberList = stringToNumberList;
-const ShaHash = {
+exports.ShaHash = {
     tag: "sha512",
     /**
      *
@@ -296,12 +340,23 @@ const ShaHash = {
      * @return {{salt: string, hash: string}}
      */
     hash(text, saltLength = 20) {
-        const salt = crypto_1.default.randomBytes(Math.ceil(saltLength / 2))
-            .toString("hex") // convert to hexadecimal format
-            .slice(0, saltLength); // return required number of characters */
-        return { salt, hash: this.innerHash(text, salt) };
+        return promisify(() => {
+            if (!Number.isInteger(saltLength)) {
+                throw TypeError(`'${saltLength}' not an integer`);
+            }
+            const salt = crypto_1.default.randomBytes(Math.ceil(saltLength / 2))
+                .toString("hex") // convert to hexadecimal format
+                .slice(0, saltLength); // return required number of characters */
+            return { salt, hash: this.innerHash(text, salt) };
+        });
     },
     innerHash(text, salt) {
+        if (!isString(text)) {
+            throw TypeError(`'${text}' not a string`);
+        }
+        if (!isString(salt)) {
+            throw TypeError(`'${salt}' not a string`);
+        }
         const hash = crypto_1.default.createHash("sha512");
         hash.update(salt + text);
         return hash.digest("hex");
@@ -310,29 +365,36 @@ const ShaHash = {
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash, salt) {
-        return this.innerHash(text, salt) === hash;
+        return promisify(() => this.innerHash(text, salt) === hash);
     },
 };
 exports.Md5Hash = {
     tag: "md5",
     hash(text) {
-        const newsHash = crypto_2.default
-            .createHash("md5")
-            .update(text)
-            .digest("hex");
-        return { hash: newsHash };
+        return promisify(() => {
+            if (!isString(text)) {
+                throw TypeError(`'${text}' not a string`);
+            }
+            const newsHash = crypto_2.default
+                .createHash("md5")
+                .update(text)
+                .digest("hex");
+            return { hash: newsHash };
+        });
     },
     /**
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash) {
-        return this.hash(text).hash === hash;
+        return this.hash(text).then((hashValue) => hashValue.hash === hash);
     },
 };
 exports.BcryptHash = {
     tag: "bcrypt",
     hash(text) {
-        return { salt: undefined, hash: bcrypt_nodejs_1.default.hashSync(text) };
+        return bcryptjs_1.default.hash(text, 10).then((hash) => {
+            return { salt: undefined, hash };
+        });
     },
     /**
      * Checks whether the text hashes to the same hash.
@@ -342,10 +404,10 @@ exports.BcryptHash = {
      * @return boolean
      */
     equals(text, hash) {
-        return bcrypt_nodejs_1.default.compareSync(text, hash);
+        return bcryptjs_1.default.compare(text, hash);
     },
 };
-exports.Hashes = [ShaHash, exports.BcryptHash];
+exports.Hashes = [exports.ShaHash, exports.Md5Hash, exports.BcryptHash];
 var Errors;
 (function (Errors) {
     Errors["USER_EXISTS_ALREADY"] = "USER_EXISTS_ALREADY";
@@ -378,6 +440,17 @@ function allTypes() {
         .reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
 }
 exports.allTypes = allTypes;
+function promisify(callback) {
+    return new Promise((resolve, reject) => {
+        try {
+            resolve(callback());
+        }
+        catch (e) {
+            reject(e);
+        }
+    });
+}
+exports.promisify = promisify;
 function combiIndex(value) {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
     if (Number.isNaN(combi)) {
@@ -423,6 +496,19 @@ function separateIndex(value) {
     return { totalIndex, partialIndex };
 }
 exports.separateIndex = separateIndex;
+function createCircularReplacer() {
+    const seen = new WeakSet();
+    return (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular Reference]";
+            }
+            seen.add(value);
+        }
+        return value;
+    };
+}
+exports.createCircularReplacer = createCircularReplacer;
 function ignore() {
     return undefined;
 }
@@ -449,4 +535,59 @@ function isQuery(value) {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
 exports.isQuery = isQuery;
+function invalidId(id) {
+    return !Number.isInteger(id) || id <= 0;
+}
+exports.invalidId = invalidId;
+class InternetTesterImpl extends events_1.default.EventEmitter {
+    constructor() {
+        super();
+        this.offline = undefined;
+        this.since = new Date();
+        this.stopLoop = false;
+        // should never call catch callback
+        this.checkInternet().catch(console.error);
+    }
+    on(evt, listener) {
+        super.on(evt, listener);
+        if (this.offline != null && this.since != null) {
+            if (this.offline && evt === "offline") {
+                listener(this.since);
+            }
+            if (!this.offline && evt === "online") {
+                listener(this.since);
+            }
+        }
+        return this;
+    }
+    isOnline() {
+        return !this.offline;
+    }
+    stop() {
+        this.stopLoop = true;
+    }
+    async checkInternet() {
+        while (!this.stopLoop) {
+            try {
+                await dns.promises.lookup("google.com");
+                if (this.offline || this.offline == null) {
+                    this.offline = false;
+                    const since = new Date();
+                    this.emit("online", this.since);
+                    this.since = since;
+                }
+            }
+            catch (e) {
+                if (!this.offline) {
+                    this.offline = true;
+                    const since = new Date();
+                    this.emit("offline", this.since);
+                    this.since = since;
+                }
+            }
+            await delay(1000);
+        }
+    }
+}
+exports.internetTester = new InternetTesterImpl();
 //# sourceMappingURL=tools.js.map

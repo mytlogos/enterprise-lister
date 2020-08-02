@@ -1,6 +1,8 @@
+/// <reference types="node" />
 import { EpisodeRelease, MultiSingle } from "./types";
 import { TocEpisode, TocPart } from "./externals/types";
 import { Query } from "mysql";
+import EventEmitter from "events";
 export declare function remove<T>(array: T[], item: T): boolean;
 export declare function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean;
 export declare type ArrayCallback<T> = (value: T, index: number) => void;
@@ -13,6 +15,7 @@ export declare function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, 
 export declare function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void;
 export declare function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void;
 export declare function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V;
+export declare function getElseSetObj<K, V>(map: object, key: string | number, valueCb: () => V): V;
 export declare function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) => boolean): T[];
 export declare function isTocEpisode(tocContent: any): tocContent is TocEpisode;
 export declare function isTocPart(tocContent: any): tocContent is TocPart;
@@ -30,6 +33,8 @@ export declare function min<T>(array: T[], comparator: keyof T | Comparator<T>):
 export declare function relativeToAbsoluteTime(relative: string): Date | null;
 export declare function delay(timeout?: number): Promise<void>;
 export declare function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease): boolean;
+export declare function stringify(object: any): string;
+export declare function jsonReplacer(key: any, value: any): any;
 export declare function sanitizeString(s: string): string;
 export declare function isString(value: any): value is string;
 export declare function stringToNumberList(s: string): number[];
@@ -39,9 +44,13 @@ interface Hash {
 }
 export interface Hasher {
     tag: string;
-    hash(text: string, saltLength?: number): Hash;
-    equals(text: string, hash: string, salt: string): boolean;
+    hash(text: string, saltLength?: number): Promise<Hash>;
+    equals(text: string, hash: string, salt: string): Promise<boolean>;
 }
+interface ShaHasher extends Hasher {
+    innerHash(text: string, salt: string): string;
+}
+export declare const ShaHash: ShaHasher;
 export declare const Md5Hash: Hasher;
 export declare const BcryptHash: Hasher;
 export declare const Hashes: Hasher[];
@@ -66,6 +75,7 @@ export declare enum MediaType {
 }
 export declare function hasMediaType(container: MediaType, testFor: MediaType): boolean;
 export declare function allTypes(): number;
+export declare function promisify<T>(callback: () => T): Promise<T>;
 export declare function combiIndex(value: {
     totalIndex: number;
     partialIndex?: number;
@@ -83,6 +93,7 @@ export declare function separateIndex(value: number): {
     totalIndex: number;
     partialIndex?: number;
 };
+export declare function createCircularReplacer(): (key: any, value: any) => any;
 export declare function ignore(): undefined;
 /**
  * Searches for a project directory by searching  current working directory
@@ -92,4 +103,11 @@ export declare function ignore(): undefined;
  */
 export declare function findProjectDirPath(file: string): string;
 export declare function isQuery(value: any): value is Query;
+export declare function invalidId(id: any): boolean;
+export interface InternetTester extends EventEmitter.EventEmitter {
+    on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
+    isOnline(): boolean;
+    stop(): void;
+}
+export declare const internetTester: InternetTester;
 export {};

@@ -7,6 +7,7 @@ const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const request = tslib_1.__importStar(require("request-promise-native"));
 const scraperTools_1 = require("../scraperTools");
+const errors_1 = require("../errors");
 const jar = request.jar();
 const defaultRequest = request.defaults({
     jar
@@ -26,17 +27,29 @@ async function scrapeNews() {
         const tableData = newsRow.children("td");
         const mediumElement = tableData.eq(1);
         const mediumTocLinkElement = mediumElement.children("a").first();
-        const mediumTocLink = url.resolve(uri, mediumTocLinkElement.attr("href"));
+        const mediumTocTotalLink = url.resolve(uri, mediumTocLinkElement.attr("href"));
+        const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/\d+\//.exec(mediumTocTotalLink);
+        if (!mediumTocLinkGroup) {
+            logger_1.default.info(`unknown toc link format on webnovel: ${mediumTocTotalLink}`);
+            continue;
+        }
+        const mediumTocLink = mediumTocLinkGroup[0];
         const mediumTitle = tools_1.sanitizeString(mediumElement.text());
         const titleElement = tableData.eq(2).children("a").first();
         const episodeTitle = tools_1.sanitizeString(titleElement.text());
-        const link = url.resolve(uri, titleElement.attr("href"));
         const textTime = tableData.eq(5).text().trim();
         const time = tools_1.relativeToAbsoluteTime(textTime);
         if (!time) {
             logger_1.default.warn(`could not parse time of webnovel news: '${textTime}'`);
             continue;
         }
+        const totalLink = url.resolve(uri, titleElement.attr("href"));
+        const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/\d+\/\d+\/).+/.exec(totalLink);
+        if (!linkGroup) {
+            logger_1.default.info(`unknown news url format on webnovel: ${totalLink}`);
+            continue;
+        }
+        const link = linkGroup[1];
         const groups = titlePattern.exec(episodeTitle);
         if (!groups || !groups[1]) {
             logger_1.default.info(`unknown news format on webnovel: ${episodeTitle}`);
@@ -61,8 +74,7 @@ async function scrapeToc(urlString) {
     await initPromise;
     const bookIdResult = /https?:\/\/(www\.)?webnovel\.com\/book\/(\d+)/.exec(urlString);
     if (!bookIdResult) {
-        logger_1.default.warn("WebNovel toc link has no bookIdResult: " + urlString);
-        return [];
+        throw new errors_1.UrlError("WebNovel toc link has no bookIdResult: " + urlString, urlString);
     }
     const bookId = bookIdResult[2];
     return scrapeTocPage(bookId);
@@ -185,7 +197,7 @@ async function scrapeContent(urlString) {
     return [episodeContent];
 }
 async function searchToc(searchMedium) {
-    console.log("start searching webnovel " + searchMedium.mediumId);
+    logger_1.default.info("start searching webnovel " + searchMedium.mediumId);
     const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(searchMedium.title);
     const body = await loadBody(urlString);
     const titles = body("body > div.page  ul[class*=result] > li > h3 > a");
@@ -207,12 +219,30 @@ async function searchToc(searchMedium) {
         throw Error("invalid bookId");
     }
     const [toc] = await scrapeTocPage(bookId, searchMedium.mediumId);
-    console.log("scraping toc on webnovel successfully " + searchMedium.mediumId);
+    logger_1.default.info("scraping toc on webnovel successfully " + searchMedium.mediumId);
     return toc;
+}
+async function search(text) {
+    const uri = "https://www.webnovel.com";
+    const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(text);
+    const body = await loadBody(urlString);
+    const results = body("body > div.page  ul[class*=result] > li");
+    const searchResult = [];
+    for (let i = 0; i < results.length; i++) {
+        const result = results.eq(i);
+        const titleElement = result.find("h3 > a");
+        const coverElement = result.find("img");
+        const title = tools_1.sanitizeString(titleElement.text());
+        const coverUrl = url.resolve(uri, coverElement.attr("src"));
+        const link = url.resolve(uri, titleElement.attr("href"));
+        searchResult.push({ title, link, coverUrl });
+    }
+    return searchResult;
 }
 scrapeNews.link = "https://www.webnovel.com/";
 searchToc.link = "https://www.webnovel.com/";
 searchToc.medium = tools_1.MediaType.TEXT;
+search.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "webnovel",
@@ -223,7 +253,8 @@ function getHook() {
         newsAdapter: scrapeNews,
         contentDownloadAdapter: scrapeContent,
         tocAdapter: scrapeToc,
-        tocSearchAdapter: searchToc
+        tocSearchAdapter: searchToc,
+        searchAdapter: search
     };
 }
 exports.getHook = getHook;

@@ -1,15 +1,16 @@
-import logger from "./logger";
 import {EpisodeRelease, MultiSingle} from "./types";
 import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
 //  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
-import bcrypt from "bcrypt-nodejs";
+import bcrypt from "bcryptjs";
 import emojiStrip from "emoji-strip";
 import * as fs from "fs";
 import * as path from "path";
 import {Query} from "mysql";
+import * as dns from "dns";
+import EventEmitter from "events";
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -22,7 +23,7 @@ export function remove<T>(array: T[], item: T): boolean {
 }
 
 export function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean {
-    const index = array.findIndex(equals);
+    const index = array.findIndex((value) => equals(value));
     if (index < 0) {
         return false;
     }
@@ -44,13 +45,16 @@ export function promiseMultiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>)
 export function promiseMultiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): Promise<R[]>;
 
 export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): Promise<MultiSingle<R>> {
+    if (typeof cb !== "function") {
+        return Promise.reject(new TypeError(`callback is not a function: '${cb}'`));
+    }
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
         return Promise.all(item.map((value: T, index) => Promise.resolve(cb(value, index, index < maxIndex))));
     }
     return new Promise((resolve, reject) => {
         try {
-            resolve(cb(item));
+            resolve(cb(item, 0, false));
         } catch (e) {
             reject(e);
         }
@@ -92,6 +96,16 @@ export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
     let value = map.get(key);
     if (value == null) {
         map.set(key, value = valueCb());
+    }
+    return value;
+}
+
+export function getElseSetObj<K, V>(map: object, key: string | number, valueCb: () => V): V {
+    // @ts-ignore
+    let value = map[key];
+    if (value == null) {
+        // @ts-ignore
+        map[key] = value = valueCb();
     }
     return value;
 }
@@ -241,8 +255,7 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
     const timeValue = value && value.match("an?") ? 1 : Number(value);
 
     if (Number.isNaN(timeValue)) {
-        logger.warn(`'${value}' is not a number`);
-        return null;
+        throw new Error(`'${value}' is not a number`);
     }
 
     if (/^(s|secs?|seconds?)$/.test(unit)) {
@@ -267,8 +280,7 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
         absolute.setFullYear(absolute.getFullYear() - timeValue);
 
     } else {
-        logger.info(`unknown time unit: '${unit}'`);
-        return null;
+        throw new Error(`unknown time unit: '${unit}'`);
     }
     return absolute;
 }
@@ -291,6 +303,39 @@ export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: Episo
             && firstRelease.releaseDate.getTime() === secondRelease.releaseDate.getTime()
             && firstRelease.title === secondRelease.title
         );
+}
+
+export function stringify(object: any) {
+    const seen = new WeakSet();
+    return JSON.stringify(object, (key, value) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular reference]";
+            }
+            seen.add(value);
+        }
+        return jsonReplacer(key, value);
+    });
+}
+
+export function jsonReplacer(key: any, value: any) {
+    if (value instanceof Error) {
+        const error: any = {};
+
+        Object.getOwnPropertyNames(value).forEach((errorKey) => {
+            // @ts-ignore
+            error[errorKey] = value[errorKey];
+        });
+
+        return error;
+    } else if (value instanceof Map) {
+        const map: any = {};
+        for (const [k, v] of value.entries()) {
+            map[JSON.stringify(k)] = v;
+        }
+        return map;
+    }
+    return value;
 }
 
 export function sanitizeString(s: string): string {
@@ -319,16 +364,16 @@ interface Hash {
 export interface Hasher {
     tag: string;
 
-    hash(text: string, saltLength?: number): Hash;
+    hash(text: string, saltLength?: number): Promise<Hash>;
 
-    equals(text: string, hash: string, salt: string): boolean;
+    equals(text: string, hash: string, salt: string): Promise<boolean>;
 }
 
 interface ShaHasher extends Hasher {
     innerHash(text: string, salt: string): string;
 }
 
-const ShaHash: ShaHasher = {
+export const ShaHash: ShaHasher = {
     tag: "sha512",
 
     /**
@@ -337,14 +382,25 @@ const ShaHash: ShaHasher = {
      * @param {string} text
      * @return {{salt: string, hash: string}}
      */
-    hash(text: string, saltLength: number = 20): { salt: string, hash: string } {
-        const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
-            .toString("hex") // convert to hexadecimal format
-            .slice(0, saltLength); // return required number of characters */
-        return {salt, hash: this.innerHash(text, salt)};
+    hash(text: string, saltLength: number = 20): Promise<{ salt: string, hash: string }> {
+        return promisify(() => {
+            if (!Number.isInteger(saltLength)) {
+                throw TypeError(`'${saltLength}' not an integer`);
+            }
+            const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
+                .toString("hex") // convert to hexadecimal format
+                .slice(0, saltLength); // return required number of characters */
+            return {salt, hash: this.innerHash(text, salt)};
+        });
     },
 
     innerHash(text, salt) {
+        if (!isString(text)) {
+            throw TypeError(`'${text}' not a string`);
+        }
+        if (!isString(salt)) {
+            throw TypeError(`'${salt}' not a string`);
+        }
         const hash = crypt.createHash("sha512");
         hash.update(salt + text);
         return hash.digest("hex");
@@ -355,32 +411,39 @@ const ShaHash: ShaHasher = {
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash, salt) {
-        return this.innerHash(text, salt) === hash;
+        return promisify(() => this.innerHash(text, salt) === hash);
     },
 };
 export const Md5Hash: Hasher = {
     tag: "md5",
 
     hash(text: string) {
-        const newsHash = crypto
-            .createHash("md5")
-            .update(text)
-            .digest("hex");
-        return {hash: newsHash};
+        return promisify(() => {
+            if (!isString(text)) {
+                throw TypeError(`'${text}' not a string`);
+            }
+            const newsHash = crypto
+                .createHash("md5")
+                .update(text)
+                .digest("hex");
+            return {hash: newsHash};
+        });
     },
 
     /**
      * Checks whether the text hashes to the same hash.
      */
     equals(text, hash) {
-        return this.hash(text).hash === hash;
+        return this.hash(text).then((hashValue) => hashValue.hash === hash);
     },
 };
 export const BcryptHash: Hasher = {
     tag: "bcrypt",
 
     hash(text) {
-        return {salt: undefined, hash: bcrypt.hashSync(text)};
+        return bcrypt.hash(text, 10).then((hash) => {
+            return {salt: undefined, hash};
+        });
     },
 
     /**
@@ -391,10 +454,10 @@ export const BcryptHash: Hasher = {
      * @return boolean
      */
     equals(text, hash) {
-        return bcrypt.compareSync(text, hash);
+        return bcrypt.compare(text, hash);
     },
 };
-export const Hashes: Hasher[] = [ShaHash, BcryptHash];
+export const Hashes: Hasher[] = [ShaHash, Md5Hash, BcryptHash];
 
 export enum Errors {
     USER_EXISTS_ALREADY = "USER_EXISTS_ALREADY",
@@ -427,6 +490,16 @@ export function hasMediaType(container: MediaType, testFor: MediaType) {
 export function allTypes() {
     return (Object.values(MediaType) as number[])
         .reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
+}
+
+export function promisify<T>(callback: () => T): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+        try {
+            resolve(callback());
+        } catch (e) {
+            reject(e);
+        }
+    });
 }
 
 export function combiIndex(value: { totalIndex: number, partialIndex?: number }): number {
@@ -480,6 +553,19 @@ export function separateIndex(value: number): { totalIndex: number, partialIndex
     return {totalIndex, partialIndex};
 }
 
+export function createCircularReplacer() {
+    const seen = new WeakSet();
+    return (key: any, value: any) => {
+        if (typeof value === "object" && value !== null) {
+            if (seen.has(value)) {
+                return "[circular Reference]";
+            }
+            seen.add(value);
+        }
+        return value;
+    };
+}
+
 export function ignore() {
     return undefined;
 }
@@ -506,3 +592,73 @@ export function findProjectDirPath(file: string): string {
 export function isQuery(value: any): value is Query {
     return value && typeof value.on === "function" && typeof value.stream === "function";
 }
+
+export function invalidId(id: any): boolean {
+    return !Number.isInteger(id) || id <= 0;
+}
+
+export interface InternetTester extends EventEmitter.EventEmitter {
+    on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
+
+    isOnline(): boolean;
+
+    stop(): void;
+}
+
+class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTester {
+    private offline?: boolean = undefined;
+    private since: Date = new Date();
+    private stopLoop = false;
+
+    constructor() {
+        super();
+        // should never call catch callback
+        this.checkInternet().catch(console.error);
+    }
+
+    public on(evt: "online" | "offline", listener: (previousSince: Date) => void): this {
+        super.on(evt, listener);
+
+        if (this.offline != null && this.since != null) {
+            if (this.offline && evt === "offline") {
+                listener(this.since);
+            }
+            if (!this.offline && evt === "online") {
+                listener(this.since);
+            }
+        }
+        return this;
+    }
+
+    public isOnline() {
+        return !this.offline;
+    }
+
+    public stop() {
+        this.stopLoop = true;
+    }
+
+    private async checkInternet() {
+        while (!this.stopLoop) {
+            try {
+                await dns.promises.lookup("google.com");
+                if (this.offline || this.offline == null) {
+                    this.offline = false;
+                    const since = new Date();
+                    this.emit("online", this.since);
+                    this.since = since;
+                }
+            } catch (e) {
+                if (!this.offline) {
+                    this.offline = true;
+                    const since = new Date();
+                    this.emit("offline", this.since);
+                    this.since = since;
+                }
+            }
+            await delay(1000);
+        }
+    }
+}
+
+export const internetTester: InternetTester = new InternetTesterImpl();

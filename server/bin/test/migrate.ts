@@ -1,3 +1,3 @@
-import {startStorage} from "../database/database";
+import {startStorage} from "../database/storages/storage";
 
 startStorage();

@@ -1,12 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
+const types_1 = require("../../types");
 const url = tslib_1.__importStar(require("url"));
 const queueManager_1 = require("../queueManager");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const tools_1 = require("../../tools");
 const scraperTools_1 = require("../scraperTools");
 const directTools_1 = require("./directTools");
+const errors_1 = require("../errors");
 async function scrapeNews() {
     // todo scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
@@ -29,7 +31,7 @@ async function scrapeNews() {
         }
         const groups = titlePattern.exec(title);
         if (!groups) {
-            console.log(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
+            logger_1.default.warn(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
             continue;
         }
         let episodeIndices;
@@ -91,18 +93,21 @@ async function scrapeNews() {
 }
 async function contentDownloadAdapter(chapterLink) {
     const $ = await queueManager_1.queueCheerioRequest(chapterLink);
+    if ($("head > title").text() === "Page not found!") {
+        throw new errors_1.MissingResourceError("Missing Toc on NovelFull", chapterLink);
+    }
     const mediumTitleElement = $(".breadcrumb li:nth-child(2) a");
     const titleElement = $(".breadcrumb span");
     const episodeTitle = tools_1.sanitizeString(titleElement.text());
     const mediumTitle = tools_1.sanitizeString(mediumTitleElement.text());
     if (!episodeTitle || !mediumTitle) {
-        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger_1.default.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
     const exec = chapReg.exec(episodeTitle);
     if (!exec || !mediumTitle) {
-        logger_1.default.warn("chapter format changed on mangahasu, did not find any titles for content extraction: " + chapterLink);
+        logger_1.default.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
         return [];
     }
     const index = Number(exec[1]);
@@ -128,10 +133,12 @@ async function contentDownloadAdapter(chapterLink) {
 }
 async function scrapeToc(urlString) {
     if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
-        logger_1.default.info("not a toc link for mangahasu: " + urlString);
-        return [];
+        throw new errors_1.UrlError("not a toc link for MangaHasu: " + urlString, urlString);
     }
     const $ = await queueManager_1.queueCheerioRequest(urlString);
+    if ($("head > title").text() === "Page not found!") {
+        throw new errors_1.MissingResourceError("Missing Toc on NovelFull", urlString);
+    }
     const contentElement = $(".wrapper_content");
     const mangaTitle = tools_1.sanitizeString(contentElement.find(".info-title h1").first().text());
     // todo process metadata and get more (like author)
@@ -148,10 +155,20 @@ async function scrapeToc(urlString) {
     const partContents = [];
     const indexPartMap = new Map();
     const chapterContents = [];
+    let releaseState = types_1.ReleaseState.Unknown;
+    const releaseStateElement = $("div.col-md-12:nth-child(5) > span:nth-child(2) > a:nth-child(1)");
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    if (releaseStateString.includes("complete")) {
+        releaseState = types_1.ReleaseState.Complete;
+    }
+    else if (releaseStateString.includes("ongoing")) {
+        releaseState = types_1.ReleaseState.Ongoing;
+    }
     const toc = {
         link: urlString,
         content: [],
         title: mangaTitle,
+        statusTl: releaseState,
         mediumType: tools_1.MediaType.IMAGE
     };
     const endReg = /\[END]\s*$/i;
@@ -243,10 +260,10 @@ async function scrapeToc(urlString) {
     toc.content.push(...chapterContents);
     return [toc];
 }
-async function tocSearchAdapter(search) {
-    return directTools_1.searchToc(search, scrapeToc, "http://mangahasu.se/", (parameter) => "http://mangahasu.se/advanced-search.html?keyword=" + parameter, "a.name-manga");
+async function tocSearchAdapter(searchMedium) {
+    return directTools_1.searchToc(searchMedium, scrapeToc, "https://mangahasu.se/", (searchString) => scrapeSearch(searchString, searchMedium));
 }
-async function scrapeSearch(searchWords) {
+async function scrapeSearch(searchWords, medium) {
     const urlString = "http://mangahasu.se/search/autosearch";
     const body = "key=" + searchWords;
     // TODO: 26.08.2019 this does not work for any reason
@@ -259,12 +276,57 @@ async function scrapeSearch(searchWords) {
         method: "POST",
         body
     });
-    return $("a.a-item");
+    const links = $("a.a-item");
+    if (!links.length) {
+        return { done: true };
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+        const titleElement = linkElement.find(".name");
+        const text = tools_1.sanitizeString(titleElement.text());
+        if (tools_1.equalsIgnore(text, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(text, s))) {
+            const tocLink = linkElement.attr("href");
+            return { value: tocLink, done: true };
+        }
+    }
+    return { done: false };
+}
+async function search(searchWords) {
+    const urlString = "http://mangahasu.se/search/autosearch";
+    const body = "key=" + searchWords;
+    // TODO: 26.08.2019 this does not work for any reason
+    const $ = await queueManager_1.queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "mangahasu.se",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    const searchResults = [];
+    const links = $("a.a-item");
+    if (!links.length) {
+        return searchResults;
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+        const titleElement = linkElement.find(".name");
+        const authorElement = linkElement.find(".author");
+        const coverElement = linkElement.find("img");
+        const text = tools_1.sanitizeString(titleElement.text());
+        const link = url.resolve("http://mangahasu.se/", linkElement.attr("href"));
+        const author = tools_1.sanitizeString(authorElement.text());
+        const coverLink = coverElement.attr("src");
+        searchResults.push({ coverUrl: coverLink, author, link, title: text });
+    }
+    return searchResults;
 }
 scrapeNews.link = "http://mangahasu.se/";
 tocSearchAdapter.link = "http://mangahasu.se/";
 tocSearchAdapter.medium = tools_1.MediaType.IMAGE;
 tocSearchAdapter.blindSearch = true;
+search.medium = tools_1.MediaType.IMAGE;
 function getHook() {
     return {
         name: "mangahasu",
@@ -273,7 +335,8 @@ function getHook() {
         newsAdapter: scrapeNews,
         contentDownloadAdapter,
         tocSearchAdapter,
-        tocAdapter: scrapeToc
+        tocAdapter: scrapeToc,
+        searchAdapter: search
     };
 }
 exports.getHook = getHook;

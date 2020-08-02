@@ -7,13 +7,15 @@ const debug_1 = tslib_1.__importDefault(require("debug"));
 const http_1 = require("http");
 const env_1 = tslib_1.__importDefault(require("./env"));
 // start storage (connect to database)
-const database_1 = require("./database/database");
+const storage_1 = require("./database/storages/storage");
 require("./deviceVerificator");
 // start crawler (setup and start running)
 const os_1 = tslib_1.__importDefault(require("os"));
+const logger_1 = tslib_1.__importDefault(require("./logger"));
+const tunnel_1 = require("./tunnel");
 const port = env_1.default.port || process.env.port;
 // first start storage
-database_1.startStorage();
+storage_1.startStorage();
 const debugMessenger = debug_1.default("enterprise-lister:server");
 /**
  * Get port from environment and store in Express.
@@ -40,11 +42,11 @@ function onError(error) {
     // handle specific listen errors with friendly messages
     switch (error.code) {
         case "EACCES":
-            console.error(bind + " requires elevated privileges");
+            logger_1.default.error(bind + " requires elevated privileges");
             process.exit(1);
             break;
         case "EADDRINUSE":
-            console.error(bind + " is already in use");
+            logger_1.default.error(bind + " is already in use");
             process.exit(1);
             break;
         default:
@@ -56,6 +58,7 @@ function onError(error) {
  */
 function onListening() {
     const address = server.address();
+    tunnel_1.startTunneling();
     if (address != null) {
         const bind = typeof address === "string"
             ? "pipe " + address
@@ -70,7 +73,7 @@ function onListening() {
                 continue;
             }
             debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
-            console.log(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
+            logger_1.default.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
             break;
         }
     }

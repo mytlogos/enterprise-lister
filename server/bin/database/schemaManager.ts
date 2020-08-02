@@ -1,8 +1,9 @@
 import {DatabaseSchema, Migration} from "./databaseTypes";
-import {QueryContext} from "./queryContext";
 import {TableSchema} from "./tableSchema";
 import {Trigger} from "./trigger";
-import {equalsIgnore, getElseSet} from "../tools";
+import {delay, equalsIgnore, getElseSet} from "../tools";
+import {DatabaseContext} from "./contexts/databaseContext";
+import logger from "../logger";
 
 export class SchemaManager {
     private databaseName = "";
@@ -21,8 +22,30 @@ export class SchemaManager {
         this.migrations.push(...database.migrations);
     }
 
-    public async checkTableSchema(context: QueryContext): Promise<void> {
+    public async checkTableSchema(context: DatabaseContext): Promise<void> {
+        logger.info("Starting Check on Storage Schema");
+        const canMigrate = await context.startMigration();
+        if (!canMigrate) {
+            await (async function wait(retry = 0) {
+                if (retry > 9) {
+                    throw Error("cannot start migration check, as migration flag is still set after 10 retries");
+                }
+                await delay();
+
+                if (!await context.startMigration()) {
+                    await wait(retry + 1);
+                }
+            }());
+        }
         // display all current tables
+        try {
+            await this.checkSchema(context);
+        } finally {
+            await context.stopMigration();
+        }
+    }
+
+    private async checkSchema(context: DatabaseContext) {
         const tables: any[] = await context.getTables();
 
         const enterpriseTableProperty = `Tables_in_${this.databaseName}`;
@@ -37,6 +60,8 @@ export class SchemaManager {
 
         const dbTriggers = await context.getTriggers();
 
+        let triggerCreated = 0;
+        let triggerDeleted = 0;
         // create triggers which do not exist, and drops triggers which are not in schema
         await Promise.all(this.trigger
             .filter((trigger) => {
@@ -54,12 +79,12 @@ export class SchemaManager {
                 }
                 return true;
             })
-            .map((trigger) => context.createTrigger(trigger)));
+            .map((trigger) => context.createTrigger(trigger).then(() => triggerCreated++)));
 
         // every trigger that is left over, is not in schema and ready to be dropped
         await Promise.all(dbTriggers
             .filter((value) => this.tables.find((table) => table.name === value.Table))
-            .map((value) => context.dropTrigger(value.Trigger))
+            .map((value) => context.dropTrigger(value.Trigger).then(() => triggerDeleted++))
         );
 
         const versionResult = await context.getDatabaseVersion();
@@ -68,9 +93,10 @@ export class SchemaManager {
         if (versionResult && versionResult[0] && versionResult[0].version > 0) {
             previousVersion = versionResult[0].version;
         }
-
+        logger.info(`Created ${triggerCreated} Triggers and dropped ${triggerDeleted} Triggers`);
         const currentVersion = this.dataBaseVersion;
         if (currentVersion === previousVersion) {
+            logger.info("Storage Version is up-to-date");
             return;
         } else if (currentVersion < previousVersion) {
             throw Error("database version is smaller in code than in database");
@@ -102,6 +128,7 @@ export class SchemaManager {
         if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
             throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
         }
+        logger.info(`Starting Migration of Storage from ${previousVersion} to ${currentVersion}`);
         if (directMigration) {
             await directMigration.migrate(context);
         } else {
@@ -111,7 +138,7 @@ export class SchemaManager {
         }
         // FIXME: 10.08.2019 inserting new database version does not seem to work
         await context.updateDatabaseVersion(currentVersion);
-        console.log(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
+        logger.info(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
     }
 
     private getShortest(previousVersion: number) {

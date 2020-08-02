@@ -1,5 +1,5 @@
 import {Hook, Toc, TocEpisode} from "../types";
-import {EpisodeNews, News} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
@@ -8,6 +8,7 @@ import * as request from "cloudscraper";
 import {CloudScraper, CloudscraperOptions} from "cloudscraper";
 import * as normalRequest from "request";
 import {checkTocContent} from "../scraperTools";
+import {UrlError} from "../errors";
 
 // @ts-ignore
 const jar = request.jar();
@@ -34,7 +35,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
     for (let i = 0; i < newsRows.length; i++) {
         const newsRow = newsRows.eq(i);
 
-        const link = url.resolve(uri, newsRow.attr("href"));
+        const link = url.resolve(uri, newsRow.attr("href") as string);
         const span = newsRow.children("span").eq(0);
         span.remove();
 
@@ -45,7 +46,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 
         if (!groups) {
             // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
-            console.log(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
+            logger.warn(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
             continue;
         }
 
@@ -141,6 +142,11 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
  */
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+    const urlRegex = /^https?:\/\/kissanime\.ru\/Anime\/[^\/]+\/?$/;
+
+    if (!urlRegex.test(urlString)) {
+        throw new UrlError("invalid toc url for KissAnime: " + urlString, urlString);
+    }
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#container > #leftside");
     const animeTitle = contentElement
@@ -163,7 +169,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
     const content: TocEpisode[] = [];
 
-    const chapReg = /Episode\s*((\d+)(\.(\d+))?)(\s*(.+))?/i;
+    const chapReg = /Episode\s*((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?(\s*(.+))?/i;
 
     for (let i = 0; i < episodeElements.length; i++) {
         const episodeElement = episodeElements.eq(i);
@@ -176,11 +182,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         const episodeGroups = chapReg.exec(titleString);
 
         if (Number.isNaN(date.getDate()) || !episodeGroups) {
+            if (titleString.toLowerCase().includes("ova")) {
+                continue;
+            }
             logger.warn("changed episode format on kissAnime toc " + urlString);
             return [];
         }
 
-        const link = url.resolve(uri, titleElement.attr("href"));
+        const link = url.resolve(uri, titleElement.attr("href") as string);
         const indices = extractIndices(episodeGroups, 1, 2, 4);
 
         if (!indices) {
@@ -189,8 +198,36 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
         let title = "Episode " + indices.combi;
 
-        if (episodeGroups[6]) {
-            title += " - " + episodeGroups[6];
+        if (episodeGroups[5]) {
+            const multiIndices = extractIndices(episodeGroups, 6, 7, 9);
+
+            if (!multiIndices) {
+                throw Error(`changed format on kissAnime, got no indices for multi: '${titleString}'`);
+            }
+            if (indices.total < multiIndices.total) {
+                for (let totalIndex = indices.total + 1; totalIndex <= multiIndices.total; totalIndex++) {
+                    let multiTitle = "Episode " + totalIndex;
+
+                    if (episodeGroups[11]) {
+                        multiTitle += " - " + episodeGroups[11];
+                    }
+
+                    const multiEpisodeContent = {
+                        title: multiTitle,
+                        combiIndex: totalIndex,
+                        totalIndex,
+                        partialIndex: multiIndices.fraction,
+                        url: link,
+                        releaseDate: date
+                    };
+                    checkTocContent(multiEpisodeContent);
+                    content.push(multiEpisodeContent);
+                }
+            }
+            // TODO: 19.09.2019 implement multi episodes (Episode 940 - 942 (Special)
+        }
+        if (episodeGroups[11]) {
+            title += " - " + episodeGroups[11];
         }
 
         const episodeContent = {
@@ -204,18 +241,77 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         checkTocContent(episodeContent);
         content.push(episodeContent);
     }
+    const infoElements = $("div.bigBarContainer:nth-child(1) span.info");
+    let releaseStateElement = null;
 
+    for (let i = 0; i < infoElements.length; i++) {
+        const element = infoElements.eq(i);
+
+        if (element.text().toLocaleLowerCase().includes("status")) {
+            releaseStateElement = element.parent();
+        }
+    }
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+
+    if (releaseStateElement) {
+        const releaseStateString = releaseStateElement.text().toLowerCase();
+        if (releaseStateString.includes("complete")) {
+            releaseState = ReleaseState.Complete;
+        } else if (releaseStateString.includes("ongoing")) {
+            releaseState = ReleaseState.Ongoing;
+        } else if (releaseStateString.includes("hiatus")) {
+            releaseState = ReleaseState.Hiatus;
+        }
+    }
     const toc: Toc = {
         link: urlString,
         content,
         title: animeTitle,
+        statusTl: releaseState,
         mediumType: MediaType.VIDEO
     };
 
     return [toc];
 }
 
+async function search(searchWords: string): Promise<SearchResult[]> {
+    const urlString = "https://kissanime.ru/Search/SearchSuggestx";
+
+    const body = "type=Anime&keyword=" + searchWords;
+    const $ = await queueCheerioRequest(urlString, {
+        url: urlString,
+        headers: {
+            "Host": "kissanime.ru",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        method: "POST",
+        body
+    });
+    const searchResults: SearchResult[] = [];
+    const links = $("a");
+
+    if (!links.length) {
+        return searchResults;
+    }
+    for (let i = 0; i < links.length; i++) {
+        const linkElement = links.eq(i);
+
+        const text = sanitizeString(linkElement.text());
+        const link = url.resolve("https://kissanime.ru/", linkElement.attr("href") as string);
+
+        searchResults.push({link, title: text});
+
+    }
+    if (searchResults.length === 1 && searchResults[0].link === "https://kissanime.ru/Search/SearchSuggestx") {
+        // could lead to an unending loop, if the server returns always the same answer, which it should do only once
+        return search(searchWords);
+    }
+
+    return searchResults;
+}
+
 scrapeNews.link = "https://kissanime.ru/";
+search.medium = MediaType.VIDEO;
 
 export function getHook(): Hook {
     return {
@@ -223,6 +319,7 @@ export function getHook(): Hook {
         medium: MediaType.VIDEO,
         domainReg: /^https?:\/\/kissanime\.ru/,
         newsAdapter: scrapeNews,
-        tocAdapter: scrapeToc
+        tocAdapter: scrapeToc,
+        searchAdapter: search,
     };
 }

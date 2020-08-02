@@ -4,10 +4,12 @@ import debug from "debug";
 import {createServer, Server} from "http";
 import env from "./env";
 // start storage (connect to database)
-import {startStorage} from "./database/database";
+import {startStorage} from "./database/storages/storage";
 import "./deviceVerificator";
 // start crawler (setup and start running)
 import os from "os";
+import logger from "./logger";
+import {startTunneling} from "./tunnel";
 
 const port = env.port || process.env.port;
 // first start storage
@@ -45,11 +47,11 @@ function onError(error: any) {
     // handle specific listen errors with friendly messages
     switch (error.code) {
         case "EACCES":
-            console.error(bind + " requires elevated privileges");
+            logger.error(bind + " requires elevated privileges");
             process.exit(1);
             break;
         case "EADDRINUSE":
-            console.error(bind + " is already in use");
+            logger.error(bind + " is already in use");
             process.exit(1);
             break;
         default:
@@ -62,6 +64,7 @@ function onError(error: any) {
  */
 function onListening() {
     const address = server.address();
+    startTunneling();
     if (address != null) {
         const bind = typeof address === "string"
             ? "pipe " + address
@@ -78,7 +81,7 @@ function onListening() {
                 continue;
             }
             debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
-            console.log(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
+            logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
             break;
         }
     }

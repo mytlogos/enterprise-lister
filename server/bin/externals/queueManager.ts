@@ -2,9 +2,11 @@ import request, {FullResponse, Options} from "cloudscraper";
 import requestNative, {RequestAPI} from "request";
 import cheerio from "cheerio";
 import ParserStream from "parse5-parser-stream";
-import parse5 from "parse5";
-import htmlparser2, {DomHandler} from "htmlparser2";
+import * as htmlparser2 from "htmlparser2";
 import {BufferToStringStream} from "../transform";
+import {StatusCodeError} from "request-promise-native/errors";
+import requestPromise from "request-promise-native";
+import {MissingResourceError} from "./errors";
 
 
 export class Queue {
@@ -61,6 +63,29 @@ const fastQueues: Map<string, Queue> = new Map();
 
 export type Callback = () => Promise<any>;
 
+function methodToRequest(options: Options | undefined, toUseRequest: Request) {
+    const method = options && options.method ? options.method : "";
+
+    switch (method.toLowerCase()) {
+        case "get":
+            return toUseRequest.get(options);
+        case "head":
+            return toUseRequest.head(options);
+        case "put":
+            return toUseRequest.put(options);
+        case "post":
+            return toUseRequest.post(options);
+        case "patch":
+            return toUseRequest.patch(options);
+        case "del":
+            return toUseRequest.del(options);
+        case "delete":
+            return toUseRequest.delete(options);
+        default:
+            return toUseRequest.get(options);
+    }
+}
+
 function processRequest(uri: string, otherRequest?: Request, queueToUse = queues, limit?: number) {
     const exec = /https?:\/\/([^\/]+)/.exec(uri);
 
@@ -90,7 +115,13 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
 export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): Promise<string> => {
 
     const {toUseRequest, queue} = processRequest(uri, otherRequest);
-    return queue.push(() => toUseRequest.get(uri, options));
+    if (!options) {
+        options = {uri};
+    } else {
+        // @ts-ignore
+        options.url = uri;
+    }
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 
 export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (uri, options, otherRequest):
@@ -102,7 +133,7 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (uri, op
         options = {uri};
     }
     options.transform = transformCheerio;
-    return queue.push(() => toUseRequest.get(uri, options));
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 
 export type QueueRequest<T> = (uri: string, options?: Options, otherRequest?: Request) => Promise<T>;
@@ -115,7 +146,8 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
     // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
     //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
     //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
-    const parser = new ParserStream<CheerioElement>({treeAdapter: parse5.treeAdapters.htmlparser2});
+    // @ts-ignore
+    const parser = new ParserStream<CheerioElement>({treeAdapter: ParserStream.treeAdapters.htmlparser2});
     parser.on("finish", () => {
         if (parser.document && parser.document.children) {
             // @ts-ignore
@@ -131,8 +163,7 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
     });
     const stream = new BufferToStringStream();
     stream.on("data", (chunk: string) => console.log("first chunk:\n " + chunk.substring(0, 100)));
-    requestNative
-        .get(uri, options)
+    requestNative(uri, options)
         .on("response", (resp) => {
             resp.pause();
 
@@ -156,27 +187,27 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
 
 function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri: string, options?: Options) {
     // TODO: 22.06.2019 seems to produce sth bad, maybe some error in how i stream the buffer to string?
-    // TODO: 22.06.2019 seems to throw this error primarily (noticed there only) on webnovel.com, parts are messed up
+    // TODO: 22.06.2019 seems to produce this error primarily (noticed there only) on webnovel.com, parts are messed up
     const parser = new htmlparser2.WritableStream(
-        new DomHandler(
+        new htmlparser2.DomHandler(
             (error, dom) => {
                 // @ts-ignore
-                const load = cheerio.load(dom);
+                const load = cheerio.load(dom, {decodeEntities: false});
                 resolve(load);
             }, {
+                // FIXME: 02.09.2019 why does it not accept this property?
+                // @ts-ignore
                 withDomLvl1: true,
                 normalizeWhitespace: false,
-                // decodeEntities: true
             }
         )
         ,
         {
-            decodeEntities: true,
+            decodeEntities: false,
         }).on("error", (err) => reject(err));
     const stream = new BufferToStringStream();
 
-    requestNative
-        .get(uri, options)
+    requestNative(uri, options)
         .on("response", (resp) => {
             resp.pause();
 
@@ -189,6 +220,12 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
                 options.transform = transformCheerio;
                 resolve(request(options));
                 return;
+            } else if (resp.statusCode === 404) {
+                resp.destroy();
+                reject(new MissingResourceError(uri, uri));
+            } else if (resp.statusCode >= 400 || resp.statusCode < 200) {
+                resp.destroy();
+                reject(new StatusCodeError(resp.statusCode, "", options as requestPromise.Options, resp));
             }
             resp.pipe(stream).pipe(parser);
         })
@@ -208,7 +245,7 @@ export const queueCheerioRequestStream: QueueRequest<CheerioStatic> = (uri, opti
     return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
 };
 
-export const queueCheerioRequest = queueCheerioRequestBuffered;
+export const queueCheerioRequest = queueCheerioRequestStream;
 
 const transformCheerio = (body: string) => cheerio.load(body, {decodeEntities: false});
 

@@ -1,11 +1,14 @@
 import {EpisodeContent, Hook, Toc, TocContent, TocEpisode} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
 import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent, searchToc} from "./directTools";
+import {getTextContent, SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {checkTocContent} from "../scraperTools";
+import {MissingResourceError, UrlError} from "../errors";
+import {StatusCodeError} from "cloudscraper/errors";
+import {StatusCodeError as RequestStatusCodeError} from "request-promise-native/errors";
 
 interface NovelSearchResponse {
     success: boolean;
@@ -22,42 +25,67 @@ async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
         medium,
         tocAdapter,
         "https://boxnovel.com/",
-        (parameter) => `https://boxnovel.com/?s=${parameter}&post_type=wp-manga`,
-        ".post-title a"
+        (searchString) => searchAjax(searchString, medium)
     );
 }
 
-async function searchAjax(searchWords: string, medium: TocSearchMedium) {
+async function search(text: string): Promise<SearchResult[]> {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response: string;
-    // TODO: 19.08.2019 this may work, forgot to set http method before
-    // TODO: 26.08.2019 this does not work for any reason
+    const searchResults: SearchResult[] = [];
     try {
-        const body = "action=wp-manga-search-mangatitle=" + searchWords;
         response = await queueRequest(urlString, {
             url: urlString,
             headers: {
-                "Content-Length": body.length,
-                "Accept": "*/*",
                 "Content-Type": "application/x-www-form-urlencoded"
             },
             method: "POST",
-            body
+            body: "action=wp-manga-search-manga&title=" + text
         });
     } catch (e) {
-        console.log(e);
-        return;
+        logger.error(e);
+        return searchResults;
     }
     const parsed: NovelSearchResponse = JSON.parse(response);
 
     if (parsed.success && parsed.data && parsed.data.length) {
-        const foundItem = parsed.data.find((value) =>
-            equalsIgnore(value.title, medium.title)
-            || medium.synonyms.some((s) => equalsIgnore(value.title, s))
-        );
-        if (foundItem) {
-            return foundItem.url;
+        for (const datum of parsed.data) {
+            searchResults.push({link: datum.url, title: datum.title});
         }
+    }
+    return searchResults;
+}
+
+export async function searchAjax(searchWords: string, medium: TocSearchMedium): Promise<TocSearchResult> {
+    const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
+    let response: string;
+    try {
+        response = await queueRequest(urlString, {
+            url: urlString,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            method: "POST",
+            body: "action=wp-manga-search-manga&title=" + searchWords
+        });
+    } catch (e) {
+        logger.error(e);
+        return {done: true};
+    }
+    const parsed: NovelSearchResponse = JSON.parse(response);
+
+    if (parsed.success && parsed.data && parsed.data.length) {
+        if (!parsed.data.length) {
+            return {done: true};
+        }
+        for (const datum of parsed.data) {
+            if (equalsIgnore(datum.title, medium.title) || medium.synonyms.some((s) => equalsIgnore(datum.title, s))) {
+                return {value: datum.url, done: true};
+            }
+        }
+        return {done: false};
+    } else {
+        return {done: true};
     }
 }
 
@@ -113,9 +141,26 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const uri = "https://boxnovel.com";
 
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
-        return [];
+        throw new UrlError("not a valid toc url for BoxNovel: " + tocLink, tocLink);
     }
-    const $ = await queueCheerioRequest(tocLink);
+    let $: CheerioStatic;
+    try {
+        $ = await queueCheerioRequest(tocLink);
+    } catch (e) {
+        if (e instanceof StatusCodeError || e instanceof RequestStatusCodeError) {
+            if (e.statusCode === 404) {
+                throw new MissingResourceError("Toc not found on BoxNovel", tocLink);
+            } else {
+                throw e;
+            }
+        } else {
+            throw e;
+        }
+    }
+
+    if ($("body.error404").length) {
+        throw new MissingResourceError("Toc not found on BoxNovel", tocLink);
+    }
 
     const mediumTitleElement = $(".post-title h3");
     mediumTitleElement.find("span").remove();
@@ -126,12 +171,14 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 
     const titleRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?\s*((\d+)(\.(\d+))?)/i;
     const linkRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?-((\d+)(\.(\d+))?)/i;
+
+    const seenEpisodes: Map<number, string> = new Map();
     let end;
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
 
         const titleElement = newsRow.find("a");
-        const link = url.resolve(uri, titleElement.attr("href"));
+        const link = url.resolve(uri, titleElement.attr("href") as string);
 
         let episodeTitle = sanitizeString(titleElement.text());
 
@@ -187,6 +234,11 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         if (!episodeIndices) {
             throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
         }
+        const previousTitle = seenEpisodes.get(episodeIndices.combi);
+        if (previousTitle && previousTitle === episodeTitle) {
+            continue;
+        }
+        seenEpisodes.set(episodeIndices.combi, episodeTitle);
         const chapterContent = {
             combiIndex: episodeIndices.combi,
             totalIndex: episodeIndices.total,
@@ -198,11 +250,23 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         checkTocContent(chapterContent);
         content.push(chapterContent);
     }
+    const releaseStateElement = $("div.post-content_item:nth-child(2) > div:nth-child(2)");
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+
+    if (releaseStateString.includes("complete")) {
+        end = true;
+        releaseState = ReleaseState.Complete;
+    } else if (releaseStateString.includes("ongoing")) {
+        end = false;
+        releaseState = ReleaseState.Ongoing;
+    }
     return [{
         link: tocLink,
         content,
         title: mediumTitle,
         end,
+        statusTl: releaseState,
         mediumType: MediaType.TEXT
     }];
 }
@@ -219,7 +283,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
         const newsRow = items.eq(i);
 
         const mediumTitleElement = newsRow.find(".post-title a");
-        const tocLink = url.resolve(uri, mediumTitleElement.attr("href"));
+        const tocLink = url.resolve(uri, mediumTitleElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumTitleElement.text());
 
         const titleElement = newsRow.find(".chapter-item .chapter a");
@@ -227,7 +291,7 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
 
         for (let j = 0; j < titleElement.length; j++) {
             const chapterTitleElement = titleElement.eq(j);
-            const link = url.resolve(uri, chapterTitleElement.attr("href"));
+            const link = url.resolve(uri, chapterTitleElement.attr("href") as string);
 
             const episodeTitle = sanitizeString(chapterTitleElement.text());
             const timeStampElement = timeElements.eq(j);
@@ -298,6 +362,7 @@ newsAdapter.link = "https://boxnovel.com";
 tocSearch.link = "https://boxnovel.com";
 tocSearch.medium = MediaType.TEXT;
 tocSearch.blindSearch = true;
+search.medium = MediaType.TEXT;
 
 
 export function getHook(): Hook {
@@ -309,5 +374,6 @@ export function getHook(): Hook {
         tocAdapter,
         tocSearchAdapter: tocSearch,
         newsAdapter,
+        searchAdapter: search,
     };
 }

@@ -1,6 +1,7 @@
-import {remove, removeLike} from "./tools";
-import {logError} from "./logger";
+import {remove, removeLike, stringify} from "./tools";
+import logger from "./logger";
 import {JobRequest} from "./types";
+import {getStore, runAsync} from "./asyncStorage";
 import Timeout = NodeJS.Timeout;
 
 export enum MemorySize {
@@ -17,7 +18,6 @@ export class JobQueue {
     private readonly waitingJobs: InternJob[] = [];
     private readonly activeJobs: InternJob[] = [];
     private queueActive = false;
-    private currentJobId = 0;
     private intervalId: Timeout | undefined;
     private currentInterval = 1000;
 
@@ -38,16 +38,16 @@ export class JobQueue {
     constructor({memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5} = {}) {
         this.memoryLimit = memoryLimit;
         this.memorySize = memorySize;
-        this.maxActive = maxActive;
+        this.maxActive = maxActive < 0 ? 1 : maxActive;
     }
 
-    public addJob(job: JobCallback): Job {
+    public addJob(jobId: number, job: JobCallback): Job {
         const wasEmpty = this.isEmpty();
         let lastRun: number | null = null;
 
         const info: Job = {};
         const internJob: InternJob = {
-            jobId: this.currentJobId++,
+            jobId,
             executed: 0,
             active: true,
             job,
@@ -102,18 +102,54 @@ export class JobQueue {
         return (this.activeJobs.length + this.waitingJobs.length) === 0;
     }
 
+    public isFull() {
+        return this.activeJobs.length >= this.maxActive;
+    }
+
+    public invalidRunning(end: Date, atLeast: number): boolean {
+        const nonEndingJobs = this.activeJobs.filter((value) => {
+            return value.startRun && value.startRun < end.getTime();
+        });
+        return nonEndingJobs.length >= atLeast;
+    }
+
+    public getJobs(): OutsideJob[] {
+        const jobs = [];
+        for (const job of this.activeJobs) {
+            jobs.push({
+                active: job.active,
+                executed: job.executed,
+                jobId: job.jobId,
+                lastRun: job.lastRun,
+                running: job.running,
+                startRun: job.startRun,
+            });
+        }
+        for (const job of this.waitingJobs) {
+            jobs.push({
+                active: job.active,
+                executed: job.executed,
+                jobId: job.jobId,
+                lastRun: job.lastRun,
+                running: job.running,
+                startRun: job.startRun,
+            });
+        }
+        return jobs;
+    }
+
     private _done(job: InternJob) {
         remove(this.activeJobs, job);
-
+        job.running = false;
         if (job.startRun) {
-            const now = new Date();
-            const iso = now.toISOString();
-            const diffTime = now.getTime() - job.startRun;
-            console.log(`Job ${job.jobId} executed in ${diffTime} ms, ${job.executed} times on ${iso}`);
+            const store = getStore();
+            const running = store.get("running");
+            const waiting = store.get("waiting");
+            logger.info(`Job ${job.jobId} executed in running ${running} ms and waiting ${waiting} ms, ${job.executed} times`);
             job.lastRun = Date.now();
             job.startRun = 0;
         } else {
-            console.log("Cancelling already finished job");
+            logger.info(`Cancelling already finished job ${job.jobId}`);
         }
     }
 
@@ -131,11 +167,21 @@ export class JobQueue {
     private _queueJob(): void {
         if (this.isEmpty() && this.intervalId) {
             clearInterval(this.intervalId);
-            console.log("queue is empty");
+            logger.info("queue is empty");
             return;
         }
         if (!this.schedulableJobs || !this.queueActive || this._fullQueue() || this._overMemoryLimit()) {
-            console.log("ignoring: " + new Date());
+            let reason = "i dont know the reason";
+            if (!this.schedulableJobs) {
+                reason = "No Schedulable Jobs";
+            } else if (!this.queueActive) {
+                reason = "Queue is not active";
+            } else if (this._fullQueue()) {
+                reason = "Queue is full";
+            } else if (this._overMemoryLimit()) {
+                reason = "Over Memory Limit";
+            }
+            logger.info(`queue will not execute a new job this tick: '${reason}'`);
             this.setInterval(1000);
             return;
         }
@@ -153,30 +199,31 @@ export class JobQueue {
         toExecute.running = true;
         this.activeJobs.push(toExecute);
         toExecute.startRun = Date.now();
-        this
-            .executeCallback(async () => {
-                toExecute.executed++;
-                if (toExecute.jobInfo.onStart) {
-                    await this
-                        .executeCallback(toExecute.jobInfo.onStart)
-                        .catch((reason) => logError("On Start threw an error!: " + reason));
-                }
-                console.log("executing job: " + toExecute.jobId);
-                return toExecute.job(() => this._done(toExecute));
-            })
-            .catch((reason) => {
-                remove(this.waitingJobs, toExecute);
-                console.error(reason);
-                return reason;
-            })
-            .finally(() => {
-                this._done(toExecute);
+        const store = new Map();
+        runAsync(store, () =>
+            this
+                .executeCallback(async () => {
+                    toExecute.executed++;
+                    if (toExecute.jobInfo.onStart) {
+                        await this
+                            .executeCallback(toExecute.jobInfo.onStart)
+                            .catch((reason) => logger.error(`Job ${toExecute.jobId} onStart threw an error!: ${stringify(reason)}`));
+                    }
+                    logger.info("executing job: " + toExecute.jobId);
+                    return toExecute.job(() => this._done(toExecute));
+                })
+                .catch((reason) => {
+                    remove(this.waitingJobs, toExecute);
+                    logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(reason)}`);
+                })
+                .finally(() => {
+                    this._done(toExecute);
 
-                if (toExecute.jobInfo.onDone) {
-                    this.executeCallback(toExecute.jobInfo.onDone)
-                        .catch((reason) => logError("On Done threw an error!: " + reason));
-                }
-            });
+                    if (toExecute.jobInfo.onDone) {
+                        this.executeCallback(toExecute.jobInfo.onDone)
+                            .catch((reason) => logger.error(`Job ${toExecute.jobId} onDone threw an error!: ${stringify(reason)}`));
+                    }
+                }));
     }
 
     private setInterval(duration?: number) {
@@ -204,10 +251,7 @@ export class JobQueue {
         return new Promise((resolve, reject) => {
             try {
                 const result = callback();
-
-                if (result && result instanceof Promise) {
-                    resolve(result);
-                }
+                resolve(result);
             } catch (e) {
                 reject(e);
             }
@@ -221,6 +265,15 @@ export type JobCallback = ((done: () => void) => void | JobRequest | JobRequest[
 interface InternJob {
     readonly jobInfo: Job;
     readonly job: JobCallback;
+    jobId: number;
+    startRun?: number;
+    running?: boolean;
+    active: boolean;
+    executed: number;
+    lastRun: number | null;
+}
+
+export interface OutsideJob {
     jobId: number;
     startRun?: number;
     running?: boolean;

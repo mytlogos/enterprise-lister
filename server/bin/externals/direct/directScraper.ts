@@ -1,6 +1,7 @@
 import {Hook} from "../types";
 import {getHook as getWWHook} from "./wuxiaworldScraper";
 import {getHook as getKissAnimeHook} from "./kissAnimeScraper";
+import {getHook as getGogoAnimeHook} from "./gogoAnimeScraper";
 import {getHook as getMangaDexHook} from "./mangadexScraper";
 import {getHook as getMangaHasuHook} from "./mangaHasuScraper";
 import {getHook as getWebnovelHook} from "./webnovelScraper";
@@ -11,6 +12,7 @@ export function getHooks(): Hook[] {
     return [
         getWWHook(),
         getKissAnimeHook(),
+        getGogoAnimeHook(),
         getMangaDexHook(),
         getMangaHasuHook(),
         // qidian underground seems to be closed down

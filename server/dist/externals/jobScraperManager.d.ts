@@ -1,5 +1,9 @@
-import { JobRequest } from "../types";
+import { OutsideJob } from "../jobManager";
+import { JobItem, JobRequest } from "../types";
 export declare class JobScraperManager {
+    private static initStore;
+    automatic: boolean;
+    filter: undefined | ((item: JobItem) => boolean);
     private paused;
     private readonly helper;
     private readonly queue;
@@ -8,13 +12,22 @@ export declare class JobScraperManager {
     private intervalId;
     constructor();
     on(event: string, callback: (value: any) => void): void;
-    removeDependant(key: number | string): void;
+    removeDependant(key: number | string): Promise<void>;
     setup(): Promise<void>;
     start(): void;
     pause(): void;
     stop(): void;
+    /**
+     * Mainly for test purposes
+     * @param jobIds
+     */
+    runJobs(...jobIds: number[]): Promise<void>;
     addJobs(...jobs: JobRequest[]): Promise<void>;
+    getJobs(): OutsideJob[];
     private addDependant;
+    private checkCurrentVsStorage;
+    private checkRunningJobs;
+    private checkRunningStorageJobs;
     private fetchJobs;
     private processJobItems;
     private queueEmittableJob;

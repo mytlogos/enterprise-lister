@@ -5,9 +5,10 @@ const cloudscraper_1 = tslib_1.__importDefault(require("cloudscraper"));
 const request_1 = tslib_1.__importDefault(require("request"));
 const cheerio_1 = tslib_1.__importDefault(require("cheerio"));
 const parse5_parser_stream_1 = tslib_1.__importDefault(require("parse5-parser-stream"));
-const parse5_1 = tslib_1.__importDefault(require("parse5"));
-const htmlparser2_1 = tslib_1.__importStar(require("htmlparser2"));
+const htmlparser2 = tslib_1.__importStar(require("htmlparser2"));
 const transform_1 = require("../transform");
+const errors_1 = require("request-promise-native/errors");
+const errors_2 = require("./errors");
 class Queue {
     constructor(maxLimit = 1000) {
         this.maxLimit = maxLimit > 10 ? maxLimit : 10;
@@ -50,6 +51,27 @@ class Queue {
 exports.Queue = Queue;
 const queues = new Map();
 const fastQueues = new Map();
+function methodToRequest(options, toUseRequest) {
+    const method = options && options.method ? options.method : "";
+    switch (method.toLowerCase()) {
+        case "get":
+            return toUseRequest.get(options);
+        case "head":
+            return toUseRequest.head(options);
+        case "put":
+            return toUseRequest.put(options);
+        case "post":
+            return toUseRequest.post(options);
+        case "patch":
+            return toUseRequest.patch(options);
+        case "del":
+            return toUseRequest.del(options);
+        case "delete":
+            return toUseRequest.delete(options);
+        default:
+            return toUseRequest.get(options);
+    }
+}
 function processRequest(uri, otherRequest, queueToUse = queues, limit) {
     const exec = /https?:\/\/([^\/]+)/.exec(uri);
     if (!exec) {
@@ -73,7 +95,14 @@ function processRequest(uri, otherRequest, queueToUse = queues, limit) {
 }
 exports.queueRequest = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
-    return queue.push(() => toUseRequest.get(uri, options));
+    if (!options) {
+        options = { uri };
+    }
+    else {
+        // @ts-ignore
+        options.url = uri;
+    }
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 exports.queueCheerioRequestBuffered = (uri, options, otherRequest) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest);
@@ -81,14 +110,15 @@ exports.queueCheerioRequestBuffered = (uri, options, otherRequest) => {
         options = { uri };
     }
     options.transform = transformCheerio;
-    return queue.push(() => toUseRequest.get(uri, options));
+    return queue.push(() => methodToRequest(options, toUseRequest));
 };
 function streamParse5(resolve, reject, uri, options) {
     // i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly
     // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
     //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
     //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
-    const parser = new parse5_parser_stream_1.default({ treeAdapter: parse5_1.default.treeAdapters.htmlparser2 });
+    // @ts-ignore
+    const parser = new parse5_parser_stream_1.default({ treeAdapter: parse5_parser_stream_1.default.treeAdapters.htmlparser2 });
     parser.on("finish", () => {
         if (parser.document && parser.document.children) {
             // @ts-ignore
@@ -106,8 +136,7 @@ function streamParse5(resolve, reject, uri, options) {
     });
     const stream = new transform_1.BufferToStringStream();
     stream.on("data", (chunk) => console.log("first chunk:\n " + chunk.substring(0, 100)));
-    request_1.default
-        .get(uri, options)
+    request_1.default(uri, options)
         .on("response", (resp) => {
         resp.pause();
         if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
@@ -128,20 +157,21 @@ function streamParse5(resolve, reject, uri, options) {
 }
 function streamHtmlParser2(resolve, reject, uri, options) {
     // TODO: 22.06.2019 seems to produce sth bad, maybe some error in how i stream the buffer to string?
-    // TODO: 22.06.2019 seems to throw this error primarily (noticed there only) on webnovel.com, parts are messed up
-    const parser = new htmlparser2_1.default.WritableStream(new htmlparser2_1.DomHandler((error, dom) => {
+    // TODO: 22.06.2019 seems to produce this error primarily (noticed there only) on webnovel.com, parts are messed up
+    const parser = new htmlparser2.WritableStream(new htmlparser2.DomHandler((error, dom) => {
         // @ts-ignore
-        const load = cheerio_1.default.load(dom);
+        const load = cheerio_1.default.load(dom, { decodeEntities: false });
         resolve(load);
     }, {
+        // FIXME: 02.09.2019 why does it not accept this property?
+        // @ts-ignore
         withDomLvl1: true,
         normalizeWhitespace: false,
     }), {
-        decodeEntities: true,
+        decodeEntities: false,
     }).on("error", (err) => reject(err));
     const stream = new transform_1.BufferToStringStream();
-    request_1.default
-        .get(uri, options)
+    request_1.default(uri, options)
         .on("response", (resp) => {
         resp.pause();
         if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
@@ -152,6 +182,14 @@ function streamHtmlParser2(resolve, reject, uri, options) {
             options.transform = transformCheerio;
             resolve(cloudscraper_1.default(options));
             return;
+        }
+        else if (resp.statusCode === 404) {
+            resp.destroy();
+            reject(new errors_2.MissingResourceError(uri, uri));
+        }
+        else if (resp.statusCode >= 400 || resp.statusCode < 200) {
+            resp.destroy();
+            reject(new errors_1.StatusCodeError(resp.statusCode, "", options, resp));
         }
         resp.pipe(stream).pipe(parser);
     })
@@ -167,7 +205,7 @@ exports.queueCheerioRequestStream = (uri, options) => {
     }
     return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
 };
-exports.queueCheerioRequest = exports.queueCheerioRequestBuffered;
+exports.queueCheerioRequest = exports.queueCheerioRequestStream;
 const transformCheerio = (body) => cheerio_1.default.load(body, { decodeEntities: false });
 const queueFullResponseWithLimit = (uri, options, otherRequest, queueToUse = queues, limit) => {
     const { toUseRequest, queue } = processRequest(uri, otherRequest, queueToUse, limit);

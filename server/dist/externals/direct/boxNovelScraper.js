@@ -1,46 +1,79 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const tslib_1 = require("tslib");
+const types_1 = require("../../types");
 const queueManager_1 = require("../queueManager");
 const url = tslib_1.__importStar(require("url"));
 const tools_1 = require("../../tools");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
 const directTools_1 = require("./directTools");
 const scraperTools_1 = require("../scraperTools");
+const errors_1 = require("../errors");
+const errors_2 = require("cloudscraper/errors");
+const errors_3 = require("request-promise-native/errors");
 async function tocSearch(medium) {
-    return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (parameter) => `https://boxnovel.com/?s=${parameter}&post_type=wp-manga`, ".post-title a");
+    return directTools_1.searchToc(medium, tocAdapter, "https://boxnovel.com/", (searchString) => searchAjax(searchString, medium));
+}
+async function search(text) {
+    const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
+    let response;
+    const searchResults = [];
+    try {
+        response = await queueManager_1.queueRequest(urlString, {
+            url: urlString,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            method: "POST",
+            body: "action=wp-manga-search-manga&title=" + text
+        });
+    }
+    catch (e) {
+        logger_1.default.error(e);
+        return searchResults;
+    }
+    const parsed = JSON.parse(response);
+    if (parsed.success && parsed.data && parsed.data.length) {
+        for (const datum of parsed.data) {
+            searchResults.push({ link: datum.url, title: datum.title });
+        }
+    }
+    return searchResults;
 }
 async function searchAjax(searchWords, medium) {
     const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
     let response;
-    // TODO: 19.08.2019 this may work, forgot to set http method before
-    // TODO: 26.08.2019 this does not work for any reason
     try {
-        const body = "action=wp-manga-search-mangatitle=" + searchWords;
         response = await queueManager_1.queueRequest(urlString, {
             url: urlString,
             headers: {
-                "Content-Length": body.length,
-                "Accept": "*/*",
                 "Content-Type": "application/x-www-form-urlencoded"
             },
             method: "POST",
-            body
+            body: "action=wp-manga-search-manga&title=" + searchWords
         });
     }
     catch (e) {
-        console.log(e);
-        return;
+        logger_1.default.error(e);
+        return { done: true };
     }
     const parsed = JSON.parse(response);
     if (parsed.success && parsed.data && parsed.data.length) {
-        const foundItem = parsed.data.find((value) => tools_1.equalsIgnore(value.title, medium.title)
-            || medium.synonyms.some((s) => tools_1.equalsIgnore(value.title, s)));
-        if (foundItem) {
-            return foundItem.url;
+        if (!parsed.data.length) {
+            return { done: true };
         }
+        for (const datum of parsed.data) {
+            if (tools_1.equalsIgnore(datum.title, medium.title) || medium.synonyms.some((s) => tools_1.equalsIgnore(datum.title, s))) {
+                return { value: datum.url, done: true };
+            }
+        }
+        return { done: false };
+    }
+    else {
+        return { done: true };
     }
 }
+exports.searchAjax = searchAjax;
 async function contentDownloadAdapter(urlString) {
     if (!urlString.match(/https:\/\/boxnovel\.com\/novel\/.+\/chapter-.+/)) {
         return [];
@@ -84,9 +117,28 @@ async function contentDownloadAdapter(urlString) {
 async function tocAdapter(tocLink) {
     const uri = "https://boxnovel.com";
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
-        return [];
+        throw new errors_1.UrlError("not a valid toc url for BoxNovel: " + tocLink, tocLink);
     }
-    const $ = await queueManager_1.queueCheerioRequest(tocLink);
+    let $;
+    try {
+        $ = await queueManager_1.queueCheerioRequest(tocLink);
+    }
+    catch (e) {
+        if (e instanceof errors_2.StatusCodeError || e instanceof errors_3.StatusCodeError) {
+            if (e.statusCode === 404) {
+                throw new errors_1.MissingResourceError("Toc not found on BoxNovel", tocLink);
+            }
+            else {
+                throw e;
+            }
+        }
+        else {
+            throw e;
+        }
+    }
+    if ($("body.error404").length) {
+        throw new errors_1.MissingResourceError("Toc not found on BoxNovel", tocLink);
+    }
     const mediumTitleElement = $(".post-title h3");
     mediumTitleElement.find("span").remove();
     const mediumTitle = tools_1.sanitizeString(mediumTitleElement.text());
@@ -94,6 +146,7 @@ async function tocAdapter(tocLink) {
     const items = $(".wp-manga-chapter");
     const titleRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?\s*((\d+)(\.(\d+))?)/i;
     const linkRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?-((\d+)(\.(\d+))?)/i;
+    const seenEpisodes = new Map();
     let end;
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
@@ -146,6 +199,11 @@ async function tocAdapter(tocLink) {
         if (!episodeIndices) {
             throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
         }
+        const previousTitle = seenEpisodes.get(episodeIndices.combi);
+        if (previousTitle && previousTitle === episodeTitle) {
+            continue;
+        }
+        seenEpisodes.set(episodeIndices.combi, episodeTitle);
         const chapterContent = {
             combiIndex: episodeIndices.combi,
             totalIndex: episodeIndices.total,
@@ -157,11 +215,23 @@ async function tocAdapter(tocLink) {
         scraperTools_1.checkTocContent(chapterContent);
         content.push(chapterContent);
     }
+    const releaseStateElement = $("div.post-content_item:nth-child(2) > div:nth-child(2)");
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    let releaseState = types_1.ReleaseState.Unknown;
+    if (releaseStateString.includes("complete")) {
+        end = true;
+        releaseState = types_1.ReleaseState.Complete;
+    }
+    else if (releaseStateString.includes("ongoing")) {
+        end = false;
+        releaseState = types_1.ReleaseState.Ongoing;
+    }
     return [{
             link: tocLink,
             content,
             title: mediumTitle,
             end,
+            statusTl: releaseState,
             mediumType: tools_1.MediaType.TEXT
         }];
 }
@@ -243,6 +313,7 @@ newsAdapter.link = "https://boxnovel.com";
 tocSearch.link = "https://boxnovel.com";
 tocSearch.medium = tools_1.MediaType.TEXT;
 tocSearch.blindSearch = true;
+search.medium = tools_1.MediaType.TEXT;
 function getHook() {
     return {
         name: "boxnovel",
@@ -252,6 +323,7 @@ function getHook() {
         tocAdapter,
         tocSearchAdapter: tocSearch,
         newsAdapter,
+        searchAdapter: search,
     };
 }
 exports.getHook = getHook;

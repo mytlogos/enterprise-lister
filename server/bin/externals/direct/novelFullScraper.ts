@@ -1,24 +1,50 @@
 import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
-import {extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import {extractIndices, isTocEpisode, isTocPart, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent, searchToc} from "./directTools";
+import {EpisodePiece, getTextContent, scrapeToc, searchTocCheerio, TocMetaPiece, TocPiece} from "./directTools";
 import {checkTocContent} from "../scraperTools";
+import {UrlError} from "../errors";
 
 async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
-    return searchToc(
+    return searchTocCheerio(
         medium,
-        tocAdapter,
+        tocAdapterTooled,
         "https://novelfull.com/",
-        (parameter) => "http://novelfull.com/search?keyword=" + parameter,
+        (parameter) => "https://novelfull.com/search?keyword=" + parameter,
         ".truyen-title a"
     );
 }
 
+async function search(text: string): Promise<SearchResult[]> {
+    const encodedText = encodeURIComponent(text);
+    const $ = await queueCheerioRequest("https://novelfull.com/search?keyword=" + encodedText);
+
+    const uri = "https://novelfull.com/";
+    const results = $(".col-truyen-main .row");
+    const searchResults: SearchResult[] = [];
+
+    for (let i = 0; i < results.length; i++) {
+        const resultElement = results.eq(i);
+        const linkElement = resultElement.find(".truyen-title a");
+        const authorElement = resultElement.find(".author");
+        const coverElement = resultElement.find("img.cover");
+
+        const coverLink = url.resolve(uri, coverElement.attr("src") as string);
+        const author = sanitizeString(authorElement.text());
+        const title = sanitizeString(linkElement.text());
+        let tocLink = linkElement.attr("href") as string;
+        tocLink = url.resolve(uri, tocLink);
+
+        searchResults.push({title, link: tocLink, author, coverUrl: coverLink});
+    }
+    return searchResults;
+}
+
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
-    if (!urlString.match(/^http:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
+    if (!urlString.match(/^https?:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
         logger.warn("invalid chapter link for novelFull: " + urlString);
         return [];
     }
@@ -41,12 +67,99 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     return getTextContent(novelTitle, episodeTitle, urlString, content);
 }
 
-async function tocAdapter(tocLink: string): Promise<Toc[]> {
-    const uri = "http://novelfull.com";
+function extractTocSnippet($: CheerioStatic, link: string): Toc {
+    let end = false;
+    let releaseState: ReleaseState = ReleaseState.Unknown;
+    const releaseStateElement = $(".info > div:nth-child(4) > a:nth-child(2)");
+
+    const releaseStateString = releaseStateElement.text().toLowerCase();
+    if (releaseStateString.includes("complete")) {
+        end = true;
+        releaseState = ReleaseState.Complete;
+    } else if (releaseStateString.includes("ongoing")) {
+        end = false;
+        releaseState = ReleaseState.Ongoing;
+    }
+    const mediumTitleElement = $(".desc .title").first();
+    const mediumTitle = sanitizeString(mediumTitleElement.text());
+    return {
+        content: [],
+        mediumType: MediaType.TEXT,
+        end,
+        statusTl: releaseState,
+        title: mediumTitle,
+        link
+    };
+}
+
+async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
+    const uri = "https://novelfull.com";
 
     const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
     if (!linkMatch) {
-        return [];
+        throw new UrlError("not a valid toc url for NovelFull: " + tocLink, tocLink);
+    }
+    let toc: Toc | undefined;
+    const pagedTocLink = `https://novelfull.com/index.php/${linkMatch[1]}?page=`;
+    const now = new Date();
+
+    const contents: TocContent[] = await scrapeToc((async function* itemGenerator(): AsyncGenerator<TocPiece, void> {
+        for (let i = 1; ; i++) {
+            const $ = await queueCheerioRequest(pagedTocLink + i);
+
+            if (!toc) {
+                toc = extractTocSnippet($, tocLink);
+                yield toc as TocMetaPiece;
+            }
+            const items = $(".list-chapter li a");
+
+            for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+                const newsRow = items.eq(itemIndex);
+                const link = url.resolve(uri, newsRow.attr("href") as string);
+                const episodeTitle = sanitizeString(newsRow.text());
+                yield {title: episodeTitle, url: link, releaseDate: now} as EpisodePiece;
+            }
+
+            if ($(".pagination .last.disabled, .pagination .next.disabled").length) {
+                break;
+            }
+
+            // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
+            if (i > 300) {
+                logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
+                break;
+            }
+        }
+    })());
+    for (const content of contents) {
+        if (isTocPart(content)) {
+            if (!content.title) {
+                content.title = `Volume ${content.combiIndex}`;
+            }
+            for (const episode of content.episodes) {
+                if (!episode.title) {
+                    episode.title = `Chapter ${episode.combiIndex}`;
+                }
+            }
+        } else if (isTocEpisode(content)) {
+            if (!content.title) {
+                content.title = `Chapter ${content.combiIndex}`;
+            }
+        }
+    }
+    if (toc) {
+        toc.content = contents;
+        return [toc];
+    }
+    return [];
+}
+
+async function tocAdapter(tocLink: string): Promise<Toc[]> {
+    const uri = "https://novelfull.com";
+
+    const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
+    if (!linkMatch) {
+        throw new UrlError("not a valid toc url for NovelFull: " + tocLink, tocLink);
     }
     const toc: {
         title?: string;
@@ -60,7 +173,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         link: tocLink,
         mediumType: MediaType.TEXT
     };
-    tocLink = `http://novelfull.com/index.php/${linkMatch[1]}?page=`;
+    tocLink = `https://novelfull.com/index.php/${linkMatch[1]}?page=`;
 
     for (let i = 1; ; i++) {
         const $ = await queueCheerioRequest(tocLink + i);
@@ -97,7 +210,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         }
         // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
         if (i > 300) {
-            logger.error(`Could not reach end of TOC '${toc.link}'`);
+            logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
             break;
         }
     }
@@ -123,7 +236,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
     for (let i = 0; i < items.length; i++) {
         const newsRow = items.eq(i);
 
-        const link = url.resolve(uri, newsRow.attr("href"));
+        const link = url.resolve(uri, newsRow.attr("href") as string);
 
         const episodeTitle = sanitizeString(newsRow.text());
 
@@ -179,7 +292,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
 }
 
 async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
-    const uri = "http://novelfull.com";
+    const uri = "https://novelfull.com";
     const $ = await queueCheerioRequest(uri);
     const items = $("#list-index .list-new .row");
 
@@ -192,11 +305,11 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
         const newsRow = items.eq(i);
 
         const mediumTitleElement = newsRow.find(".col-title a");
-        const tocLink = url.resolve(uri, mediumTitleElement.attr("href"));
+        const tocLink = url.resolve(uri, mediumTitleElement.attr("href") as string);
         const mediumTitle = sanitizeString(mediumTitleElement.text());
 
         const titleElement = newsRow.find(".col-chap a");
-        const link = url.resolve(uri, titleElement.attr("href"));
+        const link = url.resolve(uri, titleElement.attr("href") as string);
 
         const episodeTitle = sanitizeString(titleElement.text());
 
@@ -255,10 +368,11 @@ async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] 
     return {episodes: episodeNews};
 }
 
-newsAdapter.link = "http://novelfull.com";
-tocSearch.link = "http://novelfull.com";
+newsAdapter.link = "https://novelfull.com";
+tocSearch.link = "https://novelfull.com";
 tocSearch.medium = MediaType.TEXT;
 tocSearch.blindSearch = true;
+search.medium = MediaType.TEXT;
 
 export function getHook(): Hook {
     return {
@@ -266,8 +380,9 @@ export function getHook(): Hook {
         medium: MediaType.TEXT,
         domainReg: /https?:\/\/novelfull\.com/,
         contentDownloadAdapter,
-        tocAdapter,
+        tocAdapter: tocAdapterTooled,
         newsAdapter,
-        tocSearchAdapter: tocSearch
+        tocSearchAdapter: tocSearch,
+        searchAdapter: search
     };
 }

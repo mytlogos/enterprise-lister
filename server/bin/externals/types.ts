@@ -1,6 +1,6 @@
-import {EpisodeNews, News, TocSearchMedium} from "../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../types";
 import {MediaType} from "../tools";
-import {JobCallback} from "../jobQueue";
+import {JobCallback} from "../jobManager";
 
 export interface ScraperJob {
     type: string;
@@ -39,6 +39,7 @@ export interface Hook {
     newsAdapter?: NewsScraper;
     tocAdapter?: TocScraper;
     tocSearchAdapter?: TocSearchScraper;
+    searchAdapter?: SearchScraper;
     contentDownloadAdapter?: ContentDownloader;
 }
 
@@ -88,6 +89,12 @@ export interface Toc {
     partsOnly?: boolean;
     end?: boolean;
     link: string;
+    langCOO?: string;
+    langTL?: string;
+    statusCOO?: ReleaseState;
+    statusTl?: ReleaseState;
+    authors?: Array<{ name: string, link: string }>;
+    artists?: Array<{ name: string, link: string }>;
 }
 
 export interface EpisodeContent {
@@ -118,6 +125,12 @@ export interface TocSearchScraper {
     medium: MediaType;
     blindSearch?: boolean;
     hookName?: string;
+}
+
+export interface SearchScraper {
+    (text: string, medium: number): Promise<SearchResult[]>;
+
+    medium: MediaType;
 }
 
 export interface TocScraper {

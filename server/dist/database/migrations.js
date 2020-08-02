@@ -36,9 +36,10 @@ exports.Migrations = [
             await context.addUnique("part", "UNIQUE_PART", "medium_id", "combiIndex");
             await context.dropPrimaryKey("scrape_board");
             await context.addPrimaryKey("scrape_board", "link", "type");
+            // tslint:disable-next-line
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_1", "external_uuid", "external_user", "uuid");
             await context.addForeignKey("scrape_board", "scrape_board_ibfk_3", "uuid", "user", "uuid");
-            await context.clearInvalidationTable();
+            await context.parentContext.clearInvalidationTable();
             await ignoreError(() => context.dropPrimaryKey("user_data_invalidation"), [databaseTypes_1.MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
             await context.addUnique("user_data_invalidation", "UNIQUE_NEWS", "news_id", "uuid");
             await context.addUnique("user_data_invalidation", "UNIQUE_MEDIUM", "medium_id", "uuid");
@@ -80,6 +81,67 @@ exports.Migrations = [
         toVersion: 5,
         async migrate(context) {
             // empty migration as it adds trigger only
+        }
+    },
+    {
+        fromVersion: 5,
+        toVersion: 6,
+        async migrate(context) {
+            await context.addColumn("jobs", "runningSince DATETIME");
+        }
+    },
+    {
+        fromVersion: 6,
+        toVersion: 7,
+        async migrate(context) {
+            // implicit drop of all triggers which insert rows in user_data_invalidation table
+            await Promise.all([
+                "reading_list",
+                "external_reading_list",
+                "medium",
+                "part",
+                "episode",
+                "episode_release",
+                "news_board",
+                "medium_in_wait",
+            ].map((value) => ignoreError(() => context.addColumn(value, "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME])));
+            await ignoreError(() => context.addColumn("external_user", "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+        }
+    },
+    {
+        fromVersion: 7,
+        toVersion: 8,
+        async migrate(context) {
+            await ignoreError(() => context.addColumn("medium_toc", "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+        }
+    },
+    {
+        fromVersion: 8,
+        toVersion: 9,
+        async migrate(context) {
+            await ignoreError(() => context.dropForeignKey("medium_toc", "medium_toc_ibfk_1"), [databaseTypes_1.MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
+            await ignoreError(() => context.dropPrimaryKey("medium_toc"), [databaseTypes_1.MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]);
+            await Promise.all([
+                "id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY",
+                "countryOfOrigin VARCHAR(200)",
+                "languageOfOrigin VARCHAR(200)",
+                "author VARCHAR(200)",
+                "artist VARCHAR(200)",
+                "title VARCHAR(200) NOT NULL",
+                "medium INT NOT NULL",
+                "lang VARCHAR(200)",
+                "stateOrigin INT",
+                "stateTL INT",
+                "series VARCHAR(200)",
+                "universe VARCHAR(200)"
+            ].map((value) => ignoreError(() => context.addColumn("medium_toc", value), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME])));
+            // no error should occur as primary is dropped before if available
+            // context.addPrimaryKey("medium_toc", "id");
+            // no error should occur as foreign key is dropped before if available
+            context.addForeignKey("medium_toc", "medium_toc_ibfk_1", "medium_id", "medium", "id");
+            await ignoreError(() => context.addUnique("medium_toc", "UNIQUE_TOC", "medium_id", "link"), [databaseTypes_1.MySqlErrorNo.ER_DUP_KEYNAME]);
+            await ignoreError(() => context.addColumn("episode_release", "toc_id INT UNSIGNED"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
+            await ignoreError(() => context.addForeignKey("episode_release", "episode_release_ibfk_2", "toc_id", "medium_toc", "id"), [databaseTypes_1.MySqlErrorNo.ER_DUP_FIELDNAME]);
         }
     }
 ];
