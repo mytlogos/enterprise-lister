@@ -24,11 +24,13 @@
     "tests/resources/218/novelfull-22.html",
     "tests/resources/218/novelfull-23.html",
     "tests/resources/218/novelfull-24.html",
-    "tests/resources/218/novelfull-25.html"
+    "tests/resources/218/novelfull-25.html",
+    "tests/resources/218/novelfull-26.html",
+    "tests/resources/218/novelfull-27.html"
   ],
   "domain": "novelfull",
   "hasParts": false,
   "hasLocked": false,
-  "numberEpisodes": 1241,
-  "lastIndex": 1241
+  "numberEpisodes": 1328,
+  "lastIndex": 1328
 }
