@@ -1,3 +1,13 @@
 language: node_js
 node_js:
   - "13.13"
+
+before_script:
+  - "cat >> env.env <<EOL
+    port=80
+    NODE_ENV=test
+    dbHost=localhost
+    dbUser=test
+    dbPassword=test
+    dbConLimit=50
+    EOL"
