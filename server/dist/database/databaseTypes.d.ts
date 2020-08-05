@@ -58,14 +58,6 @@ export interface ConnectionContext {
     commit(): Promise<void>;
     rollback(): Promise<void>;
 }
-export declare enum MySqlErrorNo {
-    ER_BAD_FIELD_ERROR = 1054,
-    ER_DUP_FIELDNAME = 1060,
-    ER_DUP_KEYNAME = 1061,
-    ER_DUP_ENTRY = 1062,
-    ER_MULTIPLE_PRI_KEY = 1068,
-    ER_CANT_DROP_FIELD_OR_KEY = 1091
-}
 export interface ChangeUser {
     name?: string;
     newPassword?: string;
