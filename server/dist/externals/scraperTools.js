@@ -368,7 +368,7 @@ exports.queueTocsJob = async () => {
 exports.queueTocs = async () => {
     await storage_1.storage.queueNewTocs();
 };
-exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
+exports.oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }) => {
     logger_1.default.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
     if (!path) {
@@ -408,6 +408,26 @@ exports.oneTimeToc = async ({ url: link, uuid, mediumId }) => {
         allTocs[0].mediumId = mediumId;
     }
     logger_1.default.info("toc scraped successfully: " + link);
+    const today = new Date().toDateString();
+    if (lastRequest && lastRequest.toDateString() === today) {
+        for (const tocResult of allTocs) {
+            for (const tocContent of tocResult.content) {
+                if (tools_1.isTocPart(tocContent)) {
+                    for (const episode of tocContent.episodes) {
+                        if (episode.noTime && episode.releaseDate && episode.releaseDate.toDateString() === today) {
+                            episode.releaseDate = lastRequest;
+                        }
+                    }
+                }
+                else {
+                    const episode = tocContent;
+                    if (episode.noTime && episode.releaseDate && episode.releaseDate.toDateString() === today) {
+                        episode.releaseDate = lastRequest;
+                    }
+                }
+            }
+        }
+    }
     return { tocs: allTocs, uuid };
 };
 exports.news = async (link) => {

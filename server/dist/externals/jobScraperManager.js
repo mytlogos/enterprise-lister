@@ -364,6 +364,7 @@ class JobScraperManager {
                 case types_1.ScrapeName.toc:
                     jobType = ScrapeJob.toc;
                     args = JSON.parse(value.arguments);
+                    args.lastRequest = value.lastRun;
                     break;
                 case types_1.ScrapeName.searchForToc:
                     jobType = ScrapeJob.searchForToc;

@@ -1,6 +1,6 @@
 import {factory, getListManagerHooks, ListScrapeResult, ListType} from "./listManager";
 import feedParserPromised from "feedparser-promised";
-import {combiIndex, getElseSet, hasMediaType, ignore, max, maxValue, MediaType, multiSingle} from "../tools";
+import {combiIndex, getElseSet, hasMediaType, ignore, isTocPart, max, maxValue, MediaType, multiSingle} from "../tools";
 import {
     Episode,
     EpisodeNews,
@@ -27,6 +27,7 @@ import {
     SearchScraper,
     Toc,
     TocContent,
+    TocEpisode,
     TocRequest,
     TocResult,
     TocScraper,
@@ -464,7 +465,7 @@ export const queueTocs = async (): Promise<void> => {
     await storage.queueNewTocs();
 };
 
-export const oneTimeToc = async ({url: link, uuid, mediumId}: TocRequest)
+export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRequest)
     : Promise<{ tocs: Toc[], uuid?: string; }> => {
     logger.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
@@ -509,6 +510,25 @@ export const oneTimeToc = async ({url: link, uuid, mediumId}: TocRequest)
         allTocs[0].mediumId = mediumId;
     }
     logger.info("toc scraped successfully: " + link);
+    const today = new Date().toDateString();
+    if (lastRequest && lastRequest.toDateString() === today) {
+        for (const tocResult of allTocs) {
+            for (const tocContent of tocResult.content) {
+                if (isTocPart(tocContent)) {
+                    for (const episode of tocContent.episodes) {
+                        if (episode.noTime && episode.releaseDate && episode.releaseDate.toDateString() === today) {
+                            episode.releaseDate = lastRequest;
+                        }
+                    }
+                } else {
+                    const episode = tocContent as TocEpisode;
+                    if (episode.noTime && episode.releaseDate && episode.releaseDate.toDateString() === today) {
+                        episode.releaseDate = lastRequest;
+                    }
+                }
+            }
+        }
+    }
     return {tocs: allTocs, uuid};
 };
 

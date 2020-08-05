@@ -223,7 +223,8 @@ async function scrapeToc(urlString) {
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
+                releaseDate: time,
+                noTime: true
             };
             scraperTools_1.checkTocContent(episodeContent);
             part.episodes.push(episodeContent);
@@ -244,7 +245,8 @@ async function scrapeToc(urlString) {
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
+                releaseDate: time,
+                noTime: true
             });
         }
         else {

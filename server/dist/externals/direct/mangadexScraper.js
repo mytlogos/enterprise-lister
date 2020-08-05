@@ -277,7 +277,8 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
+                releaseDate: time,
+                noTime: true
             };
             scraperTools_1.checkTocContent(chapterContent);
             part.episodes.push(chapterContent);
@@ -295,7 +296,8 @@ async function scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
+                releaseDate: time,
+                noTime: true
             };
             scraperTools_1.checkTocContent(chapterContent);
             toc.content.push(chapterContent);

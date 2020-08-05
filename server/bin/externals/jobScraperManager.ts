@@ -21,6 +21,7 @@ import {jobStorage} from "../database/storages/storage";
 import * as dns from "dns";
 import {getStore} from "../asyncStorage";
 import Timeout = NodeJS.Timeout;
+import {TocRequest} from "./types";
 
 class ScrapeJob {
     public static readonly toc = new ScrapeJob(ScrapeName.toc, toc, ScrapeEvent.TOC);
@@ -417,7 +418,8 @@ export class JobScraperManager {
                         break;
                     case ScrapeName.toc:
                         jobType = ScrapeJob.toc;
-                        args = JSON.parse(value.arguments as string);
+                        args = JSON.parse(value.arguments as string) as TocRequest;
+                        args.lastRequest = value.lastRun;
                         break;
                     case ScrapeName.searchForToc:
                         jobType = ScrapeJob.searchForToc;

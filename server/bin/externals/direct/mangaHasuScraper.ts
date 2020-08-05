@@ -259,8 +259,9 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
-            };
+                releaseDate: time,
+                noTime: true
+            } as TocEpisode;
             checkTocContent(episodeContent);
             part.episodes.push(episodeContent);
         } else if (chapGroups) {
@@ -283,7 +284,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
+                releaseDate: time,
+                noTime: true
             });
         } else {
             logger.warn(

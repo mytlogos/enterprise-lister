@@ -55,6 +55,7 @@ export interface TocRequest {
     url: string;
     uuid?: string;
     mediumId?: number;
+    lastRequest?: Date;
 }
 
 export interface DownloadContent {
@@ -73,6 +74,7 @@ export interface TocContent {
 export interface TocEpisode extends TocContent {
     url: string;
     releaseDate?: Date;
+    noTime?: boolean;
     locked?: boolean;
 }
 

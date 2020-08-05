@@ -18,7 +18,7 @@ export declare function searchForToc(item: TocSearchMedium, searcher: TocSearchS
 export declare const checkTocsJob: () => Promise<JobRequest[]>;
 export declare const queueTocsJob: () => Promise<JobRequest[]>;
 export declare const queueTocs: () => Promise<void>;
-export declare const oneTimeToc: ({ url: link, uuid, mediumId }: TocRequest) => Promise<{
+export declare const oneTimeToc: ({ url: link, uuid, mediumId, lastRequest }: TocRequest) => Promise<{
     tocs: Toc[];
     uuid?: string | undefined;
 }>;

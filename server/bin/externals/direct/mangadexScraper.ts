@@ -8,6 +8,7 @@ import * as request from "request";
 import {checkTocContent} from "../scraperTools";
 import {episodeStorage} from "../../database/storages/storage";
 import {MissingResourceError, UrlError} from "../errors";
+import To = Expect.To;
 
 const jar = request.jar();
 jar.setCookie(
@@ -383,8 +384,9 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
-            };
+                releaseDate: time,
+                noTime: true
+            } as TocEpisode;
             checkTocContent(chapterContent);
             part.episodes.push(chapterContent);
         } else if (chapGroups) {
@@ -403,7 +405,8 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
+                releaseDate: time,
+                noTime: true
             } as TocEpisode;
             checkTocContent(chapterContent);
             toc.content.push(chapterContent);
