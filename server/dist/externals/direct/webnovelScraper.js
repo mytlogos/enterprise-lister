@@ -64,7 +64,8 @@ async function scrapeNews() {
             episodeIndex: index,
             episodeTotalIndex: index,
             date: time,
-            link
+            link,
+            locked: true
         });
     }
     return { episodes: news };
