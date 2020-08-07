@@ -4,3 +4,6 @@ node_js:
 
 before_script:
   - mv test.env env.env
+
+addons:
+  mariadb: '10.0'
