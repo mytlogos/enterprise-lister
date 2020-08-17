@@ -11,7 +11,8 @@ import {getHook as getBoxnovelHook} from "./boxNovelScraper";
 export function getHooks(): Hook[] {
     return [
         getWWHook(),
-        getKissAnimeHook(),
+        // site was shutdown
+        // getKissAnimeHook(),
         getGogoAnimeHook(),
         getMangaDexHook(),
         getMangaHasuHook(),
