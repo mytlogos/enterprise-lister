@@ -759,6 +759,6 @@ function sendResultCall(res, callback) {
 // fixme an error showed that req.query.something does not assign on first call, only on second???
 function extractQueryParam(request, key) {
     // @ts-ignore
-    return request.query[key] ?? request.query[key];
+    return request.query[key] || request.query[key];
 }
 //# sourceMappingURL=userMiddleware.js.map

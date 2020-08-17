@@ -851,5 +851,5 @@ function sendResultCall(res: Response, callback: () => any) {
 // fixme an error showed that req.query.something does not assign on first call, only on second???
 function extractQueryParam(request: Request, key: string) {
     // @ts-ignore
-    return request.query[key] ?? request.query[key];
+    return request.query[key] || request.query[key];
 }
