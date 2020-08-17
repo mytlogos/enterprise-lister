@@ -24,7 +24,7 @@ import {
     separateIndex
 } from "../../tools";
 import logger from "../../logger";
-import {MySqlErrorNo} from "../databaseTypes";
+import {MysqlServerError} from "../mysqlError";
 import {escapeLike} from "../storages/storageTools";
 import {Query} from "mysql";
 
@@ -847,7 +847,7 @@ export class EpisodeContext extends SubContext {
                 "UPDATE episode_release set episode_id=? where episode_id=?",
                 [replaceId.newId, replaceId.oldId]
             ).catch((reason) => {
-                if (reason && MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
                     deleteReleaseIds.push(replaceId.oldId);
                 } else {
                     throw reason;
@@ -861,7 +861,7 @@ export class EpisodeContext extends SubContext {
                 "UPDATE user_episode set episode_id=? where episode_id=?",
                 [replaceId.newId, replaceId.oldId]
             ).catch((reason) => {
-                if (reason && MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
                     deleteProgressIds.push(replaceId.oldId);
                 } else {
                     throw reason;
@@ -875,7 +875,7 @@ export class EpisodeContext extends SubContext {
                 "UPDATE result_episode set episode_id=? where episode_id=?",
                 [replaceId.newId, replaceId.oldId]
             ).catch((reason) => {
-                if (reason && MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
                     deleteResultIds.push(replaceId.oldId);
                 } else {
                     throw reason;

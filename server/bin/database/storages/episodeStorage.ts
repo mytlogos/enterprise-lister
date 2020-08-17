@@ -11,6 +11,7 @@ import {
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {EpisodeContext} from "../contexts/episodeContext";
+import {Query} from "mysql";
 
 
 function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction = true) {
@@ -18,11 +19,11 @@ function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction 
 }
 
 export class EpisodeStorage {
-    public getAll(uuid: any): Promise<any> {
+    public getAll(uuid: any): Promise<Query> {
         return inContext((context) => context.getAll(uuid));
     }
 
-    public getAllReleases(): Promise<any> {
+    public getAllReleases(): Promise<Query> {
         return inContext((context) => context.getAllReleases());
     }
 

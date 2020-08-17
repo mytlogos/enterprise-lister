@@ -5,7 +5,7 @@ const subContext_1 = require("./subContext");
 const promise_mysql_1 = tslib_1.__importDefault(require("promise-mysql"));
 const tools_1 = require("../../tools");
 const logger_1 = tslib_1.__importDefault(require("../../logger"));
-const databaseTypes_1 = require("../databaseTypes");
+const mysqlError_1 = require("../mysqlError");
 const storageTools_1 = require("../storages/storageTools");
 class EpisodeContext extends subContext_1.SubContext {
     async getAll(uuid) {
@@ -637,7 +637,7 @@ class EpisodeContext extends subContext_1.SubContext {
         const deleteReleaseIds = [];
         await Promise.all(replaceIds.map((replaceId) => {
             return this.query("UPDATE episode_release set episode_id=? where episode_id=?", [replaceId.newId, replaceId.oldId]).catch((reason) => {
-                if (reason && databaseTypes_1.MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                if (reason && mysqlError_1.MysqlServerError.ER_DUP_ENTRY === reason.errno) {
                     deleteReleaseIds.push(replaceId.oldId);
                 }
                 else {
@@ -648,7 +648,7 @@ class EpisodeContext extends subContext_1.SubContext {
         const deleteProgressIds = [];
         await Promise.all(replaceIds.map((replaceId) => {
             return this.query("UPDATE user_episode set episode_id=? where episode_id=?", [replaceId.newId, replaceId.oldId]).catch((reason) => {
-                if (reason && databaseTypes_1.MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                if (reason && mysqlError_1.MysqlServerError.ER_DUP_ENTRY === reason.errno) {
                     deleteProgressIds.push(replaceId.oldId);
                 }
                 else {
@@ -659,7 +659,7 @@ class EpisodeContext extends subContext_1.SubContext {
         const deleteResultIds = [];
         await Promise.all(replaceIds.map((replaceId) => {
             return this.query("UPDATE result_episode set episode_id=? where episode_id=?", [replaceId.newId, replaceId.oldId]).catch((reason) => {
-                if (reason && databaseTypes_1.MySqlErrorNo.ER_DUP_ENTRY === reason.errno) {
+                if (reason && mysqlError_1.MysqlServerError.ER_DUP_ENTRY === reason.errno) {
                     deleteResultIds.push(replaceId.oldId);
                 }
                 else {

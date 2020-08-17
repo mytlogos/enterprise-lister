@@ -1,7 +1,8 @@
 import { Episode, EpisodeContentData, EpisodeRelease, MultiSingle, ProgressResult, Result, SimpleEpisode, SimpleRelease } from "../../types";
+import { Query } from "mysql";
 export declare class EpisodeStorage {
-    getAll(uuid: any): Promise<any>;
-    getAllReleases(): Promise<any>;
+    getAll(uuid: any): Promise<Query>;
+    getAllReleases(): Promise<Query>;
     /**
      * Gets one or multiple media from the storage.
      */
