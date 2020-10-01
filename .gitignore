@@ -97,3 +97,4 @@ src/**/*.vue.js.map
 *.bat
 *.gz
 /server/bin/ignore/
+/server/dist/
