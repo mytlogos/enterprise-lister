@@ -1,1 +1,2 @@
 - [ ] replace *.env files with configuration files
+- [ ] replace own parser with external, better sql parser

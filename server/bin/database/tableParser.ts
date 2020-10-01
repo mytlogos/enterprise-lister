@@ -58,11 +58,7 @@ export class TableParser {
         }
         for (const columnName of exec[1].split(/[,\s]+/)) {
             const foundColumnIndex = table.columns.findIndex((value) => {
-                if (value.type === ColumnType.TEXT) {
-                    return new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
-                } else {
-                    return value.name === columnName;
-                }
+                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);                
             });
 
             if (foundColumnIndex < 0) {
@@ -72,14 +68,13 @@ export class TableParser {
             const foundColumn: ColumnSchema = table.columns[foundColumnIndex];
             let keySize: number | undefined;
 
-            if (foundColumn.type === ColumnType.TEXT) {
-                const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
+            const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
 
-                if (!keySizeExec) {
-                    logger.warn("primary key of type text has no specified key length");
-                    return;
-                }
+            if (keySizeExec) {
                 keySize = Number(keySizeExec[1]);
+            } else if (foundColumn.type === ColumnType.TEXT) {
+                logger.warn("primary key of type text has no specified key length");
+                return;
             }
             const column = new ColumnSchema(
                 foundColumn.name, foundColumn.type, foundColumn.modifiers,
@@ -106,11 +101,7 @@ export class TableParser {
         const uniqueIndex: ColumnSchema[] = [];
         for (const columnName of exec[1].split(/[,\s]+/)) {
             const foundColumnIndex = table.columns.findIndex((value) => {
-                if (value.type === ColumnType.TEXT) {
-                    return new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
-                } else {
-                    return value.name === columnName;
-                }
+                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);                
             });
 
             if (foundColumnIndex < 0) {
@@ -120,14 +111,13 @@ export class TableParser {
             const foundColumn: ColumnSchema = table.columns[foundColumnIndex];
             let keySize: number | undefined;
 
-            if (foundColumn.type === ColumnType.TEXT) {
-                const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
+            const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
 
-                if (!keySizeExec) {
-                    logger.warn("unique column of type text has no specified key length");
-                    return;
-                }
+            if (keySizeExec) {
                 keySize = Number(keySizeExec[1]);
+            } else if (foundColumn.type === ColumnType.TEXT) {
+                logger.warn("unique column of type text has no specified key length");
+                return;
             }
             const column = new ColumnSchema(
                 foundColumn.name, foundColumn.type, foundColumn.modifiers,

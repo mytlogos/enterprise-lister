@@ -41,8 +41,7 @@ export class ColumnSchema {
             if (values.includes(this.default.trim())) {
                 defValue += "DEFAULT " + this.default;
             } else {
-                // todo shouldn't this be "DEFAULT" + mysql.escape(this.default)?
-                defValue += mySql.escape(this.default);
+                defValue += "DEFAULT " + mySql.escape(this.default);
             }
         }
 

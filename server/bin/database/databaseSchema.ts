@@ -322,7 +322,7 @@ dataBaseBuilder.getTableBuilder()
     .setName("service_settings")
     .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
-    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");
+    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");*/
 
 dataBaseBuilder.getTableBuilder()
     .setName("user_data_invalidation")
@@ -347,6 +347,6 @@ dataBaseBuilder.getTableBuilder()
     .parseMeta(
         "PRIMARY KEY(uuid, user_uuid, news_id, medium_id, part_id," +
         "episode_id, list_id, external_list_id, external_uuid)")
-    .build();*/
+    .build();
 
 export const databaseSchema = dataBaseBuilder.build();

@@ -102,6 +102,11 @@ export class SchemaManager {
             throw Error("database version is smaller in code than in database");
         }
 
+        if (previousVersion === 0) {
+            logger.info("Created Database Content from Scratch, no Migration necessary");
+            return;
+        }
+
         const migrations: Migration[] = [];
         let lastMigrationVersion = previousVersion;
         let directMigration = null;

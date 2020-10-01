@@ -49,7 +49,7 @@ export class TableSchema {
             if (this.primaryKeys.length) {
                 schemata.push("PRIMARY KEY(" + this.primaryKeys
                         .map((value) => {
-                            if (value.type === ColumnType.TEXT) {
+                            if (value.primaryKeyTypeSize != null) {
                                 return value.name + "(" + value.primaryKeyTypeSize + ")";
                             } else {
                                 return value.name;
@@ -63,7 +63,7 @@ export class TableSchema {
                 schemata.push(...this.uniqueIndices.map((uniqueIndex) => {
                     return "UNIQUE(" +
                         uniqueIndex.map((value) => {
-                            if (value.type === ColumnType.TEXT) {
+                            if (value.primaryKeyTypeSize != null) {
                                 return value.name + "(" + value.primaryKeyTypeSize + ")";
                             } else {
                                 return value.name;

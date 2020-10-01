@@ -51,7 +51,11 @@ export async function storageInContext<T, C extends ConnectionContext>(
     let result;
     try {
         result = await doTransaction(callback, context, transaction);
-    } finally {
+    } catch (e) {
+        console.log(e);
+        throw e;
+    }
+    finally {
         if (isQuery(result)) {
             const query: Query = result;
             query.on("end", () => {
