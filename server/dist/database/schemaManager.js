@@ -37,8 +37,10 @@ class SchemaManager {
         // display all current tables
         try {
             await this.checkSchema(context);
-        }
-        finally {
+        } catch (e) {
+            console.log(e);
+            throw e
+        } finally {
             await context.stopMigration();
         }
     }

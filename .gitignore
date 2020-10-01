@@ -41,7 +41,6 @@ binJs/
 tests/api_requests
 ignore/
 changes.md
-features.md
 env.env
 *.uxf
 *test*.js

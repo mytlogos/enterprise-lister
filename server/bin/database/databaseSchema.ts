@@ -116,7 +116,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("medium INT NOT NULL")
     .parseColumn("link VARCHAR(767) NOT NULL")
     .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-    .parseMeta("PRIMARY KEY(title, medium, link)")
+    .parseMeta("PRIMARY KEY(title, medium, link(500))")
     .build();
 
 dataBaseBuilder.getTableBuilder()
@@ -239,7 +239,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("startIndex INT UNSIGNED NOT NULL")
     .parseColumn("endIndex INT UNSIGNED NOT NULL")
     .parseColumn("fieldKey INT UNSIGNED NOT NULL")
-    .parseMeta("PRIMARY KEY (link, replaced(367), startIndex, endIndex)")
+    .parseMeta("PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)")
     .build();
 
 dataBaseBuilder.getTableBuilder()
@@ -322,7 +322,7 @@ dataBaseBuilder.getTableBuilder()
     .setName("service_settings")
     .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
-    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");*/
+    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");
 
 dataBaseBuilder.getTableBuilder()
     .setName("user_data_invalidation")
@@ -347,6 +347,6 @@ dataBaseBuilder.getTableBuilder()
     .parseMeta(
         "PRIMARY KEY(uuid, user_uuid, news_id, medium_id, part_id," +
         "episode_id, list_id, external_list_id, external_uuid)")
-    .build();
+    .build();*/
 
 export const databaseSchema = dataBaseBuilder.build();

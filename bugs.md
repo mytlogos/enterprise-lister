@@ -1,0 +1,3 @@
+- [ ] starting with blank `enterprise` database does not generate the `enterprise_database_info` table
+- [ ] cannot migrate when using a blank `enterprise_database_info` table
+   - uses a UPDATE query with no data, use something like INSERT OR REPLACE or an initialize script
