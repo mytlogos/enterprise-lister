@@ -59,7 +59,7 @@ export class ColumnSchema {
             }
         }
         // todo instead of testing for VARCHAR, test for a group of columns or if just typeSize is defined?
-        const type = this.type === ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
+        const type = this.typeSize != null ? this.type + "(" + this.typeSize + ")" : this.type;
         return `${mySql.escapeId(this.name)} ${type} ${this.modifiers.join(" ")}${defValue}${updateValue}`;
     }
 }
