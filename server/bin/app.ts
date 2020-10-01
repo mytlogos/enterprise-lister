@@ -38,10 +38,10 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 app.use("/api", apiRouter());
-app.use(express.static(path.join(parentDirName, "dist")));
+app.use(express.static(path.join(parentDirName, "website", "dist")));
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(parentDirName, path.join("dist", "index.html")));
+    res.sendFile(path.join(parentDirName, path.join("website","dist", "index.html")));
 });
 
 app.use((req: Request, res: Response) => {
