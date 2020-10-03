@@ -1,11 +1,16 @@
 pipeline {
     agent any
     tools {nodejs "node"}
+
     stages {
+        stage('install dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
         stage('build') {
             steps {
-                sh "printenv"
-                sh 'npm install'
                 sh 'npm run build'
             }
         }
