@@ -2,3 +2,4 @@
 - [ ] cannot migrate when using a blank `enterprise_database_info` table
    - uses a UPDATE query with no data, use something like INSERT OR REPLACE or an initialize script
 - [ ] databaseBuilder and Validator require the invalidation table at the moment, remove this
+- registering via website does not work

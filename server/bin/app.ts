@@ -38,11 +38,12 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 app.use("/api", apiRouter());
+
+// map root to app.html first, before the static files, else it will map to index.html by default
+app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("website","dist", "app.html"))));
+
 app.use(express.static(path.join(parentDirName, "website", "dist")));
 
-app.get("/", (req, res) => {
-    res.sendFile(path.join(parentDirName, path.join("website","dist", "index.html")));
-});
 
 app.use((req: Request, res: Response) => {
     if (!req.path.startsWith("/api")) {

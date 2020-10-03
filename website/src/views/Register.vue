@@ -38,7 +38,7 @@
         },
         methods: {
             sendForm() {
-                emitBusEvent("do:login", {lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat});
+                emitBusEvent("do:register", {lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat});
             },
         },
         watch: {
@@ -49,6 +49,6 @@
                 }
             },
         },
-        name: "login-modal",
+        name: "register-modal",
     };
 </script>

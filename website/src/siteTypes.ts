@@ -1,4 +1,9 @@
-import {MediaType} from "../server/bin/tools";
+export enum MediaType {
+    TEXT = 0x1,
+    AUDIO = 0x2,
+    VIDEO = 0x4,
+    IMAGE = 0x8,
+}
 
 export interface Medium {
     id: number;

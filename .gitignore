@@ -98,6 +98,7 @@ src/**/*.vue.js.map
 *.gz
 /server/bin/ignore/
 /server/dist/
+/website/dist/
 
 # vscode project files
 .vscode
