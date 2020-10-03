@@ -1,9 +1,0 @@
-language: node_js
-node_js:
-  - "13.13"
-
-before_script:
-  - mv test.env env.env
-
-addons:
-  mariadb: '10.0'
