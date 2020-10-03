@@ -11,13 +11,13 @@ pipeline {
 
         stage('build website') {
             steps {
-                sh 'npm run build'
+                sh 'npm run build:website'
             }
         }
 
         stage('build server') {
             steps {
-                sh 'npm run build'
+                sh 'npm run build:server'
             }
         }
     }
