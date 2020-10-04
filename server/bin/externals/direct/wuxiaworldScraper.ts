@@ -116,7 +116,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (urlString.endsWith("-preview")) {
         return [];
     }
-    if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^\/]+\/?$/.test(urlString)) {
+    if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^/]+\/?$/.test(urlString)) {
         throw new UrlError("not a toc link for WuxiaWorld: " + urlString, urlString);
     }
     const $ = await queueCheerioRequest(urlString);
@@ -137,7 +137,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const content: TocPart[] = [];
 
     const chapTitleReg = /^\s*Chapter\s*((\d+)(\.(\d+))?)/;
-    const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.\-](\d+))?)\/?$/;
+    const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.-](\d+))?)\/?$/;
     for (let vIndex = 0; vIndex < volumes.length; vIndex++) {
 
         const volumeElement = volumes.eq(vIndex);

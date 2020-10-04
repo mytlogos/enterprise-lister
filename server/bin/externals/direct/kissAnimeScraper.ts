@@ -142,7 +142,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
  */
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const urlRegex = /^https?:\/\/kissanime\.ru\/Anime\/[^\/]+\/?$/;
+    const urlRegex = /^https?:\/\/kissanime\.ru\/Anime\/[^/]+\/?$/;
 
     if (!urlRegex.test(urlString)) {
         throw new UrlError("invalid toc url for KissAnime: " + urlString, urlString);

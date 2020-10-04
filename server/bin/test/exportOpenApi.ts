@@ -28,9 +28,7 @@ interface DocEntry {
     returnType?: string;
 }
 
-interface Middleware extends ts.Node {
-
-}
+type Middleware = ts.Node
 
 interface PathEntry {
     path: string;
@@ -90,7 +88,7 @@ interface ObjectProperties {
 interface ObjectType extends TypeResult {
     type: "object";
     properties: ObjectProperties;
-    literalValue?: object;
+    literalValue?: Record<string, unknown>;
 }
 
 interface BooleanType extends TypeResult {
@@ -622,7 +620,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                                                     }
                                                 }
                                             } else if (ts.isIdentifier(argument)) {
-
+                                                // TODO: do sth here
                                             }
                                         }
                                     }
@@ -854,7 +852,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function getReturnRouter(outerFunction: ts.FunctionDeclaration,
-                             variableSymbol: ts.Symbol | null): ts.Symbol | undefined {
+        variableSymbol: ts.Symbol | null): ts.Symbol | undefined {
         if (!outerFunction.body) {
             return;
         }
@@ -942,7 +940,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function processRouter(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
-                           variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
+        variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
         const name = propertyName.text;
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
         if (isHttpMethod(name)) {
@@ -1007,7 +1005,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function processRoute(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
-                          variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
+        variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
         const name = propertyName.text;
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
         if (isHttpMethod(name)) {

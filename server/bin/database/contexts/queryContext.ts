@@ -613,7 +613,7 @@ export class QueryContext implements ConnectionContext {
 
     // noinspection JSMethodCanBeStatic
     private async _batchFunction<T>(value: T[], query: string, paramCallback: ParamCallback<T> | undefined,
-                                    func:
+        func:
                                         (query: string, values: T[], paramCallback?: ParamCallback<T>) => Promise<any[]>
     ): Promise<any[]> {
 

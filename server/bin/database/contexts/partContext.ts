@@ -322,7 +322,9 @@ export class PartContext extends SubContext {
      * Updates a part.
      */
     public updatePart(part: Part): Promise<boolean> {
-        return this.update("part", (updates, values) => {
+        return this.update(
+            "part", 
+            (updates, values) => {
                 if (part.title) {
                     updates.push("title = ?");
                     values.push(part.title);
@@ -345,7 +347,8 @@ export class PartContext extends SubContext {
             {
                 column: "id",
                 value: part.id
-            });
+            }
+        );
     }
 
     /**

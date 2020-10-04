@@ -31,7 +31,7 @@ export class ExternalUserContext extends SubContext {
             "WHERE name = ? " +
             "AND local_uuid = ? " +
             "AND service = ?",
-            [externalUser.identifier, localUuid, externalUser.type],
+        [externalUser.identifier, localUuid, externalUser.type],
         );
         if (result.length) {
             // @ts-ignore
@@ -42,7 +42,7 @@ export class ExternalUserContext extends SubContext {
         result = await this.query("INSERT INTO external_user " +
             "(name, uuid, local_uuid, service, cookies) " +
             "VALUES (?,?,?,?,?);",
-            [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies],
+        [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies],
         );
 
         if (!result.affectedRows) {

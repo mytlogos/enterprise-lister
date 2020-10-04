@@ -100,9 +100,9 @@ export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
     return value;
 }
 
-export function getElseSetObj<K, V>(map: object, key: string | number, valueCb: () => V): V {
+export function getElseSetObj<K, V>(map: Record<string | number, K>, key: string | number, valueCb: () => V): V {
     // @ts-ignore
-    let value = map[key];
+    let value: V = map[key];
     if (value == null) {
         // @ts-ignore
         map[key] = value = valueCb();
@@ -382,7 +382,7 @@ export const ShaHash: ShaHasher = {
      * @param {string} text
      * @return {{salt: string, hash: string}}
      */
-    hash(text: string, saltLength: number = 20): Promise<{ salt: string, hash: string }> {
+    hash(text: string, saltLength = 20): Promise<{ salt: string, hash: string }> {
         return promisify(() => {
             if (!Number.isInteger(saltLength)) {
                 throw TypeError(`'${saltLength}' not an integer`);

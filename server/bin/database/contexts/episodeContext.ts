@@ -577,10 +577,11 @@ export class EpisodeContext extends SubContext {
             if (!(episode.partId > 0)) {
                 throw Error("episode without partId");
             }
-            let insertId: any;
+            let insertId: number | undefined;
             const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
             try {
-                const result = await this.query(
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                const result: any = await this.query(
                     "INSERT INTO episode " +
                     "(part_id, totalIndex, partialIndex, combiIndex) " +
                     "VALUES (?,?,?,?);",
@@ -594,6 +595,7 @@ export class EpisodeContext extends SubContext {
                 insertId = result.insertId;
             } catch (e) {
                 // do not catch if it isn't an duplicate key error
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                 if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
                     throw e;
                 }
@@ -603,11 +605,15 @@ export class EpisodeContext extends SubContext {
                 );
                 insertId = result[0].id;
             }
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
             if (!Number.isInteger(insertId)) {
                 throw Error(`invalid ID ${insertId}`);
             }
 
             if (episode.releases) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
                 episode.releases.forEach((value) => value.episodeId = insertId);
                 insertReleases.push(...episode.releases as EpisodeRelease[]);
             }
@@ -954,7 +960,8 @@ export class EpisodeContext extends SubContext {
         }
         // TODO: 09.03.2020 rework query and input, for now the episodeIndices are only relative to their parts mostly,
         //  not always relative to the medium
-        await this.query("UPDATE user_episode, episode, part " +
+        await this.query(
+            "UPDATE user_episode, episode, part " +
             "SET user_episode.progress=1 " +
             "WHERE user_episode.episode_id=episode.id" +
             "AND episode.part_id=part.id" +

@@ -67,27 +67,27 @@ function methodToRequest(options: Options | undefined, toUseRequest: Request) {
     const method = options && options.method ? options.method : "";
 
     switch (method.toLowerCase()) {
-        case "get":
-            return toUseRequest.get(options);
-        case "head":
-            return toUseRequest.head(options);
-        case "put":
-            return toUseRequest.put(options);
-        case "post":
-            return toUseRequest.post(options);
-        case "patch":
-            return toUseRequest.patch(options);
-        case "del":
-            return toUseRequest.del(options);
-        case "delete":
-            return toUseRequest.delete(options);
-        default:
-            return toUseRequest.get(options);
+    case "get":
+        return toUseRequest.get(options);
+    case "head":
+        return toUseRequest.head(options);
+    case "put":
+        return toUseRequest.put(options);
+    case "post":
+        return toUseRequest.post(options);
+    case "patch":
+        return toUseRequest.patch(options);
+    case "del":
+        return toUseRequest.del(options);
+    case "delete":
+        return toUseRequest.delete(options);
+    default:
+        return toUseRequest.get(options);
     }
 }
 
 function processRequest(uri: string, otherRequest?: Request, queueToUse = queues, limit?: number) {
-    const exec = /https?:\/\/([^\/]+)/.exec(uri);
+    const exec = /https?:\/\/([^/]+)/.exec(uri);
 
     if (!exec) {
         throw Error("not a valid url");
@@ -250,7 +250,7 @@ export const queueCheerioRequest = queueCheerioRequestStream;
 const transformCheerio = (body: string) => cheerio.load(body, {decodeEntities: false});
 
 const queueFullResponseWithLimit = (uri: string, options?: Options, otherRequest?: Request,
-                                    queueToUse = queues, limit?: number): Promise<FullResponse> => {
+    queueToUse = queues, limit?: number): Promise<FullResponse> => {
     const {toUseRequest, queue} = processRequest(uri, otherRequest, queueToUse, limit);
 
     // @ts-ignore

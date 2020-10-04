@@ -232,7 +232,7 @@ const api: Api = (function pathGenerator() {
     const paths: { [key: string]: string[][] } = {};
     const methods: { [key: string]: boolean } = {};
 
-    (function run(previous?: string, path: string[] = [], object: KeyObj = restApi, depth: number = 0): void {
+    (function run(previous?: string, path: string[] = [], object: KeyObj = restApi, depth = 0): void {
 
         if (previous) {
             path.push(previous);
@@ -393,7 +393,7 @@ export const HttpClient = {
         return this.queryServer(api.logout.post).then((result) => result.loggedOut);
     },
 
-    addExternalUser(externalUser: { identifier: string, pwd: string }): Promise<ExternalUser> {
+    addExternalUser(externalUser: { identifier: string; pwd: string }): Promise<ExternalUser> {
         return this.queryServer(api.externalUser.post, {externalUser});
     },
 
@@ -401,7 +401,7 @@ export const HttpClient = {
         return this.queryServer(api.externalUser.delete, {externalUuid: uuid});
     },
 
-    createList(list: { name: string, type: number }): Promise<List> {
+    createList(list: { name: string; type: number }): Promise<List> {
         return this.queryServer(api.list.post, {list}).then((newList) =>
             Object.assign(list, newList),
         );
@@ -422,7 +422,7 @@ export const HttpClient = {
         );
     },
 
-    createMedium(medium: { title: string, type: number }): Promise<Medium> {
+    createMedium(medium: { title: string; type: number }): Promise<Medium> {
         return this.queryServer(api.medium.post, {medium});
     },
 
@@ -433,7 +433,7 @@ export const HttpClient = {
         return this.queryServer(api.medium.get, {mediumId: media});
     },
 
-    updateMedium(data: { id: number, prop: string }): Promise<void> {
+    updateMedium(data: { id: number; prop: string }): Promise<void> {
         // todo
         return Promise.resolve();
     },
@@ -447,7 +447,7 @@ export const HttpClient = {
         return this.queryServer(api.news.get, {from, to});
     },
 
-    queryServer({path, method}: { path: string, method?: string }, query?: any): Promise<any> {
+    queryServer({path, method}: { path: string; method?: string }, query?: any): Promise<any> {
         // if path includes user, it needs to be authenticated
         if (path.includes("user")) {
             // @ts-ignore

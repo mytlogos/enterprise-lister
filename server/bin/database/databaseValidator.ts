@@ -325,8 +325,8 @@ interface ColumnTarget<T> {
 type ColumnConverter = (query: Query, triggeredColumn: ColumnTarget<ColumnSchema>) => ColumnTarget<string>;
 
 function createTrigger(watchTable: TableSchema, targetTable: TableSchema, invalidationTable: TableSchema,
-                       mainPrimaryKey: string, columnConverter: ColumnConverter,
-                       triggerType: InvalidationType): Trigger {
+    mainPrimaryKey: string, columnConverter: ColumnConverter,
+    triggerType: InvalidationType): Trigger {
     if (targetTable.primaryKeys.length !== 1) {
         throw Error("targeted table does not has exact one primary key");
     }

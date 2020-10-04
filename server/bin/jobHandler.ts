@@ -273,7 +273,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         if (!next.value) {
             throw Error("no episode values for part " + value.part.id);
         }
-        const exec = /https?:\/\/([^\/]+)/.exec(next.value.tocEpisode.url);
+        const exec = /https?:\/\/([^/]+)/.exec(next.value.tocEpisode.url);
         if (!exec) {
             throw Error("invalid url for release: " + next.value.tocEpisode.url);
         }

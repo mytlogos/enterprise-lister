@@ -48,14 +48,14 @@ export class TableSchema {
 
             if (this.primaryKeys.length) {
                 schemata.push("PRIMARY KEY(" + this.primaryKeys
-                        .map((value) => {
-                            if (value.primaryKeyTypeSize != null) {
-                                return value.name + "(" + value.primaryKeyTypeSize + ")";
-                            } else {
-                                return value.name;
-                            }
-                        })
-                        .join(", ")
+                    .map((value) => {
+                        if (value.primaryKeyTypeSize != null) {
+                            return value.name + "(" + value.primaryKeyTypeSize + ")";
+                        } else {
+                            return value.name;
+                        }
+                    })
+                    .join(", ")
                     + ")");
             }
 

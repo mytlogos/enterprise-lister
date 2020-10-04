@@ -242,7 +242,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^\/]+\/?$/;
+    const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^/]+\/?$/;
 
     if (!urlRegex.test(urlString)) {
         throw new UrlError("invalid toc url for MangaDex: " + urlString, urlString);
@@ -275,7 +275,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapReg: RegExp,
-                             indexPartMap: Map<number, TocPart>, uri: string, urlString: string): Promise<boolean> {
+    indexPartMap: Map<number, TocPart>, uri: string, urlString: string): Promise<boolean> {
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#content");
     if (contentElement.find(".alert-danger").text().match(/Manga .+? (not available)|(does not exist)/i)) {

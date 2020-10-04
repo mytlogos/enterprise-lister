@@ -4,12 +4,12 @@ import {ColumnSchema} from "./columnSchema";
 
 export class ColumnBuilder {
     private readonly tableBuilder: TableBuilder;
-    private name: string = "";
+    private name = "";
     private type?: ColumnType;
     private typeSize?: number;
     private default?: any | SqlFunction;
     private modifier: Set<Modifier> = new Set<Modifier>();
-    private primaryKey: boolean = false;
+    private primaryKey = false;
     private primaryKeyTypeSize?: number;
     private foreignKey?: ColumnSchema;
 

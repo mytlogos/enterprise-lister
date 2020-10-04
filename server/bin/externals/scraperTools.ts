@@ -1037,6 +1037,7 @@ export async function remapMediaParts() {
 }
 
 export async function queueExternalUser() {
+    // eslint-disable-next-line prefer-rest-params
     console.log("queueing all external user", arguments);
     const externalUser: ExternalUser[] = await externalUserStorage.getScrapeExternalUser();
 

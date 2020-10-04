@@ -5,7 +5,7 @@ import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, str
 import * as url from "url";
 import {ReleaseState, TocSearchMedium} from "../../types";
 
-export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string) {
+export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string): EpisodeContent[] {
     if (!novelTitle || !episodeTitle) {
         logger.warn("episode link with no novel or episode title: " + urlString);
         return [];
@@ -34,7 +34,7 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
 }
 
 export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
-                                       searchLink: (parameter: string) => string, linkSelector: string) {
+    searchLink: (parameter: string) => string, linkSelector: string) {
     logger.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
@@ -122,7 +122,7 @@ function searchForWords(
 }
 
 export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
-                                searchLink: (searchString: string) => Promise<SearchResult>) {
+    searchLink: (searchString: string) => Promise<SearchResult>) {
     logger.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
@@ -449,7 +449,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         separatorRegex: /[-:]/g,
         chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/ig,
         volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-(\s*((\d+)(\.(\d+))?)|\s)/ig,
-        partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
+        partRegex: /(P[art]{0,3}[.\s]*(\d+))|([[(]?(\d+)[/|](\d+)[)\]]?)/g,
         trimRegex: /^[\s:–,.-]+|[\s:–,.-]+$/g,
         endRegex: /end/g,
         startRegex: /start/g,
