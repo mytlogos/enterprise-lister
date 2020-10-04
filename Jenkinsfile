@@ -9,6 +9,18 @@ pipeline {
             }
         }
 
+        stage('lint website') {
+            steps {
+                sh "npx eslint website/src/"
+            }
+        }
+
+        stage('lint server') {
+            steps {
+                sh "npx eslint -c server/.eslintrc.js server/bin/"
+            }
+        }
+
         stage('build website') {
             steps {
                 sh 'npm run build:website'
