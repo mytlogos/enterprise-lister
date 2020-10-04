@@ -48,6 +48,7 @@ app.use(express.static(path.join(parentDirName, "website", "dist")));
 
 
 app.use((req: Request, res: Response) => {
+    //@ts-ignore
     if (!req.path.startsWith("/api")) {
         // @ts-ignore
         res.redirect(`/?redirect=${req.path}`);
