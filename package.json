@@ -84,6 +84,7 @@
     "@types/node-cache": "^4.2.5",
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.17",
+    "@types/request-promise": "^4.1.46",
     "@types/sinon": "^9.0.4",
     "@types/sinon-as-promised": "^4.0.13",
     "@types/sinon-chai": "^3.2.4",
