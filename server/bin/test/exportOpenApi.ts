@@ -14,7 +14,6 @@ import {
     SyntaxList
 } from "typescript";
 import path from "path";
-import {Router} from "express";
 import yaml from "js-yaml";
 import * as fs from "fs";
 
@@ -28,9 +27,7 @@ interface DocEntry {
     returnType?: string;
 }
 
-interface Middleware extends ts.Node {
-
-}
+type Middleware = ts.Node
 
 interface PathEntry {
     path: string;
@@ -90,7 +87,7 @@ interface ObjectProperties {
 interface ObjectType extends TypeResult {
     type: "object";
     properties: ObjectProperties;
-    literalValue?: object;
+    literalValue?: Record<string, unknown>;
 }
 
 interface BooleanType extends TypeResult {
@@ -117,8 +114,8 @@ interface NullType extends TypeResult {
 // and the possible return types and error codes
 interface MiddlewareResult {
     returnTypes: null | TypeResult;
-    queryType?: { [key: string]: null; };
-    bodyType?: { [key: string]: null; };
+    queryType?: { [key: string]: null };
+    bodyType?: { [key: string]: null };
 }
 
 type HttpMethod = "get" | "delete" | "post" | "put";
@@ -274,6 +271,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         for (const pathEntry of routerEntry.paths) {
             routerResult.paths.push({
                 path: pathEntry.path,
+                //@ts-ignore
                 method: pathEntry.method,
                 middleware: middlewareToResult(pathEntry.middleware)
             });
@@ -371,7 +369,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         container.currentStackElement.requestSymbol = requestParamSymbol;
         container.currentStackElement.responseSymbol = responseParamSymbol;
 
-        let functionStatements: ReadonlyArray<Statement> | null = null;
+        let functionStatements: readonly Statement[] | null = null;
 
         if (ts.isArrowFunction(middlewareSignature)) {
             const body = middlewareSignature.body;
@@ -607,6 +605,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                                                                     const typeSymbol = returnType.getSymbol();
 
                                                                     if (typeSymbol && typeSymbol.getName() === "Promise") {
+                                                                        //@ts-ignore
                                                                         const promiseTypes = checker.getTypeArguments(returnType);
 
                                                                         if (promiseTypes.length === 1) {
@@ -620,7 +619,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                                                     }
                                                 }
                                             } else if (ts.isIdentifier(argument)) {
-
+                                                // TODO: do sth here
                                             }
                                         }
                                     }
@@ -735,6 +734,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             return null;
         }
         if (symbol.name === "Array") {
+            //@ts-ignore
             const arrayTypes = checker.getTypeArguments(type);
 
             if (arrayTypes.length === 1) {
@@ -851,7 +851,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function getReturnRouter(outerFunction: ts.FunctionDeclaration,
-                             variableSymbol: ts.Symbol | null): ts.Symbol | undefined {
+        variableSymbol: ts.Symbol | null): ts.Symbol | undefined {
         if (!outerFunction.body) {
             return;
         }
@@ -939,7 +939,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function processRouter(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
-                           variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
+        variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
         const name = propertyName.text;
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
         if (isHttpMethod(name)) {
@@ -1004,7 +1004,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function processRoute(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
-                          variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
+        variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
         const name = propertyName.text;
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
         if (isHttpMethod(name)) {
@@ -1288,7 +1288,7 @@ function getFirstChildThat(node: ts.Node, found: (t: ts.Node) => boolean): ts.No
     return null;
 }
 
-function filterKind(nodes: ts.Node[] | ReadonlyArray<ts.Node>, kind: ts.SyntaxKind): ts.Node[] {
+function filterKind(nodes: ts.Node[] | readonly ts.Node[], kind: ts.SyntaxKind): ts.Node[] {
     return nodes.filter((value) => value.kind === kind);
 }
 

@@ -49,7 +49,7 @@ const scraper = DefaultJobScraper;
 /**
  *
  */
-async function processNews({link, rawNews}: { link: string, rawNews: News[] }): Promise<void> {
+async function processNews({link, rawNews}: { link: string; rawNews: News[] }): Promise<void> {
     if (!link || !validate.isString(link)) {
         throw Errors.INVALID_INPUT;
     }
@@ -91,7 +91,7 @@ async function processNews({link, rawNews}: { link: string, rawNews: News[] }): 
     // await Storage.linkNewsToMedium();
 }
 
-async function feedHandler({link, result}: { link: string, result: News[] }): Promise<void> {
+async function feedHandler({link, result}: { link: string; result: News[] }): Promise<void> {
     result.forEach((value) => {
         value.title = value.title.replace(/(\s|\n|\t)+/g, " ");
     });
@@ -105,7 +105,7 @@ async function feedHandler({link, result}: { link: string, result: News[] }): Pr
 async function getTocMedia(tocs: Toc[], uuid?: string)
     : Promise<Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }>> {
 
-    const media: Map<SimpleMedium, { parts: TocPart[], episodes: TocEpisode[]; }> = new Map();
+    const media: Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }> = new Map();
 
     await Promise.all(tocs.map(async (toc) => {
         let medium: SimpleMedium | undefined;
@@ -200,7 +200,7 @@ interface TocPartMapping {
     tocPart: TocPart;
     part?: MinPart;
     episodeMap: Map<number, {
-        tocEpisode: TocEpisode, episode?: SimpleEpisode
+        tocEpisode: TocEpisode; episode?: SimpleEpisode;
     }>;
 }
 
@@ -273,7 +273,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         if (!next.value) {
             throw Error("no episode values for part " + value.part.id);
         }
-        const exec = /https?:\/\/([^\/]+)/.exec(next.value.tocEpisode.url);
+        const exec = /https?:\/\/([^/]+)/.exec(next.value.tocEpisode.url);
         if (!exec) {
             throw Error("invalid url for release: " + next.value.tocEpisode.url);
         }
@@ -344,7 +344,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
     }
 }
 
-export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promise<void> {
+export async function tocHandler(result: { tocs: Toc[]; uuid?: string }): Promise<void> {
     if (!result) {
         // TODO: 01.09.2019 for now just return
         return;
@@ -359,7 +359,7 @@ export async function tocHandler(result: { tocs: Toc[], uuid?: string }): Promis
         return;
     }
 
-    const media: Map<SimpleMedium, { parts: TocPart[], episodes: TocEpisode[]; }> = await getTocMedia(tocs, uuid);
+    const media: Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }> = await getTocMedia(tocs, uuid);
 
     const promises: Array<Promise<Array<Promise<void>>>> = Array.from(media.entries())
         .filter((entry) => entry[0].id)
@@ -515,7 +515,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
     });
     // if there are new media, queue it for scraping,
     // after adding it to the storage and pushing it to foundLikeMedia
-    let storedMedia: Array<{ title: string, link: string, medium: SimpleMedium }>;
+    let storedMedia: Array<{ title: string; link: string; medium: SimpleMedium }>;
     try {
         storedMedia = await Promise.all(newMedia.map(
             (scrapeMedium) => {
@@ -626,7 +626,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
  *
  */
 async function listHandler(result: {
-    external: { cookies: string, uuid: ExternalUserUuid, userUuid: UserUuid, type: number },
+    external: { cookies: string; uuid: ExternalUserUuid; userUuid: UserUuid; type: number };
     lists: ListScrapeResult;
 })
     : Promise<void> {
@@ -697,7 +697,7 @@ async function listHandler(result: {
     });
 }
 
-async function newsHandler({link, result}: { link: string, result: News[] }) {
+async function newsHandler({link, result}: { link: string; result: News[] }) {
     result.forEach((value) => {
         value.title = value.title.replace(/(\s|\n|\t)+/, " ");
     });

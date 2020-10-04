@@ -114,31 +114,31 @@ function log(level: string, value: any, meta?: any) {
 }
 
 export default {
-    error(value: any, ...meta: any) {
+    error(value: any, ...meta: any): void {
         log("error", value, meta);
     },
 
-    warn(value: any, ...meta: any) {
+    warn(value: any, ...meta: any): void {
         log("warn", value, meta);
     },
 
-    info(value: any, ...meta: any) {
+    info(value: any, ...meta: any): void {
         log("info", value, meta);
     },
 
-    http(value: any, ...meta: any) {
+    http(value: any, ...meta: any): void {
         log("http", value, meta);
     },
 
-    verbose(value: any, ...meta: any) {
+    verbose(value: any, ...meta: any): void {
         log("verbose", value, meta);
     },
 
-    debug(value: any, ...meta: any) {
+    debug(value: any, ...meta: any): void {
         log("debug", value, meta);
     },
 
-    silly(value: any, ...meta: any) {
+    silly(value: any, ...meta: any): void {
         log("silly", value, meta);
     }
 };

@@ -23,7 +23,7 @@ function loadBody(urlString: string, options?: CloudscraperOptions): Promise<Che
     return queueCheerioRequest(urlString, options, defaultRequest);
 }
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://kissanime.ru/";
     // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
     const $ = await loadBody(uri);
@@ -142,7 +142,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
  */
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const urlRegex = /^https?:\/\/kissanime\.ru\/Anime\/[^\/]+\/?$/;
+    const urlRegex = /^https?:\/\/kissanime\.ru\/Anime\/[^/]+\/?$/;
 
     if (!urlRegex.test(urlString)) {
         throw new UrlError("invalid toc url for KissAnime: " + urlString, urlString);

@@ -19,7 +19,7 @@ function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction 
 }
 
 export class EpisodeStorage {
-    public getAll(uuid: any): Promise<Query> {
+    public getAll(uuid: string): Promise<Query> {
         return inContext((context) => context.getAll(uuid));
     }
 
@@ -48,7 +48,7 @@ export class EpisodeStorage {
         return inContext((context) => context.getAllChapterLinks(mediumId));
     }
 
-    public getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number, episodes: number[] }>> {
+    public getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number; episodes: number[] }>> {
         return inContext((context) => context.getPartsEpisodeIndices(partId));
     }
 
@@ -69,7 +69,7 @@ export class EpisodeStorage {
         return inContext((context) => context.updateEpisode(episode));
     }
 
-    public moveEpisodeToPart(oldPartId: number, newPartId: number) {
+    public moveEpisodeToPart(oldPartId: number, newPartId: number): Promise<boolean> {
         return inContext((context) => context.moveEpisodeToPart(oldPartId, newPartId));
     }
 
@@ -132,7 +132,7 @@ export class EpisodeStorage {
     }
 
     public getSourcedReleases(sourceType: string, mediumId: number):
-        Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
+        Promise<Array<{ sourceType: string; url: string; title: string; mediumId: number }>> {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
     }
 

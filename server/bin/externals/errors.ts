@@ -1,5 +1,5 @@
-class ScraperError extends Error {
-    constructor() {
+export class ScraperError extends Error {
+    public constructor() {
         super();
     }
 }
@@ -9,7 +9,7 @@ export class UrlError extends Error {
     public readonly name = "UrlError";
     public readonly url: string;
 
-    constructor(message: string, url: string) {
+    public constructor(message: string, url: string) {
         super(message);
         this.url = url;
     }
@@ -20,7 +20,7 @@ export class MissingResourceError extends Error {
     public readonly name = "MissingResourceError";
     public readonly resource: string;
 
-    constructor(message: string, resource: string) {
+    public constructor(message: string, resource: string) {
         super(message);
         this.resource = resource;
     }

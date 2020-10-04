@@ -46,7 +46,7 @@ export class NewsContext extends SubContext {
         );
     }
 
-    public async getAll(uuid: any): Promise<News[]> {
+    public async getAll(uuid: string): Promise<News[]> {
         const newsResult: any[] = await this.query(
             "SELECT * FROM news_board LEFT JOIN " +
             "(SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) as news_user " +

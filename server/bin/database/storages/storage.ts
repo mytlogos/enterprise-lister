@@ -201,7 +201,7 @@ export class Storage {
         return poolPromise.then((value) => value.end()).then(() => logger.info("Database stopped now"));
     }
 
-    public getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }> {
+    public getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
         return inContext((context) => context.getPageInfo(link, key));
     }
 
@@ -305,6 +305,6 @@ export const externalListStorage = new ExternalListStorage();
 /**
  *
  */
-export const startStorage = () => start();
+export const startStorage = (): void => start();
 // TODO: 01.09.2019 check whether it should 'start' implicitly or explicitly
 start();

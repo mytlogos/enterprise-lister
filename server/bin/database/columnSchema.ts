@@ -14,9 +14,9 @@ export class ColumnSchema {
     public readonly update?: string | SqlFunction;
     public readonly primaryKeyTypeSize?: number;
 
-    constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean,
-                foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number,
-                update?: string | SqlFunction) {
+    public constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean,
+        foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number,
+        update?: string | SqlFunction) {
 
         this.name = name;
         this.type = type;

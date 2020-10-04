@@ -38,8 +38,8 @@ class ScrapeJob {
 
     private constructor(
         public readonly name: ScrapeName,
-        readonly func: (...args: any[]) => any,
-        readonly event?: ScrapeEvent
+        public readonly func: (...args: any[]) => any,
+        public readonly event?: ScrapeEvent
     ) {
 
     }
@@ -71,7 +71,7 @@ export class JobScraperManager {
     private nameIdList: Array<[number, string]> = [];
     private intervalId: Timeout | undefined;
 
-    constructor() {
+    public constructor() {
         this.helper.init();
     }
 
@@ -383,51 +383,51 @@ export class JobScraperManager {
                 let args: any | undefined;
                 let jobType: ScrapeJob;
                 switch (value.type) {
-                    case ScrapeName.newsAdapter:
-                        jobType = ScrapeJob.newsAdapter;
-                        args = value.arguments;
-                        break;
-                    case ScrapeName.checkTocs:
-                        jobType = ScrapeJob.checkTocs;
-                        break;
-                    case ScrapeName.feed:
-                        jobType = ScrapeJob.feed;
-                        args = value.arguments;
-                        break;
-                    case ScrapeName.news:
-                        jobType = ScrapeJob.news;
-                        args = value.arguments;
-                        break;
-                    case ScrapeName.oneTimeToc:
-                        jobType = ScrapeJob.oneTimeToc;
-                        args = JSON.parse(value.arguments as string);
-                        break;
-                    case ScrapeName.oneTimeUser:
-                        jobType = ScrapeJob.oneTimeUser;
-                        args = JSON.parse(value.arguments as string);
-                        break;
-                    case ScrapeName.queueExternalUser:
-                        jobType = ScrapeJob.queueExternalUser;
-                        args = JSON.parse(value.arguments as string);
-                        break;
-                    case ScrapeName.queueTocs:
-                        jobType = ScrapeJob.queueTocs;
-                        break;
-                    case ScrapeName.remapMediaParts:
-                        jobType = ScrapeJob.remapMediaParts;
-                        break;
-                    case ScrapeName.toc:
-                        jobType = ScrapeJob.toc;
-                        args = JSON.parse(value.arguments as string) as TocRequest;
-                        args.lastRequest = value.lastRun;
-                        break;
-                    case ScrapeName.searchForToc:
-                        jobType = ScrapeJob.searchForToc;
-                        args = JSON.parse(value.arguments as string);
-                        break;
-                    default:
-                        logger.warn("unknown job type: " + value.type);
-                        return;
+                case ScrapeName.newsAdapter:
+                    jobType = ScrapeJob.newsAdapter;
+                    args = value.arguments;
+                    break;
+                case ScrapeName.checkTocs:
+                    jobType = ScrapeJob.checkTocs;
+                    break;
+                case ScrapeName.feed:
+                    jobType = ScrapeJob.feed;
+                    args = value.arguments;
+                    break;
+                case ScrapeName.news:
+                    jobType = ScrapeJob.news;
+                    args = value.arguments;
+                    break;
+                case ScrapeName.oneTimeToc:
+                    jobType = ScrapeJob.oneTimeToc;
+                    args = JSON.parse(value.arguments as string);
+                    break;
+                case ScrapeName.oneTimeUser:
+                    jobType = ScrapeJob.oneTimeUser;
+                    args = JSON.parse(value.arguments as string);
+                    break;
+                case ScrapeName.queueExternalUser:
+                    jobType = ScrapeJob.queueExternalUser;
+                    args = JSON.parse(value.arguments as string);
+                    break;
+                case ScrapeName.queueTocs:
+                    jobType = ScrapeJob.queueTocs;
+                    break;
+                case ScrapeName.remapMediaParts:
+                    jobType = ScrapeJob.remapMediaParts;
+                    break;
+                case ScrapeName.toc:
+                    jobType = ScrapeJob.toc;
+                    args = JSON.parse(value.arguments as string) as TocRequest;
+                    args.lastRequest = value.lastRun;
+                    break;
+                case ScrapeName.searchForToc:
+                    jobType = ScrapeJob.searchForToc;
+                    args = JSON.parse(value.arguments as string);
+                    break;
+                default:
+                    logger.warn("unknown job type: " + value.type);
+                    return;
                 }
                 value.arguments = args;
                 getElseSet(jobMap, jobType, () => []).push(value);

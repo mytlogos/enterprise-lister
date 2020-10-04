@@ -1,18 +1,26 @@
-import Vue, {VNode} from "vue";
+import Vue, { VNode } from "vue";
 import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";
-import {WSClient} from "./WebsocketClient";
-import {emitBusEvent, onBusEvent} from "./bus";
-import {optimizedResize} from "./init";
-import {ExternalList, ExternalUser, List, Medium, News, TransferList, TransferMedium, User} from "./siteTypes";
-import {HttpClient} from "./Httpclient";
+import { WSClient } from "./WebsocketClient";
+import { emitBusEvent, onBusEvent } from "./bus";
+import { optimizedResize } from "./init";
+import {
+    ExternalList,
+    ExternalUser,
+    List,
+    Medium,
+    News,
+    TransferList,
+    TransferMedium,
+    User,
+} from "./siteTypes";
+import { HttpClient } from "./Httpclient";
 
 Vue.config.devtools = true;
 Vue.use(VueObserveVisibility);
 
 const user = {
-
     get media(): Medium[] {
         return app.user.media;
     },
@@ -104,16 +112,20 @@ const user = {
     },
 
     pushExternalUser(...externalUser: ExternalUser[]) {
-        externalUser.forEach((value: ExternalUser) => value.lists.forEach((list: ExternalList) => {
-            list.show = false;
-            list.external = true;
-        }));
+        externalUser.forEach((value: ExternalUser) =>
+            value.lists.forEach((list: ExternalList) => {
+                list.show = false;
+                list.external = true;
+            })
+        );
         this.externalUser.push(...externalUser);
         return this;
     },
 
     deleteExternalUser(uuid: string) {
-        const index = this.externalUser.findIndex((value) => value.uuid === uuid);
+        const index = this.externalUser.findIndex(
+            (value) => value.uuid === uuid
+        );
         if (index < 0) {
             return;
         }
@@ -138,7 +150,9 @@ const user = {
         }
         this.media.splice(index, 1);
         this.lists.forEach((value) => {
-            const listIndex = value.items.findIndex((itemId: number) => itemId === id);
+            const listIndex = value.items.findIndex(
+                (itemId: number) => itemId === id
+            );
 
             if (listIndex >= 0) {
                 value.items.splice(listIndex, 1);
@@ -172,7 +186,10 @@ const user = {
     addNews(news: News[]) {
         const ownNews = this.news;
         news = news
-            .filter((value) => !ownNews.find((otherValue) => otherValue.id === value.id))
+            .filter(
+                (value) =>
+                    !ownNews.find((otherValue) => otherValue.id === value.id)
+            )
             .map((value) => (value.date = new Date(value.date)) && value);
 
         if (news.length) {
@@ -193,7 +210,7 @@ interface VueUser {
     name: string;
     externalUser: ExternalUser[];
     media: Medium[];
-    settings: object;
+    settings: any;
     columns: Column[];
 }
 
@@ -253,9 +270,9 @@ const app: App = new Vue({
             media: [],
             settings: {},
             columns: [
-                {name: "Title", prop: "title", show: true},
-                {name: "Author", prop: "author", show: true},
-                {name: "Artist", prop: "artist", show: true},
+                { name: "Title", prop: "title", show: true },
+                { name: "Author", prop: "author", show: true },
+                { name: "Artist", prop: "artist", show: true },
             ],
         },
         readNews: [],
@@ -271,26 +288,32 @@ const app: App = new Vue({
     },
 
     mounted() {
-        onBusEvent("open:register", () => this.registerModal.show = true);
+        onBusEvent("open:register", () => (this.registerModal.show = true));
         onBusEvent("do:register", (data: any) => this.register(data));
 
-        onBusEvent("open:login", () => this.loginModal.show = true);
+        onBusEvent("open:login", () => (this.loginModal.show = true));
         onBusEvent("do:login", (data: any) => this.login(data));
         onBusEvent("do:logout", () => this.logout());
 
-        onBusEvent("open:add-medium", () => this.addMediumModal.show = true);
+        onBusEvent("open:add-medium", () => (this.addMediumModal.show = true));
         onBusEvent("open:medium", (data: any) => this.openMedium(data));
         onBusEvent("add:medium", (data: any) => this.addMedium(data));
         onBusEvent("edit:medium", (data: any) => this.editMedium(data));
         onBusEvent("delete:medium", (data: number) => this.deleteMedium(data));
 
-        onBusEvent("open:add-list", () => this.addListModal.show = true);
+        onBusEvent("open:add-list", () => (this.addListModal.show = true));
         onBusEvent("add:list", (data: any) => this.addList(data));
         onBusEvent("delete:list", (data: number) => this.deleteList(data));
 
-        onBusEvent("add:externalUser", (data: any) => this.addExternalUser(data));
-        onBusEvent("delete:externalUser", (data: string) => this.deleteExternalUser(data));
-        onBusEvent("refresh:externalUser", (data: string) => this.refreshExternalUser(data));
+        onBusEvent("add:externalUser", (data: any) =>
+            this.addExternalUser(data)
+        );
+        onBusEvent("delete:externalUser", (data: string) =>
+            this.deleteExternalUser(data)
+        );
+        onBusEvent("refresh:externalUser", (data: string) =>
+            this.refreshExternalUser(data)
+        );
 
         onBusEvent("do:settings", (data: any) => this.changeSettings(data));
 
@@ -328,9 +351,14 @@ const app: App = new Vue({
                     if (item.external) {
                         list = user.externalUser
                             .flatMap((externalUser) => externalUser.lists)
-                            .find((externalList) => externalList.id === item.listId);
+                            .find(
+                                (externalList) =>
+                                    externalList.id === item.listId
+                            );
                     } else {
-                        list = user.lists.find((internalList) => internalList.id === item.listId);
+                        list = user.lists.find(
+                            (internalList) => internalList.id === item.listId
+                        );
                     }
 
                     if (!list) {
@@ -347,9 +375,10 @@ const app: App = new Vue({
             if (value.externalList) {
                 value.externalList.forEach((id: number) => {
                     for (const externalUser of user.externalUser) {
-
-                        const index = externalUser.lists
-                            .findIndex((externalList: ExternalList) => externalList.id === id);
+                        const index = externalUser.lists.findIndex(
+                            (externalList: ExternalList) =>
+                                externalList.id === id
+                        );
 
                         if (index < 0) {
                             continue;
@@ -359,7 +388,6 @@ const app: App = new Vue({
                         break;
                     }
                 });
-
             }
             console.log(value);
         },
@@ -370,13 +398,18 @@ const app: App = new Vue({
                     if (item.external) {
                         const list = user.externalUser
                             .flatMap((externalUser) => externalUser.lists)
-                            .find((externalList) => externalList.id === item.listId);
+                            .find(
+                                (externalList) =>
+                                    externalList.id === item.listId
+                            );
 
                         if (item.name && list) {
                             list.name = item.name;
                         }
                     } else {
-                        const list = user.lists.find((internalList) => internalList.id === item.id);
+                        const list = user.lists.find(
+                            (internalList) => internalList.id === item.id
+                        );
 
                         if (item.name && list) {
                             list.name = item.name;
@@ -394,10 +427,14 @@ const app: App = new Vue({
                     if (item.external) {
                         list = user.externalUser
                             .flatMap((externalUser) => externalUser.lists)
-                            .find((externalList: ExternalList) => externalList.id === item.listId);
-
+                            .find(
+                                (externalList: ExternalList) =>
+                                    externalList.id === item.listId
+                            );
                     } else {
-                        list = user.lists.find((internalList) => internalList.id === item.listId);
+                        list = user.lists.find(
+                            (internalList) => internalList.id === item.listId
+                        );
                     }
                     if (!list) {
                         return;
@@ -407,20 +444,20 @@ const app: App = new Vue({
             }
             if (value.externalList) {
                 value.externalList.forEach((list: ExternalList) => {
-
                     for (const externalUser of user.externalUser) {
-                        if (list.uuid === externalUser.uuid
-                            && !externalUser.lists
-                                .find((externalList: ExternalList) => externalList.id === list.id)) {
-
+                        if (
+                            list.uuid === externalUser.uuid &&
+                            !externalUser.lists.find(
+                                (externalList: ExternalList) =>
+                                    externalList.id === list.id
+                            )
+                        ) {
                             externalUser.lists.push(list);
                             break;
                         }
                     }
                 });
-
             }
-
         },
 
         closeModal() {
@@ -431,14 +468,14 @@ const app: App = new Vue({
             this.resetModal(this.addMediumModal);
         },
 
-        resetModal(modal: { show: boolean, error: string }) {
+        resetModal(modal: { show: boolean; error: string }) {
             modal.show = false;
             modal.error = "";
         },
 
         sendPeriodicData() {
             if (this.newReadNews.length) {
-                WSClient.push({read: {news: this.newReadNews}});
+                WSClient.push({ read: { news: this.newReadNews } });
                 // @ts-ignore
                 this.newReadNews = [];
             }
@@ -449,8 +486,7 @@ const app: App = new Vue({
             if (this.loggedIn) {
                 return;
             }
-            HttpClient
-                .isLoggedIn()
+            HttpClient.isLoggedIn()
                 .then((newUser: User) => {
                     if (!this.loggedIn && newUser) {
                         this.setUser(newUser);
@@ -461,24 +497,25 @@ const app: App = new Vue({
                 .catch(() => setTimeout(() => this.loginState(), 5000));
         },
 
-        login(data: { user: string, pw: string }) {
+        login(data: { user: string; pw: string }) {
             if (!data.user) {
                 this.loginModal.error = "Username is missing";
             } else if (!data.pw) {
                 this.loginModal.error = "Password is missing";
             } else {
                 // fixme modal does not close after successful login
-                HttpClient
-                    .login(data.user, data.pw)
+                HttpClient.login(data.user, data.pw)
                     .then((newUser: User) => {
                         this.setUser(newUser);
                         this.resetModal(this.loginModal);
                     })
-                    .catch((error: any) => this.loginModal.error = String(error));
+                    .catch(
+                        (error: any) => (this.loginModal.error = String(error))
+                    );
             }
         },
 
-        register(data: { user: string, pw: string, pwRepeat: string }) {
+        register(data: { user: string; pw: string; pwRepeat: string }) {
             if (!data.user) {
                 this.registerModal.error = "Username is missing";
             } else if (!data.pw) {
@@ -488,27 +525,34 @@ const app: App = new Vue({
             } else if (data.pwRepeat !== data.pw) {
                 this.registerModal.error = "Repeated Password is not password";
             } else {
-                HttpClient
-                    .register(data.user, data.pw, data.pwRepeat)
+                HttpClient.register(data.user, data.pw, data.pwRepeat)
                     .then((newUser: User) => {
                         this.setUser(newUser);
                         this.resetModal(this.registerModal);
                     })
-                    .catch((error: any) => this.registerModal.error = String(error));
+                    .catch(
+                        (error: any) =>
+                            (this.registerModal.error = String(error))
+                    );
             }
         },
 
-        addExternalUser(data: { identifier: string, pwd: string }) {
+        addExternalUser(data: { identifier: string; pwd: string }) {
             if (!data.identifier) {
-                emitBusEvent("error:add:externalUser", "Identifier is missing!");
+                emitBusEvent(
+                    "error:add:externalUser",
+                    "Identifier is missing!"
+                );
             } else if (!data.pwd) {
                 emitBusEvent("error:add:externalUser", "Password is missing!");
             } else {
-                HttpClient
-                    .addExternalUser(data)
-                    .then((externalUser: ExternalUser) => user.pushExternalUser(externalUser))
-                    .catch((error: any) => emitBusEvent("error:add:externalUser", String(error)));
-
+                HttpClient.addExternalUser(data)
+                    .then((externalUser: ExternalUser) =>
+                        user.pushExternalUser(externalUser)
+                    )
+                    .catch((error: any) =>
+                        emitBusEvent("error:add:externalUser", String(error))
+                    );
             }
         },
 
@@ -518,8 +562,7 @@ const app: App = new Vue({
                 return;
             }
 
-            HttpClient
-                .deleteExternalUser(uuid)
+            HttpClient.deleteExternalUser(uuid)
                 .then(() => user.deleteExternalUser(uuid))
                 .catch((error: any) => console.log(error));
         },
@@ -530,7 +573,7 @@ const app: App = new Vue({
                 return;
             }
 
-            WSClient.push({refresh: {externalUuid: uuid}});
+            WSClient.push({ refresh: { externalUuid: uuid } });
         },
 
         setUser(setUser: User) {
@@ -544,16 +587,16 @@ const app: App = new Vue({
         },
 
         logout() {
-            HttpClient
-                .logout()
+            HttpClient.logout()
                 .then((loggedOut: any) => {
                     user.clear();
 
                     if (!loggedOut) {
-                        this.errorModal.error = "An error occurred while logging out";
+                        this.errorModal.error =
+                            "An error occurred while logging out";
                     }
                 })
-                .catch((error: any) => this.errorModal.error = String(error));
+                .catch((error: any) => (this.errorModal.error = String(error)));
             // todo implement logout
         },
 
@@ -562,24 +605,25 @@ const app: App = new Vue({
             console.log(id);
         },
 
-        addMedium(data: { title: string, type: number }) {
+        addMedium(data: { title: string; type: number }) {
             if (!data.title) {
                 this.addMediumModal.error = "Missing title";
             } else if (!data.type) {
                 this.addMediumModal.error = "Missing type";
             } else {
-                HttpClient
-                    .createMedium(data)
+                HttpClient.createMedium(data)
                     .then((medium) => {
                         user.addMedium(medium);
                         this.resetModal(this.addMediumModal);
                     })
-                    .catch((error) => this.addMediumModal.error = String(error));
+                    .catch(
+                        (error) => (this.addMediumModal.error = String(error))
+                    );
             }
             // todo implement addMedium
         },
 
-        editMedium(data: { id: number, prop: string }) {
+        editMedium(data: { id: number; prop: string }) {
             if (data.id == null || !data.prop) {
                 // todo handle this better
                 throw Error();
@@ -594,34 +638,33 @@ const app: App = new Vue({
                 // todo handle this better
                 throw Error();
             } else {
-                HttpClient
-                    .deleteMedium(id)
+                HttpClient.deleteMedium(id)
                     .then(() => emitBusEvent("deletion", false))
                     .catch((error) => console.log(error));
             }
             // todo implement deleteMedium
         },
 
-        addList(data: { name: string, type: number }) {
+        addList(data: { name: string; type: number }) {
             if (!data.name) {
                 this.addListModal.error = "Missing name";
             } else if (!data.type) {
                 this.addListModal.error = "Missing type";
             } else {
-                HttpClient
-                    .createList(data)
+                HttpClient.createList(data)
                     .then((list) => {
                         user.addList(list);
                         this.resetModal(this.addListModal);
                     })
-                    .catch((error) => this.addListModal.error = String(error));
+                    .catch(
+                        (error) => (this.addListModal.error = String(error))
+                    );
             }
             // todo implement addList
         },
 
         deleteList(id: number) {
-            HttpClient
-                .deleteList(id)
+            HttpClient.deleteList(id)
                 .then(() => console.log("success"))
                 .catch((error) => console.log(error));
             // todo implement deleteList
@@ -642,9 +685,8 @@ const app: App = new Vue({
          *
          * @param {{from: Date|undefined, to: Date|undefined}} data
          */
-        loadNews(data: { from: Date | undefined, to: Date | undefined }) {
-            HttpClient
-                .getNews(data.from, data.to)
+        loadNews(data: { from: Date | undefined; to: Date | undefined }) {
+            HttpClient.getNews(data.from, data.to)
                 .then((news) => user.addNews(news))
                 .catch(console.log);
         },
@@ -660,9 +702,8 @@ const app: App = new Vue({
                 WSClient.close();
                 this.loginState();
             } else {
-                WSClient
-                    .startPush()
-                    .then(() => WSClient.push({uuid: this.uuid}))
+                WSClient.startPush()
+                    .then(() => WSClient.push({ uuid: this.uuid }))
                     .catch(console.log);
             }
         },

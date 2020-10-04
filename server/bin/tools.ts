@@ -100,9 +100,9 @@ export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
     return value;
 }
 
-export function getElseSetObj<K, V>(map: object, key: string | number, valueCb: () => V): V {
+export function getElseSetObj<K, V>(map: Record<string | number, K>, key: string | number, valueCb: () => V): V {
     // @ts-ignore
-    let value = map[key];
+    let value: V = map[key];
     if (value == null) {
         // @ts-ignore
         map[key] = value = valueCb();
@@ -151,7 +151,7 @@ export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: num
 
 const apostrophe = /['´`’′‘]/g;
 
-export function equalsIgnore(s1: string, s2: string) {
+export function equalsIgnore(s1: string, s2: string): boolean {
     if (apostrophe.test(s1)) {
         s1 = s1.replace(apostrophe, "");
     }
@@ -161,7 +161,7 @@ export function equalsIgnore(s1: string, s2: string) {
     return s1.localeCompare(s2, undefined, {sensitivity: "base"}) === 0;
 }
 
-export function contains(s1: string, s2: string) {
+export function contains(s1: string, s2: string): boolean {
     s1 = s1.replace(apostrophe, "");
     s2 = s2.replace(apostrophe, "");
     return s1.toLocaleLowerCase().includes(s2.toLocaleLowerCase());
@@ -291,7 +291,7 @@ export function delay(timeout = 1000): Promise<void> {
     });
 }
 
-export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease) {
+export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease): boolean {
     return (firstRelease === secondRelease)
         || (
             (firstRelease && secondRelease)
@@ -305,7 +305,7 @@ export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: Episo
         );
 }
 
-export function stringify(object: any) {
+export function stringify(object: any): string {
     const seen = new WeakSet();
     return JSON.stringify(object, (key, value) => {
         if (typeof value === "object" && value !== null) {
@@ -318,7 +318,7 @@ export function stringify(object: any) {
     });
 }
 
-export function jsonReplacer(key: any, value: any) {
+export function jsonReplacer(key: unknown, value: unknown): unknown {
     if (value instanceof Error) {
         const error: any = {};
 
@@ -376,13 +376,7 @@ interface ShaHasher extends Hasher {
 export const ShaHash: ShaHasher = {
     tag: "sha512",
 
-    /**
-     *
-     * @param {number} saltLength
-     * @param {string} text
-     * @return {{salt: string, hash: string}}
-     */
-    hash(text: string, saltLength: number = 20): Promise<{ salt: string, hash: string }> {
+    hash(text: string, saltLength = 20): Promise<{ salt: string; hash: string }> {
         return promisify(() => {
             if (!Number.isInteger(saltLength)) {
                 throw TypeError(`'${saltLength}' not an integer`);
@@ -472,7 +466,8 @@ export enum Errors {
     UNSUCCESSFUL = "UNSUCCESSFUL",
 }
 
-export const isError = (error: any) => {
+export const isError = (error: unknown): boolean => {
+    // @ts-ignore
     return Object.values(Errors).includes(error);
 };
 
@@ -483,11 +478,11 @@ export enum MediaType {
     IMAGE = 0x8,
 }
 
-export function hasMediaType(container: MediaType, testFor: MediaType) {
+export function hasMediaType(container: MediaType, testFor: MediaType): boolean {
     return (container & testFor) === testFor;
 }
 
-export function allTypes() {
+export function allTypes(): number {
     return (Object.values(MediaType) as number[])
         .reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
 }
@@ -502,7 +497,7 @@ export function promisify<T>(callback: () => T): Promise<T> {
     });
 }
 
-export function combiIndex(value: { totalIndex: number, partialIndex?: number }): number {
+export function combiIndex(value: { totalIndex: number; partialIndex?: number }): number {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
     if (Number.isNaN(combi)) {
         throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
@@ -510,7 +505,7 @@ export function combiIndex(value: { totalIndex: number, partialIndex?: number })
     return combi;
 }
 
-export function checkIndices(value: { totalIndex: number, partialIndex?: number }) {
+export function checkIndices(value: { totalIndex: number; partialIndex?: number }): void {
     if (value.totalIndex == null || value.totalIndex < -1) {
         throw Error("invalid toc content, totalIndex invalid");
     }
@@ -520,7 +515,7 @@ export function checkIndices(value: { totalIndex: number, partialIndex?: number 
 }
 
 export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number)
-    : { combi: number, total: number, fraction?: number } | null {
+    : { combi: number; total: number; fraction?: number } | null {
 
     const whole = Number(groups[allPosition]);
 
@@ -538,7 +533,7 @@ export function extractIndices(groups: string[], allPosition: number, totalPosit
 
 const indexRegex = /(-?\d+)(\.(\d+))?/;
 
-export function separateIndex(value: number): { totalIndex: number, partialIndex?: number; } {
+export function separateIndex(value: number): { totalIndex: number; partialIndex?: number } {
     const exec = indexRegex.exec(value + "");
     if (!exec) {
         throw Error("not a positive number");
@@ -553,7 +548,7 @@ export function separateIndex(value: number): { totalIndex: number, partialIndex
     return {totalIndex, partialIndex};
 }
 
-export function createCircularReplacer() {
+export function createCircularReplacer(): (key: any, value: any) => any {
     const seen = new WeakSet();
     return (key: any, value: any) => {
         if (typeof value === "object" && value !== null) {
@@ -566,7 +561,7 @@ export function createCircularReplacer() {
     };
 }
 
-export function ignore() {
+export function ignore(): void {
     return undefined;
 }
 
@@ -610,7 +605,7 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
     private since: Date = new Date();
     private stopLoop = false;
 
-    constructor() {
+    public constructor() {
         super();
         // should never call catch callback
         this.checkInternet().catch(console.error);

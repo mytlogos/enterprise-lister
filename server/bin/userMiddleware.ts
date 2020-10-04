@@ -305,7 +305,7 @@ export const addBookmarked: Handler = (req, res) => {
                     uuid
                 } as TocRequest)
             };
-        })).then((value) => scrapeAble.unavailable);
+        })).then(() => scrapeAble.unavailable);
         sendResult(res, storePromise);
     } else {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));

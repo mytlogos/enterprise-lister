@@ -90,7 +90,7 @@ class SimpleNovelUpdates implements ListManager {
         result.lists.push(list);
 
         for (let i = 1; i < numberLists; i++) {
-            const [otherList, _] = await this.scrapeList(i);
+            const [otherList, ] = await this.scrapeList(i);
             result.media.push(...otherList.media as ScrapeMedium[]);
             result.lists.push(otherList);
         }
@@ -274,11 +274,11 @@ class NovelUpdates implements ListManager {
     private defaults: any;
     private readonly baseURI: string;
 
-    constructor() {
+    private constructor() {
         this.baseURI = "https://www.novelupdates.com/";
     }
 
-    public test(credentials: { identifier: string; password: string; } | string): Promise<boolean> {
+    public test(credentials: { identifier: string; password: string } | string): Promise<boolean> {
         if (isString(credentials)) {
             // TODO: 10.03.2020 implement this maybe or scrap this class in favor of SimpleNovelUpdates class
             return Promise.resolve(false);
@@ -537,8 +537,8 @@ export interface ScrapeMedium {
     langTL?: string;
     statusCOO?: ReleaseState;
     statusTl?: ReleaseState;
-    authors?: Array<{ name: string, link: string }>;
-    artists?: Array<{ name: string, link: string }>;
+    authors?: Array<{ name: string; link: string }>;
+    artists?: Array<{ name: string; link: string }>;
 }
 
 async function novelUpdatesTocAdapter(uri: string) {
@@ -587,7 +587,7 @@ export function getListManagerHooks(): Hook[] {
 }
 
 export interface ListManager {
-    test(credentials: { identifier: string, password: string } | string): Promise<boolean>;
+    test(credentials: { identifier: string; password: string } | string): Promise<boolean>;
 
     scrapeLists(): Promise<ListScrapeResult>;
 

@@ -9,7 +9,7 @@ import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {UrlError} from "../errors";
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.gogoanime.io/";
     const $ = await queueCheerioRequest(uri);
 

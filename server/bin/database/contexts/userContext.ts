@@ -235,7 +235,7 @@ export class UserContext extends SubContext {
      * Returns a boolean whether data was updated or not.
      */
     public async updateUser(uuid: string,
-                            user: { name?: string, newPassword?: string, password?: string }): Promise<boolean> {
+        user: { name?: string, newPassword?: string, password?: string }): Promise<boolean> {
 
         if (user.newPassword && user.password) {
             await this.verifyPassword(uuid, user.password);

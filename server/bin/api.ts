@@ -6,7 +6,7 @@ import {NextFunction} from "express-serve-static-core";
  *  Returns the Router for the User Api.
  *  @return {Router} user api router
  */
-export function apiRouter() {
+export function apiRouter(): Router {
     const router = Router();
     // check if an user is logged in for ip
     router.get("", UserApi.checkLogin);

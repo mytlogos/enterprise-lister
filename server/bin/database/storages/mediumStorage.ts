@@ -3,7 +3,6 @@ import {
     LikeMedium,
     LikeMediumQuery,
     Medium,
-    MediumToc,
     SimpleMedium,
     Synonyms,
     TocSearchMedium,
@@ -108,13 +107,13 @@ export class MediumStorage {
 
     /**
      */
-    public getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {
+    public getAllMediaTocs(): Promise<Array<{ link?: string; id: number }>> {
         return inContext((context) => context.getAllMediaTocs());
     }
 
     /**
      */
-    public getAllTocs(): Promise<Array<{ link: string, id: number }>> {
+    public getAllTocs(): Promise<Array<{ link: string; id: number }>> {
         return inContext((context) => context.getAllTocs());
     }
 

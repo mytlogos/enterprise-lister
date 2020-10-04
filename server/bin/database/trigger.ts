@@ -7,7 +7,7 @@ export class Trigger {
     public readonly table: string;
     public readonly body: string;
 
-    constructor(name: string, timing: TriggerTiming, event: TriggerEvent, table: string, body: string) {
+    public constructor(name: string, timing: TriggerTiming, event: TriggerEvent, table: string, body: string) {
         this.name = name;
         this.timing = timing;
         this.event = event;

@@ -16,38 +16,38 @@ export const Migrations: Migration[] = [
         toVersion: 1,
         async migrate(context: DatabaseContext): Promise<void> {
             await ignoreError(async () => {
-                    await context.addColumn(
-                        "episode",
-                        "combiIndex double DEFAULT 0"
-                    );
-                    await context.query(
-                        "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
-                    );
-                },
-                [MysqlServerError.ER_DUP_FIELDNAME]
+                await context.addColumn(
+                    "episode",
+                    "combiIndex double DEFAULT 0"
+                );
+                await context.query(
+                    "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                );
+            },
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "info TEXT"
-                ),
-                [MysqlServerError.ER_DUP_FIELDNAME]
+            ),
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "external_uuid char(36)"
-                ),
-                [MysqlServerError.ER_DUP_FIELDNAME]
+            ),
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(async () => {
-                    await context.addColumn(
-                        "part",
-                        "combiIndex double DEFAULT 0"
-                    );
-                    await context.query(
-                        "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
-                    );
-                },
-                [MysqlServerError.ER_DUP_FIELDNAME]
+                await context.addColumn(
+                    "part",
+                    "combiIndex double DEFAULT 0"
+                );
+                await context.query(
+                    "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                );
+            },
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await context.alterColumn(
                 "external_user",
@@ -103,8 +103,8 @@ export const Migrations: Migration[] = [
             await ignoreError(() => context.addColumn(
                 "episode_release",
                 "locked BOOLEAN DEFAULT 0"
-                ),
-                [MysqlServerError.ER_DUP_FIELDNAME]
+            ),
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
         }
     },
@@ -149,7 +149,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 4,
         toVersion: 5,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(): Promise<void> {
             // empty migration as it adds trigger only
         }
     },

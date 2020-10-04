@@ -1,27 +1,36 @@
 pipeline {
     agent any
+    tools {nodejs "node"}
+
     stages {
-        stage('build') {
+        stage('install dependencies') {
             steps {
                 sh 'npm install'
             }
         }
-        stage('post-build'){
-            when {
-                 expression {
-                     currentBuild.result == null || currentBuild.result == 'SUCCESS'
-                 }
-            }
+
+        stage('lint website') {
             steps {
-                 sh 'cp ~\\enterprise\\env.env env.env'
-                 sh 'pm2 stop ecosystem.config.js"'
-                 sh 'pm2 start ecosystem.config.js"'
+                sh "npx eslint website/src/"
             }
         }
-    }
-}
-node {
-    stage('build'){
-        if ()
+
+        stage('lint server') {
+            steps {
+                sh "npx eslint -c server/.eslintrc.js server/bin/"
+            }
+        }
+
+        stage('build website') {
+            steps {
+                sh 'npm run build:website'
+            }
+        }
+
+        stage('build server') {
+            steps {
+                sh 'npm run build:server'
+            }
+        }
     }
 }

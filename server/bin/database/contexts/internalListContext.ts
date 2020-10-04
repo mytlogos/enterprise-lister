@@ -7,7 +7,7 @@ export class InternalListContext extends SubContext {
      * Adds a list to the storage and
      * links it to the user of the uuid.
      */
-    public async addList(uuid: string, {name, medium}: { name: string, medium: number }): Promise<List> {
+    public async addList(uuid: string, {name, medium}: { name: string; medium: number }): Promise<List> {
         const result = await this.query(
             "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)",
             [uuid, name, medium],
@@ -29,7 +29,7 @@ export class InternalListContext extends SubContext {
      * the list_id.
      */
     public async getList(listId: number | number[], media: number[], uuid: string):
-        Promise<{ list: List[] | List, media: Medium[] }> {
+        Promise<{ list: List[] | List; media: Medium[] }> {
 
         const toLoadMedia: Set<number> = new Set();
         // TODO: 29.06.2019 replace with id IN (...)
@@ -55,7 +55,7 @@ export class InternalListContext extends SubContext {
      * Recreates a list from storage.
      */
     public async createShallowList(storageList:
-                                       { id: number, name: string, medium: number, user_uuid: string },
+                                       { id: number; name: string; medium: number; user_uuid: string },
     ): Promise<List> {
 
         if (!storageList.name) {
@@ -141,7 +141,7 @@ export class InternalListContext extends SubContext {
      * If no listId is available it selects the
      * 'Standard' List of the given user and adds it there.
      */
-    public async addItemToList(medium: { id: number | number[], listId?: number }, uuid?: string)
+    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: string)
         : Promise<boolean> {
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list
@@ -156,7 +156,7 @@ export class InternalListContext extends SubContext {
             medium.listId = idResult[0].id;
         }
         const result = await this.multiInsert(
-            `INSERT IGNORE INTO list_medium (list_id, medium_id) VALUES`,
+            "INSERT IGNORE INTO list_medium (list_id, medium_id) VALUES",
             medium.id,
             (value) => [medium.listId, value]
         );
@@ -178,19 +178,16 @@ export class InternalListContext extends SubContext {
     /**
      * Removes an item from a list.
      */
-    public removeMedium(listId: number, mediumId: number | number[], external = false): Promise<boolean> {
-        return promiseMultiSingle(mediumId, (value) => {
-            return this.delete(
-                "list_medium",
-                {
-                    column: "list_id",
-                    value: listId,
-                },
-                {
-                    column: "medium_id",
-                    value,
-                });
-
-        }).then(() => true);
+    public async removeMedium(listId: number, mediumId: number | number[], external = false): Promise<boolean> {
+        await promiseMultiSingle(mediumId, (value) => {
+            return this.delete("list_medium", {
+                column: "list_id",
+                value: listId,
+            }, {
+                column: "medium_id",
+                value,
+            });
+        });
+        return true;
     }
 }
