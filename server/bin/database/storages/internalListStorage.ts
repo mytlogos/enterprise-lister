@@ -14,7 +14,7 @@ export class InternalListStorage {
      *
      * @return {Promise<List>}
      */
-    public addList(uuid: string, list: { name: string, medium: number }): Promise<List> {
+    public addList(uuid: string, list: { name: string; medium: number }): Promise<List> {
         return inContext((context) => context.addList(uuid, list));
     }
 
@@ -25,7 +25,7 @@ export class InternalListStorage {
      * @return {Promise<{list: List, media: Array<SimpleMedium>}>}
      */
     public getList(listId: number | number[], media: number[], uuid: string):
-        Promise<{ list: List | List[], media: Medium[] }> {
+        Promise<{ list: List | List[]; media: Medium[] }> {
 
         return inContext((context) => context.getList(listId, media, uuid));
     }

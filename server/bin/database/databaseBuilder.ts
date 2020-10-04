@@ -109,15 +109,15 @@ export class DataBaseBuilder {
         };
     }
 
-    public addMigrations(...migrations: Migration[]) {
+    public addMigrations(...migrations: Migration[]): void {
         this.migrations.push(...migrations);
     }
 
-    public addTrigger(trigger: Trigger) {
+    public addTrigger(trigger: Trigger): void {
         this.triggers.push(trigger);
     }
 
-    public addTable(table: TableSchema, invalidations: Array<{ type: InvalidationType; table?: string; }>): this {
+    public addTable(table: TableSchema, invalidations: Array<{ type: InvalidationType; table?: string }>): this {
         this.tables.push(table);
         for (const value of invalidations) {
             this.invalidations.push({tableName: value.table, table, type: value.type});

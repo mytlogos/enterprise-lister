@@ -14,7 +14,6 @@ import {
     SyntaxList
 } from "typescript";
 import path from "path";
-import {Router} from "express";
 import yaml from "js-yaml";
 import * as fs from "fs";
 
@@ -115,8 +114,8 @@ interface NullType extends TypeResult {
 // and the possible return types and error codes
 interface MiddlewareResult {
     returnTypes: null | TypeResult;
-    queryType?: { [key: string]: null; };
-    bodyType?: { [key: string]: null; };
+    queryType?: { [key: string]: null };
+    bodyType?: { [key: string]: null };
 }
 
 type HttpMethod = "get" | "delete" | "post" | "put";
@@ -370,7 +369,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         container.currentStackElement.requestSymbol = requestParamSymbol;
         container.currentStackElement.responseSymbol = responseParamSymbol;
 
-        let functionStatements: ReadonlyArray<Statement> | null = null;
+        let functionStatements: readonly Statement[] | null = null;
 
         if (ts.isArrowFunction(middlewareSignature)) {
             const body = middlewareSignature.body;
@@ -1289,7 +1288,7 @@ function getFirstChildThat(node: ts.Node, found: (t: ts.Node) => boolean): ts.No
     return null;
 }
 
-function filterKind(nodes: ts.Node[] | ReadonlyArray<ts.Node>, kind: ts.SyntaxKind): ts.Node[] {
+function filterKind(nodes: ts.Node[] | readonly ts.Node[], kind: ts.SyntaxKind): ts.Node[] {
     return nodes.filter((value) => value.kind === kind);
 }
 

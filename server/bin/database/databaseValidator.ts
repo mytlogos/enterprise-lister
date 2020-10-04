@@ -375,7 +375,7 @@ function createTrigger(watchTable: TableSchema, targetTable: TableSchema, invali
 
 const queryTableReg = /((select .+? from)|(update )|(delete.+?from)|(insert.+?into )|(.+?join))\s*(\w+)/gi;
 const queryColumnReg = /(((\w+\.)?(\w+))|\?)\s*(like|is|=|<|>|<>|<=|>=)\s*(((\w+\.)?(\w+))|\?)/gi;
-const counter = new Counter();
+const counter = new Counter<string>();
 const StateProcessorImpl: StateProcessorImpl = {
     databaseName: "",
     workingPromise: Promise.resolve(),

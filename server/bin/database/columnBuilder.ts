@@ -13,7 +13,7 @@ export class ColumnBuilder {
     private primaryKeyTypeSize?: number;
     private foreignKey?: ColumnSchema;
 
-    constructor(table: TableBuilder) {
+    public constructor(table: TableBuilder) {
         this.tableBuilder = table;
     }
 

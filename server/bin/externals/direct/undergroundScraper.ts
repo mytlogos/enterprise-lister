@@ -7,7 +7,7 @@ import {episodeStorage, mediumStorage, partStorage} from "../../database/storage
 
 export const sourceType = "qidian_underground";
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://toc.qidianunderground.org/";
 
     const $ = await queueCheerioRequest(uri);

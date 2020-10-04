@@ -91,7 +91,7 @@ export class ExternalUserContext extends SubContext {
      * Gets an external user with cookies, without items.
      */
     public async getExternalUserWithCookies(uuid: string)
-        : Promise<{ userUuid: string, type: number, uuid: string, cookies: string }> {
+        : Promise<{ userUuid: string; type: number; uuid: string; cookies: string }> {
 
         const value = await this.query(
             "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
@@ -131,7 +131,7 @@ export class ExternalUserContext extends SubContext {
      *  shallow lists.
      */
     public async createShallowExternalUser(storageUser: {
-        name: string, uuid: string, service: number, local_uuid: string
+        name: string; uuid: string; service: number; local_uuid: string;
     }): Promise<ExternalUser> {
 
         const externalUser: ExternalUser = {

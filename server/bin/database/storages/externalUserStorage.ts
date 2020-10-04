@@ -39,7 +39,7 @@ export class ExternalUserStorage {
      * Gets an external user with cookies, without items.
      */
     public getExternalUserWithCookies(uuid: string)
-        : Promise<{ userUuid: string, type: number, uuid: string, cookies: string }> {
+        : Promise<{ userUuid: string; type: number; uuid: string; cookies: string }> {
 
         return inContext((context) => context.getExternalUserWithCookies(uuid));
     }

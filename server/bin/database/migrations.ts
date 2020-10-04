@@ -149,7 +149,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 4,
         toVersion: 5,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(): Promise<void> {
             // empty migration as it adds trigger only
         }
     },

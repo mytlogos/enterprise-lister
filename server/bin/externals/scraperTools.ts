@@ -60,7 +60,7 @@ const newsAdapter: NewsScraper[] = [];
 const searchAdapter: SearchScraper[] = [];
 const nameHookMap = new Map<string, Hook>();
 
-export const filterScrapeAble = (urls: string): { available: string[], unavailable: string[] } => {
+export const filterScrapeAble = (urls: string): { available: string[]; unavailable: string[] } => {
     checkHooks();
 
     const regs: RegExp[] = [];
@@ -69,7 +69,7 @@ export const filterScrapeAble = (urls: string): { available: string[], unavailab
             regs.push(entry[1].domainReg);
         }
     }
-    const result: { available: string[], unavailable: string[] } = {available: [], unavailable: []};
+    const result: { available: string[]; unavailable: string[] } = {available: [], unavailable: []};
 
     for (const link of urls) {
         let found = false;
@@ -88,7 +88,7 @@ export const filterScrapeAble = (urls: string): { available: string[], unavailab
     return result;
 };
 
-export const scrapeNewsJob = async (name: string): Promise<{ link: string, result: News[] }> => {
+export const scrapeNewsJob = async (name: string): Promise<{ link: string; result: News[] }> => {
     const hook = nameHookMap.get(name);
     if (!hook) {
         throw Error("no hook found for name: " + name);
@@ -101,7 +101,7 @@ export const scrapeNewsJob = async (name: string): Promise<{ link: string, resul
     return scrapeNews(hook.newsAdapter);
 };
 
-export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string, result: News[] }> => {
+export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string; result: News[] }> => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
@@ -466,7 +466,7 @@ export const queueTocs = async (): Promise<void> => {
 };
 
 export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRequest)
-    : Promise<{ tocs: Toc[], uuid?: string; }> => {
+    : Promise<{ tocs: Toc[]; uuid?: string }> => {
     logger.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
 
@@ -532,7 +532,7 @@ export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRe
     return {tocs: allTocs, uuid};
 };
 
-export const news = async (link: string): Promise<{ link: string, result: News[] }> => {
+export const news = async (link: string): Promise<{ link: string; result: News[] }> => {
     return {
         link,
         result: [],
@@ -555,8 +555,8 @@ export const toc = async (value: TocRequest): Promise<TocResult> => {
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export const list = async (value: { cookies: string, uuid: ExternalUserUuid; })
-    : Promise<{ external: { cookies: string, uuid: ExternalUserUuid }, lists: ListScrapeResult; }> => {
+export const list = async (value: { cookies: string; uuid: ExternalUserUuid })
+    : Promise<{ external: { cookies: string; uuid: ExternalUserUuid }; lists: ListScrapeResult }> => {
 
     // TODO: 10.03.2020 for now list scrape novelupdates only, later it should take listtype as an argument
     const manager = factory(ListType.NOVELUPDATES, value.cookies);
@@ -602,7 +602,7 @@ export const list = async (value: { cookies: string, uuid: ExternalUserUuid; })
     }
 };
 
-export const feed = async (feedLink: string): Promise<{ link: string, result: News[] }> => {
+export const feed = async (feedLink: string): Promise<{ link: string; result: News[] }> => {
     logger.info(`scraping feed: ${feedLink}`);
     const startTime = Date.now();
     // noinspection JSValidateTypes
@@ -628,7 +628,7 @@ export const feed = async (feedLink: string): Promise<{ link: string, result: Ne
         .catch((error) => Promise.reject({feed: feedLink, error}));
 };
 
-export function checkTocContent(content: TocContent, allowMinusOne = false) {
+export function checkTocContent(content: TocContent, allowMinusOne = false): void {
     if (!content) {
         throw Error("empty toc content");
     }
@@ -655,7 +655,7 @@ const cache = new Cache({size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2});
 const errorCache = new Cache({size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2});
 
 export interface ListScrapeEvent {
-    external: { cookies: string, uuid: string, userUuid: string, type: number };
+    external: { cookies: string; uuid: string; userUuid: string; type: number };
     lists: ListScrapeResult;
 }
 
@@ -689,7 +689,7 @@ export class ScraperHelper {
         return newsAdapter;
     }
 
-    public on(event: string, callback: (value: any) => void) {
+    public on(event: string, callback: (value: any) => void): void {
         const callbacks = getElseSet(this.eventMap, event, () => []);
         callbacks.push(callback);
     }
@@ -765,7 +765,7 @@ export class ScraperHelper {
 
 let hookRegistered = false;
 
-export function checkHooks() {
+export function checkHooks(): void {
     if (!hookRegistered) {
         registerHooks(directScraper.getHooks());
         hookRegistered = true;
@@ -1031,12 +1031,12 @@ function registerHooks(hook: Hook[] | Hook) {
     });
 }
 
-export async function remapMediaParts() {
+export async function remapMediaParts(): Promise<void> {
     const mediaIds = await mediumStorage.getAllMedia();
     await Promise.all(mediaIds.map((mediumId) => remapMediumPart(mediumId)));
 }
 
-export async function queueExternalUser() {
+export async function queueExternalUser(): Promise<JobRequest[]> {
     // eslint-disable-next-line prefer-rest-params
     console.log("queueing all external user", arguments);
     const externalUser: ExternalUser[] = await externalUserStorage.getScrapeExternalUser();
@@ -1071,7 +1071,7 @@ export async function queueExternalUser() {
         });
 }
 
-export async function remapMediumPart(mediumId: number) {
+export async function remapMediumPart(mediumId: number): Promise<void> {
     const parts = await partStorage.getMediumPartIds(mediumId);
 
     const standardPartId = await partStorage.getStandardPartId(mediumId);

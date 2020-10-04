@@ -29,7 +29,7 @@ export class PartContext extends SubContext {
             return;
         }
 
-        const episodesIds: Array<{ id: number, partId: number; }> | undefined = await this.queryInList(
+        const episodesIds: Array<{ id: number; partId: number }> | undefined = await this.queryInList(
             "SELECT id, part_id as partId FROM episode WHERE part_id",
             standardPartResult.id,
         );
@@ -74,7 +74,7 @@ export class PartContext extends SubContext {
             idMap.set(value.id, part);
             return part;
         });
-        const episodesIds: Array<{ id: number, partId: number }> | undefined = await this.queryInList(
+        const episodesIds: Array<{ id: number; partId: number }> | undefined = await this.queryInList(
             "SELECT id, part_id as partId FROM episode WHERE part_id",
             parts,
             undefined,
@@ -204,7 +204,7 @@ export class PartContext extends SubContext {
         if (!partIds.length) {
             return {};
         }
-        const episodesResult: Array<{ id: number, part_id: number }> | undefined = await this.queryInList(
+        const episodesResult: Array<{ id: number; part_id: number }> | undefined = await this.queryInList(
             "SELECT id, part_id FROM episode WHERE part_id ",
             partIds
         );
@@ -224,11 +224,11 @@ export class PartContext extends SubContext {
     /**
      * Returns all parts of an medium.
      */
-    public async getPartReleases(partIds: number[]): Promise<{ [key: number]: Array<{ id: number, url: string }> }> {
+    public async getPartReleases(partIds: number[]): Promise<{ [key: number]: Array<{ id: number; url: string }> }> {
         if (!partIds.length) {
             return {};
         }
-        const episodesResult: Array<{ id: number, url: string, part_id: number }> | undefined = await this.queryInList(
+        const episodesResult: Array<{ id: number; url: string; part_id: number }> | undefined = await this.queryInList(
             "SELECT id, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id ",
             partIds
         );

@@ -7,7 +7,7 @@ import { SubContext } from "./subContext";
 const database = "enterprise";
 
 export class DatabaseContext extends SubContext {
-    constructor (parentContext: QueryContext) {
+    public constructor (parentContext: QueryContext) {
         super(parentContext);
     }
 

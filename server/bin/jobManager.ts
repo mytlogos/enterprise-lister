@@ -89,7 +89,7 @@ export class JobQueue {
     /**
      * Get the number of currently active Jobs.
      */
-    get runningJobs() {
+    public get runningJobs(): number {
         return this.activeJobs.length;
     }
 
@@ -97,7 +97,7 @@ export class JobQueue {
      * Get the number of currently schedulable Jobs
      * in regards to the number of currently and maximum active jobs.
      */
-    get schedulableJobs() {
+    public get schedulableJobs(): number {
         const available = this.waitingJobs.length;
         const maxSchedulable = this.maxActive - this.runningJobs;
         return maxSchedulable > available ? available : maxSchedulable;
@@ -106,7 +106,7 @@ export class JobQueue {
     /**
      * Get the Number of Jobs in this queue regardless of their state.
      */
-    get totalJobs() {
+    public get totalJobs(): number {
         return this.waitingJobs.length + this.activeJobs.length;
     }
 
@@ -117,7 +117,7 @@ export class JobQueue {
      * @param memorySize the units of the Memory Limit, by default Bytes
      * @param maxActive the maximum number of active jobs, negative values are replaced by 1, by default 5
      */
-    constructor({memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5} = {}) {
+    public constructor({memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5} = {}) {
         this.memoryLimit = memoryLimit;
         this.memorySize = memorySize;
         this.maxActive = maxActive < 0 ? 1 : maxActive;
@@ -177,7 +177,7 @@ export class JobQueue {
      * Start the Queue.
      * Activates checking for schedulable jobs.
      */
-    public start() {
+    public start(): void {
         this.queueActive = true;
         this.setInterval();
     }
@@ -186,7 +186,7 @@ export class JobQueue {
      * Pauses the Queue.
      * Stops only from executing new jobs, not stopping currently active jobs.
      */
-    public pause() {
+    public pause(): void {
         this.queueActive = false;
 
         if (this.intervalId) {
@@ -199,7 +199,7 @@ export class JobQueue {
      * Jobs regardless of state.
      * Does not stop any currently active jobs.
      */
-    public clear() {
+    public clear(): void {
         this.queueActive = false;
 
         if (this.intervalId) {
@@ -226,7 +226,7 @@ export class JobQueue {
      *
      * @return boolean true of maximum number of jobs are active
      */
-    public isFull() {
+    public isFull(): boolean {
         return this.activeJobs.length >= this.maxActive;
     }
 

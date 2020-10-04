@@ -9,31 +9,31 @@ export class TriggerBuilder {
     private _body: string | null = null;
     private databaseBuilder: DataBaseBuilder;
 
-    constructor(databaseBuilder: DataBaseBuilder) {
+    public constructor(databaseBuilder: DataBaseBuilder) {
         this.databaseBuilder = databaseBuilder;
     }
 
-    public setName(value: string) {
+    public setName(value: string): this {
         this._name = value;
         return this;
     }
 
-    public setTiming(value: TriggerTiming) {
+    public setTiming(value: TriggerTiming): this {
         this._timing = value;
         return this;
     }
 
-    public setEvent(value: TriggerEvent) {
+    public setEvent(value: TriggerEvent): this {
         this._event = value;
         return this;
     }
 
-    public setTable(value: string) {
+    public setTable(value: string): this {
         this._table = value;
         return this;
     }
 
-    public setBody(value: string) {
+    public setBody(value: string): this {
         this._body = value;
         return this;
     }

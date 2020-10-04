@@ -286,7 +286,7 @@ const api: Api = (function pathGenerator() {
     return new Proxy(
         {},
         {
-            get(target: object, p: string, receiver) {
+            get(target: any, p: string, receiver) {
                 const allowed = allowedPreviousStates[p];
 
                 if (!currentState) {
@@ -345,7 +345,7 @@ const api: Api = (function pathGenerator() {
 export const HttpClient = {
     user: null,
 
-    get loggedIn() {
+    get loggedIn(): boolean {
         // @ts-ignore
         return this.user && Boolean(this.user.uuid);
     },
@@ -397,7 +397,7 @@ export const HttpClient = {
         return this.queryServer(api.externalUser.post, {externalUser});
     },
 
-    deleteExternalUser(uuid: string) {
+    deleteExternalUser(uuid: string): Promise<any> {
         return this.queryServer(api.externalUser.delete, {externalUuid: uuid});
     },
 

@@ -210,7 +210,7 @@ interface VueUser {
     name: string;
     externalUser: ExternalUser[];
     media: Medium[];
-    settings: object;
+    settings: any;
     columns: Column[];
 }
 

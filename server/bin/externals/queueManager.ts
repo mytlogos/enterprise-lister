@@ -15,7 +15,7 @@ export class Queue {
     private readonly maxLimit: number;
     private readonly limitVariation: number;
 
-    constructor(maxLimit = 1000) {
+    public constructor(maxLimit = 1000) {
         this.maxLimit = maxLimit > 10 ? maxLimit : 10;
         this.limitVariation = this.maxLimit / 2;
         this.queue = [];
@@ -43,7 +43,7 @@ export class Queue {
         });
     }
 
-    public doWork() {
+    public doWork(): void {
         const worker = this.queue.shift();
         this.working = !!worker;
 

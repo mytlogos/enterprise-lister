@@ -264,7 +264,7 @@ export class TableParser {
         return column;
     }
 
-    private static _getExpressionValue(columnParts: string[], index: number): { index: number, value: string } {
+    private static _getExpressionValue(columnParts: string[], index: number): { index: number; value: string } {
         let defaultValue = columnParts[index];
 
         if (!defaultValue) {

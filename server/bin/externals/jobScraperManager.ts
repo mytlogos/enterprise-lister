@@ -38,8 +38,8 @@ class ScrapeJob {
 
     private constructor(
         public readonly name: ScrapeName,
-        readonly func: (...args: any[]) => any,
-        readonly event?: ScrapeEvent
+        public readonly func: (...args: any[]) => any,
+        public readonly event?: ScrapeEvent
     ) {
 
     }
@@ -71,7 +71,7 @@ export class JobScraperManager {
     private nameIdList: Array<[number, string]> = [];
     private intervalId: Timeout | undefined;
 
-    constructor() {
+    public constructor() {
         this.helper.init();
     }
 

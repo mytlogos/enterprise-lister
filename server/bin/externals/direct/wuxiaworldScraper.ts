@@ -7,7 +7,7 @@ import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.wuxiaworld.com/";
 
     const $ = await queueCheerioRequest(uri);
@@ -165,7 +165,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             const title = sanitizeString(chapterElement.text());
             const linkGroups = chapLinkReg.exec(link);
 
-            let indices: { combi: number; total: number; fraction?: number; } | null = null;
+            let indices: { combi: number; total: number; fraction?: number } | null = null;
 
             if (linkGroups) {
                 linkGroups[2] = linkGroups[2].replace("-", ".");

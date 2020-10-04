@@ -291,7 +291,7 @@ async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undef
     };
 }
 
-async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function newsAdapter(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://novelfull.com";
     const $ = await queueCheerioRequest(uri);
     const items = $("#list-index .list-new .row");

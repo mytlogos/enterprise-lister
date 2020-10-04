@@ -13,11 +13,11 @@ export class TableBuilder {
     private invalidationColumn?: string;
     private readonly databaseBuilder: DataBaseBuilder;
     private readonly stubTable = new TableSchema([], "");
-    private readonly invalidations: Array<{ type: InvalidationType, table?: string }> = [];
+    private readonly invalidations: Array<{ type: InvalidationType; table?: string }> = [];
     private readonly uniqueIndices: ColumnSchema[][] = [];
 
 
-    constructor(databaseBuilder: DataBaseBuilder) {
+    public constructor(databaseBuilder: DataBaseBuilder) {
         this.databaseBuilder = databaseBuilder;
     }
 

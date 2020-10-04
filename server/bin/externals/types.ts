@@ -44,7 +44,7 @@ export interface Hook {
 }
 
 export interface Dependant {
-    oneTimeUser?: Array<{ cookies: string, uuid: string }> | { cookies: string, uuid: string };
+    oneTimeUser?: Array<{ cookies: string; uuid: string }> | { cookies: string; uuid: string };
     oneTimeToc?: TocRequest[] | TocRequest;
     feed?: string[] | string;
     news?: any[] | any;
@@ -95,8 +95,8 @@ export interface Toc {
     langTL?: string;
     statusCOO?: ReleaseState;
     statusTl?: ReleaseState;
-    authors?: Array<{ name: string, link: string }>;
-    artists?: Array<{ name: string, link: string }>;
+    authors?: Array<{ name: string; link: string }>;
+    artists?: Array<{ name: string; link: string }>;
 }
 
 export interface EpisodeContent {

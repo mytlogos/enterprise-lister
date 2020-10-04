@@ -7,7 +7,7 @@ type ParamCallback<T> = (value: T) => (any[] | any);
 type UpdateCallback = (updates: string[], values: any[]) => void;
 
 export class SubContext implements ConnectionContext {
-    constructor(public readonly parentContext: QueryContext) {
+    public constructor(public readonly parentContext: QueryContext) {
     }
 
     public commit(): Promise<void> {

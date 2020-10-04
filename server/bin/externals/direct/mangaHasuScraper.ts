@@ -8,7 +8,7 @@ import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {MissingResourceError, UrlError} from "../errors";
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     // todo scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
     const $ = await queueCheerioRequest(baseUri + "latest-releases.html");
@@ -76,6 +76,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
                 continue;
             }
             partTitle = `Vol. ${partIndices.combi}`;
+            // todo: unused part title, should this be removed or used?
         }
 
         news.push({

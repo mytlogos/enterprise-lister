@@ -6,7 +6,7 @@ export class BufferToStringStream extends stream.Transform {
     private readonly decoder: StringDecoder;
 
 
-    constructor() {
+    public constructor() {
         super({decodeStrings: false, encoding: "utf-8"});
         this.decoder = new StringDecoder("utf-8");
     }
@@ -26,7 +26,7 @@ export class BufferToStringStream extends stream.Transform {
 
 // tslint:disable-next-line
 export class ObjectToStringStream extends stream.Transform {
-    constructor() {
+    public constructor() {
         super({
             decodeStrings: false,
             encoding: "utf-8",

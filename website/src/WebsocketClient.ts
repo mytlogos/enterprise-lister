@@ -7,7 +7,7 @@ class WebSocketClient {
     private started: null | Promise<void>;
     private socket: WebSocket | undefined;
 
-    constructor() {
+    public constructor() {
         // allow this client only in browser environment and only once
         this.offline = false;
         this.started = null;
@@ -38,7 +38,7 @@ class WebSocketClient {
      *
      * @param message message to be stringified to JSON
      */
-    public push(message: object): void {
+    public push(message: any): void {
         if (!this.socket || !this.started) {
             throw Error("webSocket is not active while trying to send message");
         }

@@ -22,7 +22,7 @@ const initPromise = queueRequest(
     defaultRequest
 ).then(ignore);
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.webnovel.com/";
     const $ = await queueCheerioRequest(uri);
     const newsRows = $("#LatUpdate tbody > tr");

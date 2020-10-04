@@ -271,7 +271,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }];
 }
 
-async function newsAdapter(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function newsAdapter(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://boxnovel.com";
     const $ = await queueCheerioRequest(uri);
     const items = $(".page-item-detail");
