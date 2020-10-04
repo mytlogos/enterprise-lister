@@ -24,7 +24,9 @@ app.use(logger(":method :url :status :response-time ms - :res[content-length]", 
         }
     }
 }));
+//@ts-ignore
 app.use(helmet());
+//@ts-ignore
 app.use(compression());
 
 // remove any emoji, dont need it and it can mess up my database

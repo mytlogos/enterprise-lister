@@ -274,6 +274,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         for (const pathEntry of routerEntry.paths) {
             routerResult.paths.push({
                 path: pathEntry.path,
+                //@ts-ignore
                 method: pathEntry.method,
                 middleware: middlewareToResult(pathEntry.middleware)
             });
@@ -607,6 +608,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                                                                     const typeSymbol = returnType.getSymbol();
 
                                                                     if (typeSymbol && typeSymbol.getName() === "Promise") {
+                                                                        //@ts-ignore
                                                                         const promiseTypes = checker.getTypeArguments(returnType);
 
                                                                         if (promiseTypes.length === 1) {
@@ -735,6 +737,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             return null;
         }
         if (symbol.name === "Array") {
+            //@ts-ignore
             const arrayTypes = checker.getTypeArguments(type);
 
             if (arrayTypes.length === 1) {
