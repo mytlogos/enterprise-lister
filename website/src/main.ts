@@ -1,4 +1,6 @@
 import Vue, { VNode } from "vue";
+import "bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
 import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";
