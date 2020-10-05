@@ -239,54 +239,69 @@ interface App {
 const app: App = new Vue({
     el: "#app",
     router: Router,
-    data: {
-        addListModal: {
-            show: false,
-            error: "",
-        },
-        addMediumModal: {
-            show: false,
-            error: "",
-        },
-        loginModal: {
-            show: false,
-            error: "",
-        },
-        registerModal: {
-            show: false,
-            error: "",
-        },
-        settingsModal: {
-            show: false,
-            error: "",
-        },
-        errorModal: {
-            error: "",
-        },
-        loadingMedia: [],
-        user: {
-            lists: [],
-            news: [],
-            name: "",
-            externalUser: [],
-            media: [],
-            settings: {},
-            columns: [
-                { name: "Title", prop: "title", show: true },
-                { name: "Author", prop: "author", show: true },
-                { name: "Artist", prop: "artist", show: true },
-            ],
-        },
-        readNews: [],
-        newReadNews: [],
-        session: "",
-        uuid: "",
+    data() {
+        return {
+            addListModal: {
+                show: false,
+                error: "",
+            },
+            addMediumModal: {
+                show: false,
+                error: "",
+            },
+            loginModal: {
+                show: false,
+                error: "",
+            },
+            registerModal: {
+                show: false,
+                error: "",
+            },
+            settingsModal: {
+                show: false,
+                error: "",
+            },
+            errorModal: {
+                error: "",
+            },
+            loadingMedia: [],
+            user: {
+                lists: [],
+                news: [],
+                name: "",
+                externalUser: [],
+                media: [],
+                settings: {},
+                columns: [
+                    { name: "Title", prop: "title", show: true },
+                    { name: "Author", prop: "author", show: true },
+                    { name: "Artist", prop: "artist", show: true },
+                ],
+            },
+            readNews: [],
+            newReadNews: [],
+            session: "",
+            uuid: "",
+        };
     },
 
-    render(h): VNode {
-        return h(AppComponent, {
-            props: this.user,
-        });
+    computed: {
+        loggedIn(): boolean {
+            return !!this.user.name;
+        },
+    },
+
+    watch: {
+        loggedIn(newValue) {
+            if (!newValue) {
+                WSClient.close();
+                this.loginState();
+            } else {
+                WSClient.startPush()
+                    .then(() => WSClient.push({ uuid: this.uuid }))
+                    .catch(console.log);
+            }
+        },
     },
 
     mounted() {
@@ -345,6 +360,7 @@ const app: App = new Vue({
         this.loginState();
         this.sendPeriodicData();
     },
+
     methods: {
         processDeleteEvent(value: any) {
             if (value.items) {
@@ -693,22 +709,11 @@ const app: App = new Vue({
                 .catch(console.log);
         },
     },
-    computed: {
-        loggedIn(): boolean {
-            return !!this.user.name;
-        },
-    },
-    watch: {
-        loggedIn(newValue) {
-            if (!newValue) {
-                WSClient.close();
-                this.loginState();
-            } else {
-                WSClient.startPush()
-                    .then(() => WSClient.push({ uuid: this.uuid }))
-                    .catch(console.log);
-            }
-        },
+
+    render(h): VNode {
+        return h(AppComponent, {
+            props: this.user,
+        });
     },
 });
 

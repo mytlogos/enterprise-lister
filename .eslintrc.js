@@ -18,21 +18,27 @@ module.exports = {
         "node": false
     },
     "extends": [
-        "plugin:vue/essential",
         "eslint:recommended",
-        "plugin:@typescript-eslint/recommended"
+        "plugin:@typescript-eslint/recommended",
+        "plugin:vue/vue3-recommended",
+        "@vue/typescript/recommended"
     ],
+    "parser": "vue-eslint-parser",
     "parserOptions": {
+        "parser": "@typescript-eslint/parser",
         "project": "tsconfig.json",
         "sourceType": "module"
     },
+
     "plugins": [
         "eslint-plugin-import",
         "eslint-plugin-jsdoc",
         "eslint-plugin-prefer-arrow",
         "@typescript-eslint",
-        "@typescript-eslint/tslint"
+        "@typescript-eslint/tslint",
+        "vue"
     ],
+
     "rules": {
         "@typescript-eslint/ban-ts-comment": "off",
         "@typescript-eslint/adjacent-overload-signatures": "warn",
@@ -144,5 +150,7 @@ module.exports = {
         // "vue/valid-v-show": "error",
         // "vue/valid-v-slot": "error",
         // "vue/valid-v-text": "error",
-    }
+        'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+        'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
+    },
 };
