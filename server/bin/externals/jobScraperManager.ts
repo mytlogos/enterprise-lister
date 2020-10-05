@@ -198,14 +198,14 @@ export class JobScraperManager {
      * Mainly for test purposes
      * @param jobIds
      */
-    public async runJobs(...jobIds: number[]) {
+    public async runJobs(...jobIds: number[]): Promise<void> {
         logger.info(`start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
         const jobs = await jobStorage.getJobsById(jobIds);
         this.processJobItems(jobs);
         logger.info(`fetched jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
     }
 
-    public async addJobs(...jobs: JobRequest[]) {
+    public async addJobs(...jobs: JobRequest[]): Promise<void> {
         let waitForOtherRequest: JobRequest[] = [];
         const addJobs = jobs.filter((value) => {
             if (value.runAfter) {

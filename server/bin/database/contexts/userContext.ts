@@ -45,7 +45,7 @@ export class UserContext extends SubContext {
         if (!userName || !password) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        const user = await this.query(`SELECT * FROM user WHERE name = ?;`, userName);
+        const user = await this.query("SELECT * FROM user WHERE name = ?;", userName);
         // if there is a result in array, userName is not new, so abort
         if (user.length) {
             return Promise.reject(new Error(Errors.USER_EXISTS_ALREADY));
@@ -235,7 +235,7 @@ export class UserContext extends SubContext {
      * Returns a boolean whether data was updated or not.
      */
     public async updateUser(uuid: string,
-        user: { name?: string, newPassword?: string, password?: string }): Promise<boolean> {
+        user: { name?: string; newPassword?: string; password?: string }): Promise<boolean> {
 
         if (user.newPassword && user.password) {
             await this.verifyPassword(uuid, user.password);
