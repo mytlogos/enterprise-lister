@@ -14,30 +14,27 @@
   </ul>
 </template>
 
-<script>
+<script lang="ts">
 // FIXME do it better with marked list
 // FIXME still is focused after being not shown
 import {emitBusEvent} from "../bus";
-
-interface List {
-    id: number;
-    show: boolean;
-    name: string;
-}
+import { List } from "../siteTypes"
 
 interface Data {
     marked: { external: boolean; id: null | number; index: null | number };
-    markClassId: boolean | null;
+    markClassId: number | null;
     markClassExternal: boolean;
 }
 
-export default {
+import { defineComponent, PropType } from "vue";
+
+export default defineComponent({
     name: "ListUl",
     props: {
-        data: Array,
-        filter: String,
-        focused: Boolean,
-        multi: Boolean,
+        data: { type: Array as PropType<List[]>, required: true },
+        filter: { type: String, required: true },
+        focused: { type: Boolean, required: true },
+        multi: { type: Boolean, required: true },
     },
     data(): Data {
         return {
@@ -63,7 +60,7 @@ export default {
                         return {value, match: regFilter.exec(value.name)};
                     })
                     .filter((value) => value.match)
-                    .map((value) => value.values);
+                    .map((value) => value.value);
             }
 
             return lists;
@@ -75,7 +72,7 @@ export default {
                 return;
             }
             if (evt.key === "ArrowDown") {
-                this.moveList();
+                this.moveList(false);
 
             } else if (evt.key === "ArrowUp") {
                 this.moveList(true);
@@ -130,5 +127,5 @@ export default {
             this.marked.external = displayedDatum.external;
         },
     }
-};
+});
 </script>

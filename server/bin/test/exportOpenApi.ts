@@ -655,7 +655,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             }
         } else if (methodName === "jsonp") {
             // optional body, send object after JSON.stringify-ing it (afterwards it is send automatically)
-            // the body is wrapped in a function call (used in tandem with <script>), by default 'callback'
+            // the body is wrapped in a function call (used in tandem with <script lang="ts">), by default 'callback'
             const body = callExpression.arguments[0];
         } else if (methodName === "links") {
             // populates the 'Links' header

@@ -28,17 +28,18 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent, onBusEvent} from "../../bus";
-import modal from "./modal";
 
-export default {
+import { defineComponent, PropType } from "vue";
+
+export default defineComponent({
     name: "DeleteModal",
-    components: {modal},
     props: {
         show: Boolean,
-        object: Object,
+        object: { type: Object as PropType<any>, required: true },
     },
+    emits: ["hide"],
     data(): { failure: boolean } {
         return {
             failure: false,
@@ -76,5 +77,5 @@ export default {
             this.$emit("hide");
         }
     }
-};
+});
 </script>

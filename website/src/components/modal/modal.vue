@@ -24,14 +24,18 @@
     </form>
   </div>
 </template>
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../../bus";
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "Modal",
     props: {
-        error: String,
+        error: { type: String, required: true },
+        show: Boolean
     },
+    emits: ["finish"],
     mounted(): void {
         document.addEventListener("click", (evt) => {
             // noinspection JSCheckFunctionSignatures
@@ -47,5 +51,5 @@ export default {
             emitBusEvent("reset:modal");
         }
     }
-};
+});
 </script>

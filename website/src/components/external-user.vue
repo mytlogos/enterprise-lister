@@ -73,18 +73,31 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { emitBusEvent, onBusEvent } from "../bus";
-import addExternalModal from "./modal/add-external-modal";
-import confirmModal from "./modal/confirm-modal";
+import addExternalModal from "./modal/add-external-modal.vue";
+import confirmModal from "./modal/confirm-modal.vue";
 
-export default {
+import { defineComponent, PropType } from "vue";
+import { ExternalUser } from "src/siteTypes";
+
+interface ExternalListHost {
+  link: string;
+  value: number;
+  name: string;
+}
+
+interface ExternalUserItem extends ExternalUser {
+  host: ExternalListHost;
+}
+
+export default defineComponent({
     name: "ExternalUser",
     components: { addExternalModal, confirmModal },
     props: {
-        user: Array,
+        user: { type: Array as PropType<ExternalUser[]>, required: true },
     },
-    data() {
+    data(): any {
         return {
             add: {
                 show: false,
@@ -110,7 +123,7 @@ export default {
         };
     },
     computed: {
-        filteredData() {
+        filteredData(): ExternalUserItem[] {
             const data = this.user
                 .filter((value) => value)
                 .map((value) => {
@@ -120,6 +133,7 @@ export default {
                     return { ...value, host };
                 });
 
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.currentLength = data.length;
             // iterate for the number of emptySpaces and push an empty object as an empty row
             for (let i = 0; i < this.emptySpace; i++) {
@@ -128,7 +142,7 @@ export default {
             return data;
         },
 
-        emptySpace() {
+        emptySpace(): number {
             // $el is needed  to calculate the free space,
             // but computed property is called before being mounted
             if (!this.emptySpaceDirty) {
@@ -175,9 +189,11 @@ export default {
                 remaining = Math.floor(remaining);
             }
 
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.emptySpaceDirty = false;
             // remove the decimal places, so that at most one less row is build
             // (better than one too many, which would lead to a scrollbar)
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.emptySpaceSpare = remaining;
             return this.emptySpaceSpare;
         },
@@ -195,8 +211,8 @@ export default {
 
     mounted() {
         onBusEvent("reset:modal", () => {
-            Plato.show = false;
-            Plato.show = false;
+            this.show = false;
+            this.show = false;
             this.confirm.text = "";
             this.markDelete = null;
         });
@@ -207,7 +223,7 @@ export default {
         onBusEvent("window:resize", () => (this.emptySpaceDirty = true));
     },
     methods: {
-        markDeleteItem(item) {
+        markDeleteItem(item: ExternalUserItem): void {
             this.markDelete = item.uuid;
             this.confirm.text =
                 "Are you sure you want to delete" +
@@ -215,20 +231,21 @@ export default {
                 "\nof " +
                 item.host.name +
                 " from this site?";
-            Plato.show = true;
+            // item.show = true;
+            // TODO fix this modal? issue
         },
-        deleteItem() {
+        deleteItem(): void {
             if (!this.markDelete) {
                 return;
             }
             emitBusEvent("delete:externalUser", this.markDelete);
         },
 
-        refreshItem(item) {
+        refreshItem(item: ExternalUser): void {
             emitBusEvent("refresh:externalUser", item.uuid);
         },
     },
-};
+});
 </script>
 
 <style scoped>

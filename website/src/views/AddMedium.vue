@@ -140,9 +140,9 @@
   </modal>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../bus";
-import modal from "../components/modal/modal";
+import modal from "../components/modal/modal.vue";
 
 interface GuiMediaType {
   value: number;
@@ -169,13 +169,16 @@ interface Data {
   medium: AddMedium;
 }
 
-export default {
+import { defineComponent, PropType } from "vue";
+import { List } from "src/siteTypes";
+
+export default defineComponent({
     name: "AddMediumModal",
     components: {modal},
     props: {
         show: Boolean,
-        error: String,
-        lists: Array,
+        error: { type: String, required: true },
+        lists: { type: Array as PropType<List[]>, required: true },
     },
 
     data(): Data {
@@ -226,7 +229,7 @@ export default {
             let mediumType = 0;
             this.mediaTypes.forEach((value) => {
                 if (value.checked) {
-                    mediumType |= value.values;
+                    mediumType |= value.value;
                 }
             });
             const result = {type: mediumType};
@@ -235,5 +238,5 @@ export default {
             emitBusEvent("do:add-medium", result);
         }
     }
-};
+});
 </script>

@@ -7,14 +7,16 @@
   </button>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../bus";
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "AppHeader",
     props: {
-        event: String,
-        name: String
+        event: { type: String, required: true },
+        name: { type: String, required: true }
     },
     methods: {
         logout(value: unknown): void {
@@ -22,5 +24,5 @@ export default {
             emitBusEvent(value);
         }
     }
-};
+});
 </script>

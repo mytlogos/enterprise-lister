@@ -43,7 +43,7 @@
   </modal>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../../bus";
 import modal from "./modal";
 
@@ -54,12 +54,14 @@ interface GuiMediaType {
   checked: boolean;
 }
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "AddListModal",
     components: {modal},
     props: {
         show: Boolean,
-        error: String,
+        error: { type: String, required: true },
     },
     data(): { mediaTypes: GuiMediaType[]; name: string } {
         return {
@@ -100,6 +102,6 @@ export default {
             emitBusEvent("do:add-list", {name: this.name, type: mediumType});
         }
     }
-};
+});
 </script>
 

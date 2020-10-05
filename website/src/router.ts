@@ -1,7 +1,4 @@
-import Vue from "vue";
-import Router, {Route} from "vue-router";
-
-Vue.use(Router);
+import { createRouter, createWebHistory } from "vue-router";
 
 let loggedIn = false;
 export const info = {
@@ -10,13 +7,12 @@ export const info = {
     },
 };
 
-const router = new Router({
-    mode: "history",
-    base: process.env.BASE_URL,
+const router = createRouter({
+    history: createWebHistory(process.env.BASE_URL),
     routes: [
         {
             path: "/",
-            redirect: (to: Route): string => {
+            redirect: (to): string => {
                 return "/" + (to.query.redirect || "home");
             },
         },

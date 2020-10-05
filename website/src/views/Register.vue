@@ -44,20 +44,22 @@
     </template>
   </modal>
 </template>
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../bus";
-import modal from "../components/modal/modal";
+import modal from "../components/modal/modal.vue";
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "RegisterModal",
     components: {modal},
     props: {
-        show: Boolean,
-        error: String,
+        show: { type: Boolean, required: true },
+        error: { type: String, required: true },
     },
-    data(): { lists: string; pw: string; pwRepeat: string } {
+    data(): { user: string; pw: string; pwRepeat: string } {
         return {
-            lists: "",
+            user: "",
             pw: "",
             pwRepeat: "",
         };
@@ -72,8 +74,8 @@ export default {
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("do:register", {lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat});
+            emitBusEvent("do:register", {user: this.user, pw: this.pw, pwRepeat: this.pwRepeat});
         },
     },
-};
+});
 </script>

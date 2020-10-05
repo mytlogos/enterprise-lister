@@ -1,4 +1,4 @@
-import Vue, { VNode } from "vue";
+import { VNode, createApp, App as VueApp } from "vue";
 import "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Router from "./router";
@@ -17,9 +17,7 @@ import {
     User,
 } from "./siteTypes";
 import { HttpClient } from "./Httpclient";
-
-Vue.config.devtools = true;
-Vue.use(VueObserveVisibility);
+import { Column } from "./siteTypes";
 
 const user = {
     get media(): Medium[] {
@@ -199,12 +197,6 @@ const user = {
     },
 };
 
-interface Column {
-    name: string;
-    prop: string;
-    show: boolean;
-}
-
 interface VueUser {
     lists: List[];
     news: News[];
@@ -220,7 +212,7 @@ interface Modal {
     error: string;
 }
 
-interface App {
+interface App extends VueApp {
     addListModal: Modal;
     addMediumModal: Modal;
     loginModal: Modal;
@@ -235,7 +227,8 @@ interface App {
     uuid: string;
 }
 
-const app: App = new Vue({
+// @ts-ignore
+const app: App = createApp({
     el: "#app",
     router: Router,
     data() {
@@ -695,12 +688,14 @@ const app: App = new Vue({
         },
     },
 
-    render(h): VNode {
+    render(h: any): VNode {
         return h(AppComponent, {
             props: this.user,
         });
     },
 });
+app.use(VueObserveVisibility);
+
 
 // TODO rework news, add the read property to news item itself instead of asking for it
 // TODO login mechanism, check if it was already logged in before

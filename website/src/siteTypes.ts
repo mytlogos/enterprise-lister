@@ -128,3 +128,9 @@ export interface Synonyms {
     mediumId: number;
     synonym: string | string[];
 }
+
+export interface Column {
+    name: string;
+    prop: string;
+    show: boolean;
+}

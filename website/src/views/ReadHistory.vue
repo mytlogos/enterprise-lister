@@ -4,13 +4,15 @@
   </div>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "ReadHistory",
     mounted(): void {
         console.log("mounted");
     }
-}
+});
 </script>
 
 <style scoped>

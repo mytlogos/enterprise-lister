@@ -5,8 +5,10 @@
   </div>
 </template>
 
-<script>
-export default {
+<script lang="ts">
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "ErrorView",
     data(): { hello: number } {
         return {
@@ -16,7 +18,7 @@ export default {
     mounted(): void {
         console.log("errorView mounted");
     }
-}
+});
 </script>
 
 <style scoped>

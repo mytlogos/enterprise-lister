@@ -52,17 +52,24 @@
   </modal>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../../bus";
-import modal from "./modal";
+import modal from "./modal.vue";
+import { defineComponent, PropType } from "vue";
 
-export default {
+interface Option {
+  name: string;
+  link: string;
+  value: number;
+}
+
+export default defineComponent({
     name: "AddExternalModal",
     components: {modal},
     props: {
         show: Boolean,
-        error: String,
-        options: Array,
+        error: { type: String, required: true },
+        options: { type: Array as PropType<Option[]>, required: true },
     },
     data(): { user: string; pw: string; selected: number } {
         return {
@@ -78,7 +85,7 @@ export default {
         }
     },
     watch: {
-        show(show: boolean): boolean {
+        show(show: boolean): void {
             if (!show) {
                 this.user = "";
                 this.pw = "";
@@ -90,7 +97,7 @@ export default {
             emitBusEvent("add:externalUser", {identifier: this.user, pwd: this.pw, type: this.selected});
         },
     }
-};
+});
 </script>
 
 <style scoped>

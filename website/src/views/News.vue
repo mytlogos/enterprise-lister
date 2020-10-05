@@ -46,34 +46,30 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 // TODO unread news should fade out slowly (more like that a marker slowly disappears)
 // TODO user should be able to mark all news as read
 // TODO replace vue picker with date and time input
 import {emitBusEvent, onBusEvent} from "../bus";
-import readingList from "../components/reading-list";
+import readingList from "../components/reading-list.vue";
 // noinspection NpmUsedModulesInstalled
 import VueCtkDateTimePicker from "vue-ctk-date-time-picker";
 import "vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.css";
 
-interface NewsItem {
-    link: string;
-    title: string;
-    date: Date;
-    id: number;
-}
+import { defineComponent, PropType } from "vue";
+import { List, News } from "src/siteTypes";
 
-export default {
+export default defineComponent({
     name: "NewsPage",
     components: {
         readingList,
         VueCtkDateTimePicker,
     },
     props: {
-        lists: Array,
-        news: Array,
+        lists: { type: Array as PropType<List[]>, required: true },
+        news: { type: Array as PropType<News[]>, required: true },
     },
-    data(): { listFocused: boolean; filter: string; show: Date | null; from: Date | null; to: Date | null; currentLength: number; emptySpaceDirty: boolean; emptySpaceSpare: boolean } {
+    data(): { listFocused: boolean; filter: string; show: boolean | null; from: string | null; to: string | null; currentLength: number; emptySpaceDirty: boolean; emptySpaceSpare: number } {
         return {
             listFocused: false,
             filter: "",
@@ -95,33 +91,34 @@ export default {
             return this.to ? new Date(this.to) : null;
         },
 
-        displayLists() {
-            const displayLists = this.lists
-                .filter((value) => value)
-                .map((value) => {
+        displayLists(): any[] {
+            const toDisplayLists = this.lists
+                .filter((value?: any) => value)
+                .map((value: any) => {
                     return {...value, show: false};
                 });
 
-            this.currentLength = displayLists.length;
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+            this.currentLength = toDisplayLists.length;
             // iterate for the number of emptySpaces and push an empty object as an empty row
-            for (let i = 0; i < this.emptySpace; i++) {
-                displayLists.push({});
+            for (let i = 0; i < this.emptySpace(); i++) {
+                toDisplayLists.push({});
             }
 
-            return displayLists;
+            return toDisplayLists;
         },
 
-        displayNews(): NewsItem[] {
-            const news = this.news.filter((value) => {
-                const timeFilter = value.date <= this.toDate && (!this.fromDate || value.date >= this.fromDate);
+        displayNews(): News[] {
+            const news = this.news.filter((value: News) => {
+                const timeFilter = (!this.toDate || value.date <= this.toDate) && (!this.fromDate || value.date >= this.fromDate);
 
                 if (!timeFilter) {
                     return false;
                 }
                 // TODO news should have related medium id´s, so news can be filtered per list
                 return true;
-            });
-            return news.sort((a, b) => b.date - a.date);
+            }) as News[];
+            return news.sort((a, b) => b.date.getTime() - a.date.getTime());
         }
     },
     watch: {
@@ -142,14 +139,14 @@ export default {
         }
     },
     mounted(): void {
-        const list = document.querySelector(".news-page .list");
-        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target), {capture: true});
-        onBusEvent("select:list", (id, external, multi) => this.selectList(id, external, multi));
+        const list = document.querySelector(".news-page .list") as Node;
+        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target as Node), {capture: true});
+        onBusEvent("select:list", (id, external) => this.selectList(id, external));
         onBusEvent("window:resize", () => this.emptySpaceDirty = true);
         emitBusEvent("get:news", {from: this.from, to: this.to});
     },
     methods: {
-        markNewsRead(visible: boolean, news: NewsItem, index: number): void {
+        markNewsRead(visible: boolean, news: News, index: number): void {
             if (visible) {
                 emitBusEvent("read:news", news.id);
 
@@ -171,7 +168,7 @@ export default {
             window.open(link, "_blank");
         },
 
-        formatDate(date: Date): string {
+        formatDate(date: Date): string | undefined {
             if (!date) {
                 return;
             }
@@ -205,7 +202,7 @@ export default {
             }
         },
 
-        emptySpace(): void {
+        emptySpace(): number {
             // $el is needed  to calculate the free space,
             // but computed property is called before being mounted
             if (!this.emptySpaceDirty) {
@@ -247,7 +244,7 @@ export default {
         },
 
     }
-};
+});
 
 </script>
 

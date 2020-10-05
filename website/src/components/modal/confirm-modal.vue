@@ -16,18 +16,19 @@
   </modal>
 </template>
 
-<script>
-import modal from "./modal";
+<script lang="ts">
+import modal from "./modal.vue";
+import { defineComponent } from "vue";
 
-export default {
+export default defineComponent({
     name: "ConfirmModal",
     components: {modal},
     props: {
-        text: String,
+        text: { type: String, required: true},
         show: Boolean,
-        error: String,
+        error: { type: String, required: true},
     }
-};
+});
 </script>
 
 <style scoped>

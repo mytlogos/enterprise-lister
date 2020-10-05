@@ -104,9 +104,9 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent, onBusEvent} from "../bus";
-import deleteModal from "./modal/delete-modal";
+import deleteModal from "./modal/delete-modal.vue";
 
 // FIXME user can edit empty rows
 
@@ -124,14 +124,14 @@ interface Data {
     sortProp: string;
     sortOrders: any;
     marked: {
-        id: null;
-        index: null;
-        prop: null;
+        id: null | number;
+        index: null | number;
+        prop: null | string;
     };
     editCell: {
         id: null | number;
-        prop: null;
-        value: null;
+        prop: null | string;
+        value: null | any;
     };
     listFocused: boolean;
     sendFocus: boolean;
@@ -143,15 +143,16 @@ interface Data {
     filter: string;
     currentLength: number;
 }
-export default {
+import { defineComponent, PropType } from "vue";
+import { Column, Medium } from "src/siteTypes";
 
-
+export default defineComponent({
     name: "AppTable",
     components: {deleteModal},
     props: {
-        data: Array,
-        columns: Array,
-        filterKey: String
+        data: { type: Array as PropType<Medium[]>, required: true },
+        columns: { type: Array as PropType<Column[]>, required: true },
+        filterKey: { type: String, required: true }
     },
     data(): Data {
         return {
@@ -212,6 +213,7 @@ export default {
                     }
                 });
             }
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.currentLength = data.length;
             // iterate for the number of emptySpaces and push an empty object as an empty row
             for (let i = 0; i < this.emptySpace; i++) {
@@ -254,9 +256,11 @@ export default {
                 remaining = Math.floor(remaining);
             }
 
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.emptySpaceDirty = false;
             // remove the decimal places, so that at most one less row is build
             // (better than one too many, which would lead to a scrollbar)
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.emptySpaceSpare = remaining;
             return this.emptySpaceSpare;
         },
@@ -301,7 +305,7 @@ export default {
             } else if (evt.key === "ArrowRight") {
                 this.selectCell(Move.RIGHT);
 
-            } else if (event.key === "Enter") {
+            } else if (evt.key === "Enter") {
                 if (this.editCell.id != null) {
                     this.stopEdit();
                 } else {
@@ -309,7 +313,7 @@ export default {
                     this.startEdit(entry, this.marked.prop);
                 }
 
-            } else if (event.key === "Delete") {
+            } else if (evt.key === "Delete") {
                 if (this.marked.id == null) {
                     return;
                 }
@@ -319,8 +323,8 @@ export default {
                     name: entry.title,
                     type: "medium"
                 };
-                Plato.show = true;
-            } else if (event.key === "Tab") {
+                // Plato.show = true;
+            } else if (evt.key === "Tab") {
                 if (this.editCell.id == null) {
                     return;
                 }
@@ -333,32 +337,32 @@ export default {
         });
     },
     methods: {
-        openMedium(mediumId) {
+        openMedium(mediumId?: number): void {
             if (mediumId == null) {
                 return;
             }
-            emitBusEvent("open:medium", id);
+            emitBusEvent("open:medium", mediumId);
         },
 
-        deleteData(id) {
+        deleteData(id): void {
             emitBusEvent("delete:medium", id);
         },
 
-        mark(entry, index, prop) {
+        mark(entry, index, prop): void {
             this.marked.id = entry.id;
             this.marked.totalIndex = index;
             this.marked.prop = prop;
         },
 
-        startEdit(entry, prop) {
+        startEdit(entry, prop): void {
             this.editCell.id = entry.id;
             this.editCell.prop = prop;
-            this.editCell.values = entry[prop];
+            this.editCell.value = entry[prop];
             // input is not yet available, only after this method is over, so set a timeout to focus
             setTimeout(() => this.$el.querySelector("td input").focus(), 200);
         },
 
-        stopEdit() {
+        stopEdit(): void {
             if (this.editCell.id == null) {
                 return;
             }
@@ -369,26 +373,26 @@ export default {
             });
             this.editCell.id = null;
             this.editCell.prop = null;
-            this.editCell.values = null;
+            this.editCell.value = null;
         },
 
-        sortBy(key) {
+        sortBy(key): void {
             this.sortProp = key;
             this.sortOrders[key] = this.sortOrders[key] * -1;
         },
 
-        showAll() {
-            this.columns.forEach((value) => Plato.show = true);
+        showAll(): void {
+            this.columns.forEach((value) => value.show = true);
         },
 
-        selectCell(direction) {
+        selectCell(direction: number): void {
             if (this.marked.id == null) {
                 if (!this.filteredData.length) {
                     return;
                 }
                 this.marked.prop = this.columns[0].prop;
-                this.marked.id = this.filteredData[0].id;id
-                this.marked.totalIndex = 0;
+                this.marked.id = this.filteredData[0].id;
+                this.marked.index = 0;
                 return;
             }
             if (direction === Move.DOWN) {
@@ -418,7 +422,7 @@ export default {
             this.marked.id = this.filteredData[this.marked.index].id;
         },
     },
-};
+});
 </script>
 
 <style scoped>

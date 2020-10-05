@@ -53,8 +53,8 @@
   </div>
 </template>
 
-<script>
-import listComp from "./list-comp";
+<script lang="ts">
+import listComp from "./list-comp.vue";
 
 interface Data {
   selectOpen: boolean;
@@ -65,11 +65,14 @@ interface Data {
   listFocused: boolean;
 }
 
-export default {
+import { defineComponent, PropType } from "vue";
+import { List } from "src/siteTypes";
+
+export default defineComponent({
     name: "ReadingList",
     components: {listComp},
     props: {
-        lists: Array,
+        lists: { type: Array as PropType<List[]>, required: true },
     },
     data(): Data {
         return {
@@ -98,7 +101,7 @@ export default {
             const sorter = this.selectedSorter;
 
             if (sorter) {
-                const sortFunction = this.sorter.find((value) => value.values === sorter).sort;
+                const sortFunction = this.sorter.find((value) => value.value === sorter).sort;
                 lists.sort((a, b) => sortFunction(a.name, b.name));
             }
             return lists;
@@ -124,7 +127,7 @@ export default {
             }
         });
     }
-};
+});
 </script>
 
 <style scoped>

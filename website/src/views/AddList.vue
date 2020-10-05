@@ -24,6 +24,7 @@
         <label>Medium:</label>
         <span
           v-for="type of mediaTypes"
+          :key="type"
           class="medium-check-container"
         >
           <label>
@@ -42,9 +43,9 @@
   </modal>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../bus";
-import modal from "../components/modal/modal";
+import modal from "../components/modal/modal.vue";
 
 interface GuiMediaType {
   value: number;
@@ -52,12 +53,14 @@ interface GuiMediaType {
   checked: boolean;
 }
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "AddListModal",
     components: {modal},
     props: {
-        show: Boolean,
-        error: String,
+        show: { type: Boolean, required: true },
+        error: { type: String, required: true },
     },
     data(): { mediaTypes: GuiMediaType[]; name: string } {
         return {
@@ -92,12 +95,12 @@ export default {
             let mediumType = 0;
             this.mediaTypes.forEach((value) => {
                 if (value.checked) {
-                    mediumType |= value.values;
+                    mediumType |= value.value;
                 }
             });
             emitBusEvent("do:add-list", {name: this.name, type: mediumType});
         }
     }
-};
+});
 </script>
 

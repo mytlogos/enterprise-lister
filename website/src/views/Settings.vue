@@ -23,22 +23,24 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
+import { defineComponent, PropType } from "vue";
 import {onBusEvent} from "../bus";
-import listComp from "../components/list-comp";
-import externalUser from "../components/external-user";
+import listComp from "../components/list-comp.vue";
+import externalUser from "../components/external-user.vue";
+import { ExternalUser } from "src/siteTypes";
 
-export default {
+export default defineComponent({
     name: "SettingsPage",
     components: {
         listComp,
         externalUser,
     },
     props: {
-        externalUser: Array,
-        showSettings: Object,
+        externalUser: { type: Array as PropType<ExternalUser[]>, required: true },
+        showSettings: { type: Boolean, required: true }
     },
-    data(): { lists: Array<{ name: string; id: number; show: boolean }>; filter: string; listFocused: boolean; show: null | boolean } {
+    data(): { lists: Array<{ name: string; id: number; show: boolean }>; filter: string; listFocused: boolean; show: null | number } {
         return {
             lists: [
                 // TODO get options from server
@@ -50,9 +52,9 @@ export default {
         };
     },
     mounted(): void {
-        const list = document.querySelector(".settings-list .list");
-        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target), {capture: true});
-        onBusEvent("select:list", (id, external, multi) => this.selectList(id, multi));
+        const list = document.querySelector(".settings-list .list") as Node;
+        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target as Node), {capture: true});
+        onBusEvent("select:list", (id) => this.selectList(id));
     },
     methods: {
         selectList(id: number): void {
@@ -69,7 +71,7 @@ export default {
             }
         }
     },
-};
+});
 </script>
 
 <style scoped>

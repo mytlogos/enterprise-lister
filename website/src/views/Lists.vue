@@ -13,25 +13,28 @@
   </div>
 </template>
 
-<script>
-import readingList from "../components/reading-list";
-import appTable from "../components/app-table";
+<script lang="ts">
+import readingList from "../components/reading-list.vue";
+import appTable from "../components/app-table.vue";
 
-export default {
+import { defineComponent, PropType } from "vue";
+import { Column, List, Medium } from "src/siteTypes";
+
+export default defineComponent({
     name: "Lists",
     components: {
         readingList,
         appTable,
     },
     props: {
-        lists: Array,
-        columns: Array,
-        media: Array
+        lists: { type: Array as PropType<List[]>, required: true },
+        columns: { type: Array as PropType<Column[]>, required: true },
+        media: { type: Array as PropType<Medium[]>, required: true }
     },
     mounted(): void {
         console.log("hey");
     },
-};
+});
 </script>
 <style scoped>
     .lists-page {

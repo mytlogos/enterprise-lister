@@ -1,8 +1,11 @@
-<template />
+<template>
+  <span class="invisible" />
+</template>
 
-<script>
+<script lang="ts">
 // TODO implement this table component
 import {onBusEvent} from "../bus";
+import { defineComponent, PropType } from "vue";
 
 interface Data {
     filter: string;
@@ -11,16 +14,10 @@ interface Data {
     emptySpaceSpare: number;
 }
 
-interface List {
-    id: number;
-    show: boolean;
-    name: string;
-}
-
-export default {
+export default defineComponent({
     name: "NewsPage",
     props: {
-        data: Array,
+        data: { type: Array as PropType<any[]>, required: true },
     },
     data(): Data {
         return {
@@ -31,9 +28,10 @@ export default {
         };
     },
     computed: {
-        displayLists(): List[] {
+        displayLists(): any[] {
             const displayLists = this.data;
 
+            // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.currentLength = displayLists.length;
             // iterate for the number of emptySpaces and push an empty object as an empty row
             for (let i = 0; i < this.emptySpace; i++) {
@@ -97,7 +95,7 @@ export default {
             return this.emptySpaceSpare;
         },
     }
-};
+});
 </script>
 
 <style scoped>

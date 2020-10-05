@@ -25,23 +25,24 @@
         >
       </label>
     </template>
-    <div
-      slot="after"
-      class="lost"
-    >
-      Forgot your password?
-    </div>
+    <template #after>
+      <div class="lost">
+        Forgot your password?
+      </div>
+    </template>
     <template #finish>
       Login
     </template>
   </modal>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../bus";
-import modal from "../components/modal/modal";
+import modal from "../components/modal/modal.vue";
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "Login",
     components: {modal},
     data(): { user: string; pw: string } {
@@ -63,7 +64,7 @@ export default {
             emitBusEvent("do:login", {user: this.user, pw: this.pw});
         },
     }
-};
+});
 </script>
 
 <style scoped>

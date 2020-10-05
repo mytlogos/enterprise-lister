@@ -140,7 +140,7 @@
   </modal>
 </template>
 
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../../bus";
 import modal from "./modal";
 
@@ -169,13 +169,16 @@ interface Data {
   medium: AddMedium;
 }
 
-export default {
+import { defineComponent, PropType } from "vue";
+import { List } from "src/siteTypes";
+
+export default defineComponent({
     name: "AddMediumModal",
     components: {modal},
     props: {
         show: Boolean,
-        error: String,
-        lists: Array,
+        error: { type: String, required: true },
+        lists: { type: Array as PropType<List[]>, required: true },
     },
     data(): Data {
         return {
@@ -231,5 +234,5 @@ export default {
             emitBusEvent("do:add-medium", result);
         }
     }
-};
+});
 </script>

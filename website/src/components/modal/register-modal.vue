@@ -44,16 +44,18 @@
     </template>
   </modal>
 </template>
-<script>
+<script lang="ts">
 import {emitBusEvent} from "../../bus";
 import modal from "./modal";
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "LoginModal",
     components: {modal},
     props: {
         show: Boolean,
-        error: String,
+        error: { type: String, required: true },
     },
     data(): { lists: string; pw: string; pwRepeat: string } {
         return {
@@ -75,5 +77,5 @@ export default {
             emitBusEvent("do:login", {lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat});
         },
     },
-};
+});
 </script>

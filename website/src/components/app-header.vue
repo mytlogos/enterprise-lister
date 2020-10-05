@@ -117,26 +117,24 @@
   </nav>
 </template>
 
-<script>
-import simpleButton from "./simple-button";
+<script lang="ts">
 import {emitBusEvent} from "../bus";
 
-export default {
+import { defineComponent } from "vue";
+
+export default defineComponent({
     name: "AppHeader",
-    components: {
-        simpleButton
-    },
     props: {
         loggedIn: Boolean,
         showLists: Boolean,
         showSettings: Boolean,
         showReleases: Boolean,
-        name: String,
+        name: { type: String, required: true },
     },
     methods: {
         logout(): void {
             emitBusEvent("do:logout");
         }
     }
-};
+});
 </script>

@@ -19,33 +19,27 @@
   </div>
 </template>
 
-<script>
-import appHeader from "./components/app-header";
+<script lang="ts">
+import appHeader from "./components/app-header.vue";
 import {emitBusEvent, onBusEvent} from "./bus";
 import {HttpClient} from "./Httpclient";
-import addListModal from "./components/modal/add-list-modal";
-import addMediumModal from "./components/modal/add-list-modal";
-import loginModal from "./components/modal/add-list-modal";
-import registerModal from "./components/modal/add-list-modal";
+import { defineComponent, PropType } from "vue";
+import { List, News, Column, Medium, ExternalUser } from "./siteTypes";
 
-let loadingMedia = [];
+let loadingMedia: number[] = [];
 
-export default {
+
+export default defineComponent({
     components: {
-        appHeader,
-        addListModal,
-        addMediumModal,
-        loginModal,
-        registerModal,
+        appHeader
     },
-
     props: {
-        name: String,
-        lists: Array,
-        news: Array,
-        columns: Array,
-        media: Array,
-        externalUser: Array,
+        name: { type: String, required: true },
+        lists: { type: Array as PropType<List[]>, required: true },
+        news: { type: Array as PropType<News[]>, required: true },
+        columns: { type: Array as PropType<Column[]>, required: true },
+        media: { type: Array as PropType<Medium[]>, required: true },
+        externalUser: { type: Array as PropType<ExternalUser[]>, required: true }
     },
     data() {
         return {
@@ -80,20 +74,20 @@ export default {
     },
 
     computed: {
-        loggedIn() {
+        loggedIn(): boolean {
             return !!this.name;
         },
 
-        allLists() {
+        allLists(): any[] {
             const externalLists = this.externalUser.flatMap((value) => value.lists);
             return [...this.lists, ...externalLists];
         },
 
-        displayMedia() {
-            const multiKeys = this.allLists.filter((value) => value.show).flatMap((value) => value.items);
+        displayMedia(): any[] {
+            const multiKeys: number[] = this.allLists.filter((value) => value.show).flatMap((value) => value.items);
 
-            let uniqueMedia = [...new Set(multiKeys)];
-            let missingMedia = [];
+            let uniqueMedia: number[] = [...new Set(multiKeys)];
+            let missingMedia: number[] = [];
 
             uniqueMedia = uniqueMedia
                 .map((id) => {
@@ -112,8 +106,9 @@ export default {
                 loadingMedia.push(...missingMedia);
 
                 // load missing media
+                // eslint-disable-next-line vue/no-async-in-computed-properties
                 HttpClient.getMedia(missingMedia)
-                    .then((media) => {
+                    .then((media: Medium | Medium[]) => {
                         emitBusEvent("append:media", media);
 
                         // filter out the now loaded media
@@ -150,5 +145,5 @@ export default {
             }
         },
     },
-};
+});
 </script>
