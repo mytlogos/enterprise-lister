@@ -54,11 +54,11 @@ export class ColumnSchema {
             if (values.includes(this.update.trim())) {
                 updateValue += "ON UPDATE " + this.update;
             } else {
-                // todo shouldn't this be "ON UPDATE " + mysql.escape(this.default)?
+                // TODO shouldn't this be "ON UPDATE " + mysql.escape(this.default)?
                 updateValue += mySql.escape(this.update);
             }
         }
-        // todo instead of testing for VARCHAR, test for a group of columns or if just typeSize is defined?
+        // TODO instead of testing for VARCHAR, test for a group of columns or if just typeSize is defined?
         const type = this.typeSize != null ? this.type + "(" + this.typeSize + ")" : this.type;
         return `${mySql.escapeId(this.name)} ${type} ${this.modifiers.join(" ")}${defValue}${updateValue}`;
     }

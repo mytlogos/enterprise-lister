@@ -1,16 +1,16 @@
 <template>
-    <div>
-        ReadHistory
-    </div>
+  <div>
+    ReadHistory
+  </div>
 </template>
 
 <script>
-    export default {
-        mounted() {
-            console.log("mounted");
-        },
-        name: "ReadHistory"
+export default {
+    name: "ReadHistory",
+    mounted(): void {
+        console.log("mounted");
     }
+}
 </script>
 
 <style scoped>

@@ -1,29 +1,37 @@
 <template>
-    <div class="lists-page">
-        <reading-list :lists="lists" class="flex-small"></reading-list>
-        <app-table id="content" class="overflow flex-big" :columns="columns" :data="media"></app-table>
-    </div>
+  <div class="lists-page">
+    <reading-list
+      :lists="lists"
+      class=""
+    />
+    <app-table
+      id="content"
+      class="container-fluid"
+      :columns="columns"
+      :data="media"
+    />
+  </div>
 </template>
 
 <script>
-    import readingList from "../components/reading-list";
-    import appTable from "../components/app-table";
+import readingList from "../components/reading-list";
+import appTable from "../components/app-table";
 
-    export default {
-        components: {
-            readingList,
-            appTable,
-        },
-        props: {
-            lists: Array,
-            columns: Array,
-            media: Array
-        },
-        mounted() {
-            console.log("hey");
-        },
-        name: "lists",
-    };
+export default {
+    name: "Lists",
+    components: {
+        readingList,
+        appTable,
+    },
+    props: {
+        lists: Array,
+        columns: Array,
+        media: Array
+    },
+    mounted(): void {
+        console.log("hey");
+    },
+};
 </script>
 <style scoped>
     .lists-page {

@@ -315,7 +315,7 @@ const DeleteParser: Parser = {
     }
 };
 
-// fixme all parser cannot parse escaped id´s and values
+// FIXME all parser cannot parse escaped id´s and values
 
 interface ColumnTarget<T> {
     value: any;
@@ -460,7 +460,7 @@ const StateProcessorImpl: StateProcessorImpl = {
             }
 
             if (!columnSchema) {
-                // todo look into why he cant find it
+                // TODO look into why he cant find it
                 logger.silly(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
                 return;
             }
@@ -605,7 +605,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         const primaryKey = mainTable.primaryKeys[0];
         const mainPrimaryKey = primaryKey.name;
 
-        // todo inline this function to create trigger?
+        // TODO inline this function to create trigger?
         const columnConverter: ColumnConverter = (query, triggeredColumn) => {
             let value = triggeredColumn.value;
 

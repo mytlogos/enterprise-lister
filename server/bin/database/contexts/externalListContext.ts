@@ -107,7 +107,7 @@ export class ExternalListContext extends SubContext {
     public async createShallowExternalList(storageList: ExternalList): Promise<ExternalList> {
         const result = await this.query("SELECT * FROM external_list_medium WHERE list_id = ?;", storageList.id);
         storageList.items = result.map((value: any) => value.medium_id);
-        // todo return input or copy object?
+        // TODO return input or copy object?
         return storageList;
     }
 

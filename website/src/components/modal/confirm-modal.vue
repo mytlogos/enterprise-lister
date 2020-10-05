@@ -1,23 +1,33 @@
 <template>
-    <modal :error="error" :show="show" @finish="logout('yes')">
-        <template slot="title">Confirmation</template>
-        <template slot="text">{{text}}</template>
-        <template slot="finish">Yes</template>
-    </modal>
+  <modal
+    :error="error"
+    :show="show"
+    @finish="logout('yes')"
+  >
+    <template #title>
+      Confirmation
+    </template>
+    <template #text>
+      {{ text }}
+    </template>
+    <template #finish>
+      Yes
+    </template>
+  </modal>
 </template>
 
 <script>
-    import modal from "./modal";
+import modal from "./modal";
 
-    export default {
-        components: {modal},
-        props: {
-            text: String,
-            show: Boolean,
-            error: String,
-        },
-        name: "confirm-modal"
-    };
+export default {
+    name: "ConfirmModal",
+    components: {modal},
+    props: {
+        text: String,
+        show: Boolean,
+        error: String,
+    }
+};
 </script>
 
 <style scoped>

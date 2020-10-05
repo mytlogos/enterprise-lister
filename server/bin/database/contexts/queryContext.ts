@@ -169,7 +169,7 @@ export class QueryContext implements ConnectionContext {
             if (resultArray[0] && resultArray[0].episode_id != null) {
                 return null;
             }
-            // todo implement
+            // TODO implement
             return value;
         });
     }
@@ -185,7 +185,7 @@ export class QueryContext implements ConnectionContext {
             }
             // if there is a title, search a medium which matches
 
-            // todo implement
+            // TODO implement
             return value;
         });
     }

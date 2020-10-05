@@ -45,7 +45,7 @@ import {MissingResourceError, UrlError} from "./externals/errors";
 
 const scraper = DefaultJobScraper;
 
-// todo fill out all of the event listener
+// TODO fill out all of the event listener
 /**
  *
  */
@@ -508,7 +508,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
                 //     ));
                 // }
             }
-            // todo update the progress of each user via value.latest, value.current
+            // TODO update the progress of each user via value.latest, value.current
             return false;
         }
         return true;

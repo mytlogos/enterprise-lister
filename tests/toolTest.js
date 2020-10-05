@@ -109,7 +109,7 @@ describe("testing tool.js", () => {
                 });
             }).should.eventually.not.be.rejected;
         });
-        // fixme this test is somewhat broken, sinon does not stub dns.promises.lookup correctly, original function still called
+        // FIXME this test is somewhat broken, sinon does not stub dns.promises.lookup correctly, original function still called
         it('should be called at least once', async function () {
             this.timeout(5000);
             await tools.delay(500);

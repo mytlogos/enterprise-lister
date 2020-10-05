@@ -50,7 +50,7 @@ class WebSocketClient {
      */
     public pushed(event: MessageEvent): void {
         let data;
-        // todo only return if parsing failed or log an error msg
+        // TODO only return if parsing failed or log an error msg
         try {
             data = JSON.parse(event.data);
         } catch (e) {

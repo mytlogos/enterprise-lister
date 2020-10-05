@@ -1,21 +1,26 @@
 <template>
-    <button @click="emit(event)" class="btn">{{name}}</button>
+  <button
+    class="btn"
+    @click="emit(event)"
+  >
+    {{ name }}
+  </button>
 </template>
 
 <script>
-    import {emitBusEvent} from "../bus";
+import {emitBusEvent} from "../bus";
 
-    export default {
-        props: {
-            event: String,
-            name: String
-        },
-        methods: {
-            logout(value) {
-                console.log("emitting");
-                emitBusEvent(value);
-            }
-        },
-        name: "app-header"
-    };
+export default {
+    name: "AppHeader",
+    props: {
+        event: String,
+        name: String
+    },
+    methods: {
+        logout(value: unknown): void {
+            console.log("emitting");
+            emitBusEvent(value);
+        }
+    }
+};
 </script>

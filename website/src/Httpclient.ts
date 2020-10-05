@@ -379,7 +379,7 @@ export const HttpClient = {
             return Promise.reject();
         }
         if (psw !== pswRepeat) {
-            // todo show incorrect password
+            // TODO show incorrect password
             return Promise.reject();
         }
 
@@ -434,12 +434,12 @@ export const HttpClient = {
     },
 
     updateMedium(data: { id: number; prop: string }): Promise<void> {
-        // todo
+        // TODO
         return Promise.resolve();
     },
 
     deleteMedium(id: number): Promise<void> {
-        // todo
+        // TODO
         return Promise.resolve();
     },
 

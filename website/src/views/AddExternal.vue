@@ -1,67 +1,93 @@
 <template>
-    <modal @finish="sendForm()" v-bind:error="error">
-        <template slot="title">Login</template>
-        <template slot="input">
-            <label>
-                Identifier:
-                <input class="user" placeholder="Your identifier" title="Identifier" type="text" v-model="user">
-            </label>
-            <label>
-                Password:
-                <input class="pw" placeholder="Your password" title="Password" type="password" v-model="pw">
-            </label>
-            <label>
-                <select v-model="selected">
-                    <option v-bind:value="option.values" v-for="option in options">
-                        {{option.name}}
-                    </option>
-                </select>
-            </label>
-            <a target="_blank" v-bind:href="currentLink">
-                Open External
-            </a>
-        </template>
-        <template slot="finish">Add</template>
-    </modal>
+  <modal
+    :error="error"
+    @finish="sendForm()"
+  >
+    <template #title>
+      Login
+    </template>
+    <template #input>
+      <label>
+        Identifier:
+        <input
+          v-model="user"
+          class="user"
+          placeholder="Your identifier"
+          title="Identifier"
+          type="text"
+        >
+      </label>
+      <label>
+        Password:
+        <input
+          v-model="pw"
+          class="pw"
+          placeholder="Your password"
+          title="Password"
+          type="password"
+        >
+      </label>
+      <label>
+        <select v-model="selected">
+          <option
+            v-for="option in options"
+            :key="option"
+            :value="option.values"
+          >
+            {{ option.name }}
+          </option>
+        </select>
+      </label>
+      <a
+        target="_blank"
+        :href="currentLink"
+      >
+        Open External
+      </a>
+    </template>
+    <template #finish>
+      Add
+    </template>
+  </modal>
 </template>
 
 <script>
-    import {emitBusEvent} from "../bus";
-    import modal from "../components/modal/modal";
+import {emitBusEvent} from "../bus";
+import modal from "../components/modal/modal";
 
-    export default {
-        components: {modal},
-        data() {
-            return {
-                user: "",
-                pw: "",
-                selected: 0
-            };
-        },
-        props: {
-            options: Array,
-        },
-        computed: {
-            currentLink() {
-                const option = this.options.find((value) => value.values === this.selected);
-                return option ? option.link : "#";
+export default {
+    name: "AddExternalModal",
+    components: {modal},
+    props: {
+        options: Array,
+    },
+    data(): { user: string; pw: string; selected: number } {
+        return {
+            user: "",
+            pw: "",
+            selected: 0
+        };
+    },
+    computed: {
+        currentLink(): string {
+            const option = this.options.find((value) => value.values === this.selected);
+            return option ? option.link : "#";
+        }
+    },
+    watch: {
+        show(show: boolean): void {
+            if (!show) {
+                this.user = "";
+                this.pw = "";
             }
+        }
+    },
+    methods: {
+        sendForm(): void {
+            emitBusEvent("add:externalUser", {identifier: this.user, pwd: this.pw, type: this.selected});
         },
-        methods: {
-            sendForm() {
-                emitBusEvent("add:externalUser", {identifier: this.user, pwd: this.pw, type: this.selected});
-            },
-        },
-        watch: {
-            show(show) {
-                if (!show) {
-                    this.user = "";
-                    this.pw = "";
-                }
-            }
-        },
-        name: "add-external-modal"
-    };
+    }
+};
 </script>
 
 <style scoped>

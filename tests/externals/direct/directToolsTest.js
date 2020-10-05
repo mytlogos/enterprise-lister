@@ -123,7 +123,7 @@ async function testCase(casePath) {
                 if (!testCase.hasLocked) {
                     episode.should.have.property("locked", false);
                 } else {
-                    // todo check that it is either true/false?
+                    // TODO check that it is either true/false?
                 }
                 episode.should.have.property("releaseDate");
                 currentEpisodeIndex = episode.combiIndex;
@@ -138,7 +138,7 @@ async function testCase(casePath) {
             if (!testCase.hasLocked) {
                 content.should.have.property("locked", false);
             } else {
-                // todo check that it is either true/false?
+                // TODO check that it is either true/false?
             }
 
             content.should.have.property("releaseDate");

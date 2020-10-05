@@ -9,7 +9,7 @@ import {SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {MissingResourceError, UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
-    // todo scrape more than just the first page if there is an open end
+    // TODO scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
     const $ = await queueCheerioRequest(baseUri + "latest-releases.html");
     const newsRows = $("ul.list_manga  .info-manga");
@@ -76,7 +76,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
                 continue;
             }
             partTitle = `Vol. ${partIndices.combi}`;
-            // todo: unused part title, should this be removed or used?
+            // TODO: unused part title, should this be removed or used?
         }
 
         news.push({
@@ -162,7 +162,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     }
     const contentElement = $(".wrapper_content");
     const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().text());
-    // todo process metadata and get more (like author)
+    // TODO process metadata and get more (like author)
 
     const chapters = contentElement.find(".list-chapter tbody > tr");
 

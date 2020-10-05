@@ -86,5 +86,5 @@ const router = new Router({
         }
     ],
 });
-// fixme remove query from this shit after redirect
+// FIXME remove query from this shit after redirect
 export default router;

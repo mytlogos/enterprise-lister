@@ -4,7 +4,6 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";
-import { WSClient } from "./WebsocketClient";
 import { emitBusEvent, onBusEvent } from "./bus";
 import { optimizedResize } from "./init";
 import {
@@ -139,8 +138,8 @@ const user = {
         return this;
     },
 
-    editMedium(data: object) {
-        // todo implement editing
+    editMedium(data: any) {
+        // TODO implement editing
         console.log("edited");
         return this;
     },
@@ -294,12 +293,7 @@ const app: App = new Vue({
     watch: {
         loggedIn(newValue) {
             if (!newValue) {
-                WSClient.close();
                 this.loginState();
-            } else {
-                WSClient.startPush()
-                    .then(() => WSClient.push({ uuid: this.uuid }))
-                    .catch(console.log);
             }
         },
     },
@@ -358,7 +352,6 @@ const app: App = new Vue({
         // WSClient.addEventListener(events.NEWS, (value) => user.addNews(value));
 
         this.loginState();
-        this.sendPeriodicData();
     },
 
     methods: {
@@ -491,15 +484,6 @@ const app: App = new Vue({
             modal.error = "";
         },
 
-        sendPeriodicData() {
-            if (this.newReadNews.length) {
-                WSClient.push({ read: { news: this.newReadNews } });
-                // @ts-ignore
-                this.newReadNews = [];
-            }
-            setTimeout(() => this.sendPeriodicData(), 500);
-        },
-
         loginState() {
             if (this.loggedIn) {
                 return;
@@ -521,7 +505,7 @@ const app: App = new Vue({
             } else if (!data.pw) {
                 this.loginModal.error = "Password is missing";
             } else {
-                // fixme modal does not close after successful login
+                // FIXME modal does not close after successful login
                 HttpClient.login(data.user, data.pw)
                     .then((newUser: User) => {
                         this.setUser(newUser);
@@ -591,7 +575,8 @@ const app: App = new Vue({
                 return;
             }
 
-            WSClient.push({ refresh: { externalUuid: uuid } });
+            // TODO: replace this
+            // WSClient.push({ refresh: { externalUuid: uuid } });
         },
 
         setUser(setUser: User) {
@@ -615,11 +600,11 @@ const app: App = new Vue({
                     }
                 })
                 .catch((error: any) => (this.errorModal.error = String(error)));
-            // todo implement logout
+            // TODO implement logout
         },
 
         openMedium(id: number) {
-            // todo implement this
+            // TODO implement this
             console.log(id);
         },
 
@@ -638,29 +623,29 @@ const app: App = new Vue({
                         (error) => (this.addMediumModal.error = String(error))
                     );
             }
-            // todo implement addMedium
+            // TODO implement addMedium
         },
 
         editMedium(data: { id: number; prop: string }) {
             if (data.id == null || !data.prop) {
-                // todo handle this better
+                // TODO handle this better
                 throw Error();
             } else {
                 HttpClient.updateMedium(data).catch(console.log);
             }
-            // todo implement editMedium
+            // TODO implement editMedium
         },
 
         deleteMedium(id: number) {
             if (id == null) {
-                // todo handle this better
+                // TODO handle this better
                 throw Error();
             } else {
                 HttpClient.deleteMedium(id)
                     .then(() => emitBusEvent("deletion", false))
                     .catch((error) => console.log(error));
             }
-            // todo implement deleteMedium
+            // TODO implement deleteMedium
         },
 
         addList(data: { name: string; type: number }) {
@@ -678,18 +663,18 @@ const app: App = new Vue({
                         (error) => (this.addListModal.error = String(error))
                     );
             }
-            // todo implement addList
+            // TODO implement addList
         },
 
         deleteList(id: number) {
             HttpClient.deleteList(id)
                 .then(() => console.log("success"))
                 .catch((error) => console.log(error));
-            // todo implement deleteList
+            // TODO implement deleteList
         },
 
         changeSettings(data: any) {
-            // todo implement settings
+            // TODO implement settings
         },
 
         markReadNews(newsId: number) {
@@ -717,6 +702,6 @@ const app: App = new Vue({
     },
 });
 
-// todo rework news, add the read property to news item itself instead of asking for it
-// todo login mechanism, check if it was already logged in before
-// todo give a reason for any rejects
+// TODO rework news, add the read property to news item itself instead of asking for it
+// TODO login mechanism, check if it was already logged in before
+// TODO give a reason for any rejects

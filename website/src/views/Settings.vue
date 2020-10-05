@@ -1,65 +1,75 @@
 <template>
-    <div class="settings">
-        <div class="settings-list left-content">
-            <label>
-                <input type="text" v-model="filter">
-            </label>
-            <list-comp v-bind:data="lists" v-bind:filter="filter" v-bind:focused="listFocused"
-                       :multi="false"></list-comp>
-        </div>
-        <div class="page">
-            <external-user v-if="show === 0" v-bind:user="externalUser"></external-user>
-        </div>
+  <div class="settings">
+    <div class="settings-list left-content">
+      <label>
+        <input
+          v-model="filter"
+          type="text"
+        >
+      </label>
+      <list-comp
+        :data="lists"
+        :filter="filter"
+        :focused="listFocused"
+        :multi="false"
+      />
     </div>
+    <div class="page">
+      <external-user
+        v-if="show === 0"
+        :user="externalUser"
+      />
+    </div>
+  </div>
 </template>
 
 <script>
-    import {onBusEvent} from "../bus";
-    import listComp from "../components/list-comp";
-    import externalUser from "../components/external-user";
+import {onBusEvent} from "../bus";
+import listComp from "../components/list-comp";
+import externalUser from "../components/external-user";
 
-    export default {
-        components: {
-            listComp,
-            externalUser,
-        },
-        data() {
-            return {
-                lists: [
-                    // todo get options from server
-                    {name: "External", id: 0, show: false}
-                ],
-                filter: "",
-                listFocused: false,
-                show: null,
-            };
-        },
-        props: {
-            externalUser: Array,
-            showSettings: Object,
-        },
-        mounted() {
-            const list = document.querySelector(".settings-list .list");
-            document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target), {capture: true});
-            onBusEvent("select:list", (id, external, multi) => this.selectList(id, multi));
-        },
-        methods: {
-            selectList(id) {
-                if (!this.listFocused) {
-                    return;
-                }
+export default {
+    name: "SettingsPage",
+    components: {
+        listComp,
+        externalUser,
+    },
+    props: {
+        externalUser: Array,
+        showSettings: Object,
+    },
+    data(): { lists: Array<{ name: string; id: number; show: boolean }>; filter: string; listFocused: boolean; show: null | boolean } {
+        return {
+            lists: [
+                // TODO get options from server
+                {name: "External", id: 0, show: false}
+            ],
+            filter: "",
+            listFocused: false,
+            show: null,
+        };
+    },
+    mounted(): void {
+        const list = document.querySelector(".settings-list .list");
+        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target), {capture: true});
+        onBusEvent("select:list", (id, external, multi) => this.selectList(id, multi));
+    },
+    methods: {
+        selectList(id: number): void {
+            if (!this.listFocused) {
+                return;
+            }
 
-                for (const list of this.lists) {
-                    list.show = list.id === id && !list.show;
+            for (const list of this.lists) {
+                list.show = list.id === id && !list.show;
 
-                    if (list.show) {
-                        this.show = list.id;
-                    }
+                if (list.show) {
+                    this.show = list.id;
                 }
             }
-        },
-        name: "settings-page",
-    };
+        }
+    },
+};
 </script>
 
 <style scoped>
@@ -77,14 +87,6 @@
 
     .settings-list {
         padding: 5px;
-    }
-
-    .page {
-
-    }
-
-    .settings > * {
-
     }
 
     .settings {

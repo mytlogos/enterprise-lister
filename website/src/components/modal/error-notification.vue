@@ -1,9 +1,7 @@
-<template>
-
-</template>
+<template />
 
 <script>
-    export default {
-        name: "error-notification"
-    };
+export default {
+    name: "ErrorNotification"
+};
 </script>

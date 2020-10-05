@@ -14,7 +14,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
     const newsRows = $(".table-novels tbody tr");
 
     const episodeNews: EpisodeNews[] = [];
-    // todo somestimes instead of chapter the Abbrev. of medium
+    // TODO somestimes instead of chapter the Abbrev. of medium
     const titleRegex = /((vol(\.|ume)|book)?\s*((\d+)(\.(\d+))?).+)?ch(\.|apter)?\s*((\d+)(\.(\d+))?)/i;
     const abbrevTitleRegex = "|^)\\s*((\\d+)(\\.(\\d+))?)";
 

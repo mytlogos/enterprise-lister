@@ -74,6 +74,6 @@ app.use((err: HttpError, req: Request, res: Response) => {
 });
 
 
-// todo what is with tls (https), cloudflare?
-// todo does it redirect automatically to https when http was typed?
-// todo what options does https need
+// TODO what is with tls (https), cloudflare?
+// TODO does it redirect automatically to https when http was typed?
+// TODO what options does https need

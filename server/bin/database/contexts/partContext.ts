@@ -355,7 +355,7 @@ export class PartContext extends SubContext {
      * Deletes a part from the storage.
      */
     public async deletePart(id: number): Promise<boolean> {
-        // todo delete all episode in this part or just transfer them to the "all" part?
+        // TODO delete all episode in this part or just transfer them to the "all" part?
         return false;
     }
 

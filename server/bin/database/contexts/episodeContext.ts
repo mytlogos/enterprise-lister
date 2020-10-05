@@ -240,7 +240,7 @@ export class EpisodeContext extends SubContext {
      * Updates the progress of an user in regard to an episode.
      */
     public updateProgress(uuid: string, episodeId: number, progress: number, readDate: Date | null): Promise<boolean> {
-        // todo for now its the same as calling addProgress, but somehow do it better maybe?
+        // TODO for now its the same as calling addProgress, but somehow do it better maybe?
         return this.addProgress(uuid, episodeId, progress, readDate);
     }
 
@@ -255,7 +255,7 @@ export class EpisodeContext extends SubContext {
 
         // @ts-ignore
         return promiseMultiSingle(result.result, async (value: MetaResult) => {
-            // todo what if it is not a serial medium but only an article? should it even save such things?
+            // TODO what if it is not a serial medium but only an article? should it even save such things?
             if (!value.novel
                 || (!value.chapIndex && !value.chapter)
                 // do not mark episode if they are a teaser only
@@ -282,7 +282,7 @@ export class EpisodeContext extends SubContext {
                 "WHERE medium.title LIKE ? OR medium_synonyms.synonym LIKE ?;",
                 [escapedNovel, escapedNovel]
             );
-            // todo for now only get the first medium?, later test it against each other
+            // TODO for now only get the first medium?, later test it against each other
             let bestMedium = media[0];
 
             if (!bestMedium) {
@@ -291,7 +291,7 @@ export class EpisodeContext extends SubContext {
                     medium: MediaType.TEXT
                 }, uuid);
                 bestMedium = {id: addedMedium.insertId, title: value.novel};
-                // todo add medium if it is not known?
+                // TODO add medium if it is not known?
             }
 
             let volumeId;
@@ -303,7 +303,7 @@ export class EpisodeContext extends SubContext {
             let volIndex = Number(value.volIndex);
 
             if (volIndex || volumeTitle) {
-                // todo: do i need to convert volIndex from a string to a number for the query?
+                // TODO: do i need to convert volIndex from a string to a number for the query?
                 const volumeArray: Array<{ id: number }> = await this.query(
                     "SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)",
                     [bestMedium.id, volumeTitle && escapeLike(volumeTitle, {
@@ -321,7 +321,7 @@ export class EpisodeContext extends SubContext {
                             "SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?",
                             bestMedium.id
                         );
-                        // todo look if totalIndex incremential needs to be replaced with combiIndex
+                        // TODO look if totalIndex incremential needs to be replaced with combiIndex
                         const lowestIndexObj = lowestIndexArray[0];
                         // if the lowest available totalIndex not indexed, decrement, else take -2
                         // -1 is reserved for all episodes, which do not have any volume/part assigned
@@ -399,7 +399,7 @@ export class EpisodeContext extends SubContext {
                         title: chapter,
                         url: result.url,
                         releaseDate: new Date(),
-                        // todo get source type
+                        // TODO get source type
                         sourceType: "",
                         episodeId: 0
                     }],

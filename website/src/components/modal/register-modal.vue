@@ -1,54 +1,79 @@
 <template>
-    <modal @finish="send()" v-bind:error="error" v-bind:show="show">
-        <template slot="title">Register</template>
-        <template slot="input">
-            <label>
-                Username:
-                <input class="user" placeholder="Your username" title="Username" type="text" v-model="lists">
-            </label>
-            <label>
-                Password:
-                <input class="pw" placeholder="Your password" title="Password" type="password" v-model="pw">
-            </label>
-            <label>
-                Repeat Password:
-                <input class="pw-repeat" placeholder="Your password again" title="Repeat Password" type="password"
-                       v-model="pwRepeat">
-            </label>
-        </template>
-        <template slot="finish">Register</template>
-    </modal>
+  <modal
+    :error="error"
+    :show="show"
+    @finish="send()"
+  >
+    <template #title>
+      Register
+    </template>
+    <template #input>
+      <label>
+        Username:
+        <input
+          v-model="lists"
+          class="user"
+          placeholder="Your username"
+          title="Username"
+          type="text"
+        >
+      </label>
+      <label>
+        Password:
+        <input
+          v-model="pw"
+          class="pw"
+          placeholder="Your password"
+          title="Password"
+          type="password"
+        >
+      </label>
+      <label>
+        Repeat Password:
+        <input
+          v-model="pwRepeat"
+          class="pw-repeat"
+          placeholder="Your password again"
+          title="Repeat Password"
+          type="password"
+        >
+      </label>
+    </template>
+    <template #finish>
+      Register
+    </template>
+  </modal>
 </template>
 <script>
-    import {emitBusEvent} from "../../bus";
-    import modal from "./modal";
+import {emitBusEvent} from "../../bus";
+import modal from "./modal";
 
-    export default {
-        components: {modal},
-        data() {
-            return {
-                lists: "",
-                pw: "",
-                pwRepeat: "",
-            };
+export default {
+    name: "LoginModal",
+    components: {modal},
+    props: {
+        show: Boolean,
+        error: String,
+    },
+    data(): { lists: string; pw: string; pwRepeat: string } {
+        return {
+            lists: "",
+            pw: "",
+            pwRepeat: "",
+        };
+    },
+    watch: {
+        show(newValue: boolean): void {
+            if (!newValue) {
+                this.user = "";
+                this.pw = "";
+            }
         },
-        props: {
-            show: Boolean,
-            error: String,
+    },
+    methods: {
+        sendForm(): void {
+            emitBusEvent("do:login", {lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat});
         },
-        methods: {
-            sendForm() {
-                emitBusEvent("do:login", {lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat});
-            },
-        },
-        watch: {
-            show(newValue) {
-                if (!newValue) {
-                    this.user = "";
-                    this.pw = "";
-                }
-            },
-        },
-        name: "login-modal",
-    };
+    },
+};
 </script>

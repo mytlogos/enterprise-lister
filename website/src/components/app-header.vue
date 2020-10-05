@@ -1,46 +1,142 @@
 <template>
-    <header>
-        <nav id="navbar">
-            <template v-if="loggedIn">
-                <span>{{name}}</span>
-                <router-link to="addMedium" tag="button" class="btn">Add Medium</router-link>
-                <router-link to="addList" tag="button" class="btn">Add List</router-link>
-                <router-link to="news" tag="button" class="btn">News</router-link>
-                <router-link to="readHistory" tag="button" class="btn">Read History</router-link>
-                <router-link to="list" tag="button" class="btn">Lists</router-link>
-                <router-link to="settings" tag="button" class="btn">
-                    <img alt="Settings" src="../assets/config_icon.png">
-                </router-link>
-                <router-link @click="logout" to="/" tag="button" class="btn">Logout</router-link>
-            </template>
-            <template v-else>
-                <router-link to="register" tag="button" class="btn">Register</router-link>
-                <router-link to="login" tag="button" class="btn">Login</router-link>
-            </template>
-        </nav>
-    </header>
+  <nav class="navbar navbar-expand-xl navbar-dark bg-dark">
+    <a
+      class="navbar-brand"
+      href="#"
+    >Enterprise</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav mr-auto">
+        <template v-if="loggedIn">
+          <li class="nav-item">
+            <span class="navbar-text">{{ name }}</span>
+          </li>
+          <!-- TODO: set active dynamically via router? -->
+          <li class="nav-item active">
+            <router-link
+              to="home"
+              tag="a"
+              class="nav-link"
+            >
+              Home
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="addMedium"
+              tag="a"
+              class="nav-link"
+            >
+              Add Medium
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="addList"
+              tag="a"
+              class="nav-link"
+            >
+              Add List
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="news"
+              tag="a"
+              class="nav-link"
+            >
+              News
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="readHistory"
+              tag="a"
+              class="nav-link"
+            >
+              Read History
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="list"
+              tag="a"
+              class="nav-link"
+            >
+              Lists
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="settings"
+              tag="a"
+              class="nav-link"
+            >
+              <img
+                alt="Settings"
+                src="../assets/config_icon.png"
+              >
+            </router-link>
+          </li>
+        </template>
+        <template v-else>
+          <li class="nav-item">
+            <router-link
+              to="register"
+              tag="a"
+              class="nav-link"
+            >
+              Register
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              to="login"
+              tag="a"
+              class="nav-link"
+            >
+              Login
+            </router-link>
+          </li>
+        </template>
+      </ul>
+      <ul class="navbar-nav">
+        <template v-if="loggedIn">
+          <li class="nav-item">
+            <router-link
+              to="/"
+              tag="a"
+              class="nav-link"
+              @click="logout"
+            >
+              Logout
+            </router-link>
+          </li>
+        </template>
+      </ul>
+    </div>
+  </nav>
 </template>
 
 <script>
-    import simpleButton from "./simple-button";
-    import {emitBusEvent} from "../bus";
+import simpleButton from "./simple-button";
+import {emitBusEvent} from "../bus";
 
-    export default {
-        components: {
-            simpleButton
-        },
-        props: {
-            loggedIn: Boolean,
-            showLists: Boolean,
-            showSettings: Boolean,
-            showReleases: Boolean,
-            name: String,
-        },
-        methods: {
-            logout() {
-                emitBusEvent("do:logout");
-            }
-        },
-        name: "app-header"
-    };
+export default {
+    name: "AppHeader",
+    components: {
+        simpleButton
+    },
+    props: {
+        loggedIn: Boolean,
+        showLists: Boolean,
+        showSettings: Boolean,
+        showReleases: Boolean,
+        name: String,
+    },
+    methods: {
+        logout(): void {
+            emitBusEvent("do:logout");
+        }
+    }
+};
 </script>

@@ -179,7 +179,7 @@ export class UserContext extends SubContext {
      * Is irreversible.
      */
     public async deleteUser(uuid: string): Promise<boolean> {
-        // todo delete all associated data
+        // TODO delete all associated data
         // remove in sequence:
         // user_log => list_medium => reading_list
         // => external_list_medium => external_reading_list
@@ -222,7 +222,7 @@ export class UserContext extends SubContext {
         await this.delete("user_episode", {column: "user_uuid", value: uuid});
 
         // delete user itself
-        // todo check if delete was successful, what if not?
+        // TODO check if delete was successful, what if not?
         //  in case the deletion was unsuccessful, just 'ban' any further access to that account
         //  and delete it manually?
         return this.delete("user", {column: "uuid", value: uuid});

@@ -486,7 +486,7 @@ export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRe
     }
 
     if (!allTocPromise) {
-        // todo use the default scraper here, after creating it
+        // TODO use the default scraper here, after creating it
         logger.warn(`no scraper found for: '${link}'`);
         return {tocs: [], uuid};
     }
@@ -537,7 +537,7 @@ export const news = async (link: string): Promise<{ link: string; result: News[]
         link,
         result: [],
     };
-    // todo implement news scraping (from home, updates pages etc. which require page analyzing, NOT feed or adapter)
+    // TODO implement news scraping (from home, updates pages etc. which require page analyzing, NOT feed or adapter)
 };
 
 export const toc = async (value: TocRequest): Promise<TocResult> => {
@@ -545,7 +545,7 @@ export const toc = async (value: TocRequest): Promise<TocResult> => {
     if (!result.tocs.length) {
         throw Error("could not find toc for: " + JSON.stringify(value));
     }
-    // todo implement toc scraping which requires page analyzing
+    // TODO implement toc scraping which requires page analyzing
     return {
         tocs: result.tocs,
         uuid: value.uuid
@@ -612,7 +612,7 @@ export const feed = async (feedLink: string): Promise<{ link: string; result: Ne
                 return {
                     title: value.title,
                     link,
-                    // fixme does this seem right?, current date as fallback?
+                    // FIXME does this seem right?, current date as fallback?
                     date: value.pubdate || value.date || new Date(),
                 };
             });
@@ -962,7 +962,7 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
             })
             .catch((reason) => {
                 if (reason && reason.statusCode && reason.statusCode === 404) {
-                    // todo if resource does not exist what to do?
+                    // TODO if resource does not exist what to do?
                     if (linkKey) {
                         cache.set(linkKey, {redirect: link, followed: ""});
                     }

@@ -90,7 +90,7 @@ export class NewsContext extends SubContext {
                 "WHERE id IN (" + newsIds.join(", ") + ");";
             parameter = uuid;
         } else {
-            // todo query looks horrible, replace it with something better?
+            // TODO query looks horrible, replace it with something better?
             // a time based query
             query = "SELECT * FROM news_board " +
                 "LEFT JOIN (SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) " +
@@ -177,7 +177,7 @@ export class NewsContext extends SubContext {
      *
      */
     public async linkNewsToMedium(): Promise<boolean> {
-        // todo maybe implement this with a trigger
+        // TODO maybe implement this with a trigger
         const result = await this.query(
             "INSERT IGNORE INTO news_medium (medium_id, news_id)" +
             "SELECT medium.id, news_board.id FROM medium,news_board " +

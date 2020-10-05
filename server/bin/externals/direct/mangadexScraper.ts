@@ -221,7 +221,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
             }
 
             partTitle = `Vol. ${partIndices.combi}`;
-            // todo: unused part title, should this be removed or used?
+            // TODO: unused part title, should this be removed or used?
         }
         episodeNews.push({
             mediumTitle: currentMedium,
@@ -258,7 +258,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         mediumType: MediaType.IMAGE,
     };
 
-    // todo process these metadata and get more (like author)
+    // TODO process these metadata and get more (like author)
     // const alternateMangaTitles = metaRows.eq(0).find("li");
     // const mangaStatus = metaRows.eq(8).find(".col-lg-9.col-xl-10").first();
 
