@@ -89,7 +89,7 @@ export class UserContext extends SubContext {
         const uuid = user.uuid;
 
         if (!await verifyPassword(password, user.password, user.alg, user.salt)) {
-            return Promise.reject(new Error(Errors.INVALID_INPUT));
+            return Promise.reject(new Error(Errors.INVALID_CREDENTIALS));
         }
         // if there exists a session already for that device, remove it
         await this.delete("user_log", {column: "ip", value: ip});
@@ -238,7 +238,9 @@ export class UserContext extends SubContext {
         user: { name?: string; newPassword?: string; password?: string }): Promise<boolean> {
 
         if (user.newPassword && user.password) {
-            await this.verifyPassword(uuid, user.password);
+            if (!await this.verifyPassword(uuid, user.password)) {
+                throw Error(Errors.INVALID_CREDENTIALS);
+            }
         }
         return this.update("user", async (updates, values) => {
             if (user.name) {
