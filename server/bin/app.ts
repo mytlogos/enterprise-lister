@@ -47,11 +47,10 @@ app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("webs
 app.use(express.static(path.join(parentDirName, "website", "dist")));
 
 
-app.use((req: Request, res: Response) => {
+app.use((req, res) => {
     //@ts-ignore
-    if (!req.path.startsWith("/api")) {
-        // @ts-ignore
-        res.redirect(`/?redirect=${req.path}`);
+    if (!req.path.startsWith("/api") && req.method === "GET") {
+        res.sendFile(path.join(parentDirName, path.join("website","dist", "app.html")));
     }
 });
 
