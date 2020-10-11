@@ -18,7 +18,7 @@
             {{ index + 1 }}
           </td>
           <td class="">
-            {{ entry.date.toLocaleString() }}
+            {{ dateToString(entry.date) }}
           </td>
           <td>
             <template v-if="entry.locked">
@@ -52,7 +52,11 @@ export default defineComponent({
     name: "Releases",
 
     data(): Data {
-        return { releases: [], media: {}, currentDate: new Date() };
+        return {
+            releases: [],
+            media: {},
+            currentDate: new Date()
+        };
     },
     mounted() {
         this.fetchReleases();
@@ -75,7 +79,14 @@ export default defineComponent({
                 this.currentDate = new Date();
                 this.releases.push(...response.releases);
             }).catch(console.error);
-        }
+        },
+
+        /**
+         * Format a given Date to a german locale string.
+         */
+        dateToString(date: Date): string {
+            return date.toLocaleString("de");
+        },
     }
 })
 </script>
