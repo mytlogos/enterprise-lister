@@ -1,2 +1,5 @@
 - [ ] replace *.env files with configuration files
 - [ ] replace own parser with external, better sql parser
+- [ ] after logging in transition to home
+- [ ] make login and register views inaccessible when logged in
+- [ ] make login and register views not a modal

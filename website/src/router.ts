@@ -1,23 +1,11 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-let loggedIn = false;
-export const info = {
-    set loggedIn(value: boolean) {
-        loggedIn = value;
-    },
-};
-
 const router = createRouter({
     history: createWebHistory(process.env.BASE_URL),
     routes: [
         {
-            path: "/",
-            redirect: (to): string => {
-                return "/" + (to.query.redirect || "home");
-            },
-        },
-        {
             path: "/home",
+            alias: "/",
             component: () => import(/* webpackChunkName: "lists" */ "./views/Home.vue"),
         },
         {
@@ -74,7 +62,8 @@ const router = createRouter({
             component: () => import(/* webpackChunkName: "read" */ "./views/ReadHistory.vue"),
         },
         {
-            path: "*",
+            path: "/:pathMatch(.*)*",
+            name: "Not Found",
             // route level code-splitting
             // this generates a separate chunk (login.[hash].js) for this route
             // which is lazy-loaded when the route is visited.
@@ -82,5 +71,6 @@ const router = createRouter({
         }
     ],
 });
+router.beforeEach((to, from) => console.log(`From=${JSON.stringify(from)}->To=${JSON.stringify(to)}`));
 // FIXME remove query from this shit after redirect
 export default router;

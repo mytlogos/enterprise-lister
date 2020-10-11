@@ -1,24 +1,18 @@
 <template>
   <nav class="navbar navbar-expand-xl navbar-dark bg-dark">
-    <a
-      class="navbar-brand"
-      href="#"
-    >Enterprise</a>
+    <!-- TODO: set active dynamically via router? -->
+    <router-link
+      to="home"
+      tag="a"
+      class="nav-link navbar-brand active"
+    >
+      Enterprise
+    </router-link>
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav mr-auto">
         <template v-if="loggedIn">
           <li class="nav-item">
             <span class="navbar-text">{{ name }}</span>
-          </li>
-          <!-- TODO: set active dynamically via router? -->
-          <li class="nav-item active">
-            <router-link
-              to="home"
-              tag="a"
-              class="nav-link"
-            >
-              Home
-            </router-link>
           </li>
           <li class="nav-item">
             <router-link

@@ -1,5 +1,9 @@
 <template>
-  <modal @finish="sendForm()">
+  <modal
+    :error="error"
+    :show="show"
+    @finish="sendForm()"
+  >
     <template #title>
       Login
     </template>
@@ -45,8 +49,10 @@ import { defineComponent } from "vue";
 export default defineComponent({
     name: "Login",
     components: {modal},
-    data(): { user: string; pw: string } {
+    data(): { user: string; pw: string; error: string; show: boolean } {
         return {
+            error: "",
+            show: true,
             user: "",
             pw: "",
         };

@@ -1,4 +1,4 @@
-import { VNode, createApp, App as VueApp } from "vue";
+import { VNode, createApp, App as VueApp, h } from "vue";
 import "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Router from "./router";
@@ -19,184 +19,6 @@ import {
 import { HttpClient } from "./Httpclient";
 import { Column } from "./siteTypes";
 
-const user = {
-    get media(): Medium[] {
-        return app.user.media;
-    },
-
-    set media(media: Medium[]) {
-        app.user.media = media;
-    },
-
-    get columns() {
-        return app.user.columns;
-    },
-
-    set columns(columns) {
-        app.user.columns = columns;
-    },
-
-    get lists(): List[] {
-        return app.user.lists;
-    },
-
-    set lists(lists: List[]) {
-        app.user.lists = lists;
-    },
-
-    get session() {
-        return app.session;
-    },
-
-    set session(session) {
-        app.session = session;
-    },
-
-    get uuid() {
-        return app.uuid;
-    },
-
-    set uuid(uuid) {
-        app.uuid = uuid;
-    },
-
-    get name() {
-        return app.user.name;
-    },
-
-    set name(name) {
-        app.user.name = name;
-    },
-    get externalUser(): ExternalUser[] {
-        return app.user.externalUser;
-    },
-
-    set externalUser(externalUser: ExternalUser[]) {
-        app.user.externalUser = externalUser;
-    },
-
-    get news(): News[] {
-        return app.user.news;
-    },
-
-    set news(news: News[]) {
-        app.user.news = news;
-    },
-
-    clear() {
-        this.name = "";
-        this.uuid = "";
-        this.session = "";
-        this.lists = [];
-        this.media = [];
-        this.externalUser = [];
-        // this.settings = {};
-        // this.columns = [];
-        return this;
-    },
-
-    setName(name: string) {
-        this.name = name;
-        return this;
-    },
-
-    setId(id: string) {
-        this.uuid = id;
-        return this;
-    },
-
-    setSession(session: string) {
-        this.session = session;
-        return this;
-    },
-
-    pushExternalUser(...externalUser: ExternalUser[]) {
-        externalUser.forEach((value: ExternalUser) =>
-            value.lists.forEach((list: ExternalList) => {
-                list.show = false;
-                list.external = true;
-            })
-        );
-        this.externalUser.push(...externalUser);
-        return this;
-    },
-
-    deleteExternalUser(uuid: string) {
-        const index = this.externalUser.findIndex(
-            (value) => value.uuid === uuid
-        );
-        if (index < 0) {
-            return;
-        }
-        this.externalUser.splice(index, 1);
-    },
-
-    addMedium(...data: Medium[]) {
-        this.media.push(...data);
-        return this;
-    },
-
-    editMedium(data: any) {
-        // TODO implement editing
-        console.log("edited");
-        return this;
-    },
-
-    deleteMedium(id: number) {
-        const index = this.media.findIndex((value) => value.id === id);
-        if (index < 0) {
-            throw Error("invalid mediumId");
-        }
-        this.media.splice(index, 1);
-        this.lists.forEach((value) => {
-            const listIndex = value.items.findIndex(
-                (itemId: number) => itemId === id
-            );
-
-            if (listIndex >= 0) {
-                value.items.splice(listIndex, 1);
-            }
-        });
-        return this;
-    },
-
-    addList(...lists: List[]) {
-        lists.forEach((value) => {
-            value.show = false;
-            value.external = false;
-            this.lists.push(value);
-        });
-        return this;
-    },
-
-    deleteList(id: number) {
-        const index = this.lists.findIndex((value) => value.id === id);
-        if (index < 0) {
-            throw Error("invalid mediumId");
-        }
-        this.lists.splice(index, 1);
-        return this;
-    },
-
-    /**
-     *
-     * @param {Array<News>} news
-     */
-    addNews(news: News[]) {
-        const ownNews = this.news;
-        news = news
-            .filter(
-                (value) =>
-                    !ownNews.find((otherValue) => otherValue.id === value.id)
-            )
-            .map((value) => (value.date = new Date(value.date)) && value);
-
-        if (news.length) {
-            ownNews.push(...news);
-        }
-    },
-};
-
 interface VueUser {
     lists: List[];
     news: News[];
@@ -212,7 +34,7 @@ interface Modal {
     error: string;
 }
 
-interface App extends VueApp {
+interface AppData {
     addListModal: Modal;
     addMediumModal: Modal;
     loginModal: Modal;
@@ -227,11 +49,8 @@ interface App extends VueApp {
     uuid: string;
 }
 
-// @ts-ignore
-const app: App = createApp({
-    el: "#app",
-    router: Router,
-    data() {
+const app = createApp({
+    data(): AppData {
         return {
             addListModal: {
                 show: false,
@@ -254,6 +73,7 @@ const app: App = createApp({
                 error: "",
             },
             errorModal: {
+                show: false,
                 error: "",
             },
             loadingMedia: [],
@@ -268,7 +88,7 @@ const app: App = createApp({
                     { name: "Title", prop: "title", show: true },
                     { name: "Author", prop: "author", show: true },
                     { name: "Artist", prop: "artist", show: true },
-                ],
+                ]
             },
             readNews: [],
             newReadNews: [],
@@ -326,9 +146,9 @@ const app: App = createApp({
 
         onBusEvent("append:media", (media: Medium | Medium[]) => {
             if (Array.isArray(media)) {
-                user.addMedium(...media);
+                this.userAddMedium(...media);
             } else {
-                user.addMedium(media);
+                this.userAddMedium(media);
             }
         });
 
@@ -336,8 +156,9 @@ const app: App = createApp({
 
         optimizedResize.add(() => emitBusEvent("window:resize"));
 
+        console.log("Mounted:", this.user, this.$router);
         // @ts-ignore
-        HttpClient.user = user;
+        HttpClient.user = this.user;
         // TODO: use invalidation polling to check
         // WSClient.addEventListener(events.ADD, (value) => this.processAddEvent(value));
         // WSClient.addEventListener(events.DELETE, (value) => this.processDeleteEvent(value));
@@ -353,14 +174,14 @@ const app: App = createApp({
                 value.items.forEach((item: TransferMedium) => {
                     let list;
                     if (item.external) {
-                        list = user.externalUser
+                        list = this.user.externalUser
                             .flatMap((externalUser) => externalUser.lists)
                             .find(
                                 (externalList) =>
                                     externalList.id === item.listId
                             );
                     } else {
-                        list = user.lists.find(
+                        list = this.user.lists.find(
                             (internalList) => internalList.id === item.listId
                         );
                     }
@@ -378,7 +199,7 @@ const app: App = createApp({
             }
             if (value.externalList) {
                 value.externalList.forEach((id: number) => {
-                    for (const externalUser of user.externalUser) {
+                    for (const externalUser of this.user.externalUser) {
                         const index = externalUser.lists.findIndex(
                             (externalList: ExternalList) =>
                                 externalList.id === id
@@ -400,7 +221,7 @@ const app: App = createApp({
             if (value.lists) {
                 value.lists.forEach((item: TransferList) => {
                     if (item.external) {
-                        const list = user.externalUser
+                        const list = this.user.externalUser
                             .flatMap((externalUser) => externalUser.lists)
                             .find(
                                 (externalList) =>
@@ -411,7 +232,7 @@ const app: App = createApp({
                             list.name = item.name;
                         }
                     } else {
-                        const list = user.lists.find(
+                        const list = this.user.lists.find(
                             (internalList) => internalList.id === item.id
                         );
 
@@ -429,14 +250,14 @@ const app: App = createApp({
                 value.items.forEach((item: TransferMedium) => {
                     let list;
                     if (item.external) {
-                        list = user.externalUser
+                        list = this.user.externalUser
                             .flatMap((externalUser) => externalUser.lists)
                             .find(
                                 (externalList: ExternalList) =>
                                     externalList.id === item.listId
                             );
                     } else {
-                        list = user.lists.find(
+                        list = this.user.lists.find(
                             (internalList) => internalList.id === item.listId
                         );
                     }
@@ -448,7 +269,7 @@ const app: App = createApp({
             }
             if (value.externalList) {
                 value.externalList.forEach((list: ExternalList) => {
-                    for (const externalUser of user.externalUser) {
+                    for (const externalUser of this.user.externalUser) {
                         if (
                             list.uuid === externalUser.uuid &&
                             !externalUser.lists.find(
@@ -478,13 +299,18 @@ const app: App = createApp({
         },
 
         loginState() {
+            console.log("loginState:", this.user);
             if (this.loggedIn) {
                 return;
             }
             HttpClient.isLoggedIn()
                 .then((newUser: User) => {
+                    console.log(`Logged In: ${this.loggedIn} New User: `, newUser);
                     if (!this.loggedIn && newUser) {
                         this.setUser(newUser);
+                        // automatically navigate to view under home if successfully logged in
+                        this.$router.push("/").catch(console.error);
+                        console.log("pushed home");
                     } else {
                         throw Error();
                     }
@@ -503,6 +329,9 @@ const app: App = createApp({
                     .then((newUser: User) => {
                         this.setUser(newUser);
                         this.resetModal(this.loginModal);
+                        // automatically navigate to view under home if successfully logged in
+                        this.$router.push("/").catch(console.error);
+                        console.log("pushed home");
                     })
                     .catch(
                         (error: any) => (this.loginModal.error = String(error))
@@ -524,6 +353,9 @@ const app: App = createApp({
                     .then((newUser: User) => {
                         this.setUser(newUser);
                         this.resetModal(this.registerModal);
+                        // automatically navigate to view under home if successfully logged in
+                        this.$router.push("/").catch(console.error);
+                        console.log("pushed home");
                     })
                     .catch(
                         (error: any) =>
@@ -543,7 +375,7 @@ const app: App = createApp({
             } else {
                 HttpClient.addExternalUser(data)
                     .then((externalUser: ExternalUser) =>
-                        user.pushExternalUser(externalUser)
+                        this.userPushExternalUser(externalUser)
                     )
                     .catch((error: any) =>
                         emitBusEvent("error:add:externalUser", String(error))
@@ -558,7 +390,7 @@ const app: App = createApp({
             }
 
             HttpClient.deleteExternalUser(uuid)
-                .then(() => user.deleteExternalUser(uuid))
+                .then(() => this.userDeleteExternalUser(uuid))
                 .catch((error: any) => console.log(error));
         },
 
@@ -573,19 +405,19 @@ const app: App = createApp({
         },
 
         setUser(setUser: User) {
-            return user
-                .clear()
-                .setName(setUser.name)
-                .setId(setUser.uuid)
-                .setSession(setUser.session)
-                .addList(...setUser.lists)
-                .pushExternalUser(...setUser.externalUser);
+            return this
+                .userClear()
+                .userSetName(setUser.name)
+                .userSetId(setUser.uuid)
+                .userSetSession(setUser.session)
+                .userAddList(...setUser.lists)
+                .userPushExternalUser(...setUser.externalUser);
         },
 
         logout() {
             HttpClient.logout()
                 .then((loggedOut: any) => {
-                    user.clear();
+                    this.userClear();
 
                     if (!loggedOut) {
                         this.errorModal.error =
@@ -609,7 +441,7 @@ const app: App = createApp({
             } else {
                 HttpClient.createMedium(data)
                     .then((medium) => {
-                        user.addMedium(medium);
+                        this.userAddMedium(medium);
                         this.resetModal(this.addMediumModal);
                     })
                     .catch(
@@ -649,7 +481,7 @@ const app: App = createApp({
             } else {
                 HttpClient.createList(data)
                     .then((list) => {
-                        user.addList(list);
+                        this.userAddList(list);
                         this.resetModal(this.addListModal);
                     })
                     .catch(
@@ -683,18 +515,135 @@ const app: App = createApp({
          */
         loadNews(data: { from: Date | undefined; to: Date | undefined }) {
             HttpClient.getNews(data.from, data.to)
-                .then((news) => user.addNews(news))
+                .then((news) => this.userAddNews(news))
                 .catch(console.log);
+        },
+
+        userClear() {
+            this.user.name = "";
+            this.user.uuid = "";
+            this.user.session = "";
+            this.user.lists = [];
+            this.user.media = [];
+            this.user.externalUser = [];
+            // this.settings = {};
+            // this.columns = [];
+            return this;
+        },
+
+        userSetName(name: string) {
+            this.user.name = name;
+            return this;
+        },
+
+        userSetId(id: string) {
+            this.user.uuid = id;
+            return this;
+        },
+
+        userSetSession(session: string) {
+            this.user.session = session;
+            return this;
+        },
+
+        userPushExternalUser(...externalUser: ExternalUser[]) {
+            externalUser.forEach((value: ExternalUser) =>
+                value.lists.forEach((list: ExternalList) => {
+                    list.show = false;
+                    list.external = true;
+                })
+            );
+            this.user.externalUser.push(...externalUser);
+            return this;
+        },
+
+        userDeleteExternalUser(uuid: string) {
+            const index = this.user.externalUser.findIndex(
+                (value) => value.uuid === uuid
+            );
+            if (index < 0) {
+                return;
+            }
+            this.user.externalUser.splice(index, 1);
+        },
+
+        userAddMedium(...data: Medium[]) {
+            this.user.media.push(...data);
+            return this;
+        },
+
+        userEditMedium(data: any) {
+            // TODO implement editing
+            console.log("edited");
+            return this;
+        },
+
+        userDeleteMedium(id: number) {
+            const index = this.user.media.findIndex((value) => value.id === id);
+            if (index < 0) {
+                throw Error("invalid mediumId");
+            }
+            this.user.media.splice(index, 1);
+            this.user.lists.forEach((value) => {
+                const listIndex = value.items.findIndex(
+                    (itemId: number) => itemId === id
+                );
+
+                if (listIndex >= 0) {
+                    value.items.splice(listIndex, 1);
+                }
+            });
+            return this;
+        },
+
+        userAddList(...lists: List[]) {
+            lists.forEach((value) => {
+                value.show = false;
+                value.external = false;
+                this.user.lists.push(value);
+            });
+            return this;
+        },
+
+        userDeleteList(id: number) {
+            const index = this.user.lists.findIndex((value) => value.id === id);
+            if (index < 0) {
+                throw Error("invalid mediumId");
+            }
+            this.user.lists.splice(index, 1);
+            return this;
+        },
+
+        /**
+         *
+         * @param {Array<News>} news
+         */
+        userAddNews(news: News[]) {
+            const ownNews = this.user.news;
+            news = news
+                .filter(
+                    (value) =>
+                        !ownNews.find((otherValue) => otherValue.id === value.id)
+                )
+                .map((value) => (value.date = new Date(value.date)) && value);
+
+            if (news.length) {
+                ownNews.push(...news);
+            }
         },
     },
 
-    render(h: any): VNode {
-        return h(AppComponent, {
-            props: this.user,
-        });
+    render(): VNode {
+        // @ts-ignore
+        return h(AppComponent, this.user);
     },
 });
 app.use(VueObserveVisibility);
+app.use(Router);
+Router.isReady().then(() => app.mount("#app"));
+globalThis.app = app;
+globalThis.router = Router;
+
 
 
 // TODO rework news, add the read property to news item itself instead of asking for it
