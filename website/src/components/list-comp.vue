@@ -1,17 +1,22 @@
 <template>
-  <ul class="list">
-    <li
-      v-for="(item, i) in displayedData"
-      :key="item"
-      :class="{
-        active: item.show,
-        marked: markClassId === item.id && (item.external == null || markClassExternal === item.external)
-      }"
-      @click="select(item.id,item.external,i, $event)"
-    >
-      {{ item.name }}
-    </li>
-  </ul>
+  <template v-if="displayedData.length">
+    <ul class="list">
+      <li
+        v-for="(item, i) in displayedData"
+        :key="item"
+        :class="{
+          active: item.show,
+          marked: markClassId === item.id && (item.external == null || markClassExternal === item.external)
+        }"
+        @click="select(item.id,item.external,i, $event)"
+      >
+        {{ item.name }}
+      </li>
+    </ul>
+  </template>
+  <template v-else>
+    <h2>No Items available</h2>
+  </template>
 </template>
 
 <script lang="ts">

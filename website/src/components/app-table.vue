@@ -283,7 +283,7 @@ export default defineComponent({
 
     mounted() {
         this.emptySpaceDirty = true;
-        this.columns.forEach((value) => this.$set(this.sortOrders, value.prop, 1));
+        this.columns.forEach((value) => this.sortOrders[value.prop] = 1);
 
         onBusEvent("window:resize", () => this.emptySpaceDirty = true);
 

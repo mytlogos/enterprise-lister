@@ -1,4 +1,4 @@
-import { VNode, createApp, h } from "vue";
+import { VNode, createApp, h, watch } from "vue";
 import "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fortawesome/fontawesome-free/css/all.css";
@@ -106,8 +106,15 @@ const app = createApp({
 
     watch: {
         loggedIn(newValue) {
+            console.log("loggedin changed: ", newValue);
             if (!newValue) {
                 this.loginState();
+            } else {
+                HttpClient.getLists().then(lists => {
+                    this.user.lists = lists;
+                    console.log("Finished loading Lists");
+                }).catch(console.error);
+
             }
         },
     },

@@ -1,9 +1,6 @@
 <template>
-  <div class="lists-page">
-    <reading-list
-      :lists="lists"
-      class=""
-    />
+  <div class="container-fluid p-0 d-flex">
+    <reading-list :lists="lists" />
     <app-table
       id="content"
       class="container-fluid"
@@ -32,7 +29,7 @@ export default defineComponent({
         media: { type: Array as PropType<Medium[]>, required: true }
     },
     mounted(): void {
-        console.log("hey");
+        console.log("Lists: hey");
     },
 });
 </script>

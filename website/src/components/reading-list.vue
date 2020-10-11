@@ -1,9 +1,6 @@
 <template>
-  <div
-    id="reading-list-container"
-    class="overflow left-content"
-  >
-    <div class="flex dropdown-container">
+  <div>
+    <div class="d-flex flex-column dropdown-container">
       <div
         class="select-container"
         :class="{open: selectOpen}"
@@ -24,7 +21,7 @@
         </select>
       </div>
       <button
-        class="btn search"
+        class="btn search btn-dark btn-sm"
         type="submit"
         @click="showSearch = !showSearch"
       >

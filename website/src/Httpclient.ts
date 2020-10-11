@@ -472,6 +472,10 @@ export const HttpClient = {
         return this.queryServer({ path: "api/user/medium/part/episode/releases/display", method: "GET" }, parameter);
     },
 
+    getLists(): Promise<List[]> {
+        return this.queryServer(api.lists.get);
+    },
+
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
         // if path includes user, it needs to be authenticated
         if (path.includes("user")) {
