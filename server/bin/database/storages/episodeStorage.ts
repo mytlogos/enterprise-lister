@@ -31,6 +31,10 @@ export class EpisodeStorage {
         return inContext((context) => context.getDisplayReleases(latestDate, untilDate));
     }
 
+    public getMediumReleases(mediumId: number): Promise<any> {
+        return inContext((context) => context.getMediumReleases(mediumId));
+    }
+
     /**
      * Gets one or multiple media from the storage.
      */

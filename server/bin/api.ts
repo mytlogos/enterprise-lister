@@ -127,6 +127,7 @@ function mediumRouter(): Router {
     router.get("/unused", UserApi.getUnusedMedia);
     router.get("/all", UserApi.getAllMedia);
     router.get("/allFull", UserApi.getAllMediaFull);
+    router.get("/releases", UserApi.getMediumReleases);
     router.put("/unused", UserApi.putConsumeUnusedMedia);
     router.post("/create", UserApi.postCreateFromUnusedMedia);
     router.post("/split", UserApi.postSplitMedium);

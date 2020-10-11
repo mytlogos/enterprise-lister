@@ -11,3 +11,4 @@
 - [ ] login and register view: center forms
 - [ ] releases.vue: make medium title a link to the given medium view
 - [ ] login.vue: try login after pressing enter
+- [ ] make an events enum for bus.ts (less error prone for typos)

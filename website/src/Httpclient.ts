@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -34,6 +34,15 @@ const restApi = {
                 get: true,
                 post: true,
                 put: true,
+                all: {
+                    get: true
+                },
+                allFull: {
+                    get: true
+                },
+                releases: {
+                    get: true
+                },
 
                 part: {
                     get: true,
@@ -130,6 +139,21 @@ interface MediumPath {
     readonly get: MethodObject;
     readonly post: MethodObject;
     readonly delete: MethodObject;
+    readonly all: AllMediumPath;
+    readonly allFull: AllFullMediumPath;
+    readonly releases: MediumReleasesPath;
+}
+
+interface MediumReleasesPath {
+    readonly get: MethodObject;
+}
+
+interface AllMediumPath {
+    readonly get: MethodObject;
+}
+
+interface AllFullMediumPath {
+    readonly get: MethodObject;
 }
 
 interface PartPath {
@@ -437,7 +461,11 @@ export const HttpClient = {
         return this.queryServer(api.medium.post, { medium });
     },
 
-    getMedia(media: number | number[]): Promise<Medium | Medium[] | void> {
+    getAllMedia(): Promise<SimpleMedium[]> {
+        return this.queryServer(api.medium.allFull.get);
+    },
+
+    getMedia(media: number | number[]): Promise<Medium | Medium[]> {
         if (Array.isArray(media) && !media.length) {
             return Promise.reject();
         }
@@ -470,6 +498,15 @@ export const HttpClient = {
             parameter.until = until;
         }
         return this.queryServer({ path: "api/user/medium/part/episode/releases/display", method: "GET" }, parameter);
+    },
+
+    /**
+     * Get all Releases from the given medium id.
+     * 
+     * @param mediumId the medium to get all their releases from
+     */
+    getReleases(mediumId: number): Promise<MediumRelease[]> {
+        return this.queryServer(api.medium.releases.get, { id: mediumId });
     },
 
     getLists(): Promise<List[]> {

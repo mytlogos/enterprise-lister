@@ -798,6 +798,17 @@ export const getDisplayReleases: Handler = (req, res) => {
     sendResult(res, episodeStorage.getDisplayReleases(latestDate, untilDate));
 };
 
+export const getMediumReleases: Handler = (req, res) => {
+    const mediumId = Number.parseInt(extractQueryParam(req, "id"));
+
+    if (isInvalidId(mediumId)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+
+    sendResult(res, episodeStorage.getMediumReleases(mediumId));
+};
+
 export const authenticate: Handler = (req, res, next) => {
     let { uuid, session } = req.body;
 

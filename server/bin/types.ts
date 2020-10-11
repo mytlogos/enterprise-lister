@@ -345,3 +345,12 @@ export interface DisplayReleasesResponse {
     media: { [key: number]: string };
     latest: Date;
 }
+
+export interface MediumRelease {
+    episodeId: number;
+    combiIndex: number;
+    title: string;
+    link: string;
+    locked?: boolean;
+    date: Date;
+}

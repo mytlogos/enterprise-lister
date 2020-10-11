@@ -2,7 +2,7 @@
   <nav class="navbar navbar-expand-xl navbar-dark bg-dark">
     <!-- TODO: set active dynamically via router? -->
     <router-link
-      to="home"
+      :to="{ name: 'home' }"
       tag="a"
       class="nav-link navbar-brand active"
     >
@@ -16,7 +16,7 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="addMedium"
+              :to="{ name: 'addMedium' }"
               tag="a"
               class="nav-link"
             >
@@ -25,7 +25,7 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="addList"
+              :to="{ name: 'addList' }"
               tag="a"
               class="nav-link"
             >
@@ -34,7 +34,7 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="news"
+              :to="{ name: 'news' }"
               tag="a"
               class="nav-link"
             >
@@ -43,7 +43,7 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="readHistory"
+              :to="{ name: 'readHistory' }"
               tag="a"
               class="nav-link"
             >
@@ -52,7 +52,7 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="list"
+              :to="{ name: 'lists' }"
               tag="a"
               class="nav-link"
             >
@@ -61,7 +61,7 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="releases"
+              :to="{ name: 'releases' }"
               tag="a"
               class="nav-link"
             >
@@ -70,7 +70,16 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="settings"
+              :to="{ name: 'media' }"
+              tag="a"
+              class="nav-link"
+            >
+              Media
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
+              :to="{ name: 'settings' }"
               tag="a"
               class="nav-link"
             >
@@ -84,7 +93,7 @@
         <template v-else>
           <li class="nav-item">
             <router-link
-              to="register"
+              :to="{ name: 'register' }"
               tag="a"
               class="nav-link"
             >
@@ -93,7 +102,7 @@
           </li>
           <li class="nav-item">
             <router-link
-              to="login"
+              :to="{ name: 'login' }"
               tag="a"
               class="nav-link"
             >
@@ -106,7 +115,7 @@
         <template v-if="loggedIn">
           <li class="nav-item">
             <router-link
-              to="/"
+              :to="{ name: 'home' }"
               tag="a"
               class="nav-link"
               @click="logout"

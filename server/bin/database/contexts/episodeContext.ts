@@ -10,7 +10,8 @@ import {
     Result,
     SimpleEpisode,
     SimpleRelease,
-    DisplayReleasesResponse
+    DisplayReleasesResponse,
+    MediumRelease
 } from "../../types";
 import mySql from "promise-mysql";
 import {
@@ -58,7 +59,6 @@ export class EpisodeContext extends SubContext {
         const mediaPromise: Promise<Array<{ id: number; title: string }>> = this.query("SELECT id, title FROM medium;");
         const latestReleaseResult: Array<{ releaseDate: string }> = await this.query("SELECT releaseDate FROM episode_release ORDER BY releaseDate LIMIT 1;");
         const releases = await releasePromise;
-        console.log(`latestDate=${latestDate}, untilDate=${untilDate}, releases.length=${releases.length}`);
 
         const mediaIds: Set<number> = new Set();
 
@@ -78,6 +78,17 @@ export class EpisodeContext extends SubContext {
             media,
             releases
         };
+    }
+
+    public async getMediumReleases(mediumId: number): Promise<MediumRelease[]> {
+        return this.query(
+            "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, episode.combiIndex " +
+            "FROM episode_release as er " +
+            "INNER JOIN episode ON episode.id=er.episode_id " +
+            "INNER JOIN part ON part.id=part_id " +
+            "WHERE part.medium_id = ?;",
+            mediumId
+        );
     }
 
     public async getAssociatedEpisode(url: string): Promise<number> {
