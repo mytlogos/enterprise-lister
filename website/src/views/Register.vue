@@ -1,58 +1,57 @@
 <template>
-  <modal
-    :error="error"
-    :show="show"
-    @finish="send()"
-  >
-    <template #title>
-      Register
-    </template>
-    <template #input>
-      <label>
-        Username:
+  <div class="container">
+    <h1>Register</h1>
+    <form>
+      <div class="form-group row">
+        <label class="col-sm-2 col-form-label">Username:</label>
         <input
-          v-model="lists"
-          class="user"
+          v-model="user"
+          class="col-sm-4 form-control"
           placeholder="Your username"
           title="Username"
           type="text"
         >
-      </label>
-      <label>
-        Password:
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 col-form-label">Password:</label>
         <input
           v-model="pw"
-          class="pw"
+          class="col-sm-4 form-control"
           placeholder="Your password"
           title="Password"
           type="password"
         >
-      </label>
-      <label>
-        Repeat Password:
+      </div>
+      <div class="form-group row">
+        <label class="col-sm-2 col-form-label">Repeat Password:</label>
         <input
           v-model="pwRepeat"
-          class="pw-repeat"
-          placeholder="Your password again"
-          title="Repeat Password"
+          class="col-sm-4 form-control"
+          placeholder="Repeat your password"
+          title="Repeat your Password"
           type="password"
         >
-      </label>
-    </template>
-    <template #finish>
-      Register
-    </template>
-  </modal>
+      </div>
+      <button
+        class="btn btn-primary"
+        type="button"
+        @click="send()"
+      >
+        Register
+      </button>
+      <div class="lost">
+        Forgot your password?
+      </div>
+      <div class="error" />
+    </form>
+  </div>
 </template>
 <script lang="ts">
 import {emitBusEvent} from "../bus";
-import modal from "../components/modal/modal.vue";
-
 import { defineComponent } from "vue";
 
 export default defineComponent({
-    name: "RegisterModal",
-    components: {modal},
+    name: "Register",
     props: {
         show: { type: Boolean, required: true },
         error: { type: String, required: true },
