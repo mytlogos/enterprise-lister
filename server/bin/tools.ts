@@ -601,6 +601,11 @@ export interface InternetTester extends EventEmitter.EventEmitter {
     stop(): void;
 }
 
+export function getDate(value: string): Date | null {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
 class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTester {
     private offline?: boolean = undefined;
     private since: Date = new Date();

@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import {ExternalUser, List, Medium, News, User} from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -53,6 +53,12 @@ const restApi = {
                             put: true,
                             delete: true,
                         },
+
+                        releases: {
+                            display: {
+                                get: true,
+                            }
+                        }
                     },
                 },
             },
@@ -140,6 +146,10 @@ interface EpisodePath {
     readonly delete: MethodObject;
 }
 
+interface ReleasePath {
+    readonly get: MethodObject;
+}
+
 interface ProgressPath {
     readonly get: MethodObject;
     readonly post: MethodObject;
@@ -179,6 +189,7 @@ interface Api {
     readonly news: NewsPath;
     readonly progress: ProgressPath;
     readonly episode: EpisodePath;
+    readonly release: ReleasePath;
     readonly part: PartPath;
     readonly medium: MediumPath;
     readonly lists: ListsPath;
@@ -394,25 +405,25 @@ export const HttpClient = {
     },
 
     addExternalUser(externalUser: { identifier: string; pwd: string }): Promise<ExternalUser> {
-        return this.queryServer(api.externalUser.post, {externalUser});
+        return this.queryServer(api.externalUser.post, { externalUser });
     },
 
     deleteExternalUser(uuid: string): Promise<any> {
-        return this.queryServer(api.externalUser.delete, {externalUuid: uuid});
+        return this.queryServer(api.externalUser.delete, { externalUuid: uuid });
     },
 
     createList(list: { name: string; type: number }): Promise<List> {
-        return this.queryServer(api.list.post, {list}).then((newList) =>
+        return this.queryServer(api.list.post, { list }).then((newList) =>
             Object.assign(list, newList),
         );
     },
 
     updateList(list: List): Promise<boolean> {
-        return this.queryServer(api.list.put, {list});
+        return this.queryServer(api.list.put, { list });
     },
 
     deleteList(listId: number): Promise<boolean> {
-        return this.queryServer(api.list.delete, {listId}).then(
+        return this.queryServer(api.list.delete, { listId }).then(
             (result) => {
                 if (result.error) {
                     return Promise.reject(result.error);
@@ -423,14 +434,14 @@ export const HttpClient = {
     },
 
     createMedium(medium: { title: string; type: number }): Promise<Medium> {
-        return this.queryServer(api.medium.post, {medium});
+        return this.queryServer(api.medium.post, { medium });
     },
 
     getMedia(media: number | number[]): Promise<Medium | Medium[] | void> {
         if (Array.isArray(media) && !media.length) {
             return Promise.reject();
         }
-        return this.queryServer(api.medium.get, {mediumId: media});
+        return this.queryServer(api.medium.get, { mediumId: media });
     },
 
     updateMedium(data: { id: number; prop: string }): Promise<void> {
@@ -444,10 +455,24 @@ export const HttpClient = {
     },
 
     getNews(from: Date | undefined, to: Date | undefined): Promise<News[]> {
-        return this.queryServer(api.news.get, {from, to});
+        return this.queryServer(api.news.get, { from, to });
     },
 
-    queryServer({path, method}: { path: string; method?: string }, query?: any): Promise<any> {
+    /**
+     * Get a certain number of DisplayReleases including and after the <i>latest</i> parameter
+     * at most until the <i>until</i> parameter if available.
+     * 
+     * @param latest the date to get all releases after (including)
+     */
+    getDisplayReleases(latest: Date, until?: Date): Promise<DisplayReleasesResponse> {
+        const parameter: { latest: Date; until?: Date } = { latest };
+        if (until) {
+            parameter.until = until;
+        }
+        return this.queryServer({ path: "api/user/medium/part/episode/releases/display", method: "GET" }, parameter);
+    },
+
+    async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
         // if path includes user, it needs to be authenticated
         if (path.includes("user")) {
             // @ts-ignore
@@ -479,13 +504,11 @@ export const HttpClient = {
                 init.body = JSON.stringify(query);
             }
         }
-        return fetch(url.toString(), init)
-            .then((response) => response.json())
-            .then((result) => {
-                if (result.error) {
-                    return Promise.reject(result.error);
-                }
-                return result;
-            });
+        const response = await fetch(url.toString(), init);
+        const result = await response.json();
+        if (result.error) {
+            return Promise.reject(result.error);
+        }
+        return result;
     },
 };

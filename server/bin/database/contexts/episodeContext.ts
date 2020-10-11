@@ -1,4 +1,4 @@
-import {SubContext} from "./subContext";
+import { SubContext } from "./subContext";
 import {
     Episode,
     EpisodeContentData,
@@ -9,7 +9,8 @@ import {
     ReadEpisode,
     Result,
     SimpleEpisode,
-    SimpleRelease
+    SimpleRelease,
+    DisplayReleasesResponse
 } from "../../types";
 import mySql from "promise-mysql";
 import {
@@ -24,9 +25,9 @@ import {
     separateIndex
 } from "../../tools";
 import logger from "../../logger";
-import {MysqlServerError} from "../mysqlError";
-import {escapeLike} from "../storages/storageTools";
-import {Query} from "mysql";
+import { MysqlServerError } from "../mysqlError";
+import { escapeLike } from "../storages/storageTools";
+import { Query } from "mysql";
 
 export class EpisodeContext extends SubContext {
     public async getAll(uuid: string): Promise<Query> {
@@ -43,6 +44,40 @@ export class EpisodeContext extends SubContext {
         return this.queryStream(
             "SELECT episode_id as episodeId, source_type as sourceType, releaseDate, locked, url, title FROM episode_release"
         );
+    }
+
+    public async getDisplayReleases(latestDate: Date, untilDate: Date | null): Promise<DisplayReleasesResponse> {
+        const releasePromise = this.query(
+            "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId " +
+            "FROM episode_release as er " +
+            "INNER JOIN episode ON episode.id=er.episode_id " +
+            "INNER JOIN part ON part.id=part_id " +
+            "WHERE er.releaseDate < ? AND (? IS NULL OR er.releaseDate > ?) ORDER BY er.releaseDate DESC LIMIT 500;",
+            [latestDate, untilDate, untilDate]
+        );
+        const mediaPromise: Promise<Array<{ id: number; title: string }>> = this.query("SELECT id, title FROM medium;");
+        const latestReleaseResult: Array<{ releaseDate: string }> = await this.query("SELECT releaseDate FROM episode_release ORDER BY releaseDate LIMIT 1;");
+        const releases = await releasePromise;
+        console.log(`latestDate=${latestDate}, untilDate=${untilDate}, releases.length=${releases.length}`);
+
+        const mediaIds: Set<number> = new Set();
+
+        for (const release of releases) {
+            mediaIds.add(release.mediumId);
+        }
+        const media: { [key: number]: string } = {};
+
+        for (const medium of await mediaPromise) {
+            if (mediaIds.has(medium.id)) {
+                media[medium.id] = medium.title;
+            }
+        }
+
+        return {
+            latest: latestReleaseResult.length ? new Date(latestReleaseResult[0].releaseDate) : new Date(0),
+            media,
+            releases
+        };
     }
 
     public async getAssociatedEpisode(url: string): Promise<number> {
@@ -146,19 +181,19 @@ export class EpisodeContext extends SubContext {
         const idMap = new Map<number, { partId: number; episodes: number[] }>();
         result.forEach((value) => {
             const partValue = getElseSet(idMap, value.part_id, () => {
-                return {partId: value.part_id, episodes: []};
+                return { partId: value.part_id, episodes: [] };
             });
             partValue.episodes.push(value.combinedIndex);
         });
         if (Array.isArray(partId)) {
             partId.forEach((value) => {
                 getElseSet(idMap, value, () => {
-                    return {partId: value, episodes: []};
+                    return { partId: value, episodes: [] };
                 });
             });
         } else {
             getElseSet(idMap, partId, () => {
-                return {partId, episodes: []};
+                return { partId, episodes: [] };
             });
         }
         return [...idMap.values()];
@@ -275,7 +310,7 @@ export class EpisodeContext extends SubContext {
                 );
             }
 
-            const escapedNovel = escapeLike(value.novel, {singleQuotes: true, noBoundaries: true});
+            const escapedNovel = escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
             const media: Array<{ title: string; id: number; synonym?: string }> = await this.query(
                 "SELECT title, id,synonym FROM medium " +
                 "LEFT JOIN medium_synonyms ON medium.id=medium_synonyms.medium_id " +
@@ -290,7 +325,7 @@ export class EpisodeContext extends SubContext {
                     title: value.novel,
                     medium: MediaType.TEXT
                 }, uuid);
-                bestMedium = {id: addedMedium.insertId, title: value.novel};
+                bestMedium = { id: addedMedium.insertId, title: value.novel };
                 // TODO add medium if it is not known?
             }
 
@@ -332,7 +367,7 @@ export class EpisodeContext extends SubContext {
                     }
                     const addedVolume = await this.parentContext.partContext.addPart(
                         // @ts-ignore
-                        {title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id}
+                        { title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id }
                     );
                     volumeId = addedVolume.id;
                 }
@@ -509,12 +544,12 @@ export class EpisodeContext extends SubContext {
                             values.push(value.locked);
                         }
                     }, {
-                        column: "episode_id",
-                        value: value.episodeId,
-                    }, {
-                        column: "url",
-                        value: value.url,
-                    }
+                    column: "episode_id",
+                    value: value.episodeId,
+                }, {
+                    column: "url",
+                    value: value.url,
+                }
                 );
             } else if (value.sourceType) {
                 await this.query(
@@ -905,10 +940,10 @@ export class EpisodeContext extends SubContext {
      */
     public async deleteEpisode(id: number): Promise<boolean> {
         // remove episode from progress first
-        await this.delete("user_episode", {column: "episode_id", value: id});
-        await this.delete("episode_release", {column: "episode_id", value: id});
+        await this.delete("user_episode", { column: "episode_id", value: id });
+        await this.delete("episode_release", { column: "episode_id", value: id });
         // lastly remove episode itself
-        return this.delete("episode", {column: "id", value: id});
+        return this.delete("episode", { column: "id", value: id });
     }
 
     public async getChapterIndices(mediumId: number): Promise<number[]> {

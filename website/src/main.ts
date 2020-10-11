@@ -1,6 +1,7 @@
-import { VNode, createApp, App as VueApp, h } from "vue";
+import { VNode, createApp, h } from "vue";
 import "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "@fortawesome/fontawesome-free/css/all.css";
 import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";

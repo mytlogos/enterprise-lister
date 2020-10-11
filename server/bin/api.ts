@@ -152,6 +152,7 @@ function episodeRouter() {
     const router = Router();
     router.get("/all", UserApi.getAllEpisodes);
     router.get("/releases/all", UserApi.getAllReleases);
+    router.get("/releases/display", UserApi.getDisplayReleases);
 
     const episodeRoute = router.route("");
     episodeRoute.get(UserApi.getEpisode);

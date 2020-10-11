@@ -134,3 +134,18 @@ export interface Column {
     prop: string;
     show: boolean;
 }
+
+export interface DisplayRelease {
+    episodeId: number;
+    title: string;
+    link: string;
+    mediumId: number;
+    locked?: boolean;
+    date: Date;
+}
+
+export interface DisplayReleasesResponse {
+    releases: DisplayRelease[];
+    media: { [key: number]: string };
+    latest: Date;
+}

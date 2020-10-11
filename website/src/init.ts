@@ -70,3 +70,47 @@ export const optimizedResize = ((() => {
         },
     };
 })());
+
+export function timeDifference(current: Date, other: Date): string {
+    const msPerMinute = 60 * 1000;
+    const msPerHour = msPerMinute * 60;
+    const msPerDay = msPerHour * 24;
+    const msPerMonth = msPerDay * 30;
+    const msPerYear = msPerDay * 365;
+
+    let elapsed: number;
+    const otherAfter = current < other;
+    if (otherAfter) {
+        elapsed = other.getTime() - current.getTime();
+    } else {
+        elapsed = current.getTime() - other.getTime();
+    }
+    let value = 0;
+    let unit = "";
+
+    if (elapsed < msPerMinute) {
+        value = Math.round(elapsed / 1000);
+        unit = "second";
+    }
+    else if (elapsed < msPerHour) {
+        value = Math.round(elapsed / msPerMinute);
+        unit = "minute";
+    }
+    else if (elapsed < msPerDay) {
+        value = Math.round(elapsed / msPerHour);
+        unit = "hour";
+    }
+    else if (elapsed < msPerMonth) {
+        value = Math.round(elapsed / msPerDay);
+        unit = "day";
+    }
+    else if (elapsed < msPerYear) {
+        value = Math.round(elapsed / msPerMonth);
+        unit = "month";
+    }
+    else {
+        value = Math.round(elapsed / msPerYear);
+        unit = "year";
+    }
+    return `${otherAfter ? "in ": ""}${value} ${unit}${value === 1 ? "s" : ""}${!otherAfter ? " ago" : ""}`;
+}

@@ -61,6 +61,15 @@
           </li>
           <li class="nav-item">
             <router-link
+              to="releases"
+              tag="a"
+              class="nav-link"
+            >
+              Releases
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
               to="settings"
               tag="a"
               class="nav-link"

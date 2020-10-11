@@ -19,6 +19,9 @@
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./tests/*.js ./tests/database/**/*.js ./tests/externals/**/*.js"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.15.1",
+    "@fortawesome/fontawesome-svg-core": "^1.2.32",
+    "@fortawesome/free-solid-svg-icons": "^5.15.1",
     "@rmp135/sql-ts": "^1.5.2",
     "bcrypt-nodejs": "0.0.3",
     "bcryptjs": "^2.4.3",
