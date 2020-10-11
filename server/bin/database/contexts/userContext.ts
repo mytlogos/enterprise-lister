@@ -286,7 +286,7 @@ export class UserContext extends SubContext {
     /**
      * Returns a user with their associated lists and external user from the storage.
      */
-    private _getUser(uuid: string, session: string): Promise<User> {
+    private async _getUser(uuid: string, session: string): Promise<User> {
         if (!uuid) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -307,7 +307,10 @@ export class UserContext extends SubContext {
                 user.name = value[0].name;
                 user.uuid = uuid;
             });
-
+        // FIXME look if all the other properties are necessary
+        // FIXME this is a hotfix to prevent "RangeError: Maximum call stack size exceeded" in Promise.all at the end
+        await userPromise;
+        return user;
         // query for user reading lists
         const listsPromise = this.parentContext.internalListContext
             .getUserLists(uuid)

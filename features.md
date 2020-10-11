@@ -1,6 +1,6 @@
 - [ ] replace *.env files with configuration files
 - [ ] replace own parser with external, better sql parser
-- [ ] after logging in transition to home
+- [x] after logging in transition to home
 - [ ] lock routes
     - [ ] make all routes except login and register inaccessible when not logged in
     - [ ] make login and register views inaccessible when logged in
@@ -9,3 +9,5 @@
 - [ ] login and register view: use error messages correctly
 - [ ] login view: implement `forgot password` functionality
 - [ ] login and register view: center forms
+- [ ] releases.vue: make medium title a link to the given medium view
+- [ ] login.vue: try login after pressing enter

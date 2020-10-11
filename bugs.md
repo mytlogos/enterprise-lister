@@ -6,3 +6,4 @@
 - [ ] bootstrap css interferes with modal
 - [ ] navigation (router-link) after login does not work
    - clicking on logout still executes the logout call on first click (not anymore afterwards)
+- [ ] after logout, the header does not seem to have registered the user change
