@@ -378,7 +378,29 @@ const api: Api = (function pathGenerator() {
 })();
 
 export const HttpClient = {
-    user: null,
+    _user: null,
+    _init: false,
+
+
+    get userPromise(): Promise<any> {
+        return new Promise((resolve) => {
+            if (this._init) {
+                resolve(this._user);
+                return;
+            }
+            const intervalId = setInterval(() => {
+                if (this._init) {
+                    clearInterval(intervalId);
+                    resolve(this._user);
+                }
+            }, 500);
+        });
+    },
+
+    set user(user : any) {
+        this._user = user;
+        this._init = true;
+    },
 
     get loggedIn(): boolean {
         // @ts-ignore
@@ -516,17 +538,18 @@ export const HttpClient = {
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
         // if path includes user, it needs to be authenticated
         if (path.includes("user")) {
+            const user = await this.userPromise;
             // @ts-ignore
-            if (!this.user || !this.user.uuid) {
+            if (!user || !user.uuid) {
                 throw Error("cannot send user message if no user is logged in");
             }
             if (!query) {
                 query = {};
             }
             // @ts-ignore
-            query.uuid = this.user.uuid;
+            query.uuid = user.uuid;
             // @ts-ignore
-            query.session = this.user.session;
+            query.session = user.session;
         }
         const init = {
             method,
