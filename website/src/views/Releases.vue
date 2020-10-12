@@ -39,16 +39,56 @@
           <td>
             {{ media[entry.mediumId] }}
           </td>
+          <td>
+            <button
+              class="btn"
+              data-toggle="tooltip"
+              data-placement="top"
+              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
+              @click.left="changeReadStatus(entry)"
+            >
+              <i
+                class="fas fa-check"
+                :class="{ 'text-success': entry.progress === 1 }"
+              />
+            </button>
+          </td>
         </tr>
       </tbody>
     </table>
+    <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
+    <div
+      id="progress-toast"
+      class="toast"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      <div class="toast-header">
+        <i class="fas fa-exclamation-circle rounded mr-2 text-danger" />
+        <strong class="mr-auto">Error</strong>
+        <button
+          type="button"
+          class="ml-2 mb-1 close"
+          data-dismiss="toast"
+          aria-label="Close"
+          @click.left="closeProgressToast"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="toast-body">
+        Could not update Progress
+      </div>
+    </div>
   </div>
 </template>
 <script lang="ts">
 import { DisplayRelease } from "src/siteTypes";
 import { defineComponent } from "vue";
-import { HttpClient as Client } from "../Httpclient";
+import { HttpClient as Client, HttpClient } from "../Httpclient";
 import { binarySearch, timeDifference } from "../init";
+import $ from "jquery";
 
 interface Data {
     releases: DisplayRelease[];
@@ -57,6 +97,14 @@ interface Data {
     fetching: boolean;
     unmounted: boolean;
 }
+
+// initialize all tooltips on this page
+$(function () {
+    $("[data-toggle=\"tooltip\"]").tooltip()
+});
+
+// initialize all toasts
+$(".toast").toast();
 
 export default defineComponent({
     name: "Releases",
@@ -93,7 +141,7 @@ export default defineComponent({
                 until = this.releases[0].date;
             }
             try {
-                const response = await Client.getDisplayReleases(new Date(), until)
+                const response = await Client.getDisplayReleases(new Date(), until);
                 for (const key in response.media) {
                     this.media[key] = response.media[key];
                 }
@@ -121,6 +169,36 @@ export default defineComponent({
                 // fetch again in a minute
                 setTimeout(() => this.fetchReleases(), 60000);
             }
+        },
+
+        /**
+         * Update the progress of the episode of the release to either 0 or 1.
+         * Shows an error toast if it could not update the progress.
+         */
+        changeReadStatus(release: DisplayRelease): void {
+            console.log(release);
+            const newProgress = release.progress < 1 ? 1 : 0;
+            HttpClient.updateProgress(release.episodeId, newProgress)
+                .then(success => {
+                    if (success) {
+                        // update progress of all releases for the same episode
+                        this.releases.forEach((element: DisplayRelease) => {
+                            if (release.episodeId === element.episodeId) {
+                                element.progress = newProgress;
+                            }
+                        });
+                    } else {
+                        return Promise.reject();
+                    }
+                })
+                .catch(() => $("#progress-toast").toast("show"));
+        },
+
+        /**
+         * Hide progress error toast.
+         */
+        closeProgressToast() {
+            $("#progress-toast").toast("hide");
         },
 
         /**

@@ -44,6 +44,13 @@ const restApi = {
                     get: true
                 },
 
+                progress: {
+                    get: true,
+                    post: true,
+                    put: true,
+                    delete: true,
+                },
+
                 part: {
                     get: true,
                     post: true,
@@ -55,13 +62,6 @@ const restApi = {
                         post: true,
                         put: true,
                         delete: true,
-
-                        progress: {
-                            get: true,
-                            post: true,
-                            put: true,
-                            delete: true,
-                        },
 
                         releases: {
                             display: {
@@ -533,6 +533,17 @@ export const HttpClient = {
 
     getLists(): Promise<List[]> {
         return this.queryServer(api.lists.get);
+    },
+
+    /**
+     * Add progress of the user in regard to an episode.
+     * Returns always true if it succeeded (no error).
+     * 
+     * @param episodeId the episode to set the progress to
+     * @param progress the new progress value
+     */
+    updateProgress(episodeId: number, progress: number): Promise<boolean> {
+        return this.queryServer(api.progress.post, {episodeId, progress});
     },
 
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {

@@ -338,6 +338,7 @@ export interface DisplayRelease {
     mediumId: number;
     locked?: boolean;
     date: Date;
+    progress: number;
 }
 
 export interface DisplayReleasesResponse {

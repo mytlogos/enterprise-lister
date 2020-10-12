@@ -27,8 +27,8 @@ export class EpisodeStorage {
         return inContext((context) => context.getAllReleases());
     }
 
-    public getDisplayReleases(latestDate: Date, untilDate: Date | null): Promise<any> {
-        return inContext((context) => context.getDisplayReleases(latestDate, untilDate));
+    public getDisplayReleases(latestDate: Date, untilDate: Date | null, uuid: string): Promise<any> {
+        return inContext((context) => context.getDisplayReleases(latestDate, untilDate, uuid));
     }
 
     public getMediumReleases(mediumId: number): Promise<any> {
@@ -166,6 +166,7 @@ export class EpisodeStorage {
 
     /**
      * Add progress of an user in regard to an episode to the storage.
+     * Returns always true if it succeeded (no error).
      */
     // tslint:disable-next-line
     public addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean> {
