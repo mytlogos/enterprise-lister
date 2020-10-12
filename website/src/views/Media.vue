@@ -28,7 +28,7 @@
               {{ medium.title }}
             </router-link>
           </td>
-          <td>{{ mediaTypeToString(medium.type) }}</td>
+          <td>{{ mediaTypeToString(medium.medium) }}</td>
           <td>{{ medium.author }}</td>
         </tr>
       </tbody>
