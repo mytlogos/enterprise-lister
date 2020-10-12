@@ -40,7 +40,9 @@
             </a>
           </td>
           <td>
-            {{ media[entry.mediumId] }}
+            <router-link :to="{ name: 'medium', params: { id: entry.mediumId } }">
+              {{ media[entry.mediumId] }}
+            </router-link>
           </td>
           <td>
             <button
