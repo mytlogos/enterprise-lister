@@ -32,7 +32,10 @@
             <template v-if="entry.locked">
               <i class="fas fa-lock" />
             </template>
-            <a :href="entry.link">
+            <a
+              :href="entry.link"
+              target="_blank"
+            >
               {{ entry.title }}
             </a>
           </td>
