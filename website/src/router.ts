@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from "vue-router";
 
 const router = createRouter({
     history: createWebHistory(process.env.BASE_URL),
+    linkActiveClass: "active",
     routes: [
         {
             path: "/home",
