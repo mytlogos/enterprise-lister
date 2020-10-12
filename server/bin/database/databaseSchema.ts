@@ -1,7 +1,7 @@
 import {DataBaseBuilder} from "./databaseBuilder";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder("enterprise", 9);
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 10);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")

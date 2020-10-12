@@ -83,6 +83,22 @@ export class DatabaseContext extends SubContext {
         return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`).then(ignore);
     }
 
+    /**
+     * Create a new normal index on a table on one or multiple columns.
+     * It does not enforce any restraints like a unique index.
+     * If an index with the given name exists already, nothing will be done.
+     * 
+     * @param tableName the table to create the index on
+     * @param indexName the name for the index
+     * @param columnNames the columns the index should be build for
+     */
+    public addIndex (tableName: string, indexName: string, columnNames: string[]): Promise<void> {
+        const index = mySql.escapeId(indexName);
+        const table = mySql.escapeId(tableName);
+        const columns = columnNames.map(name => mySql.escapeId(name)).join(",")
+        return this.query(`CREATE INDEX IF NOT EXISTS ${index} ON ${table} (${columns});`).then(ignore);
+    }
+
     public addForeignKey (tableName: string, constraintName: string, column: string, referencedTable: string,
         referencedColumn: string, onDelete?: string, onUpdate?: string): Promise<void> {
         const index = mySql.escapeId(column);

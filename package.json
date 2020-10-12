@@ -16,7 +16,8 @@
     "pm2:refresh": "pm2 restart ecosystem.config.js --update-env",
     "start": "node server/dist/startServer.js",
     "start:server": "node server/dist/startServer.js",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./tests/*.js ./tests/database/**/*.js ./tests/externals/**/*.js"
+    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./tests/*.js ./tests/database/**/*.js ./tests/externals/**/*.js",
+    "migrate": "node server/dist/test/migrate.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.1",

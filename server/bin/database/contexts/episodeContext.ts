@@ -50,10 +50,9 @@ export class EpisodeContext extends SubContext {
     public async getDisplayReleases(latestDate: Date, untilDate: Date | null): Promise<DisplayReleasesResponse> {
         const releasePromise = this.query(
             "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId " +
-            "FROM episode_release as er " +
+            "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?) ORDER BY releaseDate DESC LIMIT 500) as er " +
             "INNER JOIN episode ON episode.id=er.episode_id " +
-            "INNER JOIN part ON part.id=part_id " +
-            "WHERE er.releaseDate < ? AND (? IS NULL OR er.releaseDate > ?) ORDER BY er.releaseDate DESC LIMIT 500;",
+            "INNER JOIN part ON part.id=part_id;",
             [latestDate, untilDate, untilDate]
         );
         const mediaPromise: Promise<Array<{ id: number; title: string }>> = this.query("SELECT id, title FROM medium;");

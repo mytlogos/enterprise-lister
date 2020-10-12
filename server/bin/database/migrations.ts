@@ -263,5 +263,13 @@ export const Migrations: Migration[] = [
                 [MysqlServerError.ER_DUP_FIELDNAME]
             );
         }
+    },
+    {
+        fromVersion: 9,
+        toVersion: 10,
+        async migrate(context: DatabaseContext): Promise<void> {
+            // add index to speed up queries on episode_release where releaseDate is a big factor
+            await context.addIndex("episode_release", "episode_release_releaseDate_Index", ["releaseDate"]);
+        }
     }
 ];
