@@ -1,6 +1,14 @@
 <template>
   <div class="container-fluid p-0">
     <h1>Releases</h1>
+    <div class="p-1">
+      <button
+        class="btn btn-dark"
+        @click.left="fetchReleases"
+      >
+        Fetch new Releases
+      </button>
+    </div>
     <table class="table table-striped table-hover table-sm">
       <thead class="thead-dark">
         <th>#</th>
@@ -40,12 +48,14 @@
 import { DisplayRelease } from "src/siteTypes";
 import { defineComponent } from "vue";
 import { HttpClient as Client } from "../Httpclient";
-import { timeDifference } from "../init";
+import { binarySearch, timeDifference } from "../init";
 
 interface Data {
     releases: DisplayRelease[];
     media: { [key: number]: string };
     currentDate: Date;
+    fetching: boolean;
+    unmounted: boolean;
 }
 
 export default defineComponent({
@@ -55,19 +65,35 @@ export default defineComponent({
         return {
             releases: [],
             media: {},
-            currentDate: new Date()
+            currentDate: new Date(),
+            fetching: false,
+            unmounted: false,
         };
     },
     mounted() {
+        this.unmounted = false;
         this.fetchReleases();
+    },
+    unmounted() {
+        this.unmounted = true;
     },
     methods: {
         timeDifference(date: Date): string {
             return timeDifference(this.currentDate, date);
         },
 
-        fetchReleases() {
-            Client.getDisplayReleases(new Date()).then((response) => {
+        async fetchReleases() {
+            // do not fetch if already fetching or this component is already unmounted
+            if (this.fetching || this.unmounted) {
+                return;
+            }
+            this.fetching = true;
+            let until: Date | undefined;
+            if (this.releases.length) {
+                until = this.releases[0].date;
+            }
+            try {
+                const response = await Client.getDisplayReleases(new Date(), until)
                 for (const key in response.media) {
                     this.media[key] = response.media[key];
                 }
@@ -77,8 +103,24 @@ export default defineComponent({
                     }
                 })
                 this.currentDate = new Date();
-                this.releases.push(...response.releases);
-            }).catch(console.error);
+
+                // insert fetched releases at the corresponding place
+                response.releases.forEach(release => {
+                    const insertIndex = binarySearch(this.releases, (value: DisplayRelease) => value.date < release.date);
+
+                    if (insertIndex >= 0) {
+                        this.releases.splice(insertIndex, 0, release);
+                    } else {
+                        console.warn("No Insertindex found for Release: ", release);
+                    }
+                });
+            } catch (error) {
+                console.error(error);
+            } finally {
+                this.fetching = false;
+                // fetch again in a minute
+                setTimeout(() => this.fetchReleases(), 60000);
+            }
         },
 
         /**

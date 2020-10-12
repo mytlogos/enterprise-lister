@@ -114,3 +114,20 @@ export function timeDifference(current: Date, other: Date): string {
     }
     return `${otherAfter ? "in ": ""}${value} ${unit}${value === 1 ? "s" : ""}${!otherAfter ? " ago" : ""}`;
 }
+
+/**
+ * Return 0 <= i <= array.length such that !pred(array[i - 1]) && pred(array[i]).
+ * From Stackoverflow: https://stackoverflow.com/a/41956372
+ */
+export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number {
+    let lo = -1, hi = array.length;
+    while (1 + lo < hi) {
+        const mi = lo + ((hi - lo) >> 1);
+        if (pred(array[mi])) {
+            hi = mi;
+        } else {
+            lo = mi;
+        }
+    }
+    return hi;
+}
