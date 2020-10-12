@@ -29,11 +29,47 @@
             </a>
           </td>
           <td>
-            N/A
+            <button
+              class="btn"
+              data-toggle="tooltip"
+              data-placement="top"
+              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
+              @click.left="changeReadStatus(entry)"
+            >
+              <i
+                class="fas fa-check"
+                :class="{ 'text-success': entry.progress === 1 }"
+              />
+            </button>
           </td>
         </tr>
       </tbody>
     </table>
+    <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
+    <div
+      id="progress-toast"
+      class="toast"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      <div class="toast-header">
+        <i class="fas fa-exclamation-circle rounded mr-2 text-danger" />
+        <strong class="mr-auto">Error</strong>
+        <button
+          type="button"
+          class="ml-2 mb-1 close"
+          data-dismiss="toast"
+          aria-label="Close"
+          @click.left="closeProgressToast"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="toast-body">
+        Could not update Progress
+      </div>
+    </div>
   </div>
 </template>
 
@@ -41,11 +77,20 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent, reactive } from "vue";
 import { MediumRelease } from "../siteTypes";
+import $ from "jquery";
 
 interface Data {
   releases: any[];
   details: null | any;
 }
+
+// initialize all tooltips on this page
+$(function () {
+    $("[data-toggle=\"tooltip\"]").tooltip()
+});
+
+// initialize all toasts
+$(".toast").toast();
 
 export default defineComponent({
     name: "MediumDetail",
@@ -80,6 +125,35 @@ export default defineComponent({
          */
         dateToString(date: Date): string {
             return date.toLocaleString("de-DE");
+        },
+
+        /**
+         * Update the progress of the episode of the release to either 0 or 1.
+         * Shows an error toast if it could not update the progress.
+         */
+        changeReadStatus(release: MediumRelease): void {
+            const newProgress = release.progress < 1 ? 1 : 0;
+            HttpClient.updateProgress(release.episodeId, newProgress)
+                .then(success => {
+                    if (success) {
+                        // update progress of all releases for the same episode
+                        this.releases.forEach((element: MediumRelease) => {
+                            if (release.episodeId === element.episodeId) {
+                                element.progress = newProgress;
+                            }
+                        });
+                    } else {
+                        return Promise.reject();
+                    }
+                })
+                .catch(() => $("#progress-toast").toast("show"));
+        },
+
+        /**
+         * Hide progress error toast.
+         */
+        closeProgressToast() {
+            $("#progress-toast").toast("hide");
         },
     }
 });

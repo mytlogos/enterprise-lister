@@ -80,14 +80,15 @@ export class EpisodeContext extends SubContext {
         };
     }
 
-    public async getMediumReleases(mediumId: number): Promise<MediumRelease[]> {
+    public async getMediumReleases(mediumId: number, uuid: string): Promise<MediumRelease[]> {
         return this.query(
-            "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, episode.combiIndex " +
+            "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, episode.combiIndex, progress " +
             "FROM episode_release as er " +
             "INNER JOIN episode ON episode.id=er.episode_id " +
+            "LEFT JOIN (SELECT * FROM user_episode WHERE user_uuid = ?) as ue ON episode.id=ue.episode_id " +
             "INNER JOIN part ON part.id=part_id " +
             "WHERE part.medium_id = ?;",
-            mediumId
+            [uuid, mediumId]
         );
     }
 

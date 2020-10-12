@@ -176,7 +176,6 @@ export default defineComponent({
          * Shows an error toast if it could not update the progress.
          */
         changeReadStatus(release: DisplayRelease): void {
-            console.log(release);
             const newProgress = release.progress < 1 ? 1 : 0;
             HttpClient.updateProgress(release.episodeId, newProgress)
                 .then(success => {

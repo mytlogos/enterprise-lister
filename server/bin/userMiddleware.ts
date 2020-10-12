@@ -801,13 +801,14 @@ export const getDisplayReleases: Handler = (req, res) => {
 
 export const getMediumReleases: Handler = (req, res) => {
     const mediumId = Number.parseInt(extractQueryParam(req, "id"));
+    const uuid = extractQueryParam(req, "uuid");
 
     if (isInvalidId(mediumId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
 
-    sendResult(res, episodeStorage.getMediumReleases(mediumId));
+    sendResult(res, episodeStorage.getMediumReleases(mediumId, uuid));
 };
 
 export const authenticate: Handler = (req, res, next) => {

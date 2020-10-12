@@ -158,4 +158,5 @@ export interface MediumRelease {
     link: string;
     locked?: boolean;
     date: Date;
+    progress: number;
 }
