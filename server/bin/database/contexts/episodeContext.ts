@@ -559,12 +559,12 @@ export class EpisodeContext extends SubContext {
                             values.push(value.locked);
                         }
                     }, {
-                    column: "episode_id",
-                    value: value.episodeId,
-                }, {
-                    column: "url",
-                    value: value.url,
-                }
+                        column: "episode_id",
+                        value: value.episodeId,
+                    }, {
+                        column: "url",
+                        value: value.url,
+                    }
                 );
             } else if (value.sourceType) {
                 await this.query(
