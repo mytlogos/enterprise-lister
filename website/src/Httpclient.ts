@@ -514,10 +514,13 @@ export const HttpClient = {
      * 
      * @param latest the date to get all releases after (including)
      */
-    getDisplayReleases(latest: Date, until?: Date): Promise<DisplayReleasesResponse> {
-        const parameter: { latest: Date; until?: Date } = { latest };
+    getDisplayReleases(latest: Date, until?: Date, readFilter?: boolean): Promise<DisplayReleasesResponse> {
+        const parameter: { latest: Date; until?: Date; read?: boolean } = { latest };
         if (until) {
             parameter.until = until;
+        }
+        if (readFilter != null) {
+            parameter.read = readFilter;
         }
         return this.queryServer({ path: "api/user/medium/part/episode/releases/display", method: "GET" }, parameter);
     },

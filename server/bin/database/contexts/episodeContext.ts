@@ -47,14 +47,16 @@ export class EpisodeContext extends SubContext {
         );
     }
 
-    public async getDisplayReleases(latestDate: Date, untilDate: Date | null, uuid: string): Promise<DisplayReleasesResponse> {
+    public async getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: string): Promise<DisplayReleasesResponse> {
+        const progressCondition = read == null ? "1" : read ? "progress = 1" : "(progress IS NULL OR progress < 1)";
         const releasePromise = this.query(
             "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId, progress " +
-            "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?) ORDER BY releaseDate DESC LIMIT 500) as er " +
+            "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?)) as er " +
             "INNER JOIN episode ON episode.id=er.episode_id " +
             "LEFT JOIN (SELECT * FROM user_episode WHERE user_uuid = ?) as ue ON episode.id=ue.episode_id " +
-            "INNER JOIN part ON part.id=part_id;",
-            [latestDate, untilDate, untilDate, uuid]
+            "INNER JOIN part ON part.id=part_id " +
+            `WHERE ${progressCondition} ORDER BY releaseDate DESC LIMIT 500;`,
+            [latestDate, untilDate, untilDate, uuid, read, read]
         );
         const mediaPromise: Promise<Array<{ id: number; title: string }>> = this.query("SELECT id, title FROM medium;");
         const latestReleaseResult: Array<{ releaseDate: string }> = await this.query("SELECT releaseDate FROM episode_release ORDER BY releaseDate LIMIT 1;");

@@ -27,8 +27,8 @@ export class EpisodeStorage {
         return inContext((context) => context.getAllReleases());
     }
 
-    public getDisplayReleases(latestDate: Date, untilDate: Date | null, uuid: string): Promise<any> {
-        return inContext((context) => context.getDisplayReleases(latestDate, untilDate, uuid));
+    public getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: string): Promise<any> {
+        return inContext((context) => context.getDisplayReleases(latestDate, untilDate, read, uuid));
     }
 
     public getMediumReleases(mediumId: number, uuid: string): Promise<any> {

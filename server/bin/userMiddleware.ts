@@ -786,6 +786,7 @@ export const getAllReleases: Handler = (req, res) => {
 export const getDisplayReleases: Handler = (req, res) => {
     const latest = extractQueryParam(req, "latest");
     const until = extractQueryParam(req, "until");
+    const read = extractQueryParam(req, "read") ? extractQueryParam(req, "read").toLowerCase() == "true" : null;
     const uuid = extractQueryParam(req, "uuid");
 
     const latestDate = getDate(latest);
@@ -796,7 +797,7 @@ export const getDisplayReleases: Handler = (req, res) => {
         return;
     }
 
-    sendResult(res, episodeStorage.getDisplayReleases(latestDate, untilDate, uuid));
+    sendResult(res, episodeStorage.getDisplayReleases(latestDate, untilDate, read, uuid));
 };
 
 export const getMediumReleases: Handler = (req, res) => {

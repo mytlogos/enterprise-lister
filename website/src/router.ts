@@ -74,6 +74,11 @@ const router = createRouter({
         {
             path: "/releases",
             name: "releases",
+            props: (to) => {
+                return {
+                    read: to.query.read ? to.query.read === "true" : undefined,
+                };
+            },
             // route level code-splitting
             // this generates a separate chunk (login.[hash].js) for this route
             // which is lazy-loaded when the route is visited.
