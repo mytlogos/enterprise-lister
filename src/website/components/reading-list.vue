@@ -63,7 +63,7 @@ interface Data {
 }
 
 import { defineComponent, PropType } from "vue";
-import { List } from "src/siteTypes";
+import { List } from "../siteTypes";
 
 export default defineComponent({
     name: "ReadingList",

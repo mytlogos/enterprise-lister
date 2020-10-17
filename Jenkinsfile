@@ -46,9 +46,8 @@ pipeline {
         GH_TOKEN = credentials('e2d21e2c-c919-4137-9355-21e4602a862e')
       }
       steps {
-        // package the dist directories each in a tar
-        sh 'tar -cvf website/website-tar.tar website/dist/'
-        sh 'tar -cvf server/server-tar.tar server/dist/'
+        // package the dist directory in a tar
+        sh 'tar -cvf dist.tar dist/'
         // release new version and publish the tars on github
         sh 'npx semantic-release'
       }

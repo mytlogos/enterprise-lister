@@ -16,7 +16,7 @@
     "lib": [
       "esnext"
     ],
-    "outDir": "./dist/"
+    "outDir": "../../dist/server/"
   },
   "exclude": [
     "node_modules"

@@ -28,7 +28,7 @@ import { defineComponent, PropType } from "vue";
 import {onBusEvent} from "../bus";
 import listComp from "../components/list-comp.vue";
 import externalUser from "../components/external-user.vue";
-import { ExternalUser } from "src/siteTypes";
+import { ExternalUser } from "../siteTypes";
 
 export default defineComponent({
     name: "SettingsPage",

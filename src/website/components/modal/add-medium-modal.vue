@@ -141,8 +141,8 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../bus";
-import modal from "../components/modal/modal.vue";
+import {emitBusEvent} from "../../bus";
+import modal from "./modal";
 
 interface GuiMediaType {
   value: number;
@@ -170,7 +170,7 @@ interface Data {
 }
 
 import { defineComponent, PropType } from "vue";
-import { List } from "src/siteTypes";
+import { List } from "../../siteTypes";
 
 export default defineComponent({
     name: "AddMediumModal",
@@ -180,7 +180,6 @@ export default defineComponent({
         error: { type: String, required: true },
         lists: { type: Array as PropType<List[]>, required: true },
     },
-
     data(): Data {
         return {
             mediaTypes: [
@@ -220,16 +219,13 @@ export default defineComponent({
             }
         };
     },
-    mounted(): void {
-        console.log("mounted");
-    },
 
     methods: {
         send(): void {
             let mediumType = 0;
             this.mediaTypes.forEach((value) => {
                 if (value.checked) {
-                    mediumType |= value.value;
+                    mediumType |= value.values;
                 }
             });
             const result = {type: mediumType};

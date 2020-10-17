@@ -40,7 +40,6 @@ exampleData/
 binJs/
 tests/api_requests
 ignore/
-changes.md
 env.env
 *.uxf
 *test*.js
@@ -84,21 +83,15 @@ typings/
 ### Example user template template
 ### Example user template
 
-# IntelliJ project files
-.idea
-*.iml
-out
-gen
-*.heapsnapshot
-server/bin/externals/direct/webnovelTocResponse 04.19.json
-server/bin/externals/direct/wwSearchResponse.json
+# IntelliJ project filessrc/
+src/server/bin/externals/direct/webnovelTocResponse 04.19.json
+src/server/bin/externals/direct/wwSearchResponse.json
 src/**/*.vue.js
 src/**/*.vue.js.map
 *.bat
 *.gz
-/server/bin/ignore/
-/server/dist/
-/website/dist/
+src/server/bin/ignore/
+dist/
 
 # vscode project files
 .vscode

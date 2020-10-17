@@ -86,7 +86,7 @@ import addExternalModal from "./modal/add-external-modal.vue";
 import confirmModal from "./modal/confirm-modal.vue";
 
 import { defineComponent, PropType } from "vue";
-import { ExternalUser } from "src/siteTypes";
+import { ExternalUser } from "../siteTypes";
 
 interface ExternalListHost {
   link: string;

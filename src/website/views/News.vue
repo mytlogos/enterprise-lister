@@ -61,7 +61,7 @@ import VueCtkDateTimePicker from "vue-ctk-date-time-picker";
 import "vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.css";
 
 import { defineComponent, PropType } from "vue";
-import { List, News } from "src/siteTypes";
+import { List, News } from "../siteTypes";
 
 export default defineComponent({
     name: "NewsPage",

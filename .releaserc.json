@@ -18,8 +18,7 @@
       "@semantic-release/github",
       {
         "assets": [
-          "website/website-tar.tar",
-          "server/server-tar.tar"
+          "dist.tar"
         ]
       }
     ],

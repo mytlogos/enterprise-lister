@@ -147,7 +147,7 @@ interface Data {
     currentLength: number;
 }
 import { defineComponent, PropType } from "vue";
-import { Column, Medium } from "src/siteTypes";
+import { Column, Medium } from "../siteTypes";
 
 export default defineComponent({
     name: "AppTable",

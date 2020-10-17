@@ -15,7 +15,7 @@ import readingList from "../components/reading-list.vue";
 import appTable from "../components/app-table.vue";
 
 import { defineComponent, PropType } from "vue";
-import { Column, List, Medium } from "src/siteTypes";
+import { Column, List, Medium } from "../siteTypes";
 
 export default defineComponent({
     name: "Lists",
