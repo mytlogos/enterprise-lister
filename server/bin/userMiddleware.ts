@@ -70,8 +70,7 @@ export const deleteToc: Handler = (req, res) => {
 
 export const postMergeMedia: Handler = (req, res) => {
     const { sourceId, destinationId } = req.body;
-    if (isInvalidId(sourceId)
-        || isInvalidId(sourceId)) {
+    if (isInvalidId(sourceId) || isInvalidId(destinationId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     } else {

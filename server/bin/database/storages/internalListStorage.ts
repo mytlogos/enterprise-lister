@@ -4,7 +4,7 @@ import {ContextCallback, queryContextProvider} from "./storageTools";
 import {InternalListContext} from "../contexts/internalListContext";
 
 function inContext<T>(callback: ContextCallback<T, InternalListContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).internalListContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).internalListContext, transaction);
 }
 
 export class InternalListStorage {

@@ -20,8 +20,12 @@
       <table class="table">
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Release</th>
+            <th scope="col">
+              Title
+            </th>
+            <th scope="col">
+              Release
+            </th>
           </tr>
         </thead>
         <tbody>

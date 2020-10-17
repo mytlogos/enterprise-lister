@@ -17,7 +17,10 @@
         name="read-state"
         :checked="state === true"
       >
-      <i class="fas fa-check text-success" />
+      <i
+        class="fas fa-check text-success"
+        aria-hidden="true"
+      />
     </label>
     <label
       class="btn btn-secondary"
@@ -31,7 +34,10 @@
        name="read-state"
        :checked="state === false"
      >
-      <i class="fas fa-check" />
+      <i
+        class="fas fa-check"
+        aria-hidden="true"
+      />
     </label>
     <label
       class="btn btn-secondary"
@@ -45,8 +51,14 @@
        name="read-state"
        :checked="state == undefined"
      >
-      <i class="fas fa-check text-success" />
-      <i class="fas fa-check" />
+      <i
+        class="fas fa-check text-success"
+        aria-hidden="true"
+      />
+      <i
+        class="fas fa-check"
+        aria-hidden="true"
+      />
     </label>
   </div>
 </template>

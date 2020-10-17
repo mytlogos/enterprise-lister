@@ -11,7 +11,3 @@ export default defineComponent({
     name: "Home"
 });
 </script>
-
-<style scoped>
-
-</style>

@@ -130,8 +130,8 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string; 
                 newsItem.mediumTitle,
                 newsItem.mediumType,
                 newsItem.mediumTocLink,
-                rawNews.update,
-                value
+                value,
+                rawNews.update
             ));
         }
         await Promise.all(promises);
@@ -144,7 +144,7 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string; 
 };
 
 async function processMediumNews(
-    title: string, type: MediaType, tocLink: string | undefined, update = false, potentialNews: EpisodeNews[]
+    title: string, type: MediaType, tocLink: string | undefined, potentialNews: EpisodeNews[], update = false
 ): Promise<void> {
 
     const likeMedia: MultiSingle<LikeMedium> = await mediumStorage.getLikeMedium({title, type});

@@ -72,7 +72,7 @@ export class InternalListContext extends SubContext {
         };
 
         const result = await this.query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
-        await list.items.push(...result.map((value: any) => value.medium_id));
+        list.items.push(...result.map((value: any) => value.medium_id));
 
         return list;
     }

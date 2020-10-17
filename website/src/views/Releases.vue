@@ -15,11 +15,21 @@
     </div>
     <table class="table table-striped table-hover table-sm">
       <thead class="thead-dark">
-        <th>#</th>
-        <th>Date</th>
-        <th>Chapter</th>
-        <th>Medium</th>
-        <th>Actions</th>
+        <th scope="col">
+          #
+        </th>
+        <th scope="col">
+          Date
+        </th>
+        <th scope="col">
+          Chapter
+        </th>
+        <th scope="col">
+          Medium
+        </th>
+        <th scope="col">
+          Actions
+        </th>
       </thead>
       <tbody>
         <tr
@@ -34,7 +44,10 @@
           </td>
           <td>
             <template v-if="entry.locked">
-              <i class="fas fa-lock" />
+              <i
+                class="fas fa-lock"
+                aria-hidden="true"
+              />
             </template>
             <a
               :href="entry.link"
@@ -58,6 +71,7 @@
             >
               <i
                 class="fas fa-check"
+                aria-hidden="true"
                 :class="{ 'text-success': entry.progress === 1 }"
               />
             </button>
@@ -74,7 +88,10 @@
       aria-atomic="true"
     >
       <div class="toast-header">
-        <i class="fas fa-exclamation-circle rounded mr-2 text-danger" />
+        <i
+          class="fas fa-exclamation-circle rounded mr-2 text-danger"
+          aria-hidden="true"
+        />
         <strong class="mr-auto">Error</strong>
         <button
           type="button"
@@ -96,7 +113,7 @@
 import { DisplayRelease } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient as Client, HttpClient } from "../Httpclient";
-import { binarySearch, timeDifference } from "../init";
+import { timeDifference } from "../init";
 import TripleFilter from "../components/triple-filter.vue"
 import $ from "jquery";
 

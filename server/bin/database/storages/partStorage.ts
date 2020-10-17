@@ -5,7 +5,7 @@ import {PartContext} from "../contexts/partContext";
 import {Query} from "mysql";
 
 function inContext<T>(callback: ContextCallback<T, PartContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).partContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).partContext, transaction);
 }
 
 export class PartStorage {

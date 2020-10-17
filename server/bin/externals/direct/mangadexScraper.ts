@@ -227,7 +227,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
             mediumTitle: currentMedium,
             mediumTocLink: currentMediumLink,
             mediumType: MediaType.IMAGE,
-            episodeTitle: title,
+            episodeTitle,
             episodeIndex: episodeIndices.combi,
             episodeTotalIndex: episodeIndices.total,
             episodePartialIndex: episodeIndices.fraction,

@@ -15,7 +15,7 @@ import {Query} from "mysql";
 
 
 function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).episodeContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).episodeContext, transaction);
 }
 
 export class EpisodeStorage {

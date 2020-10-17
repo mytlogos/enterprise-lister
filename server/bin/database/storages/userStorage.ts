@@ -5,7 +5,7 @@ import {ChangeUser} from "../databaseTypes";
 import {storageInContext} from "./storage";
 
 function inContext<T>(callback: ContextCallback<T, UserContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).userContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).userContext, transaction);
 }
 
 export class UserStorage {

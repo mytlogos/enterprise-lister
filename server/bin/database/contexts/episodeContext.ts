@@ -624,7 +624,7 @@ export class EpisodeContext extends SubContext {
         const insertReleases: EpisodeRelease[] = [];
         // @ts-ignore
         return promiseMultiSingle(episodes, async (episode: SimpleEpisode) => {
-            if (!(episode.partId > 0)) {
+            if (episode.partId == null || episode.partId <= 0) {
                 throw Error("episode without partId");
             }
             let insertId: number | undefined;
@@ -665,7 +665,7 @@ export class EpisodeContext extends SubContext {
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-ignore
                 episode.releases.forEach((value) => value.episodeId = insertId);
-                insertReleases.push(...episode.releases as EpisodeRelease[]);
+                insertReleases.push(...episode.releases);
             }
             return {
                 id: insertId,

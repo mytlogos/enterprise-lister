@@ -280,11 +280,11 @@ class TocLinkedList implements Iterable<Node> {
     }
 
     public [Symbol.iterator](): Iterator<Node> {
-        let node: Node | undefined = this.start as Node;
+        let node: Node | undefined = this.start;
         return {
             next(): IteratorResult<Node> {
                 if (node && node.next) {
-                    node = node.next as Node;
+                    node = node.next;
                     if (node.next) {
                         return {value: node};
                     }
@@ -436,10 +436,10 @@ function externalizeTocPart(internalTocPart: InternalTocPart): TocPart {
 }
 
 export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>): Promise<TocContent[]> {
-    const maybeEpisode = ["ova"];
-    const optionalEpisode = ["xxx special chapter", "other tales", "interlude", "bonus", "SKILL SUMMARY", "CHARACTER INTRODUCTION", "side story", "ss", "intermission", "extra", "omake", /*"oneshot"*/];
-    const start = ["prologue", "prolog"];
-    const end = ["Epilogue", "finale"];
+    // const maybeEpisode = ["ova"];
+    // const optionalEpisode = ["xxx special chapter", "other tales", "interlude", "bonus", "SKILL SUMMARY", "CHARACTER INTRODUCTION", "side story", "ss", "intermission", "extra", "omake", /*"oneshot"*/];
+    // const start = ["prologue", "prolog"];
+    // const end = ["Epilogue", "finale"];
     const contents = new TocLinkedList();
     const scrapeState: TocScrapeState = {
         ascendingCount: 0,
@@ -457,9 +457,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>): 
         volumeMap: new Map<number, InternalTocPart>()
     };
 
-    let entries = 0;
     for await (const tocPiece of pageGenerator) {
-        entries++;
         if (isTocMetaPiece(tocPiece)) {
             scrapeState.tocMeta = {
                 artists: tocPiece.artists,
@@ -488,9 +486,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>): 
     if (scrapeState.hasParts) {
         result = [];
         for (const content of contents) {
-            if (isInternalPart(content)) {
-                result.push(content);
-            } else if (isInternalEpisode(content) && !content.part) {
+            if (isInternalPart(content) || (isInternalEpisode(content) && !content.part)) {
                 result.push(content);
             }
         }
@@ -833,7 +829,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
 
                 if (isPreviousVolume && hasRelativeIndices && !node.relativeIndices && previous && lastVolumeLastEpisode) {
                     let lastEpisode: InternalTocEpisode | undefined;
-                    if (isInternalPart(previous) && lastVolumeLastEpisode) {
+                    if (isInternalPart(previous)) {
                         lastEpisode = lastVolumeLastEpisode;
                     } else if (isInternalEpisode(previous)) {
                         lastEpisode = previous;

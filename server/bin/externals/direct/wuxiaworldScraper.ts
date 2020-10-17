@@ -207,9 +207,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (occurrence.size) {
         let maxEntry;
         for (const entry of occurrence.entries()) {
-            if (!maxEntry) {
-                maxEntry = entry;
-            } else if (maxEntry[1] < entry[1]) {
+            if (!maxEntry || (maxEntry[1] < entry[1])) {
                 maxEntry = entry;
             }
         }

@@ -14,9 +14,15 @@
     </div>
     <table class="table">
       <thead class="thead-dark">
-        <th>Title</th>
-        <th>Type</th>
-        <th>Author</th>
+        <th scope="col">
+          Title
+        </th>
+        <th scope="col">
+          Type
+        </th>
+        <th scope="col">
+          Author
+        </th>
       </thead>
       <tbody>
         <tr 
@@ -92,7 +98,3 @@ export default defineComponent({
     }
 });
 </script>
-
-<style>
-
-</style>

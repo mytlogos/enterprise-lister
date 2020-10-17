@@ -53,12 +53,15 @@
     <table class="table">
       <thead>
         <tr>
-          <th>No.</th>
+          <th scope="col">
+            No.
+          </th>
           <th
             v-for="column in columns"
             v-show="column.show"
             :key="column"
             :class="{ active: sortProp === column.prop }"
+            scope="col"
             @click="sortBy(column.prop)"
           >
             {{ column.name }}

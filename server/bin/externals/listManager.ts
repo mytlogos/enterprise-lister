@@ -386,7 +386,7 @@ class NovelUpdates implements ListManager {
         const lang = $("#showlang").text().trim();
         const authors = $("#showauthors a");
         const artists = $("#showartists a");
-        const statusCOO = $("#editstatus").text().trim();
+        // const statusCOO = $("#editstatus").text().trim();
 
         medium.synonyms = [];
 
@@ -397,6 +397,7 @@ class NovelUpdates implements ListManager {
 
         medium.langCOO = lang;
         medium.langTL = "English";
+        // TODO: parse statusCOO to ReleaseState
         // medium.statusCOO = statusCOO;
 
         if (authors.length) {
@@ -444,16 +445,17 @@ class NovelUpdates implements ListManager {
     public parseAndReplaceCookies(cookies?: string): void {
         // @ts-ignore
         this.jar = cookies ? CookieJar.fromJSON(cookies) : new CookieJar();
-        const notUsed = {
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-            "accept-encoding": "gzip, deflate, br",
-            "accept-language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
-            "cache-control": "no-cache",
-            "pragma": "no-cache",
-            "upgrade-insecure-requests": "1",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36",
-        };
+        // TODO: remove this code when it is certainly unneeded
+        // const notUsed = {
+        //     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+        //     "accept-encoding": "gzip, deflate, br",
+        //     "accept-language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
+        //     "cache-control": "no-cache",
+        //     "pragma": "no-cache",
+        //     "upgrade-insecure-requests": "1",
+        //     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        //         "(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36",
+        // };
         this.defaults = request.defaults({
             jar: request.jar(this.jar.store),
             simple: false,

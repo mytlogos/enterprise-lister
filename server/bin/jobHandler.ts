@@ -480,7 +480,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
     const currentLikeMedia: LikeMedium[] = await mediumStorage.getLikeMedium(likeMedia);
 
     const foundLikeMedia: LikeMedium[] = [];
-    const updateMediaPromises = [];
+    const updateMediaPromises: Array<Promise<void>> = [];
 
     // filter out the media which were found in the storage, leaving only the new ones
     const newMedia = media.filter((value) => {
@@ -537,6 +537,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
                         };
                     });
             }));
+        await Promise.all(updateMediaPromises);
     } catch (e) {
         logger.error(e);
         return [];

@@ -6,7 +6,7 @@ import {MediumInWaitContext} from "../contexts/mediumInWaitContext";
 
 
 function inContext<T>(callback: ContextCallback<T, MediumInWaitContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).mediumInWaitContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).mediumInWaitContext, transaction);
 }
 
 export class MediumInWaitStorage {

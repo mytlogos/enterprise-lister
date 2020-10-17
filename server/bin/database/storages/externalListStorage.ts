@@ -5,7 +5,7 @@ import {ExternalListContext} from "../contexts/externalListContext";
 
 
 function inContext<T>(callback: ContextCallback<T, ExternalListContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).externalListContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).externalListContext, transaction);
 }
 
 export class ExternalListStorage {

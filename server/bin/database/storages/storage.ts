@@ -22,7 +22,7 @@ import {EpisodeStorage} from "./episodeStorage";
 import {PartStorage} from "./partStorage";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con));
+    return storageInContext(callback, (con) => queryContextProvider(con), transaction);
 }
 
 /**
@@ -31,8 +31,8 @@ function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = 
  */
 export async function storageInContext<T, C extends ConnectionContext>(
     callback: ContextCallback<T, C>,
-    transaction = true,
-    provider: ContextProvider<C>
+    provider: ContextProvider<C>,
+    transaction = true
 ): Promise<T> {
     if (!running) {
         // if inContext is called without Storage being active
@@ -63,7 +63,7 @@ export async function storageInContext<T, C extends ConnectionContext>(
             });
         } else {
             // release connection into the pool
-            await pool.releaseConnection(con);
+            pool.releaseConnection(con);
         }
     }
     return result;
@@ -84,7 +84,7 @@ async function catchTransactionError<T, C extends ConnectionContext>(
     // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
     if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
         await delay(500);
-        return doTransaction(callback, context, transaction, ++attempts);
+        return doTransaction(callback, context, transaction, attempts + 1);
     } else {
         // if it isn't an deadlock error, or still an deadlock after five attempts, rethrow error
         throw e;

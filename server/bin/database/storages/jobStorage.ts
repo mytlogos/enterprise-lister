@@ -4,7 +4,7 @@ import {ContextCallback, queryContextProvider} from "./storageTools";
 import {JobContext} from "../contexts/jobContext";
 
 function inContext<T>(callback: ContextCallback<T, JobContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).jobContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).jobContext, transaction);
 }
 
 export class JobStorage {

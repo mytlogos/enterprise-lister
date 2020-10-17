@@ -89,16 +89,16 @@ async function readCase(path) {
  * @return {Promise<void>}
  */
 async function testCase(casePath) {
-    const testCase = await readCase(casePath);
+    const caseData = await readCase(casePath);
 
     /**
      * @type {TocGenerator}
      */
     let generator;
-    if (testCase.domain === "novelfull") {
-        generator = novelfullGenerator(testCase.pages);
+    if (caseData.domain === "novelfull") {
+        generator = novelfullGenerator(caseData.pages);
     } else {
-        throw Error(`no known generator for domain ${testCase.domain}`);
+        throw Error(`no known generator for domain ${caseData.domain}`);
     }
 
     const contents = await directTools.scrapeToc(generator);
@@ -114,13 +114,13 @@ async function testCase(casePath) {
             content.episodes.should.be.an("array");
 
             for (const episode of content.episodes) {
-                testCase.hasParts.should.not.equal(false);
+                caseData.hasParts.should.not.equal(false);
                 episode.should.have.property("title");
                 episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
                 episode.combiIndex.should.be.at.least(currentEpisodeIndex);
                 episode.should.have.property("url");
 
-                if (!testCase.hasLocked) {
+                if (!caseData.hasLocked) {
                     episode.should.have.property("locked", false);
                 } else {
                     // TODO check that it is either true/false?
@@ -135,7 +135,7 @@ async function testCase(casePath) {
             content.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
             content.should.have.property("url");
 
-            if (!testCase.hasLocked) {
+            if (!caseData.hasLocked) {
                 content.should.have.property("locked", false);
             } else {
                 // TODO check that it is either true/false?
@@ -145,8 +145,8 @@ async function testCase(casePath) {
             currentEpisodeIndex = content.combiIndex;
         }
     }
-    currentEpisodeIndex.should.equal(testCase.lastIndex);
-    episodesCount.should.equal(testCase.numberEpisodes);
+    currentEpisodeIndex.should.equal(caseData.lastIndex);
+    episodesCount.should.equal(caseData.numberEpisodes);
 }
 
 describe("testing scrapeToc", () => {
@@ -2523,8 +2523,8 @@ describe("testing scrapeToc", () => {
                 };
                 yield tocMeta;
 
-                for (let i = 0; i < items.length; i++) {
-                    const newsRow = items.eq(i);
+                for (let j = 0; j < items.length; j++) {
+                    const newsRow = items.eq(j);
                     const link = newsRow.attr("href");
                     const episodeTitle = tools.sanitizeString(newsRow.text());
                     yield {title: episodeTitle, url: link, releaseDate: now};
@@ -2592,8 +2592,8 @@ describe("testing scrapeToc", () => {
                 };
                 yield tocMeta;
 
-                for (let i = 0; i < items.length; i++) {
-                    const newsRow = items.eq(i);
+                for (let j = 0; j < items.length; j++) {
+                    const newsRow = items.eq(j);
                     const link = newsRow.attr("href");
                     const episodeTitle = tools.sanitizeString(newsRow.text());
                     yield {title: episodeTitle, url: link, releaseDate: now};
@@ -2665,8 +2665,8 @@ describe("testing scrapeToc", () => {
                     tocYielded = true;
                 }
 
-                for (let i = 0; i < items.length; i++) {
-                    const newsRow = items.eq(i);
+                for (let j = 0; j < items.length; j++) {
+                    const newsRow = items.eq(j);
                     const link = newsRow.attr("href");
                     const episodeTitle = tools.sanitizeString(newsRow.text());
                     yield {title: episodeTitle, url: link, releaseDate: now};
@@ -2738,8 +2738,8 @@ describe("testing scrapeToc", () => {
                     tocYielded = true;
                 }
 
-                for (let i = 0; i < items.length; i++) {
-                    const newsRow = items.eq(i);
+                for (let j = 0; j < items.length; j++) {
+                    const newsRow = items.eq(j);
                     const link = newsRow.attr("href");
                     const episodeTitle = tools.sanitizeString(newsRow.text());
                     yield {title: episodeTitle, url: link, releaseDate: now};
@@ -2812,8 +2812,8 @@ describe("testing scrapeToc", () => {
                     tocYielded = true;
                 }
 
-                for (let i = 0; i < items.length; i++) {
-                    const newsRow = items.eq(i);
+                for (let j = 0; j < items.length; j++) {
+                    const newsRow = items.eq(j);
                     const link = newsRow.attr("href");
                     const episodeTitle = tools.sanitizeString(newsRow.text());
                     yield {title: episodeTitle, url: link, releaseDate: now};

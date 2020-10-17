@@ -4,10 +4,18 @@
     <h1>Releases</h1>
     <table class="table table-striped table-hover table-sm">
       <thead class="thead-dark">
-        <th>#</th>
-        <th>Date</th>
-        <th>Chapter</th>
-        <th>Actions</th>
+        <th scope="col">
+          #
+        </th>
+        <th scope="col">
+          Date
+        </th>
+        <th scope="col">
+          Chapter
+        </th>
+        <th scope="col">
+          Actions
+        </th>
       </thead>
       <tbody>
         <tr
@@ -22,7 +30,10 @@
           </td>
           <td>
             <template v-if="entry.locked">
-              <i class="fas fa-lock" />
+              <i
+                class="fas fa-lock"
+                aria-hidden="true"
+              />
             </template>
             <a
               :href="entry.link"
@@ -57,7 +68,10 @@
       aria-atomic="true"
     >
       <div class="toast-header">
-        <i class="fas fa-exclamation-circle rounded mr-2 text-danger" />
+        <i
+          class="fas fa-exclamation-circle rounded mr-2 text-danger"
+          aria-hidden="true"
+        />
         <strong class="mr-auto">Error</strong>
         <button
           type="button"
@@ -161,7 +175,3 @@ export default defineComponent({
     }
 });
 </script>
-
-<style scoped>
-
-</style>

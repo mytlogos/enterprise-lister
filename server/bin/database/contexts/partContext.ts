@@ -111,31 +111,24 @@ export class PartContext extends SubContext {
      * Returns all parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    public async getMediumPartsPerIndex(mediumId: number, index: MultiSingle<number>): Promise<MinPart[]> {
+    public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: MultiSingle<number>): Promise<MinPart[]> {
         const parts: any[] | undefined = await this.queryInList(
             "SELECT * FROM part " +
             `WHERE medium_id = ${mySql.escape(mediumId)} AND combiIndex `,
-            index
+            partCombiIndex
         );
         if (!parts || !parts.length) {
             return [];
         }
-        const partIdMap = new Map<number, Part>();
-        const indexMap = new Map<number, boolean>();
-        parts.forEach((value) => {
-            partIdMap.set(value.id, value);
-            indexMap.set(value.combiIndex, true);
-        });
 
         // @ts-ignore
-        multiSingle(index, (value: number) => {
-            if (parts.every((part) => part.combiIndex !== value)) {
-                const separateValue = separateIndex(value);
+        multiSingle(partCombiIndex, (combinedIndex: number) => {
+            if (parts.every((part) => part.combiIndex !== combinedIndex)) {
+                const separateValue = separateIndex(combinedIndex);
                 parts.push(separateValue);
             }
         });
 
-        // @ts-ignore
         return parts.map((value): MinPart => {
             return {
                 id: value.id,

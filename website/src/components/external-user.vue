@@ -9,9 +9,16 @@
     <table>
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Host</th>
-          <th class="action">
+          <th scope="col">
+            Name
+          </th>
+          <th scope="col">
+            Host
+          </th>
+          <th
+            class="action"
+            scope="col"
+          >
             Actions
           </th>
         </tr>

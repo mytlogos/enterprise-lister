@@ -275,6 +275,7 @@ export class JobScraperManager {
             }
         }
         if (invalidJobs.length) {
+            // TODO: what to do with these variables?
             const identifier = [];
             const removeJobs: JobItem[] = [];
             const updateJobs = invalidJobs.filter((value) => {

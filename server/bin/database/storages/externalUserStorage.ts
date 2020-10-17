@@ -5,7 +5,7 @@ import {ExternalUserContext} from "../contexts/externalUserContext";
 import {Query} from "mysql";
 
 function inContext<T>(callback: ContextCallback<T, ExternalUserContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).externalUserContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).externalUserContext, transaction);
 }
 
 export class ExternalUserStorage {

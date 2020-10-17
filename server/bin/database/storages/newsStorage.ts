@@ -5,7 +5,7 @@ import {NewsContext} from "../contexts/newsContext";
 import {NewsItemRequest} from "../databaseTypes";
 
 function inContext<T>(callback: ContextCallback<T, NewsContext>, transaction = true) {
-    return storageInContext(callback, transaction, (con) => queryContextProvider(con).newsContext);
+    return storageInContext(callback, (con) => queryContextProvider(con).newsContext, transaction);
 }
 
 export class NewsStorage {
