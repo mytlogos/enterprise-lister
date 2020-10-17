@@ -17,8 +17,7 @@ pipeline {
 
         stage('lint server') {
           steps {
-            sh '''npx eslint -c server/.eslintrc.js server/bin/
-'''
+            sh '''npx eslint -c server/.eslintrc.js server/bin/'''
           }
         }
 
@@ -42,6 +41,18 @@ pipeline {
       }
     }
 
+    stage('release') {
+      environment {
+        GH_TOKEN = credentials('e2d21e2c-c919-4137-9355-21e4602a862e')
+      }
+      steps {
+        // package the dist directories each in a tar
+        sh 'tar -cvf website/website-tar.tar website/dist/'
+        sh 'tar -cvf server/server-tar.tar server/dist/'
+        // release new version and publish the tars on github
+        sh 'npx semantic-release'
+      }
+    }
   }
   tools {
     nodejs 'node'
