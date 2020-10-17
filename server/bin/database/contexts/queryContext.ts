@@ -110,7 +110,7 @@ export class QueryContext implements ConnectionContext {
             : (this._mediumInWaitContext = new MediumInWaitContext(this));
     }
 
-    constructor(con: Connection) {
+    public constructor(con: Connection) {
         this.con = con;
     }
 
@@ -169,7 +169,7 @@ export class QueryContext implements ConnectionContext {
             if (resultArray[0] && resultArray[0].episode_id != null) {
                 return null;
             }
-            // todo implement
+            // TODO implement
             return value;
         });
     }
@@ -185,12 +185,12 @@ export class QueryContext implements ConnectionContext {
             }
             // if there is a title, search a medium which matches
 
-            // todo implement
+            // TODO implement
             return value;
         });
     }
 
-    public async getPageInfo(link: string, key: string): Promise<{ link: string, key: string, values: string[] }> {
+    public async getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
         if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
@@ -281,7 +281,7 @@ export class QueryContext implements ConnectionContext {
         });
     }
 
-    public clearInvalidationTable() {
+    public clearInvalidationTable(): Promise<void> {
         return this.query("TRUNCATE user_data_invalidation");
     }
 
@@ -308,7 +308,7 @@ export class QueryContext implements ConnectionContext {
      * Deletes one or multiple entries from one specific table,
      * with only one conditional.
      */
-    public async delete(table: string, ...condition: Array<{ column: string, value: any }>): Promise<boolean> {
+    public async delete(table: string, ...condition: Array<{ column: string; value: any }>): Promise<boolean> {
         if (!condition || (Array.isArray(condition) && !condition.length)) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -333,7 +333,7 @@ export class QueryContext implements ConnectionContext {
     /**
      * Updates data from the storage.
      */
-    public async update(table: string, cb: UpdateCallback, ...condition: Array<{ column: string, value: any }>)
+    public async update(table: string, cb: UpdateCallback, ...condition: Array<{ column: string; value: any }>)
         : Promise<boolean> {
 
         if (!condition || (Array.isArray(condition) && !condition.length)) {
@@ -549,7 +549,7 @@ export class QueryContext implements ConnectionContext {
             "SELECT uuid, id FROM external_user LEFT JOIN external_reading_list ON uuid=user_uuid WHERE local_uuid=?",
             uuid
         );
-        const tocPromise: Promise<Array<{ medium_id: number, count: number }>> = this.query(
+        const tocPromise: Promise<Array<{ medium_id: number; count: number }>> = this.query(
             "SELECT medium_id, count(link) as count FROM medium_toc GROUP BY medium_id;"
         );
 
@@ -613,7 +613,7 @@ export class QueryContext implements ConnectionContext {
 
     // noinspection JSMethodCanBeStatic
     private async _batchFunction<T>(value: T[], query: string, paramCallback: ParamCallback<T> | undefined,
-                                    func:
+        func:
                                         (query: string, values: T[], paramCallback?: ParamCallback<T>) => Promise<any[]>
     ): Promise<any[]> {
 

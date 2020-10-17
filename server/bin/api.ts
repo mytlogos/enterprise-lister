@@ -6,7 +6,7 @@ import {NextFunction} from "express-serve-static-core";
  *  Returns the Router for the User Api.
  *  @return {Router} user api router
  */
-export function apiRouter() {
+export function apiRouter(): Router {
     const router = Router();
     // check if an user is logged in for ip
     router.get("", UserApi.checkLogin);
@@ -127,6 +127,7 @@ function mediumRouter(): Router {
     router.get("/unused", UserApi.getUnusedMedia);
     router.get("/all", UserApi.getAllMedia);
     router.get("/allFull", UserApi.getAllMediaFull);
+    router.get("/releases", UserApi.getMediumReleases);
     router.put("/unused", UserApi.putConsumeUnusedMedia);
     router.post("/create", UserApi.postCreateFromUnusedMedia);
     router.post("/split", UserApi.postSplitMedium);
@@ -152,6 +153,7 @@ function episodeRouter() {
     const router = Router();
     router.get("/all", UserApi.getAllEpisodes);
     router.get("/releases/all", UserApi.getAllReleases);
+    router.get("/releases/display", UserApi.getDisplayReleases);
 
     const episodeRoute = router.route("");
     episodeRoute.get(UserApi.getEpisode);

@@ -102,38 +102,42 @@ export class SchemaManager {
             throw Error("database version is smaller in code than in database");
         }
 
-        const migrations: Migration[] = [];
-        let lastMigrationVersion = previousVersion;
-        let directMigration = null;
+        if (previousVersion === 0) {
+            logger.info("Created Database Content from Scratch, no Migration necessary");
+        } else {
+            const migrations: Migration[] = [];
+            let lastMigrationVersion = previousVersion;
+            let directMigration = null;
 
-        while (lastMigrationVersion < currentVersion) {
-            let foundMigration = false;
-            for (const migration of this.migrations) {
-                if (migration.fromVersion === previousVersion && migration.toVersion === currentVersion) {
-                    directMigration = migration;
+            while (lastMigrationVersion < currentVersion) {
+                let foundMigration = false;
+                for (const migration of this.migrations) {
+                    if (migration.fromVersion === previousVersion && migration.toVersion === currentVersion) {
+                        directMigration = migration;
+                        break;
+                    } else if (migration.fromVersion === lastMigrationVersion) {
+                        lastMigrationVersion = migration.toVersion;
+                        migrations.push(migration);
+                        foundMigration = true;
+                    }
+                }
+                if (directMigration) {
                     break;
-                } else if (migration.fromVersion === lastMigrationVersion) {
-                    lastMigrationVersion = migration.toVersion;
-                    migrations.push(migration);
-                    foundMigration = true;
+                }
+                if (!foundMigration) {
+                    throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
                 }
             }
-            if (directMigration) {
-                break;
-            }
-            if (!foundMigration) {
+            if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
                 throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
             }
-        }
-        if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
-            throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
-        }
-        logger.info(`Starting Migration of Storage from ${previousVersion} to ${currentVersion}`);
-        if (directMigration) {
-            await directMigration.migrate(context);
-        } else {
-            for (const migration of migrations) {
-                await migration.migrate(context);
+            logger.info(`Starting Migration of Storage from ${previousVersion} to ${currentVersion}`);
+            if (directMigration) {
+                await directMigration.migrate(context);
+            } else {
+                for (const migration of migrations) {
+                    await migration.migrate(context);
+                }
             }
         }
         // FIXME: 10.08.2019 inserting new database version does not seem to work

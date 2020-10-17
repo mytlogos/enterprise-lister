@@ -39,10 +39,8 @@ node_modules/
 exampleData/
 binJs/
 tests/api_requests
-tests/results
-tests/trash
+ignore/
 changes.md
-features.md
 env.env
 *.uxf
 *test*.js
@@ -99,3 +97,8 @@ src/**/*.vue.js.map
 *.bat
 *.gz
 /server/bin/ignore/
+/server/dist/
+/website/dist/
+
+# vscode project files
+.vscode

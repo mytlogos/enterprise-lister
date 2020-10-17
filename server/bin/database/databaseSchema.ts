@@ -1,7 +1,7 @@
 import {DataBaseBuilder} from "./databaseBuilder";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder("enterprise", 9);
+const dataBaseBuilder = new DataBaseBuilder("enterprise", 10);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")
@@ -116,7 +116,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("medium INT NOT NULL")
     .parseColumn("link VARCHAR(767) NOT NULL")
     .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-    .parseMeta("PRIMARY KEY(title, medium, link)")
+    .parseMeta("PRIMARY KEY(title, medium, link(500))")
     .build();
 
 dataBaseBuilder.getTableBuilder()
@@ -172,6 +172,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("url VARCHAR(767) NOT NULL")
     .parseColumn("source_type VARCHAR(200)")
     .parseColumn("releaseDate DATETIME NOT NULL")
+    .parseColumn("locked BOOLEAN DEFAULT 0")
     .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     .parseMeta("PRIMARY KEY(episode_id, url)")
     .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
@@ -239,7 +240,7 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("startIndex INT UNSIGNED NOT NULL")
     .parseColumn("endIndex INT UNSIGNED NOT NULL")
     .parseColumn("fieldKey INT UNSIGNED NOT NULL")
-    .parseMeta("PRIMARY KEY (link, replaced(367), startIndex, endIndex)")
+    .parseMeta("PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)")
     .build();
 
 dataBaseBuilder.getTableBuilder()

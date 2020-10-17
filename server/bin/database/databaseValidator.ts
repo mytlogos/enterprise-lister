@@ -315,7 +315,7 @@ const DeleteParser: Parser = {
     }
 };
 
-// fixme all parser cannot parse escaped id´s and values
+// FIXME all parser cannot parse escaped id´s and values
 
 interface ColumnTarget<T> {
     value: any;
@@ -325,8 +325,8 @@ interface ColumnTarget<T> {
 type ColumnConverter = (query: Query, triggeredColumn: ColumnTarget<ColumnSchema>) => ColumnTarget<string>;
 
 function createTrigger(watchTable: TableSchema, targetTable: TableSchema, invalidationTable: TableSchema,
-                       mainPrimaryKey: string, columnConverter: ColumnConverter,
-                       triggerType: InvalidationType): Trigger {
+    mainPrimaryKey: string, columnConverter: ColumnConverter,
+    triggerType: InvalidationType): Trigger {
     if (targetTable.primaryKeys.length !== 1) {
         throw Error("targeted table does not has exact one primary key");
     }
@@ -375,7 +375,7 @@ function createTrigger(watchTable: TableSchema, targetTable: TableSchema, invali
 
 const queryTableReg = /((select .+? from)|(update )|(delete.+?from)|(insert.+?into )|(.+?join))\s*(\w+)/gi;
 const queryColumnReg = /(((\w+\.)?(\w+))|\?)\s*(like|is|=|<|>|<>|<=|>=)\s*(((\w+\.)?(\w+))|\?)/gi;
-const counter = new Counter();
+const counter = new Counter<string>();
 const StateProcessorImpl: StateProcessorImpl = {
     databaseName: "",
     workingPromise: Promise.resolve(),
@@ -460,7 +460,7 @@ const StateProcessorImpl: StateProcessorImpl = {
             }
 
             if (!columnSchema) {
-                // todo look into why he cant find it
+                // TODO look into why he cant find it
                 logger.silly(`Unknown Column: '${columnName}', no reference found in query: '${query}'`);
                 return;
             }
@@ -605,7 +605,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         const primaryKey = mainTable.primaryKeys[0];
         const mainPrimaryKey = primaryKey.name;
 
-        // todo inline this function to create trigger?
+        // TODO inline this function to create trigger?
         const columnConverter: ColumnConverter = (query, triggeredColumn) => {
             let value = triggeredColumn.value;
 

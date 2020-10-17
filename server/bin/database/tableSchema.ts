@@ -1,4 +1,4 @@
-import {ColumnType, InvalidationType} from "./databaseTypes";
+import {InvalidationType} from "./databaseTypes";
 import {ColumnSchema} from "./columnSchema";
 
 export class TableSchema {
@@ -6,14 +6,14 @@ export class TableSchema {
     public readonly foreignKeys: ColumnSchema[];
     public readonly primaryKeys: ColumnSchema[];
     public readonly name: string;
-    public readonly invalidations: Array<{ type: InvalidationType, table: TableSchema }> = [];
+    public readonly invalidations: Array<{ type: InvalidationType; table: TableSchema }> = [];
     public readonly main: boolean;
     public readonly invalidationColumn?: string;
     public readonly invalidationTable: boolean;
     public readonly uniqueIndices: ColumnSchema[][];
     public mainDependent?: boolean;
 
-    constructor(
+    public constructor(
         columns: ColumnSchema[], name: string, main = false, invalidationCol?: string,
         invalidTable = false, uniqueIndices: ColumnSchema[][] = []) {
 
@@ -27,7 +27,7 @@ export class TableSchema {
         this.invalidationTable = invalidTable;
     }
 
-    public getTableSchema(): { name: string, columns: string[] } {
+    public getTableSchema(): { name: string; columns: string[] } {
         const schemata: string[] = [];
         if (this.columns.length) {
             schemata.push(...this.columns.map((value) => value.getSchema()));
@@ -48,14 +48,14 @@ export class TableSchema {
 
             if (this.primaryKeys.length) {
                 schemata.push("PRIMARY KEY(" + this.primaryKeys
-                        .map((value) => {
-                            if (value.type === ColumnType.TEXT) {
-                                return value.name + "(" + value.primaryKeyTypeSize + ")";
-                            } else {
-                                return value.name;
-                            }
-                        })
-                        .join(", ")
+                    .map((value) => {
+                        if (value.primaryKeyTypeSize != null) {
+                            return value.name + "(" + value.primaryKeyTypeSize + ")";
+                        } else {
+                            return value.name;
+                        }
+                    })
+                    .join(", ")
                     + ")");
             }
 
@@ -63,7 +63,7 @@ export class TableSchema {
                 schemata.push(...this.uniqueIndices.map((uniqueIndex) => {
                     return "UNIQUE(" +
                         uniqueIndex.map((value) => {
-                            if (value.type === ColumnType.TEXT) {
+                            if (value.primaryKeyTypeSize != null) {
                                 return value.name + "(" + value.primaryKeyTypeSize + ")";
                             } else {
                                 return value.name;

@@ -22,7 +22,7 @@ const initPromise = queueRequest(
     defaultRequest
 ).then(ignore);
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.webnovel.com/";
     const $ = await queueCheerioRequest(uri);
     const newsRows = $("#LatUpdate tbody > tr");
@@ -79,7 +79,8 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             episodeIndex: index,
             episodeTotalIndex: index,
             date: time,
-            link
+            link,
+            locked: true
         });
     }
     return {episodes: news};
@@ -234,6 +235,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
         logger.warn("episode link with no content: " + urlString);
         return [];
     }
+    // FIXME never returns any content
     return [episodeContent];
 }
 

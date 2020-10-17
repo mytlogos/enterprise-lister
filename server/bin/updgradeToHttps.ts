@@ -49,7 +49,7 @@ async function updateReleaseProtocol(domainReg: RegExp, toc: Toc, values: Toc[])
     const deleteReleases = [];
     const updateToHttpsReleases = [];
 
-    for (const [episodeId, releases] of episodeMap.entries()) {
+    for (const [, releases] of episodeMap.entries()) {
         if (releases.length > 1) {
             let hasHttps = false;
             const nonHttpsReleases = [];
@@ -82,7 +82,7 @@ async function updateHttps(): Promise<Change> {
     jobItems.push(...await storage.jobStorage.getJobsInState(JobState.RUNNING));
     const allTocs: Array<{ link: string; id: number }> = await storage.mediumStorage.getAllTocs();
 
-    const tocMap: Map<string, Array<{ link: string, id: number }>> = new Map();
+    const tocMap: Map<string, Array<{ link: string; id: number }>> = new Map();
     const regExp = /https?:\/\/(.+)/;
     const domainReg = /https?:\/\/(.+?)(\/|$)/;
 
@@ -90,8 +90,8 @@ async function updateHttps(): Promise<Change> {
     const addJobs: JobItem[] = [];
     const addReleases: EpisodeRelease[] = [];
     const removeReleases: EpisodeRelease[] = [];
-    const removeTocs: Array<{ link: string, id: number }> = [];
-    const addTocs: Array<{ link: string, id: number }> = [];
+    const removeTocs: Array<{ link: string; id: number }> = [];
+    const addTocs: Array<{ link: string; id: number }> = [];
 
     for (const toc of allTocs) {
         const match = regExp.exec(toc.link);
@@ -106,7 +106,7 @@ async function updateHttps(): Promise<Change> {
         }
         tocs.push(toc);
     }
-    for (const [key, values] of tocMap.entries()) {
+    for (const [, values] of tocMap.entries()) {
         if (values.length > 1) {
             const httpsToc = values.find((value) => value.link.startsWith("https"));
             if (httpsToc) {

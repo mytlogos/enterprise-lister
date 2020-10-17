@@ -11,6 +11,7 @@ import {
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {EpisodeContext} from "../contexts/episodeContext";
+import {Query} from "mysql";
 
 
 function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction = true) {
@@ -18,12 +19,20 @@ function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction 
 }
 
 export class EpisodeStorage {
-    public getAll(uuid: any): Promise<any> {
+    public getAll(uuid: string): Promise<Query> {
         return inContext((context) => context.getAll(uuid));
     }
 
-    public getAllReleases(): Promise<any> {
+    public getAllReleases(): Promise<Query> {
         return inContext((context) => context.getAllReleases());
+    }
+
+    public getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: string): Promise<any> {
+        return inContext((context) => context.getDisplayReleases(latestDate, untilDate, read, uuid));
+    }
+
+    public getMediumReleases(mediumId: number, uuid: string): Promise<any> {
+        return inContext((context) => context.getMediumReleases(mediumId, uuid));
     }
 
     /**
@@ -47,7 +56,7 @@ export class EpisodeStorage {
         return inContext((context) => context.getAllChapterLinks(mediumId));
     }
 
-    public getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number, episodes: number[] }>> {
+    public getPartsEpisodeIndices(partId: number | number[]): Promise<Array<{ partId: number; episodes: number[] }>> {
         return inContext((context) => context.getPartsEpisodeIndices(partId));
     }
 
@@ -68,7 +77,7 @@ export class EpisodeStorage {
         return inContext((context) => context.updateEpisode(episode));
     }
 
-    public moveEpisodeToPart(oldPartId: number, newPartId: number) {
+    public moveEpisodeToPart(oldPartId: number, newPartId: number): Promise<boolean> {
         return inContext((context) => context.moveEpisodeToPart(oldPartId, newPartId));
     }
 
@@ -131,7 +140,7 @@ export class EpisodeStorage {
     }
 
     public getSourcedReleases(sourceType: string, mediumId: number):
-        Promise<Array<{ sourceType: string, url: string, title: string, mediumId: number }>> {
+        Promise<Array<{ sourceType: string; url: string; title: string; mediumId: number }>> {
         return inContext((context) => context.getSourcedReleases(sourceType, mediumId));
     }
 
@@ -157,6 +166,7 @@ export class EpisodeStorage {
 
     /**
      * Add progress of an user in regard to an episode to the storage.
+     * Returns always true if it succeeded (no error).
      */
     // tslint:disable-next-line
     public addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean> {

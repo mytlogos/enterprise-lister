@@ -1,8 +1,8 @@
-export class Counter {
-    private map = new Map<any, number>();
-    private ignoreKeys: any[] = [];
+export class Counter<K> {
+    private map = new Map<K, number>();
+    private ignoreKeys: K[] = [];
 
-    public count(key: any): number {
+    public count(key: K): number {
         const previous = this.map.get(key);
         if (this.ignoreKeys.includes(key)) {
             return previous || 0;
@@ -12,7 +12,7 @@ export class Counter {
         return current;
     }
 
-    public countDown(key: any): number {
+    public countDown(key: K): number {
         const previous = this.map.get(key);
         if (this.ignoreKeys.includes(key)) {
             return previous || 0;
@@ -22,15 +22,15 @@ export class Counter {
         return current;
     }
 
-    public isIgnored(key: any): boolean {
+    public isIgnored(key: K): boolean {
         return this.ignoreKeys.includes(key);
     }
 
-    public ignore(key: any): void {
+    public ignore(key: K): void {
         this.ignoreKeys.push(key);
     }
 
-    public unIgnore(key: any): void {
+    public unIgnore(key: K): void {
         const index = this.ignoreKeys.findIndex((value) => value === key);
 
         if (index >= 0) {
@@ -38,7 +38,7 @@ export class Counter {
         }
     }
 
-    public getCount(key: any): number {
+    public getCount(key: K): number {
         const previous = this.map.get(key);
         return previous ? previous : 0;
     }

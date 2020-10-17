@@ -62,7 +62,7 @@ export class PartStorage {
     /**
      * Returns a Map of Parts with all of their Releases.
      */
-    public getPartReleases(partsId: number[]): Promise<{ [key: number]: Array<{ id: number, url: string }> }> {
+    public getPartReleases(partsId: number[]): Promise<{ [key: number]: Array<{ id: number; url: string }> }> {
         // @ts-ignore
         return inContext((context) => context.getPartReleases(partsId));
     }

@@ -45,7 +45,7 @@ export class UserContext extends SubContext {
         if (!userName || !password) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        const user = await this.query(`SELECT * FROM user WHERE name = ?;`, userName);
+        const user = await this.query("SELECT * FROM user WHERE name = ?;", userName);
         // if there is a result in array, userName is not new, so abort
         if (user.length) {
             return Promise.reject(new Error(Errors.USER_EXISTS_ALREADY));
@@ -89,7 +89,7 @@ export class UserContext extends SubContext {
         const uuid = user.uuid;
 
         if (!await verifyPassword(password, user.password, user.alg, user.salt)) {
-            return Promise.reject(new Error(Errors.INVALID_INPUT));
+            return Promise.reject(new Error(Errors.INVALID_CREDENTIALS));
         }
         // if there exists a session already for that device, remove it
         await this.delete("user_log", {column: "ip", value: ip});
@@ -179,7 +179,7 @@ export class UserContext extends SubContext {
      * Is irreversible.
      */
     public async deleteUser(uuid: string): Promise<boolean> {
-        // todo delete all associated data
+        // TODO delete all associated data
         // remove in sequence:
         // user_log => list_medium => reading_list
         // => external_list_medium => external_reading_list
@@ -222,7 +222,7 @@ export class UserContext extends SubContext {
         await this.delete("user_episode", {column: "user_uuid", value: uuid});
 
         // delete user itself
-        // todo check if delete was successful, what if not?
+        // TODO check if delete was successful, what if not?
         //  in case the deletion was unsuccessful, just 'ban' any further access to that account
         //  and delete it manually?
         return this.delete("user", {column: "uuid", value: uuid});
@@ -235,10 +235,12 @@ export class UserContext extends SubContext {
      * Returns a boolean whether data was updated or not.
      */
     public async updateUser(uuid: string,
-                            user: { name?: string, newPassword?: string, password?: string }): Promise<boolean> {
+        user: { name?: string; newPassword?: string; password?: string }): Promise<boolean> {
 
         if (user.newPassword && user.password) {
-            await this.verifyPassword(uuid, user.password);
+            if (!await this.verifyPassword(uuid, user.password)) {
+                throw Error(Errors.INVALID_CREDENTIALS);
+            }
         }
         return this.update("user", async (updates, values) => {
             if (user.name) {
@@ -284,7 +286,7 @@ export class UserContext extends SubContext {
     /**
      * Returns a user with their associated lists and external user from the storage.
      */
-    private _getUser(uuid: string, session: string): Promise<User> {
+    private async _getUser(uuid: string, session: string): Promise<User> {
         if (!uuid) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -305,7 +307,10 @@ export class UserContext extends SubContext {
                 user.name = value[0].name;
                 user.uuid = uuid;
             });
-
+        // FIXME look if all the other properties are necessary
+        // FIXME this is a hotfix to prevent "RangeError: Maximum call stack size exceeded" in Promise.all at the end
+        await userPromise;
+        return user;
         // query for user reading lists
         const listsPromise = this.parentContext.internalListContext
             .getUserLists(uuid)

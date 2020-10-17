@@ -1,0 +1,9 @@
+- [ ] starting with blank `enterprise` database does not generate the `enterprise_database_info` table
+- [ ] cannot migrate when using a blank `enterprise_database_info` table
+   - uses a UPDATE query with no data, use something like INSERT OR REPLACE or an initialize script
+- [ ] databaseBuilder and Validator require the invalidation table at the moment, remove this
+- [ ] registering via website does not work
+- [ ] bootstrap css interferes with modal
+- [ ] navigation (router-link) after login does not work
+   - clicking on logout still executes the logout call on first click (not anymore afterwards)
+- [ ] after logout, the header does not seem to have registered the user change

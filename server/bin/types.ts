@@ -1,5 +1,5 @@
-import {MediaType} from "./tools";
-import {ScrapeType} from "./externals/types";
+import { MediaType } from "./tools";
+import { ScrapeType } from "./externals/types";
 
 export interface SearchResult {
     coverUrl?: string;
@@ -329,4 +329,29 @@ export enum MilliTime {
     MINUTE = 60000,
     HOUR = 3600000,
     DAY = 86400000
+}
+
+export interface DisplayRelease {
+    episodeId: number;
+    title: string;
+    link: string;
+    mediumId: number;
+    locked?: boolean;
+    date: Date;
+    progress: number;
+}
+
+export interface DisplayReleasesResponse {
+    releases: DisplayRelease[];
+    media: { [key: number]: string };
+    latest: Date;
+}
+
+export interface MediumRelease {
+    episodeId: number;
+    combiIndex: number;
+    title: string;
+    link: string;
+    locked?: boolean;
+    date: Date;
 }

@@ -10,7 +10,7 @@ export class Cache extends NodeCache {
     private timeOutId?: NodeJS.Timeout;
     private readonly maxSize: number;
 
-    constructor(options: CacheOptions = {}) {
+    public constructor(options: CacheOptions = {}) {
         super(options);
         this.maxSize = options.size || 100;
         this._checkPeriodicSize();

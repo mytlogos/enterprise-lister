@@ -7,14 +7,14 @@ import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.wuxiaworld.com/";
 
     const $ = await queueCheerioRequest(uri);
     const newsRows = $(".table-novels tbody tr");
 
     const episodeNews: EpisodeNews[] = [];
-    // todo somestimes instead of chapter the Abbrev. of medium
+    // TODO somestimes instead of chapter the Abbrev. of medium
     const titleRegex = /((vol(\.|ume)|book)?\s*((\d+)(\.(\d+))?).+)?ch(\.|apter)?\s*((\d+)(\.(\d+))?)/i;
     const abbrevTitleRegex = "|^)\\s*((\\d+)(\\.(\\d+))?)";
 
@@ -116,7 +116,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (urlString.endsWith("-preview")) {
         return [];
     }
-    if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^\/]+\/?$/.test(urlString)) {
+    if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^/]+\/?$/.test(urlString)) {
         throw new UrlError("not a toc link for WuxiaWorld: " + urlString, urlString);
     }
     const $ = await queueCheerioRequest(urlString);
@@ -137,7 +137,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const content: TocPart[] = [];
 
     const chapTitleReg = /^\s*Chapter\s*((\d+)(\.(\d+))?)/;
-    const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.\-](\d+))?)\/?$/;
+    const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.-](\d+))?)\/?$/;
     for (let vIndex = 0; vIndex < volumes.length; vIndex++) {
 
         const volumeElement = volumes.eq(vIndex);
@@ -165,7 +165,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
             const title = sanitizeString(chapterElement.text());
             const linkGroups = chapLinkReg.exec(link);
 
-            let indices: { combi: number; total: number; fraction?: number; } | null = null;
+            let indices: { combi: number; total: number; fraction?: number } | null = null;
 
             if (linkGroups) {
                 linkGroups[2] = linkGroups[2].replace("-", ".");

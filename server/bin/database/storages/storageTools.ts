@@ -17,10 +17,10 @@ export function escapeLike(
         noRightBoundary = false,
         noLeftBoundary = false
     }: {
-        singleQuotes?: boolean,
-        noBoundaries?: boolean,
-        noRightBoundary?: boolean,
-        noLeftBoundary?: boolean
+        singleQuotes?: boolean;
+        noBoundaries?: boolean;
+        noRightBoundary?: boolean;
+        noLeftBoundary?: boolean;
     } = {}
 ): string {
 

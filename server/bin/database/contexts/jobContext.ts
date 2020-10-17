@@ -61,7 +61,7 @@ export class JobContext extends SubContext {
 
     public async addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]> {
         const now = new Date();
-        const currentJobs: Array<{ id: number, name: string }> = await this.query("SELECT id, name FROM jobs");
+        const currentJobs: Array<{ id: number; name: string }> = await this.query("SELECT id, name FROM jobs");
         // @ts-ignore
         return promiseMultiSingle(jobs, async (value: JobRequest): Promise<JobItem | undefined> => {
             let args = value.arguments;

@@ -11,7 +11,7 @@ import {MissingResourceError, UrlError} from "../errors";
 
 const jar = request.jar();
 jar.setCookie(
-    `mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;`,
+    "mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;",
     "https://mangadex.org/",
     {secure: false}
 );
@@ -58,7 +58,7 @@ interface MangaChapter {
     lang_name: string;
     lang_flag: string;
     hentai: number;
-    links: { mu: string, mal: string };
+    links: { mu: string; mal: string };
 }
 
 interface ChapterChapterItem {
@@ -132,7 +132,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 
-async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
     //  with expiration date somewhere in 100 years to lessen load
 
@@ -221,6 +221,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
             }
 
             partTitle = `Vol. ${partIndices.combi}`;
+            // TODO: unused part title, should this be removed or used?
         }
         episodeNews.push({
             mediumTitle: currentMedium,
@@ -241,7 +242,7 @@ async function scrapeNews(): Promise<{ news?: News[], episodes?: EpisodeNews[] }
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^\/]+\/?$/;
+    const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^/]+\/?$/;
 
     if (!urlRegex.test(urlString)) {
         throw new UrlError("invalid toc url for MangaDex: " + urlString, urlString);
@@ -257,7 +258,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         mediumType: MediaType.IMAGE,
     };
 
-    // todo process these metadata and get more (like author)
+    // TODO process these metadata and get more (like author)
     // const alternateMangaTitles = metaRows.eq(0).find("li");
     // const mangaStatus = metaRows.eq(8).find(".col-lg-9.col-xl-10").first();
 
@@ -274,7 +275,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapReg: RegExp,
-                             indexPartMap: Map<number, TocPart>, uri: string, urlString: string): Promise<boolean> {
+    indexPartMap: Map<number, TocPart>, uri: string, urlString: string): Promise<boolean> {
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $("#content");
     if (contentElement.find(".alert-danger").text().match(/Manga .+? (not available)|(does not exist)/i)) {
@@ -383,8 +384,9 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
-            };
+                releaseDate: time,
+                noTime: true
+            } as TocEpisode;
             checkTocContent(chapterContent);
             part.episodes.push(chapterContent);
         } else if (chapGroups) {
@@ -403,7 +405,8 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
                 totalIndex: chapIndices.total,
                 partialIndex: chapIndices.fraction,
                 url: link,
-                releaseDate: time
+                releaseDate: time,
+                noTime: true
             } as TocEpisode;
             checkTocContent(chapterContent);
             toc.content.push(chapterContent);

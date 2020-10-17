@@ -5,7 +5,7 @@ import {ColumnType, Modifier} from "./databaseTypes";
 
 export class TableParser {
 
-    public static parseForeignKey(table: TableSchema, tables: TableSchema[], scheme: string) {
+    public static parseForeignKey(table: TableSchema, tables: TableSchema[], scheme: string): void {
         const exec = /FOREIGN\sKEY\s*\((\w+)\)\s*REFERENCES\s+(\w+)\s*\((\w+)\)/i.exec(scheme);
 
         if (!exec) {
@@ -49,7 +49,7 @@ export class TableParser {
         logger.warn(`foreign key is unmatched by columns: '${scheme}'`);
     }
 
-    public static parsePrimaryKey(table: TableSchema, tables: TableSchema[], schema: string) {
+    public static parsePrimaryKey(table: TableSchema, tables: TableSchema[], schema: string): void {
         const exec = /PRIMARY\sKEY\s*\((.+)\)/i.exec(schema);
 
         if (!exec) {
@@ -58,11 +58,7 @@ export class TableParser {
         }
         for (const columnName of exec[1].split(/[,\s]+/)) {
             const foundColumnIndex = table.columns.findIndex((value) => {
-                if (value.type === ColumnType.TEXT) {
-                    return new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
-                } else {
-                    return value.name === columnName;
-                }
+                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);                
             });
 
             if (foundColumnIndex < 0) {
@@ -72,14 +68,13 @@ export class TableParser {
             const foundColumn: ColumnSchema = table.columns[foundColumnIndex];
             let keySize: number | undefined;
 
-            if (foundColumn.type === ColumnType.TEXT) {
-                const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
+            const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
 
-                if (!keySizeExec) {
-                    logger.warn("primary key of type text has no specified key length");
-                    return;
-                }
+            if (keySizeExec) {
                 keySize = Number(keySizeExec[1]);
+            } else if (foundColumn.type === ColumnType.TEXT) {
+                logger.warn("primary key of type text has no specified key length");
+                return;
             }
             const column = new ColumnSchema(
                 foundColumn.name, foundColumn.type, foundColumn.modifiers,
@@ -96,7 +91,7 @@ export class TableParser {
         }
     }
 
-    public static parseUnique(table: TableSchema, tables: TableSchema[], data: string) {
+    public static parseUnique(table: TableSchema, tables: TableSchema[], data: string): void {
         const exec = /unique\s*\((.+)\)/i.exec(data);
 
         if (!exec) {
@@ -106,11 +101,7 @@ export class TableParser {
         const uniqueIndex: ColumnSchema[] = [];
         for (const columnName of exec[1].split(/[,\s]+/)) {
             const foundColumnIndex = table.columns.findIndex((value) => {
-                if (value.type === ColumnType.TEXT) {
-                    return new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
-                } else {
-                    return value.name === columnName;
-                }
+                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);                
             });
 
             if (foundColumnIndex < 0) {
@@ -120,14 +111,13 @@ export class TableParser {
             const foundColumn: ColumnSchema = table.columns[foundColumnIndex];
             let keySize: number | undefined;
 
-            if (foundColumn.type === ColumnType.TEXT) {
-                const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
+            const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
 
-                if (!keySizeExec) {
-                    logger.warn("unique column of type text has no specified key length");
-                    return;
-                }
+            if (keySizeExec) {
                 keySize = Number(keySizeExec[1]);
+            } else if (foundColumn.type === ColumnType.TEXT) {
+                logger.warn("unique column of type text has no specified key length");
+                return;
             }
             const column = new ColumnSchema(
                 foundColumn.name, foundColumn.type, foundColumn.modifiers,
@@ -163,43 +153,44 @@ export class TableParser {
         let typeSize: number | undefined;
 
         switch (partsType) {
-            case ColumnType.INT:
-                type = ColumnType.INT;
-                break;
-            case ColumnType.DATETIME:
-                type = ColumnType.DATETIME;
-                break;
-            case ColumnType.TIMESTAMP:
-                type = ColumnType.TIMESTAMP;
-                break;
-            case ColumnType.BOOLEAN:
-                type = ColumnType.BOOLEAN;
-                break;
-            case ColumnType.FLOAT:
-                type = ColumnType.FLOAT;
-                break;
-            case ColumnType.DOUBLE:
-                type = ColumnType.DOUBLE;
-                break;
-            case ColumnType.TEXT:
-                type = ColumnType.TEXT;
-                break;
-            default:
-                let exec = /VARCHAR\((\d+)\)/i.exec(partsType);
+        case ColumnType.INT:
+            type = ColumnType.INT;
+            break;
+        case ColumnType.DATETIME:
+            type = ColumnType.DATETIME;
+            break;
+        case ColumnType.TIMESTAMP:
+            type = ColumnType.TIMESTAMP;
+            break;
+        case ColumnType.BOOLEAN:
+            type = ColumnType.BOOLEAN;
+            break;
+        case ColumnType.FLOAT:
+            type = ColumnType.FLOAT;
+            break;
+        case ColumnType.DOUBLE:
+            type = ColumnType.DOUBLE;
+            break;
+        case ColumnType.TEXT:
+            type = ColumnType.TEXT;
+            break;
+        default: {
+            let exec = /VARCHAR\((\d+)\)/i.exec(partsType);
+            if (exec) {
+                type = ColumnType.VARCHAR;
+                typeSize = Number(exec[1]);
+            } else {
+                exec = /CHAR\((\d+)\)/i.exec(partsType);
+
                 if (exec) {
-                    type = ColumnType.VARCHAR;
+                    type = ColumnType.CHAR;
                     typeSize = Number(exec[1]);
                 } else {
-                    exec = /CHAR\((\d+)\)/i.exec(partsType);
-
-                    if (exec) {
-                        type = ColumnType.CHAR;
-                        typeSize = Number(exec[1]);
-                    } else {
-                        logger.warn(`could not parse column type for: '${value}'`);
-                        return null;
-                    }
+                    logger.warn(`could not parse column type for: '${value}'`);
+                    return null;
                 }
+            }
+        }
         }
         const modifiers: Modifier[] = [];
         let defaultValue: string | undefined;
@@ -210,54 +201,56 @@ export class TableParser {
             let modifier;
 
             switch (modifierPart.toUpperCase()) {
-                case Modifier.AUTO_INCREMENT:
-                    modifier = Modifier.AUTO_INCREMENT;
-                    break;
-                case Modifier.NOT:
-                    i++;
-                    if (parts[i] === Modifier.NULL) {
-                        modifier = Modifier.NOT_NULL;
-                    } else {
-                        logger.warn(`unknown not modifier, expected 'NULL' but got '${parts[i]}'`);
-                        return null;
-                    }
-                    break;
-                case Modifier.UNIQUE:
-                    modifier = Modifier.UNIQUE;
-                    break;
-                case Modifier.UNSIGNED:
-                    modifier = Modifier.UNSIGNED;
-                    break;
-                case "DEFAULT":
-                    i++;
-                    const defaultValueObj = this._getExpressionValue(parts, i);
+            case Modifier.AUTO_INCREMENT:
+                modifier = Modifier.AUTO_INCREMENT;
+                break;
+            case Modifier.NOT:
+                i++;
+                if (parts[i] === Modifier.NULL) {
+                    modifier = Modifier.NOT_NULL;
+                } else {
+                    logger.warn(`unknown not modifier, expected 'NULL' but got '${parts[i]}'`);
+                    return null;
+                }
+                break;
+            case Modifier.UNIQUE:
+                modifier = Modifier.UNIQUE;
+                break;
+            case Modifier.UNSIGNED:
+                modifier = Modifier.UNSIGNED;
+                break;
+            case "DEFAULT": {
+                i++;
+                const defaultValueObj = this._getExpressionValue(parts, i);
 
-                    if (!defaultValueObj || !defaultValueObj.value) {
-                        logger.warn(`no default value specified for '${name}' of ${table.name}`);
-                        return null;
-                    }
-                    defaultValue = defaultValueObj.value;
-                    i = defaultValueObj.index;
+                if (!defaultValueObj || !defaultValueObj.value) {
+                    logger.warn(`no default value specified for '${name}' of ${table.name}`);
+                    return null;
+                }
+                defaultValue = defaultValueObj.value;
+                i = defaultValueObj.index;
+                break;
+            }
+            case "ON": {
+                i++;
+                if (parts[i].toLowerCase() !== "update") {
+                    // for now skip all column 'triggers'? which are not triggered on update
                     break;
-                case "ON":
-                    i++;
-                    if (parts[i].toLowerCase() !== "update") {
-                        // for now skip all column 'triggers'? which are not triggered on update
-                        break;
-                    }
-                    i++;
-                    const updateValueObj = this._getExpressionValue(parts, i);
+                }
+                i++;
+                const updateValueObj = this._getExpressionValue(parts, i);
 
-                    if (!updateValueObj || !updateValueObj.value) {
-                        logger.warn(`no update value specified for '${name}' of ${table.name}`);
-                        return null;
-                    }
-                    updateValue = updateValueObj.value;
-                    i = updateValueObj.index;
-                    break;
-                default:
-                    logger.warn(`could not parse modifier for: '${modifierPart}'`);
-                    break;
+                if (!updateValueObj || !updateValueObj.value) {
+                    logger.warn(`no update value specified for '${name}' of ${table.name}`);
+                    return null;
+                }
+                updateValue = updateValueObj.value;
+                i = updateValueObj.index;
+                break;
+            }
+            default:
+                logger.warn(`could not parse modifier for: '${modifierPart}'`);
+                break;
             }
             if (modifier) {
                 modifiers.push(modifier);
@@ -271,7 +264,7 @@ export class TableParser {
         return column;
     }
 
-    private static _getExpressionValue(columnParts: string[], index: number): { index: number, value: string } {
+    private static _getExpressionValue(columnParts: string[], index: number): { index: number; value: string } {
         let defaultValue = columnParts[index];
 
         if (!defaultValue) {

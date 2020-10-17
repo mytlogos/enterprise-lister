@@ -1,11 +1,11 @@
 import logger from "../../logger";
-import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper} from "../types";
+import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc} from "../types";
 import {queueCheerioRequest} from "../queueManager";
 import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
 import * as url from "url";
 import {ReleaseState, TocSearchMedium} from "../../types";
 
-export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string) {
+export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string): EpisodeContent[] {
     if (!novelTitle || !episodeTitle) {
         logger.warn("episode link with no novel or episode title: " + urlString);
         return [];
@@ -34,7 +34,7 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
 }
 
 export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
-                                       searchLink: (parameter: string) => string, linkSelector: string) {
+    searchLink: (parameter: string) => string, linkSelector: string): Promise<undefined | Toc> {
     logger.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
@@ -122,7 +122,7 @@ function searchForWords(
 }
 
 export async function searchToc(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
-                                searchLink: (searchString: string) => Promise<SearchResult>) {
+    searchLink: (searchString: string) => Promise<SearchResult>): Promise<undefined | Toc> {
     logger.info(`searching for ${medium.title} on ${uri}`);
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
@@ -176,8 +176,8 @@ export interface TocMetaPiece extends TocPiece {
     readonly langTL?: string;
     readonly statusCOO: ReleaseState;
     readonly statusTl: ReleaseState;
-    readonly authors?: Array<{ name: string, link: string }>;
-    readonly artists?: Array<{ name: string, link: string }>;
+    readonly authors?: Array<{ name: string; link: string }>;
+    readonly artists?: Array<{ name: string; link: string }>;
 }
 
 export interface TocContentPiece extends TocPiece {
@@ -356,8 +356,8 @@ interface InternalToc {
     langTL?: string;
     statusCOO: ReleaseState;
     statusTl: ReleaseState;
-    authors?: Array<{ name: string, link: string }>;
-    artists?: Array<{ name: string, link: string }>;
+    authors?: Array<{ name: string; link: string }>;
+    artists?: Array<{ name: string; link: string }>;
 }
 
 interface InternalTocContent extends Node {
@@ -435,7 +435,7 @@ function externalizeTocPart(internalTocPart: InternalTocPart): TocPart {
     };
 }
 
-export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
+export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>): Promise<TocContent[]> {
     const maybeEpisode = ["ova"];
     const optionalEpisode = ["xxx special chapter", "other tales", "interlude", "bonus", "SKILL SUMMARY", "CHARACTER INTRODUCTION", "side story", "ss", "intermission", "extra", "omake", /*"oneshot"*/];
     const start = ["prologue", "prolog"];
@@ -449,7 +449,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>) {
         separatorRegex: /[-:]/g,
         chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/ig,
         volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-(\s*((\d+)(\.(\d+))?)|\s)/ig,
-        partRegex: /(P[art]{0,3}[.\s]*(\d+))|([\[(]?(\d+)[/|](\d+)[)\]]?)/g,
+        partRegex: /(P[art]{0,3}[.\s]*(\d+))|([[(]?(\d+)[/|](\d+)[)\]]?)/g,
         trimRegex: /^[\s:–,.-]+|[\s:–,.-]+$/g,
         endRegex: /end/g,
         startRegex: /start/g,

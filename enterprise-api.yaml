@@ -1,0 +1,303 @@
+openapi: 3.0.0
+info:
+  title: Enterprise Server API specification
+  description: Title
+  version: 1.0.0
+servers:
+  - url: "http://localhost:3000/api/"
+    description: The local server, currently there is no online server (in the internet).
+paths:
+  /:
+    get:
+      description: Check if the client is logged in
+      responses:
+        200:
+          description: It could validate if the client is logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimpleUser'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /tunnel:
+    get:
+      responses:
+        200:
+          description: available Tunnels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /dev:
+    get:
+      responses:
+        200:
+          description: True if server is a development server
+          content:
+            application/json:
+              schema:
+                type: boolean
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /login:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginUser'
+      responses:
+        200:
+          description: Login a user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /register:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginUser'
+      responses:
+        200:
+          description: register a new user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /user/:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/Authentication'
+      responses:
+        200:
+          description: Get the current User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        400:
+          $ref: '#/components/responses/InvalidSession'
+        500:
+          $ref: '#/components/responses/ErrorResponse'
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeUser'
+      responses:
+        200:
+          description: Update the current User
+          content:
+            application/json:
+              schema:
+                type: boolean
+        400:
+          $ref: '#/components/responses/InvalidSession'
+        500:
+          $ref: '#/components/responses/ErrorResponse'
+    delete:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Authentication'
+      responses:
+        200:
+          description: Delete the current User and all associated Information, irreversible
+          content:
+            application/json:
+              schema:
+                type: boolean
+        400:
+          $ref: '#/components/responses/InvalidSession'
+        500:
+          $ref: '#/components/responses/ErrorResponse'
+  /user/logout:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Authentication'
+      responses:
+        200:
+          description: Logout the current User
+          content:
+            application/json:
+              schema:
+                type: boolean
+        400:
+          $ref: '#/components/responses/InvalidSession'
+        500:
+          $ref: '#/components/responses/ErrorResponse'
+components:
+  parameters:
+    Authentication:
+      in: query
+      schema:
+        $ref: '#/components/schemas/Authentication'
+      style: form
+      name: auth
+      explode: true
+  responses:
+    InvalidSession:
+      description: Invalid Session Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DefaultError'
+    ErrorResponse:
+      description: Could not validate, mostly invalid parameter or internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DefaultError'
+  schemas:
+    Authentication:
+      type: object
+      properties:
+        uuid:
+          type: string
+        session:
+          type: string
+    ChangeUser:
+      allOf:
+        - $ref: '#/components/schemas/Authentication'
+        - properties:
+            name:
+              type: string
+              nullable: true
+            newPassword:
+              type: string
+              nullable: true
+            password:
+              type: string
+              nullable: true
+    LoginUser:
+      type: object
+      required:
+        - userName
+        - pw
+      properties:
+        userName:
+          type: string
+        pw:
+          type: string
+    SimpleUser:
+      type: object
+      required:
+        - uuid
+        - name
+        - session
+      properties:
+        uuid:
+          type: string
+        name:
+          type: string
+        session:
+          type: string
+    User:
+      allOf:
+        - $ref: '#/components/schemas/SimpleUser'
+        - type: object
+          properties:
+            unreadNews:
+              type: array
+              items:
+                type: integer
+            unreadChapter:
+              type: array
+              items:
+                type: integer
+            readToday:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReadEpisode'
+            externalUser:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExternalUser'
+            lists:
+              type: array
+              items:
+                $ref: '#/components/schemas/List'
+    List:
+      properties:
+        userUuid:
+          type: string
+        id:
+          type: integer
+        name:
+          type: string
+        medium:
+          type: integer
+        items:
+          type: array
+          items:
+            type: integer
+    ExternalUser:
+      properties:
+        localUuid:
+          type: string
+        uuid:
+          type: string
+        identifier:
+          type: string
+        type:
+          type: integer
+        lists:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExternalList'
+        lastScrape:
+          type: string
+          format: 'date-time'
+          nullable: true
+        cookies:
+          nullable: true
+          type: string
+    ExternalList:
+      properties:
+        uuid:
+          type: string
+          nullable: true
+        id:
+          type: integer
+        name:
+          type: string
+        medium:
+          type: integer
+        url:
+          type: string
+        items:
+          type: array
+          items:
+            type: integer
+    ReadEpisode:
+      properties:
+        episodeId:
+          type: number
+        readDate:
+          type: string
+          format: 'date-time'
+        progress:
+          type: number
+    DefaultError:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string

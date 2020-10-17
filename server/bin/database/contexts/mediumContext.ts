@@ -4,7 +4,6 @@ import {
     LikeMedium,
     LikeMediumQuery,
     Medium,
-    MediumToc,
     SimpleMedium,
     Synonyms,
     TocSearchMedium,
@@ -53,7 +52,7 @@ export class MediumContext extends SubContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return promiseMultiSingle(id, async (mediumId) => {
-            const resultArray: any[] = await this.query(`SELECT * FROM medium WHERE medium.id =?;`, mediumId);
+            const resultArray: any[] = await this.query("SELECT * FROM medium WHERE medium.id =?;", mediumId);
             const result = resultArray[0];
             return {
                 id: result.id,
@@ -73,7 +72,7 @@ export class MediumContext extends SubContext {
     }
 
     public async getTocSearchMedia(): Promise<TocSearchMedium[]> {
-        const result: Array<{ host?: string, mediumId: number, title: string, medium: number }> = await this.query(
+        const result: Array<{ host?: string; mediumId: number; title: string; medium: number }> = await this.query(
             "SELECT substring(episode_release.url, 1, locate(\"/\",episode_release.url,9)) as host, " +
             "medium.id as mediumId, medium.title, medium.medium " +
             "FROM medium " +
@@ -125,7 +124,7 @@ export class MediumContext extends SubContext {
     }
 
     public async getTocSearchMedium(id: number): Promise<TocSearchMedium> {
-        const resultArray: any[] = await this.query(`SELECT * FROM medium WHERE medium.id =?;`, id);
+        const resultArray: any[] = await this.query("SELECT * FROM medium WHERE medium.id =?;", id);
         const result = resultArray[0];
         const synonyms: Synonyms[] = await this.getSynonyms(id);
 
@@ -148,7 +147,7 @@ export class MediumContext extends SubContext {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return promiseMultiSingle(id, async (mediumId: number) => {
-            let result = await this.query(`SELECT * FROM medium WHERE medium.id=?;`, mediumId);
+            let result = await this.query("SELECT * FROM medium WHERE medium.id=?;", mediumId);
             result = result[0];
 
             const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
@@ -310,7 +309,7 @@ export class MediumContext extends SubContext {
         if (!synonyms) {
             return [];
         }
-        const synonymMap = new Map<number, { mediumId: number, synonym: string[]; }>();
+        const synonymMap = new Map<number, { mediumId: number; synonym: string[] }>();
         synonyms.forEach((value: any) => {
             let synonym = synonymMap.get(value.medium_id);
             if (!synonym) {
@@ -441,13 +440,13 @@ export class MediumContext extends SubContext {
         );
     }
 
-    public getAllMediaTocs(): Promise<Array<{ link?: string, id: number }>> {
+    public getAllMediaTocs(): Promise<Array<{ link?: string; id: number }>> {
         return this.query(
             "SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id"
         );
     }
 
-    public getAllTocs(): Promise<Array<{ link: string, id: number }>> {
+    public getAllTocs(): Promise<Array<{ link: string; id: number }>> {
         return this.query("SELECT medium_id as id, link FROM medium_toc");
     }
 

@@ -14,9 +14,9 @@ export class ColumnSchema {
     public readonly update?: string | SqlFunction;
     public readonly primaryKeyTypeSize?: number;
 
-    constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean,
-                foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number,
-                update?: string | SqlFunction) {
+    public constructor(name: string, type: ColumnType, modifiers: Modifier[], typeSize?: number, primaryKey?: boolean,
+        foreignKey?: ColumnSchema, defaultV?: string | SqlFunction, primaryKeyTypeSize?: number,
+        update?: string | SqlFunction) {
 
         this.name = name;
         this.type = type;
@@ -41,8 +41,7 @@ export class ColumnSchema {
             if (values.includes(this.default.trim())) {
                 defValue += "DEFAULT " + this.default;
             } else {
-                // todo shouldn't this be "DEFAULT" + mysql.escape(this.default)?
-                defValue += mySql.escape(this.default);
+                defValue += "DEFAULT " + mySql.escape(this.default);
             }
         }
 
@@ -55,12 +54,12 @@ export class ColumnSchema {
             if (values.includes(this.update.trim())) {
                 updateValue += "ON UPDATE " + this.update;
             } else {
-                // todo shouldn't this be "ON UPDATE " + mysql.escape(this.default)?
+                // TODO shouldn't this be "ON UPDATE " + mysql.escape(this.default)?
                 updateValue += mySql.escape(this.update);
             }
         }
-        // todo instead of testing for VARCHAR, test for a group of columns or if just typeSize is defined?
-        const type = this.type === ColumnType.VARCHAR ? this.type + "(" + this.typeSize + ")" : this.type;
+        // TODO instead of testing for VARCHAR, test for a group of columns or if just typeSize is defined?
+        const type = this.typeSize != null ? this.type + "(" + this.typeSize + ")" : this.type;
         return `${mySql.escapeId(this.name)} ${type} ${this.modifiers.join(" ")}${defValue}${updateValue}`;
     }
 }

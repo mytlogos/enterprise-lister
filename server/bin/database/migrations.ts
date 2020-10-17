@@ -1,4 +1,5 @@
-import {Migration, MySqlErrorNo} from "./databaseTypes";
+import {Migration} from "./databaseTypes";
+import {MysqlServerError} from "./mysqlError";
 import {DatabaseContext} from "./contexts/databaseContext";
 
 function ignoreError(func: () => Promise<void>, ignoreErrno: number[]): Promise<void> {
@@ -15,38 +16,38 @@ export const Migrations: Migration[] = [
         toVersion: 1,
         async migrate(context: DatabaseContext): Promise<void> {
             await ignoreError(async () => {
-                    await context.addColumn(
-                        "episode",
-                        "combiIndex double DEFAULT 0"
-                    );
-                    await context.query(
-                        "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
-                    );
-                },
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                await context.addColumn(
+                    "episode",
+                    "combiIndex double DEFAULT 0"
+                );
+                await context.query(
+                    "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                );
+            },
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "info TEXT"
-                ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+            ),
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "external_uuid char(36)"
-                ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+            ),
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(async () => {
-                    await context.addColumn(
-                        "part",
-                        "combiIndex double DEFAULT 0"
-                    );
-                    await context.query(
-                        "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
-                    );
-                },
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                await context.addColumn(
+                    "part",
+                    "combiIndex double DEFAULT 0"
+                );
+                await context.query(
+                    "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
+                );
+            },
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await context.alterColumn(
                 "external_user",
@@ -83,7 +84,7 @@ export const Migrations: Migration[] = [
 
             await context.parentContext.clearInvalidationTable();
             await ignoreError(() => context.dropPrimaryKey("user_data_invalidation"),
-                [MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]
+                [MysqlServerError.ER_CANT_DROP_FIELD_OR_KEY]
             );
             await context.addUnique("user_data_invalidation", "UNIQUE_NEWS", "news_id", "uuid");
             await context.addUnique("user_data_invalidation", "UNIQUE_MEDIUM", "medium_id", "uuid");
@@ -102,8 +103,8 @@ export const Migrations: Migration[] = [
             await ignoreError(() => context.addColumn(
                 "episode_release",
                 "locked BOOLEAN DEFAULT 0"
-                ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+            ),
+            [MysqlServerError.ER_DUP_FIELDNAME]
             );
         }
     },
@@ -116,7 +117,7 @@ export const Migrations: Migration[] = [
                 "last_date",
                 "next_scrape",
                 "datetime"
-            ), [MySqlErrorNo.ER_BAD_FIELD_ERROR]);
+            ), [MysqlServerError.ER_BAD_FIELD_ERROR]);
         }
     },
     {
@@ -148,7 +149,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 4,
         toVersion: 5,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(): Promise<void> {
             // empty migration as it adds trigger only
         }
     },
@@ -181,14 +182,14 @@ export const Migrations: Migration[] = [
                     value,
                     "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
                 ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             )));
             await ignoreError(
                 () => context.addColumn(
                     "external_user",
                     "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
                 ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
         }
     },
@@ -201,7 +202,7 @@ export const Migrations: Migration[] = [
                     "medium_toc",
                     "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
                 ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
         }
     },
@@ -210,10 +211,10 @@ export const Migrations: Migration[] = [
         toVersion: 9,
         async migrate(context: DatabaseContext): Promise<void> {
             await ignoreError(() => context.dropForeignKey("medium_toc", "medium_toc_ibfk_1"),
-                [MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]
+                [MysqlServerError.ER_CANT_DROP_FIELD_OR_KEY]
             );
             await ignoreError(() => context.dropPrimaryKey("medium_toc"),
-                [MySqlErrorNo.ER_CANT_DROP_FIELD_OR_KEY]
+                [MysqlServerError.ER_CANT_DROP_FIELD_OR_KEY]
             );
             await Promise.all([
                 "id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY",
@@ -233,7 +234,7 @@ export const Migrations: Migration[] = [
                     "medium_toc",
                     value,
                 ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             )));
             // no error should occur as primary is dropped before if available
             // context.addPrimaryKey("medium_toc", "id");
@@ -241,7 +242,7 @@ export const Migrations: Migration[] = [
             context.addForeignKey("medium_toc", "medium_toc_ibfk_1", "medium_id", "medium", "id");
             await ignoreError(
                 () => context.addUnique("medium_toc", "UNIQUE_TOC", "medium_id", "link"),
-                [MySqlErrorNo.ER_DUP_KEYNAME]
+                [MysqlServerError.ER_DUP_KEYNAME]
             );
 
             await ignoreError(
@@ -249,7 +250,7 @@ export const Migrations: Migration[] = [
                     "episode_release",
                     "toc_id INT UNSIGNED",
                 ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(
                 () => context.addForeignKey(
@@ -259,8 +260,16 @@ export const Migrations: Migration[] = [
                     "medium_toc",
                     "id"
                 ),
-                [MySqlErrorNo.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
+        }
+    },
+    {
+        fromVersion: 9,
+        toVersion: 10,
+        async migrate(context: DatabaseContext): Promise<void> {
+            // add index to speed up queries on episode_release where releaseDate is a big factor
+            await context.addIndex("episode_release", "episode_release_releaseDate_Index", ["releaseDate"]);
         }
     }
 ];

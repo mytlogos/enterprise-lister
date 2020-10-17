@@ -24,7 +24,9 @@ app.use(logger(":method :url :status :response-time ms - :res[content-length]", 
         }
     }
 }));
+//@ts-ignore
 app.use(helmet());
+//@ts-ignore
 app.use(compression());
 
 // remove any emoji, dont need it and it can mess up my database
@@ -38,16 +40,17 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 app.use("/api", apiRouter());
-app.use(express.static(path.join(parentDirName, "dist")));
 
-app.get("/", (req, res) => {
-    res.sendFile(path.join(parentDirName, path.join("dist", "index.html")));
-});
+// map root to app.html first, before the static files, else it will map to index.html by default
+app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("website","dist", "app.html"))));
 
-app.use((req: Request, res: Response) => {
-    if (!req.path.startsWith("/api")) {
-        // @ts-ignore
-        res.redirect(`/?redirect=${req.path}`);
+app.use(express.static(path.join(parentDirName, "website", "dist")));
+
+
+app.use((req, res) => {
+    //@ts-ignore
+    if (!req.path.startsWith("/api") && req.method === "GET") {
+        res.sendFile(path.join(parentDirName, path.join("website","dist", "app.html")));
     }
 });
 
@@ -70,6 +73,6 @@ app.use((err: HttpError, req: Request, res: Response) => {
 });
 
 
-// todo what is with tls (https), cloudflare?
-// todo does it redirect automatically to https when http was typed?
-// todo what options does https need
+// TODO what is with tls (https), cloudflare?
+// TODO does it redirect automatically to https when http was typed?
+// TODO what options does https need

@@ -26,7 +26,7 @@ function requestTunnel(host?: string) {
 
 let started = false;
 
-export function startTunneling() {
+export function startTunneling(): void {
     if (started) {
         return;
     }

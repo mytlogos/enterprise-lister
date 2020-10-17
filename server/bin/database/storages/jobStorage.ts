@@ -48,7 +48,7 @@ export class JobStorage {
         return inContext((context) => context.updateJobs(jobs));
     }
 
-    public async getJobsInState(state: JobState) {
+    public async getJobsInState(state: JobState): Promise<JobItem[]> {
         return inContext((context) => context.getJobsInState(state));
     }
 }

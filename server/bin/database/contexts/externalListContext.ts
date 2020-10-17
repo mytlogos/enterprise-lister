@@ -107,7 +107,7 @@ export class ExternalListContext extends SubContext {
     public async createShallowExternalList(storageList: ExternalList): Promise<ExternalList> {
         const result = await this.query("SELECT * FROM external_list_medium WHERE list_id = ?;", storageList.id);
         storageList.items = result.map((value: any) => value.medium_id);
-        // todo return input or copy object?
+        // TODO return input or copy object?
         return storageList;
     }
 
@@ -143,7 +143,7 @@ export class ExternalListContext extends SubContext {
      * If no listId is available it selects the
      * 'Standard' List of the given user and adds it there.
      */
-    public async addItemToList(medium: { id: number | number[], listId?: number }, uuid?: string)
+    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: string)
         : Promise<boolean> {
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list
@@ -158,7 +158,7 @@ export class ExternalListContext extends SubContext {
             medium.listId = idResult[0].id;
         }
         const result = await this.multiInsert(
-            `INSERT IGNORE INTO external_list_medium (list_id, medium_id) VALUES`,
+            "INSERT IGNORE INTO external_list_medium (list_id, medium_id) VALUES",
             medium.id,
             (value) => [medium.listId, value]
         );
