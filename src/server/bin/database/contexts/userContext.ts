@@ -307,46 +307,7 @@ export class UserContext extends SubContext {
                 user.name = value[0].name;
                 user.uuid = uuid;
             });
-        // FIXME look if all the other properties are necessary
-        // FIXME this is a hotfix to prevent "RangeError: Maximum call stack size exceeded" in Promise.all at the end
         await userPromise;
         return user;
-        // query for user reading lists
-        const listsPromise = this.parentContext.internalListContext
-            .getUserLists(uuid)
-            .then((value: any[]) => {
-                // add local user reading lists
-                user.lists.push(...value);
-            });
-
-        // select external user of user
-        const allExternalUserPromise = this
-            .query("SELECT * FROM external_user WHERE local_uuid = ?;", uuid)
-            .then((allExternalUser: any[]) => {
-                // add external_user and add their respective external reading lists
-                return Promise.all(allExternalUser.map((value: any) => this.parentContext.externalUserContext
-                    .createShallowExternalUser(value)
-                    .then((externalUser) => user.externalUser.push(externalUser))));
-            });
-
-        const unReadNewsPromise = this.parentContext.newsContext
-            .checkUnreadNews(uuid)
-            .then((value) => user.unreadNews.push(...value));
-
-        const unReadChapterPromise = this.parentContext.episodeContext
-            .getUnreadChapter(uuid)
-            .then((value) => user.unreadChapter.push(...value));
-
-        const readTodayPromise = this.parentContext.episodeContext
-            .getReadToday(uuid)
-            .then((value) => user.readToday.push(...value));
-
-        // return user result
-        return Promise
-            .all([
-                userPromise, listsPromise, allExternalUserPromise,
-                unReadNewsPromise, unReadChapterPromise, readTodayPromise
-            ])
-            .then(() => user);
     }
 }
