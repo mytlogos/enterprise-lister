@@ -23,9 +23,9 @@ chai.should();
 /**
  *
  * @param {string[]} pages
- * @return TocGenerator
+ * @return {TocGenerator}
  */
-async function* novelfullGenerator(pages) {
+async function* novelfullGenerator(pages, mediumType = tools.MediaType.TEXT) {
     const now = new Date();
     let tocYielded = false;
     for (const page of pages) {
@@ -47,7 +47,7 @@ async function* novelfullGenerator(pages) {
         if (!tocYielded) {
             const tocMeta = {
                 title: mediumTitle,
-                mediumType: tools.MediaType.TEXT,
+                mediumType,
                 end,
             };
             yield tocMeta;
@@ -62,6 +62,56 @@ async function* novelfullGenerator(pages) {
         }
     }
 }
+
+/**
+ *
+ * @param {string} resource path to the resource in the tests/resources directory
+ * @return {TocGenerator}
+ */
+async function* boxNovelGenerator(resource, mediumType = tools.MediaType.TEXT) {
+    const content = await fs.promises.readFile(`tests/resources/${resource}`, "utf8");
+    const $ = cheerio.load(content);
+    const mediumTitleElement = $(".post-title h3");
+    mediumTitleElement.find("span").remove();
+    const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
+
+    const items = $(".wp-manga-chapter");
+
+    const releaseStatusString = $(".post-status .post-content_item:nth-child(2) .summary-content").text().trim().toLowerCase();
+
+    let end;
+    if (releaseStatusString === "ongoing") {
+        end = false;
+    } else if (releaseStatusString === "completed") {
+        end = true;
+    }
+    const tocMeta = {
+        title: mediumTitle,
+        mediumType,
+        end,
+    };
+    yield tocMeta;
+    for (let i = 0; i < items.length; i++) {
+        const newsRow = items.eq(i);
+
+        const titleElement = newsRow.find("a");
+        const link = titleElement.attr("href");
+
+        const timeStampElement = newsRow.find(".chapter-release-date");
+        const dateString = timeStampElement.text().trim();
+        const lowerDate = dateString.toLowerCase();
+
+        let date;
+        if (lowerDate.includes("now") || lowerDate.includes("ago")) {
+            date = tools.relativeToAbsoluteTime(dateString);
+        } else {
+            date = new Date(dateString);
+        }
+
+        yield {title: titleElement.text(), url: link, releaseDate: date};
+    }
+}
+
 /**
  * @typedef PartialRelease
  * @property {string | undefined} title
@@ -1619,49 +1669,7 @@ describe("testing scrapeToc", () => {
         ));
     });
     it("should extract correct toc: for an example toc with half hearted chapter-volume-chapter format", async function () {
-        const generator = (async function* testGenerator() {
-            const content = await fs.promises.readFile("tests/resources/boxnovel-281.html", "utf8");
-            const $ = cheerio.load(content);
-            const mediumTitleElement = $(".post-title h3");
-            mediumTitleElement.find("span").remove();
-            const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
-
-            const items = $(".wp-manga-chapter");
-
-            const releaseStatusString = $(".post-status .post-content_item:nth-child(2) .summary-content").text().trim().toLowerCase();
-
-            let end;
-            if (releaseStatusString === "ongoing") {
-                end = false;
-            } else if (releaseStatusString === "completed") {
-                end = true;
-            }
-            const tocMeta = {
-                title: mediumTitle,
-                mediumType: tools.MediaType.TEXT,
-                end,
-            };
-            yield tocMeta;
-            for (let i = 0; i < items.length; i++) {
-                const newsRow = items.eq(i);
-
-                const titleElement = newsRow.find("a");
-                const link = titleElement.attr("href");
-
-                const timeStampElement = newsRow.find(".chapter-release-date");
-                const dateString = timeStampElement.text().trim();
-                const lowerDate = dateString.toLowerCase();
-
-                let date;
-                if (lowerDate.includes("now") || lowerDate.includes("ago")) {
-                    date = tools.relativeToAbsoluteTime(dateString);
-                } else {
-                    date = new Date(dateString);
-                }
-
-                yield {title: titleElement.text(), url: link, releaseDate: date};
-            }
-        })();
+        const generator = boxNovelGenerator("boxnovel-281.html");
 
         const contents = await directTools.scrapeToc(generator);
         contents.should.be.an("array");
@@ -1775,49 +1783,7 @@ describe("testing scrapeToc", () => {
         ));
     });
     it("should extract correct toc: for an example toc with descending index and sometimes partialindex", async function () {
-        const generator = (async function* testGenerator() {
-            const content = await fs.promises.readFile("tests/resources/boxnovel-173.html", "utf8");
-            const $ = cheerio.load(content);
-            const mediumTitleElement = $(".post-title h3");
-            mediumTitleElement.find("span").remove();
-            const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
-
-            const items = $(".wp-manga-chapter");
-
-            const releaseStatusString = $(".post-status .post-content_item:nth-child(2) .summary-content").text().trim().toLowerCase();
-
-            let end;
-            if (releaseStatusString === "ongoing") {
-                end = false;
-            } else if (releaseStatusString === "completed") {
-                end = true;
-            }
-            const tocMeta = {
-                title: mediumTitle,
-                mediumType: tools.MediaType.TEXT,
-                end,
-            };
-            yield tocMeta;
-            for (let i = 0; i < items.length; i++) {
-                const newsRow = items.eq(i);
-
-                const titleElement = newsRow.find("a");
-                const link = titleElement.attr("href");
-
-                const timeStampElement = newsRow.find(".chapter-release-date");
-                const dateString = timeStampElement.text().trim();
-                const lowerDate = dateString.toLowerCase();
-
-                let date;
-                if (lowerDate.includes("now") || lowerDate.includes("ago")) {
-                    date = tools.relativeToAbsoluteTime(dateString);
-                } else {
-                    date = new Date(dateString);
-                }
-
-                yield {title: titleElement.text(), url: link, releaseDate: date};
-            }
-        })();
+        const generator = boxNovelGenerator("boxnovel-173-html");
 
         const contents = await directTools.scrapeToc(generator);
         contents.should.be.an("array");
@@ -1852,39 +1818,8 @@ describe("testing scrapeToc", () => {
         episodesCount.should.equal(342);
     });
     it("should extract correct toc: for an example toc with chaotic, but ordered format, sometimes volume, sometimes not with sometimes partialIndex and sometimes no index", async function () {
-        const generator = (async function* testGenerator() {
-            const now = new Date();
-            for (let i = 1; i <= 7; i++) {
-                const content = await fs.promises.readFile(`tests/resources/novelfull-122-${i}.html`, "utf8");
-                const $ = cheerio.load(content);
-                const mediumTitleElement = $(".desc .title").first();
-                const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
-
-                const items = $(".list-chapter li a");
-
-                const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
-
-                let end;
-                if (releaseStatusString === "ongoing") {
-                    end = false;
-                } else if (releaseStatusString === "completed") {
-                    end = true;
-                }
-                const tocMeta = {
-                    title: mediumTitle,
-                    mediumType: tools.MediaType.TEXT,
-                    end,
-                };
-                yield tocMeta;
-
-                for (let j = 0; j < items.length; j++) {
-                    const newsRow = items.eq(j);
-                    const link = newsRow.attr("href");
-                    const episodeTitle = tools.sanitizeString(newsRow.text());
-                    yield {title: episodeTitle, url: link, releaseDate: now};
-                }
-            }
-        })();
+        const pages = Array.from(new Array(7), (_val, index) => `tests/resources/novelfull-122-${index + 1}.html`);
+        const generator = novelfullGenerator(pages);
 
         const contents = await directTools.scrapeToc(generator);
         contents.should.be.an("array");
@@ -1921,39 +1856,8 @@ describe("testing scrapeToc", () => {
         episodesCount.should.equal(325);
     });
     it("should extract correct toc: for an example toc with 'Volume Volume-Chapter' Format", async function () {
-        const generator = (async function* testGenerator() {
-            const now = new Date();
-            for (let i = 1; i <= 13; i++) {
-                const content = await fs.promises.readFile(`tests/resources/novel-test-toc-1-${i}.html`, "utf8");
-                const $ = cheerio.load(content);
-                const mediumTitleElement = $(".desc .title").first();
-                const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
-
-                const items = $(".list-chapter li a");
-
-                const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
-
-                let end;
-                if (releaseStatusString === "ongoing") {
-                    end = false;
-                } else if (releaseStatusString === "completed") {
-                    end = true;
-                }
-                const tocMeta = {
-                    title: mediumTitle,
-                    mediumType: tools.MediaType.TEXT,
-                    end,
-                };
-                yield tocMeta;
-
-                for (let j = 0; j < items.length; j++) {
-                    const newsRow = items.eq(j);
-                    const link = newsRow.attr("href");
-                    const episodeTitle = tools.sanitizeString(newsRow.text());
-                    yield {title: episodeTitle, url: link, releaseDate: now};
-                }
-            }
-        })();
+        const pages = Array.from(new Array(13), (_val, index) => `tests/resources/novel-test-toc-1-${index + 1}.html`);
+        const generator = novelfullGenerator(pages);
 
         const contents = await directTools.scrapeToc(generator);
         contents.should.be.an("array");
@@ -1990,43 +1894,8 @@ describe("testing scrapeToc", () => {
         episodesCount.should.equal(637);
     });
     it("should extract correct toc: for an example toc with mostly 'chapter Volume-Chapter-Part' Format", async function () {
-        const generator = (async function* testGenerator() {
-            const now = new Date();
-            let tocYielded = false;
-            for (let i = 1; i <= 13; i++) {
-                const content = await fs.promises.readFile(`tests/resources/novelfull-155-${i}.html`, "utf8");
-                const $ = cheerio.load(content);
-                const mediumTitleElement = $(".desc .title").first();
-                const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
-
-                const items = $(".list-chapter li a");
-
-                const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
-
-                let end;
-                if (releaseStatusString === "ongoing") {
-                    end = false;
-                } else if (releaseStatusString === "completed") {
-                    end = true;
-                }
-                if (!tocYielded) {
-                    const tocMeta = {
-                        title: mediumTitle,
-                        mediumType: tools.MediaType.TEXT,
-                        end,
-                    };
-                    yield tocMeta;
-                    tocYielded = true;
-                }
-
-                for (let j = 0; j < items.length; j++) {
-                    const newsRow = items.eq(j);
-                    const link = newsRow.attr("href");
-                    const episodeTitle = tools.sanitizeString(newsRow.text());
-                    yield {title: episodeTitle, url: link, releaseDate: now};
-                }
-            }
-        })();
+        const pages = Array.from(new Array(13), (_val, index) => `tests/resources/novelfull-155-${index + 1}.html`);
+        const generator = novelfullGenerator(pages);
 
         const contents = await directTools.scrapeToc(generator);
         contents.should.be.an("array");
@@ -2063,43 +1932,8 @@ describe("testing scrapeToc", () => {
         episodesCount.should.equal(626);
     });
     it("should extract correct toc: for an example toc", async function () {
-        const generator = (async function* testGenerator() {
-            const now = new Date();
-            let tocYielded = false;
-            for (let i = 1; i <= 25; i++) {
-                const content = await fs.promises.readFile(`tests/resources/novelfull-178-${i}.html`, "utf8");
-                const $ = cheerio.load(content);
-                const mediumTitleElement = $(".desc .title").first();
-                const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
-
-                const items = $(".list-chapter li a");
-
-                const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
-
-                let end;
-                if (releaseStatusString === "ongoing") {
-                    end = false;
-                } else if (releaseStatusString === "completed") {
-                    end = true;
-                }
-                if (!tocYielded) {
-                    const tocMeta = {
-                        title: mediumTitle,
-                        mediumType: tools.MediaType.TEXT,
-                        end,
-                    };
-                    yield tocMeta;
-                    tocYielded = true;
-                }
-
-                for (let j = 0; j < items.length; j++) {
-                    const newsRow = items.eq(j);
-                    const link = newsRow.attr("href");
-                    const episodeTitle = tools.sanitizeString(newsRow.text());
-                    yield {title: episodeTitle, url: link, releaseDate: now};
-                }
-            }
-        })();
+        const pages = Array.from(new Array(25), (_val, index) => `tests/resources/novelfull-178-${index + 1}.html`);
+        const generator = novelfullGenerator(pages);
 
         const contents = await directTools.scrapeToc(generator);
         contents.should.be.an("array");
@@ -2137,43 +1971,8 @@ describe("testing scrapeToc", () => {
         episodesCount.should.equal(1222);
     });
     it("should extract correct toc: for an example toc where it runs at risk to create many nonsense chapters because one chapter title starts with a big number", async function () {
-        const generator = (async function* testGenerator() {
-            const now = new Date();
-            let tocYielded = false;
-            for (let i = 1; i <= 12; i++) {
-                const content = await fs.promises.readFile(`tests/resources/novelfull-182-${i}.html`, "utf8");
-                const $ = cheerio.load(content);
-                const mediumTitleElement = $(".desc .title").first();
-                const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
-
-                const items = $(".list-chapter li a");
-
-                const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
-
-                let end;
-                if (releaseStatusString === "ongoing") {
-                    end = false;
-                } else if (releaseStatusString === "completed") {
-                    end = true;
-                }
-                if (!tocYielded) {
-                    const tocMeta = {
-                        title: mediumTitle,
-                        mediumType: tools.MediaType.TEXT,
-                        end,
-                    };
-                    yield tocMeta;
-                    tocYielded = true;
-                }
-
-                for (let j = 0; j < items.length; j++) {
-                    const newsRow = items.eq(j);
-                    const link = newsRow.attr("href");
-                    const episodeTitle = tools.sanitizeString(newsRow.text());
-                    yield {title: episodeTitle, url: link, releaseDate: now};
-                }
-            }
-        })();
+        const pages = Array.from(new Array(12), (_val, index) => `tests/resources/novelfull-182-${index + 1}.html`);
+        const generator = novelfullGenerator(pages);
 
         const contents = await directTools.scrapeToc(generator);
         contents.should.be.an("array");
