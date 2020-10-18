@@ -11,13 +11,13 @@ pipeline {
       parallel {
         stage('lint website') {
           steps {
-            sh 'npx eslint website/src/'
+            sh 'npm run lint:website'
           }
         }
 
         stage('lint server') {
           steps {
-            sh '''npx eslint -c server/.eslintrc.js server/bin/'''
+            sh 'npm run lint:server'
           }
         }
 
