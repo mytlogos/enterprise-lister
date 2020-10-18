@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "baseUrl": "./website",
+    "baseUrl": "src/website",
     "types": [
       "webpack-env",
       "jest"
@@ -23,9 +23,9 @@
     ]
   },
   "include": [
-    "website/src/**/*.ts",
-    "website/src/**/*.tsx",
-    "website/src/**/*.vue"
+    "src/website/**/*.ts",
+    "src/website/**/*.tsx",
+    "src/website/**/*.vue"
 //    "tests/**/*.ts",
 //    "tests/**/*.tsx"
   ],

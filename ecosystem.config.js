@@ -2,7 +2,7 @@ module.exports = {
     apps: [
         {
             name: "enterprise-server",
-            script: "server/dist/startServer.js",
+            script: "dist/server/startServer.js",
             instances: 1,
             max_restarts: 5,
             exec_mode: "fork",
@@ -15,7 +15,7 @@ module.exports = {
         },
         {
             name: "enterprise-crawler",
-            script: "server/dist/startCrawler.js",
+            script: "dist/server/startCrawler.js",
             max_restarts: 5,
             instances: 1,
             exec_mode: "fork",
