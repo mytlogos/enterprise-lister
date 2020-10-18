@@ -62,6 +62,89 @@ async function* novelfullGenerator(pages) {
         }
     }
 }
+/**
+ * @typedef PartialRelease
+ * @property {string | undefined} title
+ * @property {number} combiIndex
+ * @property {number | undefined} totalIndex
+ * @property {number | undefined} partialIndex
+ * @property {boolean | undefined} locked
+ * @property {string | undefined} url
+ * @property {Date | undefined} releaseDate
+ */
+
+/**
+ * @typedef Release
+ * @property {string} title
+ * @property {number} combiIndex
+ * @property {number} totalIndex
+ * @property {number | undefined} partialIndex
+ * @property {boolean} locked
+ * @property {string} url
+ * @property {Date} releaseDate
+ */
+
+/**
+ * Create full Releasse with sensible defaults from partial Releases.
+ * Convenience function to reduce code duplication.
+ * It does not modify the parameter and creates new objects instead.
+ * 
+ * @param {Date} now
+ * @param {PartialRelease[]} params partial releases to map
+ * @returns {Release[]}
+ */
+function createReleases(now, ...params) {
+    return params.map(value => {
+        return {
+            title: "",
+            totalIndex: value.combiIndex,
+            partialIndex: undefined,
+            locked: false,
+            url: "",
+            releaseDate: now,
+            ...value
+        };
+    });
+}
+
+/**
+ * @typedef PartialPart
+ * @property {string | undefined} title
+ * @property {number} combiIndex
+ * @property {number | undefined} totalIndex
+ * @property {number | undefined} partialIndex
+ * @property {PartialRelease[]} episodes
+ */
+
+/**
+ * @typedef Part
+ * @property {string} title
+ * @property {number} combiIndex
+ * @property {number} totalIndex
+ * @property {number | undefined} partialIndex
+ * @property {Release} episodes
+ */
+
+/**
+ * Create full PartReleases with sensible defaults from partial PartReleases.
+ * Convenience function to reduce code duplication.
+ * It does not modify the parameter and creates new objects instead. 
+ * 
+ * @param {Date} now
+ * @param {PartialPart[]} params partial parts to map
+ * @returns {Part[]}
+ */
+function createParts(now, ...params) {
+    return params.map(value => {
+        return {
+            title: "",
+            totalIndex: value.combiIndex,
+            partialIndex: undefined,
+            ...value,
+            episodes: createReleases(now, ...value.episodes)
+        };
+    });
+}
 
 /**
  * @typedef Case
@@ -160,42 +243,13 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([{
-            title: "",
-            combiIndex: 1,
-            totalIndex: 1,
-            partialIndex: undefined,
-            locked: false,
-            url: "",
-            releaseDate: now
-        },
-            {
-                title: "",
-                combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
-            },
-            {
-                title: "",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
-            },
-            {
-                title: "",
-                combiIndex: 4,
-                totalIndex: 4,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
-            }])
+        contents.should.deep.equal(createReleases(
+            now, 
+            {combiIndex: 1},
+            {combiIndex: 2},
+            {combiIndex: 3},
+            {totalIndex: 4}
+        ));
     });
     it("should extract correct toc: chapter indices with title only", async function () {
         const now = new Date();
@@ -207,42 +261,25 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([{
-            title: "I am HitchCock",
-            combiIndex: 1,
-            totalIndex: 1,
-            partialIndex: undefined,
-            locked: false,
-            url: "",
-            releaseDate: now
-        },
+        contents.should.deep.equal(createReleases(
+            now,
+            {
+                title: "I am HitchCock",
+                combiIndex: 1
+            },
             {
                 title: "I am HitchCock1",
-                combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 2
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock3",
-                combiIndex: 4,
-                totalIndex: 4,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
-            }])
+                combiIndex: 4
+            }
+        ));
     });
     it("should extract correct toc: chapter indices with partial index with title only", async function () {
         const now = new Date();
@@ -256,62 +293,39 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am HitchCock",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 2
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.5,
                 totalIndex: 2,
-                partialIndex: 5,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 5
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.1,
                 totalIndex: 4,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             }
-        ])
+        ));
     });
     it("should extract correct toc: short form chapter indices with partial index with title only", async function () {
         const now = new Date();
@@ -325,62 +339,39 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am HitchCock",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 2
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.5,
                 totalIndex: 2,
-                partialIndex: 5,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 5
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.1,
                 totalIndex: 4,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             }
-        ])
+        ));
     });
     it("should extract correct toc: short form indices with partial index with title only and all forms of chapter notations", async function () {
         const now = new Date();
@@ -396,80 +387,47 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am HitchCock",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 2
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.5,
                 totalIndex: 2,
-                partialIndex: 5,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 5
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 4,
-                totalIndex: 4,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 4
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 5.1,
                 totalIndex: 5,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 5.2,
                 totalIndex: 5,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 100,
-                totalIndex: 100,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 100
             }
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with title, with volume only", async function () {
         const now = new Date();
@@ -481,60 +439,35 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
-                title: "",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 2,
-                        totalIndex: 2,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 2
                     }
                 ]
             },
             {
-                title: "",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 4,
-                        totalIndex: 4,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 4
                     }
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with title, with short form volume", async function () {
         const now = new Date();
@@ -546,60 +479,35 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
-                title: "",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 2,
-                        totalIndex: 2,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 2
                     }
                 ]
             },
             {
-                title: "",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 4,
-                        totalIndex: 4,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 4
                     }
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with title, with volume with title", async function () {
         const now = new Date();
@@ -611,60 +519,37 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
                 title: "I am a title1",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 2,
-                        totalIndex: 2,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 2
                     }
                 ]
             },
             {
                 title: "I am a title2",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 4,
-                        totalIndex: 4,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 4
                     }
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: ignore invalid chapters", async function () {
         const now = new Date();
@@ -681,60 +566,37 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
                 title: "I am a title1",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 2,
-                        totalIndex: 2,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 2
                     }
                 ]
             },
             {
                 title: "I am a title2",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 4,
-                        totalIndex: 4,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 4
                     }
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: full short form with title", async function () {
         const now = new Date();
@@ -746,52 +608,38 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
-                title: "",
                 combiIndex: 54,
-                totalIndex: 54,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "All That Labor Work",
                         combiIndex: 3.3,
                         totalIndex: 3,
-                        partialIndex: 3,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 3
                     },
                     {
                         title: "Plan of Annihilation",
                         combiIndex: 4.1,
                         totalIndex: 4,
-                        partialIndex: 1,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 1
                     },
                     {
                         title: "Plan of Annihilation",
                         combiIndex: 4.2,
                         totalIndex: 4,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "Plan of Annihilation",
                         combiIndex: 4.3,
                         totalIndex: 4,
-                        partialIndex: 3,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 3
                     },
                 ]
             }
-        ])
+        ));
     });
     it("should extract correct toc: full form mixed with full short form with title", async function () {
         const now = new Date();
@@ -803,52 +651,30 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
-                title: "",
                 combiIndex: 54,
-                totalIndex: 54,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "All That Labor Work",
-                        combiIndex: 586,
-                        totalIndex: 586,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 586
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 587,
-                        totalIndex: 587,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 587
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 588,
-                        totalIndex: 588,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 588
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 589,
-                        totalIndex: 589,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 589
                     },
                 ]
             }
-        ])
+        ));
     });
     it("should extract correct toc: title prefix with full form mixed with full short form with title", async function () {
         const now = new Date();
@@ -861,52 +687,30 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
-                title: "",
                 combiIndex: 54,
-                totalIndex: 54,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "All That Labor Work",
-                        combiIndex: 586,
-                        totalIndex: 586,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 586
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 587,
-                        totalIndex: 587,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 587
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 588,
-                        totalIndex: 588,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 588
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 589,
-                        totalIndex: 589,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 589
                     },
                 ]
             }
-        ])
+        ));
     });
     it("should extract correct toc: title prefix with different volume namings and chapter", async function () {
         const now = new Date();
@@ -919,60 +723,35 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
-                title: "",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "All That Labor Work",
-                        combiIndex: 586,
-                        totalIndex: 586,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 586
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 587,
-                        totalIndex: 587,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 587
                     },
                 ]
             },
             {
-                title: "",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 588,
-                        totalIndex: 588,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 588
                     },
                     {
                         title: "Plan of Annihilation",
-                        combiIndex: 589,
-                        totalIndex: 589,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 589
                     },
                 ]
             }
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with not always used partial index with title only", async function () {
         const now = new Date();
@@ -986,62 +765,41 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am HitchCock",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.1,
                 totalIndex: 2,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.2,
                 totalIndex: 2,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.1,
                 totalIndex: 4,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             }
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing ascending story", async function () {
         const now = new Date();
@@ -1058,80 +816,53 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am a Intermission1",
                 combiIndex: 0.1,
                 totalIndex: 0,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
             {
                 title: "I am a Intermission2",
                 combiIndex: 0.2,
                 totalIndex: 0,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am a Intermission3",
                 combiIndex: 0.3,
                 totalIndex: 0,
-                partialIndex: 3,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 3
             },
             {
                 title: "I am a Intermission4",
                 combiIndex: 0.4,
                 totalIndex: 0,
-                partialIndex: 4,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 4
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.2,
                 totalIndex: 2,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             }
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with finished ascending story", async function () {
         const now = new Date();
@@ -1148,80 +879,53 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am a Intermission1",
                 combiIndex: 0.1,
                 totalIndex: 0,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
             {
                 title: "I am a Intermission2",
                 combiIndex: 0.2,
                 totalIndex: 0,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.2,
                 totalIndex: 2,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am a Intermission3",
                 combiIndex: 4.301,
                 totalIndex: 4,
-                partialIndex: 301,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 301
             },
             {
                 title: "I am a Intermission4",
                 combiIndex: 4.302,
                 totalIndex: 4,
-                partialIndex: 302,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 302
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing descending story", async function () {
         const now = new Date();
@@ -1238,80 +942,53 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.2,
                 totalIndex: 2,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am a Intermission4",
                 combiIndex: 0.4,
                 totalIndex: 0,
-                partialIndex: 4,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 4
             },
             {
                 title: "I am a Intermission3",
                 combiIndex: 0.3,
                 totalIndex: 0,
-                partialIndex: 3,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 3
             },
             {
                 title: "I am a Intermission2",
                 combiIndex: 0.2,
                 totalIndex: 0,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am a Intermission1",
                 combiIndex: 0.1,
                 totalIndex: 0,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with finished descending story", async function () {
         const now = new Date();
@@ -1328,80 +1005,53 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am a Intermission4",
                 combiIndex: 4.302,
                 totalIndex: 4,
-                partialIndex: 302,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 302
             },
             {
                 title: "I am a Intermission3",
                 combiIndex: 4.301,
                 totalIndex: 4,
-                partialIndex: 301,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 301
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.2,
                 totalIndex: 2,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am a Intermission2",
                 combiIndex: 0.2,
                 totalIndex: 0,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am a Intermission1",
                 combiIndex: 0.1,
                 totalIndex: 0,
-                partialIndex: 1,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 1
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with non main story chapters in the middle with ascending story", async function () {
         const now = new Date();
@@ -1417,80 +1067,53 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am HitchCock1",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.2,
                 totalIndex: 2,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am a Intermission1",
                 combiIndex: 2.301,
                 totalIndex: 2,
-                partialIndex: 301,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 301
             },
             {
                 title: "I am a Intermission2",
                 combiIndex: 2.302,
                 totalIndex: 2,
-                partialIndex: 302,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 302
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am a Intermission3",
                 combiIndex: 3.101,
                 totalIndex: 3,
-                partialIndex: 101,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 101
             },
             {
                 title: "I am a Intermission4",
                 combiIndex: 3.102,
                 totalIndex: 3,
-                partialIndex: 102,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 102
             },
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with non main story chapters in the middle with descending story", async function () {
         const now = new Date();
@@ -1506,80 +1129,53 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createReleases(
+            now,
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
                 totalIndex: 4,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am a Intermission4",
                 combiIndex: 3.102,
                 totalIndex: 3,
-                partialIndex: 102,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 102
             },
             {
                 title: "I am a Intermission3",
                 combiIndex: 3.101,
                 totalIndex: 3,
-                partialIndex: 101,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 101
             },
             {
                 title: "I am HitchCock2",
-                combiIndex: 3,
-                totalIndex: 3,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 3
             },
             {
                 title: "I am a Intermission2",
                 combiIndex: 2.302,
                 totalIndex: 2,
-                partialIndex: 302,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 302
             },
             {
                 title: "I am a Intermission1",
                 combiIndex: 2.301,
                 totalIndex: 2,
-                partialIndex: 301,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 301
             },
             {
                 title: "I am HitchCock1",
                 combiIndex: 2.2,
                 totalIndex: 2,
-                partialIndex: 2,
-                locked: false,
-                url: "",
-                releaseDate: now
+                partialIndex: 2
             },
             {
                 title: "I am HitchCock1",
-                combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
-                locked: false,
-                url: "",
-                releaseDate: now
+                combiIndex: 1
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with volume items between with descending story", async function () {
         const now = new Date();
@@ -1597,96 +1193,63 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
+            now,
             {
-                title: "",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock3",
                         combiIndex: 4.2,
                         totalIndex: 4,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am a Intermission4",
                         combiIndex: 3.102,
                         totalIndex: 3,
-                        partialIndex: 102,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 102
                     },
                     {
                         title: "I am a Intermission3",
                         combiIndex: 3.101,
                         totalIndex: 3,
-                        partialIndex: 101,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 101
                     },
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                 ]
             },
             {
-                title: "",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am a Intermission2",
                         combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 302,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 302
                     },
                     {
                         title: "I am a Intermission1",
                         combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 301,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 301
                     },
                     {
                         title: "I am HitchCock1",
                         combiIndex: 2.2,
                         totalIndex: 2,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: chapter indices with volume items between with ascending story", async function () {
         const now = new Date();
@@ -1704,96 +1267,62 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
             {
-                title: "",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am HitchCock1",
                         combiIndex: 2.2,
                         totalIndex: 2,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am a Intermission1",
                         combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 301,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 301
                     },
                     {
                         title: "I am a Intermission2",
                         combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 302,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 302
                     },
                 ]
             },
             {
-                title: "",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am a Intermission3",
                         combiIndex: 3.101,
                         totalIndex: 3,
-                        partialIndex: 101,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 101
                     },
                     {
                         title: "I am a Intermission4",
                         combiIndex: 3.102,
                         totalIndex: 3,
-                        partialIndex: 102,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 102
                     },
                     {
                         title: "I am HitchCock3",
                         combiIndex: 4.2,
                         totalIndex: 4,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
-                    },
+                        partialIndex: 2
+                    }
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: non main episode with volume definition between with descending story", async function () {
         const now = new Date();
@@ -1809,96 +1338,64 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
             {
                 title: "I have a Title2",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock3",
                         combiIndex: 4.2,
                         totalIndex: 4,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am a Intermission4",
                         combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 302,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 302
                     },
                     {
                         title: "I am a Intermission3",
                         combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 301,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 301
                     },
                 ]
             },
             {
                 title: "I have a Title1",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock1",
                         combiIndex: 2.2,
                         totalIndex: 2,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am a Intermission2",
                         combiIndex: 0.2,
                         totalIndex: 0,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am a Intermission1",
                         combiIndex: 0.1,
                         totalIndex: 0,
-                        partialIndex: 1,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 1
                     },
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: non main episode with volume definition between with ascending story", async function () {
         const now = new Date();
@@ -1914,96 +1411,66 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
             {
                 title: "I have a Title1",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am a Intermission1",
                         combiIndex: 0.1,
                         totalIndex: 0,
-                        partialIndex: 1,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 1
                     },
                     {
                         title: "I am a Intermission2",
                         combiIndex: 0.2,
                         totalIndex: 0,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
+
                     },
                     {
                         title: "I am HitchCock1",
                         combiIndex: 2.2,
                         totalIndex: 2,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                 ]
             },
             {
                 title: "I have a Title2",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am a Intermission3",
                         combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 301,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 301
                     },
                     {
                         title: "I am a Intermission4",
                         combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 302,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 302
                     },
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
+
                     },
                     {
                         title: "I am HitchCock3",
                         combiIndex: 4.2,
                         totalIndex: 4,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: episodes without volume sandwiched between ones with volume between with descending story", async function () {
         const now = new Date();
@@ -2019,96 +1486,64 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
             {
                 title: "I have a Title2",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock3",
                         combiIndex: 4.2,
                         totalIndex: 4,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am a Intermission4",
                         combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 302,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 302
                     },
                     {
                         title: "I am a Intermission3",
                         combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 301,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 301
                     },
                 ]
             },
             {
                 title: "I have a Title1",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am HitchCock1",
                         combiIndex: 2.2,
                         totalIndex: 2,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am a Intermission2",
                         combiIndex: 0.2,
                         totalIndex: 0,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am a Intermission1",
                         combiIndex: 0.1,
                         totalIndex: 0,
-                        partialIndex: 1,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 1
                     },
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: episodes without volume sandwiched between ones with volume with ascending story", async function () {
         const now = new Date();
@@ -2124,96 +1559,64 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
             {
                 title: "I have a Title1",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am a Intermission1",
                         combiIndex: 0.1,
                         totalIndex: 0,
-                        partialIndex: 1,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 1
                     },
                     {
                         title: "I am a Intermission2",
                         combiIndex: 0.2,
                         totalIndex: 0,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am HitchCock1",
                         combiIndex: 2.2,
                         totalIndex: 2,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                 ]
             },
             {
                 title: "I have a Title2",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am a Intermission3",
                         combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 301,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 301
                     },
                     {
                         title: "I am a Intermission4",
                         combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 302,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 302
                     },
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am HitchCock3",
                         combiIndex: 4.2,
                         totalIndex: 4,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: for an example toc with half hearted chapter-volume-chapter format", async function () {
         const generator = (async function* testGenerator() {
@@ -2302,123 +1705,74 @@ describe("testing scrapeToc", () => {
         })();
 
         const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal([
+        contents.should.deep.equal(createParts(
             {
                 title: "I have a Title1",
                 combiIndex: 1,
-                totalIndex: 1,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am a Intermission1",
                         combiIndex: 0.1,
                         totalIndex: 0,
-                        partialIndex: 1,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 1
                     },
                     {
                         title: "I am a Intermission2",
                         combiIndex: 0.2,
                         totalIndex: 0,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                     {
                         title: "I am HitchCock1",
-                        combiIndex: 1,
-                        totalIndex: 1,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 1
                     },
                     {
                         title: "I am HitchCock1",
                         combiIndex: 2.2,
                         totalIndex: 2,
-                        partialIndex: 2,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 2
                     },
                 ]
             },
             {
                 title: "I have a Title2",
                 combiIndex: 2,
-                totalIndex: 2,
-                partialIndex: undefined,
                 episodes: [
                     {
                         title: "I am a Intermission3",
                         combiIndex: 2.301,
                         totalIndex: 2,
-                        partialIndex: 301,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 301
                     },
                     {
                         title: "I am a Intermission4",
                         combiIndex: 2.302,
                         totalIndex: 2,
-                        partialIndex: 302,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        partialIndex: 302
                     },
                     {
                         title: "I am HitchCock2",
-                        combiIndex: 3,
-                        totalIndex: 3,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 3
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 4,
-                        totalIndex: 4,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 4
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 5,
-                        totalIndex: 5,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 5
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 6,
-                        totalIndex: 6,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 6
                     },
                     {
                         title: "I am HitchCock3",
-                        combiIndex: 7,
-                        totalIndex: 7,
-                        partialIndex: undefined,
-                        locked: false,
-                        url: "",
-                        releaseDate: now
+                        combiIndex: 7
                     },
                 ]
             },
-        ])
+        ));
     });
     it("should extract correct toc: for an example toc with descending index and sometimes partialindex", async function () {
         const generator = (async function* testGenerator() {
