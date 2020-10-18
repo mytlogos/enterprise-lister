@@ -1,8 +1,13 @@
 <template>
   <div>
     <h1>MediumDetail</h1>
-    <h1>Releases</h1>
-    <table class="table table-striped table-hover table-sm">
+    <h1 id="medium-releases-title">
+      Releases
+    </h1>
+    <table
+      class="table table-striped table-hover table-sm"
+      aria-describedby="medium-releases-title"
+    >
       <thead class="thead-dark">
         <th scope="col">
           #
@@ -53,6 +58,7 @@
               <i
                 class="fas fa-check"
                 :class="{ 'text-success': entry.progress === 1 }"
+                aria-hidden="true"
               />
             </button>
           </td>

@@ -1,12 +1,18 @@
 <template>
   <div class="external">
+    <h1 id="external-user">
+      ExternalUser
+    </h1>
     <button
       class="btn add"
       @click="add.show = true"
     >
       +
     </button>
-    <table>
+    <table
+      class="table"
+      aria-describedby="external-user"
+    >
       <thead>
         <tr>
           <th scope="col">

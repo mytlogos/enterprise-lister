@@ -1,6 +1,8 @@
 <template>
   <div class="container-fluid p-0">
-    <h1>Releases</h1>
+    <h1 id="releases-title">
+      Releases
+    </h1>
     <div class="p-1">
       <button
         class="btn btn-dark"
@@ -13,7 +15,10 @@
         class="ml-1"
       />
     </div>
-    <table class="table table-striped table-hover table-sm">
+    <table
+      class="table table-striped table-hover table-sm"
+      aria-describedby="releases-title"
+    >
       <thead class="thead-dark">
         <th scope="col">
           #

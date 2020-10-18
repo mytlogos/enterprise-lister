@@ -1,5 +1,8 @@
 <template>
   <div class="container-fluid p-0">
+    <h1 id="media-title">
+      Media
+    </h1>
     <div>
       <form class="form-inline">
         <div class="mr-sm-2 ml-sm-2">
@@ -12,7 +15,10 @@
         </div>
       </form>
     </div>
-    <table class="table">
+    <table
+      class="table"
+      aria-describedby="media-title"
+    >
       <thead class="thead-dark">
         <th scope="col">
           Title

@@ -1,10 +1,12 @@
 <template>
-  <div class="">
+  <div>
     <reading-list
-      class=""
       :lists="displayLists"
     />
-    <div class="">
+    <div>
+      <h1 id="news-title">
+        News
+      </h1>
       <div class="d-flex container-fluid">
         <span>From:</span>
         <VueCtkDateTimePicker
@@ -17,7 +19,10 @@
           class="picker"
         />
       </div>
-      <table class="table">
+      <table
+        class="table"
+        aria-describedby="news-title"
+      >
         <thead>
           <tr>
             <th scope="col">
