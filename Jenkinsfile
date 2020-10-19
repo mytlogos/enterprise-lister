@@ -64,9 +64,9 @@ pipeline {
           remote.host = env.ENTERPRISE_SERVER
           remote.allowAnyHosts = true
 
-          withCredentials([sshUserPrivateKey(credentialsId: '28e6e850-a920-491c-96c4-1f51e167860a', keyFileVariable: 'identity', passphraseVariable: '', usernameVariable: 'userName')]) {
-              remote.user = userName
-              remote.identity = identity
+          withCredentials([usernamePassword(credentialsId: '966e5fa4-833f-4477-a3b4-26327116d3f5', passwordVariable: 'ssh_pw', usernameVariable: 'ssh_user')]) {
+              remote.user = ssh_user
+              remote.password = ssh_pw
           }
         }
         sshCommand remote: remote, command: 'cd $ENTERPRISE_DIR'
