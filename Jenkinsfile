@@ -66,7 +66,7 @@ pipeline {
 
           withCredentials([sshUserPrivateKey(credentialsId: '28e6e850-a920-491c-96c4-1f51e167860a', keyFileVariable: 'identity', passphraseVariable: '', usernameVariable: 'userName')]) {
               remote.user = userName
-              remote.identityFile = identity
+              remote.identity = identity
           }
         }
         sshCommand remote: remote, command: 'cd $ENTERPRISE_DIR'
