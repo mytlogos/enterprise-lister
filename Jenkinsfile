@@ -59,10 +59,11 @@ pipeline {
       }
       steps {
         script {
-          def remote = [:]
+          remote = [:]
           remote.name = env.ENTERPRISE_HOSTNAME
           remote.host = env.ENTERPRISE_SERVER
           remote.allowAnyHosts = true
+
           withCredentials([sshUserPrivateKey(credentialsId: '28e6e850-a920-491c-96c4-1f51e167860a', keyFileVariable: 'identity', passphraseVariable: '', usernameVariable: 'userName')]) {
               remote.user = userName
               remote.identityFile = identity
