@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/mytlogos/enterprise-lister/compare/v1.0.1...v1.1.0) (2020-10-19)
+
+
+### Features
+
+* automatic Deploy with Jenkins ([78881c7](https://github.com/mytlogos/enterprise-lister/commit/78881c7c3e9290b35673097d1586852816d9176b)), closes [#30](https://github.com/mytlogos/enterprise-lister/issues/30)
+
 ## [1.0.1](https://github.com/mytlogos/enterprise-lister/compare/v1.0.0...v1.0.1) (2020-10-18)
 
 
