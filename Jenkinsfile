@@ -54,6 +54,10 @@ pipeline {
     }
 
     stage("Deploy production") {
+      // deploy from master only
+      when {
+        branch 'master'
+      }
       environment {
         GH_TOKEN = credentials('e2d21e2c-c919-4137-9355-21e4602a862e')
       }
@@ -69,14 +73,9 @@ pipeline {
               remote.password = ssh_pw
           }
         }
-        sshCommand remote: remote, command: 'cd $ENTERPRISE_DIR'
-        sshCommand remote: remote, command: 'git pull'
-        // do not install depencies listed under devDependecies
-        sshCommand remote: remote, command: 'npm install --production'
-        // download the latest dist directory
-        sshCommand remote: remote, command: 'node src/server/bin/update.js'
-        // restart pm2 managed process
-        sshCommand remote: remote, command: 'pm2 restart ecosystem.config.js'
+        // execute a remote script which does all the necessary deploy steps
+        // TODO: put the script in git
+        sshCommand remote: remote, command: './update-enterprise.sh'
       }
     }
   }
