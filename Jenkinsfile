@@ -52,6 +52,32 @@ pipeline {
         sh 'npx semantic-release'
       }
     }
+
+    stage("Deploy production") {
+      // deploy from master only
+      when {
+        branch 'master'
+      }
+      environment {
+        GH_TOKEN = credentials('e2d21e2c-c919-4137-9355-21e4602a862e')
+      }
+      steps {
+        script {
+          remote = [:]
+          remote.name = env.ENTERPRISE_HOSTNAME
+          remote.host = env.ENTERPRISE_SERVER
+          remote.allowAnyHosts = true
+
+          withCredentials([usernamePassword(credentialsId: '966e5fa4-833f-4477-a3b4-26327116d3f5', passwordVariable: 'ssh_pw', usernameVariable: 'ssh_user')]) {
+              remote.user = ssh_user
+              remote.password = ssh_pw
+          }
+        }
+        // execute a remote script which does all the necessary deploy steps
+        // TODO: put the script in git
+        sshCommand remote: remote, command: './update-enterprise.sh'
+      }
+    }
   }
   tools {
     nodejs 'node'
