@@ -24,7 +24,8 @@
   "include": [
     "bin/**/*.ts",
     "bin/**/*.tsx",
-    "bin/**/*.vue"
+    "bin/**/*.vue",
+    "bin/**/*.js"
     //    "tests/**/*.ts",
     //    "tests/**/*.tsx"
   ]
