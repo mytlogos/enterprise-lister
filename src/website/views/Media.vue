@@ -13,6 +13,65 @@
             type="text"
           >
         </div>
+        <div
+          class="btn-group"
+          aria-label="Select which Releasestate of TL to show"
+        >
+          <button
+            class="btn btn-secondary active"
+            type="button"
+            data-toggle="button"
+            aria-pressed="true"
+            @click.left="toggleReleaseStateTL(0)"
+          >
+            Unknown
+          </button>
+          <button
+            class="btn btn-secondary active"
+            type="button"
+            data-toggle="button"
+            aria-pressed="true"
+            @click.left="toggleReleaseStateTL(1)"
+          >
+            Ongoing
+          </button>
+          <button
+            class="btn btn-secondary active"
+            type="button"
+            data-toggle="button"
+            aria-pressed="true"
+            @click.left="toggleReleaseStateTL(5)"
+          >
+            Complete
+          </button>
+          <button
+            class="btn btn-secondary active"
+            type="button"
+            data-toggle="button"
+            aria-pressed="true"
+            @click.left="toggleReleaseStateTL(2)"
+          >
+            Hiatus
+          </button>
+          <button
+            class="btn btn-secondary active"
+            type="button"
+            data-toggle="button"
+            aria-pressed="true"
+            @click.left="toggleReleaseStateTL(3)"
+          >
+            Discontinued
+          </button>
+          <button
+            class="btn btn-secondary active"
+            type="button"
+            data-toggle="button"
+            aria-pressed="true"
+            @click.left="toggleReleaseStateTL(4)"
+          >
+            Dropped
+          </button>
+        </div>
       </form>
     </div>
     <table
@@ -25,6 +84,12 @@
         </th>
         <th scope="col">
           Type
+        </th>
+        <th scope="col">
+          State in COO
+        </th>
+        <th scope="col">
+          State from TL
         </th>
         <th scope="col">
           Author
@@ -41,6 +106,8 @@
             </router-link>
           </td>
           <td>{{ mediaTypeToString(medium.medium) }}</td>
+          <td><release-state :state="medium.stateOrigin" /></td>
+          <td><release-state :state="medium.stateTL" /></td>
           <td>{{ medium.author }}</td>
         </tr>
       </tbody>
@@ -50,21 +117,34 @@
 
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
-import { SimpleMedium, MediaType } from "../siteTypes";
+import { SimpleMedium, MediaType, ReleaseState } from "../siteTypes";
+import releaseState from "../components/release-state.vue"
 import { defineComponent, reactive } from "vue"
 
 interface Data {
     media: SimpleMedium[];
     titleSearch: string;
+    showStatesTL: ReleaseState[];
 }
 
 export default defineComponent({
     name: "Media",
+    components: {
+        releaseState
+    },
 
     data(): Data {
         return {
             media: [],
-            titleSearch: ""
+            titleSearch: "",
+            showStatesTL: [
+                ReleaseState.Unknown,
+                ReleaseState.Ongoing,
+                ReleaseState.Hiatus,
+                ReleaseState.Discontinued,
+                ReleaseState.Dropped,
+                ReleaseState.Complete,
+            ]
         };
     },
 
@@ -74,7 +154,17 @@ export default defineComponent({
          */
         filteredMedia(): SimpleMedium[] {
             const lowerTitleSearch = this.titleSearch.toLowerCase();
-            return this.media.filter(medium => medium.title.toLowerCase().includes(lowerTitleSearch));
+            return this.media
+                .filter(medium => {
+                    if (!medium.title.toLowerCase().includes(lowerTitleSearch)) {
+                        return false;
+                    }
+                    if (medium.stateTL == null) {
+                        return this.showStatesTL.includes(ReleaseState.Unknown);
+                    } else {
+                        return this.showStatesTL.includes(medium.stateTL);
+                    }
+                });
         }
     },
 
@@ -87,6 +177,14 @@ export default defineComponent({
     },
 
     methods: {
+        toggleReleaseStateTL(state: ReleaseState) {
+            const index = this.showStatesTL.indexOf(state);
+            if (index < 0) {
+                this.showStatesTL.push(state);
+            } else {
+                this.showStatesTL.splice(index, 1);
+            }
+        },
         mediaTypeToString(mediumType: number): string {
             switch (mediumType) {
             case MediaType.TEXT:

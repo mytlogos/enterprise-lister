@@ -40,12 +40,21 @@ export interface SimpleMedium {
     medium: number;
     artist?: string;
     lang?: string;
-    stateOrigin?: number;
-    stateTL?: number;
+    stateOrigin?: ReleaseState;
+    stateTL?: ReleaseState;
     series?: string;
     universe?: string;
 
     [key: string]: any;
+}
+
+export enum ReleaseState {
+    Unknown = 0,
+    Ongoing = 1,
+    Hiatus = 2,
+    Discontinued = 3,
+    Dropped = 4,
+    Complete = 5,
 }
 
 export interface Medium extends SimpleMedium {
