@@ -105,7 +105,7 @@
               {{ medium.title }}
             </router-link>
           </td>
-          <td>{{ mediaTypeToString(medium.medium) }}</td>
+          <td><type-icon :type="medium.medium" /></td>
           <td><release-state :state="medium.stateOrigin" /></td>
           <td><release-state :state="medium.stateTL" /></td>
           <td>{{ medium.author }}</td>
@@ -117,8 +117,9 @@
 
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
-import { SimpleMedium, MediaType, ReleaseState } from "../siteTypes";
+import { SimpleMedium, ReleaseState } from "../siteTypes";
 import releaseState from "../components/release-state.vue"
+import typeIcon from "../components/type-icon.vue"
 import { defineComponent, reactive } from "vue"
 
 interface Data {
@@ -130,7 +131,8 @@ interface Data {
 export default defineComponent({
     name: "Media",
     components: {
-        releaseState
+        releaseState,
+        typeIcon
     },
 
     data(): Data {
@@ -186,21 +188,7 @@ export default defineComponent({
             } else {
                 this.showStatesTL.splice(index, 1);
             }
-        },
-        mediaTypeToString(mediumType: number): string {
-            switch (mediumType) {
-            case MediaType.TEXT:
-                return "Text";
-            case MediaType.AUDIO:
-                return "Audio";
-            case MediaType.VIDEO:
-                return "Video";
-            case MediaType.IMAGE:
-                return "Image";
-            default:
-                return "Unknown";
-            }
-        },
+        }
     }
 });
 </script>
