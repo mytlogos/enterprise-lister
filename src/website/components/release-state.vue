@@ -16,7 +16,8 @@ export default defineComponent({
     props: {
         state: {
             type: Number,
-            required: true
+            default: ReleaseState.Unknown,
+            required: false
         }
     },
     computed: {
