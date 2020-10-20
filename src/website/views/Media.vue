@@ -164,7 +164,9 @@ export default defineComponent({
                     } else {
                         return this.showStatesTL.includes(medium.stateTL);
                     }
-                });
+                })
+                // sort alphabetically from A-Za-z case sensitive
+                .sort((first, second) => first.title > second.title);
         }
     },
 
