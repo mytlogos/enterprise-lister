@@ -37,7 +37,7 @@ class SimpleNovelUpdates implements ListManager {
         }
     }
 
-    private static loadCheerio(link: string): Promise<CheerioStatic> {
+    private static loadCheerio(link: string): Promise<cheerio.Root> {
         return queueCheerioRequest(link, {url: link});
     }
 
@@ -264,7 +264,7 @@ class SimpleNovelUpdates implements ListManager {
 // tslint:disable-next-line
 class NovelUpdates implements ListManager {
 
-    public static scrapeListRow(i: number, tableData: Cheerio) {
+    public static scrapeListRow(i: number, tableData: cheerio.Cheerio) {
         const link = tableData.eq(i).children("a").first();
         return {text: link.text().trim(), link: link.attr("href") as string};
     }
@@ -348,7 +348,7 @@ class NovelUpdates implements ListManager {
             }
             return this
                 .loadCheerio(list.link)
-                .then((cheer: CheerioStatic) => list.media = this.scrapeList(cheer, media, feed));
+                .then((cheer: cheerio.Root) => list.media = this.scrapeList(cheer, media, feed));
         });
 
         media = unique(media, (a, b) => b.title.link === a.title.link);
@@ -465,13 +465,13 @@ class NovelUpdates implements ListManager {
     /**
      *
      * @param {string} link
-     * @return {Promise<CheerioStatic>}
+     * @return {Promise<cheerio.Root>}
      */
-    public loadCheerio(link: string): Promise<CheerioStatic> {
+    public loadCheerio(link: string): Promise<cheerio.Root> {
         return queueCheerioRequest(link, {url: link}, this.defaults);
     }
 
-    public scrapeList($: CheerioStatic, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {
+    public scrapeList($: cheerio.Root, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {
         let feedLink = $(".l-content .seticon a:nth-child(1)").attr("href") as string;
         feedLink = url.resolve(this.baseURI, feedLink);
         feed.push(feedLink);

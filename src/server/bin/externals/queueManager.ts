@@ -8,6 +8,7 @@ import {StatusCodeError} from "request-promise-native/errors";
 import requestPromise from "request-promise-native";
 import {MissingResourceError} from "./errors";
 
+type CheerioStatic = cheerio.Root;
 
 export class Queue {
     public readonly queue: Callback[];
@@ -247,7 +248,7 @@ export const queueCheerioRequestStream: QueueRequest<CheerioStatic> = (uri, opti
 
 export const queueCheerioRequest = queueCheerioRequestStream;
 
-const transformCheerio = (body: string) => cheerio.load(body, {decodeEntities: false});
+const transformCheerio = (body: string): CheerioStatic => cheerio.load(body, {decodeEntities: false});
 
 const queueFullResponseWithLimit = (uri: string, options?: Options, otherRequest?: Request,
     queueToUse = queues, limit?: number): Promise<FullResponse> => {

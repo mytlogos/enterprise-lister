@@ -623,7 +623,7 @@ export class EpisodeContext extends SubContext {
         // TODO: 29.06.2019 insert multiple rows, what happens with insertId?
         const insertReleases: EpisodeRelease[] = [];
         // @ts-ignore
-        return promiseMultiSingle(episodes, async (episode: SimpleEpisode) => {
+        return promiseMultiSingle(episodes, async (episode: SimpleEpisode): Episode => {
             if (episode.partId == null || episode.partId <= 0) {
                 throw Error("episode without partId");
             }
@@ -668,7 +668,7 @@ export class EpisodeContext extends SubContext {
                 insertReleases.push(...episode.releases);
             }
             return {
-                id: insertId,
+                id: insertId as number,
                 partId: episode.partId,
                 partialIndex: episode.partialIndex,
                 totalIndex: episode.totalIndex,

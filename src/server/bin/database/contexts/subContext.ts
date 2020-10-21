@@ -37,7 +37,7 @@ export class SubContext implements ConnectionContext {
     /**
      * Updates data from the storage.
      */
-    protected async update(table: string, cb: UpdateCallback, ...condition: Array<{ column: string, value: any }>)
+    protected async update(table: string, cb: UpdateCallback, ...condition: Array<{ column: string; value: any }>)
         : Promise<boolean> {
         return this.parentContext.update(table, cb, ...condition);
     }
