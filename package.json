@@ -16,7 +16,7 @@
     "pm2:refresh": "pm2 restart ecosystem.config.js --update-env",
     "start": "node dist/server/startServer.js",
     "start:server": "node dist/server/startServer.js",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./tests/*.js ./tests/database/**/*.js ./tests/externals/**/*.js",
+    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js",
     "migrate": "node dist/server/test/migrate.js",
     "commit": "npx git-cz"
   },

@@ -20,7 +20,12 @@ pipeline {
             sh 'npm run lint:server'
           }
         }
+      }
+    }
 
+    stage('test') {
+      steps {
+        sh 'npm run test'
       }
     }
 
