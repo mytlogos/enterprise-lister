@@ -67,7 +67,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     return getTextContent(novelTitle, episodeTitle, urlString, content);
 }
 
-function extractTocSnippet($: CheerioStatic, link: string): Toc {
+function extractTocSnippet($: cheerio.Root, link: string): Toc {
     let end = false;
     let releaseState: ReleaseState = ReleaseState.Unknown;
     const releaseStateElement = $(".info > div:nth-child(4) > a:nth-child(2)");
@@ -221,7 +221,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     return [toc as Toc];
 }
 
-async function scrapeTocPage($: CheerioStatic, uri: string): Promise<Toc | undefined> {
+async function scrapeTocPage($: cheerio.Root, uri: string): Promise<Toc | undefined> {
 // TODO: 20.07.2019 scrape alternative titles and author too
     const mediumTitleElement = $(".desc .title").first();
     const mediumTitle = sanitizeString(mediumTitleElement.text());

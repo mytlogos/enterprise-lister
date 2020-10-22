@@ -406,7 +406,7 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
 
     const newJobs1: JobRequest[] = mediaWithoutTocs.map((id) => {
         return searchTocJob(id, tocSearchMedia.find((value) => value.mediumId === id));
-    }).flat(2) as JobRequest[];
+    }).flat(2);
 
     const hooks = [...nameHookMap.values()];
     const promises = [...mediaWithTocs.entries()].map(async (value) => {
@@ -444,8 +444,12 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
             );
         }
     }).flat(2);
-    const newJobs2: JobRequest[] = await Promise.all(promises);
-    return [newJobs1, newJobs2].flat(3).filter((value) => value);
+    const newJobs2: Array<JobRequest[] | undefined> = await Promise.all(promises);
+    return [newJobs1, newJobs2]
+        // flaten to one dimensional array
+        .flat(3)
+        // filter undefined values
+        .filter((value) => value) as JobRequest[];
 };
 export const queueTocsJob = async (): Promise<JobRequest[]> => {
     // TODO: 02.09.2019 a perfect candidate to use stream on

@@ -18,7 +18,7 @@ const defaultRequest: RequestAPI = request.defaults({
     jar
 });
 
-function loadBody(urlString: string, options?: CloudscraperOptions): Promise<CheerioStatic> {
+function loadBody(urlString: string, options?: CloudscraperOptions): Promise<cheerio.Root> {
     // @ts-ignore
     return queueCheerioRequest(urlString, options, defaultRequest);
 }

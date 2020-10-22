@@ -99,7 +99,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     const novelTitle = sanitizeString(mediumTitleElement.text());
 
     const chaTit = $(".cha-tit h3");
-    let directContentElement: Cheerio;
+    let directContentElement: cheerio.Cheerio;
     let episodeTitle: string;
 
     if (chaTit.length) {
@@ -143,7 +143,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
         throw new UrlError("not a valid toc url for BoxNovel: " + tocLink, tocLink);
     }
-    let $: CheerioStatic;
+    let $: cheerio.Root;
     try {
         $ = await queueCheerioRequest(tocLink);
     } catch (e) {

@@ -5,12 +5,12 @@ import {DatabaseContext} from "./contexts/databaseContext";
 
 export interface DatabaseSchema {
     readonly version: number;
-    readonly triggers: ReadonlyArray<Trigger>;
+    readonly triggers: readonly Trigger[];
     readonly name: string;
-    readonly tables: ReadonlyArray<TableSchema>;
+    readonly tables: readonly TableSchema[];
     readonly mainTable: TableSchema;
     readonly invalidationTable: TableSchema;
-    readonly migrations: ReadonlyArray<Migration>;
+    readonly migrations: readonly Migration[];
 }
 
 // for operations which alter things, like tables and cannot be done by simple insert or delete operations

@@ -1,6 +1,65 @@
 <template>
   <div>
     <h1>MediumDetail</h1>
+    <div class="container-fluid details">
+      <h2><type-icon :type="details.medium" /> {{ details.title }}</h2>
+      <div class="row">
+        <div class="col-2">
+          Release State of TL:
+        </div>
+        <div class="col">
+          <release-state :state="details.stateTL" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Release State in COO:
+        </div>
+        <div class="col">
+          <release-state :state="details.stateOrigin" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Series:
+        </div>
+        <div class="col">
+          {{ details.series }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Universe:
+        </div>
+        <div class="col">
+          {{ details.universe }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Author:
+        </div>
+        <div class="col">
+          {{ details.author }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Artist:
+        </div>
+        <div class="col">
+          {{ details.artist }}
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">
+          Language:
+        </div>
+        <div class="col">
+          {{ details.lang }}
+        </div>
+      </div>
+    </div>
     <h1 id="medium-releases-title">
       Releases
     </h1>
@@ -99,12 +158,14 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent, reactive } from "vue";
-import { MediumRelease } from "../siteTypes";
+import { SimpleMedium, MediumRelease } from "../siteTypes";
+import typeIcon from "../components/type-icon.vue";
+import releaseState from "../components/release-state.vue";
 import $ from "jquery";
 
 interface Data {
   releases: any[];
-  details: null | any;
+  details: SimpleMedium;
 }
 
 // initialize all tooltips on this page
@@ -117,6 +178,10 @@ $(".toast").toast();
 
 export default defineComponent({
     name: "MediumDetail",
+    components: {
+        releaseState,
+        typeIcon
+    },
     props: {
         id: {
             type: Number,
@@ -127,7 +192,20 @@ export default defineComponent({
     data(): Data {
         return {
             releases: [],
-            details: null,
+            details: {
+                id: 0,
+                countryOfOrigin: "N/A",
+                languageOfOrigin: "N/A",
+                author: "N/A",
+                title: "N/A",
+                medium: 0,
+                artist: "N/A",
+                lang: "N/A",
+                stateOrigin: 0,
+                stateTL: 0,
+                series: "N/A",
+                universe: "N/A",
+            },
         };
     },
 
@@ -181,3 +259,9 @@ export default defineComponent({
     }
 });
 </script>
+
+<style scoped>
+.details .col-2 {
+  text-align: right;
+}
+</style>

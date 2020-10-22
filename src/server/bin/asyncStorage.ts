@@ -64,7 +64,3 @@ export function getStore(): Map<any, any> {
 export function runAsync(store: Map<any, any>, callback: (...args: any[]) => void, ...args: any[]): void {
     localStorage.run(store, callback, args);
 }
-
-export function runSync<T>(store: Map<any, any>, callback: (...args: any[]) => T, ...args: any[]): T {
-    return localStorage.runSyncAndReturn(store, callback, args);
-}

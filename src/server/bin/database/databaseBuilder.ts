@@ -7,7 +7,7 @@ import {TriggerBuilder} from "./triggerBuilder";
 export class DataBaseBuilder {
     public readonly tables: TableSchema[] = [];
     private readonly triggers: Trigger[] = [];
-    private readonly invalidations: Array<{ table: TableSchema, type: InvalidationType, tableName?: string; }> = [];
+    private readonly invalidations: Array<{ table: TableSchema; type: InvalidationType; tableName?: string }> = [];
     private readonly migrations: Migration[] = [];
     private readonly name: string;
     private readonly version: number;

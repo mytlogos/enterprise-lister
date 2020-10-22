@@ -58,7 +58,7 @@ async function* novelfullGenerator(pages, mediumType = tools.MediaType.TEXT) {
             const newsRow = items.eq(i);
             const link = newsRow.attr("href");
             const episodeTitle = tools.sanitizeString(newsRow.text());
-            yield {title: episodeTitle, url: link, releaseDate: now};
+            yield { title: episodeTitle, url: link, releaseDate: now };
         }
     }
 }
@@ -108,7 +108,7 @@ async function* boxNovelGenerator(resource, mediumType = tools.MediaType.TEXT) {
             date = new Date(dateString);
         }
 
-        yield {title: titleElement.text(), url: link, releaseDate: date};
+        yield { title: titleElement.text(), url: link, releaseDate: date };
     }
 }
 
@@ -194,6 +194,36 @@ function createParts(now, ...params) {
             episodes: createReleases(now, ...value.episodes)
         };
     });
+}
+
+/**
+ * Tests that the input generates the expected output.
+ * The expeced Output Paramater is the expected Result with
+ * the default values ommitted. The expecated values will be mapped
+ * to the full result with their default values defined.
+ * 
+ * Convenience function to reduce Code duplication.
+ * 
+ * @param {Array<string | { title: string, mediumType: number }>} titles the title to extract from
+ * @param {PartPart[] | PartRelease[]} expected the expected result
+ */
+function testStaticCase(titles, expected) {
+    const now = new Date();
+    const generator = (async function* testGenerator() {
+        for (const title of titles) {
+            // mediumType is defined it is a TocMeta and not a release or part
+            if (title.mediumType != null) {
+                yield title;
+            } else {
+                yield { url: "", title, releaseDate: now };
+            }
+        }
+    })();
+
+    const contents = await directTools.scrapeToc(generator);
+    const createResult = expected[0] && expected[0].episodes ? createParts : createReleases;
+
+    contents.should.deep.equal(createResult(now, ...expected));
 }
 
 /**
@@ -284,67 +314,59 @@ async function testCase(casePath) {
 
 describe("testing scrapeToc", () => {
     it("should extract correct toc: chapter indices only", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Chapter 1", releaseDate: now};
-            yield {url: "", title: "Chapter 2", releaseDate: now};
-            yield {url: "", title: "Chapter 3", releaseDate: now};
-            yield {url: "", title: "Chapter 4", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now, 
-            {combiIndex: 1},
-            {combiIndex: 2},
-            {combiIndex: 3},
-            {totalIndex: 4}
-        ));
+        testStaticCase(
+            [
+                "Chapter 1",
+                "Chapter 2",
+                "Chapter 3",
+                "Chapter 4"
+            ],
+            [
+                { combiIndex: 1 },
+                { combiIndex: 2 },
+                { combiIndex: 3 },
+                { totalIndex: 4 }
+            ]
+        );
     });
     it("should extract correct toc: chapter indices with title only", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Chapter 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "Chapter 2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Chapter 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Chapter 4 -  I am HitchCock3", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
-            {
-                title: "I am HitchCock",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4
-            }
-        ));
+        testStaticCase(
+            [
+                "Chapter 1 -  I am HitchCock",
+                "Chapter 2:  I am HitchCock1",
+                "Chapter 3 -  I am HitchCock2",
+                "Chapter 4 -  I am HitchCock3"
+            ],
+            [
+                {
+                    title: "I am HitchCock",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4
+                }
+            ]
+        );
     });
     it("should extract correct toc: chapter indices with partial index with title only", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Chapter 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "Chapter 2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Chapter 2.5:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Chapter 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Chapter 4 -  I am HitchCock3 Part 1", releaseDate: now};
-            yield {url: "", title: "Chapter 4 -  I am HitchCock3 Part 2", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [
+                "Chapter 1 -  I am HitchCock",
+                "Chapter 2:  I am HitchCock1",
+                "Chapter 2.5:  I am HitchCock1",
+                "Chapter 3 -  I am HitchCock2",
+                "Chapter 4 -  I am HitchCock3 Part 1",
+                "Chapter 4 -  I am HitchCock3 Part 2"
+            ], [
             {
                 title: "I am HitchCock",
                 combiIndex: 1
@@ -375,22 +397,19 @@ describe("testing scrapeToc", () => {
                 totalIndex: 4,
                 partialIndex: 2
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: short form chapter indices with partial index with title only", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Ch. 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "C2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "2.5:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "c4 -  I am HitchCock3 [1/2]", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 Part 2", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [
+                "Ch. 1 -  I am HitchCock",
+                "C2:  I am HitchCock1",
+                "2.5:  I am HitchCock1",
+                "Chapter. 3 -  I am HitchCock2",
+                "c4 -  I am HitchCock3 [1/2]",
+                "4 -  I am HitchCock3 Part 2"
+            ], [
             {
                 title: "I am HitchCock",
                 combiIndex: 1
@@ -421,24 +440,21 @@ describe("testing scrapeToc", () => {
                 totalIndex: 4,
                 partialIndex: 2
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: short form indices with partial index with title only and all forms of chapter notations", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Ch. 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "C2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Word 2.5:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "EP3:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "EP 4 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "c5 -  I am HitchCock3 Part 1", releaseDate: now};
-            yield {url: "", title: "5 -  I am HitchCock3 Part 2", releaseDate: now};
-            yield {url: "", title: "EP100:  I am HitchCock1", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [
+                "Ch. 1 -  I am HitchCock",
+                "C2:  I am HitchCock1",
+                "Word 2.5:  I am HitchCock1",
+                "EP3:  I am HitchCock1",
+                "EP 4 -  I am HitchCock2",
+                "c5 -  I am HitchCock3 Part 1",
+                "5 -  I am HitchCock3 Part 2",
+                "EP100:  I am HitchCock1"
+            ], [
             {
                 title: "I am HitchCock",
                 combiIndex: 1
@@ -477,20 +493,17 @@ describe("testing scrapeToc", () => {
                 title: "I am HitchCock1",
                 combiIndex: 100
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with title, with volume only", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Volume 1 - Chapter 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "Volume 1: Chapter 2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Volume 2: Chapter 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2 - Chapter 4 -  I am HitchCock3", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [
+                "Volume 1 - Chapter 1 -  I am HitchCock",
+                "Volume 1: Chapter 2:  I am HitchCock1",
+                "Volume 2: Chapter 3 -  I am HitchCock2",
+                "Volume 2 - Chapter 4 -  I am HitchCock3"
+            ], [
             {
                 combiIndex: 1,
                 episodes: [
@@ -516,21 +529,18 @@ describe("testing scrapeToc", () => {
                         combiIndex: 4
                     }
                 ]
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with title, with short form volume", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Vol. 1 - Chapter 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "V1: Chapter 2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Vol. 2: Chapter 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "V 2 - Chapter 4 -  I am HitchCock3", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [
+                "Vol. 1 - Chapter 1 -  I am HitchCock",
+                "V1: Chapter 2:  I am HitchCock1",
+                "Vol. 2: Chapter 3 -  I am HitchCock2",
+                "V 2 - Chapter 4 -  I am HitchCock3"
+            ], [
             {
                 combiIndex: 1,
                 episodes: [
@@ -556,21 +566,18 @@ describe("testing scrapeToc", () => {
                         combiIndex: 4
                     }
                 ]
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with title, with volume with title", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Vol. 1: I am a title1 - Chapter 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "V1: I am a title1 Chapter 2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Vol. 2: : I am a title2 Chapter 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2: I am a title2 - Chapter 4 -  I am HitchCock3", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [
+                "Vol. 1: I am a title1 - Chapter 1 -  I am HitchCock",
+                "V1: I am a title1 Chapter 2:  I am HitchCock1",
+                "Vol. 2: : I am a title2 Chapter 3 -  I am HitchCock2",
+                "Volume 2: I am a title2 - Chapter 4 -  I am HitchCock3"
+            ], [
             {
                 title: "I am a title1",
                 combiIndex: 1,
@@ -598,26 +605,23 @@ describe("testing scrapeToc", () => {
                         combiIndex: 4
                     }
                 ]
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: ignore invalid chapters", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Vol. 1: I am a title1 - Chapter 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "V1: I am a title1 Chapter 2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "V1: I am a title1 Chapter DELETED:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "V. SPAM: I am a title1 Chapter 2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Vol. 2: : I am a title2 Chapter 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Vol. SPAM: : I am a title2 Chapter 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Vol. 2: : I am a title2 Chapter SPAM -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2: I am a title2 - Chapter 4 -  I am HitchCock3", releaseDate: now};
-            yield {url: "", title: "Vol. DELETED: : I am a title2 Chapter 4 -  I am HitchCock2", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [
+                "Vol. 1: I am a title1 - Chapter 1 -  I am HitchCock",
+                "V1: I am a title1 Chapter 2:  I am HitchCock1",
+                "V1: I am a title1 Chapter DELETED:  I am HitchCock1",
+                "V. SPAM: I am a title1 Chapter 2:  I am HitchCock1",
+                "Vol. 2: : I am a title2 Chapter 3 -  I am HitchCock2",
+                "Vol. SPAM: : I am a title2 Chapter 3 -  I am HitchCock2",
+                "Vol. 2: : I am a title2 Chapter SPAM -  I am HitchCock2",
+                "Volume 2: I am a title2 - Chapter 4 -  I am HitchCock3",
+                "Vol. DELETED: : I am a title2 Chapter 4 -  I am HitchCock2"
+            ], [
             {
                 title: "I am a title1",
                 combiIndex: 1,
@@ -645,21 +649,18 @@ describe("testing scrapeToc", () => {
                         combiIndex: 4
                     }
                 ]
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: full short form with title", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "V54C3P3 – All That Labor Work", releaseDate: now};
-            yield {url: "", title: "V54C4P1- Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "V54C4P2- Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "V54C4P3- Plan of Annihilation", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [
+                "V54C3P3 – All That Labor Work",
+                "V54C4P1- Plan of Annihilation",
+                "V54C4P2- Plan of Annihilation",
+                "V54C4P3- Plan of Annihilation"
+            ], [
             {
                 combiIndex: 54,
                 episodes: [
@@ -689,20 +690,17 @@ describe("testing scrapeToc", () => {
                     },
                 ]
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: full form mixed with full short form with title", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Chapter 586 - V54C3P3 – All That Labor Work", releaseDate: now};
-            yield {url: "", title: "Chapter 587 - V54C4P1- Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "Chapter 588 - V54C4P2- Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "Chapter 589 - V54C4P3- Plan of Annihilation", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [
+                "Chapter 586 - V54C3P3 – All That Labor Work",
+                "Chapter 587 - V54C4P1- Plan of Annihilation",
+                "Chapter 588 - V54C4P2- Plan of Annihilation",
+                "Chapter 589 - V54C4P3- Plan of Annihilation"
+            ], [
             {
                 combiIndex: 54,
                 episodes: [
@@ -724,21 +722,17 @@ describe("testing scrapeToc", () => {
                     },
                 ]
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: title prefix with full form mixed with full short form with title", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {title: "I am a cool Book", mediumType: 1};
-            yield {url: "", title: "I am a cool Book: Chapter 586 - V54C3P3 – All That Labor Work", releaseDate: now};
-            yield {url: "", title: "I am a cool Book: Chapter 587 - V54C4P1- Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "I am a cool Book: Chapter 588 - V54C4P2- Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "I am a cool Book: Chapter 589 - V54C4P3- Plan of Annihilation", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [{ title: "I am a cool Book", mediumType: 1 },
+                "I am a cool Book: Chapter 586 - V54C3P3 – All That Labor Work",
+                "I am a cool Book: Chapter 587 - V54C4P1- Plan of Annihilation",
+                "I am a cool Book: Chapter 588 - V54C4P2- Plan of Annihilation",
+                "I am a cool Book: Chapter 589 - V54C4P3- Plan of Annihilation"
+            ], [
             {
                 combiIndex: 54,
                 episodes: [
@@ -760,21 +754,17 @@ describe("testing scrapeToc", () => {
                     },
                 ]
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: title prefix with different volume namings and chapter", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {title: "I am a cool Book", mediumType: 1};
-            yield {url: "", title: "I am a cool Book: Volume1 Chapter 586 -  All That Labor Work", releaseDate: now};
-            yield {url: "", title: "I am a cool Book: Book1 Chapter 587 -  Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "I am a cool Book: Book 2 Chapter 588 - Plan of Annihilation", releaseDate: now};
-            yield {url: "", title: "I am a cool Book: Season 2 Chapter 589 - Plan of Annihilation", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [{ title: "I am a cool Book", mediumType: 1 },
+                "I am a cool Book: Volume1 Chapter 586 -  All That Labor Work",
+                "I am a cool Book: Book1 Chapter 587 -  Plan of Annihilation",
+                "I am a cool Book: Book 2 Chapter 588 - Plan of Annihilation",
+                "I am a cool Book: Season 2 Chapter 589 - Plan of Annihilation"
+            ], [
             {
                 combiIndex: 1,
                 episodes: [
@@ -801,22 +791,19 @@ describe("testing scrapeToc", () => {
                     },
                 ]
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with not always used partial index with title only", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Ch. 1 -  I am HitchCock", releaseDate: now};
-            yield {url: "", title: "C2:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "c4 -  I am HitchCock3", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [
+                "Ch. 1 -  I am HitchCock",
+                "C2:  I am HitchCock1",
+                "2:  I am HitchCock1 2/2",
+                "Chapter. 3 -  I am HitchCock2",
+                "c4 -  I am HitchCock3",
+                "4 -  I am HitchCock3 [2/2]"
+            ], [
             {
                 title: "I am HitchCock",
                 combiIndex: 1
@@ -849,25 +836,21 @@ describe("testing scrapeToc", () => {
                 totalIndex: 4,
                 partialIndex: 2
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing ascending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {title: "I am a cool Book", mediumType: 1, end: undefined};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [{ title: "I am a cool Book", mediumType: 1, end: undefined },
+                "I am a Intermission1",
+                "I am a Intermission2",
+                "C1:  I am HitchCock1",
+                "2:  I am HitchCock1 2/2",
+                "Chapter. 3 -  I am HitchCock2",
+                "4 -  I am HitchCock3 [2/2]",
+                "I am a Intermission3",
+                "I am a Intermission4"
+            ], [
             {
                 title: "I am a Intermission1",
                 combiIndex: 0.1,
@@ -912,25 +895,21 @@ describe("testing scrapeToc", () => {
                 totalIndex: 4,
                 partialIndex: 2
             }
-        ));
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with finished ascending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {title: "I am a cool Book", mediumType: 1, end: true};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [{ title: "I am a cool Book", mediumType: 1, end: true },
+                "I am a Intermission1",
+                "I am a Intermission2",
+                "C1:  I am HitchCock1",
+                "2:  I am HitchCock1 2/2",
+                "Chapter. 3 -  I am HitchCock2",
+                "4 -  I am HitchCock3 [2/2]",
+                "I am a Intermission3",
+                "I am a Intermission4"
+            ], [
             {
                 title: "I am a Intermission1",
                 combiIndex: 0.1,
@@ -974,26 +953,22 @@ describe("testing scrapeToc", () => {
                 combiIndex: 4.302,
                 totalIndex: 4,
                 partialIndex: 302
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing descending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {title: "I am a cool Book", mediumType: 1, end: undefined};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [{ title: "I am a cool Book", mediumType: 1, end: undefined },
+                "I am a Intermission4",
+                "I am a Intermission3",
+                "4 -  I am HitchCock3 [2/2]",
+                "Chapter. 3 -  I am HitchCock2",
+                "2:  I am HitchCock1 2/2",
+                "C1:  I am HitchCock1",
+                "I am a Intermission2",
+                "I am a Intermission1"
+            ], [
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
@@ -1037,26 +1012,22 @@ describe("testing scrapeToc", () => {
                 combiIndex: 0.1,
                 totalIndex: 0,
                 partialIndex: 1
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with finished descending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {title: "I am a cool Book", mediumType: 1, end: true};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [{ title: "I am a cool Book", mediumType: 1, end: true },
+                "I am a Intermission4",
+                "I am a Intermission3",
+                "4 -  I am HitchCock3 [2/2]",
+                "Chapter. 3 -  I am HitchCock2",
+                "2:  I am HitchCock1 2/2",
+                "C1:  I am HitchCock1",
+                "I am a Intermission2",
+                "I am a Intermission1"
+            ], [
             {
                 title: "I am a Intermission4",
                 combiIndex: 4.302,
@@ -1101,24 +1072,21 @@ describe("testing scrapeToc", () => {
                 totalIndex: 0,
                 partialIndex: 1
             },
-        ));
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with non main story chapters in the middle with ascending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [
+                "C1:  I am HitchCock1",
+                "2:  I am HitchCock1 2/2",
+                "I am a Intermission1",
+                "I am a Intermission2",
+                "Chapter. 3 -  I am HitchCock2",
+                "I am a Intermission3",
+                "I am a Intermission4",
+                "4 -  I am HitchCock3 [2/2]"
+            ], [
             {
                 title: "I am HitchCock1",
                 combiIndex: 1
@@ -1162,25 +1130,22 @@ describe("testing scrapeToc", () => {
                 combiIndex: 4.2,
                 totalIndex: 4,
                 partialIndex: 2
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with non main story chapters in the middle with descending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createReleases(
-            now,
+        testStaticCase(
+            [
+                "4 -  I am HitchCock3 [2/2]",
+                "I am a Intermission4",
+                "I am a Intermission3",
+                "Chapter. 3 -  I am HitchCock2",
+                "I am a Intermission2",
+                "I am a Intermission1",
+                "2:  I am HitchCock1 2/2",
+                "C1:  I am HitchCock1"
+            ], [
             {
                 title: "I am HitchCock3",
                 combiIndex: 4.2,
@@ -1224,27 +1189,24 @@ describe("testing scrapeToc", () => {
             {
                 title: "I am HitchCock1",
                 combiIndex: 1
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with volume items between with descending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2"};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Volume 1"};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            now,
+        testStaticCase(
+            [
+                "4 -  I am HitchCock3 [2/2]",
+                "I am a Intermission4",
+                "I am a Intermission3",
+                "Chapter. 3 -  I am HitchCock2",
+                "Volume 2",
+                "I am a Intermission2",
+                "I am a Intermission1",
+                "2:  I am HitchCock1 2/2",
+                "C1:  I am HitchCock1",
+                "Volume 1"
+            ], [
             {
                 combiIndex: 2,
                 episodes: [
@@ -1298,375 +1260,371 @@ describe("testing scrapeToc", () => {
                         combiIndex: 1
                     },
                 ]
-            },
-        ));
+            }
+        ]
+        );
     });
     it("should extract correct toc: chapter indices with volume items between with ascending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Volume 1"};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "Volume 2"};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "4 -  I am HitchCock3 [2/2]", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            {
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2.2,
-                        totalIndex: 2,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am a Intermission1",
-                        combiIndex: 2.301,
-                        totalIndex: 2,
-                        partialIndex: 301
-                    },
-                    {
-                        title: "I am a Intermission2",
-                        combiIndex: 2.302,
-                        totalIndex: 2,
-                        partialIndex: 302
-                    },
-                ]
-            },
-            {
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am a Intermission3",
-                        combiIndex: 3.101,
-                        totalIndex: 3,
-                        partialIndex: 101
-                    },
-                    {
-                        title: "I am a Intermission4",
-                        combiIndex: 3.102,
-                        totalIndex: 3,
-                        partialIndex: 102
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4.2,
-                        totalIndex: 4,
-                        partialIndex: 2
-                    }
-                ]
-            },
-        ));
+        testStaticCase(
+            [
+                "Volume 1",
+                "C1:  I am HitchCock1",
+                "2:  I am HitchCock1 2/2",
+                "I am a Intermission1",
+                "I am a Intermission2",
+                "Volume 2",
+                "Chapter. 3 -  I am HitchCock2",
+                "I am a Intermission3",
+                "I am a Intermission4",
+                "4 -  I am HitchCock3 [2/2]"
+            ],
+            [
+                {
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2.2,
+                            totalIndex: 2,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am a Intermission1",
+                            combiIndex: 2.301,
+                            totalIndex: 2,
+                            partialIndex: 301
+                        },
+                        {
+                            title: "I am a Intermission2",
+                            combiIndex: 2.302,
+                            totalIndex: 2,
+                            partialIndex: 302
+                        },
+                    ]
+                },
+                {
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am a Intermission3",
+                            combiIndex: 3.101,
+                            totalIndex: 3,
+                            partialIndex: 101
+                        },
+                        {
+                            title: "I am a Intermission4",
+                            combiIndex: 3.102,
+                            totalIndex: 3,
+                            partialIndex: 102
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4.2,
+                            totalIndex: 4,
+                            partialIndex: 2
+                        }
+                    ]
+                }
+            ]
+        );
     });
     it("should extract correct toc: non main episode with volume definition between with descending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2: Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 - I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "Volume 1:  I have a Title1 C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Volume 1 I have a Title1 - I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "Volume 1 I have a Title1 I am a Intermission1", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            {
-                title: "I have a Title2",
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4.2,
-                        totalIndex: 4,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am a Intermission4",
-                        combiIndex: 2.302,
-                        totalIndex: 2,
-                        partialIndex: 302
-                    },
-                    {
-                        title: "I am a Intermission3",
-                        combiIndex: 2.301,
-                        totalIndex: 2,
-                        partialIndex: 301
-                    },
-                ]
-            },
-            {
-                title: "I have a Title1",
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2.2,
-                        totalIndex: 2,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am a Intermission2",
-                        combiIndex: 0.2,
-                        totalIndex: 0,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am a Intermission1",
-                        combiIndex: 0.1,
-                        totalIndex: 0,
-                        partialIndex: 1
-                    },
-                ]
-            },
-        ));
+        testStaticCase(
+            [
+                "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]",
+                "Volume 2 I have a Title2: Chapter. 3 -  I am HitchCock2",
+                "Volume 2 I have a Title2 - I am a Intermission4",
+                "Volume 2 I have a Title2 I am a Intermission3",
+                "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2",
+                "Volume 1:  I have a Title1 C1:  I am HitchCock1",
+                "Volume 1 I have a Title1 - I am a Intermission2",
+                "Volume 1 I have a Title1 I am a Intermission1"
+            ],
+            [
+                {
+                    title: "I have a Title2",
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4.2,
+                            totalIndex: 4,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am a Intermission4",
+                            combiIndex: 2.302,
+                            totalIndex: 2,
+                            partialIndex: 302
+                        },
+                        {
+                            title: "I am a Intermission3",
+                            combiIndex: 2.301,
+                            totalIndex: 2,
+                            partialIndex: 301
+                        },
+                    ]
+                },
+                {
+                    title: "I have a Title1",
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2.2,
+                            totalIndex: 2,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am a Intermission2",
+                            combiIndex: 0.2,
+                            totalIndex: 0,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am a Intermission1",
+                            combiIndex: 0.1,
+                            totalIndex: 0,
+                            partialIndex: 1
+                        },
+                    ]
+                }
+            ]
+        );
     });
     it("should extract correct toc: non main episode with volume definition between with ascending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Volume 1 I have a Title1 I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "Volume 1 I have a Title1 - I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "Volume 1:  I have a Title1 C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 - I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2: Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]", releaseDate: now};
-        })();
+        testStaticCase(
+            [
+                "Volume 1 I have a Title1 I am a Intermission1",
+                "Volume 1 I have a Title1 - I am a Intermission2",
+                "Volume 1:  I have a Title1 C1:  I am HitchCock1",
+                "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2",
+                "Volume 2 I have a Title2 I am a Intermission3",
+                "Volume 2 I have a Title2 - I am a Intermission4",
+                "Volume 2 I have a Title2: Chapter. 3 -  I am HitchCock2",
+                "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]"
+            ],
+            [
+                {
+                    title: "I have a Title1",
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am a Intermission1",
+                            combiIndex: 0.1,
+                            totalIndex: 0,
+                            partialIndex: 1
+                        },
+                        {
+                            title: "I am a Intermission2",
+                            combiIndex: 0.2,
+                            totalIndex: 0,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 1
 
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            {
-                title: "I have a Title1",
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am a Intermission1",
-                        combiIndex: 0.1,
-                        totalIndex: 0,
-                        partialIndex: 1
-                    },
-                    {
-                        title: "I am a Intermission2",
-                        combiIndex: 0.2,
-                        totalIndex: 0,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2.2,
+                            totalIndex: 2,
+                            partialIndex: 2
+                        },
+                    ]
+                },
+                {
+                    title: "I have a Title2",
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am a Intermission3",
+                            combiIndex: 2.301,
+                            totalIndex: 2,
+                            partialIndex: 301
+                        },
+                        {
+                            title: "I am a Intermission4",
+                            combiIndex: 2.302,
+                            totalIndex: 2,
+                            partialIndex: 302
+                        },
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
 
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2.2,
-                        totalIndex: 2,
-                        partialIndex: 2
-                    },
-                ]
-            },
-            {
-                title: "I have a Title2",
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am a Intermission3",
-                        combiIndex: 2.301,
-                        totalIndex: 2,
-                        partialIndex: 301
-                    },
-                    {
-                        title: "I am a Intermission4",
-                        combiIndex: 2.302,
-                        totalIndex: 2,
-                        partialIndex: 302
-                    },
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4.2,
-                        totalIndex: 4,
-                        partialIndex: 2
-                    },
-                ]
-            },
-        ));
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4.2,
+                            totalIndex: 4,
+                            partialIndex: 2
+                        },
+                    ]
+                }
+            ]
+        );
     });
     it("should extract correct toc: episodes without volume sandwiched between ones with volume between with descending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "Volume 1 I have a Title1 I am a Intermission1", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            {
-                title: "I have a Title2",
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4.2,
-                        totalIndex: 4,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am a Intermission4",
-                        combiIndex: 2.302,
-                        totalIndex: 2,
-                        partialIndex: 302
-                    },
-                    {
-                        title: "I am a Intermission3",
-                        combiIndex: 2.301,
-                        totalIndex: 2,
-                        partialIndex: 301
-                    },
-                ]
-            },
-            {
-                title: "I have a Title1",
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2.2,
-                        totalIndex: 2,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am a Intermission2",
-                        combiIndex: 0.2,
-                        totalIndex: 0,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am a Intermission1",
-                        combiIndex: 0.1,
-                        totalIndex: 0,
-                        partialIndex: 1
-                    },
-                ]
-            },
-        ));
+        testStaticCase(
+            [
+                "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]",
+                "Chapter. 3 -  I am HitchCock2",
+                "I am a Intermission4",
+                "Volume 2 I have a Title2 I am a Intermission3",
+                "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2",
+                "C1:  I am HitchCock1",
+                "I am a Intermission2",
+                "Volume 1 I have a Title1 I am a Intermission1"
+            ],
+            [
+                {
+                    title: "I have a Title2",
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4.2,
+                            totalIndex: 4,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am a Intermission4",
+                            combiIndex: 2.302,
+                            totalIndex: 2,
+                            partialIndex: 302
+                        },
+                        {
+                            title: "I am a Intermission3",
+                            combiIndex: 2.301,
+                            totalIndex: 2,
+                            partialIndex: 301
+                        },
+                    ]
+                },
+                {
+                    title: "I have a Title1",
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2.2,
+                            totalIndex: 2,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am a Intermission2",
+                            combiIndex: 0.2,
+                            totalIndex: 0,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am a Intermission1",
+                            combiIndex: 0.1,
+                            totalIndex: 0,
+                            partialIndex: 1
+                        },
+                    ]
+                }
+            ]
+        );
     });
     it("should extract correct toc: episodes without volume sandwiched between ones with volume with ascending story", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Volume 1 I have a Title1 I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            {
-                title: "I have a Title1",
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am a Intermission1",
-                        combiIndex: 0.1,
-                        totalIndex: 0,
-                        partialIndex: 1
-                    },
-                    {
-                        title: "I am a Intermission2",
-                        combiIndex: 0.2,
-                        totalIndex: 0,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2.2,
-                        totalIndex: 2,
-                        partialIndex: 2
-                    },
-                ]
-            },
-            {
-                title: "I have a Title2",
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am a Intermission3",
-                        combiIndex: 2.301,
-                        totalIndex: 2,
-                        partialIndex: 301
-                    },
-                    {
-                        title: "I am a Intermission4",
-                        combiIndex: 2.302,
-                        totalIndex: 2,
-                        partialIndex: 302
-                    },
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4.2,
-                        totalIndex: 4,
-                        partialIndex: 2
-                    },
-                ]
-            },
-        ));
+        testStaticCase(
+            [
+                "Volume 1 I have a Title1 I am a Intermission1",
+                "I am a Intermission2",
+                "C1:  I am HitchCock1",
+                "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2",
+                "Volume 2 I have a Title2 I am a Intermission3",
+                "I am a Intermission4",
+                "Chapter. 3 -  I am HitchCock2",
+                "Volume 2 I have a Title2 C4 -  I am HitchCock3 [2/2]"
+            ],
+            [
+                {
+                    title: "I have a Title1",
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am a Intermission1",
+                            combiIndex: 0.1,
+                            totalIndex: 0,
+                            partialIndex: 1
+                        },
+                        {
+                            title: "I am a Intermission2",
+                            combiIndex: 0.2,
+                            totalIndex: 0,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2.2,
+                            totalIndex: 2,
+                            partialIndex: 2
+                        },
+                    ]
+                },
+                {
+                    title: "I have a Title2",
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am a Intermission3",
+                            combiIndex: 2.301,
+                            totalIndex: 2,
+                            partialIndex: 301
+                        },
+                        {
+                            title: "I am a Intermission4",
+                            combiIndex: 2.302,
+                            totalIndex: 2,
+                            partialIndex: 302
+                        },
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4.2,
+                            totalIndex: 4,
+                            partialIndex: 2
+                        },
+                    ]
+                }
+            ]
+        );
     });
     it("should extract correct toc: for an example toc with half hearted chapter-volume-chapter format", async function () {
         const generator = boxNovelGenerator("boxnovel-281.html");
@@ -1700,87 +1658,86 @@ describe("testing scrapeToc", () => {
         }
     });
     it("should extract correct toc: detect episodes ranges", async function () {
-        const now = new Date();
-        const generator = (async function* testGenerator() {
-            yield {url: "", title: "Volume 1 I have a Title1 I am a Intermission1", releaseDate: now};
-            yield {url: "", title: "I am a Intermission2", releaseDate: now};
-            yield {url: "", title: "C1:  I am HitchCock1", releaseDate: now};
-            yield {url: "", title: "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 I am a Intermission3", releaseDate: now};
-            yield {url: "", title: "I am a Intermission4", releaseDate: now};
-            yield {url: "", title: "Chapter. 3 -  I am HitchCock2", releaseDate: now};
-            yield {url: "", title: "Volume 2 I have a Title2 C4-7 -  I am HitchCock3", releaseDate: now};
-        })();
-
-        const contents = await directTools.scrapeToc(generator);
-        contents.should.deep.equal(createParts(
-            {
-                title: "I have a Title1",
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am a Intermission1",
-                        combiIndex: 0.1,
-                        totalIndex: 0,
-                        partialIndex: 1
-                    },
-                    {
-                        title: "I am a Intermission2",
-                        combiIndex: 0.2,
-                        totalIndex: 0,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2.2,
-                        totalIndex: 2,
-                        partialIndex: 2
-                    },
-                ]
-            },
-            {
-                title: "I have a Title2",
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am a Intermission3",
-                        combiIndex: 2.301,
-                        totalIndex: 2,
-                        partialIndex: 301
-                    },
-                    {
-                        title: "I am a Intermission4",
-                        combiIndex: 2.302,
-                        totalIndex: 2,
-                        partialIndex: 302
-                    },
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 5
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 6
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 7
-                    },
-                ]
-            },
-        ));
+        testStaticCase(
+            [
+                "Volume 1 I have a Title1 I am a Intermission1",
+                "I am a Intermission2",
+                "C1:  I am HitchCock1",
+                "Volume 1: I have a Title1 - C2:  I am HitchCock1 2/2",
+                "Volume 2 I have a Title2 I am a Intermission3",
+                "I am a Intermission4",
+                "Chapter. 3 -  I am HitchCock2",
+                "Volume 2 I have a Title2 C4-7 -  I am HitchCock3"
+            ],
+            [
+                {
+                    title: "I have a Title1",
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am a Intermission1",
+                            combiIndex: 0.1,
+                            totalIndex: 0,
+                            partialIndex: 1
+                        },
+                        {
+                            title: "I am a Intermission2",
+                            combiIndex: 0.2,
+                            totalIndex: 0,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2.2,
+                            totalIndex: 2,
+                            partialIndex: 2
+                        },
+                    ]
+                },
+                {
+                    title: "I have a Title2",
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am a Intermission3",
+                            combiIndex: 2.301,
+                            totalIndex: 2,
+                            partialIndex: 301
+                        },
+                        {
+                            title: "I am a Intermission4",
+                            combiIndex: 2.302,
+                            totalIndex: 2,
+                            partialIndex: 302
+                        },
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 5
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 6
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 7
+                        },
+                    ]
+                }
+            ]
+        );
     });
     it("should extract correct toc: for an example toc with descending index and sometimes partialindex", async function () {
         const generator = boxNovelGenerator("boxnovel-173-html");

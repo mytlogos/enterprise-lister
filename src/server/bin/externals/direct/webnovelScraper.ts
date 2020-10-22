@@ -177,7 +177,7 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
     return [toc];
 }
 
-function loadBody(urlString: string): Promise<CheerioStatic> {
+function loadBody(urlString: string): Promise<cheerio.Root> {
     return initPromise.then(() => queueCheerioRequest(urlString, undefined, defaultRequest));
 }
 
@@ -188,7 +188,7 @@ function loadJson(urlString: string): Promise<any> {
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
-    let $: CheerioStatic;
+    let $: cheerio.Root;
     try {
         $ = await loadBody(urlString);
     } catch (e) {

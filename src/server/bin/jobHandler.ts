@@ -558,7 +558,7 @@ interface ChangeContent {
 
 async function updateDatabase({removedLists, result, addedLists, renamedLists, allLists, lists}: ChangeContent) {
     // TODO: check if this whole message thing is solved with invalidation table from database
-    const promisePool = [];
+    const promisePool: Array<Promise<any>> = [];
 
     if (removedLists.length) {
         externalListStorage
