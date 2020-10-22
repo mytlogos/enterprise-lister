@@ -44,7 +44,7 @@ export async function storageInContext<T, C extends ConnectionContext>(
     if (startPromise) {
         await startPromise;
     }
-    const pool = await poolPromise;
+    const pool = await poolProvider.provide();
     const con = await pool.getConnection();
     const context = provider(con);
 
@@ -134,23 +134,81 @@ async function doTransaction<T, C extends ConnectionContext>(
     return result;
 }
 
-const poolPromise = mySql.createPool({
-    connectionLimit: env.dbConLimit,
-    host: env.dbHost,
-    user: env.dbUser,
-    password: env.dbPassword,
-    // charset/collation of the current database and tables
-    charset: "utf8mb4",
-    // we assume that the database exists already
-    database: "enterprise",
-    typeCast(field, next) {
-        if (field.type === "TINY" && field.length === 1) {
-            return (field.string() === "1"); // 1 = true, 0 = false
-        } else {
-            return next();
+class SqlPoolProvider {
+    private remake = true;
+    private pool?: Promise<mySql.Pool>;
+    private config?: mySql.PoolConfig;
+
+    public provide(): Promise<mySql.Pool> {
+        if (!this.pool || this.remake) {
+            this.remake = false;
+            this.pool = this.createPool();
         }
+        return this.pool;
     }
-});
+
+    public recreate() {
+        this.remake = true;
+    }
+
+    public useConfig(config: mySql.PoolConfig) {
+        this.config = config;
+        this.remake = true;
+    }
+
+    public useDefault() {
+        // remake only if previously non default config was used
+        this.remake = !!this.config;
+        this.config = undefined;
+    }
+
+    private createPool(): Promise<mySql.Pool> {
+        const config = this.config || this.defaultConfig();
+        return mySql.createPool(config);
+    }
+
+    private defaultConfig(): mySql.PoolConfig {
+        return {
+            connectionLimit: env.dbConLimit,
+            host: env.dbHost,
+            user: env.dbUser,
+            password: env.dbPassword,
+            // charset/collation of the current database and tables
+            charset: "utf8mb4",
+            // we assume that the database exists already
+            database: "enterprise",
+            typeCast(field, next) {
+                if (field.type === "TINY" && field.length === 1) {
+                    return (field.string() === "1"); // 1 = true, 0 = false
+                } else {
+                    return next();
+                }
+            }
+        };
+    }
+}
+
+const poolProvider = new SqlPoolProvider();
+
+class SqlPoolConfigUpdater {
+
+    /**
+     * Creates new Mysql Connection Pool with the given Config.
+     */
+    public update(config: mySql.PoolConfig): void {
+        poolProvider.useConfig(config);
+    }
+
+    public recreate() {
+        poolProvider.recreate();
+    }
+
+    public useDefault() {
+        poolProvider.useDefault();
+    }
+}
+
+export const poolConfig = new SqlPoolConfigUpdater();
 
 let errorAtStart = false;
 let running = false;
@@ -198,7 +256,7 @@ export class Storage {
         logger.info("Stopping Database");
         running = false;
         startPromise = null;
-        return poolPromise.then((value) => value.end()).then(() => logger.info("Database stopped now"));
+        return poolProvider.provide().then((value) => value.end()).then(() => logger.info("Database stopped now"));
     }
 
     public getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
