@@ -1,33 +1,36 @@
 "use strict";
-const tools = require("../../../server/dist/tools");
+import * as tools from "../../../tools";
 const MediaType = tools.MediaType;
 
-const sinon = require("sinon");
-const sinon_chai = require("sinon-chai");
-const chai = require("chai");
-const chaiAsPromised = require("chai-as-promised");
-const fs = require("fs");
-const cheerio = require("cheerio");
-const boxNovelHook = require("../../../server/dist/externals/direct/boxNovelScraper").getHook();
-const externalErrors = require("../../../server/dist/externals/errors");
-const stopStorage = require("../../../server/dist/database/storages/storage").storage.stop;
-const queueManager = require("../../../server/dist/externals/queueManager");
-const scraperTestTools = require("./scraperTestTools");
+import sinon from "sinon";
+import sinon_chai from "sinon-chai";
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
+import fs from "fs";
+import cheerio from "cheerio";
+import { getHook } from "../../../externals/direct/boxNovelScraper";
+import * as externalErrors from "../../../externals/errors";
+import * as storage from "../../../database/storages/storage";
+import * as queueManager from "../../../externals/queueManager";
+import * as scraperTestTools from "./scraperTestTools";
 
 const UrlError = externalErrors.UrlError;
 const MissingResourceError = externalErrors.MissingResourceError;
 chai.use(sinon_chai);
 chai.use(chaiAsPromised);
 chai.should();
+const boxNovelHook = getHook();
+
 after(() => {
     tools.internetTester.stop();
-    return stopStorage();
+    return storage.storage.stop();
 });
 
 
 it("should be valid hook object", function () {
     boxNovelHook.name.should.be.a("string");
     boxNovelHook.should.have.property("medium", MediaType.TEXT);
+    // @ts-expect-error
     boxNovelHook.domainReg.should.be.instanceOf(RegExp);
 });
 
@@ -59,36 +62,54 @@ describe("testing boxNovel Hook toc", () => {
     });
 
     it("should throw UrlError", async function () {
+        // @ts-ignore
         await boxNovelHook.tocAdapter("https://google.de").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("ftp://google.de").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("google.de").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("www.boxnovel.de").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("http://www.boxnovel.de").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("https://www.boxnovel.de").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("https://boxnovel.de").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("www.boxnovel.com").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("sftp://www.boxnovel.com").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("https://www.boxnovel.com/").should.eventually.be.rejectedWith(UrlError);
+        // @ts-ignore
         await boxNovelHook.tocAdapter("https://www.boxnovel.com/novel").should.eventually.be.rejectedWith(UrlError);
     });
 
     it("should throw MissingResourceError", async function () {
+        // @ts-ignore
         await boxNovelHook.tocAdapter("https://boxnovel.com/novel/i-am-a-missing-resource").should.eventually.be.rejectedWith(MissingResourceError);
     });
     it("should parse correct ToCs", async function () {
         // boxnovel-281.html
+        // @ts-ignore
         const demonTocs = await boxNovelHook.tocAdapter("https://boxnovel.com/novel/demon-noble-girl-story-of-a-careless-demon/");
         demonTocs.should.be.an("array").and.have.length(1);
+        // @ts-ignore
         scraperTestTools.testGeneralToc(demonTocs[0]);
 
         // boxnovel-237.html
+        // @ts-ignore
         const masterTocs = await boxNovelHook.tocAdapter("https://boxnovel.com/novel/my-master-disconnected-yet-again/");
         masterTocs.should.be.an("array").and.have.length(1);
+        // @ts-ignore
         scraperTestTools.testGeneralToc(masterTocs[0]);
 
         // boxnovel-173.html
+        // @ts-ignore
         const rebootTocs = await boxNovelHook.tocAdapter("https://boxnovel.com/novel/the-man-picked-up-by-the-gods-reboot/");
         rebootTocs.should.be.an("array").and.have.length(1);
+        // @ts-ignore
         scraperTestTools.testGeneralToc(rebootTocs[0]);
     });
 });

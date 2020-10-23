@@ -1,12 +1,12 @@
 "use strict";
-const sinon = require("sinon");
-const sinon_chai = require("sinon-chai");
-const chai = require("chai");
-const chaiAsPromised = require("chai-as-promised");
-const directTools = require("../../../server/dist/externals/direct/directTools");
-const tools = require("../../../server/dist/tools");
-const fs = require("fs");
-const cheerio = require("cheerio");
+import sinon from "sinon";
+import sinon_chai from "sinon-chai";
+import chai from "chai";
+import chaiAsPromised from "chai-as-promised";
+import * as directTools from "../../../externals/direct/directTools";
+import * as tools from "../../../tools";
+import fs from "fs";
+import cheerio from "cheerio";
 
 after(() => {
     tools.internetTester.stop();
@@ -16,16 +16,25 @@ chai.use(sinon_chai);
 chai.use(chaiAsPromised);
 chai.should();
 
-/**
- * @typedef {AsyncGenerator<{mediumType: MediaType.TEXT, end: boolean, title: string}|{releaseDate, title: string, url: string}, void, *>} TocGenerator
- */
+interface TocSnippet {
+    mediumType: tools.MediaType;
+    end: boolean;
+    title: string;
+}
+
+interface ReleaseSnippet {
+    releaseDate: Date;
+    title: string;
+    url: string;
+}
+type TocGenerator = AsyncGenerator<TocSnippet | ReleaseSnippet, void, any>;
 
 /**
  *
  * @param {string[]} pages
  * @return {TocGenerator}
  */
-async function* novelfullGenerator(pages, mediumType = tools.MediaType.TEXT) {
+async function* novelfullGenerator(pages: string[], mediumType = tools.MediaType.TEXT): TocGenerator {
     const now = new Date();
     let tocYielded = false;
     for (const page of pages) {
@@ -38,7 +47,7 @@ async function* novelfullGenerator(pages, mediumType = tools.MediaType.TEXT) {
 
         const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
 
-        let end;
+        let end = false;
         if (releaseStatusString === "ongoing") {
             end = false;
         } else if (releaseStatusString === "completed") {
@@ -58,7 +67,7 @@ async function* novelfullGenerator(pages, mediumType = tools.MediaType.TEXT) {
             const newsRow = items.eq(i);
             const link = newsRow.attr("href");
             const episodeTitle = tools.sanitizeString(newsRow.text());
-            yield { title: episodeTitle, url: link, releaseDate: now };
+            yield { title: episodeTitle, url: link as string, releaseDate: now };
         }
     }
 }
@@ -68,7 +77,7 @@ async function* novelfullGenerator(pages, mediumType = tools.MediaType.TEXT) {
  * @param {string} resource path to the resource in the tests/resources directory
  * @return {TocGenerator}
  */
-async function* boxNovelGenerator(resource, mediumType = tools.MediaType.TEXT) {
+async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType.TEXT): TocGenerator {
     const content = await fs.promises.readFile(`tests/resources/${resource}`, "utf8");
     const $ = cheerio.load(content);
     const mediumTitleElement = $(".post-title h3");
@@ -79,7 +88,7 @@ async function* boxNovelGenerator(resource, mediumType = tools.MediaType.TEXT) {
 
     const releaseStatusString = $(".post-status .post-content_item:nth-child(2) .summary-content").text().trim().toLowerCase();
 
-    let end;
+    let end = false;
     if (releaseStatusString === "ongoing") {
         end = false;
     } else if (releaseStatusString === "completed") {
@@ -108,7 +117,7 @@ async function* boxNovelGenerator(resource, mediumType = tools.MediaType.TEXT) {
             date = new Date(dateString);
         }
 
-        yield { title: titleElement.text(), url: link, releaseDate: date };
+        yield { title: titleElement.text(), url: link as string, releaseDate: date as Date };
     }
 }
 
@@ -143,7 +152,7 @@ async function* boxNovelGenerator(resource, mediumType = tools.MediaType.TEXT) {
  * @param {PartialRelease[]} params partial releases to map
  * @returns {Release[]}
  */
-function createReleases(now, ...params) {
+function createReleases(now: Date, ...params: PartialRelease[]): Release[] {
     return params.map(value => {
         return {
             title: "",
@@ -155,6 +164,50 @@ function createReleases(now, ...params) {
             ...value
         };
     });
+}
+
+interface PartialPart {
+    title?: string;
+    combiIndex: number;
+    totalIndex?: number;
+    partialIndex?: number;
+    episodes: PartialRelease[];
+}
+
+interface Part {
+    title: string;
+    combiIndex: number;
+    totalIndex: number;
+    partialIndex?: number;
+    episodes: PartialRelease[];
+}
+
+interface PartialRelease {
+    title?: string;
+    combiIndex: number;
+    totalIndex?: number;
+    partialIndex?: number;
+}
+
+
+interface PartialRelease {
+    title?: string;
+    combiIndex: number;
+    totalIndex?: number;
+    partialIndex?: number;
+    locked?: boolean;
+    url?: string;
+    releaseDate?: Date;
+}
+
+interface Release {
+    title: string;
+    combiIndex: number;
+    totalIndex: number;
+    partialIndex?: number;
+    locked: boolean;
+    url: string;
+    releaseDate?: Date;
 }
 
 /**
@@ -184,7 +237,7 @@ function createReleases(now, ...params) {
  * @param {PartialPart[]} params partial parts to map
  * @returns {Part[]}
  */
-function createParts(now, ...params) {
+function createParts(now: Date, ...params: PartialPart[]): Part[] {
     return params.map(value => {
         return {
             title: "",
@@ -205,13 +258,14 @@ function createParts(now, ...params) {
  * Convenience function to reduce Code duplication.
  * 
  * @param {Array<string | { title: string, mediumType: number }>} titles the title to extract from
- * @param {PartPart[] | PartRelease[]} expected the expected result
+ * @param {PartialPart[] | PartRelease[]} expected the expected result
  */
-function testStaticCase(titles, expected) {
+async function testStaticCase(titles: Array<string | { title: string; mediumType: number; end?: boolean }>, expected: PartialPart[] | PartialRelease[]) {
     const now = new Date();
     const generator = (async function* testGenerator() {
         for (const title of titles) {
             // mediumType is defined it is a TocMeta and not a release or part
+            // @ts-ignore
             if (title.mediumType != null) {
                 yield title;
             } else {
@@ -220,10 +274,22 @@ function testStaticCase(titles, expected) {
         }
     })();
 
+    // @ts-ignore
     const contents = await directTools.scrapeToc(generator);
+    // @ts-ignore
     const createResult = expected[0] && expected[0].episodes ? createParts : createReleases;
 
+    // @ts-ignore
     contents.should.deep.equal(createResult(now, ...expected));
+}
+
+interface Case {
+    pages: string[];
+    domain: "novelfull";
+    hasParts: boolean;
+    hasLocked: boolean;
+    numberEpisodes: number;
+    lastIndex: number;
 }
 
 /**
@@ -241,7 +307,7 @@ function testStaticCase(titles, expected) {
  * @param {string} path
  * @return {Promise<Case>}
  */
-async function readCase(path) {
+async function readCase(path: string): Promise<Case> {
     const fileContent = await fs.promises.readFile("tests/externals/direct/cases/" + path, "utf8");
     return JSON.parse(fileContent);
 }
@@ -251,13 +317,13 @@ async function readCase(path) {
  * @param {string} casePath
  * @return {Promise<void>}
  */
-async function testCase(casePath) {
+async function testCase(casePath: string): Promise<void> {
     const caseData = await readCase(casePath);
 
     /**
      * @type {TocGenerator}
      */
-    let generator;
+    let generator: TocGenerator;
     if (caseData.domain === "novelfull") {
         generator = novelfullGenerator(caseData.pages);
     } else {
@@ -273,9 +339,12 @@ async function testCase(casePath) {
     for (const content of contents) {
         content.should.have.property("title");
 
+        // @ts-ignore
         if (content.episodes) {
+            // @ts-ignore
             content.episodes.should.be.an("array");
 
+            // @ts-ignore
             for (const episode of content.episodes) {
                 caseData.hasParts.should.not.equal(false);
                 episode.should.have.property("title");
@@ -325,7 +394,7 @@ describe("testing scrapeToc", () => {
                 { combiIndex: 1 },
                 { combiIndex: 2 },
                 { combiIndex: 3 },
-                { totalIndex: 4 }
+                { combiIndex: 4 }
             ]
         );
     });
@@ -366,38 +435,39 @@ describe("testing scrapeToc", () => {
                 "Chapter 3 -  I am HitchCock2",
                 "Chapter 4 -  I am HitchCock3 Part 1",
                 "Chapter 4 -  I am HitchCock3 Part 2"
-            ], [
-            {
-                title: "I am HitchCock",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.5,
-                totalIndex: 2,
-                partialIndex: 5
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.1,
-                totalIndex: 4,
-                partialIndex: 1
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am HitchCock",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.5,
+                    totalIndex: 2,
+                    partialIndex: 5
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.1,
+                    totalIndex: 4,
+                    partialIndex: 1
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                }
+            ]
         );
     });
     it("should extract correct toc: short form chapter indices with partial index with title only", async function () {
@@ -409,38 +479,39 @@ describe("testing scrapeToc", () => {
                 "Chapter. 3 -  I am HitchCock2",
                 "c4 -  I am HitchCock3 [1/2]",
                 "4 -  I am HitchCock3 Part 2"
-            ], [
-            {
-                title: "I am HitchCock",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.5,
-                totalIndex: 2,
-                partialIndex: 5
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.1,
-                totalIndex: 4,
-                partialIndex: 1
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am HitchCock",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.5,
+                    totalIndex: 2,
+                    partialIndex: 5
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.1,
+                    totalIndex: 4,
+                    partialIndex: 1
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                }
+            ]
         );
     });
     it("should extract correct toc: short form indices with partial index with title only and all forms of chapter notations", async function () {
@@ -454,46 +525,47 @@ describe("testing scrapeToc", () => {
                 "c5 -  I am HitchCock3 Part 1",
                 "5 -  I am HitchCock3 Part 2",
                 "EP100:  I am HitchCock1"
-            ], [
-            {
-                title: "I am HitchCock",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.5,
-                totalIndex: 2,
-                partialIndex: 5
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 4
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 5.1,
-                totalIndex: 5,
-                partialIndex: 1
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 5.2,
-                totalIndex: 5,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 100
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am HitchCock",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.5,
+                    totalIndex: 2,
+                    partialIndex: 5
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 4
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 5.1,
+                    totalIndex: 5,
+                    partialIndex: 1
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 5.2,
+                    totalIndex: 5,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 100
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with title, with volume only", async function () {
@@ -503,34 +575,35 @@ describe("testing scrapeToc", () => {
                 "Volume 1: Chapter 2:  I am HitchCock1",
                 "Volume 2: Chapter 3 -  I am HitchCock2",
                 "Volume 2 - Chapter 4 -  I am HitchCock3"
-            ], [
-            {
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am HitchCock",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2
-                    }
-                ]
-            },
-            {
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4
-                    }
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am HitchCock",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2
+                        }
+                    ]
+                },
+                {
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4
+                        }
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with title, with short form volume", async function () {
@@ -540,34 +613,35 @@ describe("testing scrapeToc", () => {
                 "V1: Chapter 2:  I am HitchCock1",
                 "Vol. 2: Chapter 3 -  I am HitchCock2",
                 "V 2 - Chapter 4 -  I am HitchCock3"
-            ], [
-            {
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am HitchCock",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2
-                    }
-                ]
-            },
-            {
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4
-                    }
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am HitchCock",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2
+                        }
+                    ]
+                },
+                {
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4
+                        }
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with title, with volume with title", async function () {
@@ -577,36 +651,37 @@ describe("testing scrapeToc", () => {
                 "V1: I am a title1 Chapter 2:  I am HitchCock1",
                 "Vol. 2: : I am a title2 Chapter 3 -  I am HitchCock2",
                 "Volume 2: I am a title2 - Chapter 4 -  I am HitchCock3"
-            ], [
-            {
-                title: "I am a title1",
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am HitchCock",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2
-                    }
-                ]
-            },
-            {
-                title: "I am a title2",
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4
-                    }
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am a title1",
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am HitchCock",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2
+                        }
+                    ]
+                },
+                {
+                    title: "I am a title2",
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4
+                        }
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: ignore invalid chapters", async function () {
@@ -621,36 +696,37 @@ describe("testing scrapeToc", () => {
                 "Vol. 2: : I am a title2 Chapter SPAM -  I am HitchCock2",
                 "Volume 2: I am a title2 - Chapter 4 -  I am HitchCock3",
                 "Vol. DELETED: : I am a title2 Chapter 4 -  I am HitchCock2"
-            ], [
-            {
-                title: "I am a title1",
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am HitchCock",
-                        combiIndex: 1
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2
-                    }
-                ]
-            },
-            {
-                title: "I am a title2",
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4
-                    }
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am a title1",
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am HitchCock",
+                            combiIndex: 1
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2
+                        }
+                    ]
+                },
+                {
+                    title: "I am a title2",
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4
+                        }
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: full short form with title", async function () {
@@ -660,37 +736,38 @@ describe("testing scrapeToc", () => {
                 "V54C4P1- Plan of Annihilation",
                 "V54C4P2- Plan of Annihilation",
                 "V54C4P3- Plan of Annihilation"
-            ], [
-            {
-                combiIndex: 54,
-                episodes: [
-                    {
-                        title: "All That Labor Work",
-                        combiIndex: 3.3,
-                        totalIndex: 3,
-                        partialIndex: 3
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 4.1,
-                        totalIndex: 4,
-                        partialIndex: 1
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 4.2,
-                        totalIndex: 4,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 4.3,
-                        totalIndex: 4,
-                        partialIndex: 3
-                    },
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    combiIndex: 54,
+                    episodes: [
+                        {
+                            title: "All That Labor Work",
+                            combiIndex: 3.3,
+                            totalIndex: 3,
+                            partialIndex: 3
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 4.1,
+                            totalIndex: 4,
+                            partialIndex: 1
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 4.2,
+                            totalIndex: 4,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 4.3,
+                            totalIndex: 4,
+                            partialIndex: 3
+                        },
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: full form mixed with full short form with title", async function () {
@@ -700,29 +777,30 @@ describe("testing scrapeToc", () => {
                 "Chapter 587 - V54C4P1- Plan of Annihilation",
                 "Chapter 588 - V54C4P2- Plan of Annihilation",
                 "Chapter 589 - V54C4P3- Plan of Annihilation"
-            ], [
-            {
-                combiIndex: 54,
-                episodes: [
-                    {
-                        title: "All That Labor Work",
-                        combiIndex: 586
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 587
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 588
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 589
-                    },
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    combiIndex: 54,
+                    episodes: [
+                        {
+                            title: "All That Labor Work",
+                            combiIndex: 586
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 587
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 588
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 589
+                        },
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: title prefix with full form mixed with full short form with title", async function () {
@@ -732,66 +810,69 @@ describe("testing scrapeToc", () => {
                 "I am a cool Book: Chapter 587 - V54C4P1- Plan of Annihilation",
                 "I am a cool Book: Chapter 588 - V54C4P2- Plan of Annihilation",
                 "I am a cool Book: Chapter 589 - V54C4P3- Plan of Annihilation"
-            ], [
-            {
-                combiIndex: 54,
-                episodes: [
-                    {
-                        title: "All That Labor Work",
-                        combiIndex: 586
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 587
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 588
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 589
-                    },
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    combiIndex: 54,
+                    episodes: [
+                        {
+                            title: "All That Labor Work",
+                            combiIndex: 586
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 587
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 588
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 589
+                        },
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: title prefix with different volume namings and chapter", async function () {
         testStaticCase(
-            [{ title: "I am a cool Book", mediumType: 1 },
+            [
+                { title: "I am a cool Book", mediumType: 1 },
                 "I am a cool Book: Volume1 Chapter 586 -  All That Labor Work",
                 "I am a cool Book: Book1 Chapter 587 -  Plan of Annihilation",
                 "I am a cool Book: Book 2 Chapter 588 - Plan of Annihilation",
                 "I am a cool Book: Season 2 Chapter 589 - Plan of Annihilation"
-            ], [
-            {
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "All That Labor Work",
-                        combiIndex: 586
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 587
-                    },
-                ]
-            },
-            {
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 588
-                    },
-                    {
-                        title: "Plan of Annihilation",
-                        combiIndex: 589
-                    },
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "All That Labor Work",
+                            combiIndex: 586
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 587
+                        },
+                    ]
+                },
+                {
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 588
+                        },
+                        {
+                            title: "Plan of Annihilation",
+                            combiIndex: 589
+                        },
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with not always used partial index with title only", async function () {
@@ -803,45 +884,47 @@ describe("testing scrapeToc", () => {
                 "Chapter. 3 -  I am HitchCock2",
                 "c4 -  I am HitchCock3",
                 "4 -  I am HitchCock3 [2/2]"
-            ], [
-            {
-                title: "I am HitchCock",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.1,
-                totalIndex: 2,
-                partialIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.2,
-                totalIndex: 2,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.1,
-                totalIndex: 4,
-                partialIndex: 1
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am HitchCock",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.1,
+                    totalIndex: 2,
+                    partialIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.2,
+                    totalIndex: 2,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.1,
+                    totalIndex: 4,
+                    partialIndex: 1
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing ascending story", async function () {
         testStaticCase(
-            [{ title: "I am a cool Book", mediumType: 1, end: undefined },
+            [
+                { title: "I am a cool Book", mediumType: 1, end: false },
                 "I am a Intermission1",
                 "I am a Intermission2",
                 "C1:  I am HitchCock1",
@@ -850,52 +933,53 @@ describe("testing scrapeToc", () => {
                 "4 -  I am HitchCock3 [2/2]",
                 "I am a Intermission3",
                 "I am a Intermission4"
-            ], [
-            {
-                title: "I am a Intermission1",
-                combiIndex: 0.1,
-                totalIndex: 0,
-                partialIndex: 1
-            },
-            {
-                title: "I am a Intermission2",
-                combiIndex: 0.2,
-                totalIndex: 0,
-                partialIndex: 2
-            },
-            {
-                title: "I am a Intermission3",
-                combiIndex: 0.3,
-                totalIndex: 0,
-                partialIndex: 3
-            },
-            {
-                title: "I am a Intermission4",
-                combiIndex: 0.4,
-                totalIndex: 0,
-                partialIndex: 4
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.2,
-                totalIndex: 2,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am a Intermission1",
+                    combiIndex: 0.1,
+                    totalIndex: 0,
+                    partialIndex: 1
+                },
+                {
+                    title: "I am a Intermission2",
+                    combiIndex: 0.2,
+                    totalIndex: 0,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am a Intermission3",
+                    combiIndex: 0.3,
+                    totalIndex: 0,
+                    partialIndex: 3
+                },
+                {
+                    title: "I am a Intermission4",
+                    combiIndex: 0.4,
+                    totalIndex: 0,
+                    partialIndex: 4
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.2,
+                    totalIndex: 2,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with finished ascending story", async function () {
@@ -909,52 +993,53 @@ describe("testing scrapeToc", () => {
                 "4 -  I am HitchCock3 [2/2]",
                 "I am a Intermission3",
                 "I am a Intermission4"
-            ], [
-            {
-                title: "I am a Intermission1",
-                combiIndex: 0.1,
-                totalIndex: 0,
-                partialIndex: 1
-            },
-            {
-                title: "I am a Intermission2",
-                combiIndex: 0.2,
-                totalIndex: 0,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.2,
-                totalIndex: 2,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            },
-            {
-                title: "I am a Intermission3",
-                combiIndex: 4.301,
-                totalIndex: 4,
-                partialIndex: 301
-            },
-            {
-                title: "I am a Intermission4",
-                combiIndex: 4.302,
-                totalIndex: 4,
-                partialIndex: 302
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am a Intermission1",
+                    combiIndex: 0.1,
+                    totalIndex: 0,
+                    partialIndex: 1
+                },
+                {
+                    title: "I am a Intermission2",
+                    combiIndex: 0.2,
+                    totalIndex: 0,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.2,
+                    totalIndex: 2,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am a Intermission3",
+                    combiIndex: 4.301,
+                    totalIndex: 4,
+                    partialIndex: 301
+                },
+                {
+                    title: "I am a Intermission4",
+                    combiIndex: 4.302,
+                    totalIndex: 4,
+                    partialIndex: 302
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with ongoing descending story", async function () {
@@ -968,52 +1053,53 @@ describe("testing scrapeToc", () => {
                 "C1:  I am HitchCock1",
                 "I am a Intermission2",
                 "I am a Intermission1"
-            ], [
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.2,
-                totalIndex: 2,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 1
-            },
-            {
-                title: "I am a Intermission4",
-                combiIndex: 0.4,
-                totalIndex: 0,
-                partialIndex: 4
-            },
-            {
-                title: "I am a Intermission3",
-                combiIndex: 0.3,
-                totalIndex: 0,
-                partialIndex: 3
-            },
-            {
-                title: "I am a Intermission2",
-                combiIndex: 0.2,
-                totalIndex: 0,
-                partialIndex: 2
-            },
-            {
-                title: "I am a Intermission1",
-                combiIndex: 0.1,
-                totalIndex: 0,
-                partialIndex: 1
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.2,
+                    totalIndex: 2,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am a Intermission4",
+                    combiIndex: 0.4,
+                    totalIndex: 0,
+                    partialIndex: 4
+                },
+                {
+                    title: "I am a Intermission3",
+                    combiIndex: 0.3,
+                    totalIndex: 0,
+                    partialIndex: 3
+                },
+                {
+                    title: "I am a Intermission2",
+                    combiIndex: 0.2,
+                    totalIndex: 0,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am a Intermission1",
+                    combiIndex: 0.1,
+                    totalIndex: 0,
+                    partialIndex: 1
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with non main story chapters at the ends with finished descending story", async function () {
@@ -1027,52 +1113,53 @@ describe("testing scrapeToc", () => {
                 "C1:  I am HitchCock1",
                 "I am a Intermission2",
                 "I am a Intermission1"
-            ], [
-            {
-                title: "I am a Intermission4",
-                combiIndex: 4.302,
-                totalIndex: 4,
-                partialIndex: 302
-            },
-            {
-                title: "I am a Intermission3",
-                combiIndex: 4.301,
-                totalIndex: 4,
-                partialIndex: 301
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.2,
-                totalIndex: 2,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 1
-            },
-            {
-                title: "I am a Intermission2",
-                combiIndex: 0.2,
-                totalIndex: 0,
-                partialIndex: 2
-            },
-            {
-                title: "I am a Intermission1",
-                combiIndex: 0.1,
-                totalIndex: 0,
-                partialIndex: 1
-            },
-        ]
+            ],
+            [
+                {
+                    title: "I am a Intermission4",
+                    combiIndex: 4.302,
+                    totalIndex: 4,
+                    partialIndex: 302
+                },
+                {
+                    title: "I am a Intermission3",
+                    combiIndex: 4.301,
+                    totalIndex: 4,
+                    partialIndex: 301
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.2,
+                    totalIndex: 2,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am a Intermission2",
+                    combiIndex: 0.2,
+                    totalIndex: 0,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am a Intermission1",
+                    combiIndex: 0.1,
+                    totalIndex: 0,
+                    partialIndex: 1
+                },
+            ]
         );
     });
     it("should extract correct toc: chapter indices with non main story chapters in the middle with ascending story", async function () {
@@ -1086,52 +1173,53 @@ describe("testing scrapeToc", () => {
                 "I am a Intermission3",
                 "I am a Intermission4",
                 "4 -  I am HitchCock3 [2/2]"
-            ], [
-            {
-                title: "I am HitchCock1",
-                combiIndex: 1
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.2,
-                totalIndex: 2,
-                partialIndex: 2
-            },
-            {
-                title: "I am a Intermission1",
-                combiIndex: 2.301,
-                totalIndex: 2,
-                partialIndex: 301
-            },
-            {
-                title: "I am a Intermission2",
-                combiIndex: 2.302,
-                totalIndex: 2,
-                partialIndex: 302
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am a Intermission3",
-                combiIndex: 3.101,
-                totalIndex: 3,
-                partialIndex: 101
-            },
-            {
-                title: "I am a Intermission4",
-                combiIndex: 3.102,
-                totalIndex: 3,
-                partialIndex: 102
-            },
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 1
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.2,
+                    totalIndex: 2,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am a Intermission1",
+                    combiIndex: 2.301,
+                    totalIndex: 2,
+                    partialIndex: 301
+                },
+                {
+                    title: "I am a Intermission2",
+                    combiIndex: 2.302,
+                    totalIndex: 2,
+                    partialIndex: 302
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am a Intermission3",
+                    combiIndex: 3.101,
+                    totalIndex: 3,
+                    partialIndex: 101
+                },
+                {
+                    title: "I am a Intermission4",
+                    combiIndex: 3.102,
+                    totalIndex: 3,
+                    partialIndex: 102
+                },
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with non main story chapters in the middle with descending story", async function () {
@@ -1145,52 +1233,53 @@ describe("testing scrapeToc", () => {
                 "I am a Intermission1",
                 "2:  I am HitchCock1 2/2",
                 "C1:  I am HitchCock1"
-            ], [
-            {
-                title: "I am HitchCock3",
-                combiIndex: 4.2,
-                totalIndex: 4,
-                partialIndex: 2
-            },
-            {
-                title: "I am a Intermission4",
-                combiIndex: 3.102,
-                totalIndex: 3,
-                partialIndex: 102
-            },
-            {
-                title: "I am a Intermission3",
-                combiIndex: 3.101,
-                totalIndex: 3,
-                partialIndex: 101
-            },
-            {
-                title: "I am HitchCock2",
-                combiIndex: 3
-            },
-            {
-                title: "I am a Intermission2",
-                combiIndex: 2.302,
-                totalIndex: 2,
-                partialIndex: 302
-            },
-            {
-                title: "I am a Intermission1",
-                combiIndex: 2.301,
-                totalIndex: 2,
-                partialIndex: 301
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 2.2,
-                totalIndex: 2,
-                partialIndex: 2
-            },
-            {
-                title: "I am HitchCock1",
-                combiIndex: 1
-            }
-        ]
+            ],
+            [
+                {
+                    title: "I am HitchCock3",
+                    combiIndex: 4.2,
+                    totalIndex: 4,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am a Intermission4",
+                    combiIndex: 3.102,
+                    totalIndex: 3,
+                    partialIndex: 102
+                },
+                {
+                    title: "I am a Intermission3",
+                    combiIndex: 3.101,
+                    totalIndex: 3,
+                    partialIndex: 101
+                },
+                {
+                    title: "I am HitchCock2",
+                    combiIndex: 3
+                },
+                {
+                    title: "I am a Intermission2",
+                    combiIndex: 2.302,
+                    totalIndex: 2,
+                    partialIndex: 302
+                },
+                {
+                    title: "I am a Intermission1",
+                    combiIndex: 2.301,
+                    totalIndex: 2,
+                    partialIndex: 301
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 2.2,
+                    totalIndex: 2,
+                    partialIndex: 2
+                },
+                {
+                    title: "I am HitchCock1",
+                    combiIndex: 1
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with volume items between with descending story", async function () {
@@ -1206,62 +1295,63 @@ describe("testing scrapeToc", () => {
                 "2:  I am HitchCock1 2/2",
                 "C1:  I am HitchCock1",
                 "Volume 1"
-            ], [
-            {
-                combiIndex: 2,
-                episodes: [
-                    {
-                        title: "I am HitchCock3",
-                        combiIndex: 4.2,
-                        totalIndex: 4,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am a Intermission4",
-                        combiIndex: 3.102,
-                        totalIndex: 3,
-                        partialIndex: 102
-                    },
-                    {
-                        title: "I am a Intermission3",
-                        combiIndex: 3.101,
-                        totalIndex: 3,
-                        partialIndex: 101
-                    },
-                    {
-                        title: "I am HitchCock2",
-                        combiIndex: 3
-                    },
-                ]
-            },
-            {
-                combiIndex: 1,
-                episodes: [
-                    {
-                        title: "I am a Intermission2",
-                        combiIndex: 2.302,
-                        totalIndex: 2,
-                        partialIndex: 302
-                    },
-                    {
-                        title: "I am a Intermission1",
-                        combiIndex: 2.301,
-                        totalIndex: 2,
-                        partialIndex: 301
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 2.2,
-                        totalIndex: 2,
-                        partialIndex: 2
-                    },
-                    {
-                        title: "I am HitchCock1",
-                        combiIndex: 1
-                    },
-                ]
-            }
-        ]
+            ],
+            [
+                {
+                    combiIndex: 2,
+                    episodes: [
+                        {
+                            title: "I am HitchCock3",
+                            combiIndex: 4.2,
+                            totalIndex: 4,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am a Intermission4",
+                            combiIndex: 3.102,
+                            totalIndex: 3,
+                            partialIndex: 102
+                        },
+                        {
+                            title: "I am a Intermission3",
+                            combiIndex: 3.101,
+                            totalIndex: 3,
+                            partialIndex: 101
+                        },
+                        {
+                            title: "I am HitchCock2",
+                            combiIndex: 3
+                        },
+                    ]
+                },
+                {
+                    combiIndex: 1,
+                    episodes: [
+                        {
+                            title: "I am a Intermission2",
+                            combiIndex: 2.302,
+                            totalIndex: 2,
+                            partialIndex: 302
+                        },
+                        {
+                            title: "I am a Intermission1",
+                            combiIndex: 2.301,
+                            totalIndex: 2,
+                            partialIndex: 301
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 2.2,
+                            totalIndex: 2,
+                            partialIndex: 2
+                        },
+                        {
+                            title: "I am HitchCock1",
+                            combiIndex: 1
+                        },
+                    ]
+                }
+            ]
         );
     });
     it("should extract correct toc: chapter indices with volume items between with ascending story", async function () {
@@ -1642,8 +1732,10 @@ describe("testing scrapeToc", () => {
             content.should.have.property("totalIndex", currentVolumeIndex);
             content.should.have.property("partialIndex", undefined);
             content.should.have.property("episodes");
+            // @ts-ignore
             content.episodes.should.be.an("array");
 
+            // @ts-ignore
             for (const episode of content.episodes) {
                 episode.should.have.property("title", "");
                 episode.should.have.property("combiIndex", currentEpisodeIndex);
@@ -1751,9 +1843,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
+            // @ts-ignore
             if (content.episodes) {
+                // @ts-ignore
                 content.episodes.should.be.an("array");
 
+                // @ts-ignore
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.combiIndex.should.be.at.most(currentEpisodeIndex);
@@ -1787,9 +1882,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
+            // @ts-ignore
             if (content.episodes) {
+                // @ts-ignore
                 content.episodes.should.be.an("array");
 
+                // @ts-ignore
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     if (episode.combiIndex !== 200 && episode.totalIndex !== 219) {
@@ -1825,9 +1923,14 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
+
+            // @ts-ignore
             if (content.episodes) {
+
+                // @ts-ignore
                 content.episodes.should.be.an("array");
 
+                // @ts-ignore
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
@@ -1863,9 +1966,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
+            // @ts-ignore
             if (content.episodes) {
+                // @ts-ignore
                 content.episodes.should.be.an("array");
 
+                // @ts-ignore
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
@@ -1901,9 +2007,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
+            // @ts-ignore
             if (content.episodes) {
+                // @ts-ignore
                 content.episodes.should.be.an("array");
 
+                // @ts-ignore
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
@@ -1940,9 +2049,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
+            // @ts-ignore
             if (content.episodes) {
+                // @ts-ignore
                 content.episodes.should.be.an("array");
 
+                // @ts-ignore
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
