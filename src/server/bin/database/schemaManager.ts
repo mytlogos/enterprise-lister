@@ -13,8 +13,8 @@ export class SchemaManager {
     private trigger: Trigger[] = [];
     private migrations: Migration[] = [];
 
-    public initTableSchema(database: DatabaseSchema): void {
-        this.databaseName = database.name;
+    public initTableSchema(database: DatabaseSchema, databaseName: string): void {
+        this.databaseName = databaseName;
         this.dataBaseVersion = database.version;
         this.mainTable = database.mainTable;
         this.tables.push(...database.tables);
@@ -24,6 +24,7 @@ export class SchemaManager {
 
     public async checkTableSchema(context: DatabaseContext): Promise<void> {
         logger.info("Starting Check on Storage Schema");
+        await this.createMissing(context);
         const canMigrate = await context.startMigration();
         if (!canMigrate) {
             await (async function wait(retry = 0) {
@@ -37,25 +38,41 @@ export class SchemaManager {
                 }
             }());
         }
-        // display all current tables
         try {
-            await this.checkSchema(context);
+            await this.migrate(context);
         } finally {
             await context.stopMigration();
         }
     }
 
-    private async checkSchema(context: DatabaseContext) {
+    /**
+     * Create any missing structures.
+     * Currently creates any tables and triggers which do not yet exist in the database,
+     * but are defined in the schema.
+     * 
+     * Deletes any Triggers defined by name in the database, but not defined by name in the schema.
+     * 
+     * @param context database context to use
+     */
+    private async createMissing(context: DatabaseContext): Promise<void> {
+        logger.info("Check on missing database structures");
+
         const tables: any[] = await context.getTables();
 
         const enterpriseTableProperty = `Tables_in_${this.databaseName}`;
 
+        let tablesCreated = 0;
         // create tables which do not exist
         await Promise.all(this.tables
             .filter((tableSchema) => !tables.find((table: any) => table[enterpriseTableProperty] === tableSchema.name))
-            .map((tableSchema) => {
+            .map(async (tableSchema) => {
                 const schema = tableSchema.getTableSchema();
-                return context.createTable(schema.name, schema.columns);
+                await context.createTable(schema.name, schema.columns);
+                // sloppy fix to add a single row to the table, to get "startMigration" to work on empty table
+                if (schema.name === "enterprise_database_info") {
+                    await context.query("INSERT INTO enterprise_database_info (version) VALUES (0)");
+                }
+                tablesCreated++;
             }));
 
         const dbTriggers = await context.getTriggers();
@@ -86,14 +103,17 @@ export class SchemaManager {
             .filter((value) => this.tables.find((table) => table.name === value.Table))
             .map((value) => context.dropTrigger(value.Trigger).then(() => triggerDeleted++))
         );
+        logger.info(`Created ${triggerCreated} Triggers, ${tablesCreated} Tables and dropped ${triggerDeleted} Triggers`);
+    }
 
+    private async migrate(context: DatabaseContext) {
         const versionResult = await context.getDatabaseVersion();
         let previousVersion = 0;
 
         if (versionResult && versionResult[0] && versionResult[0].version > 0) {
             previousVersion = versionResult[0].version;
         }
-        logger.info(`Created ${triggerCreated} Triggers and dropped ${triggerDeleted} Triggers`);
+
         const currentVersion = this.dataBaseVersion;
         if (currentVersion === previousVersion) {
             logger.info("Storage Version is up-to-date");

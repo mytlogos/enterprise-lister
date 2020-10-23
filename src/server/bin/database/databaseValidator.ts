@@ -594,7 +594,6 @@ const StateProcessorImpl: StateProcessorImpl = {
     },
 
     initTableSchema(database: DatabaseSchema): void {
-        this.databaseName = database.name;
         this.tables = [...database.tables];
         const mainTable = database.mainTable;
         const invalidationTable = database.invalidationTable;

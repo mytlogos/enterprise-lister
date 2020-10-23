@@ -6,7 +6,6 @@ import {DatabaseContext} from "./contexts/databaseContext";
 export interface DatabaseSchema {
     readonly version: number;
     readonly triggers: readonly Trigger[];
-    readonly name: string;
     readonly tables: readonly TableSchema[];
     readonly mainTable: TableSchema;
     readonly invalidationTable: TableSchema;

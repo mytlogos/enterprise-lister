@@ -34,15 +34,15 @@ export async function storageInContext<T, C extends ConnectionContext>(
     provider: ContextProvider<C>,
     transaction = true
 ): Promise<T> {
-    if (!running) {
+    if (!poolProvider.running) {
         // if inContext is called without Storage being active
-        return Promise.reject("Not started");
+        return Promise.reject(new Error("Not started"));
     }
-    if (errorAtStart) {
-        return Promise.reject("Error occurred while starting Database. Database may not be accessible");
+    if (poolProvider.errorAtStart) {
+        return Promise.reject(new Error("Error occurred while starting Database. Database may not be accessible"));
     }
-    if (startPromise) {
-        await startPromise;
+    if (poolProvider.startPromise) {
+        await poolProvider.startPromise;
     }
     const pool = await poolProvider.provide();
     const con = await pool.getConnection();
@@ -138,6 +138,9 @@ class SqlPoolProvider {
     private remake = true;
     private pool?: Promise<mySql.Pool>;
     private config?: mySql.PoolConfig;
+    public running = false;
+    public errorAtStart = false;
+    public startPromise = Promise.resolve();
 
     public provide(): Promise<mySql.Pool> {
         if (!this.pool || this.remake) {
@@ -152,7 +155,7 @@ class SqlPoolProvider {
     }
 
     public useConfig(config: mySql.PoolConfig) {
-        this.config = config;
+        this.config = {...this.defaultConfig(), ...config};
         this.remake = true;
     }
 
@@ -162,8 +165,60 @@ class SqlPoolProvider {
         this.config = undefined;
     }
 
-    private createPool(): Promise<mySql.Pool> {
-        const config = this.config || this.defaultConfig();
+    /**
+     * Checks the database for incorrect structure
+     * and tries to correct these.
+     */
+    public start(): void {
+        if (!this.running) {
+            this.running = true;
+            try {
+                const manager = new SchemaManager();
+                const database = this.getConfig().database;
+
+                if (!database) {
+                    this.startPromise = Promise.reject("No database name defined");
+                    return;
+                }
+                manager.initTableSchema(databaseSchema, database);
+                this.startPromise = inContext(
+                    (context) => manager.checkTableSchema(context.databaseContext),
+                    true,
+                ).catch((error) => {
+                    logger.error(error);
+                    this.errorAtStart = true;
+                    return Promise.reject("Database error occurred while starting");
+                });
+            } catch (e) {
+                this.errorAtStart = true;
+                logger.error(e);
+                this.startPromise = Promise.reject("Error in database schema");
+            }
+        }
+    }
+
+    public async stop(): Promise<void> {
+        if (this.pool) {
+            logger.info("Stopping Database");
+            this.running = false;
+            const pool = await this.pool;
+            pool.end();
+            logger.info("Database stopped now");
+        } else {
+            logger.info("Stopping Database... None running.");
+        }
+    }
+
+    private getConfig() {
+        return this.config || this.defaultConfig();
+    }
+
+    private async createPool(): Promise<mySql.Pool> {
+        // stop previous pool if available
+        if (this.pool) {
+            await this.stop();
+        }
+        const config = this.getConfig();
         return mySql.createPool(config);
     }
 
@@ -189,18 +244,22 @@ class SqlPoolProvider {
 }
 
 const poolProvider = new SqlPoolProvider();
+// poolProvider.provide().catch(console.error);
 
 class SqlPoolConfigUpdater {
 
     /**
      * Creates new Mysql Connection Pool with the given Config.
      */
-    public update(config: mySql.PoolConfig): void {
+    public update(config: Partial<mySql.PoolConfig>): void {
         poolProvider.useConfig(config);
     }
 
-    public recreate() {
+    public async recreate(immediate = false): Promise<void> {
         poolProvider.recreate();
+        if (immediate) {
+            await poolProvider.provide();
+        }
     }
 
     public useDefault() {
@@ -210,41 +269,6 @@ class SqlPoolConfigUpdater {
 
 export const poolConfig = new SqlPoolConfigUpdater();
 
-let errorAtStart = false;
-let running = false;
-
-
-/**
- * @type {Promise<Storage>|void}
- */
-let startPromise: Promise<void> | null;
-
-/**
- * Checks the database for incorrect structure
- * and tries to correct these.
- */
-function start(): void {
-    if (!running) {
-        running = true;
-        try {
-            const manager = new SchemaManager();
-            manager.initTableSchema(databaseSchema);
-            startPromise = inContext(
-                (context) => manager.checkTableSchema(context.databaseContext),
-                true,
-            ).catch((error) => {
-                logger.error(error);
-                errorAtStart = true;
-                return Promise.reject("Database error occurred while starting");
-            });
-        } catch (e) {
-            errorAtStart = true;
-            startPromise = Promise.reject("Error in database schema");
-            logger.error(e);
-        }
-    }
-}
-
 export class Storage {
 
     /**
@@ -253,10 +277,7 @@ export class Storage {
      * @return {Promise<void>}
      */
     public stop(): Promise<void> {
-        logger.info("Stopping Database");
-        running = false;
-        startPromise = null;
-        return poolProvider.provide().then((value) => value.end()).then(() => logger.info("Database stopped now"));
+        return poolProvider.stop();
     }
 
     public getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
@@ -363,6 +384,4 @@ export const externalListStorage = new ExternalListStorage();
 /**
  *
  */
-export const startStorage = (): void => start();
-// TODO: 01.09.2019 check whether it should 'start' implicitly or explicitly
-start();
+export const startStorage = (): void => poolProvider.start();
