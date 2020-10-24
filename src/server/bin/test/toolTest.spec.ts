@@ -309,22 +309,155 @@ describe("testing tool.js", () => {
         });
     });
     describe("test multiSingle", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly when using it with a non-array value", () => {
+            const spy = sinon.spy((item) => item);
+            const result = tools.multiSingle("item", spy);
+            result.should.equal("item");
+
+            spy.should.have.callCount(1);
+            spy.should.have.been.calledWith("item", 0, true);
+        });
+
+        it("should work correctly when using it with an array", () => {
+            const spy = sinon.spy((item) => item);
+            const result = tools.multiSingle(["item1", "item2", "item3"], spy);
+            result.should.deep.equal(["item1", "item2", "item3"]);
+
+            spy.should.have.callCount(3);
+            spy.args[0].should.deep.equal(["item1", 0, false]);
+            spy.args[1].should.deep.equal(["item2", 1, false]);
+            spy.args[2].should.deep.equal(["item3", 2, true]);
+        });
     });
     describe("test addMultiSingle", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const array: number[] = [];
+            let result = tools.addMultiSingle(array, null);
+            should.not.exist(result);
+            array.should.be.empty;
+
+            result = tools.addMultiSingle(array, 1);
+            should.not.exist(result);
+            array.should.deep.equal([1]);
+
+            result = tools.addMultiSingle(array, [2, null,5]);
+            should.not.exist(result);
+            array.should.deep.equal([1,2,null,5]);
+
+            result = tools.addMultiSingle(array, null, true);
+            should.not.exist(result);
+            array.should.deep.equal([1,2,null,5, null]);
+        });
     });
     describe("test removeMultiSingle", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const array: Array<number | null> = [1,2,0,2,null,5,null];
+            // should not remove null
+            let result = tools.removeMultiSingle(array, null);
+            should.not.exist(result);
+            array.should.be.deep.equal([1,2,0,2,null,5,null]);
+
+            // should remove the first null
+            result = tools.removeMultiSingle(array, null, true);
+            should.not.exist(result);
+            array.should.be.deep.equal([1,2,0,2,5,null]);
+
+            result = tools.removeMultiSingle(array, [1,2]);
+            should.not.exist(result);
+            array.should.deep.equal([0,2,5,null]);
+
+            result = tools.removeMultiSingle(array, 5);
+            should.not.exist(result);
+            array.should.deep.equal([0,2,null]);
+        });
     });
     describe("test getElseSet", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const map = new Map<number, number>();
+            let supplier = sinon.spy(() => 1);
+
+            let result = tools.getElseSet(map, 1, supplier);
+            result.should.equal(1);
+            let value = map.get(1);
+            should.exist(value);
+            // @ts-expect-error
+            value.should.equal(1);
+            supplier.should.have.callCount(1);
+
+            // if calling it again, callCount should not increase as it has a mapping for key
+            result = tools.getElseSet(map, 1, supplier);
+            result.should.equal(1);
+            supplier.should.have.callCount(1);
+
+            supplier = sinon.spy(() => Number.MAX_VALUE);
+            // ensure it takes the value from the supplier, by using a different default value
+            result = tools.getElseSet(map, 2, supplier);
+            result.should.equal(Number.MAX_VALUE);
+            value = map.get(2);
+            should.exist(value);
+            // @ts-expect-error
+            value.should.equal(Number.MAX_VALUE);
+            supplier.should.have.callCount(1);
+        });
     });
     describe("test getElseSetObj", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const map: {[key: string]: number} = {};
+            let supplier = sinon.spy(() => 1);
+
+            let result = tools.getElseSetObj(map, "1", supplier);
+            result.should.equal(1);
+            let value = map["1"];
+            should.exist(value);
+            value.should.equal(1);
+            supplier.should.have.callCount(1);
+
+            // if calling it again, callCount should not increase as it has a mapping for key
+            result = tools.getElseSetObj(map, "1", supplier);
+            result.should.equal(1);
+            supplier.should.have.callCount(1);
+
+            supplier = sinon.spy(() => Number.MAX_VALUE);
+            // ensure it takes the value from the supplier, by using a different default value
+            result = tools.getElseSetObj(map, "2", supplier);
+            result.should.equal(Number.MAX_VALUE);
+            value = map["2"];
+            should.exist(value);
+            value.should.equal(Number.MAX_VALUE);
+            supplier.should.have.callCount(1);
+        });
     });
     describe("test unique", function() {
-        it("should not throw when using valid parameters");
+        it("should not modify an empty array", () => {
+            let result = tools.unique([]);
+            result.should.be.an("Array");
+            result.should.be.empty;
+
+            result = tools.unique([], (value1, value2) => value1 === value2);
+            result.should.be.an("Array");
+            result.should.be.empty;
+        });
+        it("should preserver order", () => {
+            let result = tools.unique([1,2,3,4,4,3,2,1]);
+            result.should.be.an("Array");
+            result.should.be.deep.equal([1,2,3,4]);
+
+            result = tools.unique([1,2,3,4,4,3,2,1], (value1, value2) => value1 === value2);
+            result.should.be.an("Array");
+            result.should.be.deep.equal([1,2,3,4]);
+        });
+        it("should work correctly on object equality", () => {
+            let result = tools.unique([{id: 1},{id: 2},{id: 3},{id: 4},{id: 4},{id: 3},{id: 2},{id: 1}]);
+            result.should.be.an("Array");
+            result.should.be.deep.equal([{id: 1},{id: 2},{id: 3},{id: 4},{id: 4},{id: 3},{id: 2},{id: 1}]);
+
+            result = tools.unique(
+                [{id: 1},{id: 2},{id: 3},{id: 4},{id: 4},{id: 3},{id: 2},{id: 1}],
+                (value1, value2) => value1.id === value2.id
+            );
+            result.should.be.an("Array");
+            result.should.be.deep.equal([{id: 1},{id: 2},{id: 3},{id: 4}]);
+        });
     });
     describe("test isTocPart", function() {
         it("should not throw when using valid parameters");

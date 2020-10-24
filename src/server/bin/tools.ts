@@ -66,6 +66,14 @@ export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<
 export function multiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>): R;
 export function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): R[];
 
+/**
+ * Calls the callback on the parameter item or on all elements of item if item is an Array.
+ * Returns the return Value of the Callback as a normal value (if item is no Array) or an Array of return Values
+ * if item is an Array.
+ * 
+ * @param item value to act on
+ * @param cb function to be called on a single or multiple values
+ */
 export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): R | R[] {
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
@@ -74,6 +82,14 @@ export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>):
     return cb(item, 0, true);
 }
 
+/**
+ * Appends one or multiple items to the end of the array.
+ * It does not append a null-ish item parameter, except when allowNull is true.
+ * 
+ * @param array array to push the values to
+ * @param item item or items to add to the array
+ * @param allowNull if a null-ish item value can be added to the array
+ */
 export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
@@ -84,6 +100,14 @@ export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: 
     }
 }
 
+/**
+ * Removes the first occurrence of one or multiple items from the array.
+ * It does not remove a null-ish item parameter, except when allowNull is true.
+ * 
+ * @param array array to remove the values from
+ * @param item item or items to remove from the array
+ * @param allowNull if a null-ish item value can be removed from the array
+ */
 export function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
@@ -94,6 +118,15 @@ export function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull
     }
 }
 
+/**
+ * Return the value mapped to the key in the map.
+ * If no such non-null-ish value exists, a new value is generated
+ * from the callback, mapped to the key and returned instead.
+ * 
+ * @param map map to modify
+ * @param key a key value for the map
+ * @param valueCb value supplier if no non-null-ish value is mapped to the key
+ */
 export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
     let value = map.get(key);
     if (value == null) {
@@ -112,13 +145,21 @@ export function getElseSetObj<K, V>(map: Record<string | number, K>, key: string
     return value;
 }
 
-
+/**
+ * Returns an Array of unique values.
+ * If no callback is provided, the set-equality is used.
+ * The Order of elements is preserved, with the first occurrence
+ * being preserved.
+ * 
+ * @param array array to filter all duplicates out
+ * @param isEqualCb alternative predicate determining if two values are equal
+ */
 export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) => boolean): T[] {
     const uniques: T[] = [];
 
     if (isEqualCb) {
         forEachArrayLike(array, (value, index) => {
-            const notUnique = some(array, (otherValue) => isEqualCb(value, otherValue), index + 1);
+            const notUnique = some(array, (otherValue) => isEqualCb(value, otherValue), 0, index);
 
             if (notUnique) {
                 return;
@@ -127,8 +168,12 @@ export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) 
         });
     } else {
         const set = new Set<T>();
-        forEachArrayLike(array, (value) => set.add(value));
-        uniques.push(...set);
+        forEachArrayLike(array, (value) => {
+            if (!set.has(value)) {
+                set.add(value);
+                uniques.push(value);
+            }
+        });
     }
     return uniques;
 }
@@ -142,8 +187,8 @@ export function isTocPart(tocContent: any): tocContent is TocPart {
 }
 
 
-export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: number): boolean {
-    for (let i = start; i < array.length; i++) {
+export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start = 0, end = array.length): boolean {
+    for (let i = start; i < end; i++) {
         if (predicate(array[i], i)) {
             return true;
         }
