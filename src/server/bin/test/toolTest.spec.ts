@@ -6,6 +6,8 @@ import chaiAsPromised from "chai-as-promised";
 import dns from "dns";
 import logger from "../logger";
 import * as tools from "../tools";
+import { describe, before, after, it } from "mocha";
+import { v1, NIL as NIL_UUID, v4 } from "uuid";
 
 chai.use(sinon_chai);
 chai.use(chaiAsPromised);
@@ -27,11 +29,11 @@ describe("testing tool.js", () => {
             }
         }
         // @ts-ignore
-        for (const key of Object.keys(logger.default)) {
+        for (const key of Object.keys(logger)) {
             // @ts-ignore
-            if (typeof logger.default[key] === "function") {
+            if (typeof logger[key] === "function") {
                 // @ts-ignore
-                sandbox.stub(logger.default, key)
+                sandbox.stub(logger, key);
             }
         }
     });
@@ -304,38 +306,129 @@ describe("testing tool.js", () => {
             await tools.promiseMultiSingle([undefined, null, 1, {}, "3"], callback);
         });
     });
-    describe("test multiSingle");
-    describe("test addMultiSingle");
-    describe("test removeMultiSingle");
-    describe("test getElseSet");
-    describe("test getElseSetObj");
-    describe("test unique");
-    describe("test isTocPart");
-    describe("test isTocEpisode");
-    describe("test some");
-    describe("test equalsIgnore");
-    describe("test contains");
-    describe("test countOccurrence");
-    describe("test max");
-    describe("test maxValue");
-    describe("test min");
-    describe("test minValue");
-    describe("test relativeToAbsoluteTime");
-    describe("test delay");
-    describe("test equalsRelease");
-    describe("test stringify");
-    describe("test sanitizeString");
-    describe("test isString");
-    describe("test stringToNumberList");
-    describe("test isError");
-    describe("test hasMediaType");
-    describe("test allTypes");
-    describe("test combiIndex");
-    describe("test checkIndices");
-    describe("test separateIndices");
-    describe("test ignore");
-    describe("test findProjectDirPath");
-    describe("test isQuery");
+    describe("test multiSingle", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test addMultiSingle", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test removeMultiSingle", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test getElseSet", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test getElseSetObj", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test unique", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test isTocPart", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test isTocEpisode", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test some", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test equalsIgnore", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test contains", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test countOccurrence", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test max", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test maxValue", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test min", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test minValue", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test relativeToAbsoluteTime", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test delay", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test equalsRelease", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test stringify", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test sanitizeString", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test isString", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test stringToNumberList", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test isError", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test hasMediaType", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test allTypes", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test combiIndex", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test checkIndices", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test separateIndices", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test ignore", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test findProjectDirPath", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test isQuery", function() {
+        it("should not throw when using valid parameters");
+    });
+    describe("test invalidUuid", function() {
+        it("should never throw", () => {
+            tools.invalidUuid("").should.not.throw;
+            tools.invalidUuid("1212368").should.not.throw;
+            tools.invalidUuid(v1()).should.not.throw;
+            tools.invalidUuid(v4()).should.not.throw;
+            tools.invalidUuid(NIL_UUID).should.not.throw;
+            tools.invalidUuid(1).should.not.throw;
+            tools.invalidUuid(() => null).should.not.throw;
+            tools.invalidUuid(null).should.not.throw;
+            tools.invalidUuid(true).should.not.throw;
+            tools.invalidUuid(undefined).should.not.throw;
+        });
+        it("should validate correctly", () => {
+            tools.invalidUuid("").should.equal(false);
+            tools.invalidUuid("1212368").should.equal(false);
+            tools.invalidUuid(1).should.equal(false);
+            tools.invalidUuid(() => null).should.equal(false);
+            tools.invalidUuid(null).should.equal(false);
+            tools.invalidUuid(true).should.equal(false);
+            tools.invalidUuid(undefined).should.equal(false);
+
+            tools.invalidUuid(NIL_UUID).should.equal(true);
+            tools.invalidUuid(v1()).should.equal(true);
+            tools.invalidUuid(v4()).should.equal(true);
+        });
+    });
     describe("never call output functions", () => {
         it("should never call console", function () {
             for (const key of Object.keys(console)) {
@@ -348,11 +441,11 @@ describe("testing tool.js", () => {
         });
         it("should never call logger", function () {
             // @ts-ignore
-            for (const key of Object.keys(logger.default)) {
+            for (const key of Object.keys(logger)) {
                 // @ts-ignore
-                if (typeof logger.default[key] === "function") {
+                if (typeof logger[key] === "function") {
                     // @ts-ignore
-                    chai.expect(logger.default[key], "testing " + key).to.have.callCount(0);
+                    chai.expect(logger[key], "testing " + key).to.have.callCount(0);
                 }
             }
         });
