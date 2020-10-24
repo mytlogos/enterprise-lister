@@ -1,4 +1,4 @@
-import {EpisodeRelease, MultiSingle} from "./types";
+import {EpisodeRelease, MultiSingle, Uuid} from "./types";
 import {TocEpisode, TocPart} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
@@ -11,6 +11,7 @@ import * as path from "path";
 import {Query} from "mysql";
 import * as dns from "dns";
 import EventEmitter from "events";
+import { validate as validateUuid } from "uuid";
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -591,6 +592,22 @@ export function isQuery(value: any): value is Query {
 
 export function invalidId(id: any): boolean {
     return !Number.isInteger(id) || id <= 0;
+}
+
+/**
+ * Validate a value to a UUID string.
+ * A valid UUID String in this Projects 
+ * needs to have the fixed length of 36 characters.
+ * 
+ * Accepts the NIL-UUID as a valid UUID.
+ *
+ * @param value value to validate as an uuid
+ */
+export function invalidUuid(value: unknown): value is Uuid {
+    if (!isString(value) || value.length != 36) {
+        return false;
+    }
+    return validateUuid(value);
 }
 
 export interface InternetTester extends EventEmitter.EventEmitter {

@@ -6,7 +6,8 @@ import {
     SimpleMedium,
     Synonyms,
     TocSearchMedium,
-    UpdateMedium
+    UpdateMedium,
+    Uuid
 } from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
@@ -28,14 +29,14 @@ export class MediumStorage {
      *
      * @return {Promise<SimpleMedium>}
      */
-    public addMedium(medium: SimpleMedium, uuid?: string): Promise<SimpleMedium> {
+    public addMedium(medium: SimpleMedium, uuid?: Uuid): Promise<SimpleMedium> {
         return inContext((context) => context.addMedium(medium, uuid));
     }
 
     /**
      * Gets one or multiple media from the storage.
      */
-    public getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]> {
+    public getMedium(id: number | number[], uuid: Uuid): Promise<Medium | Medium[]> {
         // @ts-ignore
         return inContext((context) => context.getMedium(id, uuid));
     }

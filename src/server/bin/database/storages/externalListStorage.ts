@@ -1,4 +1,4 @@
-import {ExternalList} from "../../types";
+import {ExternalList, Uuid} from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
 import {ExternalListContext} from "../contexts/externalListContext";
@@ -13,7 +13,7 @@ export class ExternalListStorage {
     /**
      * Adds an external list of an user to the storage.
      */
-    public addExternalList(userUuid: string, externalList: ExternalList): Promise<ExternalList> {
+    public addExternalList(userUuid: Uuid, externalList: ExternalList): Promise<ExternalList> {
         return inContext((context) => context.addExternalList(userUuid, externalList));
     }
 
@@ -27,7 +27,7 @@ export class ExternalListStorage {
     /**
      * Removes one or multiple externalLists from the given user.
      */
-    public removeExternalList(externalUuid: string, externalListId: number | number[]): Promise<boolean> {
+    public removeExternalList(externalUuid: Uuid, externalListId: number | number[]): Promise<boolean> {
         return inContext((context) => context.removeExternalList(externalUuid, externalListId));
     }
 
@@ -41,7 +41,7 @@ export class ExternalListStorage {
     /**
      * Gets all external lists from the externalUser from the storage.
      */
-    public getExternalLists(uuid: string): Promise<ExternalList[]> {
+    public getExternalLists(uuid: Uuid): Promise<ExternalList[]> {
         return inContext((context) => context.getExternalUserLists(uuid));
     }
 

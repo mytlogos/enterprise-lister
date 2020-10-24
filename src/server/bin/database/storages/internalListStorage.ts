@@ -1,4 +1,4 @@
-import {List, Medium} from "../../types";
+import {List, Medium, Uuid} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {InternalListContext} from "../contexts/internalListContext";
@@ -14,7 +14,7 @@ export class InternalListStorage {
      *
      * @return {Promise<List>}
      */
-    public addList(uuid: string, list: { name: string; medium: number }): Promise<List> {
+    public addList(uuid: Uuid, list: { name: string; medium: number }): Promise<List> {
         return inContext((context) => context.addList(uuid, list));
     }
 
@@ -24,7 +24,7 @@ export class InternalListStorage {
      *
      * @return {Promise<{list: List, media: Array<SimpleMedium>}>}
      */
-    public getList(listId: number | number[], media: number[], uuid: string):
+    public getList(listId: number | number[], media: number[], uuid: Uuid):
         Promise<{ list: List | List[]; media: Medium[] }> {
 
         return inContext((context) => context.getList(listId, media, uuid));
@@ -40,7 +40,7 @@ export class InternalListStorage {
     /**
      * Deletes a list irreversibly.
      */
-    public deleteList(listId: number, uuid: string): Promise<boolean> {
+    public deleteList(listId: number, uuid: Uuid): Promise<boolean> {
         return inContext((context) => context.deleteList(listId, uuid));
     }
 
@@ -49,7 +49,7 @@ export class InternalListStorage {
      *
      * @return {Promise<Array<List>>}
      */
-    public getUserLists(uuid: string): Promise<List[]> {
+    public getUserLists(uuid: Uuid): Promise<List[]> {
         return inContext((context) => context.getUserLists(uuid));
     }
 

@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {List, Medium} from "../../types";
+import {List, Medium, Uuid} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
 
 export class InternalListContext extends SubContext {
@@ -7,7 +7,7 @@ export class InternalListContext extends SubContext {
      * Adds a list to the storage and
      * links it to the user of the uuid.
      */
-    public async addList(uuid: string, {name, medium}: { name: string; medium: number }): Promise<List> {
+    public async addList(uuid: Uuid, {name, medium}: { name: string; medium: number }): Promise<List> {
         const result = await this.query(
             "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)",
             [uuid, name, medium],
@@ -28,7 +28,7 @@ export class InternalListContext extends SubContext {
      * Returns all mediums of a list with
      * the list_id.
      */
-    public async getList(listId: number | number[], media: number[], uuid: string):
+    public async getList(listId: number | number[], media: number[], uuid: Uuid):
         Promise<{ list: List[] | List; media: Medium[] }> {
 
         const toLoadMedia: Set<number> = new Set();
@@ -55,7 +55,7 @@ export class InternalListContext extends SubContext {
      * Recreates a list from storage.
      */
     public async createShallowList(storageList:
-                                       { id: number; name: string; medium: number; user_uuid: string },
+                                       { id: number; name: string; medium: number; user_uuid: Uuid },
     ): Promise<List> {
 
         if (!storageList.name) {
@@ -104,7 +104,7 @@ export class InternalListContext extends SubContext {
     /**
      * Deletes a single list irreversibly.
      */
-    public async deleteList(listId: number, uuid: string): Promise<boolean> {
+    public async deleteList(listId: number, uuid: Uuid): Promise<boolean> {
         const result = await this.query(
             "SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?",
             [listId, uuid],
@@ -123,7 +123,7 @@ export class InternalListContext extends SubContext {
     /**
      * Returns all available lists for the given user.
      */
-    public async getUserLists(uuid: string): Promise<List[]> {
+    public async getUserLists(uuid: Uuid): Promise<List[]> {
         // query all available lists for user
         const result = await this.query(
             "SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;",
@@ -141,7 +141,7 @@ export class InternalListContext extends SubContext {
      * If no listId is available it selects the
      * 'Standard' List of the given user and adds it there.
      */
-    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: string)
+    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: Uuid)
         : Promise<boolean> {
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list

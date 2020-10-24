@@ -1,4 +1,4 @@
-import {SimpleUser, User} from "../../types";
+import {SimpleUser, User, Uuid} from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {UserContext} from "../contexts/userContext";
 import {ChangeUser} from "../databaseTypes";
@@ -20,7 +20,7 @@ export class UserStorage {
      * Returns the uuid of the user
      * and the session key for the ip.
      *
-     * @return {Promise<{session: string, uuid: string}>}
+     * @return {Promise<{session: string, uuid: Uuid}>}
      */
     public register(userName: string, password: string, ip: string): Promise<User> {
         return inContext((context) => context.register(userName, password, ip));
@@ -47,7 +47,7 @@ export class UserStorage {
      * @return {Promise<User|null>}
      */
     // @ts-ignore
-    public userLoginStatus(ip: string, uuid?: string, session?: string): Promise<boolean> {
+    public userLoginStatus(ip: string, uuid?: Uuid, session?: string): Promise<boolean> {
         return inContext((context) => context.userLoginStatus(ip, uuid, session));
     }
 
@@ -57,7 +57,7 @@ export class UserStorage {
      * @return {Promise<SimpleUser>}
      */
     // @ts-ignore
-    public getUser(uuid: string, ip: string): Promise<User> {
+    public getUser(uuid: Uuid, ip: string): Promise<User> {
         return inContext((context) => context.getUser(uuid, ip));
     }
 
@@ -79,7 +79,7 @@ export class UserStorage {
      *
      * @return {Promise<boolean>}
      */
-    public logoutUser(uuid: string, ip: string): Promise<boolean> {
+    public logoutUser(uuid: Uuid, ip: string): Promise<boolean> {
         return inContext((context) => context.logoutUser(uuid, ip));
     }
 
@@ -91,7 +91,7 @@ export class UserStorage {
      *
      * @return {Promise<boolean>}
      */
-    public deleteUser(uuid: string): Promise<boolean> {
+    public deleteUser(uuid: Uuid): Promise<boolean> {
         return inContext((context) => context.deleteUser(uuid));
     }
 
@@ -101,7 +101,7 @@ export class UserStorage {
      *
      * @return {Promise<boolean>}
      */
-    public updateUser(uuid: string, user: ChangeUser): Promise<boolean> {
+    public updateUser(uuid: Uuid, user: ChangeUser): Promise<boolean> {
         return inContext((context) => context.updateUser(uuid, user));
     }
 

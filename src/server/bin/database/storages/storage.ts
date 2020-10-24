@@ -1,6 +1,6 @@
 import mySql from "promise-mysql";
 import env from "../../env";
-import {Invalidation, MetaResult, Result, ScrapeItem, User} from "../../types";
+import {Invalidation, MetaResult, Result, ScrapeItem, User, Uuid} from "../../types";
 import logger from "../../logger";
 import {databaseSchema} from "../databaseSchema";
 import {delay, isQuery} from "../../tools";
@@ -296,11 +296,11 @@ export class Storage {
         return inContext((context) => context.queueNewTocs());
     }
 
-    public getStats(uuid: string): Promise<any> {
+    public getStats(uuid: Uuid): Promise<any> {
         return inContext((context) => context.getStat(uuid));
     }
 
-    public getNew(uuid: string, date?: Date): Promise<any> {
+    public getNew(uuid: Uuid, date?: Date): Promise<any> {
         return inContext((context) => context.getNew(uuid, date));
     }
 
@@ -355,14 +355,14 @@ export class Storage {
     /**
      *
      */
-    public getInvalidated(uuid: string): Promise<Invalidation[]> {
+    public getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
         return inContext((context) => context.getInvalidated(uuid));
     }
 
     /**
      *
      */
-    public getInvalidatedStream(uuid: string): Promise<Query> {
+    public getInvalidatedStream(uuid: Uuid): Promise<Query> {
         return inContext((context) => context.getInvalidatedStream(uuid));
     }
 

@@ -11,7 +11,8 @@ import {
     SimpleEpisode,
     SimpleRelease,
     DisplayReleasesResponse,
-    MediumRelease
+    MediumRelease,
+    Uuid
 } from "../../types";
 import mySql from "promise-mysql";
 import {
@@ -31,7 +32,7 @@ import { escapeLike } from "../storages/storageTools";
 import { Query } from "mysql";
 
 export class EpisodeContext extends SubContext {
-    public async getAll(uuid: string): Promise<Query> {
+    public async getAll(uuid: Uuid): Promise<Query> {
         return this.queryStream(
             "SELECT episode.id, episode.partialIndex, episode.totalIndex, episode.combiIndex, " +
             "episode.part_id as partId, coalesce(progress, 0) as progress, read_date as readDate " +
@@ -47,7 +48,7 @@ export class EpisodeContext extends SubContext {
         );
     }
 
-    public async getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: string): Promise<DisplayReleasesResponse> {
+    public async getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: Uuid): Promise<DisplayReleasesResponse> {
         const progressCondition = read == null ? "1" : read ? "progress = 1" : "(progress IS NULL OR progress < 1)";
         const releasePromise = this.query(
             "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId, progress " +
@@ -82,7 +83,7 @@ export class EpisodeContext extends SubContext {
         };
     }
 
-    public async getMediumReleases(mediumId: number, uuid: string): Promise<MediumRelease[]> {
+    public async getMediumReleases(mediumId: number, uuid: Uuid): Promise<MediumRelease[]> {
         return this.query(
             "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, episode.combiIndex, progress " +
             "FROM episode_release as er " +
@@ -217,7 +218,7 @@ export class EpisodeContext extends SubContext {
      * Add progress of an user in regard to an episode to the storage.
      * Returns always true if it succeeded (no error).
      */
-    public async addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null)
+    public async addProgress(uuid: Uuid, episodeId: number | number[], progress: number, readDate: Date | null)
         : Promise<boolean> {
 
         if (progress < 0 || progress > 1) {
@@ -236,7 +237,7 @@ export class EpisodeContext extends SubContext {
     /**
      * Removes progress of an user in regard to an episode.
      */
-    public removeProgress(uuid: string, episodeId: number): Promise<boolean> {
+    public removeProgress(uuid: Uuid, episodeId: number): Promise<boolean> {
         return this.delete(
             "user_episode",
             {
@@ -253,7 +254,7 @@ export class EpisodeContext extends SubContext {
     /**
      * Sets the progress of an user in regard to an episode with one or multiple progressResult objects.
      */
-    public setProgress(uuid: string, progressResult: ProgressResult | ProgressResult[]): Promise<void> {
+    public setProgress(uuid: Uuid, progressResult: ProgressResult | ProgressResult[]): Promise<void> {
         // @ts-ignore
         return promiseMultiSingle(progressResult, async (value: ProgressResult) => {
             const resultArray: any[] = await this.query(
@@ -274,7 +275,7 @@ export class EpisodeContext extends SubContext {
     /**
      * Get the progress of an user in regard to an episode.
      */
-    public async getProgress(uuid: string, episodeId: number): Promise<number> {
+    public async getProgress(uuid: Uuid, episodeId: number): Promise<number> {
         const result = await this
             .query(
                 "SELECT * FROM user_episode " +
@@ -289,7 +290,7 @@ export class EpisodeContext extends SubContext {
     /**
      * Updates the progress of an user in regard to an episode.
      */
-    public updateProgress(uuid: string, episodeId: number, progress: number, readDate: Date | null): Promise<boolean> {
+    public updateProgress(uuid: Uuid, episodeId: number, progress: number, readDate: Date | null): Promise<boolean> {
         // TODO for now its the same as calling addProgress, but somehow do it better maybe?
         return this.addProgress(uuid, episodeId, progress, readDate);
     }
@@ -297,7 +298,7 @@ export class EpisodeContext extends SubContext {
     /**
      * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
      */
-    public async markEpisodeRead(uuid: string, result: Result): Promise<void> {
+    public async markEpisodeRead(uuid: Uuid, result: Result): Promise<void> {
         if (!result.accept) {
             return;
         }
@@ -686,13 +687,13 @@ export class EpisodeContext extends SubContext {
         });
     }
 
-    public getEpisode(id: number, uuid: string): Promise<Episode>;
-    public getEpisode(id: number[], uuid: string): Promise<Episode[]>;
+    public getEpisode(id: number, uuid: Uuid): Promise<Episode>;
+    public getEpisode(id: number[], uuid: Uuid): Promise<Episode[]>;
 
     /**
      * Gets an episode from the storage.
      */
-    public async getEpisode(id: number | number[], uuid: string): Promise<Episode | Episode[]> {
+    public async getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
         const episodes: any[] | undefined = await this.queryInList(
             "SELECT * FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
             `WHERE (user_uuid IS NULL OR user_uuid=${mySql.escape(uuid)}) AND episode.id`,
@@ -981,7 +982,7 @@ export class EpisodeContext extends SubContext {
             .filter((value) => value);
     }
 
-    public async getUnreadChapter(uuid: string): Promise<number[]> {
+    public async getUnreadChapter(uuid: Uuid): Promise<number[]> {
         const resultArray = await this.query(
             "SELECT id FROM episode WHERE id NOT IN " +
             "(SELECT episode_id FROM user_episode WHERE progress < 1 AND user_uuid=?);",
@@ -990,7 +991,7 @@ export class EpisodeContext extends SubContext {
         return resultArray.map((value: any) => value.id);
     }
 
-    public async getReadToday(uuid: string): Promise<ReadEpisode[]> {
+    public async getReadToday(uuid: Uuid): Promise<ReadEpisode[]> {
         const resultArray = await this.query(
             "SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;",
             uuid
@@ -1004,7 +1005,7 @@ export class EpisodeContext extends SubContext {
         });
     }
 
-    public async markLowerIndicesRead(uuid: string, id: number, partInd?: number, episodeInd?: number): Promise<void> {
+    public async markLowerIndicesRead(uuid: Uuid, id: number, partInd?: number, episodeInd?: number): Promise<void> {
         if (!uuid || !id || (partInd == null && episodeInd == null)) {
             return;
         }

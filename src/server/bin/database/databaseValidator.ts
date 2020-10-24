@@ -5,13 +5,13 @@ import {ColumnSchema} from "./columnSchema";
 import {TableParser} from "./tableParser";
 import {equalsIgnore, getElseSet, isString, unique} from "../tools";
 import mySql from "promise-mysql";
-import {MultiSingle} from "../types";
+import {MultiSingle, Uuid} from "../types";
 import {DatabaseContext} from "./contexts/databaseContext";
 import * as validate from "validate.js";
 import {Counter} from "../counter";
 
 interface StateProcessor {
-    addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: string): T;
+    addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: Uuid): T;
 
     startRound(): Promise<string[]>;
 
@@ -51,7 +51,7 @@ interface StateProcessorImpl extends StateProcessor {
 
     initTableSchema(database: DatabaseSchema): void;
 
-    addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: string): T;
+    addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: Uuid): T;
 
     validateQuery(query: string, parameter: any): Promise<void>;
 }
@@ -60,7 +60,7 @@ interface Invalidation {
     table: string;
     foreignColumn: string;
     keyColumn: string;
-    uuid?: string;
+    uuid?: Uuid;
     values: any[];
 }
 
@@ -73,7 +73,7 @@ interface RawQuery {
 
     affectedRows: number;
 
-    uuid?: string;
+    uuid?: Uuid;
 }
 
 interface Query extends RawQuery {

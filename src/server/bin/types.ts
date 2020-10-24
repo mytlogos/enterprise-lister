@@ -128,7 +128,7 @@ export interface EpisodeRelease {
 }
 
 export interface List {
-    userUuid: string;
+    userUuid: Uuid;
     id: number;
     name: string;
     medium: number;
@@ -136,7 +136,7 @@ export interface List {
 }
 
 export interface SimpleUser {
-    uuid: string;
+    uuid: Uuid;
     name: string;
     session: string;
 }
@@ -150,7 +150,7 @@ export interface User extends SimpleUser {
 }
 
 export interface ExternalList {
-    uuid?: string;
+    uuid?: Uuid;
     id: number;
     name: string;
     medium: number;
@@ -159,8 +159,8 @@ export interface ExternalList {
 }
 
 export interface ExternalUser {
-    localUuid: string;
-    uuid: string;
+    localUuid: Uuid;
+    uuid: Uuid;
     identifier: string;
     type: number;
     lists: ExternalList[];
@@ -255,9 +255,9 @@ export interface Invalidation {
     mediumId?: number;
     partId?: number;
     episodeId?: number;
-    uuid: string | null;
+    uuid: Uuid | null;
     userUuid?: boolean;
-    externalUuid?: string;
+    externalUuid?: Uuid;
     externalListId?: number;
     listId?: number;
     newsId?: number;
@@ -278,8 +278,10 @@ export enum ReleaseState {
     Complete = 5,
 }
 
-export type ExternalUserUuid = string;
-export type UserUuid = string;
+/**
+ * A String in RFC UUID Format with a length of 36 characters.
+ */
+export type Uuid = string;
 
 export enum ScrapeName {
     searchForToc = "searchForToc",

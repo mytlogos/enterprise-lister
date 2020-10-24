@@ -1,4 +1,4 @@
-import {MinPart, MultiSingle, Part, ShallowPart} from "../../types";
+import {MinPart, MultiSingle, Part, ShallowPart, Uuid} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {PartContext} from "../contexts/partContext";
@@ -16,7 +16,7 @@ export class PartStorage {
     /**
      * Returns all parts of an medium with their episodes.
      */
-    public getMediumParts(mediumId: number, uuid?: string): Promise<Part[]> {
+    public getMediumParts(mediumId: number, uuid?: Uuid): Promise<Part[]> {
         return inContext((context) => context.getMediumParts(mediumId, uuid));
     }
 
@@ -46,7 +46,7 @@ export class PartStorage {
     /**
      * Returns one or multiple parts with their episode.
      */
-    public getParts(partsId: number | number[], uuid: string): Promise<Part[] | Part> {
+    public getParts(partsId: number | number[], uuid: Uuid): Promise<Part[] | Part> {
         // @ts-ignore
         return inContext((context) => context.getParts(partsId, uuid));
     }

@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {News} from "../../types";
+import {News, Uuid} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
 
 export class NewsContext extends SubContext {
@@ -46,7 +46,7 @@ export class NewsContext extends SubContext {
         );
     }
 
-    public async getAll(uuid: string): Promise<News[]> {
+    public async getAll(uuid: Uuid): Promise<News[]> {
         const newsResult: any[] = await this.query(
             "SELECT * FROM news_board LEFT JOIN " +
             "(SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) as news_user " +
@@ -76,7 +76,7 @@ export class NewsContext extends SubContext {
     /**
      *
      */
-    public async getNews(uuid: string, since?: Date, till?: Date, newsIds?: number[]): Promise<News[]> {
+    public async getNews(uuid: Uuid, since?: Date, till?: Date, newsIds?: number[]): Promise<News[]> {
         let parameter: Array<Date | string> | string;
         let query: string;
 
@@ -142,7 +142,7 @@ export class NewsContext extends SubContext {
     /**
      * Marks these news as read for the given user.
      */
-    public async markRead(uuid: string, news: number[]): Promise<boolean> {
+    public async markRead(uuid: Uuid, news: number[]): Promise<boolean> {
         await this.multiInsert(
             "INSERT IGNORE INTO news_user (user_id, news_id) VALUES",
             news,
@@ -154,7 +154,7 @@ export class NewsContext extends SubContext {
     /**
      *
      */
-    public async checkUnreadNewsCount(uuid: string): Promise<number> {
+    public async checkUnreadNewsCount(uuid: Uuid): Promise<number> {
         const result = await this.query(
             "SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN " +
             "(SELECT news_id FROM news_user WHERE user_id = ?);",
@@ -166,7 +166,7 @@ export class NewsContext extends SubContext {
     /**
      *
      */
-    public checkUnreadNews(uuid: string): Promise<number[]> {
+    public checkUnreadNews(uuid: Uuid): Promise<number[]> {
         return this.query(
             "SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);",
             uuid

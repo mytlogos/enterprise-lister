@@ -1,4 +1,4 @@
-import {News} from "../../types";
+import {News, Uuid} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {NewsContext} from "../contexts/newsContext";
@@ -19,7 +19,7 @@ export class NewsStorage {
         return inContext((context) => context.addNews(news));
     }
 
-    public getAll(uuid: string): Promise<News[]> {
+    public getAll(uuid: Uuid): Promise<News[]> {
         return inContext((context) => context.getAll(uuid));
     }
 
@@ -40,14 +40,14 @@ export class NewsStorage {
     /**
      * Marks these news as read for the given user.
      */
-    public markNewsRead(uuid: string, news: number[]): Promise<boolean> {
+    public markNewsRead(uuid: Uuid, news: number[]): Promise<boolean> {
         return inContext((context) => context.markRead(uuid, news));
     }
 
     /**
      * Marks these news as read for the given user.
      */
-    public checkUnreadNews(uuid: string): Promise<number> {
+    public checkUnreadNews(uuid: Uuid): Promise<number> {
         return inContext((context) => context.checkUnreadNewsCount(uuid));
     }
 

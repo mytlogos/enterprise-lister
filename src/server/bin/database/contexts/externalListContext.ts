@@ -1,9 +1,9 @@
 import {SubContext} from "./subContext";
-import {ExternalList} from "../../types";
+import {ExternalList, Uuid} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
 
 export class ExternalListContext extends SubContext {
-    public async getAll(uuid: string): Promise<ExternalList[]> {
+    public async getAll(uuid: Uuid): Promise<ExternalList[]> {
         // FIXME: 03.03.2020 this query is invalid
         const result = await this.query(
             "SELECT el.id, el.user_uuid as uuid, el.name, el.medium, el.url " +
@@ -23,7 +23,7 @@ export class ExternalListContext extends SubContext {
      * @param {ExternalList} externalList
      * @return {Promise<ExternalList>}
      */
-    public async addExternalList(userUuid: string, externalList: ExternalList): Promise<ExternalList> {
+    public async addExternalList(userUuid: Uuid, externalList: ExternalList): Promise<ExternalList> {
         const result = await this.query(
             "INSERT INTO external_reading_list " +
             "(name, user_uuid, medium, url) " +
@@ -66,7 +66,7 @@ export class ExternalListContext extends SubContext {
     /**
      * Removes one or multiple externalLists from the given user.
      */
-    public async removeExternalList(uuid: string, externalListId: number | number[]): Promise<boolean> {
+    public async removeExternalList(uuid: Uuid, externalListId: number | number[]): Promise<boolean> {
         // TODO: 29.06.2019 replace with id IN (...) and list_id IN (...)
         // @ts-ignore
         return promiseMultiSingle(externalListId, async (item) => {
@@ -114,7 +114,7 @@ export class ExternalListContext extends SubContext {
     /**
      * Gets an array of all lists of an user.
      */
-    public async getExternalUserLists(uuid: string): Promise<ExternalList[]> {
+    public async getExternalUserLists(uuid: Uuid): Promise<ExternalList[]> {
         const result = await this.query(
             "SELECT id, name, user_uuid as uuid, medium, url" +
             " FROM external_reading_list WHERE user_uuid = ?;",
@@ -143,7 +143,7 @@ export class ExternalListContext extends SubContext {
      * If no listId is available it selects the
      * 'Standard' List of the given user and adds it there.
      */
-    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: string)
+    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: Uuid)
         : Promise<boolean> {
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list
