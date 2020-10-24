@@ -12,6 +12,7 @@ import {Query} from "mysql";
 import * as dns from "dns";
 import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
+import { isNumber } from "validate.js"
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -535,10 +536,21 @@ export function extractIndices(groups: string[], allPosition: number, totalPosit
 
 const indexRegex = /(-?\d+)(\.(\d+))?/;
 
+/**
+ * Separates a number into an object of the value before and after the decimal point.
+ * If the number does not have a decimal point (integers), the partialIndex attribute
+ * is undefined.
+ * Trailing zeroes in the decimal places are ignored.
+ * 
+ * @param value the number to separate
+ */
 export function separateIndex(value: number): { totalIndex: number; partialIndex?: number } {
+    if (!isNumber(value)) {
+        throw Error("not a number");
+    }
     const exec = indexRegex.exec(value + "");
     if (!exec) {
-        throw Error("not a positive number");
+        throw Error("not a number");
     }
     const totalIndex = Number(exec[1]);
     const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
