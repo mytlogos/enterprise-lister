@@ -603,11 +603,8 @@ export function invalidId(id: any): boolean {
  *
  * @param value value to validate as an uuid
  */
-export function invalidUuid(value: unknown): value is Uuid {
-    if (!isString(value) || value.length != 36) {
-        return false;
-    }
-    return validateUuid(value);
+export function validUuid(value: unknown): value is Uuid {
+    return isString(value) && value.length == 36 && validateUuid(value);
 }
 
 export interface InternetTester extends EventEmitter.EventEmitter {

@@ -402,31 +402,62 @@ describe("testing tool.js", () => {
     describe("test isQuery", function() {
         it("should not throw when using valid parameters");
     });
-    describe("test invalidUuid", function() {
+    describe("test invalidId", function() {
         it("should never throw", () => {
-            tools.invalidUuid("").should.not.throw;
-            tools.invalidUuid("1212368").should.not.throw;
-            tools.invalidUuid(v1()).should.not.throw;
-            tools.invalidUuid(v4()).should.not.throw;
-            tools.invalidUuid(NIL_UUID).should.not.throw;
-            tools.invalidUuid(1).should.not.throw;
-            tools.invalidUuid(() => null).should.not.throw;
-            tools.invalidUuid(null).should.not.throw;
-            tools.invalidUuid(true).should.not.throw;
-            tools.invalidUuid(undefined).should.not.throw;
+            tools.invalidId("").should.not.throw;
+            tools.invalidId("1212368").should.not.throw;
+            tools.invalidId(1).should.not.throw;
+            tools.invalidId(() => null).should.not.throw;
+            tools.invalidId(null).should.not.throw;
+            tools.invalidId(true).should.not.throw;
+            tools.invalidId(undefined).should.not.throw;
         });
         it("should validate correctly", () => {
-            tools.invalidUuid("").should.equal(false);
-            tools.invalidUuid("1212368").should.equal(false);
-            tools.invalidUuid(1).should.equal(false);
-            tools.invalidUuid(() => null).should.equal(false);
-            tools.invalidUuid(null).should.equal(false);
-            tools.invalidUuid(true).should.equal(false);
-            tools.invalidUuid(undefined).should.equal(false);
+            tools.invalidId("").should.equal(true);
+            tools.invalidId("1212368").should.equal(true);
+            tools.invalidId(Number.MIN_VALUE).should.equal(true);
+            tools.invalidId(-1).should.equal(true);
+            tools.invalidId(0).should.equal(true);
+            tools.invalidId(0.6).should.equal(true);
+            tools.invalidId(120.1).should.equal(true);
+            tools.invalidId(Number.POSITIVE_INFINITY).should.equal(true);
+            tools.invalidId(NaN).should.equal(true);
+            tools.invalidId(() => null).should.equal(true);
+            tools.invalidId(null).should.equal(true);
+            tools.invalidId(true).should.equal(true);
+            tools.invalidId(undefined).should.equal(true);
 
-            tools.invalidUuid(NIL_UUID).should.equal(true);
-            tools.invalidUuid(v1()).should.equal(true);
-            tools.invalidUuid(v4()).should.equal(true);
+            tools.invalidId(1).should.equal(false);
+            tools.invalidId(1239090909).should.equal(false);
+            tools.invalidId(Number.MAX_VALUE).should.equal(false);
+        });
+    });
+
+    describe("test invalidUuid", function() {
+        it("should never throw", () => {
+            tools.validUuid("").should.not.throw;
+            tools.validUuid("1212368").should.not.throw;
+            tools.validUuid(v1()).should.not.throw;
+            tools.validUuid(v4()).should.not.throw;
+            tools.validUuid(NIL_UUID).should.not.throw;
+            tools.validUuid(1).should.not.throw;
+            tools.validUuid(() => null).should.not.throw;
+            tools.validUuid(null).should.not.throw;
+            tools.validUuid(true).should.not.throw;
+            tools.validUuid(undefined).should.not.throw;
+        });
+        it("should validate correctly", () => {
+            tools.validUuid("").should.equal(false);
+            tools.validUuid("1212368").should.equal(false);
+            tools.validUuid(1).should.equal(false);
+            tools.validUuid(() => null).should.equal(false);
+            tools.validUuid(null).should.equal(false);
+            tools.validUuid(false).should.equal(false);
+            tools.validUuid(undefined).should.equal(false);
+
+            tools.validUuid(NIL_UUID).should.equal(true);
+            tools.validUuid(v1()).should.equal(true);
+            tools.validUuid(v4()).should.equal(true);
         });
     });
     describe("never call output functions", () => {
