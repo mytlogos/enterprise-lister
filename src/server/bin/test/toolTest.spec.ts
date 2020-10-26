@@ -17,6 +17,37 @@ process.on("unhandledRejection", () => console.log("an unhandled rejection!"));
 process.on("uncaughtException", (args) => console.log("an unhandled exception!", args));
 after(() => tools.internetTester.stop());
 
+type TimeUnit = "Seconds" | "Minutes" | "Hours" | "Date" | "Week" | "Month" | "FullYear";
+
+/**
+ * A test case convenience function for the relativeToAbsoluteTime function.
+ * Ignores differences in milliseconds.
+ * 
+ * @param value string to parse
+ * @param offset offset to the past in seconds
+ */
+function testRelative(value: string, offset: number, unit: TimeUnit): void {
+    const result = tools.relativeToAbsoluteTime(value) as Date;
+    should.exist(result);
+
+    // ignore milliseconds
+    result.setMilliseconds(0);
+    const now = new Date();
+    now.setMilliseconds(0);
+
+    if (unit === "Week") {
+        now.setDate(now.getDate() - offset * 7);
+    } else {
+        // @ts-expect-error
+        const setter = now[`set${unit}`].bind(now);
+        // @ts-expect-error
+        const getter = now[`get${unit}`].bind(now);
+        setter(getter() - offset);
+    }
+
+    result.getTime().should.approximately(now.getTime(), 1000);
+}
+
 describe("testing tool.js", () => {
     const sandbox = sinon.createSandbox();
     before("setting up", () => {
@@ -460,70 +491,405 @@ describe("testing tool.js", () => {
         });
     });
     describe("test isTocPart", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly when given a valid value", () => {
+            tools.isTocPart({combiIndex: 1, title: "ajsio", totalIndex: 1}).should.equal(false);
+            // @ts-expect-error
+            tools.isTocPart({combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid"}).should.equal(false);
+            // @ts-expect-error
+            tools.isTocPart({combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: []}).should.equal(true);
+        });
     });
     describe("test isTocEpisode", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly when given a valid value", () => {
+            tools.isTocEpisode({combiIndex: 1, title: "ajsio", totalIndex: 1}).should.equal(false);
+            // @ts-expect-error
+            tools.isTocEpisode({combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: []}).should.equal(false);
+            // @ts-expect-error
+            tools.isTocEpisode({combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid"}).should.equal(true);
+        });
     });
     describe("test some", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly on empty array", () => {
+            // if array is empty, no elements could satisfy the trivial condition
+            tools.some([], () => true).should.equal(false);
+            tools.some({length: 0}, () => true).should.equal(false);
+        });
+        it("should work correctly when array is not empty", () => {
+            // if at least a single element is given, it should return true, as condition is always true
+            tools.some([1], () => true).should.equal(true);
+            tools.some([null], () => true).should.equal(true);
+            tools.some({0: 1, length: 1}, () => true).should.equal(true);
+            tools.some({0: null, length: 1}, () => true).should.equal(true);
+        });
+        it("should ascertain that the predicate is used", () => {
+            tools.some([1], (value) => !!value).should.equal(true);
+            tools.some([null], (value) => !!value).should.equal(false);
+            tools.some({0: 1, length: 1}, (value) => !!value).should.equal(true);
+            tools.some({0: null, length: 1}, (value) => !!value).should.equal(false);
+        });
+        it("should ascertain that the predicate is used correctly in the given bounds", () => {
+            // look at all elements except the first (in this case none)
+            tools.some([1], (value) => !!value, 1).should.equal(false);
+            tools.some([null], (value) => !!value, 1).should.equal(false);
+            tools.some({0: 1, length: 0}, (value) => !!value, 1).should.equal(false);
+            tools.some({0: null, length: 0}, (value) => !!value, 1).should.equal(false);
+
+            // look at all elements except the first
+            tools.some([null, 1], (value) => !!value, 1).should.equal(true);
+            tools.some([null, null], (value) => !!value, 1).should.equal(false);
+            tools.some({0: null, 1: 1, length: 2}, (value) => !!value, 1).should.equal(true);
+            tools.some({0: null, 1: null, length: 2}, (value) => !!value, 1).should.equal(false);
+
+            // look at all elements except the last
+            tools.some([null, 1, 2], (value) => !!value, 0, 2).should.equal(true);
+            tools.some([null, null, 2], (value) => !!value, 0, 2).should.equal(false);
+            tools.some({0: null, 1: 1, 2: 2, length: 3}, (value) => !!value, 0, 2).should.equal(true);
+            tools.some({0: null, 1: null, 2: 2, length: 3}, (value) => !!value, 0, 2).should.equal(false);
+
+            // look at second element only
+            tools.some([null, null, 1], (value) => !!value, 1, 2).should.equal(false);
+            tools.some([null, 1, null], (value) => !!value, 1, 2).should.equal(true);
+            tools.some({0: null, 1: null, 2: 1, length: 3}, (value) => !!value, 1, 2).should.equal(false);
+            tools.some({0: null, 1: 1, 2: null, length: 3}, (value) => !!value, 1, 2).should.equal(true);
+
+            // look at no elements
+            tools.some([1,2,3,4], (value) => !!value, 1, 0).should.equal(false);
+            tools.some([null,2,3,4], (value) => !!value, 1, 0).should.equal(false);
+        });
+        it("should throw when using invalid range", () => {
+            should.throw(() => tools.some([1,2,3,4], () => true, -1));
+            should.throw(() => tools.some([1,2,3,4], () => true, 0, 5));
+            should.throw(() => tools.some([1,2,3,4], () => true, -1, 0));
+            should.throw(() => tools.some([1,2,3,4], () => true, -1, 5));
+        });
     });
     describe("test equalsIgnore", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.equalsIgnore("", "a").should.equal(false);
+            // should equal a same string
+            tools.equalsIgnore("", "").should.equal(true);
+            // should equal a same string
+            tools.equalsIgnore("a", "a").should.equal(true);
+
+            // test commutative property of equality
+            tools.equalsIgnore("a", "A").should.equal(true);
+            tools.equalsIgnore("A", "a").should.equal(true);
+
+            tools.equalsIgnore("a", "ASBB").should.equal(false);
+
+            // test transitive property of equality
+            tools.equalsIgnore("Alfred's", "Alfred´s").should.equal(true);
+            tools.equalsIgnore("Alfred's", "Alfred`s").should.equal(true);
+            tools.equalsIgnore("Alfred´s", "Alfred`s").should.equal(true);
+        });
     });
     describe("test contains", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            // empty string cannot contain any non empty string
+            tools.contains("", "a").should.equal(false);
+            // should always contain an empty string
+            tools.contains("", "").should.equal(true);
+            tools.contains("a", "").should.equal(true);
+
+            tools.contains("a", "A").should.equal(true);
+            tools.contains("A", "a").should.equal(true);
+
+            tools.contains("a", "ASBB").should.equal(false);
+            tools.contains("ASBB", "a").should.equal(true);
+
+            tools.contains("Alfred's", "Alfred´s").should.equal(true);
+            tools.contains("Sigmund Alfred's", "Alfred`s").should.equal(true);
+            tools.contains("Alfred´s", "Sigmund Alfred`s").should.equal(false);
+        });
     });
     describe("test countOccurrence", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const result = tools.countOccurrence([1, 5, 2, 3, 4, 5, 5, null, null, null]);
+            [...result.entries()].sort().should.deep.equal([[null, 3], [1, 1], [2, 1], [3, 1], [4, 1], [5, 3]]);
+        });
     });
     describe("test max", function() {
-        it("should not throw when using valid parameters");
+        it("should return nothing on empty array", () => {
+            should.not.exist(tools.max([], "id"));
+            should.not.exist(tools.max([], (value, other) => value - other));
+        });
+        it("should work correctly when using comparator", () => {
+            let result = tools.max([4, 2, 3, 1], (value, other) => value - other);
+            should.exist(result);
+            // @ts-expect-error
+            result.should.equal(4);
+
+            result = tools.max([4, 2, 3, 1], (value, other) => other - value);
+            should.exist(result);
+            // @ts-expect-error
+            result.should.equal(1);
+        });
+        it("should work correctly when using field comparator", () => {
+            const result = tools.max([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }], "id");
+            should.exist(result);
+            // @ts-expect-error
+            result.should.deep.equal({ id: 4 });
+        });
     });
     describe("test maxValue", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const result = tools.maxValue([1,4,3,2]);
+            should.exist(result);
+            // @ts-expect-error
+            result.should.equal(4);
+        });
     });
     describe("test min", function() {
-        it("should not throw when using valid parameters");
+        it("should return nothing on empty array", () => {
+            should.not.exist(tools.min([], "id"));
+            should.not.exist(tools.min([], (value, other) => value - other));
+        });
+        it("should work correctly when using comparator", () => {
+            let result = tools.min([4, 2, 3, 1], (value, other) => value - other);
+            should.exist(result);
+            // @ts-expect-error
+            result.should.equal(1);
+
+            result = tools.min([4, 2, 3, 1], (value, other) => other - value);
+            should.exist(result);
+            // @ts-expect-error
+            result.should.equal(4);
+        });
+        it("should work correctly when using field comparator", () => {
+            const result = tools.min([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }], "id");
+            should.exist(result);
+            // @ts-expect-error
+            result.should.deep.equal({ id: 1 });
+        });
     });
     describe("test minValue", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const result = tools.minValue([1,4,3,2]);
+            should.exist(result);
+            // @ts-expect-error
+            result.should.equal(1);
+        });
     });
     describe("test relativeToAbsoluteTime", function() {
-        it("should not throw when using valid parameters");
+        it("should return null on invalid relative time", () => {
+            should.not.exist(tools.relativeToAbsoluteTime(""));
+            should.not.exist(tools.relativeToAbsoluteTime("27.12.2020"));
+        });
+
+        it("should parse 'just now' correctly", () => {
+            testRelative("just now", 30, "Seconds");
+        });
+        it("should parse 'seconds ago' correctly", () => {
+            testRelative("1 second ago", 1, "Seconds");
+            testRelative("a second ago", 1, "Seconds");
+            testRelative("5 seconds ago", 5, "Seconds");
+        });
+        it("should parse 'minutes ago' correctly", () => {
+            testRelative("1 minute ago", 1, "Minutes");
+            testRelative("a minute ago", 1, "Minutes");
+            testRelative("5 minutes ago", 5, "Minutes");
+        });
+        it("should parse 'hours ago' correctly", () => {
+            testRelative("1 hour ago", 1, "Hours");
+            testRelative("a hour ago", 1, "Hours");
+            testRelative("5 hours ago", 5, "Hours");
+        });
+        it("should parse 'days ago' correctly", () => {
+            testRelative("1 day ago", 1, "Date");
+            testRelative("a day ago", 1, "Date");
+            testRelative("5 days ago", 5, "Date");
+        });
+        it("should parse 'weeks ago' correctly", () => {
+            testRelative("1 week ago", 1, "Week");
+            testRelative("a week ago", 1, "Week");
+            testRelative("5 weeks ago", 5, "Week");
+        });
+        it("should parse 'months ago' correctly", () => {
+            testRelative("1 month ago", 1, "Month");
+            testRelative("a month ago", 1, "Month");
+            testRelative("5 months ago", 5, "Month");
+        });
+        it("should parse 'years ago' correctly", () => {
+            testRelative("1 year ago", 1, "FullYear");
+            testRelative("a year ago", 1, "FullYear");
+            testRelative("5 years ago", 5, "FullYear");
+        });
     });
     describe("test delay", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", async function() {
+            this.timeout(6000);
+            const start = new Date();
+
+            await tools.delay(3000);
+
+            const end = new Date();
+            end.setSeconds(end.getSeconds() -3);
+            start.getTime().should.be.approximately(end.getTime(), 1000);
+        });
     });
     describe("test equalsRelease", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            const now = new Date();
+
+            const testRelease = {
+                episodeId: 1,
+                releaseDate: now,
+                title: "none",
+                url: "google.de"
+            };
+            // should always equals itself
+            tools.equalsRelease(testRelease, testRelease).should.be.equal(true);
+            tools.equalsRelease(
+                testRelease,
+                {
+                    episodeId: 1,
+                    releaseDate: now,
+                    title: "none",
+                    url: "google.de"
+                }
+            ).should.be.equal(true);
+            tools.equalsRelease(
+                testRelease,
+                {
+                    episodeId: 1,
+                    releaseDate: now,
+                    title: "none",
+                    url: "google.de",
+                    locked: false
+                }
+            ).should.be.equal(true);
+
+            tools.equalsRelease(
+                testRelease,
+                {
+                    episodeId: 1,
+                    releaseDate: now,
+                    title: "none",
+                    url: "google.de",
+                    locked: true
+                }
+            ).should.be.equal(false);
+        });
     });
     describe("test stringify", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.stringify({value: 5}).should.equal("{\"value\":5}");
+
+            const value: any = {};
+            value.value = value;
+            tools.stringify(value).should.equal("{\"value\":\"[circular reference]\"}");
+            tools.stringify([value, value, 1]).should.equal("[{\"value\":\"[circular reference]\"},\"[circular reference]\",1]");
+        });
     });
     describe("test sanitizeString", function() {
-        it("should not throw when using valid parameters");
+        it("should normalize multiple whitespaces", () => {
+            tools.sanitizeString("    ").should.equal("");
+            tools.sanitizeString("a    ").should.equal("a");
+            tools.sanitizeString("    a").should.equal("a");
+            tools.sanitizeString("  a  ").should.equal("a");
+            tools.sanitizeString("  a     b  ").should.equal("a b");
+        });
     });
     describe("test isString", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.isString("").should.equal(true);
+            tools.isString(String("hello")).should.equal(true);
+
+            tools.isString(1).should.equal(false);
+            tools.isString(() => "true").should.equal(false);
+            tools.isString({}).should.equal(false);
+            tools.isString(true).should.equal(false);
+            tools.isString([]).should.equal(false);
+            tools.isString(Object()).should.equal(false);
+        });
     });
     describe("test stringToNumberList", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.stringToNumberList("").should.deep.equal([]);
+            tools.stringToNumberList("[]").should.deep.equal([]);
+            tools.stringToNumberList("hello").should.deep.equal([]);
+            tools.stringToNumberList("{1,2,3,4}").should.deep.equal([]);
+            tools.stringToNumberList("[\"1\"]").should.deep.equal([]);
+            tools.stringToNumberList("true").should.deep.equal([]);
+            tools.stringToNumberList("() => [1,2,3,4]").should.deep.equal([]);
+            tools.stringToNumberList("1").should.deep.equal([]);
+
+            tools.stringToNumberList("[1]").should.deep.equal([1]);
+            tools.stringToNumberList("[2]").should.deep.equal([2]);
+            tools.stringToNumberList("[3,4]").should.deep.equal([3,4]);
+            tools.stringToNumberList("[ 3,  4]").should.deep.equal([3,4]);
+            tools.stringToNumberList("[3.1, 4.2]").should.deep.equal([3.1, 4.2]);
+        });
     });
     describe("test isError", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.isError(1).should.equal(false);
+            tools.isError(true).should.equal(false);
+            tools.isError([]).should.equal(false);
+            tools.isError({}).should.equal(false);
+            tools.isError(tools.Errors).should.equal(false);
+            tools.isError("").should.equal(false);
+
+            tools.isError(tools.Errors.CORRUPT_DATA).should.equal(true);
+            tools.isError("CORRUPT_DATA").should.equal(true);
+        });
     });
     describe("test hasMediaType", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.hasMediaType(0, tools.MediaType.VIDEO).should.equal(false);
+            tools.hasMediaType(0, 1).should.equal(false);
+            tools.hasMediaType(4, 1).should.equal(false);
+            tools.hasMediaType(0, 0).should.equal(true);
+            tools.hasMediaType(1, 1).should.equal(true);
+            tools.hasMediaType(1, tools.MediaType.TEXT).should.equal(true);
+            tools.hasMediaType(15, tools.MediaType.TEXT).should.equal(true);
+            tools.hasMediaType(15, tools.MediaType.VIDEO | tools.MediaType.AUDIO).should.equal(true);
+        });
     });
     describe("test allTypes", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.allTypes().should.equal(15);
+            tools.allTypes().should.equal(tools.MediaType.AUDIO | tools.MediaType.IMAGE | tools.MediaType.VIDEO | tools.MediaType.TEXT);
+        });
     });
     describe("test combiIndex", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.combiIndex({totalIndex: 1}).should.equal(1);
+            tools.combiIndex({totalIndex: -1}).should.equal(-1);
+            tools.combiIndex({totalIndex: 1, partialIndex: undefined}).should.equal(1);
+            tools.combiIndex({totalIndex: 1, partialIndex: NaN}).should.equal(1);
+            tools.combiIndex({totalIndex: 1, partialIndex: 5}).should.equal(1.5);
+            tools.combiIndex({totalIndex: 1, partialIndex: Number.MIN_VALUE}).should.equal(0);
+        });
+        it("should throw when giving invalid parameter", () => {
+            should.throw(() => tools.combiIndex({totalIndex: NaN}));
+            should.throw(() => tools.combiIndex({totalIndex: Number.POSITIVE_INFINITY}));
+            should.throw(() => tools.combiIndex({totalIndex: Number.NEGATIVE_INFINITY}));
+            should.throw(() => tools.combiIndex({totalIndex: Number.MAX_VALUE}));
+            should.throw(() => tools.combiIndex({totalIndex: Number.MIN_VALUE}));
+            should.throw(() => tools.combiIndex({totalIndex: 1, partialIndex: Number.NEGATIVE_INFINITY}));
+            should.throw(() => tools.combiIndex({totalIndex: 1, partialIndex: Number.POSITIVE_INFINITY}));
+            should.throw(() => tools.combiIndex({totalIndex: 1, partialIndex: Number.MAX_VALUE}));
+        });
     });
     describe("test checkIndices", function() {
-        it("should not throw when using valid parameters");
+        it("should work correctly", () => {
+            tools.checkIndices({totalIndex: -1});
+            tools.checkIndices({totalIndex: -1, partialIndex: undefined});
+            tools.checkIndices({totalIndex: 0});
+            tools.checkIndices({totalIndex: 100});
+            tools.checkIndices({totalIndex: -1, partialIndex: 0});
+            tools.checkIndices({totalIndex: -1, partialIndex: 1});
+            tools.checkIndices({totalIndex: 100, partialIndex: 0});
+            tools.checkIndices({totalIndex: 11231, partialIndex: 15021});
+            should.throw(() => tools.checkIndices({totalIndex: -2}));
+            should.throw(() => tools.checkIndices({totalIndex: NaN}));
+            should.throw(() => tools.checkIndices({totalIndex: -1.5}));
+            should.throw(() => tools.checkIndices({totalIndex: 111.5}));
+            should.throw(() => tools.checkIndices({totalIndex: 10, partialIndex: -1}));
+            should.throw(() => tools.checkIndices({totalIndex: 12, partialIndex: 123.3}));
+            should.throw(() => tools.checkIndices({totalIndex: 10, partialIndex: NaN}));
+        });
     });
     describe("test separateIndices", function() {
         it("should work correctly", () => {
