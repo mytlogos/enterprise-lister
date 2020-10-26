@@ -9,19 +9,14 @@ export class DataBaseBuilder {
     private readonly triggers: Trigger[] = [];
     private readonly invalidations: Array<{ table: TableSchema; type: InvalidationType; tableName?: string }> = [];
     private readonly migrations: Migration[] = [];
-    private readonly name: string;
     private readonly version: number;
 
 
-    constructor(name: string, version: number) {
-        this.name = name;
+    public constructor(version: number) {
         this.version = version;
     }
 
     public build(): DatabaseSchema {
-        if (!this.name) {
-            throw Error("database has no name");
-        }
         if (this.version <= 0 || !Number.isInteger(this.version)) {
             throw Error("invalid database version");
         }
@@ -100,7 +95,6 @@ export class DataBaseBuilder {
         }
         return {
             version: this.version,
-            name: this.name,
             triggers: this.triggers,
             tables: [...this.tables],
             invalidationTable,

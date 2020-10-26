@@ -13,7 +13,7 @@ import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManage
 import {
     EpisodeRelease,
     ExternalList,
-    ExternalUserUuid,
+    Uuid,
     JobRequest,
     LikeMedium,
     MilliTime,
@@ -23,8 +23,7 @@ import {
     ScrapeItem,
     ScrapeName,
     SimpleEpisode,
-    SimpleMedium,
-    UserUuid
+    SimpleMedium
 } from "./types";
 import logger from "./logger";
 import {ScrapeType, Toc, TocEpisode, TocPart} from "./externals/types";
@@ -102,7 +101,7 @@ async function feedHandler({link, result}: { link: string; result: News[] }): Pr
     }
 }
 
-async function getTocMedia(tocs: Toc[], uuid?: string)
+async function getTocMedia(tocs: Toc[], uuid?: Uuid)
     : Promise<Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }>> {
 
     const media: Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }> = new Map();
@@ -344,7 +343,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
     }
 }
 
-export async function tocHandler(result: { tocs: Toc[]; uuid?: string }): Promise<void> {
+export async function tocHandler(result: { tocs: Toc[]; uuid?: Uuid }): Promise<void> {
     if (!result) {
         // TODO: 01.09.2019 for now just return
         return;
@@ -470,7 +469,7 @@ async function addFeeds(feeds: string[]): Promise<void> {
 /**
  *
  */
-async function processMedia(media: ScrapeMedium[], listType: number, userUuid: string): Promise<LikeMedium[]> {
+async function processMedia(media: ScrapeMedium[], listType: number, userUuid: Uuid): Promise<LikeMedium[]> {
     const likeMedia = media.map((value) => {
         return {
             title: value.title.text,
@@ -549,7 +548,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: s
 
 interface ChangeContent {
     removedLists: any;
-    result: { external: { cookies: string; uuid: string; userUuid: string; type: number }; lists: ListScrapeResult };
+    result: { external: { cookies: string; uuid: Uuid; userUuid: Uuid; type: number }; lists: ListScrapeResult };
     addedLists: ScrapeList[];
     renamedLists: ScrapeList[];
     allLists: ExternalList[];
@@ -627,7 +626,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
  *
  */
 async function listHandler(result: {
-    external: { cookies: string; uuid: ExternalUserUuid; userUuid: UserUuid; type: number };
+    external: { cookies: string; uuid: Uuid; userUuid: Uuid; type: number };
     lists: ListScrapeResult;
 })
     : Promise<void> {

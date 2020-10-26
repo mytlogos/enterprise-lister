@@ -20,7 +20,6 @@ pipeline {
             sh 'npm run lint:server'
           }
         }
-
       }
     }
 
@@ -38,6 +37,19 @@ pipeline {
           }
         }
 
+      }
+    }
+
+    stage('test') {
+      environment {
+        ENV_ENV = credentials('c1b69ee3-6000-499a-a253-dc19f8ed29de')
+      }
+      steps {
+        // copy env file for test
+        sh 'cp -u $ENV_ENV env.env'
+        sh 'npm run test'
+        // remove env file for test
+        sh 'rm env.env'
       }
     }
 

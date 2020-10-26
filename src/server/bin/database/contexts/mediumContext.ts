@@ -7,7 +7,8 @@ import {
     SimpleMedium,
     Synonyms,
     TocSearchMedium,
-    UpdateMedium
+    UpdateMedium,
+    Uuid
 } from "../../types";
 import {count, Errors, getElseSet, ignore, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
@@ -21,7 +22,7 @@ export class MediumContext extends SubContext {
     /**
      * Adds a medium to the storage.
      */
-    public async addMedium(medium: SimpleMedium, uuid?: string): Promise<SimpleMedium> {
+    public async addMedium(medium: SimpleMedium, uuid?: Uuid): Promise<SimpleMedium> {
         if (!medium || !medium.medium || !medium.title) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -136,14 +137,14 @@ export class MediumContext extends SubContext {
         };
     }
 
-    public getMedium(id: number, uuid: string): Promise<Medium>;
+    public getMedium(id: number, uuid: Uuid): Promise<Medium>;
 
-    public getMedium(id: number[], uuid: string): Promise<Medium[]>;
+    public getMedium(id: number[], uuid: Uuid): Promise<Medium[]>;
 
     /**
      * Gets one or multiple media from the storage.
      */
-    public getMedium(id: number | number[], uuid: string): Promise<Medium | Medium[]> {
+    public getMedium(id: number | number[], uuid: Uuid): Promise<Medium | Medium[]> {
         // TODO: 29.06.2019 replace with id IN (...)
         // @ts-ignore
         return promiseMultiSingle(id, async (mediumId: number) => {

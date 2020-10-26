@@ -1,5 +1,5 @@
-import {EpisodeRelease, MultiSingle} from "./types";
-import {TocEpisode, TocPart} from "./externals/types";
+import {EpisodeRelease, MultiSingle, Uuid} from "./types";
+import {TocEpisode, TocPart, TocContent} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
@@ -11,6 +11,8 @@ import * as path from "path";
 import {Query} from "mysql";
 import * as dns from "dns";
 import EventEmitter from "events";
+import { validate as validateUuid } from "uuid";
+import { isNumber } from "validate.js"
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -64,6 +66,14 @@ export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<
 export function multiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>): R;
 export function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): R[];
 
+/**
+ * Calls the callback on the parameter item or on all elements of item if item is an Array.
+ * Returns the return Value of the Callback as a normal value (if item is no Array) or an Array of return Values
+ * if item is an Array.
+ * 
+ * @param item value to act on
+ * @param cb function to be called on a single or multiple values
+ */
 export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): R | R[] {
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
@@ -72,6 +82,14 @@ export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>):
     return cb(item, 0, true);
 }
 
+/**
+ * Appends one or multiple items to the end of the array.
+ * It does not append a null-ish item parameter, except when allowNull is true.
+ * 
+ * @param array array to push the values to
+ * @param item item or items to add to the array
+ * @param allowNull if a null-ish item value can be added to the array
+ */
 export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
@@ -82,6 +100,14 @@ export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: 
     }
 }
 
+/**
+ * Removes the first occurrence of one or multiple items from the array.
+ * It does not remove a null-ish item parameter, except when allowNull is true.
+ * 
+ * @param array array to remove the values from
+ * @param item item or items to remove from the array
+ * @param allowNull if a null-ish item value can be removed from the array
+ */
 export function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
@@ -92,6 +118,15 @@ export function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull
     }
 }
 
+/**
+ * Return the value mapped to the key in the map.
+ * If no such non-null-ish value exists, a new value is generated
+ * from the callback, mapped to the key and returned instead.
+ * 
+ * @param map map to modify
+ * @param key a key value for the map
+ * @param valueCb value supplier if no non-null-ish value is mapped to the key
+ */
 export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
     let value = map.get(key);
     if (value == null) {
@@ -110,13 +145,21 @@ export function getElseSetObj<K, V>(map: Record<string | number, K>, key: string
     return value;
 }
 
-
+/**
+ * Returns an Array of unique values.
+ * If no callback is provided, the set-equality is used.
+ * The Order of elements is preserved, with the first occurrence
+ * being preserved.
+ * 
+ * @param array array to filter all duplicates out
+ * @param isEqualCb alternative predicate determining if two values are equal
+ */
 export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) => boolean): T[] {
     const uniques: T[] = [];
 
     if (isEqualCb) {
         forEachArrayLike(array, (value, index) => {
-            const notUnique = some(array, (otherValue) => isEqualCb(value, otherValue), index + 1);
+            const notUnique = some(array, (otherValue) => isEqualCb(value, otherValue), 0, index);
 
             if (notUnique) {
                 return;
@@ -125,23 +168,51 @@ export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) 
         });
     } else {
         const set = new Set<T>();
-        forEachArrayLike(array, (value) => set.add(value));
-        uniques.push(...set);
+        forEachArrayLike(array, (value) => {
+            if (!set.has(value)) {
+                set.add(value);
+                uniques.push(value);
+            }
+        });
     }
     return uniques;
 }
 
-export function isTocEpisode(tocContent: any): tocContent is TocEpisode {
-    return tocContent.url;
+/**
+ * Returns true if the value is a TocEpisode.
+ * 
+ * @param tocContent value to check
+ */
+export function isTocEpisode(tocContent: TocContent): tocContent is TocEpisode {
+    // @ts-expect-error
+    return !!tocContent.url;
 }
 
-export function isTocPart(tocContent: any): tocContent is TocPart {
-    return tocContent.episodes;
+/**
+ * Returns true if the value is a TocPart.
+ * 
+ * @param tocContent value to check
+ */
+export function isTocPart(tocContent: TocContent): tocContent is TocPart {
+    // @ts-expect-error
+    return !!tocContent.episodes;
 }
 
+/**
+ * Test whether a single Element of the Array-Like Object satisfies the condition of the predicate.
+ * If the startIndex is greater or equal to the endIndex, it returns false.
+ * 
+ * @param array array-like object to test on
+ * @param predicate condition to test
+ * @param start startIndex of the search (inclusively), a number greater than zero
+ * @param end endIndex of the search (exclusively), a number smaller or equal to the length of the array-like
+ */
+export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start = 0, end = array.length): boolean {
+    if (start < 0 || end > array.length) {
+        throw RangeError(`Invalid Search Range, Valid: 0-${array.length}, Given: ${start}-${end}`);
+    }
 
-export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: number): boolean {
-    for (let i = start; i < array.length; i++) {
+    for (let i = start; i < end; i++) {
         if (predicate(array[i], i)) {
             return true;
         }
@@ -151,6 +222,13 @@ export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start: num
 
 const apostrophe = /['´`’′‘]/g;
 
+/**
+ * Test whether two string are equal to each other (case-insensitive), irregardless
+ * which version of apostrophes or look alikes are used.
+ * 
+ * @param s1 string to test
+ * @param s2 other string to test
+ */
 export function equalsIgnore(s1: string, s2: string): boolean {
     if (apostrophe.test(s1)) {
         s1 = s1.replace(apostrophe, "");
@@ -161,12 +239,24 @@ export function equalsIgnore(s1: string, s2: string): boolean {
     return s1.localeCompare(s2, undefined, {sensitivity: "base"}) === 0;
 }
 
+/**
+ * Test whether the first string contains the other string, irregardless
+ * which version of apostrophes or look alikes or case is used.
+ * 
+ * @param s1 string to test
+ * @param s2 other string to test
+ */
 export function contains(s1: string, s2: string): boolean {
     s1 = s1.replace(apostrophe, "");
     s2 = s2.replace(apostrophe, "");
     return s1.toLocaleLowerCase().includes(s2.toLocaleLowerCase());
 }
 
+/**
+ * Counts the number of time each element in an array occurs.
+ * 
+ * @param array array to count the value occurrences of
+ */
 export function countOccurrence<T>(array: T[]): Map<T, number> {
     const occurrenceMap: Map<T, number> = new Map();
     for (const value of array) {
@@ -194,21 +284,37 @@ export function count<T>(array: T[], condition: Predicate<T>): number {
 
 export type Comparator<T> = (previous: T, current: T) => number;
 
+/**
+ * Returns the biggest Element in the Array according to the given comparator.
+ * If given a field comparator (string key of an element), it is searched according to the natural
+ * order of the property.
+ * If given a value comparator (function), it searches according to the natural order
+ * of the result of the value comparator.
+ * 
+ * @param array array to inspect
+ * @param comparator field comparator or value comparator to compare values with
+ */
 export function max<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined {
     if (!array.length) {
         return;
     }
-    // @ts-ignore
     const comparatorFunction: Comparator<T> = isString(comparator)
         // @ts-ignore
         ? (previousValue: T, currentValue: T) => previousValue[comparator] - currentValue[comparator]
-        : comparator;
+        : comparator as Comparator<T>;
 
     return array.reduce((previousValue, currentValue) => {
         return comparatorFunction(previousValue, currentValue) < 0 ? currentValue : previousValue;
     });
 }
 
+/**
+ * Returns the biggest Element in the array according to their own
+ * natural order.
+ * To work correctly, the elements need to be comparable by the "<" operator.
+ * 
+ * @param array array to inspect
+ */
 export function maxValue<T>(array: T[]): T | undefined {
     if (!array.length) {
         return;
@@ -218,6 +324,13 @@ export function maxValue<T>(array: T[]): T | undefined {
     });
 }
 
+/**
+ * Returns the smallest Element in the array according to their own
+ * natural order.
+ * To work correctly, the elements need to be comparable by the "<" operator.
+ * 
+ * @param array array to inspect
+ */
 export function minValue<T>(array: T[]): T | undefined {
     if (!array.length) {
         return;
@@ -227,6 +340,16 @@ export function minValue<T>(array: T[]): T | undefined {
     });
 }
 
+/**
+ * Returns the smallest Element in the Array according to the given comparator.
+ * If given a field comparator (string key of an element), it is searched according to the natural
+ * order of the property.
+ * If given a value comparator (function), it searches according to the natural order
+ * of the result of the value comparator.
+ * 
+ * @param array array to inspect
+ * @param comparator field comparator or value comparator to compare values with
+ */
 export function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined {
     if (!array.length) {
         return;
@@ -242,6 +365,14 @@ export function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | und
     });
 }
 
+/**
+ * Parses a string of relative Time to a absolute Date relative to
+ * the time of calling.
+ * The relative words are expected to be in english (seconds, minutes etc.).
+ * Returns null if it does not match the expected pattern.
+ * 
+ * @param relative string to parse to a absolute time
+ */
 export function relativeToAbsoluteTime(relative: string): Date | null {
     let exec: string[] | null = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
     if (!exec) {
@@ -254,6 +385,7 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
     const absolute = new Date();
     const timeValue = value && value.match("an?") ? 1 : Number(value);
 
+    // should not happen?
     if (Number.isNaN(timeValue)) {
         throw new Error(`'${value}' is not a number`);
     }
@@ -285,16 +417,30 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
     return absolute;
 }
 
+/**
+ * A convenience delay function.
+ * Returns a promise which resolves after the given time in milliseconds.
+ * The true delayed time will most likely not equal the given delay time
+ * as this uses setTimeout.
+ * 
+ * @param timeout time to delay the promise
+ */
 export function delay(timeout = 1000): Promise<void> {
     return new Promise((resolve) => {
         setTimeout(() => resolve(), timeout);
     });
 }
 
-export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: EpisodeRelease): boolean {
-    return (firstRelease === secondRelease)
+/**
+ * Tests whether two releases should be equal.
+ * 
+ * @param firstRelease first release
+ * @param secondRelease second release
+ */
+export function equalsRelease(firstRelease?: EpisodeRelease, secondRelease?: EpisodeRelease): boolean {
+    return (firstRelease == secondRelease)
         || (
-            (firstRelease && secondRelease)
+            (!!firstRelease && !!secondRelease)
             && firstRelease.url === secondRelease.url
             && firstRelease.episodeId === secondRelease.episodeId
             && !!firstRelease.locked === !!secondRelease.locked
@@ -305,7 +451,14 @@ export function equalsRelease(firstRelease: EpisodeRelease, secondRelease: Episo
         );
 }
 
-export function stringify(object: any): string {
+/**
+ * Stringifies an object.
+ * Replaces all occurrences of an object except the first one
+ * with the string "[circular reference]".
+ * 
+ * @param object object to stringify
+ */
+export function stringify(object: unknown): string {
     const seen = new WeakSet();
     return JSON.stringify(object, (key, value) => {
         if (typeof value === "object" && value !== null) {
@@ -338,6 +491,14 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
     return value;
 }
 
+/**
+ * Sanitizes a given string.
+ * Removes any unicode emojis.
+ * Removes any excess whitespace at the front and at the end.
+ * Normalizes multiple whitespaces into a single one.
+ * 
+ * @param s string to sanitize
+ */
 export function sanitizeString(s: string): string {
     if (!s) {
         return s;
@@ -345,11 +506,28 @@ export function sanitizeString(s: string): string {
     return emojiStrip(s).trim().replace(/\s+/g, " ");
 }
 
-export function isString(value: any): value is string {
+/**
+ * Checks whether the given value is a string.
+ * 
+ * @param value value to test
+ */
+export function isString(value: unknown): value is string {
     return Object.prototype.toString.call(value) === "[object String]";
 }
 
+/**
+ * Parses a string to an array of numbers.
+ * It is expected that the string has a format
+ * of "[<number>,...]". Any values that could not be parsed
+ * are not a number or are falsy are filtered out.
+ * 
+ * @param s string to parse
+ */
 export function stringToNumberList(s: string): number[] {
+    s = s.trim();
+    if (!s.startsWith("[") || !s.endsWith("]")) {
+        return [];
+    }
     return s
         .split(/[[\],]/)
         .map((value: any) => Number(value))
@@ -467,6 +645,12 @@ export enum Errors {
     UNSUCCESSFUL = "UNSUCCESSFUL",
 }
 
+/**
+ * Checks if the given error value has the same value
+ * as one of the Errors member.
+ * 
+ * @param error value to check
+ */
 export const isError = (error: unknown): boolean => {
     // @ts-ignore
     return Object.values(Errors).includes(error);
@@ -478,11 +662,19 @@ export enum MediaType {
     VIDEO = 0x4,
     IMAGE = 0x8,
 }
-
-export function hasMediaType(container: MediaType, testFor: MediaType): boolean {
+/**
+ * Check whether the given container has the given flag activated.
+ * 
+ * @param container value to check
+ * @param testFor flag which should be tested for
+ */
+export function hasMediaType(container: number, testFor: MediaType): boolean {
     return (container & testFor) === testFor;
 }
 
+/**
+ * Returns a MediaType flag with all available flags activated.
+ */
 export function allTypes(): number {
     return (Object.values(MediaType) as number[])
         .reduce((previousValue, currentValue) => previousValue | currentValue) || 0;
@@ -498,6 +690,17 @@ export function promisify<T>(callback: () => T): Promise<T> {
     });
 }
 
+/**
+ * Combines an object with totalIndex and partialIndex, the part before
+ * and after the decimal point, to a single number.
+ * 
+ * Example:
+ * combiIndex({ totalIndex: 1 }) === 1
+ * combiIndex({ totalIndex: 1, partialIndex: 0 }) === 1
+ * combiIndex({ totalIndex: 1, partialIndex: 5}) === 1.5
+ * 
+ * @param value object to combine
+ */
 export function combiIndex(value: { totalIndex: number; partialIndex?: number }): number {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
     if (Number.isNaN(combi)) {
@@ -506,8 +709,15 @@ export function combiIndex(value: { totalIndex: number; partialIndex?: number })
     return combi;
 }
 
+/**
+ * Checks whether the indices on the given object are valid.
+ * A totalIndex is greater or equal to -1 and an integer.
+ * A partialIndex may be undefined|null, but should not be smaller than zero or not an integer.
+ * 
+ * @param value value to check the Indices from
+ */
 export function checkIndices(value: { totalIndex: number; partialIndex?: number }): void {
-    if (value.totalIndex == null || value.totalIndex < -1) {
+    if (value.totalIndex == null || value.totalIndex < -1 || !Number.isInteger(value.totalIndex)) {
         throw Error("invalid toc content, totalIndex invalid");
     }
     if (value.partialIndex != null && (value.partialIndex < 0 || !Number.isInteger(value.partialIndex))) {
@@ -534,10 +744,21 @@ export function extractIndices(groups: string[], allPosition: number, totalPosit
 
 const indexRegex = /(-?\d+)(\.(\d+))?/;
 
+/**
+ * Separates a number into an object of the value before and after the decimal point.
+ * If the number does not have a decimal point (integers), the partialIndex attribute
+ * is undefined.
+ * Trailing zeroes in the decimal places are ignored.
+ * 
+ * @param value the number to separate
+ */
 export function separateIndex(value: number): { totalIndex: number; partialIndex?: number } {
+    if (!isNumber(value)) {
+        throw Error("not a number");
+    }
     const exec = indexRegex.exec(value + "");
     if (!exec) {
-        throw Error("not a positive number");
+        throw Error("not a number");
     }
     const totalIndex = Number(exec[1]);
     const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
@@ -591,6 +812,19 @@ export function isQuery(value: any): value is Query {
 
 export function invalidId(id: any): boolean {
     return !Number.isInteger(id) || id <= 0;
+}
+
+/**
+ * Validate a value to a UUID string.
+ * A valid UUID String in this Projects 
+ * needs to have the fixed length of 36 characters.
+ * 
+ * Accepts the NIL-UUID as a valid UUID.
+ *
+ * @param value value to validate as an uuid
+ */
+export function validUuid(value: unknown): value is Uuid {
+    return isString(value) && value.length == 36 && validateUuid(value);
 }
 
 export interface InternetTester extends EventEmitter.EventEmitter {

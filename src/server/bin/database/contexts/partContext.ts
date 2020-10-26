@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisode} from "../../types";
+import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisode, Uuid} from "../../types";
 import mySql from "promise-mysql";
 import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
 import {Query} from "mysql";
@@ -56,7 +56,7 @@ export class PartContext extends SubContext {
     /**
      * Returns all parts of an medium.
      */
-    public async getMediumParts(mediumId: number, uuid?: string): Promise<Part[]> {
+    public async getMediumParts(mediumId: number, uuid?: Uuid): Promise<Part[]> {
         const parts: any[] = await this.query("SELECT * FROM part WHERE medium_id = ?", mediumId);
 
         const idMap = new Map<number, FullPart>();
@@ -140,13 +140,13 @@ export class PartContext extends SubContext {
         });
     }
 
-    public getParts(partId: number, uuid: string): Promise<Part>;
-    public getParts(partId: number[], uuid: string): Promise<Part[]>;
+    public getParts(partId: number, uuid: Uuid): Promise<Part>;
+    public getParts(partId: number[], uuid: Uuid): Promise<Part[]>;
 
     /**
      * Returns all parts of an medium.
      */
-    public async getParts(partId: number | number[], uuid: string): Promise<Part[] | Part> {
+    public async getParts(partId: number | number[], uuid: Uuid): Promise<Part[] | Part> {
         const parts: any[] | undefined = await this.queryInList("SELECT * FROM part WHERE id", partId);
         if (!parts || !parts.length) {
             return [];

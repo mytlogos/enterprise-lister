@@ -2,11 +2,11 @@ import {TableSchema} from "./tableSchema";
 import {MediaType} from "../tools";
 import {Trigger} from "./trigger";
 import {DatabaseContext} from "./contexts/databaseContext";
+import { Uuid } from "../types";
 
 export interface DatabaseSchema {
     readonly version: number;
     readonly triggers: readonly Trigger[];
-    readonly name: string;
     readonly tables: readonly TableSchema[];
     readonly mainTable: TableSchema;
     readonly invalidationTable: TableSchema;
@@ -78,7 +78,7 @@ export interface ChangeUser {
 }
 
 export interface NewsItemRequest {
-    uuid: string;
+    uuid: Uuid;
     since?: Date;
     till?: Date;
     newsIds?: number[];

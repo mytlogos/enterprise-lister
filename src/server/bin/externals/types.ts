@@ -1,4 +1,4 @@
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Uuid} from "../types";
 import {MediaType} from "../tools";
 import {JobCallback} from "../jobManager";
 
@@ -44,7 +44,7 @@ export interface Hook {
 }
 
 export interface Dependant {
-    oneTimeUser?: Array<{ cookies: string; uuid: string }> | { cookies: string; uuid: string };
+    oneTimeUser?: Array<{ cookies: string; uuid: Uuid }> | { cookies: string; uuid: Uuid };
     oneTimeToc?: TocRequest[] | TocRequest;
     feed?: string[] | string;
     news?: any[] | any;
@@ -53,7 +53,7 @@ export interface Dependant {
 
 export interface TocRequest {
     url: string;
-    uuid?: string;
+    uuid?: Uuid;
     mediumId?: number;
     lastRequest?: Date;
 }
@@ -149,7 +149,7 @@ export interface ContentDownloader {
 
 export interface TocResult {
     tocs: Toc[];
-    uuid?: string;
+    uuid?: Uuid;
 }
 
 export enum ScrapeType {

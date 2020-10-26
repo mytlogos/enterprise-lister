@@ -1,6 +1,6 @@
 import mySql from "promise-mysql";
 import env from "../../env";
-import {Invalidation, MetaResult, Result, ScrapeItem, User} from "../../types";
+import {Invalidation, MetaResult, Result, ScrapeItem, User, Uuid} from "../../types";
 import logger from "../../logger";
 import {databaseSchema} from "../databaseSchema";
 import {delay, isQuery} from "../../tools";
@@ -34,17 +34,17 @@ export async function storageInContext<T, C extends ConnectionContext>(
     provider: ContextProvider<C>,
     transaction = true
 ): Promise<T> {
-    if (!running) {
+    if (!poolProvider.running) {
         // if inContext is called without Storage being active
-        return Promise.reject("Not started");
+        return Promise.reject(new Error("Not started"));
     }
-    if (errorAtStart) {
-        return Promise.reject("Error occurred while starting Database. Database may not be accessible");
+    if (poolProvider.errorAtStart) {
+        return Promise.reject(new Error("Error occurred while starting Database. Database may not be accessible"));
     }
-    if (startPromise) {
-        await startPromise;
+    if (poolProvider.startPromise) {
+        await poolProvider.startPromise;
     }
-    const pool = await poolPromise;
+    const pool = await poolProvider.provide();
     const con = await pool.getConnection();
     const context = provider(con);
 
@@ -134,58 +134,140 @@ async function doTransaction<T, C extends ConnectionContext>(
     return result;
 }
 
-const poolPromise = mySql.createPool({
-    connectionLimit: env.dbConLimit,
-    host: env.dbHost,
-    user: env.dbUser,
-    password: env.dbPassword,
-    // charset/collation of the current database and tables
-    charset: "utf8mb4",
-    // we assume that the database exists already
-    database: "enterprise",
-    typeCast(field, next) {
-        if (field.type === "TINY" && field.length === 1) {
-            return (field.string() === "1"); // 1 = true, 0 = false
-        } else {
-            return next();
+class SqlPoolProvider {
+    private remake = true;
+    private pool?: Promise<mySql.Pool>;
+    private config?: mySql.PoolConfig;
+    public running = false;
+    public errorAtStart = false;
+    public startPromise = Promise.resolve();
+
+    public provide(): Promise<mySql.Pool> {
+        if (!this.pool || this.remake) {
+            this.remake = false;
+            this.pool = this.createPool();
+        }
+        return this.pool;
+    }
+
+    public recreate() {
+        this.remake = true;
+    }
+
+    public useConfig(config: mySql.PoolConfig) {
+        this.config = {...this.defaultConfig(), ...config};
+        this.remake = true;
+    }
+
+    public useDefault() {
+        // remake only if previously non default config was used
+        this.remake = !!this.config;
+        this.config = undefined;
+    }
+
+    /**
+     * Checks the database for incorrect structure
+     * and tries to correct these.
+     */
+    public start(): void {
+        if (!this.running) {
+            this.running = true;
+            try {
+                const manager = new SchemaManager();
+                const database = this.getConfig().database;
+
+                if (!database) {
+                    this.startPromise = Promise.reject("No database name defined");
+                    return;
+                }
+                manager.initTableSchema(databaseSchema, database);
+                this.startPromise = inContext(
+                    (context) => manager.checkTableSchema(context.databaseContext),
+                    true,
+                ).catch((error) => {
+                    logger.error(error);
+                    this.errorAtStart = true;
+                    return Promise.reject("Database error occurred while starting");
+                });
+            } catch (e) {
+                this.errorAtStart = true;
+                logger.error(e);
+                this.startPromise = Promise.reject("Error in database schema");
+            }
         }
     }
-});
 
-let errorAtStart = false;
-let running = false;
-
-
-/**
- * @type {Promise<Storage>|void}
- */
-let startPromise: Promise<void> | null;
-
-/**
- * Checks the database for incorrect structure
- * and tries to correct these.
- */
-function start(): void {
-    if (!running) {
-        running = true;
-        try {
-            const manager = new SchemaManager();
-            manager.initTableSchema(databaseSchema);
-            startPromise = inContext(
-                (context) => manager.checkTableSchema(context.databaseContext),
-                true,
-            ).catch((error) => {
-                logger.error(error);
-                errorAtStart = true;
-                return Promise.reject("Database error occurred while starting");
-            });
-        } catch (e) {
-            errorAtStart = true;
-            startPromise = Promise.reject("Error in database schema");
-            logger.error(e);
+    public async stop(): Promise<void> {
+        if (this.pool) {
+            logger.info("Stopping Database");
+            this.running = false;
+            const pool = await this.pool;
+            pool.end();
+            logger.info("Database stopped now");
+        } else {
+            logger.info("Stopping Database... None running.");
         }
+    }
+
+    private getConfig() {
+        return this.config || this.defaultConfig();
+    }
+
+    private async createPool(): Promise<mySql.Pool> {
+        // stop previous pool if available
+        if (this.pool) {
+            await this.stop();
+        }
+        const config = this.getConfig();
+        return mySql.createPool(config);
+    }
+
+    private defaultConfig(): mySql.PoolConfig {
+        return {
+            connectionLimit: env.dbConLimit,
+            host: env.dbHost,
+            user: env.dbUser,
+            password: env.dbPassword,
+            // charset/collation of the current database and tables
+            charset: "utf8mb4",
+            // we assume that the database exists already
+            database: "enterprise",
+            typeCast(field, next) {
+                if (field.type === "TINY" && field.length === 1) {
+                    return (field.string() === "1"); // 1 = true, 0 = false
+                } else {
+                    return next();
+                }
+            }
+        };
     }
 }
+
+const poolProvider = new SqlPoolProvider();
+// poolProvider.provide().catch(console.error);
+
+class SqlPoolConfigUpdater {
+
+    /**
+     * Creates new Mysql Connection Pool with the given Config.
+     */
+    public update(config: Partial<mySql.PoolConfig>): void {
+        poolProvider.useConfig(config);
+    }
+
+    public async recreate(immediate = false): Promise<void> {
+        poolProvider.recreate();
+        if (immediate) {
+            await poolProvider.provide();
+        }
+    }
+
+    public useDefault() {
+        poolProvider.useDefault();
+    }
+}
+
+export const poolConfig = new SqlPoolConfigUpdater();
 
 export class Storage {
 
@@ -195,10 +277,7 @@ export class Storage {
      * @return {Promise<void>}
      */
     public stop(): Promise<void> {
-        logger.info("Stopping Database");
-        running = false;
-        startPromise = null;
-        return poolPromise.then((value) => value.end()).then(() => logger.info("Database stopped now"));
+        return poolProvider.stop();
     }
 
     public getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
@@ -217,11 +296,11 @@ export class Storage {
         return inContext((context) => context.queueNewTocs());
     }
 
-    public getStats(uuid: string): Promise<any> {
+    public getStats(uuid: Uuid): Promise<any> {
         return inContext((context) => context.getStat(uuid));
     }
 
-    public getNew(uuid: string, date?: Date): Promise<any> {
+    public getNew(uuid: Uuid, date?: Date): Promise<any> {
         return inContext((context) => context.getNew(uuid, date));
     }
 
@@ -276,14 +355,14 @@ export class Storage {
     /**
      *
      */
-    public getInvalidated(uuid: string): Promise<Invalidation[]> {
+    public getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
         return inContext((context) => context.getInvalidated(uuid));
     }
 
     /**
      *
      */
-    public getInvalidatedStream(uuid: string): Promise<Query> {
+    public getInvalidatedStream(uuid: Uuid): Promise<Query> {
         return inContext((context) => context.getInvalidatedStream(uuid));
     }
 
@@ -305,6 +384,4 @@ export const externalListStorage = new ExternalListStorage();
 /**
  *
  */
-export const startStorage = (): void => start();
-// TODO: 01.09.2019 check whether it should 'start' implicitly or explicitly
-start();
+export const startStorage = (): void => poolProvider.start();

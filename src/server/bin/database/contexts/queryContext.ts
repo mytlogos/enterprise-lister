@@ -1,5 +1,5 @@
 import mySql, {Connection} from "promise-mysql";
-import {Invalidation, MetaResult, Result} from "../../types";
+import {Invalidation, MetaResult, Result, Uuid} from "../../types";
 import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
@@ -247,7 +247,7 @@ export class QueryContext implements ConnectionContext {
         throw Error("not supported");
     }
 
-    public async getInvalidated(uuid: string): Promise<Invalidation[]> {
+    public async getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
         const result: any[] = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
         await this
             .query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid)
@@ -267,7 +267,7 @@ export class QueryContext implements ConnectionContext {
         });
     }
 
-    public async getInvalidatedStream(uuid: string): Promise<Query> {
+    public async getInvalidatedStream(uuid: Uuid): Promise<Query> {
         return this.queryStream(
             "SELECT " +
             "external_list_id as externalListId, external_uuid as externalUuid, medium_id as mediumId, " +
@@ -455,7 +455,7 @@ export class QueryContext implements ConnectionContext {
         return this.con.queryStream(query, parameter);
     }
 
-    public async getNew(uuid: string, date = new Date(0)): Promise<any> {
+    public async getNew(uuid: Uuid, date = new Date(0)): Promise<any> {
         const episodeReleasePromise = this.query(
             "SELECT episode_id as episodeId, title, url, releaseDate, locked " +
             "FROM episode_release WHERE updated_at > ?",
@@ -528,7 +528,7 @@ export class QueryContext implements ConnectionContext {
         };
     }
 
-    public async getStat(uuid: string): Promise<any> {
+    public async getStat(uuid: Uuid): Promise<any> {
         const episodePromise = this.query(
             "SELECT part_id, count(distinct episode.id) as episodeCount, sum(distinct episode.id) as episodeSum, count(url) as releaseCount " +
             "FROM episode LEFT JOIN episode_release ON episode.id=episode_release.episode_id " +

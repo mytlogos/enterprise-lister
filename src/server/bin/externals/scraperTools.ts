@@ -6,7 +6,7 @@ import {
     EpisodeNews,
     EpisodeRelease,
     ExternalUser,
-    ExternalUserUuid,
+    Uuid,
     JobRequest,
     LikeMedium,
     MilliTime,
@@ -470,7 +470,7 @@ export const queueTocs = async (): Promise<void> => {
 };
 
 export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRequest)
-    : Promise<{ tocs: Toc[]; uuid?: string }> => {
+    : Promise<{ tocs: Toc[]; uuid?: Uuid }> => {
     logger.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
 
@@ -559,8 +559,8 @@ export const toc = async (value: TocRequest): Promise<TocResult> => {
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export const list = async (value: { cookies: string; uuid: ExternalUserUuid })
-    : Promise<{ external: { cookies: string; uuid: ExternalUserUuid }; lists: ListScrapeResult }> => {
+export const list = async (value: { cookies: string; uuid: Uuid })
+    : Promise<{ external: { cookies: string; uuid: Uuid }; lists: ListScrapeResult }> => {
 
     // TODO: 10.03.2020 for now list scrape novelupdates only, later it should take listtype as an argument
     const manager = factory(ListType.NOVELUPDATES, value.cookies);
@@ -659,7 +659,7 @@ const cache = new Cache({size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2});
 const errorCache = new Cache({size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2});
 
 export interface ListScrapeEvent {
-    external: { cookies: string; uuid: string; userUuid: string; type: number };
+    external: { cookies: string; uuid: Uuid; userUuid: Uuid; type: number };
     lists: ListScrapeResult;
 }
 

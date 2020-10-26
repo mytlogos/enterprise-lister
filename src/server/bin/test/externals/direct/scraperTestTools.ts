@@ -1,8 +1,9 @@
-const scraperTools = require("../../../server/dist/externals/scraperTools");
-const tools = require("../../../server/dist/tools");
+import * as scraperTools from "../../../externals/scraperTools";
+import * as tools from "../../../tools";
+import { TocContent } from "../../../externals/types";
 const MediaType = tools.MediaType;
 
-exports.testGeneralToc = function testGeneralToc(toc) {
+exports.testGeneralToc = function testGeneralToc(toc: { title: string; link: string; mediumType: tools.MediaType.TEXT; content: TocContent[]}) {
     toc.should.be.an("object");
     toc.title.should.be.a("string");
     toc.link.should.be.a("string");

@@ -6,7 +6,8 @@ import {
     ProgressResult,
     Result,
     SimpleEpisode,
-    SimpleRelease
+    SimpleRelease,
+    Uuid
 } from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
@@ -19,7 +20,7 @@ function inContext<T>(callback: ContextCallback<T, EpisodeContext>, transaction 
 }
 
 export class EpisodeStorage {
-    public getAll(uuid: string): Promise<Query> {
+    public getAll(uuid: Uuid): Promise<Query> {
         return inContext((context) => context.getAll(uuid));
     }
 
@@ -27,11 +28,11 @@ export class EpisodeStorage {
         return inContext((context) => context.getAllReleases());
     }
 
-    public getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: string): Promise<any> {
+    public getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: Uuid): Promise<any> {
         return inContext((context) => context.getDisplayReleases(latestDate, untilDate, read, uuid));
     }
 
-    public getMediumReleases(mediumId: number, uuid: string): Promise<any> {
+    public getMediumReleases(mediumId: number, uuid: Uuid): Promise<any> {
         return inContext((context) => context.getMediumReleases(mediumId, uuid));
     }
 
@@ -81,12 +82,12 @@ export class EpisodeStorage {
         return inContext((context) => context.moveEpisodeToPart(oldPartId, newPartId));
     }
 
-    public getEpisode(id: number, uuid: string): Promise<Episode>;
-    public getEpisode(id: number[], uuid: string): Promise<Episode[]>;
+    public getEpisode(id: number, uuid: Uuid): Promise<Episode>;
+    public getEpisode(id: number[], uuid: Uuid): Promise<Episode[]>;
     /**
      * Gets an episode from the storage.
      */
-    public getEpisode(id: number | number[], uuid: string): Promise<Episode | Episode[]> {
+    public getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
         // @ts-ignore
         return inContext((context) => context.getEpisode(id, uuid));
     }
@@ -160,7 +161,7 @@ export class EpisodeStorage {
     /**
      *
      */
-    public setProgress(uuid: string, progressResult: ProgressResult | ProgressResult[]): Promise<void> {
+    public setProgress(uuid: Uuid, progressResult: ProgressResult | ProgressResult[]): Promise<void> {
         return inContext((context) => context.setProgress(uuid, progressResult));
     }
 
@@ -169,39 +170,39 @@ export class EpisodeStorage {
      * Returns always true if it succeeded (no error).
      */
     // tslint:disable-next-line
-    public addProgress(uuid: string, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean> {
+    public addProgress(uuid: Uuid, episodeId: number | number[], progress: number, readDate: Date | null): Promise<boolean> {
         return inContext((context) => context.addProgress(uuid, episodeId, progress, readDate));
     }
 
     /**
      * Removes progress of an user in regard to an episode.
      */
-    public removeProgress(uuid: string, episodeId: number): Promise<boolean> {
+    public removeProgress(uuid: Uuid, episodeId: number): Promise<boolean> {
         return inContext((context) => context.removeProgress(uuid, episodeId));
     }
 
     /**
      * Get the progress of an user in regard to an episode.
      */
-    public getProgress(uuid: string, episodeId: number): Promise<number> {
+    public getProgress(uuid: Uuid, episodeId: number): Promise<number> {
         return inContext((context) => context.getProgress(uuid, episodeId));
     }
 
     /**
      * Updates the progress of an user in regard to an episode.
      */
-    public updateProgress(uuid: string, mediumId: number, progress: number, readDate: Date | null): Promise<boolean> {
+    public updateProgress(uuid: Uuid, mediumId: number, progress: number, readDate: Date | null): Promise<boolean> {
         return inContext((context) => context.updateProgress(uuid, mediumId, progress, readDate));
     }
 
     /**
      * Marks these news as read for the given user.
      */
-    public markEpisodeRead(uuid: string, result: Result): Promise<void> {
+    public markEpisodeRead(uuid: Uuid, result: Result): Promise<void> {
         return inContext((context) => context.markEpisodeRead(uuid, result));
     }
 
-    public markLowerIndicesRead(uuid: string, id: number, partIndex?: number, episodeIndex?: number): Promise<void> {
+    public markLowerIndicesRead(uuid: Uuid, id: number, partIndex?: number, episodeIndex?: number): Promise<void> {
         return inContext((context) => context.markLowerIndicesRead(uuid, id, partIndex, episodeIndex));
     }
 }

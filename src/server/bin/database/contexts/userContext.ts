@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {SimpleUser, User} from "../../types";
+import {SimpleUser, User, Uuid} from "../../types";
 import {allTypes, BcryptHash, Errors, Hasher, Hashes} from "../../tools";
 import {v1 as uuidGenerator, v4 as sessionGenerator} from "uuid";
 
@@ -112,7 +112,7 @@ export class UserContext extends SubContext {
      * Returns the uuid of the logged in user and
      * the session key of the user for the ip.
      */
-    public async userLoginStatus(ip: string, uuid?: string, session?: string): Promise<boolean> {
+    public async userLoginStatus(ip: string, uuid?: Uuid, session?: string): Promise<boolean> {
         const result = await this.query("SELECT * FROM user_log WHERE ip = ?;", ip);
 
         const sessionRecord = result[0];
@@ -152,7 +152,7 @@ export class UserContext extends SubContext {
         };
     }
 
-    public async getUser(uuid: string, ip: string): Promise<User> {
+    public async getUser(uuid: Uuid, ip: string): Promise<User> {
         const result = await this.query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
 
         const sessionRecord = result[0];
@@ -167,7 +167,7 @@ export class UserContext extends SubContext {
     /**
      * Logs a user out.
      */
-    public logoutUser(uuid: string, ip: string): Promise<boolean> {
+    public logoutUser(uuid: Uuid, ip: string): Promise<boolean> {
         return this.delete("user_log", {column: "ip", value: ip});
     }
 
@@ -178,7 +178,7 @@ export class UserContext extends SubContext {
      *
      * Is irreversible.
      */
-    public async deleteUser(uuid: string): Promise<boolean> {
+    public async deleteUser(uuid: Uuid): Promise<boolean> {
         // TODO delete all associated data
         // remove in sequence:
         // user_log => list_medium => reading_list
@@ -234,7 +234,7 @@ export class UserContext extends SubContext {
      *
      * Returns a boolean whether data was updated or not.
      */
-    public async updateUser(uuid: string,
+    public async updateUser(uuid: Uuid,
         user: { name?: string; newPassword?: string; password?: string }): Promise<boolean> {
 
         if (user.newPassword && user.password) {
@@ -277,7 +277,7 @@ export class UserContext extends SubContext {
      * @param {string} password
      * @return {Promise<boolean>}
      */
-    public async verifyPassword(uuid: string, password: string): Promise<boolean> {
+    public async verifyPassword(uuid: Uuid, password: string): Promise<boolean> {
         const result = await this.query("SELECT password, alg, salt FROM user WHERE uuid = ?", uuid);
         const user = result[0];
         return verifyPassword(password, user.password, user.alg, user.salt);
@@ -286,7 +286,7 @@ export class UserContext extends SubContext {
     /**
      * Returns a user with their associated lists and external user from the storage.
      */
-    private async _getUser(uuid: string, session: string): Promise<User> {
+    private async _getUser(uuid: Uuid, session: string): Promise<User> {
         if (!uuid) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }

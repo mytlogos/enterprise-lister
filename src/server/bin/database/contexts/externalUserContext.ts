@@ -1,11 +1,11 @@
 import {SubContext} from "./subContext";
-import {ExternalUser} from "../../types";
+import {ExternalUser, Uuid} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
 import {v1 as uuidGenerator} from "uuid";
 import {Query} from "mysql";
 
 export class ExternalUserContext extends SubContext {
-    public async getAll(uuid: string): Promise<Query> {
+    public async getAll(uuid: Uuid): Promise<Query> {
         const lists = await this.parentContext.externalListContext.getAll(uuid);
         return this
             .queryStream(
@@ -26,7 +26,7 @@ export class ExternalUserContext extends SubContext {
     /**
      * Adds an external user of an user to the storage.
      */
-    public async addExternalUser(localUuid: string, externalUser: ExternalUser): Promise<ExternalUser> {
+    public async addExternalUser(localUuid: Uuid, externalUser: ExternalUser): Promise<ExternalUser> {
         let result = await this.query("SELECT * FROM external_user " +
             "WHERE name = ? " +
             "AND local_uuid = ? " +
@@ -55,7 +55,7 @@ export class ExternalUserContext extends SubContext {
     /**
      * Deletes an external user from the storage.
      */
-    public async deleteExternalUser(externalUuid: string): Promise<boolean> {
+    public async deleteExternalUser(externalUuid: Uuid): Promise<boolean> {
         // We need a bottom-up approach to delete,
         // because deleting top-down
         // would violate the foreign keys restraints
@@ -77,7 +77,7 @@ export class ExternalUserContext extends SubContext {
     /**
      * Gets an external user.
      */
-    public async getExternalUser(externalUuid: string | string[]): Promise<ExternalUser | ExternalUser[]> {
+    public async getExternalUser(externalUuid: Uuid | string[]): Promise<ExternalUser | ExternalUser[]> {
         return promiseMultiSingle(externalUuid, async (value) => {
             const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
             if (!resultArray.length) {
@@ -90,8 +90,8 @@ export class ExternalUserContext extends SubContext {
     /**
      * Gets an external user with cookies, without items.
      */
-    public async getExternalUserWithCookies(uuid: string)
-        : Promise<{ userUuid: string; type: number; uuid: string; cookies: string }> {
+    public async getExternalUserWithCookies(uuid: Uuid)
+        : Promise<{ userUuid: Uuid; type: number; uuid: Uuid; cookies: string }> {
 
         const value = await this.query(
             "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
@@ -131,7 +131,7 @@ export class ExternalUserContext extends SubContext {
      *  shallow lists.
      */
     public async createShallowExternalUser(storageUser: {
-        name: string; uuid: string; service: number; local_uuid: string;
+        name: string; uuid: Uuid; service: number; local_uuid: Uuid;
     }): Promise<ExternalUser> {
 
         const externalUser: ExternalUser = {
