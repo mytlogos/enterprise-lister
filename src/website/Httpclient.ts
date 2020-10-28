@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -28,6 +28,9 @@ const restApi = {
                 post: true,
             },
             lists: {
+                get: true,
+            },
+            jobs: {
                 get: true,
             },
             medium: {
@@ -206,9 +209,14 @@ interface ExternalUserPath {
     readonly delete: MethodObject;
 }
 
+interface JobPath {
+    readonly get: MethodObject;
+}
+
 interface Api {
     readonly api: ApiPath;
     readonly externalUser: ExternalUserPath;
+    readonly jobs: JobPath;
     readonly list: ListPath;
     readonly news: NewsPath;
     readonly progress: ProgressPath;
@@ -223,43 +231,6 @@ interface Api {
     readonly user: UserPath;
 }
 
-/**
- * @namespace
- * @property {pathObject} api.get
- * @property {pathObject} login.post
- * @property {pathObject} register.post
- * @property {pathObject} user.put
- * @property {pathObject} user.delete
- * @property {pathObject} logout.post
- * @property {pathObject} lists.get
- * @property {pathObject} medium.get
- * @property {pathObject} medium.post
- * @property {pathObject} medium.put
- * @property {pathObject} part.get
- * @property {pathObject} part.put
- * @property {pathObject} part.post
- * @property {pathObject} part.delete
- * @property {pathObject} episode.get
- * @property {pathObject} episode.put
- * @property {pathObject} episode.post
- * @property {pathObject} episode.delete
- * @property {pathObject} progress.get
- * @property {pathObject} progress.put
- * @property {pathObject} progress.post
- * @property {pathObject} progress.delete
- * @property {pathObject} news.get
- * @property {pathObject} list.put
- * @property {pathObject} list.get
- * @property {pathObject} list.post
- * @property {pathObject} list.delete
- * @property {pathObject} list.medium.get
- * @property {pathObject} list.medium.put
- * @property {pathObject} list.medium.post
- * @property {pathObject} list.medium.delete
- * @property {pathObject} externalUser.get
- * @property {pathObject} externalUser.post
- * @property {pathObject} externalUser.delete
- */
 // @ts-ignore
 const api: Api = (function pathGenerator() {
     const abbreviations: { [key: string]: string[] } = {};
@@ -547,6 +518,10 @@ export const HttpClient = {
      */
     updateProgress(episodeId: number, progress: number): Promise<boolean> {
         return this.queryServer(api.progress.post, {episodeId, progress});
+    },
+
+    getJobs(): Promise<Job[]> {
+        return this.queryServer(api.jobs.get);
     },
 
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {

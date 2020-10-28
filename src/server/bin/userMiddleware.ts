@@ -811,6 +811,10 @@ export const getMediumReleases: Handler = (req, res) => {
     sendResult(res, episodeStorage.getMediumReleases(mediumId, uuid));
 };
 
+export const getJobs: Handler = (_req, res) => {
+    sendResult(res, jobStorage.getAllJobs());
+};
+
 export const authenticate: Handler = (req, res, next) => {
     let { uuid, session } = req.body;
 

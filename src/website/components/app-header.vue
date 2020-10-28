@@ -79,6 +79,15 @@
           </li>
           <li class="nav-item">
             <router-link
+              :to="{ name: 'admin' }"
+              tag="a"
+              class="nav-link"
+            >
+              Administration
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
               :to="{ name: 'settings' }"
               tag="a"
               class="nav-link"

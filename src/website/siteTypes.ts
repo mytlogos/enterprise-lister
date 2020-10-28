@@ -169,3 +169,10 @@ export interface MediumRelease {
     date: Date;
     progress: number;
 }
+export interface Job {
+    id: number;
+    name: string;
+    state: string;
+    runningSince?: Date | null;
+    nextRun?: Date | null;
+}

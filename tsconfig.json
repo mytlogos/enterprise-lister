@@ -13,7 +13,6 @@
     "baseUrl": "src/website",
     "types": [
       "webpack-env",
-      "jest"
     ],
     "lib": [
       "esnext",

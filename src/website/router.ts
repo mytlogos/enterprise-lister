@@ -102,6 +102,26 @@ const router = createRouter({
             component: () => import(/* webpackChunkName: "read" */ "./views/MediumDetail.vue"),
         },
         {
+            path: "/admin",
+            name: "admin",
+            // route level code-splitting
+            // this generates a separate chunk (login.[hash].js) for this route
+            // which is lazy-loaded when the route is visited.
+            component: () => import(/* webpackChunkName: "admin" */ "./views/Administration.vue"),
+
+            children: [
+                {
+                    path: "jobs",
+                    name: "jobs",
+                    props: true,
+                    // route level code-splitting
+                    // this generates a separate chunk (login.[hash].js) for this route
+                    // which is lazy-loaded when the route is visited.
+                    component: () => import(/* webpackChunkName: "admin" */ "./views/Jobs.vue"),
+                }
+            ]
+        },
+        {
             path: "/:pathMatch(.*)*",
             name: "Not Found",
             // route level code-splitting
@@ -111,6 +131,5 @@ const router = createRouter({
         }
     ],
 });
-router.beforeEach((to, from) => console.log(`From=${JSON.stringify(from)}->To=${JSON.stringify(to)}`));
 // FIXME remove query from this shit after redirect
 export default router;

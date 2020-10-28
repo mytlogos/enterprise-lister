@@ -20,6 +20,10 @@ export class JobStorage {
         return inContext((context) => context.getJobs(limit));
     }
 
+    public getAllJobs(): Promise<JobItem[]> {
+        return inContext((context) => context.getAllJobs());
+    }
+
     public getJobsById(jobIds: number[]): Promise<JobItem[]> {
         return inContext((context) => context.getJobsById(jobIds));
     }

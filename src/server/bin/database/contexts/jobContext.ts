@@ -33,6 +33,12 @@ export class JobContext extends SubContext {
         );
     }
 
+    public async getAllJobs(): Promise<JobItem[]> {
+        return this.query(
+            "SELECT id, name, state, runningSince, nextRun FROM jobs;",
+        );
+    }
+
     public getJobsById(jobIds: number[]): Promise<JobItem[]> {
         return this.queryInList(
             "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND id ",

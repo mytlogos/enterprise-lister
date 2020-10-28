@@ -19,7 +19,7 @@ function requestTunnel(host?: string) {
                 remove(tunnels, tunnel);
                 logger.info(`tunnel to ${tunnel.url} is closed`);
             });
-            tunnel.on("error", (args) => logger.error(`error for tunnel to ${tunnel.url}: ${stringify(args)}`));
+            tunnel.on("error", (args) => logger.error(`error for tunnel to ${tunnel.url}: ${args.message}`));
         })
         .catch((reason) => logger.error("failed opening a tunnel: " + stringify(reason)));
 }

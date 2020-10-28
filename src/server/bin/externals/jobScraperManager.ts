@@ -49,9 +49,6 @@ class ScrapeJob {
     }
 }
 
-// TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
-const clearJobsOnStartPromise = jobStorage.stopJobs().catch(logger.error);
-
 const missingConnections = new Set<Date>();
 
 // tslint:disable-next-line:max-classes-per-file
@@ -109,7 +106,8 @@ export class JobScraperManager {
     }
 
     public async setup(): Promise<void> {
-        await clearJobsOnStartPromise;
+        // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
+        await jobStorage.stopJobs().catch(logger.error);
         const jobs = this.helper.newsAdapter.map((value): JobRequest => {
             return {
                 deleteAfterRun: false,
