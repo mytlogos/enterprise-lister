@@ -1,3 +1,22 @@
+# [1.3.0](https://github.com/mytlogos/enterprise-lister/compare/v1.2.0...v1.3.0) (2020-11-02)
+
+
+### Bug Fixes
+
+* **asyncstorage:** fix return type of callback ([f104655](https://github.com/mytlogos/enterprise-lister/commit/f10465510eaa15a9748ae0e1d6996c593a8195cb))
+* **database:** fix pool providing, switching ([fc57efc](https://github.com/mytlogos/enterprise-lister/commit/fc57efc39fbdb7c19b2c84035d828b53bb099a69))
+* **jobs:** reduce number of max active jobs ([c526b55](https://github.com/mytlogos/enterprise-lister/commit/c526b5597fee891668bc60c3d94fb13717b3c640))
+* **jobsview:** add scope to table header ([becaf7c](https://github.com/mytlogos/enterprise-lister/commit/becaf7ccaf5df68bab1bc5be5803083493687024))
+* **mediumcontext:** disambiguate columns in query ([28831aa](https://github.com/mytlogos/enterprise-lister/commit/28831aacf4d73c66ecf264d0a2a90a17b7dbb319))
+
+
+### Features
+
+* **admin:** add Administration and Jobs View ([49bd878](https://github.com/mytlogos/enterprise-lister/commit/49bd878abcff38454c2700e82e4d75c0111b71dc))
+* **jobs:** track detailed job contexts and history ([fd7a37d](https://github.com/mytlogos/enterprise-lister/commit/fd7a37d687ba5bf9ff2195afcac9960820368ff5))
+* **jobsview:** add screen reader caption to table ([7d6db22](https://github.com/mytlogos/enterprise-lister/commit/7d6db221ee7e37dde8d1892b1a3486129f2dc383))
+* **storage:** add database pool provider ([65842e9](https://github.com/mytlogos/enterprise-lister/commit/65842e9d17bdd284668aebb3b4bc0ef35c572bdf))
+
 # [1.2.0](https://github.com/mytlogos/enterprise-lister/compare/v1.1.0...v1.2.0) (2020-10-22)
 
 
