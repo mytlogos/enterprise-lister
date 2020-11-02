@@ -63,7 +63,7 @@ export class JobScraperManager {
     public filter: undefined | ((item: JobItem) => boolean);
     private paused = true;
     private readonly helper = new ScraperHelper();
-    private readonly queue = new JobQueue({maxActive: 200});
+    private readonly queue = new JobQueue({maxActive: 50});
     private jobMap = new Map<number | string, Job>();
     private nameIdList: Array<[number, string]> = [];
     private intervalId: Timeout | undefined;
