@@ -284,6 +284,19 @@ dataBaseBuilder.getTableBuilder()
     .parseMeta("PRIMARY KEY(id)")
     .build();
 
+dataBaseBuilder.getTableBuilder()
+    .setName("job_history")
+    .parseColumn("id INT UNSIGNED NOT NULL")
+    .parseColumn("type VARCHAR(200) NOT NULL")
+    .parseColumn("name VARCHAR(200) NOT NULL")
+    .parseColumn("deleteAfterRun BOOLEAN NOT NULL")
+    .parseColumn("runAfter INT")
+    .parseColumn("start DATETIME")
+    .parseColumn("end DATETIME")
+    .parseColumn("arguments TEXT")
+    .parseMeta("PRIMARY KEY(id, start)")
+    .build();
+
 dataBaseBuilder.addMigrations(...Migrations);
 
 /*

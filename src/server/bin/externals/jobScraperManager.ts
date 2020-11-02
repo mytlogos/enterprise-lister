@@ -495,10 +495,13 @@ export class JobScraperManager {
             }
             this.jobMap.set(item.id, job);
             item.state = JobState.RUNNING;
+            item.runningSince = new Date();
             await jobStorage.updateJobs(item);
             logger.info(`Job ${item.name ? item.name : item.id} is running now`);
         };
         job.onDone = async () => {
+            const end = new Date();
+
             if (item.name) {
                 this.jobMap.delete(item.name);
             }
@@ -507,7 +510,7 @@ export class JobScraperManager {
             this.processJobItems(newJobs);
 
             if (item.deleteAfterRun) {
-                await jobStorage.removeJobs(item);
+                await jobStorage.removeJobs(item, end);
             } else {
                 item.lastRun = new Date();
 
@@ -518,7 +521,7 @@ export class JobScraperManager {
                     item.nextRun = new Date(item.lastRun.getTime() + item.interval);
                 }
                 item.state = JobState.WAITING;
-                await jobStorage.updateJobs(item);
+                await jobStorage.updateJobs(item, end);
             }
             logger.info(`Job ${item.name ? item.name : item.id} finished now`);
         };

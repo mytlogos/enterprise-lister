@@ -7,6 +7,7 @@ import {BufferToStringStream} from "../transform";
 import {StatusCodeError} from "request-promise-native/errors";
 import requestPromise from "request-promise-native";
 import {MissingResourceError} from "./errors";
+import { setContext, removeContext } from "../asyncStorage";
 
 type CheerioStatic = cheerio.Root;
 
@@ -28,12 +29,13 @@ export class Queue {
             const worker = () => {
                 return new Promise((subResolve, subReject) => {
                     try {
+                        setContext("worker");
                         const result = callback();
                         subResolve(result);
                     } catch (e) {
                         subReject(e);
                     }
-                }).then(resolve).catch(reject);
+                }).finally(() => removeContext("worker")).then(resolve).catch(reject);
             };
 
             this.queue.push(worker);

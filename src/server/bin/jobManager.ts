@@ -1,7 +1,7 @@
 import {remove, removeLike, stringify} from "./tools";
 import logger from "./logger";
 import {JobRequest} from "./types";
-import {getStore, runAsync} from "./asyncStorage";
+import {getStore, runAsync, setContext, removeContext} from "./asyncStorage";
 import Timeout = NodeJS.Timeout;
 
 /**
@@ -339,30 +339,43 @@ export class JobQueue {
         this.activeJobs.push(toExecute);
         toExecute.startRun = Date.now();
         const store = new Map();
-        runAsync(store, () =>
-            this
-                .executeCallback(async () => {
-                    toExecute.executed++;
-                    if (toExecute.jobInfo.onStart) {
-                        await this
-                            .executeCallback(toExecute.jobInfo.onStart)
-                            .catch((reason) => logger.error(`Job ${toExecute.jobId} onStart threw an error!: ${stringify(reason)}`));
+        runAsync(toExecute.jobId, store, async () => {
+            try {
+                if (toExecute.jobInfo.onStart) {
+                    try {
+                        setContext("Job-OnStart");
+                        await this.executeCallback(toExecute.jobInfo.onStart)
+                    } catch (error) {
+                        logger.error(`Job ${toExecute.jobId} onStart threw an error!: ${stringify(error)}`);
+                    } finally {
+                        removeContext("Job-OnStart");
                     }
+                }
+                setContext("Job");
+                await this.executeCallback(async () => {
+                    toExecute.executed++;
                     logger.info("executing job: " + toExecute.jobId);
                     return toExecute.job(() => this._done(toExecute));
-                })
-                .catch((reason) => {
-                    remove(this.waitingJobs, toExecute);
-                    logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(reason)}`);
-                })
-                .finally(() => {
-                    this._done(toExecute);
+                });
+            } catch (error) {
+                remove(this.waitingJobs, toExecute);
+                logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(error)}`);
+            } finally {
+                removeContext("Job");
+                this._done(toExecute);
 
-                    if (toExecute.jobInfo.onDone) {
-                        this.executeCallback(toExecute.jobInfo.onDone)
-                            .catch((reason) => logger.error(`Job ${toExecute.jobId} onDone threw an error!: ${stringify(reason)}`));
+                if (toExecute.jobInfo.onDone) {
+                    try {
+                        setContext("Job-OnDone");
+                        await this.executeCallback(toExecute.jobInfo.onDone);
+                    } catch (error) {
+                        logger.error(`Job ${toExecute.jobId} onDone threw an error!: ${stringify(error)}`);
+                    } finally {
+                        removeContext("Job-OnDone");
                     }
-                }));
+                }
+            }
+        });
     }
 
     private setInterval(duration?: number) {
