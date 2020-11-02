@@ -1,6 +1,6 @@
 import {SubContext} from "./subContext";
 import {JobItem, JobRequest, JobState} from "../../types";
-import {ignore, isString, promiseMultiSingle} from "../../tools";
+import {isString, promiseMultiSingle} from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
 import {escapeLike} from "../storages/storageTools";
@@ -30,6 +30,12 @@ export class JobContext extends SubContext {
         return this.query(
             "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' order by nextRun LIMIT ?",
             limit
+        );
+    }
+
+    public async getAllJobs(): Promise<JobItem[]> {
+        return this.query(
+            "SELECT id, name, state, runningSince, nextRun FROM jobs;",
         );
     }
 
@@ -104,8 +110,12 @@ export class JobContext extends SubContext {
         });
     }
 
-    public async removeJobs(jobs: JobItem | JobItem[]): Promise<void> {
+    public async removeJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
         await this.queryInList("DELETE FROM jobs WHERE id", jobs, undefined, (value) => value.id);
+
+        if (finished) {
+            await this.addJobHistory(jobs, finished);
+        }
     }
 
     public async removeJob(key: string | number): Promise<void> {
@@ -116,16 +126,19 @@ export class JobContext extends SubContext {
         }
     }
 
-    public async updateJobs(jobs: JobItem | JobItem[]): Promise<void> {
+    public async updateJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
         // @ts-ignore
-        return promiseMultiSingle(jobs, (value: JobItem) => {
+        await promiseMultiSingle(jobs, (value: JobItem) => {
             return this.update("jobs", (updates, values) => {
                 updates.push("state = ?");
                 values.push(value.state);
 
                 // for now updateJobs is used only to switch between the running states running and waiting
                 updates.push("runningSince = ?");
-                values.push(value.state === JobState.RUNNING ? new Date() : null);
+                if (value.state === JobState.RUNNING && !value.runningSince) {
+                    throw Error("No running since value on running job!");
+                }
+                values.push(value.runningSince);
 
                 updates.push("lastRun = ?");
                 values.push(value.lastRun);
@@ -143,7 +156,11 @@ export class JobContext extends SubContext {
                 column: "id",
                 value: value.id
             });
-        }).then(ignore);
+        });
+
+        if (finished) {
+            await this.addJobHistory(jobs, finished);
+        }
     }
 
     public getJobsInState(state: JobState): Promise<JobItem[]> {
@@ -151,5 +168,29 @@ export class JobContext extends SubContext {
             "SELECT * FROM jobs WHERE state = ? order by nextRun",
             state
         );
+    }
+
+    private async addJobHistory(jobs: JobItem | JobItem[], finished: Date): Promise<void> {
+        // @ts-ignore
+        await promiseMultiSingle(jobs, (value: JobItem) => {
+            let args = value.arguments;
+            if (value.arguments && !isString(value.arguments)) {
+                args = JSON.stringify(value.arguments);
+            }
+            return this.query(
+                "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, start, end, arguments)" +
+                " VALUES (?,?,?,?,?,?,?,?);",
+                [
+                    value.id,
+                    value.type,
+                    value.name,
+                    value.deleteAfterRun,
+                    value.runAfter,
+                    value.runningSince,
+                    finished,
+                    args
+                ]
+            );
+        });
     }
 }

@@ -17,6 +17,7 @@ import {JobContext} from "./jobContext";
 import {MediumInWaitContext} from "./mediumInWaitContext";
 import {ConnectionContext} from "../databaseTypes";
 import env from "../../env";
+import { setContext, removeContext } from "../../asyncStorage";
 
 const database = "enterprise";
 
@@ -290,18 +291,22 @@ export class QueryContext implements ConnectionContext {
      * @param query
      * @param parameter
      */
-    public query(query: string, parameter?: any | any[]): Promise<any> {
+    public async query(query: string, parameter?: any | any[]): Promise<any> {
         if (query.length > 20 && env.development) {
             logger.debug(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
         }
-        return Promise.resolve()
-            .then(() => this.con.query(query, parameter))
-            .then((value) => {
-                if (Array.isArray(value) && value.length > 1000) {
-                    logger.debug(`${value.length} Results for ${query}`);
-                }
-                return value;
-            });
+        let result;
+        try {
+            setContext("sql-query");
+            result = await this.con.query(query, parameter);
+        } finally {
+            removeContext("sql-query");
+        }
+
+        if (Array.isArray(result) && result.length > 1000) {
+            logger.debug(`${result.length} Results for ${query}`);
+        }
+        return result;
     }
 
     /**

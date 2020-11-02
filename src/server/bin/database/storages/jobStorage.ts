@@ -20,6 +20,10 @@ export class JobStorage {
         return inContext((context) => context.getJobs(limit));
     }
 
+    public getAllJobs(): Promise<JobItem[]> {
+        return inContext((context) => context.getAllJobs());
+    }
+
     public getJobsById(jobIds: number[]): Promise<JobItem[]> {
         return inContext((context) => context.getJobsById(jobIds));
     }
@@ -36,16 +40,16 @@ export class JobStorage {
         return inContext((context) => context.addJobs(jobs));
     }
 
-    public removeJobs(jobs: JobItem | JobItem[]): Promise<void> {
-        return inContext((context) => context.removeJobs(jobs));
+    public removeJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
+        return inContext((context) => context.removeJobs(jobs, finished));
     }
 
     public removeJob(key: string | number): Promise<void> {
         return inContext((context) => context.removeJob(key));
     }
 
-    public updateJobs(jobs: JobItem | JobItem[]): Promise<void> {
-        return inContext((context) => context.updateJobs(jobs));
+    public updateJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
+        return inContext((context) => context.updateJobs(jobs, finished));
     }
 
     public async getJobsInState(state: JobState): Promise<JobItem[]> {

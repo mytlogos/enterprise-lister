@@ -55,6 +55,10 @@ export class MediumContext extends SubContext {
         return promiseMultiSingle(id, async (mediumId) => {
             const resultArray: any[] = await this.query("SELECT * FROM medium WHERE medium.id =?;", mediumId);
             const result = resultArray[0];
+
+            if (!result) {
+                throw Error(`Medium with id ${mediumId} does not exist`);
+            }
             return {
                 id: result.id,
                 countryOfOrigin: result.countryOfOrigin,

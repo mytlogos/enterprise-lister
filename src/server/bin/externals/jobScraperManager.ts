@@ -49,9 +49,6 @@ class ScrapeJob {
     }
 }
 
-// TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
-const clearJobsOnStartPromise = jobStorage.stopJobs().catch(logger.error);
-
 const missingConnections = new Set<Date>();
 
 // tslint:disable-next-line:max-classes-per-file
@@ -66,7 +63,7 @@ export class JobScraperManager {
     public filter: undefined | ((item: JobItem) => boolean);
     private paused = true;
     private readonly helper = new ScraperHelper();
-    private readonly queue = new JobQueue({maxActive: 200});
+    private readonly queue = new JobQueue({maxActive: 50});
     private jobMap = new Map<number | string, Job>();
     private nameIdList: Array<[number, string]> = [];
     private intervalId: Timeout | undefined;
@@ -109,7 +106,8 @@ export class JobScraperManager {
     }
 
     public async setup(): Promise<void> {
-        await clearJobsOnStartPromise;
+        // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
+        await jobStorage.stopJobs().catch(logger.error);
         const jobs = this.helper.newsAdapter.map((value): JobRequest => {
             return {
                 deleteAfterRun: false,
@@ -497,10 +495,13 @@ export class JobScraperManager {
             }
             this.jobMap.set(item.id, job);
             item.state = JobState.RUNNING;
+            item.runningSince = new Date();
             await jobStorage.updateJobs(item);
             logger.info(`Job ${item.name ? item.name : item.id} is running now`);
         };
         job.onDone = async () => {
+            const end = new Date();
+
             if (item.name) {
                 this.jobMap.delete(item.name);
             }
@@ -509,7 +510,7 @@ export class JobScraperManager {
             this.processJobItems(newJobs);
 
             if (item.deleteAfterRun) {
-                await jobStorage.removeJobs(item);
+                await jobStorage.removeJobs(item, end);
             } else {
                 item.lastRun = new Date();
 
@@ -520,7 +521,7 @@ export class JobScraperManager {
                     item.nextRun = new Date(item.lastRun.getTime() + item.interval);
                 }
                 item.state = JobState.WAITING;
-                await jobStorage.updateJobs(item);
+                await jobStorage.updateJobs(item, end);
             }
             logger.info(`Job ${item.name ? item.name : item.id} finished now`);
         };

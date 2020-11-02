@@ -53,6 +53,7 @@ function userRouter(): Router {
     router.get("/new", UserApi.getNew);
     router.get("/download", UserApi.downloadEpisode);
     router.use("/medium", mediumRouter());
+    router.use("/jobs", jobsRouter());
 
     router.use("/news", newsRouter());
     router.use("/list", listRouter());
@@ -145,6 +146,18 @@ function mediumRouter(): Router {
     progressRoute.post(UserApi.postProgress);
     progressRoute.put(UserApi.putProgress);
     progressRoute.delete(UserApi.deleteProgress);
+
+    return router;
+}
+
+/**
+ * Creates the Jobs API Router.
+ */
+function jobsRouter(): Router {
+    const router = Router();
+
+    const jobRoute = router.route("");
+    jobRoute.get(UserApi.getJobs);
 
     return router;
 }
