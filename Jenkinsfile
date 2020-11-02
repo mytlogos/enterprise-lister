@@ -91,6 +91,11 @@ pipeline {
       }
     }
   }
+  post {
+    always {
+      cleanWs()
+    }
+  }
   tools {
     nodejs 'node'
   }
