@@ -46,7 +46,7 @@ pipeline {
       }
       steps {
         // copy env file for test
-        sh 'cp -u $ENV_ENV env.env'
+        sh 'install -m 600 $ENV_ENV env.env'
         sh 'npm run test'
         // remove env file for test
         sh 'rm env.env'
