@@ -157,7 +157,7 @@ export function removeContext(name: string): void {
     }
 }
 
-export function runAsync(id: number, store: Map<string, any>, callback: (...args: any[]) => void, ...args: any[]): void {
+export function runAsync(id: number, store: Map<string, any>, callback: (...args: any[]) => void | Promise<void>, ...args: any[]): void {
     localStorage.run(
         store,
         async () => {
@@ -165,7 +165,6 @@ export function runAsync(id: number, store: Map<string, any>, callback: (...args
             try {
                 const result = callback(...args);
 
-                // @ts-expect-error
                 if (result && result.then) {
                     await result;
                 }
