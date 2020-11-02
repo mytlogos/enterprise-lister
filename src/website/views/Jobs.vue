@@ -54,6 +54,9 @@
             <td colspan="5">
               <template v-if="liveJobs[job.id]">
                 <table class="table table-sm table-hover">
+                  <caption class="sr-only">
+                    Time spent in Running or Waiting depending on contexts
+                  </caption>
                   <thead>
                     <tr>
                       <th class="fit">
