@@ -447,7 +447,7 @@ export class MediumContext extends SubContext {
 
     public getAllMediaTocs(): Promise<Array<{ link?: string; id: number }>> {
         return this.query(
-            "SELECT id, link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id"
+            "SELECT medium.id, medium_toc.link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id"
         );
     }
 
