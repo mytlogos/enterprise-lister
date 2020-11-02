@@ -59,11 +59,18 @@
                   </caption>
                   <thead>
                     <tr>
-                      <th class="fit">
+                      <th
+                        class="fit"
+                        scope="col"
+                      >
                         Context
                       </th>
-                      <th>Running</th>
-                      <th>Waiting</th>
+                      <th scope="col">
+                        Running
+                      </th>
+                      <th scope="col">
+                        Waiting
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
