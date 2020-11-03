@@ -282,6 +282,18 @@ async function processMediumNews(
     }
 }
 
+export async function loadToc(link: string): Promise<Toc[]> {
+    checkHooks();
+    const results = await Promise.allSettled([...tocScraper.entries()].filter(value => value[0].test(link)).map(value => {
+        const scraper = value[1];
+        return scraper(link);
+    }));
+    return (results
+        .filter(result => result.status === "fulfilled") as Array<PromiseFulfilledResult<Toc[]>>)
+        .map((value: PromiseFulfilledResult<Toc[]>) => value.value)
+        .flat();
+}
+
 export async function searchForTocJob(name: string, item: TocSearchMedium): Promise<TocResult> {
     logger.info(`searching for toc on ${name} with ${JSON.stringify(item)}`);
     const hook = nameHookMap.get(name);

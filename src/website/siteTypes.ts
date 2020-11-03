@@ -176,3 +176,52 @@ export interface Job {
     runningSince?: Date | null;
     nextRun?: Date | null;
 }
+
+export interface TocContent {
+    title: string;
+    combiIndex: number;
+    totalIndex: number;
+    partialIndex?: number;
+}
+
+export interface TocEpisode extends TocContent {
+    url: string;
+    releaseDate?: Date;
+    noTime?: boolean;
+    locked?: boolean;
+}
+
+export interface TocPart extends TocContent {
+    episodes: TocEpisode[];
+}
+
+export interface Toc {
+    title: string;
+    content: TocContent[];
+    mediumId?: number;
+    synonyms?: string[];
+    mediumType: MediaType;
+    partsOnly?: boolean;
+    end?: boolean;
+    link: string;
+    langCOO?: string;
+    langTL?: string;
+    statusCOO?: ReleaseState;
+    statusTl?: ReleaseState;
+    authors?: Array<{ name: string; link: string }>;
+    artists?: Array<{ name: string; link: string }>;
+}
+
+export interface AddMedium {
+    title: string;
+    medium: number;
+    author?: string;
+    artist?: string;
+    countryOfOrigin?: string;
+    languageOfOrigin?: string;
+    lang?: string;
+    stateOrigin?: number;
+    stateTL?: number;
+    series?: string;
+    universe?: string;
+}

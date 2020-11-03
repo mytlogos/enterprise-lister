@@ -16,6 +16,7 @@ import {
     TransferList,
     TransferMedium,
     User,
+    AddMedium,
 } from "./siteTypes";
 import { HttpClient } from "./Httpclient";
 import { Column } from "./siteTypes";
@@ -441,10 +442,10 @@ const app = createApp({
             console.log(id);
         },
 
-        addMedium(data: { title: string; type: number }) {
+        addMedium(data: AddMedium) {
             if (!data.title) {
                 this.addMediumModal.error = "Missing title";
-            } else if (!data.type) {
+            } else if (!data.medium) {
                 this.addMediumModal.error = "Missing type";
             } else {
                 HttpClient.createMedium(data)
