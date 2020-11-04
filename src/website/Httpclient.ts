@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -32,6 +32,14 @@ const restApi = {
             },
             jobs: {
                 get: true,
+            },
+            searchtoc: {
+                get: true,
+            },
+            toc: {
+                get: true,
+                post: true,
+                delete: true,
             },
             medium: {
                 get: true,
@@ -209,6 +217,12 @@ interface ExternalUserPath {
     readonly delete: MethodObject;
 }
 
+interface TocPath {
+    readonly get: MethodObject;
+    readonly post: MethodObject;
+    readonly delete: MethodObject;
+}
+
 interface JobPath {
     readonly get: MethodObject;
 }
@@ -219,6 +233,8 @@ interface Api {
     readonly jobs: JobPath;
     readonly list: ListPath;
     readonly news: NewsPath;
+    readonly toc: TocPath;
+    readonly searchtoc: { get: MethodObject };
     readonly progress: ProgressPath;
     readonly episode: EpisodePath;
     readonly release: ReleasePath;
@@ -450,7 +466,13 @@ export const HttpClient = {
         );
     },
 
-    createMedium(medium: { title: string; type: number }): Promise<Medium> {
+    /**
+     * Creates an medium server side.
+     * Returns a fully valid Medium if successful.
+     * 
+     * @param medium medium to create
+     */
+    createMedium(medium: AddMedium): Promise<SimpleMedium & { id: number }> {
         return this.queryServer(api.medium.post, { medium });
     },
 
@@ -522,6 +544,15 @@ export const HttpClient = {
 
     getJobs(): Promise<Job[]> {
         return this.queryServer(api.jobs.get);
+    },
+
+    getToc(link: string): Promise<Toc[]> {
+        link = encodeURIComponent(link);
+        return this.queryServer(api.searchtoc.get, {link});
+    },
+
+    addToc(link: string, id: number): Promise<boolean> {
+        return this.queryServer(api.toc.post, {toc: link, mediumId: id});
     },
 
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {

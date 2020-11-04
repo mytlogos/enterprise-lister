@@ -45,6 +45,7 @@ function userRouter(): Router {
     router.get("/invalidated", UserApi.getInvalidated);
     router.post("/bookmarked", UserApi.addBookmarked);
     router.get("/associated", UserApi.getAssociatedEpisode);
+    router.get("/searchtoc", UserApi.searchToc);
     router.post("/toc", UserApi.addToc);
     router.get("/toc", UserApi.getToc);
     router.delete("/toc", UserApi.deleteToc);

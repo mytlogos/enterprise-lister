@@ -1,120 +1,162 @@
 <template>
-  <modal
-    :error="error"
-    :show="show"
-    @finish="send()"
-  >
-    <template #title>
+  <div>
+    <h1>
       Add Medium
-    </template>
-    <template #input>
-      <div class="title">
-        <label>
-          Title:
+    </h1>
+    <form class="form-inline mx-3 px-2">
+      <label>
+        Load from Toc Link:
+        <input
+          v-model="toc"
+          class="form-control ml-1"
+          name="toc"
+          title="ToC Link"
+          type="url"
+          placeholder="URL of the ToC"
+        >
+      </label>
+      <button 
+        class="btn btn-dark ml-1"
+        type="button"
+        @click.left="loadToc()"
+      >
+        Load
+      </button>
+    </form>
+    <form>
+      <div class="form-row mx-3">
+        <div class="form-group col-md-3">
+          <label>
+            Title
+          </label>
           <input
             v-model="medium.title"
+            class="form-control"
             name="title"
             required
             title="Title"
             type="text"
+            placeholder="Title of the Medium"
           >
-        </label>
+        </div>
+        <div class="form-group col-md-3">
+          <label>Medium</label>
+          <type-icon 
+            :type="medium.medium"
+            class="form-control-plaintext"
+          />
+        </div>
       </div>
-      <div class="medium">
-        <label>Medium:</label>
-        <span
-          v-for="type of mediaTypes"
-          :key="type"
-          class="medium-check-container"
-        >
+      <div class="form-row mx-3">
+        <div class="form-group col-md-3">
           <label>
-            <input
-              v-model="type.checked"
-              type="checkbox"
-            >
-            {{ type.name }}
+            Author
           </label>
-        </span>
-      </div>
-      <div class="author autocomplete">
-        <label>
-          Author:
           <input
             v-model="medium.author"
             name="author"
+            class="form-control"
             title="Author"
             type="text"
+            placeholder="One or multiple Authors of the Medium"
           >
-        </label>
+        </div>
+        <div class="form-group col-md-3">
+          <label>Artist</label>
+          <input
+            v-model="medium.artist"
+            class="form-control"
+            name="artist"
+            title="Artist"
+            type="text"
+            placeholder="One or multiple Artists of the Medium"
+          > 
+        </div>
       </div>
-      <div class="artist autocomplete">
-        <label>Artist: <input
-          v-model="medium.artist"
-          name="artist"
-          title="Artist"
-          type="text"
-        > </label>
+      <div class="form-row mx-3">
+        <div class="form-group col-md-3">
+          <label>Series</label>
+          <input
+            v-model="medium.series"
+            class="form-control"
+            name="series"
+            title="Series"
+            type="text"
+            placeholder="Series of the Medium"
+          > 
+        </div>
+        <div class="form-group col-md-3">
+          <label>Universe</label>
+          <input
+            v-model="medium.universe"
+            class="form-control"
+            name="universe"
+            title="Universe"
+            type="text"
+            placeholder="Universe of the Medium"
+          > 
+        </div>
       </div>
-      <div class="series autocomplete">
-        <label>Series: <input
-          v-model="medium.series"
-          name="series"
-          title="Series"
-          type="text"
-        > </label>
-      </div>
-      <div class="universe autocomplete">
-        <label>Universe: <input
-          v-model="medium.universe"
-          name="universe"
-          title="Universe"
-          type="text"
-        > </label>
-      </div>
-      <div class="language autocomplete">
-        <label>Language: <input
+      <div class="form-group col-md-3 mx-3 px-1">
+        <label>Language</label>
+        <input
           v-model="medium.language"
+          class="form-control"
           name="language"
           title="Language"
           type="text"
-        > </label>
+          placeholder="Translated Language"
+        > 
       </div>
-      <div class="countryOfOrigin autocomplete">
-        <label>Country Of Origin: <input
-          v-model="medium.countryOfOrigin"
-          name="countryOfOrigin"
-          title="Country Of Origin"
-          type="text"
-        > </label>
+      <div class="form-row mx-3">
+        <div class="form-group col-md-3">
+          <label>Country Of Origin</label>
+          <input
+            v-model="medium.countryOfOrigin"
+            class="form-control"
+            name="countryOfOrigin"
+            title="Country Of Origin"
+            type="text"
+            placeholder="Country of Origin"
+          > 
+        </div>
+        <div class="form-group col-md-3">
+          <label>Language Of Origin</label>
+          <input
+            v-model="medium.langOfOrigin"
+            class="form-control"
+            name="langOfOrigin"
+            title="Language Of Origin"
+            type="text"
+            placeholder="Original Language"
+          > 
+        </div>
       </div>
-      <div class="langOfOrigin autocomplete">
-        <label>Language Of Origin: <input
-          v-model="medium.langOfOrigin"
-          name="langOfOrigin"
-          title="Language Of Origin"
-          type="text"
-        > </label>
+      <div class="form-row mx-3">
+        <div class="form-group col-md-3">
+          <label>Status of Translator</label>
+          <release-state
+            :state="medium.stateTl"
+            class="ml-1"
+            name="stateTl"
+            title="Status of Translator"
+            placeholder="Status of the Translation"
+          />
+        </div>
+        <div class="form-group col-md-3">
+          <label>Status in COO</label>
+          <release-state
+            :state="medium.stateCOO"
+            class="ml-1"
+            name="stateCOO"
+            title="Status in COO"
+            placeholder="Publishing Status of the Medium"
+          />
+        </div>
       </div>
-      <div class="stateTl autocomplete">
-        <label>Status of Translator: <input
-          v-model="medium.stateTl"
-          name="stateTl"
-          title="Status of Translator"
-          type="text"
-        > </label>
-      </div>
-      <div class="stateCOO autocomplete">
-        <label>Status in COO: <input
-          v-model="medium.stateCOO"
-          name="stateCOO"
-          title="Status in COO"
-          type="text"
-        >
-        </label>
-      </div>
-      <div class="list select-container">
+      <div class="form-group mx-3 px-1">
         <select
-          class="list-select"
+          class="form-control col-md-3"
           title="Select list to add medium to:"
         >
           <option
@@ -133,109 +175,138 @@
           </option>
         </select>
       </div>
-    </template>
-    <template #finish>
-      Add Medium
-    </template>
-  </modal>
+      <button
+        class="btn btn-dark mx-3 px-1"
+        type="button"
+        @click="send()"
+      >
+        Add Medium
+      </button>
+      <div class="error" />
+    </form>
+    <div
+      id="alert-toast"
+      class="toast"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      <div class="toast-header">
+        <i
+          class="fas fa-exclamation-circle rounded mr-2 text-danger"
+          aria-hidden="true"
+        />
+        <strong class="mr-auto">Error</strong>
+        <button
+          type="button"
+          class="ml-2 mb-1 close"
+          data-dismiss="toast"
+          aria-label="Close"
+          @click.left="closeProgressToast"
+        >
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="toast-body">
+        {{ toastMessage }}
+      </div>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../bus";
-import modal from "../components/modal/modal.vue";
+import { defineComponent, PropType } from "vue";
+import { List, AddMedium } from "../siteTypes";
+import { HttpClient } from "../Httpclient";
+import TypeIcon from "../components/type-icon.vue";
+import ReleaseState from "../components/release-state.vue";
+import $ from "jquery";
 
-interface GuiMediaType {
-  value: number;
-  name: string;
-  checked: boolean;
-}
-
-interface AddMedium {
-  title: string;
-  author: string;
-  artist: string;
-  series: string;
-  universe: string;
-  language: string;
-  countryOfOrigin: string;
-  langOfOrigin: string;
-  stateTl: string;
-  stateCOO: string;
-}
+// initialize all toasts
+$(".toast").toast();
 
 interface Data {
-  mediaTypes: GuiMediaType[];
-  name: string;
   medium: AddMedium;
+  toc: string;
+  toastMessage: string;
+  toastTitle: string;
 }
 
-import { defineComponent, PropType } from "vue";
-import { List } from "../siteTypes";
-
 export default defineComponent({
-    name: "AddMediumModal",
-    components: {modal},
+    name: "AddMedium",
+    components: {
+        TypeIcon,
+        ReleaseState
+    },
     props: {
         show: Boolean,
-        error: { type: String, required: true },
         lists: { type: Array as PropType<List[]>, required: true },
     },
 
     data(): Data {
         return {
-            mediaTypes: [
-                {
-                    name: "Text",
-                    checked: false,
-                    value: 0x1,
-                },
-                {
-                    name: "Audio",
-                    checked: false,
-                    value: 0x2,
-                },
-                {
-                    name: "Video",
-                    checked: false,
-                    value: 0x4,
-                },
-                {
-                    name: "Image",
-                    checked: false,
-                    value: 0x8,
-                },
-            ],
-            name: "",
             medium: {
                 title: "",
+                medium: 0,
                 author: "",
                 artist: "",
                 series: "",
                 universe: "",
-                language: "",
+                lang: "",
                 countryOfOrigin: "",
-                langOfOrigin: "",
-                stateTl: "",
-                stateCOO: "",
-            }
+                languageOfOrigin: "",
+                stateTL: 0,
+                stateOrigin: 0,
+            },
+            toc: "",
+            toastMessage: "",
+            toastTitle: ""
         };
-    },
-    mounted(): void {
-        console.log("mounted");
     },
 
     methods: {
         send(): void {
-            let mediumType = 0;
-            this.mediaTypes.forEach((value) => {
-                if (value.checked) {
-                    mediumType |= value.value;
+            const result: AddMedium = {...this.medium};
+            if (!result.medium || !result.title) {
+                this.showMessage("Invalid Medium, either title or medium type missing", "Invalid");
+                return;
+            }
+            HttpClient
+                .createMedium(result)
+                .then(medium => HttpClient.addToc(this.toc, medium.id))
+                .then(success => {
+                    if (success) {
+                        this.showMessage("Successfully created Medium", "Success");
+                    } else {
+                        // should never happen, success is always true if there is no error
+                        this.showMessage("Failed in creating Medium", "Failure");
+                    }
+                })
+                .catch(() => {
+                    this.showMessage("Failed in creating Medium", "Failure");
+                });
+        },
+        showMessage(message: string, title: string) {
+            this.toastMessage = message;
+            this.toastTitle = title;
+            $("#alert-toast").toast("show");
+        },
+        loadToc(): void {
+            HttpClient.getToc(this.toc).then(value => {
+                // look only at first value for now
+                const toc = value[0];
+
+                if (toc) {
+                    this.medium.stateOrigin = toc.statusCOO || 0;
+                    this.medium.stateTL = toc.statusTl || 0;
+                    this.medium.medium = toc.mediumType;
+                    this.medium.title = toc.title;
+                    this.medium.lang = toc.langTL || "";
+                    this.medium.languageOfOrigin = toc.langCOO || "";
+                    this.medium.author = toc.authors ? toc.authors.join(", ") : "";
+                    this.medium.artist = toc.authors ? toc.artists.join(", ") : "";
                 }
-            });
-            const result = {type: mediumType};
-            Object.assign(result, this.medium);
-            console.log(result);
-            emitBusEvent("do:add-medium", result);
+            }).catch(console.error);
         }
     }
 });

@@ -14,7 +14,7 @@ import { factory } from "./externals/listManager";
 import { Handler, Request, Response } from "express";
 import stringify from "stringify-stream";
 import logger from "./logger";
-import { downloadEpisodes, filterScrapeAble, search as searchMedium } from "./externals/scraperTools";
+import { downloadEpisodes, filterScrapeAble, search as searchMedium, loadToc } from "./externals/scraperTools";
 import { Errors, isError, isQuery, isString, stringToNumberList, getDate } from "./tools";
 import { JobRequest, ScrapeName } from "./types";
 import { TocRequest } from "./externals/types";
@@ -34,6 +34,11 @@ function isInvalidSimpleMedium(medium: any): boolean {
         // valid medium types are 1-8
         || !Number.isInteger(medium.medium) || medium.medium < 1 || medium.medium > 8;
 }
+
+export const searchToc: Handler = (req, res) => {
+    const link = decodeURIComponent(extractQueryParam(req, "link"));
+    sendResult(res, loadToc(link));
+};
 
 export const getToc: Handler = (req, res) => {
     let media = extractQueryParam(req, "mediumId");

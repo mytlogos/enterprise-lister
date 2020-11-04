@@ -170,6 +170,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const items = $(".wp-manga-chapter");
 
     const titleRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?\s*((\d+)(\.(\d+))?)/i;
+    const numberTitleRegex = /^(\s*)((\d+)(\.(\d+))?)/i;
     const linkRegex = /ch(\.|a?.?p?.?t?.?e?.?r?.?)?-((\d+)(\.(\d+))?)/i;
 
     const seenEpisodes: Map<number, string> = new Map();
@@ -197,7 +198,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
             logger.warn("changed time format on boxNovel: " + tocLink);
             return [];
         }
-        let regexResult = titleRegex.exec(episodeTitle);
+        let regexResult = titleRegex.exec(episodeTitle) || numberTitleRegex.exec(episodeTitle);
 
         if (!regexResult) {
             regexResult = linkRegex.exec(link);
@@ -208,7 +209,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
                 if (lowerTitle.startsWith("extra")) {
                     continue;
                 }
-                logger.warn("changed title format on boxNovel: " + tocLink);
+                logger.warn(`changed title format on boxNovel: ${tocLink}, unknown title: ${episodeTitle}, unknown link: ${link}`);
                 return [];
             }
         } else if (regexResult.index) {
