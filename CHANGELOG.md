@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/mytlogos/enterprise-lister/compare/v1.3.0...v1.4.0) (2020-11-04)
+
+
+### Features
+
+* **addmedium:** rewrite AddMedium View, load data from toc link ([ee5c719](https://github.com/mytlogos/enterprise-lister/commit/ee5c71957d0f220a335e45f8ade6a9f6c4a9bf13))
+
 # [1.3.0](https://github.com/mytlogos/enterprise-lister/compare/v1.2.0...v1.3.0) (2020-11-02)
 
 
