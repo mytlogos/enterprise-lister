@@ -58,7 +58,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
         }
 
         const totalLink = url.resolve(uri, titleElement.attr("href") as string);
-        const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/([^/]_)?\d+\/([^/]_)?\d+).*/.exec(totalLink);
+        const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/([^/]+_)?\d+\/([^/]+_)?\d+).*/.exec(totalLink);
         if (!linkGroup) {
             logger.info(`unknown news url format on webnovel: ${totalLink}`);
             continue;
@@ -90,7 +90,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     // wait for a normal request, to get the right cookies
     await initPromise;
 
-    const bookIdResult = /https?:\/\/(www\.)?webnovel\.com\/book\/([^/]_)?(\d+)/.exec(urlString);
+    const bookIdResult = /https?:\/\/(www\.)?webnovel\.com\/book\/([^/]+_)?(\d+)/.exec(urlString);
 
     if (!bookIdResult) {
         throw new UrlError("WebNovel toc link has no bookIdResult: " + urlString, urlString);
