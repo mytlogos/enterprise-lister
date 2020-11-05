@@ -172,7 +172,7 @@ export interface MediumRelease {
 export interface Job {
     id: number;
     name: string;
-    state: string;
+    state: "running" | "waiting";
     runningSince?: Date | null;
     nextRun?: Date | null;
 }
