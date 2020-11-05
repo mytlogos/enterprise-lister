@@ -1,3 +1,15 @@
+# [1.5.0](https://github.com/mytlogos/enterprise-lister/compare/v1.4.0...v1.5.0) (2020-11-05)
+
+
+### Bug Fixes
+
+* **scraper:** fix link regex ([0d961bb](https://github.com/mytlogos/enterprise-lister/commit/0d961bb1506f7f9783062bb66dfe554383213475))
+
+
+### Features
+
+* **addmedium:** do not autohide toast and show it above button ([2ffa63b](https://github.com/mytlogos/enterprise-lister/commit/2ffa63b71465bbc8f4de528a6db72bdff92b9237))
+
 # [1.4.0](https://github.com/mytlogos/enterprise-lister/compare/v1.3.0...v1.4.0) (2020-11-04)
 
 
