@@ -281,6 +281,8 @@ export default defineComponent({
                     if (datum.nextRun < now) {
                         lagging++;
                     }
+                    // waiting jobs should not have this value set
+                    datum.runningSince = null;
                 }
             }
             this.summary.running = running;
