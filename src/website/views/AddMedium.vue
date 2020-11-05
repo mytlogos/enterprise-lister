@@ -190,13 +190,15 @@
       role="alert"
       aria-live="assertive"
       aria-atomic="true"
+      data-autohide="false"
+      style="position: relative; top: -10em; left: 1em"
     >
       <div class="toast-header">
         <i
           class="fas fa-exclamation-circle rounded mr-2 text-danger"
           aria-hidden="true"
         />
-        <strong class="mr-auto">Error</strong>
+        <strong class="mr-auto">{{ toastTitle }}</strong>
         <button
           type="button"
           class="ml-2 mb-1 close"
@@ -290,6 +292,7 @@ export default defineComponent({
             this.toastMessage = message;
             this.toastTitle = title;
             $("#alert-toast").toast("show");
+            console.log(`Showing Message: ${title}: ${message}`)
         },
         loadToc(): void {
             HttpClient.getToc(this.toc).then(value => {
