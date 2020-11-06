@@ -3,6 +3,22 @@
     <h1 id="jobs-title">
       Jobs
     </h1>
+    <div class="row">
+      <span class="col">Running Jobs: {{ summary.running }}</span>
+    </div>
+    <div class="row">
+      <span class="col">Waiting Jobs: {{ summary.waiting }}</span>
+    </div>
+    <div class="row">
+      <span class="col">Lagging Jobs:
+        <span
+          class="badge"
+          :class="(summary.lagging / (summary.waiting + summary.running)) > 0.1 ? 'badge-danger' : 'badge-success'"
+        >
+          {{ summary.lagging }}
+        </span>
+      </span>
+    </div>
     <table
       class="table"
       aria-describedby="jobs-title"
@@ -173,12 +189,19 @@ interface HistoryItem {
     contexts: string[];
 }
 
+interface JobsSummary {
+    running: number;
+    waiting: number;
+    lagging: number;
+}
+
 interface Data {
     jobs: Job[];
     sortedOn: Array<keyof Job>;
     media: Map<number, SimpleMedium>;
     now: Date;
     liveJobs: { [key: number]: LiveJob };
+    summary: JobsSummary;
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
@@ -200,7 +223,12 @@ export default defineComponent({
             sortedOn: ["state", "runningSince", "nextRun"],
             media: new Map(),
             now: new Date(),
-            liveJobs: {}
+            liveJobs: {},
+            summary: {
+                waiting: 0,
+                running: 0,
+                lagging: 0,
+            }
         };
     },
     computed: {
@@ -234,6 +262,11 @@ export default defineComponent({
 
         // fetch storage jobs data
         HttpClient.getJobs().then(data => {
+            let running = 0;
+            let waiting = 0;
+            let lagging = 0;
+            const now = new Date();
+
             for (const datum of data) {
                 if (datum.runningSince) {
                     datum.runningSince = new Date(datum.runningSince);
@@ -241,7 +274,20 @@ export default defineComponent({
                 if (datum.nextRun) {
                     datum.nextRun = new Date(datum.nextRun);
                 }
+                if (datum.state === "running") {
+                    running++;
+                } else {
+                    waiting++;
+                    if (datum.nextRun < now) {
+                        lagging++;
+                    }
+                    // waiting jobs should not have this value set
+                    datum.runningSince = null;
+                }
             }
+            this.summary.running = running;
+            this.summary.waiting = waiting;
+            this.summary.lagging = lagging;
             this.jobs = data;
         });
 
@@ -342,7 +388,6 @@ export default defineComponent({
                 value.waitingWidth = (value.waiting / total) * 100;
                 value.runningWidth = (value.running / total) * 100;
             }
-            console.log(liveJob, values);
             return values;
         }
     }
