@@ -1,3 +1,15 @@
+# [1.6.0](https://github.com/mytlogos/enterprise-lister/compare/v1.5.0...v1.6.0) (2020-11-06)
+
+
+### Bug Fixes
+
+* **jobsview:** fix jobs sort order by enforcing null value on runningSince for waiting jobs ([7a7ac7c](https://github.com/mytlogos/enterprise-lister/commit/7a7ac7cf71575e3035dd3ea40f4a5246fcc0c9f8))
+
+
+### Features
+
+* **jobsview:** add primitive summary of jobs ([f7bed31](https://github.com/mytlogos/enterprise-lister/commit/f7bed31119fb29cbaac500e3bcda8ea3738f4333))
+
 # [1.5.0](https://github.com/mytlogos/enterprise-lister/compare/v1.4.0...v1.5.0) (2020-11-05)
 
 
