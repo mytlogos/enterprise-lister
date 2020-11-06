@@ -8,7 +8,8 @@ import {
     Synonyms,
     TocSearchMedium,
     UpdateMedium,
-    Uuid
+    Uuid,
+    SecondaryMedium
 } from "../../types";
 import {count, Errors, getElseSet, ignore, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
@@ -204,6 +205,41 @@ export class MediumContext extends SubContext {
             "medium, artist, lang, stateOrigin, stateTL, series, universe " +
             "FROM medium"
         );
+    }
+
+    public async getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
+        const readStatsPromise = this.query(
+            "SELECT part.medium_id as id, COUNT(part.medium_id) as totalEpisodes, COUNT(user.episode_id) as readEpisodes " +
+            "FROM part " +
+            "INNER JOIN episode ON part.id=episode.part_id " +
+            "LEFT JOIN (SELECT * FROM user_episode WHERE ? = user_uuid AND progress = 1) as user ON user.episode_id=episode.id " + 
+            "GROUP BY part.medium_id;",
+            uuid
+        );
+        const tocs = await this.query(
+            "SELECT id, medium_id as mediumId, link, " +
+            "countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium_toc;",
+        ) as FullMediumToc[];
+        const readStats: Array<{ id: number; totalEpisode: number; readEpisodes: number }> = await readStatsPromise;
+        const idMap = new Map<number, SecondaryMedium>();
+
+        for (const value of readStats) {
+            const secondary = value as unknown as SecondaryMedium;
+            secondary.tocs = []
+            idMap.set(value.id, secondary);
+        }
+
+        for (const toc of tocs) {
+            let secondary = idMap.get(toc.mediumId);
+            if (!secondary) {
+                secondary = {id: toc.mediumId, readEpisodes: 0, totalEpisodes: 0, tocs: []};
+            }
+            secondary.tocs.push(toc);
+        }
+
+        return [...idMap.values()];
     }
 
     public async getAllMedia(): Promise<number[]> {

@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -49,6 +49,9 @@ const restApi = {
                     get: true
                 },
                 allFull: {
+                    get: true
+                },
+                allSecondary: {
                     get: true
                 },
                 releases: {
@@ -146,12 +149,17 @@ interface ListsPath {
     readonly get: MethodObject;
 }
 
+interface GetPath {
+    readonly get: MethodObject;
+}
+
 interface MediumPath {
     readonly get: MethodObject;
     readonly post: MethodObject;
     readonly delete: MethodObject;
     readonly all: AllMediumPath;
     readonly allFull: AllFullMediumPath;
+    readonly allSecondary: GetPath;
     readonly releases: MediumReleasesPath;
 }
 
@@ -478,6 +486,10 @@ export const HttpClient = {
 
     getAllMedia(): Promise<SimpleMedium[]> {
         return this.queryServer(api.medium.allFull.get);
+    },
+
+    getAllSecondaryMedia(): Promise<SecondaryMedium[]> {
+        return this.queryServer(api.medium.allSecondary.get);
     },
 
     getMedia(media: number | number[]): Promise<Medium | Medium[]> {

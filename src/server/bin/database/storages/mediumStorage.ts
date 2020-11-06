@@ -7,7 +7,8 @@ import {
     Synonyms,
     TocSearchMedium,
     UpdateMedium,
-    Uuid
+    Uuid,
+    SecondaryMedium
 } from "../../types";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {storageInContext} from "./storage";
@@ -43,6 +44,10 @@ export class MediumStorage {
 
     public getAllFull(): Promise<Query> {
         return inContext((context) => context.getAllMediaFull());
+    }
+
+    public getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
+        return inContext((context) => context.getAllSecondary(uuid));
     }
 
     /**

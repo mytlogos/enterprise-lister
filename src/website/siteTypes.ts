@@ -48,6 +48,32 @@ export interface SimpleMedium {
     [key: string]: any;
 }
 
+export interface SecondaryMedium {
+    id: number;
+    totalEpisodes: number;
+    readEpisodes: number;
+    tocs: FullMediumToc[];
+}
+
+export interface FullMediumToc {
+    mediumId: number;
+    link: string;
+    id: number;
+    countryOfOrigin?: string;
+    languageOfOrigin?: string;
+    author?: string;
+    title?: string;
+    medium?: number;
+    artist?: string;
+    lang?: string;
+    stateOrigin?: number;
+    stateTL?: number;
+    series?: string;
+    universe?: string;
+
+    [key: string]: any;
+}
+
 export enum ReleaseState {
     Unknown = 0,
     Ongoing = 1,

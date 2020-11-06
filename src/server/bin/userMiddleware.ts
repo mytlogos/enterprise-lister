@@ -769,6 +769,11 @@ export const getAllMediaFull: Handler = (req, res) => {
     sendResult(res, mediumStorage.getAllFull());
 };
 
+export const getAllSecondary: Handler = (req, res) => {
+    const uuid = extractQueryParam(req, "uuid");
+    sendResult(res, mediumStorage.getAllSecondary(uuid));
+};
+
 
 export const getAllLists: Handler = getLists;
 
