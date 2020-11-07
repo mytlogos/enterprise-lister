@@ -75,7 +75,7 @@
       </form>
     </div>
     <table
-      class="table"
+      class="table table-striped table-hover"
       aria-describedby="media-title"
     >
       <thead class="thead-dark">
@@ -84,6 +84,9 @@
         </th>
         <th scope="col">
           Type
+        </th>
+        <th scope="col">
+          Progress
         </th>
         <th scope="col">
           State in COO
@@ -106,6 +109,7 @@
             </router-link>
           </td>
           <td><type-icon :type="medium.medium" /></td>
+          <td>{{ medium.readEpisodes || 0 }}/{{ medium.totalEpisodes || 0 }}</td>
           <td><release-state :state="medium.stateOrigin" /></td>
           <td><release-state :state="medium.stateTL" /></td>
           <td>{{ medium.author }}</td>
@@ -117,13 +121,19 @@
 
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
-import { SimpleMedium, ReleaseState } from "../siteTypes";
+import { SimpleMedium, ReleaseState, SecondaryMedium } from "../siteTypes";
 import releaseState from "../components/release-state.vue"
 import typeIcon from "../components/type-icon.vue"
-import { defineComponent, reactive } from "vue"
+import { defineComponent } from "vue"
+import { mergeMediaToc } from "../init";
+
+interface Medium extends SimpleMedium {
+    readEpisodes: number;
+    totalEpisodes: number;
+}
 
 interface Data {
-    media: SimpleMedium[];
+    media: Medium[];
     titleSearch: string;
     showStatesTL: ReleaseState[];
 }
@@ -154,7 +164,7 @@ export default defineComponent({
         /**
          * Filter simplistic by title at first.
          */
-        filteredMedia(): SimpleMedium[] {
+        filteredMedia(): Medium[] {
             const lowerTitleSearch = this.titleSearch.toLowerCase();
             return this.media
                 .filter(medium => {
@@ -177,7 +187,31 @@ export default defineComponent({
      */
     mounted() {
         console.log("Media: Mounted");
-        HttpClient.getAllMedia().then(media => this.media = reactive(media)).catch(console.error);
+        HttpClient.getAllMedia().then(media => {
+            for (const medium of media) {
+                medium.readEpisodes = 0;
+                medium.totalEpisode = 0;
+            }
+            this.media = media as Medium[];
+        }).catch(console.error);
+        HttpClient.getAllSecondaryMedia().then(result => {
+            const idMap = new Map();
+            for (const medium of result) {
+                idMap.set(medium.id, medium);
+            }
+            for (const medium of this.media) {
+                const secondary: SecondaryMedium | undefined = idMap.get(medium.id);
+
+                if (!secondary) {
+                    continue;
+                }
+
+                medium.totalEpisodes = secondary.totalEpisodes;
+                medium.readEpisodes = secondary.readEpisodes;
+
+                mergeMediaToc(medium, secondary.tocs);
+            }
+        }).catch(console.error);
     },
 
     methods: {

@@ -1,3 +1,5 @@
+import { SimpleMedium, FullMediumToc } from "siteTypes";
+
 /**
  *
  */
@@ -16,6 +18,62 @@ export function count<T>(arrayLike: ArrayLike<T>, predicate: (value: T, index: n
         }
     });
     return counted;
+}
+
+/**
+ * Splits an array into multiple batches with each a length of batchSize.
+ * The last batch may have less than batchSize, but is never empty.
+ * A negative batchSize always yields an array with a single batch with all values.
+ * 
+ * @param array the array to batch
+ * @param batchSize the maximum size of a batch
+ */
+export function batch<T>(array: T[], batchSize: number): T[][] {
+    const batches = [];
+    let currentBatch = [];
+
+    for (const value of array) {
+        if (currentBatch.length >= batchSize) {
+            batches.push(currentBatch);
+            currentBatch = [];
+        }
+        currentBatch.push(value);
+    }
+    if (currentBatch.length) {
+        batches.push(currentBatch);
+    }
+    return batches;
+}
+
+/**
+ * Merge the tocs and the default medium into a single value.
+ * Modifies the original medium.
+ * 
+ * @param medium medium to merge with
+ * @param tocs tocs to merge into the medium
+ */
+export function mergeMediaToc(medium: SimpleMedium, tocs: FullMediumToc[]): SimpleMedium {
+    for (const toc of tocs) {
+        medium.title = medium.title || toc.title;
+        medium.author = medium.author || toc.author;
+        medium.artist = medium.artist || toc.artist;
+        medium.countryOfOrigin = medium.countryOfOrigin || toc.countryOfOrigin;
+        medium.languageOfOrigin = medium.languageOfOrigin || toc.languageOfOrigin;
+        medium.series = medium.series || toc.series;
+        medium.universe = medium.universe || toc.universe;
+        medium.lang = medium.lang || toc.lang;
+
+        if (medium.medium !== toc.medium) {
+            console.warn("toc of different media types, expected: " + medium.medium + ", got: " + toc.medium + " for medium: " + medium.id + ": " + medium.title);
+        }
+        if (medium.stateTL < toc.stateTL) {
+            medium.stateTL = toc.stateTL;
+        }
+        if (medium.stateOrigin < toc.stateOrigin) {
+            medium.stateOrigin = toc.stateOrigin;
+        }
+    }
+    return medium;
 }
 
 /**

@@ -25,6 +25,13 @@ export interface SimpleMedium {
     [key: string]: any;
 }
 
+export interface SecondaryMedium {
+    id: number;
+    totalEpisodes: number;
+    readEpisodes: number;
+    tocs: FullMediumToc[];
+}
+
 export interface UpdateMedium {
     id: number;
     countryOfOrigin?: string;

@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -49,6 +49,9 @@ const restApi = {
                     get: true
                 },
                 allFull: {
+                    get: true
+                },
+                allSecondary: {
                     get: true
                 },
                 releases: {
@@ -146,12 +149,17 @@ interface ListsPath {
     readonly get: MethodObject;
 }
 
+interface GetPath {
+    readonly get: MethodObject;
+}
+
 interface MediumPath {
     readonly get: MethodObject;
     readonly post: MethodObject;
     readonly delete: MethodObject;
     readonly all: AllMediumPath;
     readonly allFull: AllFullMediumPath;
+    readonly allSecondary: GetPath;
     readonly releases: MediumReleasesPath;
 }
 
@@ -480,6 +488,10 @@ export const HttpClient = {
         return this.queryServer(api.medium.allFull.get);
     },
 
+    getAllSecondaryMedia(): Promise<SecondaryMedium[]> {
+        return this.queryServer(api.medium.allSecondary.get);
+    },
+
     getMedia(media: number | number[]): Promise<Medium | Medium[]> {
         if (Array.isArray(media) && !media.length) {
             return Promise.reject();
@@ -535,10 +547,10 @@ export const HttpClient = {
      * Add progress of the user in regard to an episode.
      * Returns always true if it succeeded (no error).
      * 
-     * @param episodeId the episode to set the progress to
+     * @param episodeId the episode/s to set the progress to
      * @param progress the new progress value
      */
-    updateProgress(episodeId: number, progress: number): Promise<boolean> {
+    updateProgress(episodeId: number | number[], progress: number): Promise<boolean> {
         return this.queryServer(api.progress.post, {episodeId, progress});
     },
 
@@ -549,6 +561,10 @@ export const HttpClient = {
     getToc(link: string): Promise<Toc[]> {
         link = encodeURIComponent(link);
         return this.queryServer(api.searchtoc.get, {link});
+    },
+
+    getTocs(mediumId: number | number[]): Promise<FullMediumToc[]> {
+        return this.queryServer(api.toc.get, {mediumId});
     },
 
     addToc(link: string, id: number): Promise<boolean> {
