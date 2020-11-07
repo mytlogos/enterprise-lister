@@ -1,3 +1,19 @@
+# [1.7.0](https://github.com/mytlogos/enterprise-lister/compare/v1.6.0...v1.7.0) (2020-11-07)
+
+
+### Bug Fixes
+
+* **mediumdetailsview:** fix toast block mouse events on last toc row ([3b45bc7](https://github.com/mytlogos/enterprise-lister/commit/3b45bc7e171cd3239db45ceded5b89f262c4dc2b))
+* **router:** fix incorrect props type warning ([5257f4e](https://github.com/mytlogos/enterprise-lister/commit/5257f4e747553f5f82f04c371b881f4dd403428e))
+
+
+### Features
+
+* **mediaview:** display progress, merge medium with tocs details ([5be74fc](https://github.com/mytlogos/enterprise-lister/commit/5be74fcfd815cab05fd2cd4a8a727973fdc92340))
+* **mediumdetailsview:** add mark all button with result toast ([8a3e540](https://github.com/mytlogos/enterprise-lister/commit/8a3e540b947f41170494c09296c3f94876eb094a))
+* **mediumdetailsview:** display tocs of a medium ([26b83c1](https://github.com/mytlogos/enterprise-lister/commit/26b83c1064bfb0b615cd9c56708c8f7aa8a4afe3))
+* **mediumdetailsview:** merge tocs into display details ([283cf5e](https://github.com/mytlogos/enterprise-lister/commit/283cf5e1e41446593ea7f0e84f3ce6e9d3aba111))
+
 # [1.6.0](https://github.com/mytlogos/enterprise-lister/compare/v1.5.0...v1.6.0) (2020-11-06)
 
 
