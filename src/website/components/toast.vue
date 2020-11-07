@@ -4,6 +4,7 @@
     role="alert"
     aria-live="assertive"
     aria-atomic="true"
+    :style="{ display: showing ? 'block' : 'none' }"
   >
     <div class="toast-header">
       <i
@@ -30,6 +31,11 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import $ from "jquery";
+
+// initialize all toasts
+$(".toast").toast();
+
 export default defineComponent({
     name: "Toast",
     props: {
@@ -53,6 +59,11 @@ export default defineComponent({
         },
     },
     emits: ["close"],
+    data() {
+        return {
+            showing: false
+        };
+    },
     computed: {
         titleClass() {
             let cssClass = "fas rounded";
@@ -65,6 +76,10 @@ export default defineComponent({
             }
             return cssClass;
         }
+    },
+    mounted() {
+        $(this.$el).on("hidden.bs.toast", () => this.showing = false);
+        $(this.$el).on("show.bs.toast", () => this.showing = true);
     }
 });
 </script>

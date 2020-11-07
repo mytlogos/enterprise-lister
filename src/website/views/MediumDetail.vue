@@ -216,9 +216,6 @@ $(function () {
     $("[data-toggle=\"tooltip\"]").tooltip()
 });
 
-// initialize all toasts
-$(".toast").toast();
-
 const domainReg = /(https?:\/\/([^/]+))/;
 
 export default defineComponent({
