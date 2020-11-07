@@ -140,8 +140,8 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
             await mediumStorage.addToc(medium.id as number, toc.link);
         }
         // TODO: how to handle multiple authors, artists?, json array, csv, own table?
-        const author = toc.authors ? toc.authors[0].name : undefined;
-        const artist = toc.artists ? toc.artists[0].name : undefined;
+        const author = toc.authors?.length ? toc.authors[0].name : undefined;
+        const artist = toc.artists?.length ? toc.artists[0].name : undefined;
         // update toc specific values
         await mediumStorage.updateMediumToc({
             id: 0,
