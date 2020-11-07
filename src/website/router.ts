@@ -95,7 +95,11 @@ const router = createRouter({
         {
             path: "/medium/:id",
             name: "medium",
-            props: true,
+            props: (to) => {
+                return {
+                    id: Number.parseInt(to.params.id as string)
+                }
+            },
             // route level code-splitting
             // this generates a separate chunk (login.[hash].js) for this route
             // which is lazy-loaded when the route is visited.
