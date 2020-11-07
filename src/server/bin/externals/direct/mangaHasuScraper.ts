@@ -5,7 +5,7 @@ import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
 import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
 import {checkTocContent} from "../scraperTools";
-import {SearchResult as TocSearchResult, searchToc} from "./directTools";
+import {SearchResult as TocSearchResult, searchToc, extractLinkable} from "./directTools";
 import {MissingResourceError, UrlError} from "../errors";
 
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
@@ -180,7 +180,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const indexPartMap: Map<number, TocPart> = new Map();
     const chapterContents: TocEpisode[] = [];
     let releaseState: ReleaseState = ReleaseState.Unknown;
-    const releaseStateElement = $("div.col-md-12:nth-child(5) > span:nth-child(2) > a:nth-child(1)");
+    const releaseStateElement = $("a[href^=\"/advanced-search.html?status=\"]");
 
     const releaseStateString = releaseStateElement.text().toLowerCase();
     if (releaseStateString.includes("complete")) {
@@ -195,6 +195,9 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         statusTl: releaseState,
         mediumType: MediaType.IMAGE
     };
+
+    toc.authors = extractLinkable($, "a[href^=\"/advanced-search.html?author=\"]", uri);
+    toc.artists = extractLinkable($, "a[href^=\"/advanced-search.html?artist=\"]", uri);
 
     const endReg = /\[END]\s*$/i;
     const volChapReg = /Vol\.?\s*((\d+)(\.(\d+))?)\s*Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;

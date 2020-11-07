@@ -4,7 +4,7 @@ import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
 import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {getTextContent, SearchResult as TocSearchResult, searchToc} from "./directTools";
+import {getTextContent, SearchResult as TocSearchResult, searchToc, extractLinkable} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 import {MissingResourceError, UrlError} from "../errors";
 import {StatusCodeError} from "cloudscraper/errors";
@@ -262,13 +262,16 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         end = false;
         releaseState = ReleaseState.Ongoing;
     }
+    const authors = extractLinkable($, ".author-content a", uri);
+
     return [{
         link: tocLink,
         content,
         title: mediumTitle,
         end,
         statusTl: releaseState,
-        mediumType: MediaType.TEXT
+        mediumType: MediaType.TEXT,
+        authors,
     }];
 }
 

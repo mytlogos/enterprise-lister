@@ -4,7 +4,7 @@ import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, isTocEpisode, isTocPart, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
-import {EpisodePiece, getTextContent, scrapeToc, searchTocCheerio, TocMetaPiece, TocPiece} from "./directTools";
+import {EpisodePiece, getTextContent, scrapeToc, searchTocCheerio, TocMetaPiece, TocPiece, extractLinkable} from "./directTools";
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
@@ -70,7 +70,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 function extractTocSnippet($: cheerio.Root, link: string): Toc {
     let end = false;
     let releaseState: ReleaseState = ReleaseState.Unknown;
-    const releaseStateElement = $(".info > div:nth-child(4) > a:nth-child(2)");
+    const releaseStateElement = $("a[href^=\"/status/\"]");
 
     const releaseStateString = releaseStateElement.text().toLowerCase();
     if (releaseStateString.includes("complete")) {
@@ -82,13 +82,17 @@ function extractTocSnippet($: cheerio.Root, link: string): Toc {
     }
     const mediumTitleElement = $(".desc .title").first();
     const mediumTitle = sanitizeString(mediumTitleElement.text());
+
+    const authors = extractLinkable($, "a[href^=\"/author/\"]", "https://novelfull.com/");
+
     return {
         content: [],
         mediumType: MediaType.TEXT,
         end,
         statusTl: releaseState,
         title: mediumTitle,
-        link
+        link,
+        authors
     };
 }
 

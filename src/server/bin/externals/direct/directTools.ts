@@ -4,6 +4,7 @@ import {queueCheerioRequest} from "../queueManager";
 import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
 import * as url from "url";
 import {ReleaseState, TocSearchMedium} from "../../types";
+import cheerio from "cheerio";
 
 export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string): EpisodeContent[] {
     if (!novelTitle || !episodeTitle) {
@@ -31,6 +32,30 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
     };
 
     return [episodeContent];
+}
+
+/**
+ * Extracts the Links described by the css selector into
+ * each an Object of link text and href.
+ * 
+ * @param $ the cheerio root of the document
+ * @param selector a valid css selector
+ * @param uri a valid base url
+ */
+export function extractLinkable($: cheerio.Root, selector: string, uri: string):
+    Array<{ name: string; link: string }> {
+    const elements = $(selector);
+    const result = [];
+
+    for (let i = 0; i < elements.length; i++) {
+        const element = elements.eq(i);
+
+        const name = sanitizeString(element.text());
+        const link = url.resolve(uri, element.attr("href") as string);
+
+        result.push({ name, link });
+    }
+    return result;
 }
 
 export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
