@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -561,6 +561,10 @@ export const HttpClient = {
     getToc(link: string): Promise<Toc[]> {
         link = encodeURIComponent(link);
         return this.queryServer(api.searchtoc.get, {link});
+    },
+
+    getTocs(mediumId: number | number[]): Promise<FullMediumToc[]> {
+        return this.queryServer(api.toc.get, {mediumId});
     },
 
     addToc(link: string, id: number): Promise<boolean> {

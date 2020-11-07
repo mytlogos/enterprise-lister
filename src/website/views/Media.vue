@@ -125,6 +125,7 @@ import { SimpleMedium, ReleaseState, SecondaryMedium } from "../siteTypes";
 import releaseState from "../components/release-state.vue"
 import typeIcon from "../components/type-icon.vue"
 import { defineComponent } from "vue"
+import { mergeMediaToc } from "../init";
 
 interface Medium extends SimpleMedium {
     readEpisodes: number;
@@ -208,27 +209,7 @@ export default defineComponent({
                 medium.totalEpisodes = secondary.totalEpisodes;
                 medium.readEpisodes = secondary.readEpisodes;
 
-                // merge tocs to a single display result
-                for (const toc of secondary.tocs) {
-                    medium.title = medium.title || toc.title;
-                    medium.author = medium.author || toc.author;
-                    medium.artist = medium.artist || toc.artist;
-                    medium.countryOfOrigin = medium.countryOfOrigin || toc.countryOfOrigin;
-                    medium.languageOfOrigin = medium.languageOfOrigin || toc.languageOfOrigin;
-                    medium.series = medium.series || toc.series;
-                    medium.universe = medium.universe || toc.universe;
-                    medium.lang = medium.lang || toc.lang;
-
-                    if (medium.medium !== toc.medium) {
-                        console.warn("toc of different media types, expected: " + medium.medium + ", got: " + toc.medium + " for medium: " + medium.id + ": " + medium.title);
-                    }
-                    if (medium.stateTL < toc.stateTL) {
-                        medium.stateTL = toc.stateTL;
-                    }
-                    if (medium.stateOrigin < toc.stateOrigin) {
-                        medium.stateOrigin = toc.stateOrigin;
-                    }
-                }
+                mergeMediaToc(medium, secondary.tocs);
             }
         }).catch(console.error);
     },

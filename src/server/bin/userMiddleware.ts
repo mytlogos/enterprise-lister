@@ -43,17 +43,23 @@ export const searchToc: Handler = (req, res) => {
 export const getToc: Handler = (req, res) => {
     let media = extractQueryParam(req, "mediumId");
 
-    if (!media) {
-        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-        return;
-    }
-    if (isString(media)) {
-        media = stringToNumberList(media);
-    } else if (isInvalidId(media)) {
-        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-        return;
-    } else {
+    const listMedia = stringToNumberList(media);
+
+    if (!listMedia.length) {
+        media = Number.parseInt(media);
+
+        if (isInvalidId(media)) {
+            sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+            return;
+        }
         media = [media];
+    } else {
+        media = listMedia;
+    }
+
+    if (!media || !media.length) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
     }
 
     sendResult(res, mediumStorage.getMediumTocs(media));

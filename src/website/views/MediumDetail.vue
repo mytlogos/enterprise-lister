@@ -2,13 +2,13 @@
   <div>
     <h1>MediumDetail</h1>
     <div class="container-fluid details">
-      <h2><type-icon :type="details.medium" /> {{ details.title }}</h2>
+      <h2><type-icon :type="computedMedium.medium" /> {{ computedMedium.title }}</h2>
       <div class="row">
         <div class="col-2">
           Release State of TL:
         </div>
         <div class="col">
-          <release-state :state="details.stateTL" />
+          <release-state :state="computedMedium.stateTL" />
         </div>
       </div>
       <div class="row">
@@ -16,7 +16,7 @@
           Release State in COO:
         </div>
         <div class="col">
-          <release-state :state="details.stateOrigin" />
+          <release-state :state="computedMedium.stateOrigin" />
         </div>
       </div>
       <div class="row">
@@ -24,7 +24,7 @@
           Series:
         </div>
         <div class="col">
-          {{ details.series }}
+          {{ computedMedium.series }}
         </div>
       </div>
       <div class="row">
@@ -32,7 +32,7 @@
           Universe:
         </div>
         <div class="col">
-          {{ details.universe }}
+          {{ computedMedium.universe }}
         </div>
       </div>
       <div class="row">
@@ -40,7 +40,7 @@
           Author:
         </div>
         <div class="col">
-          {{ details.author }}
+          {{ computedMedium.author }}
         </div>
       </div>
       <div class="row">
@@ -48,7 +48,7 @@
           Artist:
         </div>
         <div class="col">
-          {{ details.artist }}
+          {{ computedMedium.artist }}
         </div>
       </div>
       <div class="row">
@@ -56,7 +56,7 @@
           Language:
         </div>
         <div class="col">
-          {{ details.lang }}
+          {{ computedMedium.lang }}
         </div>
       </div>
     </div>
@@ -152,16 +152,17 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent, reactive } from "vue";
-import { SimpleMedium, MediumRelease } from "../siteTypes";
+import { SimpleMedium, MediumRelease, Medium, FullMediumToc } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
 import $ from "jquery";
-import { batch } from "../init";
+import { batch, mergeMediaToc } from "../init";
 
 interface Data {
   releases: any[];
   details: SimpleMedium;
+  tocs: FullMediumToc[];
   markToast: { message: string; success: boolean };
 }
 
@@ -204,6 +205,7 @@ export default defineComponent({
                 series: "N/A",
                 universe: "N/A",
             },
+            tocs: [],
             markToast: {
                 message: "",
                 success: false
@@ -214,11 +216,18 @@ export default defineComponent({
     computed: {
         computedReleases(): MediumRelease[] {
             return [...this.releases].sort((first, second) => second.combiIndex - first.combiIndex);
+        },
+        computedMedium(): SimpleMedium {
+            // merge tocs to a single display result
+            return mergeMediaToc({...this.details}, this.tocs);
         }
     },
 
     mounted() {
-        HttpClient.getMedia(this.id).then(medium => this.details = reactive(medium)).catch(console.error);
+        HttpClient.getMedia(this.id).then((medium: Medium) => {
+            this.details = reactive(medium);
+            return HttpClient.getTocs(medium.id).then(tocs => this.tocs = tocs).catch(console.error);
+        }).catch(console.error);
         HttpClient.getReleases(this.id).then(releases => this.releases = reactive(releases)).catch(console.error);
     },
 
