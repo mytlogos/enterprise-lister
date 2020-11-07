@@ -60,6 +60,51 @@
         </div>
       </div>
     </div>
+    <h1 id="tocs-title">
+      Tocs
+    </h1>
+    <table
+      class="table table-striped table-hover table-sm"
+      aria-describedby="tocs-title"
+    >
+      <thead class="thead-dark">
+        <th scope="col">
+          Title
+        </th>
+        <th scope="col">
+          Host
+        </th>
+      </thead>
+      <tbody>
+        <tr
+          v-for="toc of tocs"
+          :key="toc.id"
+        >
+          <td>
+            <a
+              :href="toc.link"
+              target="_blank"
+            >
+              {{ toc.title || details.title }}
+            </a>
+            <i
+              v-if="toc.medium != details.medium"
+              class="fas fa-exclamation-triangle text-warning ml-1"
+              data-toggle="tooltip"
+              data-placement="top"
+              :title="`Expected ${mediumToString(details.medium)} but got ${mediumToString(toc.medium)}`"
+              aria-hidden="true"
+            />
+          </td>
+          <td>
+            <a
+              :href="getHome(toc.link)"
+              target="_blank"
+            >{{ getDomain(toc.link) }}</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
     <h1 id="medium-releases-title">
       Releases
     </h1>
@@ -152,7 +197,7 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent, reactive } from "vue";
-import { SimpleMedium, MediumRelease, Medium, FullMediumToc } from "../siteTypes";
+import { SimpleMedium, MediumRelease, Medium, FullMediumToc, MediaType } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
@@ -173,6 +218,8 @@ $(function () {
 
 // initialize all toasts
 $(".toast").toast();
+
+const domainReg = /(https?:\/\/([^/]+))/;
 
 export default defineComponent({
     name: "MediumDetail",
@@ -237,6 +284,54 @@ export default defineComponent({
          */
         dateToString(date: Date): string {
             return date.toLocaleString("de-DE");
+        },
+
+        /**
+         * Extracts the Domain name of a web link.
+         * 
+         * @param link the link to inspect
+         */
+        getDomain(link: string): string {
+            const match = domainReg.exec(link);
+            if (!match) {
+                console.warn("invalid link: " + link);
+                return "";
+            }
+            return match[2];
+        },
+
+        /**
+         * Extracts the Part up to the first slash (/).
+         * 
+         * @param link the link to inspect
+         */
+        getHome(link: string): string {
+            const match = domainReg.exec(link);
+            if (!match) {
+                console.warn("invalid link: " + link);
+                return "";
+            }
+            return match[1];
+        },
+
+        /**
+         * Returns a String representation to the medium.
+         * 
+         * @param medium medium to represent
+         */
+        mediumToString(medium: number): string {
+            switch (medium) {
+            case MediaType.TEXT:
+                return "Text";
+            case MediaType.AUDIO:
+                return "Audio";
+            case MediaType.VIDEO:
+                return "Video";
+            case MediaType.IMAGE:
+                return "Image";
+            default:
+                return "Unknown";
+            }
         },
 
         /**
