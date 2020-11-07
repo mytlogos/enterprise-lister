@@ -63,6 +63,21 @@
     <h1 id="medium-releases-title">
       Releases
     </h1>
+    <toast
+      id="mark-toast"
+      title="Marked read"
+      :message="markToast.message"
+      :error="!markToast.success"
+      :success="markToast.success"
+      data-autohide="false"
+      style="position: absolute; margin-top: -7em"
+    />
+    <button 
+      class="btn btn-dark"
+      @click.left="markAll(true)"
+    >
+      Mark all read
+    </button>
     <table
       class="table table-striped table-hover table-sm"
       aria-describedby="medium-releases-title"
@@ -125,33 +140,12 @@
       </tbody>
     </table>
     <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
-    <div
+    <toast
       id="progress-toast"
-      class="toast"
-      role="alert"
-      aria-live="assertive"
-      aria-atomic="true"
-    >
-      <div class="toast-header">
-        <i
-          class="fas fa-exclamation-circle rounded mr-2 text-danger"
-          aria-hidden="true"
-        />
-        <strong class="mr-auto">Error</strong>
-        <button
-          type="button"
-          class="ml-2 mb-1 close"
-          data-dismiss="toast"
-          aria-label="Close"
-          @click.left="closeProgressToast"
-        >
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="toast-body">
-        Could not update Progress
-      </div>
-    </div>
+      title="Error"
+      :message="'Could not update Progress'"
+      @close="closeProgressToast"
+    />
   </div>
 </template>
 
@@ -161,11 +155,14 @@ import { defineComponent, reactive } from "vue";
 import { SimpleMedium, MediumRelease } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
+import toast from "../components/toast.vue";
 import $ from "jquery";
+import { batch } from "../init";
 
 interface Data {
   releases: any[];
   details: SimpleMedium;
+  markToast: { message: string; success: boolean };
 }
 
 // initialize all tooltips on this page
@@ -180,7 +177,8 @@ export default defineComponent({
     name: "MediumDetail",
     components: {
         releaseState,
-        typeIcon
+        typeIcon,
+        toast
     },
     props: {
         id: {
@@ -205,6 +203,10 @@ export default defineComponent({
                 stateTL: 0,
                 series: "N/A",
                 universe: "N/A",
+            },
+            markToast: {
+                message: "",
+                success: false
             },
         };
     },
@@ -256,6 +258,45 @@ export default defineComponent({
         closeProgressToast() {
             $("#progress-toast").toast("hide");
         },
+
+        markAll(read: boolean) {
+            const newProgress = read ? 1 : 0;
+            const batchSize = 50;
+
+            Promise
+                .allSettled(batch(this.releases, batchSize).map((releases: MediumRelease[]) => {
+                    const episodeIds: number[] = releases.map(value => value.episodeId);
+                    return HttpClient.updateProgress(episodeIds, newProgress);
+                }))
+                // @ts-ignore
+                .then((settled: Array<PromiseSettledResult<boolean>>) => {
+                    let failed = 0;
+                    let succeeded = 0;
+
+                    settled.forEach((result, index) => {
+                        const releaseStart = index * batchSize;
+                        const releaseEnd = releaseStart + ((index >= settled.length - 1) ? this.releases.length % batchSize : batchSize);
+
+                        if (result.status === "rejected" || !result.value) {
+                            failed += releaseEnd - releaseStart;
+                        } else {
+                            succeeded += releaseEnd - releaseStart;
+                            // set new progress for all releases in this batch result
+                            for (let i = releaseStart; i < releaseEnd && i < this.releases.length; i++) {
+                                const element = this.releases[i];
+
+                                if (element) {
+                                    element.progress = newProgress;
+                                }
+                            }
+                        }
+                    });
+                    this.markToast.message = `Marking as read succeeded for ${succeeded} and failed for ${failed}`;
+                    this.markToast.success = failed === 0;
+                    $("#mark-toast").toast("show");
+                    console.log(`succeeded=${succeeded}, failed=${failed}`);
+                });
+        }
     }
 });
 </script>

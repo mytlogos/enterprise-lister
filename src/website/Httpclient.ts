@@ -547,10 +547,10 @@ export const HttpClient = {
      * Add progress of the user in regard to an episode.
      * Returns always true if it succeeded (no error).
      * 
-     * @param episodeId the episode to set the progress to
+     * @param episodeId the episode/s to set the progress to
      * @param progress the new progress value
      */
-    updateProgress(episodeId: number, progress: number): Promise<boolean> {
+    updateProgress(episodeId: number | number[], progress: number): Promise<boolean> {
         return this.queryServer(api.progress.post, {episodeId, progress});
     },
 

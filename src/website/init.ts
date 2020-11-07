@@ -19,6 +19,31 @@ export function count<T>(arrayLike: ArrayLike<T>, predicate: (value: T, index: n
 }
 
 /**
+ * Splits an array into multiple batches with each a length of batchSize.
+ * The last batch may have less than batchSize, but is never empty.
+ * A negative batchSize always yields an array with a single batch with all values.
+ * 
+ * @param array the array to batch
+ * @param batchSize the maximum size of a batch
+ */
+export function batch<T>(array: T[], batchSize: number): T[][] {
+    const batches = [];
+    let currentBatch = [];
+
+    for (const value of array) {
+        if (currentBatch.length >= batchSize) {
+            batches.push(currentBatch);
+            currentBatch = [];
+        }
+        currentBatch.push(value);
+    }
+    if (currentBatch.length) {
+        batches.push(currentBatch);
+    }
+    return batches;
+}
+
+/**
  * A 'Resize'-events throttler which calls every added
  * callback in the next animation frame or after 66ms
  * after resize event fired.
