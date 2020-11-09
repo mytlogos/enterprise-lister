@@ -683,7 +683,7 @@ export enum ScrapeEvent {
 }
 
 export class ScraperHelper {
-    private readonly eventMap: Map<string, Array<(value: any) => void>> = new Map();
+    private readonly eventMap: Map<string, Array<(value: any) => void | Promise<void>>> = new Map();
 
     public get redirects(): RegExp[] {
         return redirects;
@@ -705,18 +705,19 @@ export class ScraperHelper {
         return newsAdapter;
     }
 
-    public on(event: string, callback: (value: any) => void): void {
+    public on(event: string, callback: (value: any) => void | Promise<void>): void {
         const callbacks = getElseSet(this.eventMap, event, () => []);
         callbacks.push(callback);
     }
 
-    public emit(event: string, value: any): void {
+    public emit(event: string, value: any): Promise<void> {
         if (env.stopScrapeEvents) {
             logger.info("not emitting events");
-            return;
+            return Promise.resolve();
         }
         const callbacks = getElseSet(this.eventMap, event, () => []);
-        callbacks.forEach((cb) => cb(value));
+        // return a promise of all callbacks yielding a promise
+        return Promise.all(callbacks.map((cb) => cb(value)).filter(cbValue => cbValue)).then(() => undefined);
     }
 
     public init(): void {

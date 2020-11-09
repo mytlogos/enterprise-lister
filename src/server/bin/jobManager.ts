@@ -1,4 +1,4 @@
-import {remove, removeLike, stringify} from "./tools";
+import {remove, removeLike, stringify, getElseSet} from "./tools";
 import logger from "./logger";
 import {JobRequest} from "./types";
 import {getStore, runAsync, setContext, removeContext} from "./asyncStorage";
@@ -357,8 +357,12 @@ export class JobQueue {
                     logger.info("executing job: " + toExecute.jobId);
                     return toExecute.job(() => this._done(toExecute));
                 });
+                getElseSet(store, "result", () => "success");
+                store.set("message", JSON.stringify(store.get("modifications") || {}));
             } catch (error) {
                 remove(this.waitingJobs, toExecute);
+                store.set("result", "failed");
+                store.set("message", error.message);
                 logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(error)}`);
             } finally {
                 removeContext("Job");

@@ -4,6 +4,8 @@ import {isString, promiseMultiSingle} from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
 import {escapeLike} from "../storages/storageTools";
+import { getStore } from "../../asyncStorage";
+import { storeModifications } from "../sqlTools";
 
 export class JobContext extends SubContext {
     public async removeJobLike(column: string, value: any): Promise<void> {
@@ -19,7 +21,8 @@ export class JobContext extends SubContext {
                 noBoundaries: true,
                 singleQuotes: true
             });
-            await this.query(`DELETE FROM jobs WHERE ${mysql.escapeId(column)} LIKE ?`, like);
+            const result = await this.query(`DELETE FROM jobs WHERE ${mysql.escapeId(column)} LIKE ?`, like);
+            storeModifications("job", "delete", result);
         }
     }
 
@@ -104,6 +107,7 @@ export class JobContext extends SubContext {
                     // @ts-ignore
                     value.id = result.insertId;
                 }
+                storeModifications("job", "insert", result);
             }
             delete value.runImmediately;
             return value as unknown as JobItem;
@@ -119,11 +123,13 @@ export class JobContext extends SubContext {
     }
 
     public async removeJob(key: string | number): Promise<void> {
+        let result;
         if (isString(key)) {
-            await this.query("DELETE FROM jobs WHERE `name` = ?", key);
+            result = await this.query("DELETE FROM jobs WHERE `name` = ?", key);
         } else {
-            await this.query("DELETE FROM jobs WHERE id = ?", key);
+            result = await this.query("DELETE FROM jobs WHERE id = ?", key);
         }
+        storeModifications("job", "delete", result);
     }
 
     public async updateJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
@@ -177,9 +183,17 @@ export class JobContext extends SubContext {
             if (value.arguments && !isString(value.arguments)) {
                 args = JSON.stringify(value.arguments);
             }
+            const store = getStore();
+            if (!store) {
+                throw Error("missing store - is this running outside a AsyncLocalStorage Instance?");
+            }
+            const context = store.get("context");
+            const result = store.get("result") || "success";
+            const message = store.get("message") || "Missing Message";
+
             return this.query(
-                "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, start, end, arguments)" +
-                " VALUES (?,?,?,?,?,?,?,?);",
+                "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, start, end, result, message, context, arguments)" +
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?);",
                 [
                     value.id,
                     value.type,
@@ -188,6 +202,9 @@ export class JobContext extends SubContext {
                     value.runAfter,
                     value.runningSince,
                     finished,
+                    result,
+                    message,
+                    JSON.stringify(context),
                     args
                 ]
             );

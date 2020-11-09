@@ -1,6 +1,7 @@
 import {SubContext} from "./subContext";
 import {ExternalList, Uuid} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
+import { storeModifications } from "../sqlTools";
 
 export class ExternalListContext extends SubContext {
     public async getAll(uuid: Uuid): Promise<ExternalList[]> {
@@ -30,7 +31,7 @@ export class ExternalListContext extends SubContext {
             "VALUES(?,?,?,?);",
             [externalList.name, userUuid, externalList.medium, externalList.url],
         );
-
+        storeModifications("external_list", "insert", result);
         const insertId = result.insertId;
 
         if (!Number.isInteger(insertId)) {
@@ -134,6 +135,7 @@ export class ExternalListContext extends SubContext {
             "VALUES (?,?)",
             [listId, mediumId],
         );
+        storeModifications("external_list_item", "insert", result);
         return result.affectedRows > 0;
     }
 
@@ -162,6 +164,7 @@ export class ExternalListContext extends SubContext {
             medium.id,
             (value) => [medium.listId, value]
         );
+        storeModifications("external_list_item", "insert", result);
         return result.affectedRows > 0;
     }
 

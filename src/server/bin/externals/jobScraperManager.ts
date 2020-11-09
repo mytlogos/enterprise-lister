@@ -72,7 +72,7 @@ export class JobScraperManager {
         this.helper.init();
     }
 
-    public on(event: string, callback: (value: any) => void): void {
+    public on(event: string, callback: (value: any) => void | Promise<void>): void {
         this.helper.on(event, callback);
     }
 

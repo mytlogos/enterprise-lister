@@ -11,13 +11,15 @@ import {
     Uuid,
     SecondaryMedium
 } from "../../types";
-import {count, Errors, getElseSet, ignore, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
+import {count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
 import {escape, Query} from "mysql";
+import { storeModifications } from "../sqlTools";
 
 export class MediumContext extends SubContext {
     public async removeToc(tocLink: string): Promise<void> {
-        await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
+        const result = await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
+        storeModifications("toc", "delete", result);
     }
 
     /**
@@ -34,6 +36,7 @@ export class MediumContext extends SubContext {
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
+        storeModifications("medium", "insert", result);
 
         await this.parentContext.partContext.createStandardPart(result.insertId);
 
@@ -388,19 +391,21 @@ export class MediumContext extends SubContext {
                 params.push([value.mediumId, item]);
             });
         });
-        await this.multiInsert(
+        const result = await this.multiInsert(
             "INSERT IGNORE INTO medium_synonyms (medium_id, synonym) VALUES",
             params,
             (value) => value
         );
+        storeModifications("synonym", "insert", result);
         return true;
     }
 
-    public addToc(mediumId: number, link: string): Promise<void> {
-        return this.query(
+    public async addToc(mediumId: number, link: string): Promise<void> {
+        const result = await this.query(
             "INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)",
             [mediumId, link]
-        ).then(ignore);
+        );
+        storeModifications("toc", "insert", result);
     }
 
     public async getToc(mediumId: number): Promise<string[]> {
@@ -446,7 +451,7 @@ export class MediumContext extends SubContext {
                 }
             }
         }
-        const updatedReleaseResult = await this.query(
+        const deletedReleaseResult = await this.query(
             "DELETE er FROM episode_release as er, episode as e, part as p" +
             " WHERE er.episode_id = e.id" +
             " AND e.part_id = p.id" +
@@ -454,7 +459,9 @@ export class MediumContext extends SubContext {
             " AND locate(?,er.url) > 0;",
             [mediumId, domain]
         );
-        const updatedProgressResult = await this.queryInList(
+        storeModifications("release", "delete", deletedReleaseResult);
+
+        const deletedProgressResult = await this.queryInList(
             "DELETE ue FROM user_episode as ue, episode as e, part as p" +
             " WHERE ue.episode_id = e.id" +
             " AND e.part_id = p.id" +
@@ -462,7 +469,8 @@ export class MediumContext extends SubContext {
             " AND e.id",
             removeEpisodesAfter
         );
-        const updatedResultResult = await this.queryInList(
+        // TODO: storeModifications("external_list_item", "delete", result);
+        const deletedResultResult = await this.queryInList(
             "DELETE re FROM result_episode as re, episode as e, part as p" +
             " WHERE re.episode_id = e.id" +
             " AND e.part_id = p.id" +
@@ -470,10 +478,12 @@ export class MediumContext extends SubContext {
             " AND e.id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("external_list_item", "delete", result);
         const deletedEpisodesResult = await this.queryInList(
             "DELETE FROM episode WHERE episode.id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("external_list_item", "delete", result);
         return this.delete(
             "medium_toc",
             {column: "medium_id", value: mediumId},
@@ -512,25 +522,32 @@ export class MediumContext extends SubContext {
 
         // remove all tocs of source
         await this.delete("medium_toc", {column: "medium_id", value: sourceMediumId});
-        await this.query(
+        let result = await this.query(
             "UPDATE IGNORE list_medium SET medium_id=? WHERE medium_id=?",
             [destMediumId, sourceMediumId]
         );
+        storeModifications("list_item", "update", result);
+
         await this.delete("list_medium", {column: "medium_id", value: sourceMediumId});
-        await this.query(
+        result = await this.query(
             "UPDATE IGNORE external_list_medium SET medium_id=? WHERE medium_id=?",
             [destMediumId, sourceMediumId]
         );
+        storeModifications("external_list_item", "update", result);
+
         await this.delete("external_list_medium", {column: "medium_id", value: sourceMediumId});
-        await this.query(
+        result = await this.query(
             "UPDATE IGNORE medium_synonyms SET medium_id=? WHERE medium_id=?",
             [destMediumId, sourceMediumId]
         );
+        storeModifications("synonym", "update", result);
+
         await this.delete("medium_synonyms", {column: "medium_id", value: sourceMediumId});
         await this.query(
             "UPDATE IGNORE news_medium SET medium_id=? WHERE medium_id=?",
             [destMediumId, sourceMediumId]
         );
+
         await this.delete("news_medium", {column: "medium_id", value: sourceMediumId});
         const deletedReleaseResult = await this.query(
             "DELETE er FROM episode_release as er, episode as e, part as p" +
@@ -539,6 +556,8 @@ export class MediumContext extends SubContext {
             " AND p.medium_id = ?",
             sourceMediumId
         );
+        storeModifications("release", "delete", deletedReleaseResult);
+
         const deletedProgressResult = await this.query(
             "DELETE ue FROM user_episode as ue, episode as e, part as p" +
             " WHERE ue.episode_id = e.id" +
@@ -546,6 +565,8 @@ export class MediumContext extends SubContext {
             " AND p.medium_id = ?",
             sourceMediumId
         );
+        storeModifications("progress", "delete", deletedProgressResult);
+
         const deletedResultResult = await this.query(
             "DELETE re FROM result_episode as re, episode as e, part as p" +
             " WHERE re.episode_id = e.id" +
@@ -553,22 +574,30 @@ export class MediumContext extends SubContext {
             " AND p.medium_id = ?",
             sourceMediumId
         );
+        storeModifications("result_episode", "delete", deletedResultResult);
+
         const deletedEpisodesResult = await this.query(
             "DELETE e FROM episode as e, part as p" +
             " WHERE e.part_id = p.id" +
             " AND p.medium_id = ?",
             sourceMediumId
         );
+        storeModifications("episode", "delete", deletedEpisodesResult);
+
         const deletedPartResult = await this.query(
             "DELETE FROM part" +
             " WHERE medium_id = ?",
             sourceMediumId
         );
+        storeModifications("part", "delete", deletedPartResult);
+
         const deletedMediumResult = await this.query(
             "DELETE FROM medium" +
             " WHERE id = ?",
             sourceMediumId
         );
+        storeModifications("medium", "delete", deletedMediumResult);
+
         return true;
     }
 
@@ -583,6 +612,7 @@ export class MediumContext extends SubContext {
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
+        storeModifications("medium", "insert", result);
         let mediumId: number;
         // medium exists already if insertId == 0
         if (result.insertId === 0) {
@@ -622,6 +652,8 @@ export class MediumContext extends SubContext {
             "UPDATE IGNORE medium_toc SET medium_id = ? WHERE (medium_id, link) = (?,?);",
             [destMediumId, sourceMediumId, toc]
         );
+        storeModifications("toc", "update", updatedTocResult);
+
         const releases = await this.parentContext.episodeContext.getEpisodeLinksByMedium(sourceMediumId);
         const episodeMap: Map<number, string[]> = new Map();
         const valueCb = () => [];
@@ -652,6 +684,7 @@ export class MediumContext extends SubContext {
             ` WHERE part.medium_id = ${escape(sourceMediumId)} AND episode.id`,
             copyEpisodes
         );
+        // TODO: storeModifications("progress", "insert", result);
         const updatedReleaseResult = await this.query(
             "UPDATE IGNORE episode_release, episode as src_e, episode as dest_e, part" +
             " SET episode_release.episode_id = dest_e.id" +
@@ -663,6 +696,8 @@ export class MediumContext extends SubContext {
             " AND locate(?,episode_release.url) > 0;",
             [sourceMediumId, standardPartId, domain]
         );
+        storeModifications("release", "update", updatedReleaseResult);
+
         const updatedProgressResult = await this.queryInList(
             "UPDATE IGNORE user_episode, episode as src_e, episode as dest_e, part" +
             " SET user_episode.episode_id = dest_e.id" +
@@ -674,6 +709,8 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("progress", "update", updatedProgressResult);
+
         const updatedResultResult = await this.queryInList(
             "UPDATE IGNORE result_episode, episode as src_e, episode as dest_e, part" +
             " SET result_episode.episode_id = dest_e.id" +
@@ -685,29 +722,35 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("release", "update", result);
+
         const deletedReleasesResult = await this.queryInList(
             "DELETE FROM episode_release" +
             " WHERE episode_id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("result_episode", "delete", deletedReleaseResult);
         const deletedUserEpisodesResult = await this.queryInList(
             "DELETE FROM user_episode" +
             " WHERE episode_id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("result_episode", "delete", deletedReleaseResult);
         const deletedResultEpisodesResult = await this.queryInList(
             "DELETE FROM result_episode" +
             " WHERE episode_id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("result_episode", "delete", deletedReleaseResult);
         const deletedEpisodesResult = await this.queryInList(
             "DELETE FROM episode" +
             " WHERE id",
             removeEpisodesAfter
         );
+        // TODO: storeModifications("result_episode", "delete", deletedReleaseResult);
         const copiedOnlyEpisodes: number[] = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
         const copiedProgressResult = await this.queryInList(
-            "INSERT IGNORE INTO user_episode" +
+            " IGNORE INTO user_episode" +
             " (user_uuid, episode_id, progress, read_date)" +
             " SELECT user_episode.user_uuid, dest_e.id, user_episode.progress, user_episode.read_date" +
             " FROM user_episode, episode as src_e, episode as dest_e, part" +
@@ -719,6 +762,7 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             copiedOnlyEpisodes
         );
+        // TODO: storeModifications("progress", "insert", result);
         const copiedResultResult = await this.queryInList(
             "INSERT IGNORE INTO result_episode" +
             " (novel, chapter, chapIndex, volIndex, volume, episode_id)" +
@@ -733,6 +777,7 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             copiedOnlyEpisodes
         );
+        // TODO: storeModifications("progress", "insert", result);
         return true;
     }
 }

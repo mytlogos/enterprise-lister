@@ -1,6 +1,7 @@
 import {SubContext} from "./subContext";
 import {List, Medium, Uuid} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
+import { storeModifications } from "../sqlTools";
 
 export class InternalListContext extends SubContext {
     /**
@@ -12,6 +13,7 @@ export class InternalListContext extends SubContext {
             "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)",
             [uuid, name, medium],
         );
+        storeModifications("list", "insert", result);
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
@@ -160,6 +162,7 @@ export class InternalListContext extends SubContext {
             medium.id,
             (value) => [medium.listId, value]
         );
+        storeModifications("list_item", "insert", result);
         return result.affectedRows > 0;
     }
 

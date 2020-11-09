@@ -41,6 +41,7 @@ import {
     storage
 } from "./database/storages/storage";
 import {MissingResourceError, UrlError} from "./externals/errors";
+import { getStore } from "./asyncStorage";
 
 const scraper = DefaultJobScraper;
 
@@ -716,6 +717,11 @@ async function newsHandler({link, result}: { link: string; result: News[] }) {
 }
 
 async function tocErrorHandler(error: Error) {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", error.message);
+    }
     // TODO: 10.03.2020 remove any releases associated? with this toc
     //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
     //  and if there are to scrape them and delete any releases that are not contained in them
@@ -737,16 +743,36 @@ async function tocErrorHandler(error: Error) {
     }
 }
 
-scraper.on("feed:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("feed:error", (errorValue: any) => {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", errorValue.message);
+    }
+    logger.error(errorValue);
+});
 scraper.on("toc:error", (errorValue: any) => tocErrorHandler(errorValue));
-scraper.on("list:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("list:error", (errorValue: any) => {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", errorValue.message);
+    }
+    logger.error(errorValue);
+});
 
-scraper.on("news:error", (errorValue: any) => logger.error(errorValue));
-scraper.on("news", (result) => newsHandler(result).catch((error) => logger.error(error)));
-scraper.on("toc", (result) => tocHandler(result).catch((error) => logger.error(error)));
-scraper.on("feed", (result) => feedHandler(result).catch((error) => logger.error(error)));
-
-scraper.on("list", (result) => listHandler(result).catch((error) => logger.error(error)));
+scraper.on("news:error", (errorValue: any) =>  {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", errorValue.message);
+    }
+    logger.error(errorValue);
+});
+scraper.on("news", (result) => newsHandler(result));
+scraper.on("toc", (result) => tocHandler(result));
+scraper.on("feed", (result) => feedHandler(result));
+scraper.on("list", (result) => listHandler(result));
 
 export const startCrawler = (): void => {
     scraper

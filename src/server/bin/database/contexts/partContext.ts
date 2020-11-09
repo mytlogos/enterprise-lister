@@ -4,6 +4,7 @@ import mySql from "promise-mysql";
 import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
 import {Query} from "mysql";
 import { MysqlServerError } from "../mysqlError";
+import { storeModifications } from "../sqlTools";
 
 export class PartContext extends SubContext {
     public async getAll(): Promise<Query> {
@@ -275,6 +276,7 @@ export class PartContext extends SubContext {
                 [part.mediumId, part.title, part.totalIndex, part.partialIndex, partCombiIndex],
             );
             partId = result.insertId;
+            storeModifications("part", "insert", result);
         } catch (e) {
             // do not catch if it isn't an duplicate key error
             if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
@@ -359,6 +361,7 @@ export class PartContext extends SubContext {
             "INSERT IGNORE INTO part (medium_id,title, totalIndex, combiIndex) VALUES (?,?,?,?);",
             [mediumId, partName, -1, -1]
         ).then((value): ShallowPart => {
+            storeModifications("part", "insert", value);
             return {
                 totalIndex: -1,
                 title: partName,
