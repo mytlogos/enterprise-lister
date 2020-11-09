@@ -131,46 +131,46 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
             return volume.chapterItems.length;
         })
         .map((volume: any): TocPart => {
-        if (!volume.name) {
-            volume.name = "Volume " + volume.index;
-        }
-        const name = volume.name;
-
-        const chapters: TocEpisode[] = volume.chapterItems.map((item: ChapterItem): TocEpisode => {
-            let date = new Date(item.createTime);
-
-            if (Number.isNaN(date.getDate())) {
-                date = relativeToAbsoluteTime(item.createTime) || new Date();
+            if (!volume.name) {
+                volume.name = "Volume " + volume.index;
             }
+            const name = volume.name;
 
-            if (!date) {
-                throw Error(`invalid date: '${item.createTime}'`);
-            }
+            const chapters: TocEpisode[] = volume.chapterItems.map((item: ChapterItem): TocEpisode => {
+                let date = new Date(item.createTime);
 
-            if (!idPattern.test(item.id)) {
-                throw Error("invalid chapterId: " + item.id);
-            }
+                if (Number.isNaN(date.getDate())) {
+                    date = relativeToAbsoluteTime(item.createTime) || new Date();
+                }
 
-            const chapterContent: TocEpisode = {
-                url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
-                title: item.name,
-                combiIndex: item.index,
-                totalIndex: item.index,
-                releaseDate: date,
-                locked: item.isVip !== 0
+                if (!date) {
+                    throw Error(`invalid date: '${item.createTime}'`);
+                }
+
+                if (!idPattern.test(item.id)) {
+                    throw Error("invalid chapterId: " + item.id);
+                }
+
+                const chapterContent: TocEpisode = {
+                    url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
+                    title: item.name,
+                    combiIndex: item.index,
+                    totalIndex: item.index,
+                    releaseDate: date,
+                    locked: item.isVip !== 0
+                };
+                checkTocContent(chapterContent);
+                return chapterContent;
+            });
+            const partContent = {
+                episodes: chapters,
+                title: name,
+                combiIndex: volume.index,
+                totalIndex: volume.index,
             };
-            checkTocContent(chapterContent);
-            return chapterContent;
+            checkTocContent(partContent, true);
+            return partContent;
         });
-        const partContent = {
-            episodes: chapters,
-            title: name,
-            combiIndex: volume.index,
-            totalIndex: volume.index,
-        };
-        checkTocContent(partContent, true);
-        return partContent;
-    });
     const toc: Toc = {
         link: `https://www.webnovel.com/book/${bookId}/`,
         synonyms: [tocJson.data.bookInfo.bookSubName],
