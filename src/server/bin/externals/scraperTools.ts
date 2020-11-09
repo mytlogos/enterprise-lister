@@ -651,18 +651,18 @@ export function checkTocContent(content: TocContent, allowMinusOne = false): voi
 
     const index = content.combiIndex;
     if (index == null || (index < 0 && (index !== -1 || !allowMinusOne))) {
-        throw Error("invalid toc content, combiIndex invalid");
+        throw Error("invalid toc content, combiIndex invalid: '" + index + "'");
     }
 
     const totalIndex = content.totalIndex;
     if (totalIndex == null
         || !Number.isInteger(totalIndex)
         || (totalIndex < 0 && (totalIndex !== -1 || !allowMinusOne))) {
-        throw Error("invalid toc content, totalIndex invalid");
+        throw Error(`invalid toc content, totalIndex invalid: '${totalIndex}' of ${index}`);
     }
     const partialIndex = content.partialIndex;
     if (partialIndex != null && (partialIndex < 0 || !Number.isInteger(partialIndex))) {
-        throw Error("invalid toc content, partialIndex invalid");
+        throw Error(`invalid toc content, partialIndex invalid: '${partialIndex}' of ${index}`);
     }
 }
 
