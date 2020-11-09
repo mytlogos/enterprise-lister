@@ -188,10 +188,21 @@ function loadBody(urlString: string): Promise<cheerio.Root> {
     return initPromise.then(() => queueCheerioRequest(urlString, undefined, defaultRequest));
 }
 
-function loadJson(urlString: string): Promise<any> {
+function loadJson(urlString: string, retry = 0): Promise<any> {
     return initPromise
         .then(() => queueRequest(urlString, undefined, defaultRequest))
-        .then((body) => JSON.parse(body));
+        .then((body) => {
+            try {
+                return JSON.parse(body)
+            } catch (error) {
+                // sometimes the response body is incomplete for whatever reason
+                // so retry once to get it right, else forget it
+                if (retry >= 2) {
+                    throw error;
+                }
+                return loadJson(urlString, retry + 1);
+            }
+        });
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
