@@ -317,8 +317,8 @@ export class PartContext extends SubContext {
     /**
      * Updates a part.
      */
-    public updatePart(part: Part): Promise<boolean> {
-        return this.update(
+    public async updatePart(part: Part): Promise<boolean> {
+        const result = await this.update(
             "part", 
             (updates, values) => {
                 if (part.title) {
@@ -345,6 +345,8 @@ export class PartContext extends SubContext {
                 value: part.id
             }
         );
+        storeModifications("part", "update", result);
+        return result.changedRows > 0;
     }
 
     /**

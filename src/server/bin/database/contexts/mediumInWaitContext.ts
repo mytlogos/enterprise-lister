@@ -1,7 +1,8 @@
 import {SubContext} from "./subContext";
 import {MediumInWait} from "../databaseTypes";
 import {Medium, MultiSingle, SimpleMedium} from "../../types";
-import {equalsIgnore, ignore, promiseMultiSingle, sanitizeString} from "../../tools";
+import {equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle} from "../../tools";
+import { storeModifications } from '../sqlTools';
 
 export class MediumInWaitContext extends SubContext {
     public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {
@@ -70,26 +71,31 @@ export class MediumInWaitContext extends SubContext {
             return;
         }
         // @ts-ignore
-        return promiseMultiSingle(mediaInWait, (value: MediumInWait) => this.delete(
-            "medium_in_wait",
-            {
-                column: "title", value: value.title
-            },
-            {
-                column: "medium", value: value.medium
-            },
-            {
-                column: "link", value: value.link
-            },
-        )).then(ignore);
+        return promiseMultiSingle(mediaInWait, async (value: MediumInWait) => {
+            const result = await this.delete(
+                "medium_in_wait",
+                {
+                    column: "title", value: value.title
+                },
+                {
+                    column: "medium", value: value.medium
+                },
+                {
+                    column: "link", value: value.link
+                },
+            );
+            storeModifications("medium_in_wait", "delete", result);
+            return result.affectedRows > 0;
+        }).then(ignore);
     }
 
     public async addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
-        await this.multiInsert(
+        const results = await this.multiInsert(
             "INSERT IGNORE INTO medium_in_wait (title, medium, link) VALUES ",
             mediaInWait,
             (value: any) => [value.title, value.medium, value.link]
         );
-        // TODO: storeModifications("progress", "insert", result);
+        // @ts-expect-error
+        multiSingle(results, (result) => storeModifications("medium_in_wait", "insert", result));
     }
 }

@@ -1,6 +1,6 @@
 import {SubContext} from "./subContext";
 import {JobItem, JobRequest, JobState} from "../../types";
-import {isString, promiseMultiSingle} from "../../tools";
+import {isString, promiseMultiSingle, multiSingle} from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
 import {escapeLike} from "../storages/storageTools";
@@ -115,7 +115,9 @@ export class JobContext extends SubContext {
     }
 
     public async removeJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
-        await this.queryInList("DELETE FROM jobs WHERE id", jobs, undefined, (value) => value.id);
+        const result = await this.queryInList("DELETE FROM jobs WHERE id", jobs, undefined, (value) => value.id);
+        // @ts-expect-error
+        multiSingle(result, value => storeModifications("job", "delete", value));
 
         if (finished) {
             await this.addJobHistory(jobs, finished);
@@ -187,7 +189,7 @@ export class JobContext extends SubContext {
             if (!store) {
                 throw Error("missing store - is this running outside a AsyncLocalStorage Instance?");
             }
-            const context = store.get("context");
+            const context = store.get("history");
             const result = store.get("result") || "success";
             const message = store.get("message") || "Missing Message";
 

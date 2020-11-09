@@ -64,7 +64,7 @@ export class ExternalUserContext extends SubContext {
         // would violate the foreign keys restraints
 
         // first delete list - medium links
-        const result = await this.query(
+        let result = await this.query(
             "DELETE FROM external_list_medium " +
             "WHERE list_id " +
             "IN (SELECT id FROM external_reading_list " +
@@ -72,10 +72,15 @@ export class ExternalUserContext extends SubContext {
             , externalUuid,
         );
         storeModifications("external_list_item", "delete", result);
+
         // proceed to delete lists of external user
-        await this.delete("external_reading_list", {column: "user_uuid", value: externalUuid});
+        result = await this.delete("external_reading_list", {column: "user_uuid", value: externalUuid});
+        storeModifications("external_list", "delete", result);
+
         // finish by deleting external user itself
-        return this.delete("external_user", {column: "uuid", value: externalUuid});
+        result = await this.delete("external_user", {column: "uuid", value: externalUuid});
+        storeModifications("external_user", "delete", result);
+        return result.affectedRows > 0;
     }
 
     /**
@@ -152,8 +157,8 @@ export class ExternalUserContext extends SubContext {
     /**
      * Updates an external user.
      */
-    public updateExternalUser(externalUser: ExternalUser): Promise<boolean> {
-        return this.update("external_user", (updates, values) => {
+    public async updateExternalUser(externalUser: ExternalUser): Promise<boolean> {
+        const result = await this.update("external_user", (updates, values) => {
             if (externalUser.identifier) {
                 updates.push("name = ?");
                 values.push(externalUser.identifier);
@@ -171,5 +176,7 @@ export class ExternalUserContext extends SubContext {
                 updates.push("cookies = NULL");
             }
         }, {column: "uuid", value: externalUser.uuid});
+        storeModifications("external_user", "update", result);
+        return result.changedRows > 0;
     }
 }

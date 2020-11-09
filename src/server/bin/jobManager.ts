@@ -358,7 +358,13 @@ export class JobQueue {
                     return toExecute.job(() => this._done(toExecute));
                 });
                 getElseSet(store, "result", () => "success");
-                store.set("message", JSON.stringify(store.get("modifications") || {}));
+                if (!store.get("message")) {
+                    const message = {
+                        "modifications": store.get("modifications") || {},
+                        "queryCount": store.get("queryCount") || 0,
+                    }
+                    store.set("message", JSON.stringify(message));
+                }
             } catch (error) {
                 remove(this.waitingJobs, toExecute);
                 store.set("result", "failed");

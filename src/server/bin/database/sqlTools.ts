@@ -9,7 +9,7 @@ interface Modification {
 }
 
 export type QueryType = "select" | "update" | "insert" | "delete";
-export type ModificationKey = "progress" | "result_episode" | "medium" | "part" | "episode" | "release" | "list" | "external_list" | "external_user" | "user" | "list_item" | "external_list_item" | "job" | "synonym" | "toc" | "news";
+export type ModificationKey = "progress" | "result_episode" | "medium" | "part" | "episode" | "release" | "list" | "external_list" | "external_user" | "user" | "list_item" | "external_list_item" | "job" | "synonym" | "toc" | "news" | "medium_in_wait";
 
 /**
  * Store the type of modification in the Async Storage associated with this context.
@@ -17,6 +17,9 @@ export type ModificationKey = "progress" | "result_episode" | "medium" | "part" 
  * @param key 
  */
 export function storeModifications(key: ModificationKey, queryType: QueryType, result: OkPacket): void {
+    if (!result.affectedRows || (!result.changedRows && queryType === "update")) {
+        return;
+    }
     const store = getStore();
 
     if (!store) {
@@ -32,4 +35,21 @@ export function storeModifications(key: ModificationKey, queryType: QueryType, r
     } else if (queryType === "update") {
         modification.updated += result.changedRows;
     }
+}
+
+type CountKey = "queryCount";
+
+/**
+ * Increases the counter for the given key.
+ * 
+ * @param key
+ */
+export function storeCount(key: CountKey): void {
+    const store = getStore();
+
+    if (!store) {
+        return;
+    }
+    const count = store.get(key) || 0;
+    store.set(key, count + 1);
 }

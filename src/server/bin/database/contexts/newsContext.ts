@@ -151,7 +151,6 @@ export class NewsContext extends SubContext {
             news,
             (value) => [uuid, value]
         );
-        // TODO: storeModifications("progress", "insert", result);
         return true;
     }
 
@@ -207,6 +206,6 @@ export class NewsContext extends SubContext {
                 value: mediumId,
             });
         }
-        return this.delete("news_medium", ...columns);
+        return this.delete("news_medium", ...columns).then(value => value.affectedRows > 0);
     }
 }
