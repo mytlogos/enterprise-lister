@@ -325,11 +325,11 @@ export class EpisodeContext extends SubContext {
             );
             // if a similar/same result was mapped to an episode before, get episode_id and update read
             if (resultArray[0] && resultArray[0].episode_id != null) {
-                const queryResult = await this.query(
+                const insertResult = await this.query(
                     "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
                     [uuid, resultArray[0].episode_id]
                 );
-                storeModifications("progress", "insert", queryResult);
+                storeModifications("progress", "insert", insertResult);
                 return;
             }
 
