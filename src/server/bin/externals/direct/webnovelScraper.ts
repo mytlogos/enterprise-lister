@@ -123,7 +123,14 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
     }
     const idPattern = /^\d+$/;
 
-    const content: TocPart[] = tocJson.data.volumeItems.map((volume: any): TocPart => {
+    const content: TocPart[] = tocJson.data.volumeItems
+        // one medium has a volume with negative indices only, this should not be a valid episode
+        // a volume which consists of only episodes with negative indices should be filtered out
+        .filter((volume) => {
+            volume.chapterItems = volume.chapterItems.filter(episode => episode.index >= 0);
+            return volume.chapterItems.length;
+        })
+        .map((volume: any): TocPart => {
         if (!volume.name) {
             volume.name = "Volume " + volume.index;
         }

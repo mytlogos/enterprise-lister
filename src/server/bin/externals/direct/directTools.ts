@@ -4,7 +4,7 @@ import {queueCheerioRequest} from "../queueManager";
 import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
 import * as url from "url";
 import {ReleaseState, TocSearchMedium} from "../../types";
-import cheerio from "cheerio";
+import { checkTocContent } from "../scraperTools";
 
 export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string): EpisodeContent[] {
     if (!novelTitle || !episodeTitle) {
@@ -829,6 +829,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
             lastVolumeLastEpisode = lastVolume && lastVolume.episodes[lastVolume.episodes.length - 1];
             volume = node;
             currentVolumeChecked = false;
+            checkTocContent(node);
         } else if (isInternalEpisode(node)) {
             if (node.partCount) {
                 adjustPartialIndicesLinked(node, ascending, contents);
@@ -887,6 +888,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
                     }
                 }
             }
+            checkTocContent(node);
         }
     }
 }
@@ -1072,7 +1074,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                 possibleVolume = state.volumeMap.get(volIndices.combi);
 
                 if (!possibleVolume) {
-                    possibleVolume = {
+                    const internalTocPart = {
                         type: "part",
                         combiIndex: volIndices.combi,
                         totalIndex: volIndices.total,
@@ -1081,6 +1083,13 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                         originalTitle: "",
                         episodes: []
                     } as InternalTocPart;
+                    // need to be valid to be acknowledged
+                    try {
+                        checkTocContent(internalTocPart);
+                    } catch (error) {
+                        continue
+                    }
+                    possibleVolume = internalTocPart;
                     newVolume = true;
                     state.volumeMap.set(volIndices.combi, possibleVolume);
                 }
@@ -1124,7 +1133,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                 possibleVolume = state.volumeMap.get(volIndices.combi);
 
                 if (!possibleVolume) {
-                    possibleVolume = {
+                    const internalTocPart = {
                         type: "part",
                         combiIndex: volIndices.combi,
                         totalIndex: volIndices.total,
@@ -1133,6 +1142,13 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                         originalTitle: "",
                         episodes: []
                     } as InternalTocPart;
+                    // need to be valid to be acknowledged
+                    try {
+                        checkTocContent(internalTocPart);
+                    } catch (error) {
+                        continue
+                    }
+                    possibleVolume = internalTocPart;
                     newVolume = true;
                     state.volumeMap.set(volIndices.combi, possibleVolume);
                 }

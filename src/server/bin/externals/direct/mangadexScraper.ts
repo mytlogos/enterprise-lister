@@ -314,7 +314,6 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
         }
     }
     toc.statusTl = releaseState;
-    const ignoreTitles = /(oneshot)|(special.+chapter)/i;
 
     toc.authors = extractLinkable($, "a[href^=\"/search?author\"]", uri);
     toc.artists = extractLinkable($, "a[href^=\"/search?artist\"]", uri);
@@ -415,11 +414,8 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
             checkTocContent(chapterContent);
             toc.content.push(chapterContent);
         } else {
-            if (chapterTitle.match(ignoreTitles)) {
-                continue;
-            }
             logger.warn(`volume - chapter format changed on mangadex: recognized neither of them: '${chapterTitle}', ${urlString}`);
-            return true;
+            continue;
         }
     }
     const nextPaging = $(".page-item:last-child:not(.disabled)");
