@@ -4,6 +4,16 @@ export class ScraperError extends Error {
     }
 }
 
+export class UnreachableError extends Error {
+    public readonly name = "UnreachableError";
+    public readonly url: string;
+
+    public constructor(link: string) {
+        super();
+        this.url = link;
+    }
+}
+
 // tslint:disable-next-line:max-classes-per-file
 export class UrlError extends Error {
     public readonly name = "UrlError";

@@ -3,15 +3,35 @@ import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "..
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
-import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
+import {equalsIgnore, extractIndices, MediaType, sanitizeString, delay} from "../../tools";
 import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc, extractLinkable} from "./directTools";
-import {MissingResourceError, UrlError} from "../errors";
+import {MissingResourceError, UrlError, UnreachableError} from "../errors";
+
+async function tryRequest(link: string, retry = 0): Promise<cheerio.Root> {
+    try {
+        return await queueCheerioRequest(link);
+    } catch (error) {
+        // mangahasu likes to throw an Internal Server Error every now and then
+        if (error.statusCode === 500) {
+            // try at most 3 times
+            if (retry < 3) {
+                // wait a bit before trying again
+                await delay(500);
+                return tryRequest(link, retry + 1);
+            } else {
+                throw new UnreachableError(link);
+            }
+        } else {
+            throw error;
+        }
+    }
+}
 
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     // TODO scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
-    const $ = await queueCheerioRequest(baseUri + "latest-releases.html");
+    const $ = await tryRequest(baseUri + "latest-releases.html");
     const newsRows = $("ul.list_manga  .info-manga");
 
     const news: EpisodeNews[] = [];
@@ -107,7 +127,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
 }
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
-    const $ = await queueCheerioRequest(chapterLink);
+    const $ = await tryRequest(chapterLink);
     if ($("head > title").text() === "Page not found!") {
         throw new MissingResourceError("Missing Toc on NovelFull", chapterLink);
     }
@@ -156,7 +176,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
         throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
     }
-    const $ = await queueCheerioRequest(urlString);
+    const $ = await tryRequest(urlString);
     if ($("head > title").text() === "Page not found!") {
         throw new MissingResourceError("Missing Toc on NovelFull", urlString);
     }
