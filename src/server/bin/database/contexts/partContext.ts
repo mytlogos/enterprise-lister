@@ -3,6 +3,7 @@ import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisod
 import mySql from "promise-mysql";
 import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
 import {Query} from "mysql";
+import { MysqlServerError } from "../mysqlError";
 
 export class PartContext extends SubContext {
     public async getAll(): Promise<Query> {
@@ -276,7 +277,7 @@ export class PartContext extends SubContext {
             partId = result.insertId;
         } catch (e) {
             // do not catch if it isn't an duplicate key error
-            if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
+            if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
                 throw e;
             }
             const result = await this.query(

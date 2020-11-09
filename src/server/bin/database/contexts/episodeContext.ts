@@ -647,7 +647,7 @@ export class EpisodeContext extends SubContext {
             } catch (e) {
                 // do not catch if it isn't an duplicate key error
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
+                if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
                     throw e;
                 }
                 const result = await this.query(
