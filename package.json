@@ -18,7 +18,7 @@
     "start:server": "node dist/server/startServer.js",
     "start:crawler": "node dist/server/startCrawler.js",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
-    "migrate": "node dist/server/test/migrate.js",
+    "migrate": "node dist/server/misc/migrate.js",
     "commit": "npx git-cz"
   },
   "husky": {
