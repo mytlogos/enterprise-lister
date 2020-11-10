@@ -1,6 +1,6 @@
 import {SubContext} from "./subContext";
 import {List, Medium, Uuid} from "../../types";
-import {Errors, promiseMultiSingle} from "../../tools";
+import {Errors, promiseMultiSingle, multiSingle} from "../../tools";
 import { storeModifications } from "../sqlTools";
 
 export class InternalListContext extends SubContext {

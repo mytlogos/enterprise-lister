@@ -2,7 +2,7 @@ import {SubContext} from "./subContext";
 import {MediumInWait} from "../databaseTypes";
 import {Medium, MultiSingle, SimpleMedium} from "../../types";
 import {equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle} from "../../tools";
-import { storeModifications } from '../sqlTools';
+import { storeModifications } from "../sqlTools";
 
 export class MediumInWaitContext extends SubContext {
     public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {
