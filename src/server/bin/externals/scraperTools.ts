@@ -710,14 +710,14 @@ export class ScraperHelper {
         callbacks.push(callback);
     }
 
-    public emit(event: string, value: any): Promise<void> {
+    public async emit(event: string, value: any): Promise<void> {
         if (env.stopScrapeEvents) {
             logger.info("not emitting events");
             return Promise.resolve();
         }
         const callbacks = getElseSet(this.eventMap, event, () => []);
         // return a promise of all callbacks yielding a promise
-        return Promise.all(callbacks.map((cb) => cb(value)).filter(cbValue => cbValue)).then(() => undefined);
+        await Promise.all(callbacks.map((cb) => cb(value)).filter(cbValue => cbValue));
     }
 
     public init(): void {

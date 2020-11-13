@@ -13,6 +13,7 @@ import * as dns from "dns";
 import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js"
+import { AsyncResource } from "async_hooks";
 
 
 export function remove<T>(array: T[], item: T): boolean {
@@ -427,7 +428,7 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
  */
 export function delay(timeout = 1000): Promise<void> {
     return new Promise((resolve) => {
-        setTimeout(() => resolve(), timeout);
+        setTimeout(AsyncResource.bind(() => resolve()), timeout);
     });
 }
 
