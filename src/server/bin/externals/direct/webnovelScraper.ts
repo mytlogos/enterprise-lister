@@ -37,13 +37,13 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
         const mediumElement = tableData.eq(1);
         const mediumTocLinkElement = mediumElement.children("a").first();
         const mediumTocTotalLink = url.resolve(uri, mediumTocLinkElement.attr("href") as string);
-        const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/.+_\d+/.exec(mediumTocTotalLink);
+        const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/(.+_)?(\d+)/.exec(mediumTocTotalLink);
 
         if (!mediumTocLinkGroup) {
             logger.info(`unknown toc link format on webnovel: ${mediumTocTotalLink}`);
             continue;
         }
-        const mediumTocLink = mediumTocLinkGroup[0];
+        const mediumTocLink = `https://www.webnovel.com/book/${mediumTocLinkGroup[3]}`;
         const mediumTitle = sanitizeString(mediumElement.text());
 
         const titleElement = tableData.eq(2).children("a").first();
@@ -58,12 +58,12 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
         }
 
         const totalLink = url.resolve(uri, titleElement.attr("href") as string);
-        const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/([^/]+_)?\d+\/([^/]+_)?\d+).*/.exec(totalLink);
+        const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/([^/]+_)?(\d+)\/([^/]+_)?(\d+)).*/.exec(totalLink);
         if (!linkGroup) {
             logger.info(`unknown news url format on webnovel: ${totalLink}`);
             continue;
         }
-        const link = linkGroup[1];
+        const link = `https://www.webnovel.com/book/${linkGroup[3]}/${linkGroup[5]}`;
         const groups = titlePattern.exec(episodeTitle);
 
         if (!groups || !groups[1]) {
@@ -362,7 +362,15 @@ async function search(text: string): Promise<SearchResult[]> {
         const coverUrl = url.resolve(uri, coverElement.attr("src") as string);
         const link = url.resolve(uri, titleElement.attr("href") as string);
 
-        searchResult.push({title, link, coverUrl});
+        const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/(.+_)?(\d+)/.exec(link);
+
+        if (!mediumTocLinkGroup) {
+            logger.info(`unknown toc link format on webnovel: ${link}`);
+            continue;
+        }
+        const mediumTocLink = `https://www.webnovel.com/book/${mediumTocLinkGroup[3]}`;
+
+        searchResult.push({title, link: mediumTocLink, coverUrl});
     }
     return searchResult;
 }
