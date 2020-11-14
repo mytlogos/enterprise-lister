@@ -1,3 +1,15 @@
+# [1.9.0](https://github.com/mytlogos/enterprise-lister/compare/v1.8.0...v1.9.0) (2020-11-14)
+
+
+### Bug Fixes
+
+* **scraper:** emit uniform links only ([c8df395](https://github.com/mytlogos/enterprise-lister/commit/c8df395738b6c1d7e7ae73f148a5fe019b4824d1))
+
+
+### Features
+
+* track toc of release ([6300428](https://github.com/mytlogos/enterprise-lister/commit/63004284332571356ef4ea7cfbefa523bf78e512))
+
 # [1.8.0](https://github.com/mytlogos/enterprise-lister/compare/v1.7.0...v1.8.0) (2020-11-14)
 
 
