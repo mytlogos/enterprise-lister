@@ -434,6 +434,7 @@ export function delay(timeout = 1000): Promise<void> {
 
 /**
  * Tests whether two releases should be equal.
+ * This equality ignores the releaseDate attribute.
  * 
  * @param firstRelease first release
  * @param secondRelease second release
@@ -444,10 +445,10 @@ export function equalsRelease(firstRelease?: EpisodeRelease, secondRelease?: Epi
             (!!firstRelease && !!secondRelease)
             && firstRelease.url === secondRelease.url
             && firstRelease.episodeId === secondRelease.episodeId
+            && firstRelease.tocId === secondRelease.tocId
             && !!firstRelease.locked === !!secondRelease.locked
             // tslint:disable-next-line:triple-equals
             && firstRelease.sourceType == secondRelease.sourceType
-            && firstRelease.releaseDate.getTime() === secondRelease.releaseDate.getTime()
             && firstRelease.title === secondRelease.title
         );
 }

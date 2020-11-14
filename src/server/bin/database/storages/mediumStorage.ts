@@ -21,6 +21,10 @@ function inContext<T>(callback: ContextCallback<T, MediumContext>, transaction =
 }
 
 export class MediumStorage {
+    public getToc(id: number, link: string): Promise<FullMediumToc | undefined> {
+        return inContext((context) => context.getSpecificToc(id, link));
+    }
+
     public removeToc(tocLink: string): Promise<void> {
         return inContext((context) => context.removeToc(tocLink));
     }
@@ -89,7 +93,7 @@ export class MediumStorage {
 
     /**
      */
-    public addToc(mediumId: number, link: string): Promise<void> {
+    public addToc(mediumId: number, link: string): Promise<number> {
         return inContext((context) => context.addToc(mediumId, link));
     }
 

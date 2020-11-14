@@ -76,6 +76,7 @@ export interface TocEpisode extends TocContent {
     releaseDate?: Date;
     noTime?: boolean;
     locked?: boolean;
+    tocId?: number;
 }
 
 export interface TocPart extends TocContent {

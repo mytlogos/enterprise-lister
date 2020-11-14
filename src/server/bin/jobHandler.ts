@@ -7,7 +7,8 @@ import {
     isTocEpisode,
     isTocPart,
     Md5Hash,
-    multiSingle
+    multiSingle,
+    ignore
 } from "./tools";
 import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {
@@ -140,14 +141,27 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
 
             await mediumStorage.addToc(medium.id as number, toc.link);
         }
+        const mediumId = medium.id as number;
+        let currentToc = await mediumStorage.getToc(mediumId, toc.link);
+
+        // add toc if it does not still exist, instead of throwing an error
+        if (!currentToc) {
+            const id = await mediumStorage.addToc(mediumId, toc.link);
+            currentToc = {
+                link: toc.link,
+                mediumId,
+                id,
+            };
+        }
+
         // TODO: how to handle multiple authors, artists?, json array, csv, own table?
         const author = toc.authors?.length ? toc.authors[0].name : undefined;
         const artist = toc.artists?.length ? toc.artists[0].name : undefined;
         // update toc specific values
         await mediumStorage.updateMediumToc({
-            id: 0,
+            id: currentToc.id,
             title: toc.title,
-            mediumId: medium.id as number,
+            mediumId,
             link: toc.link,
             medium: toc.mediumType,
             author,
@@ -161,7 +175,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
         // ensure synonyms exist
         // TODO: shouldnt these synonyms be toc specific?
         if (toc.synonyms) {
-            await mediumStorage.addSynonyms({mediumId: medium.id as number, synonym: toc.synonyms});
+            await mediumStorage.addSynonyms({mediumId, synonym: toc.synonyms});
         }
 
         const mediumValue = getElseSet(media, medium, () => {
@@ -174,7 +188,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
         // map toc contents to their medium
         toc.content.forEach((content) => {
             if (!content || content.totalIndex == null) {
-                throw Error(`invalid tocContent for mediumId:'${medium && medium.id}' and link:'${toc.link}'`);
+                throw Error(`invalid tocContent for mediumId:'${mediumId}' and link:'${toc.link}'`);
             }
             checkTocContent(content, isTocPart(content));
 
@@ -187,12 +201,16 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
                 if (alterTitle) {
                     content.title = `Episode ${content.title}`;
                 }
+                content.tocId = currentToc?.id;
                 mediumValue.episodes.push(content);
             } else if (isTocPart(content)) {
                 if (alterTitle) {
                     content.title = `Volume ${content.title}`;
                 }
-                content.episodes.forEach((value) => checkTocContent(value));
+                content.episodes.forEach((value) => {
+                    checkTocContent(value);
+                    value.tocId = currentToc?.id;
+                });
                 mediumValue.parts.push(content);
             } else {
                 throw Error("content neither part nor episode");
@@ -308,30 +326,22 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
                 title: episodeValue.tocEpisode.title,
                 url: episodeValue.tocEpisode.url,
                 locked: episodeValue.tocEpisode.locked,
+                tocId: episodeValue.tocEpisode.tocId,
             };
             if (foundRelease) {
+                const date = foundRelease.releaseDate < tocRelease.releaseDate 
+                    ? foundRelease.releaseDate 
+                    : tocRelease.releaseDate;
+                
                 // check in what way the releases differ, there are cases there
                 // only the time changes, as the same releases is extracted
                 // from a non changing relative Time value, thus having a later absolute time
-                if (!equalsRelease(foundRelease, tocRelease)) {
-                    const currentValue = tocRelease.releaseDate;
-                    tocRelease.releaseDate = foundRelease.releaseDate;
-
-                    if (equalsRelease(foundRelease, tocRelease)) {
-                        // differ only in the releaseDate
-                        // update only if the new version has an earlier date then the storage one
-                        if (currentValue < foundRelease.releaseDate) {
-                            updateReleases.push(tocRelease);
-                        }
-                    } else {
-                        // differ in anything else, excluding releaseDate, so restore value and update
-                        if (currentValue < foundRelease.releaseDate) {
-                            tocRelease.releaseDate = currentValue;
-                        } else {
-                            tocRelease.releaseDate = foundRelease.releaseDate;
-                        }
-                        updateReleases.push(tocRelease);
-                    }
+                // a release should only be update if any value except releaseDate is different
+                // or the releaseDate of the new value is earlier then the previous one
+                if (date !== tocRelease.releaseDate || !equalsRelease(foundRelease, tocRelease)) {
+                    // use the earliest release date as value
+                    tocRelease.releaseDate = date;
+                    updateReleases.push(tocRelease);
                 }
                 return;
             }
@@ -503,7 +513,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: U
             foundLikeMedia.push(likeMedium);
             if (likeMedium.medium && likeMedium.medium.id) {
                 if (value.title.link) {
-                    updateMediaPromises.push(mediumStorage.addToc(likeMedium.medium.id, value.title.link));
+                    updateMediaPromises.push(mediumStorage.addToc(likeMedium.medium.id, value.title.link).then(ignore));
                 }
                 // TODO: 09.03.2020 episode Indices are not relative to the medium, which makes it unusable atm
                 // if (value.current && ("partIndex" in value.current || "episodeIndex" in value.current)) {
