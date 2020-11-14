@@ -7,7 +7,7 @@ import {BufferToStringStream} from "../transform";
 import {StatusCodeError} from "request-promise-native/errors";
 import requestPromise from "request-promise-native";
 import {MissingResourceError} from "./errors";
-import { setContext, removeContext, getStore } from "../asyncStorage";
+import { setContext, removeContext, getStore, bindContext } from "../asyncStorage";
 import http from "http";
 import https from "https";
 import { Socket } from "net";
@@ -26,7 +26,7 @@ function patchRequest(module: { request: (opt: RequestOptions, callback?: Reques
         const target = isString(opt) ? opt : (protocol + "://" + opt.host + "" + opt.path);
 
         const clientRequest = originalRequest(opt);
-        clientRequest.on("response", (res) => {
+        clientRequest.on("response", bindContext((res) => {
             function listener() {
                 let socket: Socket;
     
@@ -65,12 +65,12 @@ function patchRequest(module: { request: (opt: RequestOptions, callback?: Reques
                         
                 logger.debug(`${url} ${method} ${httpCode} ${send} ${received}`);
             }
-            res.once("close", AsyncResource.bind(listener));
+            res.once("close", bindContext(listener));
 
             if (callback) {
-                AsyncResource.bind(callback)(res);
+                bindContext(callback)(res);
             }
-        });
+        }));
         return clientRequest;
     }
 }

@@ -1,4 +1,4 @@
-import {AsyncLocalStorage, createHook} from "async_hooks";
+import {AsyncLocalStorage, createHook, AsyncResource} from "async_hooks";
 
 const localStorage = new AsyncLocalStorage();
 
@@ -174,4 +174,19 @@ export function runAsync(id: number, store: Map<string, any>, callback: (...args
         },
         args
     );
+}
+
+/**
+ * Workaround to wrong documentation/functionality of AsyncResource.bind.
+ * 
+ * @see https://github.com/nodejs/node/issues/36051
+ * 
+ * @param func function to bind to current async execution context
+ */
+export function bindContext<Func extends (...args: any[]) => any>(func: Func): Func & { asyncResource: AsyncResource } {
+    // @ts-expect-error
+    return AsyncResource.bind(function(...args: any[]) {
+        // @ts-expect-error
+        return func(this, ...args);
+    }) as Func & { asyncResource: AsyncResource };
 }
