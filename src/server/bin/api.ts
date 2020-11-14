@@ -161,6 +161,11 @@ function jobsRouter(): Router {
     const jobRoute = router.route("");
     jobRoute.get(UserApi.getJobs);
 
+    const statsRouter = Router();
+    statsRouter.get("/all", UserApi.getJobsStats);
+    statsRouter.get("/grouped", UserApi.getJobsStatsGrouped);
+
+    router.use("/stats", statsRouter);
     return router;
 }
 

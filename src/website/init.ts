@@ -21,6 +21,16 @@ export function count<T>(arrayLike: ArrayLike<T>, predicate: (value: T, index: n
 }
 
 /**
+ * Round the number to the nearest n-th decimal place.
+ * 
+ * @param value value to round
+ * @param decimalPlace place to round to
+ */
+export function round(value: number, decimalPlace: number): number {
+    return Math.round(value * (10 ** decimalPlace)) / (10 ** decimalPlace);
+}
+
+/**
  * Splits an array into multiple batches with each a length of batchSize.
  * The last batch may have less than batchSize, but is never empty.
  * A negative batchSize always yields an array with a single batch with all values.

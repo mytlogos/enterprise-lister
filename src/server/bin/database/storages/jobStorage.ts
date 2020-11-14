@@ -1,4 +1,4 @@
-import {JobItem, JobRequest, JobState} from "../../types";
+import {JobItem, JobRequest, JobState, AllJobStats, JobStats} from "../../types";
 import {storageInContext} from "./storage";
 import {ContextCallback, queryContextProvider} from "./storageTools";
 import {JobContext} from "../contexts/jobContext";
@@ -8,6 +8,14 @@ function inContext<T>(callback: ContextCallback<T, JobContext>, transaction = tr
 }
 
 export class JobStorage {
+    public getJobsStats(): Promise<AllJobStats> {
+        return inContext((context) => context.getJobsStats());
+    }
+
+    public getJobsStatsGrouped(): Promise<JobStats[]> {
+        return inContext((context) => context.getJobsStatsGrouped());
+    }
+
     public removeJobLike(column: string, value: any): Promise<void> {
         return inContext((context) => context.removeJobLike(column, value));
     }

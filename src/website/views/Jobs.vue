@@ -4,13 +4,17 @@
       Jobs
     </h1>
     <div class="row">
-      <span class="col">Running Jobs: {{ summary.running }}</span>
+      <span class="col-2">Running Jobs: {{ summary.running }}</span>
+      <span class="col-2">Network Queries: </span>
+      <span class="col">{{ totalJobsStats.minnetwork }}-{{ totalJobsStats.avgnetwork }}-{{ totalJobsStats.maxnetwork }}</span>
     </div>
     <div class="row">
-      <span class="col">Waiting Jobs: {{ summary.waiting }}</span>
+      <span class="col-2">Waiting Jobs: {{ summary.waiting }}</span>
+      <span class="col-2">Network Send: </span>
+      <span class="col">{{ totalJobsStats.minsend }}-{{ round(totalJobsStats.avgsend) }}-{{ totalJobsStats.maxsend }}</span>
     </div>
     <div class="row">
-      <span class="col">Lagging Jobs:
+      <span class="col-2">Lagging Jobs:
         <span
           class="badge"
           :class="(summary.lagging / (summary.waiting + summary.running)) > 0.1 ? 'badge-danger' : 'badge-success'"
@@ -18,6 +22,33 @@
           {{ summary.lagging }}
         </span>
       </span>
+      <span class="col-2">Network Received:</span>
+      <span class="col">{{ totalJobsStats.minreceived }}-{{ round(totalJobsStats.avgreceived) }}-{{ totalJobsStats.maxreceived }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2">Total Jobs failed: {{ round(totalJobsStats.failed * 100) }}%</span>
+      <span class="col-2">SQL Queries: </span>
+      <span class="col">{{ totalJobsStats.minQ }}-{{ round(totalJobsStats.queries) }}-{{ totalJobsStats.maxQ }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2">Total Jobs succeeded: {{ round(totalJobsStats.succeeded * 100) }}%</span>
+      <span class="col-2">Duration: </span>
+      <span class="col">{{ totalJobsStats.minD }}-{{ round(totalJobsStats.avgduration) }}-{{ totalJobsStats.maxD }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2" />
+      <span class="col-2">Created: </span>
+      <span class="col">{{ totalJobsStats.allcreate }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2" />
+      <span class="col-2">Updated: </span>
+      <span class="col">{{ totalJobsStats.allupdate }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2" />
+      <span class="col-2">Deleted: </span>
+      <span class="col">{{ totalJobsStats.alldelete }}</span>
     </div>
     <table
       class="table"
@@ -149,7 +180,8 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue"
-import { Job, SimpleMedium } from "../siteTypes"
+import { AllJobStats, Job, SimpleMedium } from "../siteTypes"
+import { round } from "../init";
 
 interface LiveJob {
     /**
@@ -202,6 +234,7 @@ interface Data {
     now: Date;
     liveJobs: { [key: number]: LiveJob };
     summary: JobsSummary;
+    totalJobsStats: AllJobStats;
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
@@ -224,6 +257,29 @@ export default defineComponent({
             media: new Map(),
             now: new Date(),
             liveJobs: {},
+            totalJobsStats: {
+                count: 0,
+                avgnetwork: 0,
+                minnetwork: 0,
+                maxnetwork: 0,
+                avgreceived: 0,
+                minreceived: 0,
+                maxreceived: 0,
+                avgsend: 0,
+                minsend: 0,
+                maxsend: 0,
+                avgduration: 0,
+                maxD: 0,
+                minD: 0,
+                allupdate: 0,
+                allcreate: 0,
+                alldelete: 0,
+                failed: 0,
+                succeeded: 0,
+                queries: 0,
+                maxQ: 0,
+                minQ: 0,
+            },
             summary: {
                 waiting: 0,
                 running: 0,
@@ -290,6 +346,8 @@ export default defineComponent({
             this.summary.lagging = lagging;
             this.jobs = data;
         });
+
+        HttpClient.getJobsStats().then(stats => this.totalJobsStats = stats);
 
         // fetch live jobs data
         fetch("http://localhost:3003")
@@ -389,7 +447,10 @@ export default defineComponent({
                 value.runningWidth = (value.running / total) * 100;
             }
             return values;
-        }
+        },
+        round(value: number): number {
+            return round(value, 2);
+        },
     }
 })
 </script>

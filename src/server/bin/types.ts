@@ -334,6 +334,34 @@ export interface JobRequest {
     arguments?: string;
 }
 
+export interface AllJobStats {
+    count: number;
+    avgnetwork: number;
+    minnetwork: number;
+    maxnetwork: number;
+    avgreceived: number;
+    minreceived: number;
+    maxreceived: number;
+    avgsend: number;
+    minsend: number;
+    maxsend: number;
+    avgduration: number;
+    maxD: number;
+    minD: number;
+    allupdate: number;
+    allcreate: number;
+    alldelete: number;
+    failed: number;
+    succeeded: number;
+    queries: number;
+    maxQ: number;
+    minQ: number;
+}
+
+export interface JobStats extends AllJobStats {
+    name: string;
+}
+
 export enum MilliTime {
     SECOND = 1000,
     MINUTE = 60000,

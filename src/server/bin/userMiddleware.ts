@@ -831,6 +831,14 @@ export const getJobs: Handler = (_req, res) => {
     sendResult(res, jobStorage.getAllJobs());
 };
 
+export const getJobsStats: Handler = (_req, res) => {
+    sendResult(res, jobStorage.getJobsStats());
+};
+
+export const getJobsStatsGrouped: Handler = (_req, res) => {
+    sendResult(res, jobStorage.getJobsStatsGrouped());
+};
+
 export const authenticate: Handler = (req, res, next) => {
     let { uuid, session } = req.body;
 
