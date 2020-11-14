@@ -1,3 +1,24 @@
+# [1.8.0](https://github.com/mytlogos/enterprise-lister/compare/v1.7.0...v1.8.0) (2020-11-14)
+
+
+### Bug Fixes
+
+* fix AsyncResource.bind arguments ([e23ec76](https://github.com/mytlogos/enterprise-lister/commit/e23ec762736fe5765537a044ff026644c3827896))
+* fix imports ([b1be4d0](https://github.com/mytlogos/enterprise-lister/commit/b1be4d099bd690a62b3b9025ba91e9f31e6ac5d3))
+* **scraper:** fix property access on undefined ([439214f](https://github.com/mytlogos/enterprise-lister/commit/439214fa809fbb15be5b480d91f201b9c244d8f5))
+* **scraper:** fix tocs not updated ([2f8fc0b](https://github.com/mytlogos/enterprise-lister/commit/2f8fc0bb5b45a3e8986cf5ed2581cb350d34ff2c))
+* **scraper:** ignore some errors or unimportant informations which would fail the whole job ([150d141](https://github.com/mytlogos/enterprise-lister/commit/150d141dbd42e9f1d0893197e079a50e9edcf711))
+* **scraper:** retry request on internal server error ([ee08159](https://github.com/mytlogos/enterprise-lister/commit/ee0815977279114318ce99443d93776f46f87885))
+* **scraper:** retry when part of the response is missing ([5e2fc85](https://github.com/mytlogos/enterprise-lister/commit/5e2fc8507764af2ac62b749d96220c200a153a6b))
+
+
+### Features
+
+* **scraper:** scrape authors and artists when possible ([70faf6c](https://github.com/mytlogos/enterprise-lister/commit/70faf6c852745a26b135c452c19e39f71ca28d04))
+* **scraper:** store jobs result state, message and context in database ([7c86b05](https://github.com/mytlogos/enterprise-lister/commit/7c86b05d5d134ca7e10595d9ab560f3e51677e43))
+* **scraper:** store more modifications, store query count ([70df3c4](https://github.com/mytlogos/enterprise-lister/commit/70df3c45fd13cd267c9c4aed6c7b5e8059ffd198))
+* **scraper:** track network ([9d6d664](https://github.com/mytlogos/enterprise-lister/commit/9d6d664536fe657c55bad5958cf16372ced4b822))
+
 # [1.7.0](https://github.com/mytlogos/enterprise-lister/compare/v1.6.0...v1.7.0) (2020-11-07)
 
 
