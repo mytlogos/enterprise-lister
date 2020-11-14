@@ -13,10 +13,21 @@ import {
 } from "../../types";
 import {count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
-import {escape, Query} from "mysql";
+import {escape, Query, OkPacket} from "mysql";
 import { storeModifications } from "../sqlTools";
 
 export class MediumContext extends SubContext {
+    public async getSpecificToc(id: number, link: string): Promise<FullMediumToc | undefined> {
+        const tocs = await this.query(
+            "SELECT id, medium_id as mediumId, link, " +
+            "countryOfOrigin, languageOfOrigin, author, title," +
+            "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+            "FROM medium_toc WHERE medium_id = ? AND link = ?;",
+            [id, link]
+        ) as FullMediumToc[];
+        return tocs[0];
+    }
+
     public async removeToc(tocLink: string): Promise<void> {
         const result = await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
         storeModifications("toc", "delete", result);
@@ -407,12 +418,13 @@ export class MediumContext extends SubContext {
         return true;
     }
 
-    public async addToc(mediumId: number, link: string): Promise<void> {
-        const result = await this.query(
+    public async addToc(mediumId: number, link: string): Promise<number> {
+        const result: OkPacket = await this.query(
             "INSERT IGNORE INTO medium_toc (medium_id, link) VAlUES (?,?)",
             [mediumId, link]
         );
         storeModifications("toc", "insert", result);
+        return result.insertId;
     }
 
     public async getToc(mediumId: number): Promise<string[]> {

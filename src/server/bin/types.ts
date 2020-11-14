@@ -132,6 +132,7 @@ export interface EpisodeRelease {
     releaseDate: Date;
     locked?: boolean;
     sourceType?: string;
+    tocId?: number;
 }
 
 export interface List {

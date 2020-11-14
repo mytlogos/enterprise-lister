@@ -492,7 +492,7 @@ export class EpisodeContext extends SubContext {
         Promise<EpisodeRelease | EpisodeRelease[]> {
         const results = await this.multiInsert(
             "INSERT IGNORE INTO episode_release " +
-            "(episode_id, title, url, source_type, releaseDate, locked) " +
+            "(episode_id, title, url, source_type, releaseDate, locked, toc_id) " +
             "VALUES",
             releases,
             (release) => {
@@ -505,7 +505,8 @@ export class EpisodeContext extends SubContext {
                     release.url,
                     release.sourceType,
                     release.releaseDate,
-                    release.locked
+                    release.locked,
+                    release.tocId,
                 ];
             });
         // @ts-expect-error
@@ -569,6 +570,10 @@ export class EpisodeContext extends SubContext {
                         if (value.locked != null) {
                             updates.push("locked=?");
                             values.push(value.locked);
+                        }
+                        if (value.tocId != null) {
+                            updates.push("toc_id=?");
+                            values.push(value.tocId);
                         }
                     }, {
                         column: "episode_id",
