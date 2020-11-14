@@ -7,7 +7,75 @@ import {BufferToStringStream} from "../transform";
 import {StatusCodeError} from "request-promise-native/errors";
 import requestPromise from "request-promise-native";
 import {MissingResourceError} from "./errors";
-import { setContext, removeContext } from "../asyncStorage";
+import { setContext, removeContext, getStore, bindContext } from "../asyncStorage";
+import http from "http";
+import https from "https";
+import { Socket } from "net";
+import { isString, getElseSet, stringify } from "../tools";
+import logger from "../logger";
+import { AsyncResource } from "async_hooks";
+
+
+type RequestOptions = string | http.RequestOptions | https.RequestOptions;
+type RequestCallback = (res: http.IncomingMessage) => void | undefined;
+
+function patchRequest(module: { request: (opt: RequestOptions, callback?: RequestCallback) => http.ClientRequest }, protocol: string) {
+    const originalRequest = module.request;
+
+    module.request = function(opt, callback) {
+        const target = isString(opt) ? opt : (protocol + "://" + opt.host + "" + opt.path);
+
+        const clientRequest = originalRequest(opt);
+        clientRequest.on("response", bindContext((res) => {
+            function listener() {
+                let socket: Socket;
+    
+                if (clientRequest.socket) {
+                    socket = clientRequest.socket;
+                } else {
+                    console.error("No sockets available on request" + stringify(res) + stringify(request));
+                    return;
+                }
+                const bytesSend = socket.bytesWritten;
+                const bytesReceived = socket.bytesRead;
+    
+                const store = getStore();
+    
+                if (!store) {
+                    return;
+                }
+    
+                const stats = getElseSet(store, "network", () => { return {count: 0, sent: 0, received: 0, history: []}});
+                stats.count += 1;
+                stats.sent += bytesSend;
+                stats.received += bytesReceived;
+                stats.history.push({
+                    url: target,
+                    method: clientRequest.method,
+                    statusCode: res.statusCode,
+                    send: bytesSend,
+                    received: bytesReceived,
+                });
+    
+                const url = target.slice(0, 70).padEnd(70);
+                const method = clientRequest.method.slice(0, 5).padEnd(5);
+                const httpCode = ((res.statusCode + "") || "?").slice(0, 5).padEnd(5);
+                const send = ("" + bytesSend).slice(0, 10).padEnd(10);
+                const received = ("" + bytesReceived).slice(0, 10).padEnd(10);
+                        
+                logger.debug(`${url} ${method} ${httpCode} ${send} ${received}`);
+            }
+            res.once("close", bindContext(listener));
+
+            if (callback) {
+                bindContext(callback)(res);
+            }
+        }));
+        return clientRequest;
+    }
+}
+patchRequest(http, "http");
+patchRequest(https, "https");
 
 type CheerioStatic = cheerio.Root;
 
@@ -25,6 +93,8 @@ export class Queue {
     }
 
     public push(callback: Callback): Promise<any> {
+        callback = AsyncResource.bind(callback);
+
         return new Promise((resolve, reject) => {
             const worker = () => {
                 return new Promise((subResolve, subReject) => {
@@ -248,7 +318,7 @@ export const queueCheerioRequestStream: QueueRequest<CheerioStatic> = (uri, opti
     return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
 };
 
-export const queueCheerioRequest = queueCheerioRequestStream;
+export const queueCheerioRequest = queueCheerioRequestBuffered;
 
 const transformCheerio = (body: string): CheerioStatic => cheerio.load(body, {decodeEntities: false});
 

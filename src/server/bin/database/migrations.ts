@@ -271,5 +271,37 @@ export const Migrations: Migration[] = [
             // add index to speed up queries on episode_release where releaseDate is a big factor
             await context.addIndex("episode_release", "episode_release_releaseDate_Index", ["releaseDate"]);
         }
+    },
+    {
+        fromVersion: 10,
+        toVersion: 11,
+        async migrate(context: DatabaseContext): Promise<void> {
+            // TODO: should i ask for user input before?
+            // remove all data, because this change is destructive
+            // one cannot/should not simulate the data for the new columns
+            await context.query("TRUNCATE job_history;");
+            // add columns and ignore duplicate column error
+            await Promise.all([
+                "result VARCHAR(100) NOT NULL",
+                "message VARCHAR(200) NOT NULL",
+                "context TEXT NOT NULL"
+            ].map((value) => ignoreError(
+                () => context.addColumn(
+                    "job_history",
+                    value,
+                ),
+                [MysqlServerError.ER_DUP_FIELDNAME]
+            )));
+            // add not null restraint
+            await context.alterColumn(
+                "job_history",
+                "start DATETIME NOT NULL",
+            );
+            // add not null restraint
+            await context.alterColumn(
+                "job_history",
+                "end DATETIME NOT NULL",
+            );
+        }
     }
 ];

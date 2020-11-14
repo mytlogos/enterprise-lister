@@ -123,47 +123,54 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
     }
     const idPattern = /^\d+$/;
 
-    const content: TocPart[] = tocJson.data.volumeItems.map((volume: any): TocPart => {
-        if (!volume.name) {
-            volume.name = "Volume " + volume.index;
-        }
-        const name = volume.name;
-
-        const chapters: TocEpisode[] = volume.chapterItems.map((item: ChapterItem): TocEpisode => {
-            let date = new Date(item.createTime);
-
-            if (Number.isNaN(date.getDate())) {
-                date = relativeToAbsoluteTime(item.createTime) || new Date();
+    const content: TocPart[] = tocJson.data.volumeItems
+        // one medium has a volume with negative indices only, this should not be a valid episode
+        // a volume which consists of only episodes with negative indices should be filtered out
+        .filter((volume) => {
+            volume.chapterItems = volume.chapterItems.filter(episode => episode.index >= 0);
+            return volume.chapterItems.length;
+        })
+        .map((volume: any): TocPart => {
+            if (!volume.name) {
+                volume.name = "Volume " + volume.index;
             }
+            const name = volume.name;
 
-            if (!date) {
-                throw Error(`invalid date: '${item.createTime}'`);
-            }
+            const chapters: TocEpisode[] = volume.chapterItems.map((item: ChapterItem): TocEpisode => {
+                let date = new Date(item.createTime);
 
-            if (!idPattern.test(item.id)) {
-                throw Error("invalid chapterId: " + item.id);
-            }
+                if (Number.isNaN(date.getDate())) {
+                    date = relativeToAbsoluteTime(item.createTime) || new Date();
+                }
 
-            const chapterContent: TocEpisode = {
-                url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
-                title: item.name,
-                combiIndex: item.index,
-                totalIndex: item.index,
-                releaseDate: date,
-                locked: item.isVip !== 0
+                if (!date) {
+                    throw Error(`invalid date: '${item.createTime}'`);
+                }
+
+                if (!idPattern.test(item.id)) {
+                    throw Error("invalid chapterId: " + item.id);
+                }
+
+                const chapterContent: TocEpisode = {
+                    url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
+                    title: item.name,
+                    combiIndex: item.index,
+                    totalIndex: item.index,
+                    releaseDate: date,
+                    locked: item.isVip !== 0
+                };
+                checkTocContent(chapterContent);
+                return chapterContent;
+            });
+            const partContent = {
+                episodes: chapters,
+                title: name,
+                combiIndex: volume.index,
+                totalIndex: volume.index,
             };
-            checkTocContent(chapterContent);
-            return chapterContent;
+            checkTocContent(partContent, true);
+            return partContent;
         });
-        const partContent = {
-            episodes: chapters,
-            title: name,
-            combiIndex: volume.index,
-            totalIndex: volume.index,
-        };
-        checkTocContent(partContent, true);
-        return partContent;
-    });
     const toc: Toc = {
         link: `https://www.webnovel.com/book/${bookId}/`,
         synonyms: [tocJson.data.bookInfo.bookSubName],
@@ -181,10 +188,21 @@ function loadBody(urlString: string): Promise<cheerio.Root> {
     return initPromise.then(() => queueCheerioRequest(urlString, undefined, defaultRequest));
 }
 
-function loadJson(urlString: string): Promise<any> {
+function loadJson(urlString: string, retry = 0): Promise<any> {
     return initPromise
         .then(() => queueRequest(urlString, undefined, defaultRequest))
-        .then((body) => JSON.parse(body));
+        .then((body) => {
+            try {
+                return JSON.parse(body)
+            } catch (error) {
+                // sometimes the response body is incomplete for whatever reason
+                // so retry once to get it right, else forget it
+                if (retry >= 2) {
+                    throw error;
+                }
+                return loadJson(urlString, retry + 1);
+            }
+        });
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {

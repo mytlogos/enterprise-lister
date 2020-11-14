@@ -4,6 +4,7 @@ import {queueCheerioRequest} from "../queueManager";
 import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
 import * as url from "url";
 import {ReleaseState, TocSearchMedium} from "../../types";
+import { checkTocContent } from "../scraperTools";
 
 export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string): EpisodeContent[] {
     if (!novelTitle || !episodeTitle) {
@@ -31,6 +32,30 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
     };
 
     return [episodeContent];
+}
+
+/**
+ * Extracts the Links described by the css selector into
+ * each an Object of link text and href.
+ * 
+ * @param $ the cheerio root of the document
+ * @param selector a valid css selector
+ * @param uri a valid base url
+ */
+export function extractLinkable($: cheerio.Root, selector: string, uri: string):
+    Array<{ name: string; link: string }> {
+    const elements = $(selector);
+    const result = [];
+
+    for (let i = 0; i < elements.length; i++) {
+        const element = elements.eq(i);
+
+        const name = sanitizeString(element.text());
+        const link = url.resolve(uri, element.attr("href") as string);
+
+        result.push({ name, link });
+    }
+    return result;
 }
 
 export async function searchTocCheerio(medium: TocSearchMedium, tocScraper: TocScraper, uri: string,
@@ -804,6 +829,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
             lastVolumeLastEpisode = lastVolume && lastVolume.episodes[lastVolume.episodes.length - 1];
             volume = node;
             currentVolumeChecked = false;
+            checkTocContent(node);
         } else if (isInternalEpisode(node)) {
             if (node.partCount) {
                 adjustPartialIndicesLinked(node, ascending, contents);
@@ -862,6 +888,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
                     }
                 }
             }
+            checkTocContent(node);
         }
     }
 }
@@ -1047,7 +1074,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                 possibleVolume = state.volumeMap.get(volIndices.combi);
 
                 if (!possibleVolume) {
-                    possibleVolume = {
+                    const internalTocPart = {
                         type: "part",
                         combiIndex: volIndices.combi,
                         totalIndex: volIndices.total,
@@ -1056,6 +1083,13 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                         originalTitle: "",
                         episodes: []
                     } as InternalTocPart;
+                    // need to be valid to be acknowledged
+                    try {
+                        checkTocContent(internalTocPart);
+                    } catch (error) {
+                        continue
+                    }
+                    possibleVolume = internalTocPart;
                     newVolume = true;
                     state.volumeMap.set(volIndices.combi, possibleVolume);
                 }
@@ -1099,7 +1133,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                 possibleVolume = state.volumeMap.get(volIndices.combi);
 
                 if (!possibleVolume) {
-                    possibleVolume = {
+                    const internalTocPart = {
                         type: "part",
                         combiIndex: volIndices.combi,
                         totalIndex: volIndices.total,
@@ -1108,6 +1142,13 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
                         originalTitle: "",
                         episodes: []
                     } as InternalTocPart;
+                    // need to be valid to be acknowledged
+                    try {
+                        checkTocContent(internalTocPart);
+                    } catch (error) {
+                        continue
+                    }
+                    possibleVolume = internalTocPart;
                     newVolume = true;
                     state.volumeMap.set(volIndices.combi, possibleVolume);
                 }

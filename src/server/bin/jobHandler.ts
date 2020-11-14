@@ -41,6 +41,7 @@ import {
     storage
 } from "./database/storages/storage";
 import {MissingResourceError, UrlError} from "./externals/errors";
+import { getStore } from "./asyncStorage";
 
 const scraper = DefaultJobScraper;
 
@@ -101,6 +102,14 @@ async function feedHandler({link, result}: { link: string; result: News[] }): Pr
     }
 }
 
+/**
+ * Map toc contents to their respective Media.
+ * Creates a new Medium if a corresponding one for a ToC does not exist.
+ * Adds Medium to the uuid
+ * 
+ * @param tocs tocs to map
+ * @param uuid a user uuid
+ */
 async function getTocMedia(tocs: Toc[], uuid?: Uuid)
     : Promise<Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }>> {
 
@@ -113,49 +122,46 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
             // @ts-ignore
             medium = await mediumStorage.getSimpleMedium(toc.mediumId);
         } else {
-            const likeMedium = await mediumStorage.getLikeMedium({title: toc.title, link: ""});
+            // get likemedium with similar title and same media type
+            const likeMedium = await mediumStorage.getLikeMedium({title: toc.title, type: toc.mediumType, link: ""});
             medium = likeMedium.medium;
         }
 
+        // if no such medium exists, create a new medium and toc
         if (!medium) {
-            const author = toc.authors ? toc.authors[0].name : undefined;
-            const artist = toc.artists ? toc.artists[0].name : undefined;
-            medium = await mediumStorage.addMedium({
-                medium: toc.mediumType,
-                title: toc.title,
-                author,
-                artist,
-                stateOrigin: toc.statusCOO,
-                stateTL: toc.statusTl,
-                languageOfOrigin: toc.langCOO,
-                lang: toc.langTL,
-            }, uuid);
-        } else {
-            const author = toc.authors ? toc.authors[0].name : undefined;
-            const artist = toc.artists ? toc.artists[0].name : undefined;
-            await mediumStorage.updateMediumToc({
-                id: 0,
-                mediumId: medium.id as number,
-                link: toc.link,
-                medium: toc.mediumType,
-                author,
-                artist,
-                stateOrigin: toc.statusCOO,
-                stateTL: toc.statusTl,
-                languageOfOrigin: toc.langCOO,
-                lang: toc.langTL,
-            });
-        }
+            // create medium with minimal values
+            medium = await mediumStorage.addMedium(
+                {
+                    medium: toc.mediumType,
+                    title: toc.title
+                },
+                uuid
+            );
 
+            await mediumStorage.addToc(medium.id as number, toc.link);
+        }
+        // TODO: how to handle multiple authors, artists?, json array, csv, own table?
+        const author = toc.authors?.length ? toc.authors[0].name : undefined;
+        const artist = toc.artists?.length ? toc.artists[0].name : undefined;
+        // update toc specific values
+        await mediumStorage.updateMediumToc({
+            id: 0,
+            title: toc.title,
+            mediumId: medium.id as number,
+            link: toc.link,
+            medium: toc.mediumType,
+            author,
+            artist,
+            stateOrigin: toc.statusCOO,
+            stateTL: toc.statusTl,
+            languageOfOrigin: toc.langCOO,
+            lang: toc.langTL,
+        });
+
+        // ensure synonyms exist
+        // TODO: shouldnt these synonyms be toc specific?
         if (toc.synonyms) {
             await mediumStorage.addSynonyms({mediumId: medium.id as number, synonym: toc.synonyms});
-        }
-
-        if (medium.id && toc.link) {
-            await mediumStorage.addToc(medium.id, toc.link);
-        } else {
-            // TODO: 26.02.2020 what does this imply, should something be done? is this an error?
-            logger.warn(`missing toc and id for ${JSON.stringify(medium)} and ${JSON.stringify(toc)}`);
         }
 
         const mediumValue = getElseSet(media, medium, () => {
@@ -165,6 +171,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
             };
         });
 
+        // map toc contents to their medium
         toc.content.forEach((content) => {
             if (!content || content.totalIndex == null) {
                 throw Error(`invalid tocContent for mediumId:'${medium && medium.id}' and link:'${toc.link}'`);
@@ -350,14 +357,15 @@ export async function tocHandler(result: { tocs: Toc[]; uuid?: Uuid }): Promise<
     }
     const tocs = result.tocs;
     const uuid = result.uuid;
-    logger.debug(`handling toc: ${tocs.map((value) => {
+    logger.debug(`handling tocs ${tocs.length}: ${tocs.map((value) => {
         return {...value, content: value.content.length};
     })} ${uuid}`);
 
-    if (!(tocs && tocs.length)) {
+    if (!tocs || !tocs.length) {
         return;
     }
 
+    // map tocs contents to medium
     const media: Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }> = await getTocMedia(tocs, uuid);
 
     const promises: Array<Promise<Array<Promise<void>>>> = Array.from(media.entries())
@@ -709,6 +717,11 @@ async function newsHandler({link, result}: { link: string; result: News[] }) {
 }
 
 async function tocErrorHandler(error: Error) {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", error.message);
+    }
     // TODO: 10.03.2020 remove any releases associated? with this toc
     //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
     //  and if there are to scrape them and delete any releases that are not contained in them
@@ -730,16 +743,36 @@ async function tocErrorHandler(error: Error) {
     }
 }
 
-scraper.on("feed:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("feed:error", (errorValue: any) => {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", errorValue.message);
+    }
+    logger.error(errorValue);
+});
 scraper.on("toc:error", (errorValue: any) => tocErrorHandler(errorValue));
-scraper.on("list:error", (errorValue: any) => logger.error(errorValue));
+scraper.on("list:error", (errorValue: any) => {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", errorValue.message);
+    }
+    logger.error(errorValue);
+});
 
-scraper.on("news:error", (errorValue: any) => logger.error(errorValue));
-scraper.on("news", (result) => newsHandler(result).catch((error) => logger.error(error)));
-scraper.on("toc", (result) => tocHandler(result).catch((error) => logger.error(error)));
-scraper.on("feed", (result) => feedHandler(result).catch((error) => logger.error(error)));
-
-scraper.on("list", (result) => listHandler(result).catch((error) => logger.error(error)));
+scraper.on("news:error", (errorValue: any) =>  {
+    const store = getStore();
+    if (store) {
+        store.set("result", "failed");
+        store.set("message", errorValue.message);
+    }
+    logger.error(errorValue);
+});
+scraper.on("news", (result) => newsHandler(result));
+scraper.on("toc", (result) => tocHandler(result));
+scraper.on("feed", (result) => feedHandler(result));
+scraper.on("list", (result) => listHandler(result));
 
 export const startCrawler = (): void => {
     scraper

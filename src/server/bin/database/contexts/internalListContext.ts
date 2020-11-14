@@ -1,6 +1,7 @@
 import {SubContext} from "./subContext";
 import {List, Medium, Uuid} from "../../types";
-import {Errors, promiseMultiSingle} from "../../tools";
+import {Errors, promiseMultiSingle, multiSingle} from "../../tools";
+import { storeModifications } from "../sqlTools";
 
 export class InternalListContext extends SubContext {
     /**
@@ -12,6 +13,7 @@ export class InternalListContext extends SubContext {
             "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)",
             [uuid, name, medium],
         );
+        storeModifications("list", "insert", result);
         if (!Number.isInteger(result.insertId)) {
             throw Error(`invalid ID: ${result.insertId}`);
         }
@@ -82,9 +84,9 @@ export class InternalListContext extends SubContext {
      */
     public async updateList(list: List): Promise<boolean> {
         if (!list.userUuid) {
-            return Promise.reject(new Error(Errors.INVALID_INPUT));
+            throw new Error(Errors.INVALID_INPUT);
         }
-        return this.update("reading_list", (updates, values) => {
+        const result = await this.update("reading_list", (updates, values) => {
             if (list.name) {
                 updates.push("name = ?");
                 values.push(list.name);
@@ -98,6 +100,8 @@ export class InternalListContext extends SubContext {
             column: "id",
             value: list.id
         });
+        storeModifications("list", "update", result);
+        return result.changedRows > 0;
     }
 
 
@@ -115,9 +119,13 @@ export class InternalListContext extends SubContext {
             return Promise.reject(new Error(Errors.DOES_NOT_EXIST));
         }
         // first remove all links between a list and their media
-        await this.delete("list_medium", {column: "list_id", value: listId});
+        let deleteResult = await this.delete("list_medium", {column: "list_id", value: listId});
+        storeModifications("list_item", "delete", deleteResult);
+
         // lastly delete the list itself
-        return this.delete("reading_list", {column: "id", value: listId});
+        deleteResult = await this.delete("reading_list", {column: "id", value: listId});
+        storeModifications("list", "delete", deleteResult);
+        return deleteResult.affectedRows > 0;
     }
 
     /**
@@ -160,7 +168,16 @@ export class InternalListContext extends SubContext {
             medium.id,
             (value) => [medium.listId, value]
         );
-        return result.affectedRows > 0;
+        let added = false;
+        // @ts-expect-error
+        multiSingle(result, (value: OkPacket) => {
+            storeModifications("list_item", "insert", value);
+
+            if (value.affectedRows > 0) {
+                added = true
+            }
+        })
+        return added;
     }
 
     /**
@@ -179,15 +196,17 @@ export class InternalListContext extends SubContext {
      * Removes an item from a list.
      */
     public async removeMedium(listId: number, mediumId: number | number[], external = false): Promise<boolean> {
-        await promiseMultiSingle(mediumId, (value) => {
-            return this.delete("list_medium", {
+        const results = await promiseMultiSingle(mediumId, async (value) => {
+            const result = await this.delete("list_medium", {
                 column: "list_id",
                 value: listId,
             }, {
                 column: "medium_id",
                 value,
             });
+            storeModifications("list_item", "delete", result);
+            return result.affectedRows > 0;
         });
-        return true;
+        return Array.isArray(results) ? results.some(v => v) : results;
     }
 }

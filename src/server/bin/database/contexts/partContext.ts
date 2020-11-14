@@ -3,6 +3,8 @@ import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisod
 import mySql from "promise-mysql";
 import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
 import {Query} from "mysql";
+import { MysqlServerError } from "../mysqlError";
+import { storeModifications } from "../sqlTools";
 
 export class PartContext extends SubContext {
     public async getAll(): Promise<Query> {
@@ -274,9 +276,10 @@ export class PartContext extends SubContext {
                 [part.mediumId, part.title, part.totalIndex, part.partialIndex, partCombiIndex],
             );
             partId = result.insertId;
+            storeModifications("part", "insert", result);
         } catch (e) {
             // do not catch if it isn't an duplicate key error
-            if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
+            if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
                 throw e;
             }
             const result = await this.query(
@@ -314,8 +317,8 @@ export class PartContext extends SubContext {
     /**
      * Updates a part.
      */
-    public updatePart(part: Part): Promise<boolean> {
-        return this.update(
+    public async updatePart(part: Part): Promise<boolean> {
+        const result = await this.update(
             "part", 
             (updates, values) => {
                 if (part.title) {
@@ -342,6 +345,8 @@ export class PartContext extends SubContext {
                 value: part.id
             }
         );
+        storeModifications("part", "update", result);
+        return result.changedRows > 0;
     }
 
     /**
@@ -358,6 +363,7 @@ export class PartContext extends SubContext {
             "INSERT IGNORE INTO part (medium_id,title, totalIndex, combiIndex) VALUES (?,?,?,?);",
             [mediumId, partName, -1, -1]
         ).then((value): ShallowPart => {
+            storeModifications("part", "insert", value);
             return {
                 totalIndex: -1,
                 title: partName,

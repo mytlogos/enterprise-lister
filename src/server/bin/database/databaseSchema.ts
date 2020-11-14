@@ -1,7 +1,7 @@
 import {DataBaseBuilder} from "./databaseBuilder";
 import {Migrations} from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(10);
+const dataBaseBuilder = new DataBaseBuilder(11);
 
 dataBaseBuilder.getTableBuilder()
     .setName("user")
@@ -291,8 +291,11 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("name VARCHAR(200) NOT NULL")
     .parseColumn("deleteAfterRun BOOLEAN NOT NULL")
     .parseColumn("runAfter INT")
-    .parseColumn("start DATETIME")
-    .parseColumn("end DATETIME")
+    .parseColumn("start DATETIME NOT NULL")
+    .parseColumn("end DATETIME NOT NULL")
+    .parseColumn("result VARCHAR(100) NOT NULL")
+    .parseColumn("message VARCHAR(200) NOT NULL")
+    .parseColumn("context TEXT NOT NULL")
     .parseColumn("arguments TEXT")
     .parseMeta("PRIMARY KEY(id, start)")
     .build();

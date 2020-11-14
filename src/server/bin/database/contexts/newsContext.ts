@@ -1,6 +1,7 @@
 import {SubContext} from "./subContext";
 import {News, Uuid} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
+import { storeModifications } from "../sqlTools";
 
 export class NewsContext extends SubContext {
     /**
@@ -30,6 +31,7 @@ export class NewsContext extends SubContext {
             if (!Number.isInteger(result.insertId)) {
                 throw Error(`invalid ID ${result.insertId}`);
             }
+            storeModifications("news", "insert", result);
             if (!result.affectedRows) {
                 return;
             }
@@ -136,6 +138,7 @@ export class NewsContext extends SubContext {
         await this.query("DELETE FROM news_medium WHERE news_id IN " +
             "(SELECT news_id FROM news_board WHERE date < NOW() - INTERVAL 30 DAY);");
         const result = await this.query("DELETE FROM news_board WHERE date < NOW() - INTERVAL 30 DAY;");
+        storeModifications("news", "delete", result);
         return result.affectedRows > 0;
     }
 
@@ -203,6 +206,6 @@ export class NewsContext extends SubContext {
                 value: mediumId,
             });
         }
-        return this.delete("news_medium", ...columns);
+        return this.delete("news_medium", ...columns).then(value => value.affectedRows > 0);
     }
 }

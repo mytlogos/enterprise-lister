@@ -3,7 +3,7 @@ import {Invalidation, MetaResult, Result, Uuid} from "../../types";
 import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
-import {Query} from "mysql";
+import {Query, OkPacket} from "mysql";
 import {DatabaseContext} from "./databaseContext";
 import {UserContext} from "./userContext";
 import {ExternalUserContext} from "./externalUserContext";
@@ -18,6 +18,7 @@ import {MediumInWaitContext} from "./mediumInWaitContext";
 import {ConnectionContext} from "../databaseTypes";
 import env from "../../env";
 import { setContext, removeContext } from "../../asyncStorage";
+import { storeCount } from "../sqlTools";
 
 const database = "enterprise";
 
@@ -29,6 +30,22 @@ export interface DbTrigger {
     Event: string;
     Timing: string;
     Table: string;
+}
+
+export interface Condition {
+    column: string;
+    value: any;
+}
+
+function emptyPacket() {
+    return {
+        affectedRows: 0,
+        changedRows: 0,
+        fieldCount: 0,
+        insertId: 0,
+        message: "Not queried",
+        protocol41: false,
+    };
 }
 
 /**
@@ -299,6 +316,7 @@ export class QueryContext implements ConnectionContext {
         try {
             setContext("sql-query");
             result = await this.con.query(query, parameter);
+            storeCount("queryCount");
         } finally {
             removeContext("sql-query");
         }
@@ -310,10 +328,21 @@ export class QueryContext implements ConnectionContext {
     }
 
     /**
+     * Convenience function for correct return type.
+     * Should only be used for data manipulation queries like INSERT, UPDATE, DELETE.
+     * 
+     * @param query sql query
+     * @param parameter parameter for the sql query
+     */
+    public async dmlQuery(query: string, parameter?: any | any[]): Promise<OkPacket> {
+        return this.query(query, parameter);
+    }
+
+    /**
      * Deletes one or multiple entries from one specific table,
      * with only one conditional.
      */
-    public async delete(table: string, ...condition: Array<{ column: string; value: any }>): Promise<boolean> {
+    public async delete(table: string, ...condition: Array<{ column: string; value: any }>): Promise<OkPacket> {
         if (!condition || (Array.isArray(condition) && !condition.length)) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -330,17 +359,14 @@ export class QueryContext implements ConnectionContext {
             values.push(value.value);
         });
 
-        const result = await this.query(query, values);
-
-        return result.affectedRows >= 0;
+        return this.query(query, values);
     }
 
     /**
      * Updates data from the storage.
+     * May return a empty OkPacket if no values are to be updated.
      */
-    public async update(table: string, cb: UpdateCallback, ...condition: Array<{ column: string; value: any }>)
-        : Promise<boolean> {
-
+    public async update(table: string, cb: UpdateCallback, ...condition: Condition[]): Promise<OkPacket> {
         if (!condition || (Array.isArray(condition) && !condition.length)) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -353,7 +379,7 @@ export class QueryContext implements ConnectionContext {
         }
 
         if (!updates.length) {
-            return Promise.resolve(false);
+            return Promise.resolve(emptyPacket());
         }
         let query = `UPDATE ${mySql.escapeId(table)}
                 SET ${updates.join(", ")}
@@ -367,13 +393,12 @@ export class QueryContext implements ConnectionContext {
             }
             values.push(value.value);
         });
-        const result = await this.query(query, values);
-        return result.affectedRows > 0;
+        return this.query(query, values);
     }
 
-    public multiInsert<T>(query: string, value: T | T[], paramCallback: ParamCallback<T>): Promise<any> {
+    public multiInsert<T>(query: string, value: T | T[], paramCallback: ParamCallback<T>): Promise<OkPacket | OkPacket[]> {
         if (!value || (Array.isArray(value) && !value.length)) {
-            return Promise.resolve();
+            return Promise.resolve(emptyPacket());
         }
         if (Array.isArray(value) && value.length > 100) {
             // @ts-ignore

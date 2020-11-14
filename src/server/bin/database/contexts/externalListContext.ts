@@ -1,6 +1,8 @@
 import {SubContext} from "./subContext";
 import {ExternalList, Uuid} from "../../types";
-import {Errors, promiseMultiSingle} from "../../tools";
+import {Errors, promiseMultiSingle, multiSingle} from "../../tools";
+import { storeModifications } from "../sqlTools";
+import { OkPacket } from "mysql";
 
 export class ExternalListContext extends SubContext {
     public async getAll(uuid: Uuid): Promise<ExternalList[]> {
@@ -30,7 +32,7 @@ export class ExternalListContext extends SubContext {
             "VALUES(?,?,?,?);",
             [externalList.name, userUuid, externalList.medium, externalList.url],
         );
-
+        storeModifications("external_list", "insert", result);
         const insertId = result.insertId;
 
         if (!Number.isInteger(insertId)) {
@@ -49,8 +51,8 @@ export class ExternalListContext extends SubContext {
     /**
      * Updates an external list.
      */
-    public updateExternalList(externalList: ExternalList): Promise<boolean> {
-        return this.update("external_reading_list", (updates, values) => {
+    public async updateExternalList(externalList: ExternalList): Promise<boolean> {
+        const result = await this.update("external_reading_list", (updates, values) => {
             if (externalList.medium) {
                 updates.push("medium = ?");
                 values.push(externalList.medium);
@@ -61,6 +63,8 @@ export class ExternalListContext extends SubContext {
                 values.push(externalList.name);
             }
         }, {column: "user_uuid", value: externalList.id});
+        storeModifications("external_list", "delete", result);
+        return result.changedRows > 0;
     }
 
     /**
@@ -69,11 +73,13 @@ export class ExternalListContext extends SubContext {
     public async removeExternalList(uuid: Uuid, externalListId: number | number[]): Promise<boolean> {
         // TODO: 29.06.2019 replace with id IN (...) and list_id IN (...)
         // @ts-ignore
-        return promiseMultiSingle(externalListId, async (item) => {
+        const results = await promiseMultiSingle(externalListId, async (item) => {
             // first delete any references of externalList: list-media links
-            await this.delete("external_list_medium", {column: "list_id", value: item});
+            let result = await this.delete("external_list_medium", {column: "list_id", value: item});
+            storeModifications("external_list_item", "delete", result);
+
             // then delete list itself
-            return this.delete("external_reading_list",
+            result = await this.delete("external_reading_list",
                 {
                     column: "user_uuid",
                     value: uuid,
@@ -82,7 +88,10 @@ export class ExternalListContext extends SubContext {
                     column: "id",
                     value: item,
                 });
+            storeModifications("external_list", "delete", result);
+            return result.affectedRows > 0;
         });
+        return Array.isArray(results) ? results.some(v => v) : results;
     }
 
 
@@ -134,6 +143,7 @@ export class ExternalListContext extends SubContext {
             "VALUES (?,?)",
             [listId, mediumId],
         );
+        storeModifications("external_list_item", "insert", result);
         return result.affectedRows > 0;
     }
 
@@ -162,15 +172,24 @@ export class ExternalListContext extends SubContext {
             medium.id,
             (value) => [medium.listId, value]
         );
-        return result.affectedRows > 0;
+        let added = false;
+        // @ts-expect-error
+        multiSingle(result, (value: OkPacket) => {
+            storeModifications("external_list_item", "insert", value);
+
+            if (value.affectedRows > 0) {
+                added = true
+            }
+        })
+        return added;
     }
 
     /**
      * Removes an item from a list.
      */
     public removeMedium(listId: number, mediumId: number | number[]): Promise<boolean> {
-        return promiseMultiSingle(mediumId, (value) => {
-            return this.delete(
+        return promiseMultiSingle(mediumId, async (value) => {
+            const result = await this.delete(
                 "external_list_medium",
                 {
                     column: "list_id",
@@ -180,7 +199,8 @@ export class ExternalListContext extends SubContext {
                     column: "medium_id",
                     value,
                 });
-
+            storeModifications("external_list_item", "delete", result);
+            return result.affectedRows > 0;
         }).then(() => true);
     }
 }

@@ -1,4 +1,4 @@
-import {remove, removeLike, stringify} from "./tools";
+import {remove, removeLike, stringify, getElseSet} from "./tools";
 import logger from "./logger";
 import {JobRequest} from "./types";
 import {getStore, runAsync, setContext, removeContext} from "./asyncStorage";
@@ -344,7 +344,7 @@ export class JobQueue {
                 if (toExecute.jobInfo.onStart) {
                     try {
                         setContext("Job-OnStart");
-                        await this.executeCallback(toExecute.jobInfo.onStart)
+                        await this.executeCallback(toExecute.jobInfo.onStart);
                     } catch (error) {
                         logger.error(`Job ${toExecute.jobId} onStart threw an error!: ${stringify(error)}`);
                     } finally {
@@ -357,8 +357,27 @@ export class JobQueue {
                     logger.info("executing job: " + toExecute.jobId);
                     return toExecute.job(() => this._done(toExecute));
                 });
+                getElseSet(store, "result", () => "success");
+                if (!store.get("message")) {
+                    const message = {
+                        "modifications": store.get("modifications") || {},
+                        "queryCount": store.get("queryCount") || 0,
+                        "network": store.get("network") || {},
+                    }
+                    store.set("message", JSON.stringify(message));
+                }
             } catch (error) {
                 remove(this.waitingJobs, toExecute);
+                store.set("result", "failed");
+                if (!store.get("message")) {
+                    const message = {
+                        "modifications": store.get("modifications") || {},
+                        "queryCount": store.get("queryCount") || 0,
+                        "network": store.get("network") || {},
+                        "reason": error.message,
+                    }
+                    store.set("message", JSON.stringify(message));
+                }
                 logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(error)}`);
             } finally {
                 removeContext("Job");

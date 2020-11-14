@@ -20,6 +20,7 @@ import {MediumInWaitStorage} from "./mediumInWaitStorage";
 import {NewsStorage} from "./newsStorage";
 import {EpisodeStorage} from "./episodeStorage";
 import {PartStorage} from "./partStorage";
+import { MysqlServerError } from "../mysqlError";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
     return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -82,7 +83,7 @@ async function catchTransactionError<T, C extends ConnectionContext>(
         await context.rollback();
     }
     // if it is an deadlock or lock wait timeout error, restart transaction after a delay at max five times
-    if ((e.errno === 1213 || e.errno === 1205) && attempts < 5) {
+    if ((e.errno === MysqlServerError.ER_LOCK_DEADLOCK || e.errno === MysqlServerError.ER_LOCK_WAIT_TIMEOUT) && attempts < 5) {
         await delay(500);
         return doTransaction(callback, context, transaction, attempts + 1);
     } else {

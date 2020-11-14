@@ -72,7 +72,7 @@ export class JobScraperManager {
         this.helper.init();
     }
 
-    public on(event: string, callback: (value: any) => void): void {
+    public on(event: string, callback: (value: any) => void | Promise<void>): void {
         this.helper.on(event, callback);
     }
 
@@ -532,8 +532,8 @@ export class JobScraperManager {
         // TODO: 23.06.2019 add timeout?
         return value
             .then((content) => this.helper.emit(eventName, content))
-            .catch((reason) => {
-                this.helper.emit(eventName + ":error", reason);
+            .catch(async (reason) => {
+                await this.helper.emit(eventName + ":error", reason);
                 return reason;
             });
     }

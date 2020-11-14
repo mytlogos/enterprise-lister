@@ -29,7 +29,8 @@ import {
 import logger from "../../logger";
 import { MysqlServerError } from "../mysqlError";
 import { escapeLike } from "../storages/storageTools";
-import { Query } from "mysql";
+import { Query, OkPacket } from "mysql";
+import { storeModifications } from "../sqlTools";
 
 export class EpisodeContext extends SubContext {
     public async getAll(uuid: Uuid): Promise<Query> {
@@ -224,21 +225,23 @@ export class EpisodeContext extends SubContext {
         if (progress < 0 || progress > 1) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        await this.multiInsert(
+        const results = await this.multiInsert(
             "REPLACE INTO user_episode " +
             "(user_uuid, episode_id, progress, read_date) " +
             "VALUES ",
             episodeId,
             (value) => [uuid, value, progress, readDate]
         );
+        // @ts-expect-error
+        multiSingle(results, (value: OkPacket) => storeModifications("progress", "update", value))
         return true;
     }
 
     /**
      * Removes progress of an user in regard to an episode.
      */
-    public removeProgress(uuid: Uuid, episodeId: number): Promise<boolean> {
-        return this.delete(
+    public async removeProgress(uuid: Uuid, episodeId: number): Promise<boolean> {
+        const result = await this.delete(
             "user_episode",
             {
                 column: "user_uuid",
@@ -249,6 +252,8 @@ export class EpisodeContext extends SubContext {
                 value: episodeId,
             },
         );
+        storeModifications("progress", "delete", result);
+        return result.affectedRows > 0;
     }
 
     /**
@@ -305,7 +310,7 @@ export class EpisodeContext extends SubContext {
         const teaserMatcher = /\(?teaser\)?$|(\s+$)/i;
 
         // @ts-ignore
-        return promiseMultiSingle(result.result, async (value: MetaResult) => {
+        return promiseMultiSingle(result.result, async (value: MetaResult): void => {
             // TODO what if it is not a serial medium but only an article? should it even save such things?
             if (!value.novel
                 || (!value.chapIndex && !value.chapter)
@@ -320,10 +325,12 @@ export class EpisodeContext extends SubContext {
             );
             // if a similar/same result was mapped to an episode before, get episode_id and update read
             if (resultArray[0] && resultArray[0].episode_id != null) {
-                return this.query(
+                const insertResult = await this.query(
                     "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
                     [uuid, resultArray[0].episode_id]
                 );
+                storeModifications("progress", "insert", insertResult);
+                return;
             }
 
             const escapedNovel = escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
@@ -463,16 +470,18 @@ export class EpisodeContext extends SubContext {
             // mark the episode as read
             // normally the progress should be updated by messages of the tracker
             // it should be inserted only, if there does not exist any progress
-            await this
+            let queryResult = await this
                 .query(
                     "INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);",
                     [uuid, episodeId]
                 );
-            await this.query(
+            storeModifications("progress", "insert", queryResult);
+            queryResult = await this.query(
                 "INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
                 "VALUES (?,?,?,?,?,?);",
                 [value.novel, value.chapter, value.chapIndex, value.volume, value.volIndex, episodeId]
             );
+            storeModifications("result_episode", "insert", queryResult);
         }).then(ignore);
     }
 
@@ -481,7 +490,7 @@ export class EpisodeContext extends SubContext {
 
     public async addRelease(releases: EpisodeRelease | EpisodeRelease[]):
         Promise<EpisodeRelease | EpisodeRelease[]> {
-        await this.multiInsert(
+        const results = await this.multiInsert(
             "INSERT IGNORE INTO episode_release " +
             "(episode_id, title, url, source_type, releaseDate, locked) " +
             "VALUES",
@@ -499,6 +508,8 @@ export class EpisodeContext extends SubContext {
                     release.locked
                 ];
             });
+        // @ts-expect-error
+        multiSingle(results, (value: OkPacket) => storeModifications("release", "insert", value))
         return releases;
     }
 
@@ -540,7 +551,7 @@ export class EpisodeContext extends SubContext {
         // @ts-ignore
         return promiseMultiSingle(releases, async (value: EpisodeRelease): Promise<void> => {
             if (value.episodeId) {
-                await this.update(
+                const result = await this.update(
                     "episode_release",
                     (updates, values) => {
                         if (value.title) {
@@ -567,17 +578,19 @@ export class EpisodeContext extends SubContext {
                         value: value.url,
                     }
                 );
+                storeModifications("release", "update", result);
             } else if (value.sourceType) {
-                await this.query(
+                const result = await this.query(
                     "UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?",
                     [value.url, value.sourceType, value.url, value.title]
                 );
+                storeModifications("release", "update", result);
             }
         }).then(ignore);
     }
 
-    public deleteRelease(release: EpisodeRelease): Promise<void> {
-        return this.delete(
+    public async deleteRelease(release: EpisodeRelease): Promise<void> {
+        const result = await this.delete(
             "episode_release",
             {
                 column: "episode_id",
@@ -587,7 +600,8 @@ export class EpisodeContext extends SubContext {
                 column: "url",
                 value: release.url
             }
-        ).then(ignore);
+        );
+        storeModifications("release", "delete", result);
     }
 
     public async getEpisodeContentData(chapterLink: string): Promise<EpisodeContentData> {
@@ -631,7 +645,6 @@ export class EpisodeContext extends SubContext {
             let insertId: number | undefined;
             const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
             try {
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 const result: any = await this.query(
                     "INSERT INTO episode " +
                     "(part_id, totalIndex, partialIndex, combiIndex) " +
@@ -643,11 +656,12 @@ export class EpisodeContext extends SubContext {
                         episodeCombiIndex
                     ]
                 );
+                storeModifications("episode", "insert", result);
                 insertId = result.insertId;
             } catch (e) {
                 // do not catch if it isn't an duplicate key error
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                if (!e || (e.errno !== 1062 && e.errno !== 1022)) {
+                if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
                     throw e;
                 }
                 const result = await this.query(
@@ -844,7 +858,7 @@ export class EpisodeContext extends SubContext {
      * Updates an episode from the storage.
      */
     public async updateEpisode(episode: SimpleEpisode): Promise<boolean> {
-        return this.update("episode", (updates, values) => {
+        const result = await this.update("episode", (updates, values) => {
             if (episode.partId) {
                 updates.push("part_id = ?");
                 values.push(episode.partId);
@@ -866,6 +880,8 @@ export class EpisodeContext extends SubContext {
         }, {
             column: "id", value: episode.id
         });
+        storeModifications("episode", "update", result);
+        return result.changedRows > 0;
     }
 
     /**
@@ -890,11 +906,13 @@ export class EpisodeContext extends SubContext {
         );
         const changePartIds: number[] = changePartIdsResult.map((value) => value.id);
 
-        await this.queryInList(
+        let result = await this.queryInList(
             `UPDATE episode SET part_id=${mySql.escape(newPartId)} ` +
             `WHERE part_id=${mySql.escape(oldPartId)} AND combiIndex`,
             changePartIds
         );
+        // @ts-expect-error
+        multiSingle(result, value => storeModifications("release", "update", value));
         if (!replaceIds.length) {
             return true;
         }
@@ -903,13 +921,15 @@ export class EpisodeContext extends SubContext {
             return this.query(
                 "UPDATE episode_release set episode_id=? where episode_id=?",
                 [replaceId.newId, replaceId.oldId]
-            ).catch((reason) => {
-                if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
-                    deleteReleaseIds.push(replaceId.oldId);
-                } else {
-                    throw reason;
-                }
-            });
+            )
+                .then(value => storeModifications("release", "update", value))
+                .catch((reason) => {
+                    if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
+                        deleteReleaseIds.push(replaceId.oldId);
+                    } else {
+                        throw reason;
+                    }
+                });
         }));
         const deleteProgressIds: number[] = [];
 
@@ -917,13 +937,15 @@ export class EpisodeContext extends SubContext {
             return this.query(
                 "UPDATE user_episode set episode_id=? where episode_id=?",
                 [replaceId.newId, replaceId.oldId]
-            ).catch((reason) => {
-                if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
-                    deleteProgressIds.push(replaceId.oldId);
-                } else {
-                    throw reason;
-                }
-            });
+            )
+                .then(value => storeModifications("progress", "update", value))
+                .catch((reason) => {
+                    if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
+                        deleteProgressIds.push(replaceId.oldId);
+                    } else {
+                        throw reason;
+                    }
+                });
         }));
         const deleteResultIds: number[] = [];
 
@@ -931,23 +953,36 @@ export class EpisodeContext extends SubContext {
             return this.query(
                 "UPDATE result_episode set episode_id=? where episode_id=?",
                 [replaceId.newId, replaceId.oldId]
-            ).catch((reason) => {
-                if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
-                    deleteResultIds.push(replaceId.oldId);
-                } else {
-                    throw reason;
-                }
-            });
+            )
+                .then(value => storeModifications("result_episode", "update", value))
+                .catch((reason) => {
+                    if (reason && MysqlServerError.ER_DUP_ENTRY === reason.errno) {
+                        deleteResultIds.push(replaceId.oldId);
+                    } else {
+                        throw reason;
+                    }
+                });
         }));
         const oldIds = replaceIds.map((value) => value.oldId);
         // TODO: 26.08.2019 this does not go quite well, throws error with 'cannot delete parent reference'
-        await this.queryInList("DELETE FROM episode_release WHERE episode_id ", deleteReleaseIds);
-        await this.queryInList("DELETE FROM user_episode WHERE episode_id ", deleteProgressIds);
-        await this.queryInList("DELETE FROM result_episode WHERE episode_id ", deleteResultIds);
-        await this.queryInList(
+        result = await this.queryInList("DELETE FROM episode_release WHERE episode_id ", deleteReleaseIds);
+        // @ts-expect-error
+        multiSingle(result, value => storeModifications("release", "delete", value));
+
+        result = await this.queryInList("DELETE FROM user_episode WHERE episode_id ", deleteProgressIds);
+        // @ts-expect-error
+        multiSingle(result, value => storeModifications("progress", "delete", value));
+
+        result = await this.queryInList("DELETE FROM result_episode WHERE episode_id ", deleteResultIds);
+        // @ts-expect-error
+        multiSingle(result, value => storeModifications("result_episode", "delete", value));
+
+        result = await this.queryInList(
             `DELETE FROM episode WHERE part_id=${mySql.escape(oldPartId)} AND id`,
             oldIds,
         );
+        // @ts-expect-error
+        multiSingle(result, value => storeModifications("episode", "delete", value));
         return true;
     }
 
@@ -956,10 +991,16 @@ export class EpisodeContext extends SubContext {
      */
     public async deleteEpisode(id: number): Promise<boolean> {
         // remove episode from progress first
-        await this.delete("user_episode", { column: "episode_id", value: id });
-        await this.delete("episode_release", { column: "episode_id", value: id });
+        let result = await this.delete("user_episode", { column: "episode_id", value: id });
+        storeModifications("progress", "delete", result);
+
+        result = await this.delete("episode_release", { column: "episode_id", value: id });
+        storeModifications("release", "delete", result);
+
         // lastly remove episode itself
-        return this.delete("episode", { column: "id", value: id });
+        result = await this.delete("episode", { column: "id", value: id });
+        storeModifications("episode", "delete", result);
+        return result.affectedRows > 0;
     }
 
     public async getChapterIndices(mediumId: number): Promise<number[]> {
@@ -1011,7 +1052,7 @@ export class EpisodeContext extends SubContext {
         }
         // TODO: 09.03.2020 rework query and input, for now the episodeIndices are only relative to their parts mostly,
         //  not always relative to the medium
-        await this.query(
+        const result = await this.query(
             "UPDATE user_episode, episode, part " +
             "SET user_episode.progress=1 " +
             "WHERE user_episode.episode_id=episode.id" +
@@ -1022,5 +1063,6 @@ export class EpisodeContext extends SubContext {
             "AND episode.combiIndex < ?",
             [uuid, id, partInd, episodeInd]
         );
+        storeModifications("progress", "update", result);
     }
 }

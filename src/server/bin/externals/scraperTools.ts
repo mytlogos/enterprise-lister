@@ -651,18 +651,18 @@ export function checkTocContent(content: TocContent, allowMinusOne = false): voi
 
     const index = content.combiIndex;
     if (index == null || (index < 0 && (index !== -1 || !allowMinusOne))) {
-        throw Error("invalid toc content, combiIndex invalid");
+        throw Error("invalid toc content, combiIndex invalid: '" + index + "'");
     }
 
     const totalIndex = content.totalIndex;
     if (totalIndex == null
         || !Number.isInteger(totalIndex)
         || (totalIndex < 0 && (totalIndex !== -1 || !allowMinusOne))) {
-        throw Error("invalid toc content, totalIndex invalid");
+        throw Error(`invalid toc content, totalIndex invalid: '${totalIndex}' of ${index}`);
     }
     const partialIndex = content.partialIndex;
     if (partialIndex != null && (partialIndex < 0 || !Number.isInteger(partialIndex))) {
-        throw Error("invalid toc content, partialIndex invalid");
+        throw Error(`invalid toc content, partialIndex invalid: '${partialIndex}' of ${index}`);
     }
 }
 
@@ -683,7 +683,7 @@ export enum ScrapeEvent {
 }
 
 export class ScraperHelper {
-    private readonly eventMap: Map<string, Array<(value: any) => void>> = new Map();
+    private readonly eventMap: Map<string, Array<(value: any) => void | Promise<void>>> = new Map();
 
     public get redirects(): RegExp[] {
         return redirects;
@@ -705,18 +705,19 @@ export class ScraperHelper {
         return newsAdapter;
     }
 
-    public on(event: string, callback: (value: any) => void): void {
+    public on(event: string, callback: (value: any) => void | Promise<void>): void {
         const callbacks = getElseSet(this.eventMap, event, () => []);
         callbacks.push(callback);
     }
 
-    public emit(event: string, value: any): void {
+    public async emit(event: string, value: any): Promise<void> {
         if (env.stopScrapeEvents) {
             logger.info("not emitting events");
-            return;
+            return Promise.resolve();
         }
         const callbacks = getElseSet(this.eventMap, event, () => []);
-        callbacks.forEach((cb) => cb(value));
+        // return a promise of all callbacks yielding a promise
+        await Promise.all(callbacks.map((cb) => cb(value)).filter(cbValue => cbValue));
     }
 
     public init(): void {

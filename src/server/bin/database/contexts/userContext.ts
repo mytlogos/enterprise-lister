@@ -168,7 +168,7 @@ export class UserContext extends SubContext {
      * Logs a user out.
      */
     public logoutUser(uuid: Uuid, ip: string): Promise<boolean> {
-        return this.delete("user_log", {column: "ip", value: ip});
+        return this.delete("user_log", {column: "ip", value: ip}).then(v => v.affectedRows > 0);
     }
 
 
@@ -225,7 +225,8 @@ export class UserContext extends SubContext {
         // TODO check if delete was successful, what if not?
         //  in case the deletion was unsuccessful, just 'ban' any further access to that account
         //  and delete it manually?
-        return this.delete("user", {column: "uuid", value: uuid});
+        const result = await this.delete("user", {column: "uuid", value: uuid});
+        return result.affectedRows > 0;
     }
 
     /**
@@ -266,7 +267,7 @@ export class UserContext extends SubContext {
         }, {
             column: "uuid",
             value: uuid
-        });
+        }).then(value => value.changedRows > 0);
     }
 
     /**
