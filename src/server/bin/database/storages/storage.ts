@@ -272,15 +272,6 @@ export const poolConfig = new SqlPoolConfigUpdater();
 
 export class Storage {
 
-    /**
-     * Closes the Storage.
-     *
-     * @return {Promise<void>}
-     */
-    public stop(): Promise<void> {
-        return poolProvider.stop();
-    }
-
     public getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
         return inContext((context) => context.getPageInfo(link, key));
     }
@@ -386,3 +377,5 @@ export const externalListStorage = new ExternalListStorage();
  *
  */
 export const startStorage = (): void => poolProvider.start();
+
+export const stopStorage = (): Promise<void> => poolProvider.stop();

@@ -22,7 +22,7 @@ before(async function() {
 after(async () => {
     // await tearDownTestDatabase();
     tools.internetTester.stop();
-    return storage.storage.stop();
+    return storage.stopStorage();
 });
 /**
      * Convenience Function for accessing a valid EpisodeContext

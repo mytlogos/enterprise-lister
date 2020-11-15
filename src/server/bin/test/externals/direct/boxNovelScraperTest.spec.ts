@@ -23,7 +23,7 @@ const boxNovelHook = getHook();
 
 after(() => {
     tools.internetTester.stop();
-    return storage.storage.stop();
+    return storage.stopStorage();
 });
 
 
