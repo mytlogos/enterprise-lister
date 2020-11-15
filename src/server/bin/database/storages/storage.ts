@@ -203,7 +203,7 @@ class SqlPoolProvider {
             logger.info("Stopping Database");
             this.running = false;
             const pool = await this.pool;
-            pool.end();
+            await pool.end();
             logger.info("Database stopped now");
         } else {
             logger.info("Stopping Database... None running.");
