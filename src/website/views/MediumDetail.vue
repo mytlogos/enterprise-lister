@@ -202,7 +202,7 @@ import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
 import $ from "jquery";
-import { batch, mergeMediaToc } from "../init";
+import { batch, formatDate, mergeMediaToc } from "../init";
 
 interface Data {
   releases: any[];
@@ -272,7 +272,13 @@ export default defineComponent({
             this.details = reactive(medium);
             return HttpClient.getTocs(medium.id).then(tocs => this.tocs = tocs).catch(console.error);
         }).catch(console.error);
-        HttpClient.getReleases(this.id).then(releases => this.releases = reactive(releases)).catch(console.error);
+        HttpClient.getReleases(this.id).then(releases => {
+            // ensure that date is a 'Date' object
+            for (const release of releases) {
+                release.date = new Date(release.date);
+            }
+            this.releases = reactive(releases);
+        }).catch(console.error);
     },
 
     methods: {
@@ -280,7 +286,7 @@ export default defineComponent({
          * Format a given Date to a german locale string.
          */
         dateToString(date: Date): string {
-            return date.toLocaleString("de-DE");
+            return formatDate(date);
         },
 
         /**

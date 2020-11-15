@@ -199,3 +199,7 @@ export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number
     }
     return hi;
 }
+
+export function formatDate(date: Date): string {
+    return date.toLocaleString("de-De", { second: "2-digit", minute: "2-digit", hour: "2-digit", day: "2-digit", month: "2-digit", year: "2-digit" });
+}
