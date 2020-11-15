@@ -86,7 +86,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const chapterId = exec[1];
     const urlString = `https://mangadex.org/api/?id=${chapterId}&server=null&type=chapter`;
     const jsonPromise: Promise<any> = loadJson(urlString);
-    const contentData: EpisodeContentData = await episodeStorage.getEpisodeContent(chapterLink);
+    const contentData: EpisodeContentData = await episodeStorage.getEpisodeContentData(chapterLink);
 
     if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
         logger.warn(

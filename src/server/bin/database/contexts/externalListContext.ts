@@ -121,7 +121,7 @@ export class ExternalListContext extends SubContext {
     }
 
     /**
-     * Gets an array of all lists of an user.
+     * Gets all external lists from the externalUser from the storage.
      */
     public async getExternalUserLists(uuid: Uuid): Promise<ExternalList[]> {
         const result = await this.query(
@@ -185,7 +185,7 @@ export class ExternalListContext extends SubContext {
     }
 
     /**
-     * Removes an item from a list.
+     * Removes an item from an external list.
      */
     public removeMedium(listId: number, mediumId: number | number[]): Promise<boolean> {
         return promiseMultiSingle(mediumId, async (value) => {

@@ -142,7 +142,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
             await mediumStorage.addToc(medium.id as number, toc.link);
         }
         const mediumId = medium.id as number;
-        let currentToc = await mediumStorage.getToc(mediumId, toc.link);
+        let currentToc = await mediumStorage.getSpecificToc(mediumId, toc.link);
 
         // add toc if it does not still exist, instead of throwing an error
         if (!currentToc) {
@@ -658,7 +658,7 @@ async function listHandler(result: {
     // add feeds to the storage and add them to the scraper
     await addFeeds(feeds);
 
-    const currentLists = await externalListStorage.getExternalLists(result.external.uuid);
+    const currentLists = await externalListStorage.getExternalUserLists(result.external.uuid);
 
     // all available stored list, which lie on the same index as the scraped lists
     const allLists: ExternalList[] = [];

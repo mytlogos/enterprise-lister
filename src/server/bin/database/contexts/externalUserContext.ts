@@ -58,7 +58,8 @@ export class ExternalUserContext extends SubContext {
     /**
      * Deletes an external user from the storage.
      */
-    public async deleteExternalUser(externalUuid: Uuid): Promise<boolean> {
+    public async deleteExternalUser(externalUuid: Uuid, userUuid: Uuid): Promise<boolean> {
+        // TODO: 27.02.2020 use uuid to check if uuid owns externalUser
         // We need a bottom-up approach to delete,
         // because deleting top-down
         // would violate the foreign keys restraints

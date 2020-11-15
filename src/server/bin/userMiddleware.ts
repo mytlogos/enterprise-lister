@@ -183,7 +183,7 @@ export const readNews: Handler = (req, res) => {
     }
     const currentlyReadNews = stringToNumberList(read);
 
-    sendResult(res, newsStorage.markNewsRead(uuid, currentlyReadNews));
+    sendResult(res, newsStorage.markRead(uuid, currentlyReadNews));
 };
 
 export const processReadEpisode: Handler = (req, res) => {
@@ -751,13 +751,13 @@ export const getNews: Handler = (req, res) => {
     // if newsIds is specified, send only these news
     if (isString(newsIds)) {
         newsIds = stringToNumberList(newsIds);
-        sendResult(res, newsStorage.getNews({ uuid, newsIds }));
+        sendResult(res, newsStorage.getNews(uuid, undefined, undefined, newsIds));
     } else {
         // else send it based on time
         from = !from || from === "null" ? undefined : new Date(from);
         to = !to || to === "null" ? undefined : new Date(to);
 
-        sendResult(res, newsStorage.getNews({ uuid, since: from, till: to }));
+        sendResult(res, newsStorage.getNews(uuid, from, to));
     }
 };
 
@@ -772,7 +772,7 @@ export const getAllParts: Handler = (req, res) => {
 };
 
 export const getAllMediaFull: Handler = (req, res) => {
-    sendResult(res, mediumStorage.getAllFull());
+    sendResult(res, mediumStorage.getAllMediaFull());
 };
 
 export const getAllSecondary: Handler = (req, res) => {

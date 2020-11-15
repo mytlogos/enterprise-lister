@@ -809,7 +809,10 @@ export class EpisodeContext extends SubContext {
         });
     }
 
-    public async getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>, ignoreRelease: boolean)
+    public async getMediumEpisodePerIndex(mediumId: number, index: number, ignoreRelease?: boolean): Promise<SimpleEpisode>;
+    public async getMediumEpisodePerIndex(mediumId: number, index: number[], ignoreRelease?: boolean): Promise<SimpleEpisode[]>;
+
+    public async getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>, ignoreRelease = false)
         : Promise<MultiSingle<SimpleEpisode>> {
 
         const episodes: any[] | undefined = await this.queryInList(
