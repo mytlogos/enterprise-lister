@@ -1,6 +1,7 @@
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Uuid, VoidablePromise} from "../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Uuid, VoidablePromise, MultiSingleValue} from "../types";
 import {MediaType} from "../tools";
 import {JobCallback} from "../jobManager";
+import { ListScrapeResult } from './listManager';
 
 export interface ScraperJob {
     type: string;
@@ -44,7 +45,7 @@ export interface Hook {
 }
 
 export interface Dependant {
-    oneTimeUser?: Array<{ cookies: string; uuid: Uuid }> | { cookies: string; uuid: Uuid };
+    oneTimeUser?: MultiSingleValue<{ cookies: string; uuid: Uuid }>;
     oneTimeToc?: TocRequest[] | TocRequest;
     feed?: string[] | string;
     news?: any[] | any;
@@ -83,6 +84,11 @@ export interface TocPart extends TocContent {
     episodes: TocEpisode[];
 }
 
+export interface LinkablePerson {
+    name: string;
+    link: string;
+}
+
 export interface Toc {
     title: string;
     content: TocContent[];
@@ -96,8 +102,8 @@ export interface Toc {
     langTL?: string;
     statusCOO?: ReleaseState;
     statusTl?: ReleaseState;
-    authors?: Array<{ name: string; link: string }>;
-    artists?: Array<{ name: string; link: string }>;
+    authors?: LinkablePerson[];
+    artists?: LinkablePerson[];
 }
 
 export interface EpisodeContent {
@@ -151,6 +157,18 @@ export interface ContentDownloader {
 export interface TocResult {
     tocs: Toc[];
     uuid?: Uuid;
+}
+
+export interface ExternalStorageUser {
+    userUuid: Uuid;
+    type: number;
+    uuid: Uuid;
+    cookies: string;
+}
+
+export interface ExternalListResult {
+    external: ExternalStorageUser;
+    lists: ListScrapeResult;
 }
 
 export enum ScrapeType {

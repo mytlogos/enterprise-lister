@@ -1,4 +1,4 @@
-import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
+import {EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult} from "../types";
 import {EpisodeContentData, EpisodeNews, News, ReleaseState, Optional} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
@@ -43,7 +43,7 @@ interface ChapterResponse {
 
 interface ChapterTocResponse {
     manga: MangaChapter;
-    chapter: { [key: string]: ChapterChapterItem };
+    chapter: Record<string, ChapterChapterItem>;
     status: string;
 }
 
@@ -133,7 +133,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }> {
+async function scrapeNews(): Promise<NewsScrapeResult> {
     // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
     //  with expiration date somewhere in 100 years to lessen load
 

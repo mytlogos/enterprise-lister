@@ -1,4 +1,4 @@
-import {EpisodeContent, Hook, Toc, TocPart} from "../types";
+import {EpisodeContent, Hook, Toc, TocPart, NewsScrapeResult} from "../types";
 import {EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Nullable} from "../../types";
 import logger from "../../logger";
 import * as url from "url";
@@ -7,7 +7,7 @@ import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
-async function scrapeNews(): VoidablePromise<{ news?: News[]; episodes?: EpisodeNews[]}> {
+async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     const uri = "https://www.wuxiaworld.com/";
 
     const $ = await queueCheerioRequest(uri);

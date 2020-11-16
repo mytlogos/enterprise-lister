@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {SimpleUser, User, Uuid, Nullable} from "../../types";
+import {SimpleUser, User, Uuid, Nullable, UpdateUser} from "../../types";
 import {allTypes, BcryptHash, Errors, Hasher, Hashes} from "../../tools";
 import {v1 as uuidGenerator, v4 as sessionGenerator} from "uuid";
 
@@ -235,8 +235,7 @@ export class UserContext extends SubContext {
      *
      * Returns a boolean whether data was updated or not.
      */
-    public async updateUser(uuid: Uuid,
-        user: { name?: string; newPassword?: string; password?: string }): Promise<boolean> {
+    public async updateUser(uuid: Uuid, user: UpdateUser): Promise<boolean> {
 
         if (user.newPassword && user.password) {
             if (!await this.verifyPassword(uuid, user.password)) {

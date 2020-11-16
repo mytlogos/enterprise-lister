@@ -1,5 +1,5 @@
 import mySql, {Connection} from "promise-mysql";
-import {Invalidation, MetaResult, Result, Uuid, EmptyPromise, MultiSingleValue, Nullable, UnpackArray, PromiseMultiSingle, Optional} from "../../types";
+import {Invalidation, MetaResult, Result, Uuid, EmptyPromise, MultiSingleValue, Nullable, UnpackArray, PromiseMultiSingle, Optional, PageInfo} from "../../types";
 import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
@@ -206,7 +206,7 @@ export class QueryContext implements ConnectionContext {
         });
     }
 
-    public async getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
+    public async getPageInfo(link: string, key: string): Promise<PageInfo> {
         if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
@@ -340,7 +340,7 @@ export class QueryContext implements ConnectionContext {
      * Deletes one or multiple entries from one specific table,
      * with only one conditional.
      */
-    public async delete(table: string, ...condition: Array<{ column: string; value: any }>): Promise<OkPacket> {
+    public async delete(table: string, ...condition: Condition[]): Promise<OkPacket> {
         if (!condition || (Array.isArray(condition) && !condition.length)) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }

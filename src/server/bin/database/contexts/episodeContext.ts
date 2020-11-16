@@ -16,7 +16,8 @@ import {
     PromiseMultiSingle,
     MultiSingleValue,
     Optional,
-    Nullable
+    Nullable,
+    UpdateMedium
 } from "../../types";
 import mySql from "promise-mysql";
 import {
@@ -101,7 +102,7 @@ export class EpisodeContext extends SubContext {
     }
 
     public async getAssociatedEpisode(url: string): Promise<number> {
-        const result: Array<{ id: number }> = await this.query(
+        const result: Array<Pick<UpdateMedium, "id">> = await this.query(
             "SELECT id FROM episode INNER JOIN episode_release ON episode.id=episode_release.episode_id WHERE url=?",
             url
         );

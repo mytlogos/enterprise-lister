@@ -1,5 +1,5 @@
-import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Optional, VoidablePromise, Nullable} from "../../types";
+import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart, NewsScrapeResult} from "../types";
+import {EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, Optional, VoidablePromise, Nullable} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, isTocEpisode, isTocPart, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
@@ -295,7 +295,7 @@ async function scrapeTocPage($: cheerio.Root, uri: string): VoidablePromise<Toc>
     };
 }
 
-async function newsAdapter(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }> {
+async function newsAdapter(): Promise<NewsScrapeResult> {
     const uri = "https://novelfull.com";
     const $ = await queueCheerioRequest(uri);
     const items = $("#list-index .list-new .row");

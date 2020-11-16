@@ -14,7 +14,8 @@ import {
     EmptyPromise,
     PromiseMultiSingle,
     MultiSingleValue,
-    MultiSingleNumber
+    MultiSingleNumber,
+    MediumToc
 } from "../../types";
 import {count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
@@ -510,8 +511,8 @@ export class MediumContext extends SubContext {
         );
     }
 
-    public getAllTocs(): Promise<Array<{ link: string; id: number }>> {
-        return this.query("SELECT medium_id as id, link FROM medium_toc");
+    public getAllTocs(): Promise<MediumToc[]> {
+        return this.query("SELECT medium_id as mediumId, link FROM medium_toc");
     }
 
     public async mergeMedia(sourceMediumId: number, destMediumId: number): Promise<boolean> {

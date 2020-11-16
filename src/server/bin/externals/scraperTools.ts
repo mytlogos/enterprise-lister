@@ -16,7 +16,8 @@ import {
     SimpleEpisode,
     TocSearchMedium,
     EmptyPromise,
-    Optional
+    Optional,
+    NewsResult
 } from "../types";
 import logger from "../logger";
 import {
@@ -32,7 +33,8 @@ import {
     TocRequest,
     TocResult,
     TocScraper,
-    TocSearchScraper
+    TocSearchScraper,
+    ExternalListResult
 } from "./types";
 import * as directScraper from "./direct/directScraper";
 import * as url from "url";
@@ -61,7 +63,12 @@ const newsAdapter: NewsScraper[] = [];
 const searchAdapter: SearchScraper[] = [];
 const nameHookMap = new Map<string, Hook>();
 
-export const filterScrapeAble = (urls: string): { available: string[]; unavailable: string[] } => {
+interface ScrapeableFilterResult {
+    available: string[];
+    unavailable: string[];
+}
+
+export const filterScrapeAble = (urls: string): ScrapeableFilterResult => {
     checkHooks();
 
     const regs: RegExp[] = [];
@@ -70,7 +77,7 @@ export const filterScrapeAble = (urls: string): { available: string[]; unavailab
             regs.push(entry[1].domainReg);
         }
     }
-    const result: { available: string[]; unavailable: string[] } = {available: [], unavailable: []};
+    const result: ScrapeableFilterResult = {available: [], unavailable: []};
 
     for (const link of urls) {
         let found = false;
@@ -89,7 +96,7 @@ export const filterScrapeAble = (urls: string): { available: string[]; unavailab
     return result;
 };
 
-export const scrapeNewsJob = async (name: string): Promise<{ link: string; result: News[] }> => {
+export const scrapeNewsJob = async (name: string): Promise<NewsResult> => {
     const hook = nameHookMap.get(name);
     if (!hook) {
         throw Error("no hook found for name: " + name);
@@ -102,7 +109,7 @@ export const scrapeNewsJob = async (name: string): Promise<{ link: string; resul
     return scrapeNews(hook.newsAdapter);
 };
 
-export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string; result: News[] }> => {
+export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
     if (!adapter.link || !validate.isString(adapter.link)) {
         throw Error("missing link on newsScraper");
     }
@@ -139,7 +146,7 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<{ link: string; 
     }
     return {
         link: adapter.link,
-        result: (rawNews && rawNews.news) || [],
+        rawNews: (rawNews && rawNews.news) || [],
     };
 
 };
@@ -470,9 +477,9 @@ export const queueTocsJob = async (): Promise<JobRequest[]> => {
     return tocs.map((value): JobRequest => {
         return {
             runImmediately: true,
-            arguments: JSON.stringify({mediumId: value.id, url: value.link} as TocRequest),
+            arguments: JSON.stringify({mediumId: value.mediumId, url: value.link} as TocRequest),
             type: ScrapeName.toc,
-            name: `${ScrapeName.toc}-${value.id}-${value.link}`,
+            name: `${ScrapeName.toc}-${value.mediumId}-${value.link}`,
             interval: MilliTime.HOUR,
             deleteAfterRun: false,
         };
@@ -482,8 +489,7 @@ export const queueTocs = async (): EmptyPromise => {
     await storage.queueNewTocs();
 };
 
-export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRequest)
-    : Promise<{ tocs: Toc[]; uuid?: Uuid }> => {
+export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRequest): Promise<TocResult> => {
     logger.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
 
@@ -572,9 +578,7 @@ export const toc = async (value: TocRequest): Promise<TocResult> => {
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export const list = async (value: { cookies: string; uuid: Uuid })
-    : Promise<{ external: { cookies: string; uuid: Uuid }; lists: ListScrapeResult }> => {
-
+export const list = async (value: { cookies: string; uuid: Uuid }): Promise<ExternalListResult> => {
     // TODO: 10.03.2020 for now list scrape novelupdates only, later it should take listtype as an argument
     const manager = factory(ListType.NOVELUPDATES, value.cookies);
     try {
@@ -613,13 +617,21 @@ export const list = async (value: { cookies: string; uuid: Uuid })
         await listsPromise;
         await mediaPromise;
         lists.feed = await feedLinksPromise;
-        return {external: value, lists};
+        return {
+            external: {
+                type: ListType.NOVELUPDATES,
+                // TODO: add useruuid here
+                userUuid: "",
+                ...value
+            },
+            lists
+        };
     } catch (e) {
         return Promise.reject({...value, error: e});
     }
 };
 
-export const feed = async (feedLink: string): Promise<{ link: string; result: News[] }> => {
+export const feed = async (feedLink: string): Promise<NewsResult> => {
     logger.info(`scraping feed: ${feedLink}`);
     const startTime = Date.now();
     // noinspection JSValidateTypes
@@ -639,7 +651,7 @@ export const feed = async (feedLink: string): Promise<{ link: string; result: Ne
             logger.info(`scraping feed: ${feedLink} took ${duration} ms`);
             return {
                 link: feedLink,
-                result: value
+                rawNews: value
             };
         })
         .catch((error) => Promise.reject({feed: feedLink, error}));

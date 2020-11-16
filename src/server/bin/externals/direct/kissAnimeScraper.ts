@@ -1,5 +1,5 @@
-import {Hook, Toc, TocEpisode} from "../types";
-import {EpisodeNews, News, ReleaseState, SearchResult} from "../../types";
+import {Hook, Toc, TocEpisode, NewsScrapeResult} from "../types";
+import {EpisodeNews, ReleaseState, SearchResult} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
@@ -23,7 +23,7 @@ function loadBody(urlString: string, options?: CloudscraperOptions): Promise<che
     return queueCheerioRequest(urlString, options, defaultRequest);
 }
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }> {
+async function scrapeNews(): Promise<NewsScrapeResult> {
     const uri = "https://kissanime.ru/";
     // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
     const $ = await loadBody(uri);

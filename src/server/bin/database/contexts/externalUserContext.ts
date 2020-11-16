@@ -4,6 +4,7 @@ import {Errors, promiseMultiSingle} from "../../tools";
 import {v1 as uuidGenerator} from "uuid";
 import {Query} from "mysql";
 import { storeModifications } from "../sqlTools";
+import { ExternalStorageUser } from 'bin/externals/types';
 
 export class ExternalUserContext extends SubContext {
     public async getAll(uuid: Uuid): Promise<Query> {
@@ -99,9 +100,7 @@ export class ExternalUserContext extends SubContext {
     /**
      * Gets an external user with cookies, without items.
      */
-    public async getExternalUserWithCookies(uuid: Uuid)
-        : Promise<{ userUuid: Uuid; type: number; uuid: Uuid; cookies: string }> {
-
+    public async getExternalUserWithCookies(uuid: Uuid): Promise<ExternalStorageUser> {
         const value = await this.query(
             "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
             uuid);

@@ -20,7 +20,11 @@ import { Optional } from "../types";
 type RequestOptions = string | http.RequestOptions | https.RequestOptions;
 type RequestCallback = (res: http.IncomingMessage) => void;
 
-function patchRequest(module: { request: (opt: RequestOptions, callback?: RequestCallback) => http.ClientRequest }, protocol: string) {
+interface HttpModule {
+    request: (opt: RequestOptions, callback?: RequestCallback) => http.ClientRequest;
+}
+
+function patchRequest(module: HttpModule, protocol: string) {
     const originalRequest = module.request;
 
     module.request = function(opt, callback) {

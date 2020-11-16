@@ -1,5 +1,5 @@
 import logger from "../../logger";
-import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc} from "../types";
+import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson} from "../types";
 import {queueCheerioRequest} from "../queueManager";
 import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
 import * as url from "url";
@@ -42,8 +42,7 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
  * @param selector a valid css selector
  * @param uri a valid base url
  */
-export function extractLinkable($: cheerio.Root, selector: string, uri: string):
-    Array<{ name: string; link: string }> {
+export function extractLinkable($: cheerio.Root, selector: string, uri: string): LinkablePerson[] {
     const elements = $(selector);
     const result = [];
 
@@ -201,8 +200,8 @@ export interface TocMetaPiece extends TocPiece {
     readonly langTL?: string;
     readonly statusCOO: ReleaseState;
     readonly statusTl: ReleaseState;
-    readonly authors?: Array<{ name: string; link: string }>;
-    readonly artists?: Array<{ name: string; link: string }>;
+    readonly authors?: LinkablePerson[];
+    readonly artists?: LinkablePerson[];
 }
 
 export interface TocContentPiece extends TocPiece {
@@ -381,8 +380,8 @@ interface InternalToc {
     langTL?: string;
     statusCOO: ReleaseState;
     statusTl: ReleaseState;
-    authors?: Array<{ name: string; link: string }>;
-    artists?: Array<{ name: string; link: string }>;
+    authors?: LinkablePerson[];
+    artists?: LinkablePerson[];
 }
 
 interface InternalTocContent extends Node {

@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {List, Medium, Uuid, MultiSingleNumber} from "../../types";
+import {List, Medium, Uuid, MultiSingleNumber, MinList, StorageList} from "../../types";
 import {Errors, promiseMultiSingle, multiSingle} from "../../tools";
 import { storeModifications } from "../sqlTools";
 
@@ -8,7 +8,7 @@ export class InternalListContext extends SubContext {
      * Adds a list to the storage and
      * links it to the user of the uuid.
      */
-    public async addList(uuid: Uuid, {name, medium}: { name: string; medium: number }): Promise<List> {
+    public async addList(uuid: Uuid, {name, medium}: MinList): Promise<List> {
         const result = await this.query(
             "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)",
             [uuid, name, medium],
@@ -55,10 +55,7 @@ export class InternalListContext extends SubContext {
     /**
      * Recreates a list from storage.
      */
-    public async createShallowList(storageList:
-                                       { id: number; name: string; medium: number; user_uuid: Uuid },
-    ): Promise<List> {
-
+    public async createShallowList(storageList: StorageList): Promise<List> {
         if (!storageList.name) {
             throw Error(Errors.INVALID_INPUT);
         }

@@ -32,21 +32,8 @@ export interface SecondaryMedium {
     tocs: FullMediumToc[];
 }
 
-export interface UpdateMedium {
+export type UpdateMedium = Partial<SimpleMedium> & {
     id: number;
-    countryOfOrigin?: string;
-    languageOfOrigin?: string;
-    author?: string;
-    title?: string;
-    medium?: number;
-    artist?: string;
-    lang?: string;
-    stateOrigin?: number;
-    stateTL?: number;
-    series?: string;
-    universe?: string;
-
-    [key: string]: any;
 }
 
 export interface Medium extends SimpleMedium {
@@ -69,29 +56,23 @@ export interface MediumToc {
     link: string;
 }
 
-export interface FullMediumToc extends MediumToc {
-    id: number;
-    countryOfOrigin?: string;
-    languageOfOrigin?: string;
-    author?: string;
-    title?: string;
-    medium?: number;
-    artist?: string;
-    lang?: string;
-    stateOrigin?: number;
-    stateTL?: number;
-    series?: string;
-    universe?: string;
+export type FullMediumToc = MediumToc & UpdateMedium;
 
-    [key: string]: any;
+export interface ExtractedIndex {
+    combi: number;
+    total: number;
+    fraction?: number;
 }
 
-export interface MinPart {
+export interface Indexable {
+    totalIndex: number;
+    partialIndex?: number;
+}
+
+export interface MinPart extends Indexable {
     id: number;
     title?: string;
     mediumId: number;
-    totalIndex: number;
-    partialIndex?: number;
 }
 
 export interface Part extends MinPart {
@@ -106,11 +87,9 @@ export interface ShallowPart extends Part {
     episodes: number[];
 }
 
-export interface SimpleEpisode {
+export interface SimpleEpisode extends Indexable {
     id: number;
     partId: number;
-    totalIndex: number;
-    partialIndex?: number;
     combiIndex?: number;
     releases: EpisodeRelease[];
 }
@@ -120,27 +99,70 @@ export interface Episode extends SimpleEpisode {
     readDate: Nullable<Date>;
 }
 
+export interface ReadEpisode {
+    episodeId: number;
+    readDate: Date;
+    progress: number;
+}
+
 export interface SimpleRelease {
     episodeId: number;
     url: string;
 }
 
-export interface EpisodeRelease {
-    episodeId: number;
+export interface EpisodeRelease extends SimpleRelease {
     title: string;
-    url: string;
     releaseDate: Date;
     locked?: boolean;
     sourceType?: string;
     tocId?: number;
 }
 
-export interface List {
-    userUuid: Uuid;
-    id: number;
+export interface DisplayRelease {
+    episodeId: number;
+    title: string;
+    link: string;
+    mediumId: number;
+    locked?: boolean;
+    date: Date;
+    progress: number;
+}
+
+export interface DisplayReleasesResponse {
+    releases: DisplayRelease[];
+    media: Record<number, string>;
+    latest: Date;
+}
+
+export interface MediumRelease {
+    episodeId: number;
+    title: string;
+    link: string;
+    combiIndex: number;
+    locked?: boolean;
+    date: Date;
+}
+
+export interface MinList {
     name: string;
     medium: number;
+}
+
+export interface StorageList extends MinList {
+    id: number;
+    user_uuid: Uuid;
+}
+
+export interface List extends MinList {
+    id: number;
+    userUuid: Uuid;
     items: number[];
+}
+
+export interface UpdateUser {
+    name?: string;
+    newPassword?: string;
+    password?: string;
 }
 
 export interface SimpleUser {
@@ -184,6 +206,11 @@ export interface News {
     read?: boolean;
     mediumId?: number;
     mediumTitle?: number;
+}
+
+export interface NewsResult {
+    link: string;
+    rawNews: News[] ;
 }
 
 export interface EpisodeNews {
@@ -249,6 +276,12 @@ export interface Result {
 export interface ProgressResult extends MetaResult {
     progress: number;
     readDate: Date;
+}
+
+export interface PageInfo {
+    link: string;
+    key: string;
+    values: string[];
 }
 
 /**
@@ -322,11 +355,26 @@ export type Unpack<T> = T extends Promise<infer U> ? U : UnpackArray<T>;
  */
 export type UnpackArray<T> = T extends Array<infer U> ? U : T;
 
-export interface ReadEpisode {
-    episodeId: number;
-    readDate: Date;
-    progress: number;
-}
+export type StringKeys<T> = keyof T & string;
+
+/**
+ * Type consisting of Property names of T whose type extends from U.
+ */
+export type PropertyNames<T, U> = {
+    [K in keyof T]: T[K] extends U ? K : never;
+}[keyof T];
+
+/**
+ * Yield a type of T where all Properties have a Type which extends from U.
+ */
+export type Properties<T, U> = Pick<T, PropertyNames<T, U>>;
+export type PromiseFunction = (...args: any[]) => Promise<any>;
+
+/**
+ * Type of T where all Properties with name in K are omitted.
+ * All properties left are Functions which return a Promise.
+ */
+export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>, PromiseFunction>;
 
 export interface Invalidation {
     mediumId?: number;
@@ -437,49 +485,3 @@ export enum MilliTime {
     HOUR = 3600000,
     DAY = 86400000
 }
-
-export interface DisplayRelease {
-    episodeId: number;
-    title: string;
-    link: string;
-    mediumId: number;
-    locked?: boolean;
-    date: Date;
-    progress: number;
-}
-
-export interface DisplayReleasesResponse {
-    releases: DisplayRelease[];
-    media: { [key: number]: string };
-    latest: Date;
-}
-
-export interface MediumRelease {
-    episodeId: number;
-    combiIndex: number;
-    title: string;
-    link: string;
-    locked?: boolean;
-    date: Date;
-}
-
-export type StringKeys<T> = keyof T & string;
-
-/**
- * Type consisting of Property names of T whose type extends from U.
- */
-export type PropertyNames<T, U> = {
-    [K in keyof T]: T[K] extends U ? K : never;
-}[keyof T];
-
-/**
- * Yield a type of T where all Properties have a Type which extends from U.
- */
-export type Properties<T, U> = Pick<T, PropertyNames<T, U>>;
-export type PromiseFunction = (...args: any[]) => Promise<any>;
-
-/**
- * Type of T where all Properties with name in K are omitted.
- * All properties left are Functions which return a Promise.
- */
-export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>, PromiseFunction>;

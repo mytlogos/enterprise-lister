@@ -115,8 +115,8 @@ interface NullType extends TypeResult {
 // and the possible return types and error codes
 interface MiddlewareResult {
     returnTypes: null | TypeResult;
-    queryType?: { [key: string]: null };
-    bodyType?: { [key: string]: null };
+    queryType?: Record<string, null>;
+    bodyType?: Record<string, null>;
 }
 
 type HttpMethod = "get" | "delete" | "post" | "put";
@@ -152,12 +152,12 @@ interface ParentRouterResult extends RouterResult {
 // TODO: 08.08.2020 associate the returned router with correct symbol and called function with correct symbol
 
 interface RequestInfo {
-    queryParams: { [key: string]: any };
+    queryParams: Record<string, any>;
     bodyParams: any;
 }
 
 interface ResponseInfo {
-    header: { [key: string]: any };
+    header: Record<string, any>;
     body: Nullable<TypeResult>;
 }
 
@@ -1817,7 +1817,7 @@ interface InfoObject {
     version: string;
 }
 
-type ApiMap<T> = { [key: string]: T } | Map<string, T>;
+type ApiMap<T> = Record<string, T> | Map<string, T>;
 
 interface LicenseObject {
     name: string;

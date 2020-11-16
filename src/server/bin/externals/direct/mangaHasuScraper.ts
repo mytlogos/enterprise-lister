@@ -1,5 +1,5 @@
-import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Optional} from "../../types";
+import {EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult} from "../types";
+import {EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Optional} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
@@ -28,7 +28,7 @@ async function tryRequest(link: string, retry = 0): Promise<cheerio.Root> {
     }
 }
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[]}> {
+async function scrapeNews(): Promise<NewsScrapeResult> {
     // TODO scrape more than just the first page if there is an open end
     const baseUri = "http://mangahasu.se/";
     const $ = await tryRequest(baseUri + "latest-releases.html");

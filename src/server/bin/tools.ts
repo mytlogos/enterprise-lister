@@ -1,4 +1,4 @@
-import {EpisodeRelease, MultiSingle, Uuid, PromiseMultiSingle, EmptyPromise, Unpack, UnpackArray, Optional, Nullable} from "./types";
+import {EpisodeRelease, MultiSingle, Uuid, PromiseMultiSingle, EmptyPromise, Unpack, UnpackArray, Optional, Nullable, Indexable, ExtractedIndex} from "./types";
 import {TocEpisode, TocPart, TocContent} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
@@ -699,7 +699,7 @@ export function promisify<T>(callback: () => T): Promise<T> {
  * 
  * @param value object to combine
  */
-export function combiIndex(value: { totalIndex: number; partialIndex?: number }): number {
+export function combiIndex(value: Indexable): number {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
     if (Number.isNaN(combi)) {
         throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
@@ -714,7 +714,7 @@ export function combiIndex(value: { totalIndex: number; partialIndex?: number })
  * 
  * @param value value to check the Indices from
  */
-export function checkIndices(value: { totalIndex: number; partialIndex?: number }): void {
+export function checkIndices(value: Indexable): void {
     if (value.totalIndex == null || value.totalIndex < -1 || !Number.isInteger(value.totalIndex)) {
         throw Error("invalid toc content, totalIndex invalid");
     }
@@ -723,9 +723,7 @@ export function checkIndices(value: { totalIndex: number; partialIndex?: number 
     }
 }
 
-export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number)
-    : { combi: number; total: number; fraction?: number } | null {
-
+export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number): Nullable<ExtractedIndex> {
     const whole = Number(groups[allPosition]);
 
     if (Number.isNaN(whole)) {
@@ -750,7 +748,7 @@ const indexRegex = /(-?\d+)(\.(\d+))?/;
  * 
  * @param value the number to separate
  */
-export function separateIndex(value: number): { totalIndex: number; partialIndex?: number } {
+export function separateIndex(value: number): Indexable {
     if (!isNumber(value)) {
         throw Error("not a number");
     }

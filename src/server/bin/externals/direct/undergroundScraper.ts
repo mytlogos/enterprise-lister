@@ -1,5 +1,5 @@
-import {EpisodeContent, Hook} from "../types";
-import {EpisodeNews, EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise} from "../../types";
+import {EpisodeContent, Hook, NewsScrapeResult} from "../types";
+import {EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise} from "../../types";
 import logger from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
 import {max, MediaType, sanitizeString} from "../../tools";
@@ -7,7 +7,7 @@ import {episodeStorage, mediumStorage, partStorage} from "../../database/storage
 
 export const sourceType = "qidian_underground";
 
-async function scrapeNews(): VoidablePromise<{ news?: News[]; episodes?: EpisodeNews[] }> {
+async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     const uri = "https://toc.qidianunderground.org/";
 
     const $ = await queueCheerioRequest(uri);

@@ -13,7 +13,7 @@ export class DatabaseContext extends SubContext {
     }
 
     public getDatabaseVersion (): Promise<Array<{ version: number }>> {
-        return this.query("SELECT version FROM enterprise_database_info LIMIT 1;") as Promise<Array<{ version: number }>>;
+        return this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
     }
 
     public async startMigration (): Promise<boolean> {
