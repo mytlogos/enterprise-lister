@@ -10,7 +10,6 @@ import {
     JobRequest,
     LikeMedium,
     MilliTime,
-    MultiSingle,
     News,
     ScrapeName,
     SearchResult,

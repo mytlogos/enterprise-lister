@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {JobItem, JobRequest, JobState, JobStats, AllJobStats, EmptyPromise, VoidablePromise, MultiSingleValue, PromiseMultiSingle, Optional} from "../../types";
+import {JobItem, JobRequest, JobState, JobStats, AllJobStats, EmptyPromise, MultiSingleValue, PromiseMultiSingle, Optional} from "../../types";
 import {isString, promiseMultiSingle, multiSingle} from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";

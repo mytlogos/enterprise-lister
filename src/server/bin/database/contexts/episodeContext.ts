@@ -4,7 +4,6 @@ import {
     EpisodeContentData,
     EpisodeRelease,
     MetaResult,
-    MultiSingle,
     ProgressResult,
     ReadEpisode,
     Result,
@@ -36,8 +35,6 @@ import { MysqlServerError } from "../mysqlError";
 import { escapeLike } from "../storages/storageTools";
 import { Query, OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
-
-type NonGlobal<T> = Promise<T>;
 
 export class EpisodeContext extends SubContext {
     public async getAll(uuid: Uuid): Promise<Query> {

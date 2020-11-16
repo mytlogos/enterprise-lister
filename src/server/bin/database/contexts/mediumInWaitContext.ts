@@ -1,6 +1,6 @@
 import {SubContext} from "./subContext";
 import {MediumInWait} from "../databaseTypes";
-import {Medium, MultiSingle, SimpleMedium, MultiSingleValue, EmptyPromise} from "../../types";
+import {Medium, SimpleMedium, MultiSingleValue, EmptyPromise} from "../../types";
 import {equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle} from "../../tools";
 import { storeModifications } from "../sqlTools";
 
