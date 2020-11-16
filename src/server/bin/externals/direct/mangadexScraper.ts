@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult} from "../types";
-import {EpisodeContentData, EpisodeNews, News, ReleaseState, Optional} from "../../types";
+import {EpisodeContentData, EpisodeNews, ReleaseState, Optional} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import logger from "../../logger";
@@ -8,7 +8,7 @@ import * as request from "request";
 import {checkTocContent} from "../scraperTools";
 import {episodeStorage} from "../../database/storages/storage";
 import {MissingResourceError, UrlError} from "../errors";
-import { extractLinkable } from './directTools';
+import { extractLinkable } from "./directTools";
 
 const jar = request.jar();
 jar.setCookie(

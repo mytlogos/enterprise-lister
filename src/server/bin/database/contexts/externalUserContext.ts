@@ -4,7 +4,7 @@ import {Errors, promiseMultiSingle} from "../../tools";
 import {v1 as uuidGenerator} from "uuid";
 import {Query} from "mysql";
 import { storeModifications } from "../sqlTools";
-import { ExternalStorageUser } from 'bin/externals/types';
+import { ExternalStorageUser } from "../../externals/types";
 
 export class ExternalUserContext extends SubContext {
     public async getAll(uuid: Uuid): Promise<Query> {

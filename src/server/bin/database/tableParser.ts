@@ -2,7 +2,7 @@ import {TableSchema} from "./tableSchema";
 import logger from "../logger";
 import {ColumnSchema} from "./columnSchema";
 import {ColumnType, Modifier} from "./databaseTypes";
-import { Optional, Nullable } from 'bin/types';
+import { Optional, Nullable } from "../types";
 
 export class TableParser {
 
