@@ -1,4 +1,5 @@
 import {AsyncLocalStorage, createHook, AsyncResource} from "async_hooks";
+import { EmptyPromise, Optional } from "./types";
 
 const localStorage = new AsyncLocalStorage();
 
@@ -111,8 +112,8 @@ createHook({
 const stores = new Map<number, Map<string, any>>();
 const defaultContext = "base";
 
-export function getStore(): Map<string, any> {
-    return localStorage.getStore() as Map<string, any>;
+export function getStore(): Optional<Map<string, any>> {
+    return localStorage.getStore() as Optional<Map<string, any>>;
 }
 
 /**
@@ -127,7 +128,7 @@ export function getStores(): Map<number, Map<string, any>> {
 }
 
 export function setContext(name: string): void {
-    const store = localStorage.getStore() as Map<string, any> | undefined;
+    const store = localStorage.getStore() as Optional<Map<string, any>>;
     if (!store) {
         return;
     }
@@ -141,7 +142,7 @@ export function setContext(name: string): void {
 }
 
 export function removeContext(name: string): void {
-    const store = localStorage.getStore() as Map<string, any> | undefined;
+    const store = localStorage.getStore() as Optional<Map<string, any>>;
     if (!store) {
         return;
     }
@@ -157,7 +158,7 @@ export function removeContext(name: string): void {
     }
 }
 
-export function runAsync(id: number, store: Map<string, any>, callback: (...args: any[]) => void | Promise<void>, ...args: any[]): void {
+export function runAsync(id: number, store: Map<string, any>, callback: (...args: any[]) => void | EmptyPromise, ...args: any[]): void {
     localStorage.run(
         store,
         async () => {

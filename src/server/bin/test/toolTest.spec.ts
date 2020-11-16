@@ -8,6 +8,7 @@ import logger from "../logger";
 import * as tools from "../tools";
 import { describe, before, after, it } from "mocha";
 import { v1, NIL as NIL_UUID, v4 } from "uuid";
+import { Nullable } from "../types";
 
 chai.use(sinon_chai);
 chai.use(chaiAsPromised);
@@ -52,25 +53,25 @@ describe("testing tool.js", () => {
     const sandbox = sinon.createSandbox();
     before("setting up", () => {
         for (const key of Object.keys(console)) {
-            // @ts-ignore
+            // @ts-expect-error
             if (typeof console[key] === "function") {
                 
-                // @ts-ignore
+                // @ts-expect-error
                 sandbox.spy(console, key);
             }
         }
-        // @ts-ignore
+
         for (const key of Object.keys(logger)) {
-            // @ts-ignore
+            // @ts-expect-error
             if (typeof logger[key] === "function") {
-                // @ts-ignore
+                // @ts-expect-error
                 sandbox.stub(logger, key);
             }
         }
     });
     after(() => sandbox.restore());
     describe("hash functions", () => {
-        // @ts-ignore
+        // @ts-expect-error
         const tags = [];
         const testStrings = ["", "a", "11237897319283781927397$!\"()=()89"];
         for (const hashTool of tools.Hashes) {
@@ -78,7 +79,7 @@ describe("testing tool.js", () => {
                 hashTool.should.have.own.property("tag").that.is.a("string").and.not.empty;
             });
             it(`should have unique tag - '${hashTool.tag}'`, function () {
-                // @ts-ignore
+                // @ts-expect-error
                 tags.should.not.contain(hashTool.tag);
                 tags.push(hashTool.tag);
             });
@@ -93,16 +94,16 @@ describe("testing tool.js", () => {
                      * @type {{hash: string, salt?: string}}
                      */
                     const hash = await hashTool.hash(testString);
-                    // @ts-ignore
+                    // @ts-expect-error
                     await hashTool.equals(testString, hash.hash, hash.salt).should.eventually.be.true;
                 }
             });
             it(`hash should throw ${hashTool.tag}'`, async function () {
-                // @ts-ignore
+                // @ts-expect-error
                 await hashTool.hash(undefined).should.eventually.be.rejected;
             });
             it(`equals should throw ${hashTool.tag}'`, async function () {
-                // @ts-ignore
+                // @ts-expect-error
                 await hashTool.equals(undefined, "123", "123").should.eventually.be.rejected;
             });
         }
@@ -112,7 +113,7 @@ describe("testing tool.js", () => {
         let up = false;
 
         before(function() {
-            // @ts-ignore
+            // @ts-expect-error
             internetSandbox.stub(dns.promises, "lookup").callsFake(() => up ? Promise.resolve() : Promise.reject());
             internetSandbox.stub(tools.internetTester, "isOnline").callsFake(() => up);
             // FIXME skip this this suite for now, on jenkins this fails, while in develop it does not
@@ -239,7 +240,7 @@ describe("testing tool.js", () => {
     });
     describe("test forEachArrayLike", function () {
         const arrayLikeSandbox = sinon.createSandbox();
-        // @ts-ignore
+        // @ts-expect-error
         let callback;
 
         before(() => {
@@ -249,29 +250,29 @@ describe("testing tool.js", () => {
                 arguments[1].should.be.finite;
             });
         });
-        // @ts-ignore
+        // @ts-expect-error
         afterEach(() => callback.reset());
         after(() => arrayLikeSandbox.restore());
 
         it("should equal the times called and length of arrayLike", function () {
             const arrayLike = {0: 1, 1: 2, 2: 3, 3: 4, length: 4};
-            // @ts-ignore
+            // @ts-expect-error
             tools.forEachArrayLike(arrayLike, callback);
-            // @ts-ignore
+            // @ts-expect-error
             callback.should.have.callCount(arrayLike.length);
         });
         it("should be called for each element once and in order", function () {
             const arrayLike = {0: 1, 1: 2, 2: 3, 3: 4, length: 4};
-            // @ts-ignore
+            // @ts-expect-error
             tools.forEachArrayLike(arrayLike, callback);
 
-            // @ts-ignore
+            // @ts-expect-error
             const firstCall = callback.getCall(0);
-            // @ts-ignore
+            // @ts-expect-error
             const secondCall = callback.getCall(1);
-            // @ts-ignore
+            // @ts-expect-error
             const thirdCall = callback.getCall(2);
-            // @ts-ignore
+            // @ts-expect-error
             const fourthCall = callback.getCall(3);
 
             firstCall.should.be.calledBefore(secondCall).and.be.calledBefore(fourthCall);
@@ -288,11 +289,11 @@ describe("testing tool.js", () => {
         it("should always return a promise", function () {
             return Promise.all([
                 tools.promiseMultiSingle(null, () => null).should.be.a("promise"),
-                // @ts-ignore
+                // @ts-expect-error
                 // eslint-disable-next-line @typescript-eslint/no-empty-function
                 tools.promiseMultiSingle(null, null).catch(() => {
                 }).should.be.a("promise"),
-                // @ts-ignore
+                // @ts-expect-error
                 // eslint-disable-next-line @typescript-eslint/no-empty-function
                 tools.promiseMultiSingle([], null).catch(() => {
                 }).should.be.a("promise"),
@@ -303,25 +304,25 @@ describe("testing tool.js", () => {
         });
         it("should throw if no callback provided", async function () {
 
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle(null, null).should.be.rejectedWith(TypeError);
 
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle([], null).should.be.rejectedWith(TypeError);
 
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle([1, 2], null).should.be.rejectedWith(TypeError);
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle([1, 2], 1).should.be.rejectedWith(TypeError);
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle(2, 1).should.be.rejectedWith(TypeError);
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle(1, "1").should.be.rejectedWith(TypeError);
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle([1, 2], "1").should.be.rejectedWith(TypeError);
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle([1, 2], {callback: () => undefined}).should.be.rejectedWith(TypeError);
-            // @ts-ignore
+            // @ts-expect-error
             await tools.promiseMultiSingle(1, {callback: () => undefined}).should.be.rejectedWith(TypeError);
         });
         it("should always have 3 arguments, being an item, a number and a boolean", async function () {
@@ -382,7 +383,7 @@ describe("testing tool.js", () => {
     });
     describe("test removeMultiSingle", function() {
         it("should work correctly", () => {
-            const array: Array<number | null> = [1,2,0,2,null,5,null];
+            const array: Array<Nullable<number>> = [1,2,0,2,null,5,null];
             // should not remove null
             let result = tools.removeMultiSingle(array, null);
             should.not.exist(result);
@@ -436,6 +437,7 @@ describe("testing tool.js", () => {
             const map: {[key: string]: number} = {};
             let supplier = sinon.spy(() => 1);
 
+            // @ts-expect-error
             let result = tools.getElseSetObj(map, "1", supplier);
             result.should.equal(1);
             let value = map["1"];
@@ -444,12 +446,14 @@ describe("testing tool.js", () => {
             supplier.should.have.callCount(1);
 
             // if calling it again, callCount should not increase as it has a mapping for key
+            // @ts-expect-error
             result = tools.getElseSetObj(map, "1", supplier);
             result.should.equal(1);
             supplier.should.have.callCount(1);
 
             supplier = sinon.spy(() => Number.MAX_VALUE);
             // ensure it takes the value from the supplier, by using a different default value
+            // @ts-expect-error
             result = tools.getElseSetObj(map, "2", supplier);
             result.should.equal(Number.MAX_VALUE);
             value = map["2"];
@@ -983,19 +987,18 @@ describe("testing tool.js", () => {
     describe("never call output functions", () => {
         it("should never call console", function () {
             for (const key of Object.keys(console)) {
-                // @ts-ignore
+                // @ts-expect-error
                 if (typeof console[key] === "function") {
-                    // @ts-ignore
+                    // @ts-expect-error
                     chai.expect(console[key], "testing " + key).to.have.callCount(0);
                 }
             }
         });
         it("should never call logger", function () {
-            // @ts-ignore
             for (const key of Object.keys(logger)) {
-                // @ts-ignore
+                // @ts-expect-error
                 if (typeof logger[key] === "function") {
-                    // @ts-ignore
+                    // @ts-expect-error
                     chai.expect(logger[key], "testing " + key).to.have.callCount(0);
                 }
             }

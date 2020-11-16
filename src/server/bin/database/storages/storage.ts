@@ -1,6 +1,6 @@
 import mySql from "promise-mysql";
 import env from "../../env";
-import { Invalidation, MetaResult, Result, Uuid, PropertyNames, StringKeys, PromiseFunctions } from "../../types";
+import { Invalidation, MetaResult, Result, Uuid, PropertyNames, StringKeys, PromiseFunctions, EmptyPromise, MultiSingleValue, Nullable } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
 import { delay, isQuery, isString } from "../../tools";
@@ -198,7 +198,7 @@ class SqlPoolProvider {
         }
     }
 
-    public async stop(): Promise<void> {
+    public async stop(): EmptyPromise {
         if (this.pool) {
             logger.info("Stopping Database");
             this.running = false;
@@ -256,7 +256,7 @@ class SqlPoolConfigUpdater {
         poolProvider.useConfig(config);
     }
 
-    public async recreate(immediate = false): Promise<void> {
+    public async recreate(immediate = false): EmptyPromise {
         poolProvider.recreate();
         if (immediate) {
             await poolProvider.provide();
@@ -276,15 +276,15 @@ export class Storage {
         return inContext((context) => context.getPageInfo(link, key));
     }
 
-    public updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void> {
+    public updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): EmptyPromise {
         return inContext((context) => context.updatePageInfo(link, key, values, toDeleteValues));
     }
 
-    public removePageInfo(link: string, key?: string): Promise<void> {
+    public removePageInfo(link: string, key?: string): EmptyPromise {
         return inContext((context) => context.removePageInfo(link, key));
     }
 
-    public queueNewTocs(): Promise<void> {
+    public queueNewTocs(): EmptyPromise {
         return inContext((context) => context.queueNewTocs());
     }
 
@@ -300,7 +300,7 @@ export class Storage {
      *
      * @param result
      */
-    public processResult(result: Result): Promise<MetaResult | MetaResult[]> {
+    public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
         return inContext((context) => context.processResult(result));
     }
 
@@ -308,7 +308,7 @@ export class Storage {
      *
      * @param result
      */
-    public saveResult(result: Result): Promise<boolean> {
+    public saveResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
         return inContext((context) => context.saveResult(result));
     }
 
@@ -418,4 +418,4 @@ export const externalListStorage = createStorage<ExternalListContext>("externalL
  */
 export const startStorage = (): void => poolProvider.start();
 
-export const stopStorage = (): Promise<void> => poolProvider.stop();
+export const stopStorage = (): EmptyPromise => poolProvider.stop();

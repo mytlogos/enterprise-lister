@@ -14,10 +14,11 @@ import { Socket } from "net";
 import { isString, getElseSet, stringify } from "../tools";
 import logger from "../logger";
 import { AsyncResource } from "async_hooks";
+import { Optional } from "../types";
 
 
 type RequestOptions = string | http.RequestOptions | https.RequestOptions;
-type RequestCallback = (res: http.IncomingMessage) => void | undefined;
+type RequestCallback = (res: http.IncomingMessage) => void;
 
 function patchRequest(module: { request: (opt: RequestOptions, callback?: RequestCallback) => http.ClientRequest }, protocol: string) {
     const originalRequest = module.request;
@@ -136,7 +137,7 @@ const fastQueues: Map<string, Queue> = new Map();
 
 export type Callback = () => Promise<any>;
 
-function methodToRequest(options: Options | undefined, toUseRequest: Request) {
+function methodToRequest(options: Optional<Options>, toUseRequest: Request) {
     const method = options && options.method ? options.method : "";
 
     switch (method.toLowerCase()) {
@@ -191,7 +192,7 @@ export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): 
     if (!options) {
         options = {uri};
     } else {
-        // @ts-ignore
+        // @ts-expect-error
         options.url = uri;
     }
     return queue.push(() => methodToRequest(options, toUseRequest));
@@ -219,11 +220,10 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
     // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
     //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
     //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
-    // @ts-ignore
+    // @ts-expect-error
     const parser = new ParserStream<CheerioElement>({treeAdapter: ParserStream.treeAdapters.htmlparser2});
     parser.on("finish", () => {
         if (parser.document && parser.document.children) {
-            // @ts-ignore
             const load = cheerio.load(parser.document.children);
             if (load) {
                 resolve(load);
@@ -264,12 +264,12 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
     const parser = new htmlparser2.WritableStream(
         new htmlparser2.DomHandler(
             (error, dom) => {
-                // @ts-ignore
+                // @ts-expect-error
                 const load = cheerio.load(dom, {decodeEntities: false});
                 resolve(load);
             }, {
                 // FIXME: 02.09.2019 why does it not accept this property?
-                // @ts-ignore
+                // @ts-expect-error
                 withDomLvl1: true,
                 normalizeWhitespace: false,
             }
@@ -326,10 +326,10 @@ const queueFullResponseWithLimit = (uri: string, options?: Options, otherRequest
     queueToUse = queues, limit?: number): Promise<FullResponse> => {
     const {toUseRequest, queue} = processRequest(uri, otherRequest, queueToUse, limit);
 
-    // @ts-ignore
+    // @ts-expect-error
     const requestOptions: Options = options || {};
     requestOptions.resolveWithFullResponse = true;
-    // @ts-ignore
+    // @ts-expect-error
     requestOptions.uri = uri;
 
     return queue

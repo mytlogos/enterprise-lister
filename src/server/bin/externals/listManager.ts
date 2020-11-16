@@ -6,7 +6,7 @@ import {CookieJar} from "tough-cookie";
 import {Hook, Toc} from "./types";
 import logger from "../logger";
 import cheerio from "cheerio";
-import {ReleaseState} from "../types";
+import {ReleaseState, EmptyPromise, Optional} from "../types";
 
 interface SimpleReadingList {
     menu: string;
@@ -107,7 +107,7 @@ class SimpleNovelUpdates implements ListManager {
         }));
     }
 
-    public async scrapeMedium(medium: ScrapeMedium): Promise<void> {
+    public async scrapeMedium(medium: ScrapeMedium): EmptyPromise {
         const link = medium.title.link;
 
         const $ = await SimpleNovelUpdates.loadCheerio(link);
@@ -167,7 +167,7 @@ class SimpleNovelUpdates implements ListManager {
         if (!medium.latest) {
             medium.latest = NovelUpdates.scrapeListRow(3, tableData);
         }
-        // @ts-ignore
+        // @ts-expect-error
         medium.latest.date = tableData.first().text().trim();
     }
 
@@ -311,7 +311,7 @@ class NovelUpdates implements ListManager {
         }
 
         const lists = [];
-        let currentList: ScrapeList;
+        let currentList: Optional<ScrapeList>;
 
         for (let i = 1; i < listElement.length; i++) {
             const element = listElement.eq(i);
@@ -332,9 +332,8 @@ class NovelUpdates implements ListManager {
             lists.push(list);
         }
 
-        // @ts-ignore
         if (!currentList) {
-            throw Error();
+            throw Error("Current Novelupdates List not found!");
         }
 
         const feed: string[] = [];
@@ -357,7 +356,7 @@ class NovelUpdates implements ListManager {
         feedLink = url.resolve(this.baseURI, feedLink);
         feed.push(feedLink);
 
-        // @ts-ignore
+        // @ts-expect-error
         await Promise.all(promises);
 
         return {
@@ -377,7 +376,7 @@ class NovelUpdates implements ListManager {
         }));
     }
 
-    public async scrapeMedium(medium: ScrapeMedium): Promise<void> {
+    public async scrapeMedium(medium: ScrapeMedium): EmptyPromise {
         const link = medium.title.link;
 
         const $ = await this.loadCheerio(link);
@@ -429,7 +428,7 @@ class NovelUpdates implements ListManager {
         if (!medium.latest) {
             medium.latest = NovelUpdates.scrapeListRow(3, tableData);
         }
-        // @ts-ignore
+        // @ts-expect-error
         medium.latest.date = tableData.first().text().trim();
     }
 
@@ -443,7 +442,6 @@ class NovelUpdates implements ListManager {
      * @param cookies
      */
     public parseAndReplaceCookies(cookies?: string): void {
-        // @ts-ignore
         this.jar = cookies ? CookieJar.fromJSON(cookies) : new CookieJar();
         // TODO: remove this code when it is certainly unneeded
         // const notUsed = {
@@ -593,7 +591,7 @@ export interface ListManager {
 
     scrapeLists(): Promise<ListScrapeResult>;
 
-    scrapeMedium(medium: ScrapeMedium): Promise<void>;
+    scrapeMedium(medium: ScrapeMedium): EmptyPromise;
 
     scrapeMedia(media: ScrapeMedium[]): Promise<ScrapeMedium[]>;
 

@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {SimpleUser, User, Uuid} from "../../types";
+import {SimpleUser, User, Uuid, Nullable} from "../../types";
 import {allTypes, BcryptHash, Errors, Hasher, Hashes} from "../../tools";
 import {v1 as uuidGenerator, v4 as sessionGenerator} from "uuid";
 
@@ -129,7 +129,7 @@ export class UserContext extends SubContext {
         return !!currentSession;
     }
 
-    public async loggedInUser(ip: string): Promise<SimpleUser | null> {
+    public async loggedInUser(ip: string): Promise<Nullable<SimpleUser>> {
         if (!ip) {
             return null;
         }

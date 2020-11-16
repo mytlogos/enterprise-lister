@@ -62,54 +62,54 @@ describe("testing boxNovel Hook toc", () => {
     });
 
     it("should throw UrlError", async function () {
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("https://google.de").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("ftp://google.de").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("google.de").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("www.boxnovel.de").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("http://www.boxnovel.de").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("https://www.boxnovel.de").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("https://boxnovel.de").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("www.boxnovel.com").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("sftp://www.boxnovel.com").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("https://www.boxnovel.com/").should.eventually.be.rejectedWith(UrlError);
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("https://www.boxnovel.com/novel").should.eventually.be.rejectedWith(UrlError);
     });
 
     it("should throw MissingResourceError", async function () {
-        // @ts-ignore
+        // @ts-expect-error
         await boxNovelHook.tocAdapter("https://boxnovel.com/novel/i-am-a-missing-resource").should.eventually.be.rejectedWith(MissingResourceError);
     });
     it("should parse correct ToCs", async function () {
         // boxnovel-281.html
-        // @ts-ignore
+        // @ts-expect-error
         const demonTocs = await boxNovelHook.tocAdapter("https://boxnovel.com/novel/demon-noble-girl-story-of-a-careless-demon/");
         demonTocs.should.be.an("array").and.have.length(1);
-        // @ts-ignore
+        // @ts-expect-error
         scraperTestTools.testGeneralToc(demonTocs[0]);
 
         // boxnovel-237.html
-        // @ts-ignore
+        // @ts-expect-error
         const masterTocs = await boxNovelHook.tocAdapter("https://boxnovel.com/novel/my-master-disconnected-yet-again/");
         masterTocs.should.be.an("array").and.have.length(1);
-        // @ts-ignore
+        // @ts-expect-error
         scraperTestTools.testGeneralToc(masterTocs[0]);
 
         // boxnovel-173.html
-        // @ts-ignore
+        // @ts-expect-error
         const rebootTocs = await boxNovelHook.tocAdapter("https://boxnovel.com/novel/the-man-picked-up-by-the-gods-reboot/");
         rebootTocs.should.be.an("array").and.have.length(1);
-        // @ts-ignore
+        // @ts-expect-error
         scraperTestTools.testGeneralToc(rebootTocs[0]);
     });
 });

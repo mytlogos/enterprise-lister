@@ -10,20 +10,20 @@ import * as normalRequest from "request";
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
-// @ts-ignore
+// @ts-expect-error
 const jar = request.jar();
 type RequestAPI = normalRequest.RequestAPI<CloudScraper, CloudscraperOptions, normalRequest.RequiredUriUrl>;
-// @ts-ignore
+// @ts-expect-error
 const defaultRequest: RequestAPI = request.defaults({
     jar
 });
 
 function loadBody(urlString: string, options?: CloudscraperOptions): Promise<cheerio.Root> {
-    // @ts-ignore
+    // @ts-expect-error
     return queueCheerioRequest(urlString, options, defaultRequest);
 }
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }> {
     const uri = "https://kissanime.ru/";
     // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
     const $ = await loadBody(uri);

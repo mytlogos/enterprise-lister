@@ -41,7 +41,6 @@ export class TableSchema {
                     if (!foreignKey.table || !foreignKey.table.name) {
                         throw Error("invalid foreign key: empty table");
                     }
-                    // @ts-ignore
                     return `FOREIGN KEY (${value.name}) REFERENCES ${foreignKey.table.name}(${foreignKey.name})`;
                 }));
             }

@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {ExternalUser, Uuid} from "../../types";
+import {ExternalUser, Uuid, MultiSingleValue, PromiseMultiSingle} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
 import {v1 as uuidGenerator} from "uuid";
 import {Query} from "mysql";
@@ -35,7 +35,6 @@ export class ExternalUserContext extends SubContext {
         [externalUser.identifier, localUuid, externalUser.type],
         );
         if (result.length) {
-            // @ts-ignore
             throw Error(Errors.USER_EXISTS_ALREADY);
         }
         const uuid = uuidGenerator();
@@ -87,7 +86,7 @@ export class ExternalUserContext extends SubContext {
     /**
      * Gets an external user.
      */
-    public async getExternalUser(externalUuid: Uuid | string[]): Promise<ExternalUser | ExternalUser[]> {
+    public async getExternalUser<T extends MultiSingleValue<Uuid>>(externalUuid: T): PromiseMultiSingle<T, ExternalUser> {
         return promiseMultiSingle(externalUuid, async (value) => {
             const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
             if (!resultArray.length) {

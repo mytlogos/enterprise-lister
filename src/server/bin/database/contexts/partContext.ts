@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {Episode, FullPart, MinPart, MultiSingle, Part, ShallowPart, SimpleEpisode, Uuid} from "../../types";
+import {Episode, FullPart, MinPart, Part, ShallowPart, SimpleEpisode, Uuid, MultiSingleNumber, Optional, VoidablePromise} from "../../types";
 import mySql from "promise-mysql";
 import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
 import {Query} from "mysql";
@@ -13,7 +13,7 @@ export class PartContext extends SubContext {
         );
     }
 
-    public async getStandardPartId(mediumId: number): Promise<number | undefined> {
+    public async getStandardPartId(mediumId: number): VoidablePromise<number> {
         const [standardPartResult]: any = await this.query(
             "SELECT id FROM part WHERE medium_id = ? AND totalIndex=-1",
             mediumId
@@ -21,7 +21,7 @@ export class PartContext extends SubContext {
         return standardPartResult ? standardPartResult.id : undefined;
     }
 
-    public async getStandardPart(mediumId: number): Promise<ShallowPart | undefined> {
+    public async getStandardPart(mediumId: number): VoidablePromise<ShallowPart> {
         const [standardPartResult]: any = await this.query(
             "SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1",
             mediumId
@@ -31,7 +31,7 @@ export class PartContext extends SubContext {
             return;
         }
 
-        const episodesIds: Array<{ id: number; partId: number }> | undefined = await this.queryInList(
+        const episodesIds: Array<{ id: number; partId: number }> = await this.queryInList(
             "SELECT id, part_id as partId FROM episode WHERE part_id",
             standardPartResult.id,
         );
@@ -44,9 +44,7 @@ export class PartContext extends SubContext {
             episodes: [],
             mediumId: standardPartResult.medium_id,
         };
-        if (episodesIds) {
-            episodesIds.forEach((value) => standardPart.episodes.push(value.id));
-        }
+        episodesIds.forEach((value) => standardPart.episodes.push(value.id));
         return standardPart;
     }
 
@@ -76,14 +74,14 @@ export class PartContext extends SubContext {
             idMap.set(value.id, part);
             return part;
         });
-        const episodesIds: Array<{ id: number; partId: number }> | undefined = await this.queryInList(
+        const episodesIds: Array<{ id: number; partId: number }> = await this.queryInList(
             "SELECT id, part_id as partId FROM episode WHERE part_id",
             parts,
             undefined,
             (value) => value.id
         );
 
-        if (episodesIds) {
+        if (episodesIds.length) {
             if (uuid) {
                 const values = episodesIds.map((episode: any): number => episode.id);
                 const episodes = await this.parentContext.episodeContext.getEpisode(values, uuid);
@@ -100,7 +98,7 @@ export class PartContext extends SubContext {
                     if (!part) {
                         throw Error(`no part ${value.partId} found even though only available episodes were queried`);
                     }
-                    // @ts-ignore
+                    // @ts-expect-error
                     part.episodes.push(value.id);
                 });
             }
@@ -113,8 +111,8 @@ export class PartContext extends SubContext {
      * Returns all parts of an medium with specific totalIndex.
      * If there is no such part, it returns an object with only the totalIndex as property.
      */
-    public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: MultiSingle<number>): Promise<MinPart[]> {
-        const parts: any[] | undefined = await this.queryInList(
+    public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: MultiSingleNumber): Promise<MinPart[]> {
+        const parts: Optional<any[]> = await this.queryInList(
             "SELECT * FROM part " +
             `WHERE medium_id = ${mySql.escape(mediumId)} AND combiIndex `,
             partCombiIndex
@@ -123,7 +121,6 @@ export class PartContext extends SubContext {
             return [];
         }
 
-        // @ts-ignore
         multiSingle(partCombiIndex, (combinedIndex: number) => {
             if (parts.every((part) => part.combiIndex !== combinedIndex)) {
                 const separateValue = separateIndex(combinedIndex);
@@ -142,19 +139,16 @@ export class PartContext extends SubContext {
         });
     }
 
-    public getParts(partId: number, uuid: Uuid): Promise<Part>;
-    public getParts(partId: number[], uuid: Uuid): Promise<Part[]>;
-
     /**
      * Returns all parts of an medium.
      */
-    public async getParts(partId: number | number[], uuid: Uuid): Promise<Part[] | Part> {
-        const parts: any[] | undefined = await this.queryInList("SELECT * FROM part WHERE id", partId);
+    public async getParts<T extends MultiSingleNumber>(partId: T, uuid: Uuid): Promise<Part[]> {
+        const parts: Optional<any[]> = await this.queryInList("SELECT * FROM part WHERE id", partId);
         if (!parts || !parts.length) {
             return [];
         }
         const partIdMap = new Map<number, any>();
-        const episodesResult: any[] | undefined = await this.queryInList(
+        const episodesResult: Optional<any[]> = await this.queryInList(
             "SELECT id FROM episode WHERE part_id ",
             parts,
             undefined,
@@ -199,15 +193,14 @@ export class PartContext extends SubContext {
         if (!partIds.length) {
             return {};
         }
-        const episodesResult: Array<{ id: number; part_id: number }> | undefined = await this.queryInList(
+        const episodesResult: Array<{ id: number; part_id: number }> = await this.queryInList(
             "SELECT id, part_id FROM episode WHERE part_id ",
             partIds
         );
 
-        const episodes = episodesResult || [];
         const result = {};
 
-        episodes.forEach((value) => {
+        episodesResult.forEach((value) => {
             (getElseSetObj(result, value.part_id, () => []) as number[]).push(value.id);
         });
         for (const partId of partIds) {
@@ -223,15 +216,14 @@ export class PartContext extends SubContext {
         if (!partIds.length) {
             return {};
         }
-        const episodesResult: Array<{ id: number; url: string; part_id: number }> | undefined = await this.queryInList(
+        const episodesResult: Array<{ id: number; url: string; part_id: number }> = await this.queryInList(
             "SELECT id, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id ",
             partIds
         );
 
-        const episodes = episodesResult || [];
         const result = {};
 
-        episodes.forEach((value) => {
+        episodesResult.forEach((value) => {
             const items = getElseSetObj(result, value.part_id, () => []) as any[];
             delete value.part_id;
             items.push(value);
@@ -295,7 +287,6 @@ export class PartContext extends SubContext {
         let episodes: Episode[];
 
         if (part.episodes && part.episodes.length) {
-            // @ts-ignore
             if (!Number.isInteger(part.episodes[0])) {
                 episodes = await this.parentContext.episodeContext.addEpisode(part.episodes as SimpleEpisode[]);
             } else {
@@ -324,7 +315,7 @@ export class PartContext extends SubContext {
                 if (part.title) {
                     updates.push("title = ?");
                     values.push(part.title);
-                } else { // noinspection JSValidateTypes
+                } else {
                     if (part.title === null) {
                         updates.push("title = NULL");
                     }

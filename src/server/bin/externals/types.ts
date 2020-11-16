@@ -1,4 +1,4 @@
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Uuid} from "../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Uuid, VoidablePromise} from "../types";
 import {MediaType} from "../tools";
 import {JobCallback} from "../jobManager";
 
@@ -23,7 +23,7 @@ export interface PeriodicEmittableJob extends ScraperJob {
     item: any;
 }
 
-// @ts-ignore
+// @ts-expect-error
 export interface PeriodicJob extends ScraperJob {
     type: "periodic";
     interval: number;
@@ -115,14 +115,14 @@ export interface NewsScrapeResult {
 }
 
 export interface NewsScraper {
-    (): Promise<NewsScrapeResult | undefined>;
+    (): VoidablePromise<NewsScrapeResult>;
 
     link: string;
     hookName?: string;
 }
 
 export interface TocSearchScraper {
-    (medium: TocSearchMedium): Promise<Toc | undefined>;
+    (medium: TocSearchMedium): VoidablePromise<Toc>;
 
     link: string;
     medium: MediaType;

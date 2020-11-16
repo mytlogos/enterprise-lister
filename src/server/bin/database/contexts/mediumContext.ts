@@ -9,7 +9,12 @@ import {
     TocSearchMedium,
     UpdateMedium,
     Uuid,
-    SecondaryMedium
+    SecondaryMedium,
+    VoidablePromise,
+    EmptyPromise,
+    PromiseMultiSingle,
+    MultiSingleValue,
+    MultiSingleNumber
 } from "../../types";
 import {count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
@@ -17,7 +22,7 @@ import {escape, Query, OkPacket} from "mysql";
 import { storeModifications } from "../sqlTools";
 
 export class MediumContext extends SubContext {
-    public async getSpecificToc(id: number, link: string): Promise<FullMediumToc | undefined> {
+    public async getSpecificToc(id: number, link: string): VoidablePromise<FullMediumToc> {
         const tocs = await this.query(
             "SELECT id, medium_id as mediumId, link, " +
             "countryOfOrigin, languageOfOrigin, author, title," +
@@ -28,7 +33,7 @@ export class MediumContext extends SubContext {
         return tocs[0];
     }
 
-    public async removeToc(tocLink: string): Promise<void> {
+    public async removeToc(tocLink: string): EmptyPromise {
         const result = await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
         storeModifications("toc", "delete", result);
     }
@@ -64,9 +69,8 @@ export class MediumContext extends SubContext {
         return newMedium;
     }
 
-    public getSimpleMedium(id: number | number[]): Promise<SimpleMedium | SimpleMedium[]> {
+    public getSimpleMedium<T extends MultiSingleNumber>(id: T): PromiseMultiSingle<T, SimpleMedium> {
         // TODO: 29.06.2019 replace with id IN (...)
-        // @ts-ignore
         return promiseMultiSingle(id, async (mediumId) => {
             const resultArray: any[] = await this.query("SELECT * FROM medium WHERE medium.id =?;", mediumId);
             const result = resultArray[0];
@@ -152,21 +156,16 @@ export class MediumContext extends SubContext {
             mediumId: result.id,
             medium: result.medium,
             title: result.title,
-            synonyms: (synonyms[0] && synonyms[0].synonym) as string[] || []
+            synonyms: (synonyms[0] && synonyms[0].synonym) || []
         };
     }
-
-    public getMedium(id: number, uuid: Uuid): Promise<Medium>;
-
-    public getMedium(id: number[], uuid: Uuid): Promise<Medium[]>;
 
     /**
      * Gets one or multiple media from the storage.
      */
-    public getMedium(id: number | number[], uuid: Uuid): Promise<Medium | Medium[]> {
+    public getMedium<T extends MultiSingleNumber>(id: T, uuid: Uuid): PromiseMultiSingle<T, Medium> {
         // TODO: 29.06.2019 replace with id IN (...)
-        // @ts-ignore
-        return promiseMultiSingle(id, async (mediumId: number) => {
+        return promiseMultiSingle(id, async (mediumId: number): Promise<Medium> => {
             let result = await this.query("SELECT * FROM medium WHERE medium.id=?;", mediumId);
             result = result[0];
 
@@ -208,6 +207,7 @@ export class MediumContext extends SubContext {
                 currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
                 latestReleases: latestReleasesResult.map((packet: any) => packet.id),
                 unreadEpisodes: unReadResult.map((packet: any) => packet.id),
+                latestReleased: []
             };
         });
     }
@@ -261,18 +261,11 @@ export class MediumContext extends SubContext {
         return result.map((value) => value.id);
     }
 
-    public getLikeMedium(likeMedia: LikeMediumQuery): Promise<LikeMedium>;
-
-    public getLikeMedium(likeMedia: LikeMediumQuery[]): Promise<LikeMedium[]>;
-
     /**
      * Gets one or multiple media from the storage.
      */
-    public getLikeMedium(likeMedia: LikeMediumQuery | LikeMediumQuery[])
-        : Promise<LikeMedium | LikeMedium[]> {
-
-        // @ts-ignore
-        return promiseMultiSingle(likeMedia, async (value: LikeMediumQuery) => {
+    public getLikeMedium<T extends MultiSingleValue<LikeMediumQuery>>(likeMedia: T): PromiseMultiSingle<T, LikeMedium> {
+        return promiseMultiSingle(likeMedia, async (value) => {
             const escapedLinkQuery = escapeLike(value.link || "", {noRightBoundary: true});
             const escapedTitle = escapeLike(value.title, {singleQuotes: true});
 
@@ -288,7 +281,7 @@ export class MediumContext extends SubContext {
                 medium: result[0],
                 title: value.title,
                 link: value.link,
-            };
+            } as LikeMedium;
         });
     }
 
@@ -381,7 +374,6 @@ export class MediumContext extends SubContext {
     }
 
     public removeSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
-        // @ts-ignore
         return promiseMultiSingle(synonyms, (value: Synonyms) => {
             return promiseMultiSingle(value.synonym, async (item) => {
                 const result = await this.delete("medium_synonyms",
@@ -399,11 +391,9 @@ export class MediumContext extends SubContext {
         }).then(() => true);
     }
 
-    public async addSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
+    public async addSynonyms<T extends MultiSingleValue<Synonyms>>(synonyms: T): Promise<boolean> {
         const params: Array<[number, string]> = [];
-        // @ts-ignore
-        multiSingle(synonyms, (value: Synonyms) => {
-            // @ts-ignore
+        multiSingle(synonyms, (value) => {
             multiSingle(value.synonym, (item: string) => {
                 params.push([value.mediumId, item]);
             });
@@ -413,7 +403,6 @@ export class MediumContext extends SubContext {
             params,
             (value) => value
         );
-        // @ts-expect-error
         multiSingle(result, (value) => storeModifications("synonym", "insert", value));
         return true;
     }
@@ -488,7 +477,6 @@ export class MediumContext extends SubContext {
             " AND e.id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(deletedProgressResult, value => storeModifications("progress", "delete", value));
 
         const deletedResultResult = await this.queryInList(
@@ -499,14 +487,12 @@ export class MediumContext extends SubContext {
             " AND e.id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(deletedResultResult, value => storeModifications("result_episode", "delete", value));
 
         const deletedEpisodesResult = await this.queryInList(
             "DELETE FROM episode WHERE episode.id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(deletedEpisodesResult, value => storeModifications("episode", "delete", value));
 
         const result = await this.delete(
@@ -719,7 +705,6 @@ export class MediumContext extends SubContext {
             ` WHERE part.medium_id = ${escape(sourceMediumId)} AND episode.id`,
             copyEpisodes
         );
-        // @ts-expect-error
         multiSingle(copyEpisodesResult, value => storeModifications("episode", "insert", value));
 
         const updatedReleaseResult = await this.query(
@@ -746,7 +731,6 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(updatedProgressResult, value => storeModifications("progress", "update", value));
 
         const updatedResultResult = await this.queryInList(
@@ -760,7 +744,6 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(updatedResultResult, value => storeModifications("result_episode", "update", value));
 
         const deletedReleasesResult = await this.queryInList(
@@ -768,7 +751,6 @@ export class MediumContext extends SubContext {
             " WHERE episode_id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(deletedReleasesResult, value => storeModifications("release", "delete", value));
 
         const deletedUserEpisodesResult = await this.queryInList(
@@ -776,7 +758,6 @@ export class MediumContext extends SubContext {
             " WHERE episode_id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(deletedUserEpisodesResult, value => storeModifications("progress", "delete", value));
 
         const deletedResultEpisodesResult = await this.queryInList(
@@ -784,7 +765,6 @@ export class MediumContext extends SubContext {
             " WHERE episode_id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(deletedResultEpisodesResult, value => storeModifications("result_episode", "delete", value));
 
         const deletedEpisodesResult = await this.queryInList(
@@ -792,7 +772,6 @@ export class MediumContext extends SubContext {
             " WHERE id",
             removeEpisodesAfter
         );
-        // @ts-expect-error
         multiSingle(deletedEpisodesResult, value => storeModifications("episode", "delete", value));
 
         const copiedOnlyEpisodes: number[] = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
@@ -809,7 +788,6 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             copiedOnlyEpisodes
         );
-        // @ts-expect-error
         multiSingle(copiedProgressResult, value => storeModifications("progress", "insert", value));
 
         const copiedResultResult = await this.queryInList(
@@ -826,7 +804,6 @@ export class MediumContext extends SubContext {
             " AND src_e.id",
             copiedOnlyEpisodes
         );
-        // @ts-expect-error
         multiSingle(copiedResultResult, value => storeModifications("result_episode", "insert", value));
         return true;
     }

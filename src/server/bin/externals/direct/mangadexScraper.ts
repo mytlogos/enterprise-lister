@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeContentData, EpisodeNews, News, ReleaseState} from "../../types";
+import {EpisodeContentData, EpisodeNews, News, ReleaseState, Optional} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import logger from "../../logger";
@@ -133,7 +133,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }> {
     // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
     //  with expiration date somewhere in 100 years to lessen load
 
@@ -360,8 +360,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
 
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
-            let part: TocPart | undefined = indexPartMap.get(volIndices.combi);
-
+            let part: Optional<TocPart> = indexPartMap.get(volIndices.combi);
 
             if (!chapIndices) {
                 logger.warn("changed episode format on mangadex toc: got no index " + urlString);

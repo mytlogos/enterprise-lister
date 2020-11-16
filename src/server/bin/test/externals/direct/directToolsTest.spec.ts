@@ -7,6 +7,7 @@ import * as directTools from "../../../externals/direct/directTools";
 import * as tools from "../../../tools";
 import fs from "fs";
 import cheerio from "cheerio";
+import { EmptyPromise } from "../../../types";
 
 after(() => {
     tools.internetTester.stop();
@@ -265,7 +266,7 @@ async function testStaticCase(titles: Array<string | { title: string; mediumType
     const generator = (async function* testGenerator() {
         for (const title of titles) {
             // mediumType is defined it is a TocMeta and not a release or part
-            // @ts-ignore
+            // @ts-expect-error
             if (title.mediumType != null) {
                 yield title;
             } else {
@@ -274,12 +275,12 @@ async function testStaticCase(titles: Array<string | { title: string; mediumType
         }
     })();
 
-    // @ts-ignore
+    // @ts-expect-error
     const contents = await directTools.scrapeToc(generator);
-    // @ts-ignore
+    // @ts-expect-error
     const createResult = expected[0] && expected[0].episodes ? createParts : createReleases;
 
-    // @ts-ignore
+    // @ts-expect-error
     contents.should.deep.equal(createResult(now, ...expected));
 }
 
@@ -315,9 +316,9 @@ async function readCase(path: string): Promise<Case> {
 /**
  *
  * @param {string} casePath
- * @return {Promise<void>}
+ * @return {EmptyPromise}
  */
-async function testCase(casePath: string): Promise<void> {
+async function testCase(casePath: string): EmptyPromise {
     const caseData = await readCase(casePath);
 
     /**
@@ -339,12 +340,12 @@ async function testCase(casePath: string): Promise<void> {
     for (const content of contents) {
         content.should.have.property("title");
 
-        // @ts-ignore
+        // @ts-expect-error
         if (content.episodes) {
-            // @ts-ignore
+            // @ts-expect-error
             content.episodes.should.be.an("array");
 
-            // @ts-ignore
+            // @ts-expect-error
             for (const episode of content.episodes) {
                 caseData.hasParts.should.not.equal(false);
                 episode.should.have.property("title");
@@ -1732,10 +1733,10 @@ describe("testing scrapeToc", () => {
             content.should.have.property("totalIndex", currentVolumeIndex);
             content.should.have.property("partialIndex", undefined);
             content.should.have.property("episodes");
-            // @ts-ignore
+            // @ts-expect-error
             content.episodes.should.be.an("array");
 
-            // @ts-ignore
+            // @ts-expect-error
             for (const episode of content.episodes) {
                 episode.should.have.property("title", "");
                 episode.should.have.property("combiIndex", currentEpisodeIndex);
@@ -1843,12 +1844,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
-            // @ts-ignore
+            // @ts-expect-error
             if (content.episodes) {
-                // @ts-ignore
+                // @ts-expect-error
                 content.episodes.should.be.an("array");
 
-                // @ts-ignore
+                // @ts-expect-error
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.combiIndex.should.be.at.most(currentEpisodeIndex);
@@ -1882,12 +1883,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
-            // @ts-ignore
+            // @ts-expect-error
             if (content.episodes) {
-                // @ts-ignore
+                // @ts-expect-error
                 content.episodes.should.be.an("array");
 
-                // @ts-ignore
+                // @ts-expect-error
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     if (episode.combiIndex !== 200 && episode.totalIndex !== 219) {
@@ -1924,13 +1925,13 @@ describe("testing scrapeToc", () => {
             content.should.have.property("title");
 
 
-            // @ts-ignore
+            // @ts-expect-error
             if (content.episodes) {
 
-                // @ts-ignore
+                // @ts-expect-error
                 content.episodes.should.be.an("array");
 
-                // @ts-ignore
+                // @ts-expect-error
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
@@ -1966,12 +1967,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
-            // @ts-ignore
+            // @ts-expect-error
             if (content.episodes) {
-                // @ts-ignore
+                // @ts-expect-error
                 content.episodes.should.be.an("array");
 
-                // @ts-ignore
+                // @ts-expect-error
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
@@ -2007,12 +2008,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
-            // @ts-ignore
+            // @ts-expect-error
             if (content.episodes) {
-                // @ts-ignore
+                // @ts-expect-error
                 content.episodes.should.be.an("array");
 
-                // @ts-ignore
+                // @ts-expect-error
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
@@ -2049,12 +2050,12 @@ describe("testing scrapeToc", () => {
         for (const content of contents) {
             content.should.have.property("title");
 
-            // @ts-ignore
+            // @ts-expect-error
             if (content.episodes) {
-                // @ts-ignore
+                // @ts-expect-error
                 content.episodes.should.be.an("array");
 
-                // @ts-ignore
+                // @ts-expect-error
                 for (const episode of content.episodes) {
                     episode.should.have.property("title");
                     episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);

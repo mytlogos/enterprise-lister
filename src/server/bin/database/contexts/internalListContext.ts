@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {List, Medium, Uuid} from "../../types";
+import {List, Medium, Uuid, MultiSingleNumber} from "../../types";
 import {Errors, promiseMultiSingle, multiSingle} from "../../tools";
 import { storeModifications } from "../sqlTools";
 
@@ -30,13 +30,12 @@ export class InternalListContext extends SubContext {
      * Returns all mediums of a list with
      * the list_id.
      */
-    public async getList(listId: number | number[], media: number[], uuid: Uuid):
+    public async getList<T extends MultiSingleNumber>(listId: T, media: number[], uuid: Uuid):
         Promise<{ list: List[] | List; media: Medium[] }> {
 
         const toLoadMedia: Set<number> = new Set();
         // TODO: 29.06.2019 replace with id IN (...)
-        // @ts-ignore
-        const lists: List | List[] = await promiseMultiSingle(listId, async (id: number) => {
+        const lists = await promiseMultiSingle(listId, async (id: number) => {
             const result = await this.query("SELECT * FROM reading_list WHERE id = ?;", id);
             const list = await this.createShallowList(result[0]);
 
@@ -61,7 +60,6 @@ export class InternalListContext extends SubContext {
     ): Promise<List> {
 
         if (!storageList.name) {
-            // @ts-ignore
             throw Error(Errors.INVALID_INPUT);
         }
 
@@ -139,7 +137,7 @@ export class InternalListContext extends SubContext {
         );
 
         // query a shallow list, so that only the id´s of their media is contained
-        // @ts-ignore
+        // @ts-expect-error
         return Promise.all(result.map((value) => this.createShallowList(value)));
     }
 
@@ -149,8 +147,9 @@ export class InternalListContext extends SubContext {
      * If no listId is available it selects the
      * 'Standard' List of the given user and adds it there.
      */
-    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: Uuid)
-        : Promise<boolean> {
+    public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: Uuid): Promise<boolean> {
+        // TODO: 27.02.2020 use uuid to check that listId is owned by uuid
+
         // if list_ident is not a number,
         // then take it as uuid from user and get the standard listId of 'Standard' list
         if (medium.listId == null || !Number.isInteger(medium.listId)) {

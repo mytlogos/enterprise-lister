@@ -117,7 +117,7 @@ export interface SimpleEpisode {
 
 export interface Episode extends SimpleEpisode {
     progress: number;
-    readDate: Date | null;
+    readDate: Nullable<Date>;
 }
 
 export interface SimpleRelease {
@@ -173,7 +173,7 @@ export interface ExternalUser {
     type: number;
     lists: ExternalList[];
     lastScrape?: Date;
-    cookies?: string | null;
+    cookies?: Nullable<string>;
 }
 
 export interface News {
@@ -204,7 +204,7 @@ export interface EpisodeNews {
 
 export interface Synonyms {
     mediumId: number;
-    synonym: MultiSingle<string>;
+    synonym: string[];
 }
 
 export interface ScrapeItem {
@@ -240,7 +240,7 @@ export interface MetaResult {
 }
 
 export interface Result {
-    result: MultiSingle<MetaResult>;
+    result: MetaResult | MetaResult[];
     preliminary?: boolean;
     accept?: boolean;
     url: string;
@@ -251,7 +251,76 @@ export interface ProgressResult extends MetaResult {
     readDate: Date;
 }
 
-export type MultiSingle<T> = T | T[];
+/**
+ * Conditional Type when being an Array or not of U is related to T.
+ * 
+ * T extends R   -> U
+ * T extends R[] -> U[]
+ */
+export type MultiSingle<T, U> = T extends Array<infer R> ? U[] : U;
+
+/**
+ * When Type is either a lone value or an array of values.
+ */
+export type MultiSingleValue<T> = T[] | T;
+
+/**
+ * Conditional Type when being an Array or not of U in a Promise is related to T.
+ * 
+ * T extends R   -> U
+ * T extends R[] -> U[]
+ */
+export type PromiseMultiSingle<T, U> = Promise<T extends Array<infer R> ? U[] : U>;
+
+/**
+ * Convenience type of a lone number or an array of numbers.
+ */
+export type MultiSingleNumber = MultiSingleValue<number>;
+
+/**
+ * Conditional Type with optional values when being an Array or not of U in is related to T.
+ * 
+ * T extends R   -> Optional<U>   // may be undefined
+ * T extends R[] -> U[] | never[] // an array of U or an empty array
+ */
+export type OptionalMultiSingle<T, U> = T extends Array<infer R> ? (U[] | never[]) : Optional<U>;
+
+/**
+ * A Promise with an Optional Value.
+ */
+export type VoidablePromise<T> = Promise<Optional<T>>;
+
+/**
+ * A Promise which always resolves to undefined.
+ */
+export type EmptyPromise = Promise<void>;
+
+/**
+ * Where type may be null.
+ */
+export type Nullable<T> = T | null;
+
+/**
+ * Where type may be undefined.
+ */
+export type Optional<T> = T | undefined;
+
+/**
+ * Unpack the type of a possible nested generic Array or Promise type.
+ * 
+ * T extends U[]        -> U
+ * T extends Promise<U> -> U
+ * sonst T
+ */
+export type Unpack<T> = T extends Promise<infer U> ? U : UnpackArray<T>;
+
+/**
+ * Unpack the type of a possible nested generic Array.
+ * 
+ * T extends U[]        -> U
+ * sonst T
+ */
+export type UnpackArray<T> = T extends Array<infer U> ? U : T;
 
 export interface ReadEpisode {
     episodeId: number;
@@ -263,7 +332,7 @@ export interface Invalidation {
     mediumId?: number;
     partId?: number;
     episodeId?: number;
-    uuid: Uuid | null;
+    uuid: Nullable<Uuid>;
     userUuid?: boolean;
     externalUuid?: Uuid;
     externalListId?: number;

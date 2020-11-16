@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {JobItem, JobRequest, JobState, JobStats, AllJobStats} from "../../types";
+import {JobItem, JobRequest, JobState, JobStats, AllJobStats, EmptyPromise, VoidablePromise, MultiSingleValue, PromiseMultiSingle, Optional} from "../../types";
 import {isString, promiseMultiSingle, multiSingle} from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
@@ -73,7 +73,7 @@ export class JobContext extends SubContext {
         return values;
     }
 
-    public async removeJobLike(column: string, value: any): Promise<void> {
+    public async removeJobLike(column: string, value: any): EmptyPromise {
         if (value == null) {
             logger.warn(`trying to delete jobs on column '${column}' without a value`);
             return;
@@ -121,7 +121,7 @@ export class JobContext extends SubContext {
         ) as Promise<JobItem[]>;
     }
 
-    public async stopJobs(): Promise<void> {
+    public async stopJobs(): EmptyPromise {
         await this.query("UPDATE jobs SET state = ?", JobState.WAITING);
         await this.query("CREATE TEMPORARY TABLE tmp_jobs (id INT UNSIGNED NOT NULL)");
         await this.query("INSERT INTO tmp_jobs SELECT id from jobs");
@@ -133,27 +133,26 @@ export class JobContext extends SubContext {
         return this.query("SELECT * FROM jobs WHERE `runAfter` = ? AND `state` != 'running'", id);
     }
 
-    public async addJobs(jobs: JobRequest | JobRequest[]): Promise<JobItem | JobItem[]> {
+    public async addJobs<T extends MultiSingleValue<JobRequest>>(jobs: T): PromiseMultiSingle<T, JobItem> {
         const now = new Date();
         const currentJobs: Array<{ id: number; name: string }> = await this.query("SELECT id, name FROM jobs");
-        // @ts-ignore
-        return promiseMultiSingle(jobs, async (value: JobRequest): Promise<JobItem | undefined> => {
+        return promiseMultiSingle(jobs, async (value: JobRequest): Promise<JobItem> => {
             let args = value.arguments;
             if (value.arguments && !isString(value.arguments)) {
                 args = JSON.stringify(value.arguments);
             }
-            let runAfter: number | undefined;
+            let runAfter: Optional<number>;
 
-            // @ts-ignore
+            // @ts-expect-error
             if (value.runAfter && value.runAfter.id && Number.isInteger(value.runAfter.id)) {
-                // @ts-ignore
+                // @ts-expect-error
                 runAfter = value.runAfter.id;
             }
             const nextRun = value.runImmediately ? now : null;
             const foundJob = currentJobs.find((job) => job.name === value.name);
 
             if (foundJob) {
-                // @ts-ignore
+                // @ts-expect-error
                 value.id = foundJob.id;
             } else {
                 const result = await this.query(
@@ -169,7 +168,7 @@ export class JobContext extends SubContext {
                 if (!result.insertId) {
                     throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
                 } else {
-                    // @ts-ignore
+                    // @ts-expect-error
                     value.id = result.insertId;
                 }
                 storeModifications("job", "insert", result);
@@ -179,9 +178,8 @@ export class JobContext extends SubContext {
         });
     }
 
-    public async removeJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
+    public async removeJobs(jobs: JobItem | JobItem[], finished?: Date): EmptyPromise {
         const result = await this.queryInList("DELETE FROM jobs WHERE id", jobs, undefined, (value) => value.id);
-        // @ts-expect-error
         multiSingle(result, value => storeModifications("job", "delete", value));
 
         if (finished) {
@@ -189,7 +187,7 @@ export class JobContext extends SubContext {
         }
     }
 
-    public async removeJob(key: string | number): Promise<void> {
+    public async removeJob(key: string | number): EmptyPromise {
         let result;
         if (isString(key)) {
             result = await this.query("DELETE FROM jobs WHERE `name` = ?", key);
@@ -199,8 +197,7 @@ export class JobContext extends SubContext {
         storeModifications("job", "delete", result);
     }
 
-    public async updateJobs(jobs: JobItem | JobItem[], finished?: Date): Promise<void> {
-        // @ts-ignore
+    public async updateJobs(jobs: JobItem | JobItem[], finished?: Date): EmptyPromise {
         await promiseMultiSingle(jobs, (value: JobItem) => {
             return this.update("jobs", (updates, values) => {
                 updates.push("state = ?");
@@ -243,8 +240,7 @@ export class JobContext extends SubContext {
         );
     }
 
-    private async addJobHistory(jobs: JobItem | JobItem[], finished: Date): Promise<void> {
-        // @ts-ignore
+    private async addJobHistory(jobs: JobItem | JobItem[], finished: Date): EmptyPromise {
         await promiseMultiSingle(jobs, (value: JobItem) => {
             let args = value.arguments;
             if (value.arguments && !isString(value.arguments)) {

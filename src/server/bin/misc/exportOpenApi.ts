@@ -16,6 +16,7 @@ import {
 import path from "path";
 import yaml from "js-yaml";
 import * as fs from "fs";
+import { Optional, Nullable } from "../types";
 
 interface DocEntry {
     name?: string;
@@ -157,7 +158,7 @@ interface RequestInfo {
 
 interface ResponseInfo {
     header: { [key: string]: any };
-    body: TypeResult | null;
+    body: Nullable<TypeResult>;
 }
 
 interface TotalResponseInfo {
@@ -196,7 +197,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     const routerMap: Map<ts.Symbol, RouterEntry> = new Map();
     const routeMap: Map<ts.Symbol, RouteEntry> = new Map();
 
-    let currentlyConvertingRouter: ts.Symbol | null = null;
+    let currentlyConvertingRouter: Nullable<ts.Symbol> = null;
 
     // Visit every sourceFile in the program
     for (const sourceFile of sourceFiles) {
@@ -271,7 +272,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         for (const pathEntry of routerEntry.paths) {
             routerResult.paths.push({
                 path: pathEntry.path,
-                //@ts-ignore
+                // @ts-expect-error
                 method: pathEntry.method,
                 middleware: middlewareToResult(pathEntry.middleware)
             });
@@ -280,7 +281,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         return routerResult;
     }
 
-    function createStackElement(signature: SignatureDeclaration, symbolNode?: ts.Node): StackElement | null {
+    function createStackElement(signature: SignatureDeclaration, symbolNode?: ts.Node): Nullable<StackElement> {
         if (!symbolNode) {
             return null;
         }
@@ -301,7 +302,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             return middlewareResult;
         }
         const valueDeclaration = middlewareSymbol.valueDeclaration;
-        let stackElement: StackElement | null = null;
+        let stackElement: Nullable<StackElement> = null;
 
         if (ts.isVariableDeclaration(valueDeclaration)) {
             const initializer = valueDeclaration.initializer;
@@ -369,7 +370,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         container.currentStackElement.requestSymbol = requestParamSymbol;
         container.currentStackElement.responseSymbol = responseParamSymbol;
 
-        let functionStatements: readonly Statement[] | null = null;
+        let functionStatements: Nullable<Readonly<Statement[]>> = null;
 
         if (ts.isArrowFunction(middlewareSignature)) {
             const body = middlewareSignature.body;
@@ -605,7 +606,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                                                                     const typeSymbol = returnType.getSymbol();
 
                                                                     if (typeSymbol && typeSymbol.getName() === "Promise") {
-                                                                        //@ts-ignore
+                                                                        // @ts-expect-error
                                                                         const promiseTypes = checker.getTypeArguments(returnType);
 
                                                                         if (promiseTypes.length === 1) {
@@ -704,7 +705,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
     }
 
-    function typeToResult(type: ts.Type): TypeResult | null {
+    function typeToResult(type: ts.Type): Nullable<TypeResult> {
         const typeString = checker.typeToString(type);
         if (typeString === "number") {
             return {
@@ -734,7 +735,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             return null;
         }
         if (symbol.name === "Array") {
-            //@ts-ignore
+            // @ts-expect-error
             const arrayTypes = checker.getTypeArguments(type);
 
             if (arrayTypes.length === 1) {
@@ -814,7 +815,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         return [];
     }
 
-    function getStringLiteralValue(node: ts.Node, container: SearchContainer, stackLevel?: number): string | null {
+    function getStringLiteralValue(node: ts.Node, container: SearchContainer, stackLevel?: number): Nullable<string> {
         if (stackLevel == null) {
             stackLevel = container.callStack.length - 1;
         }
@@ -851,7 +852,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function getReturnRouter(outerFunction: ts.FunctionDeclaration,
-        variableSymbol: ts.Symbol | null): ts.Symbol | undefined {
+        variableSymbol: Nullable<ts.Symbol>): Optional<ts.Symbol> {
         if (!outerFunction.body) {
             return;
         }
@@ -1184,7 +1185,7 @@ function indexOf<T>(items: T[], found: (t: T) => boolean) {
     return -1;
 }
 
-function getFirstCallIdentifier(node: ts.Node): ts.Identifier | null {
+function getFirstCallIdentifier(node: ts.Node): Nullable<ts.Identifier> {
     const firstCall = getFirst(node, ts.SyntaxKind.CallExpression);
     if (!firstCall) {
         return null;
@@ -1199,7 +1200,7 @@ function getFirstCallIdentifier(node: ts.Node): ts.Identifier | null {
     }
 }
 
-function getFirstParent(node: ts.Node, kind: ts.SyntaxKind): ts.Node | null {
+function getFirstParent(node: ts.Node, kind: ts.SyntaxKind): Nullable<ts.Node> {
     let parent = node.parent;
     while (parent) {
         if (parent.kind === kind) {
@@ -1221,7 +1222,7 @@ function hasParentThat(node: ts.Node, predicate: (node: ts.Node) => boolean): bo
     return false;
 }
 
-function previousNode(node: ts.Node): ts.Node | null {
+function previousNode(node: ts.Node): Nullable<ts.Node> {
     if (!node.parent) {
         return null;
     }
@@ -1240,7 +1241,7 @@ function isIdentifier(value: ts.Node): value is ts.Identifier {
 }
 
 
-function nextNode(node: ts.Node): ts.Node | null {
+function nextNode(node: ts.Node): Nullable<ts.Node> {
     if (!node.parent) {
         return null;
     }
@@ -1272,7 +1273,7 @@ function getChildrenThat(node: ts.Node, found: (t: ts.Node) => boolean): ts.Node
     return thatChildren;
 }
 
-function getFirstChildThat(node: ts.Node, found: (t: ts.Node) => boolean): ts.Node | null {
+function getFirstChildThat(node: ts.Node, found: (t: ts.Node) => boolean): Nullable<ts.Node> {
     const index = indexOf(node.getChildren(), found);
 
     if (index >= 0) {
@@ -1292,7 +1293,7 @@ function filterKind(nodes: ts.Node[] | readonly ts.Node[], kind: ts.SyntaxKind):
     return nodes.filter((value) => value.kind === kind);
 }
 
-function getFirst(node: ts.Node, kind: ts.SyntaxKind): ts.Node | null {
+function getFirst(node: ts.Node, kind: ts.SyntaxKind): Nullable<ts.Node> {
     if (node.kind === kind) {
         return node;
     }
@@ -1338,7 +1339,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
             const bodyKeys = Object.keys(middleware.bodyType);
 
             if (bodyKeys.length) {
-                // @ts-ignore
+                // @ts-expect-error
                 requestObject.content["application/json"] = {
                     schema: {
                         type: "object",
@@ -1373,7 +1374,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
             const bodyKeys = Object.keys(middleware.bodyType);
 
             if (bodyKeys.length) {
-                // @ts-ignore
+                // @ts-expect-error
                 pathRequestObject.content["application/json"] = {
                     schema: {
                         type: "object",
@@ -1426,7 +1427,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
                 const bodyKeys = Object.keys(middleware.bodyType);
 
                 if (bodyKeys.length) {
-                    // @ts-ignore
+                    // @ts-expect-error
                     routeRequestObject.content["application/json"] = {
                         schema: {
                             type: "object",
@@ -1447,7 +1448,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
                 currentReturnTypes.push(middleware.returnTypes);
             }
 
-            // @ts-ignore
+            // @ts-expect-error
             pathObject[method] = {
                 parameters: routeParameterObjects,
                 requestBody: routeRequestObject,

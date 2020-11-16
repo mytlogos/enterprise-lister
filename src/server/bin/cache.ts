@@ -20,10 +20,11 @@ export class Cache extends NodeCache {
         return this.keys().length >= this.maxSize;
     }
 
-    // @ts-ignore
+    public set<T>(key: NodeCache.Key, value: T, ttl: NodeCache.Key): boolean;
     public set<T>(key: NodeCache.Key, value: T): boolean;
 
-    public set<T>(key: NodeCache.Key, value: T, ttl: number | string): boolean {
+    public set<T>(key: NodeCache.Key, value: T, ttl?: NodeCache.Key): boolean {
+        // @ts-expect-error
         const b = super.set(key, value, ttl);
         this._trimSize();
         return b;

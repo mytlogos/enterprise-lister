@@ -5,13 +5,13 @@ import {ColumnSchema} from "./columnSchema";
 import {TableParser} from "./tableParser";
 import {equalsIgnore, getElseSet, isString, unique} from "../tools";
 import mySql from "promise-mysql";
-import {MultiSingle, Uuid} from "../types";
+import {Uuid, MultiSingleValue, EmptyPromise, Optional, Nullable} from "../types";
 import {DatabaseContext} from "./contexts/databaseContext";
 import * as validate from "validate.js";
 import {Counter} from "../counter";
 
 interface StateProcessor {
-    addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: Uuid): T;
+    addSql<T>(query: string, parameter: MultiSingleValue<any>, value: T, uuid?: Uuid): T;
 
     startRound(): Promise<string[]>;
 
@@ -19,9 +19,9 @@ interface StateProcessor {
 
     initTableSchema(database: DatabaseSchema): void;
 
-    checkTableSchema(context: DatabaseContext): Promise<void>;
+    checkTableSchema(context: DatabaseContext): EmptyPromise;
 
-    validateQuery(query: string, parameter: any): Promise<void>;
+    validateQuery(query: string, parameter: any): EmptyPromise;
 }
 
 interface Trigger {
@@ -34,26 +34,26 @@ interface Trigger {
 
 interface StateProcessorImpl extends StateProcessor {
     databaseName: string;
-    workingPromise: Promise<void>;
+    workingPromise: EmptyPromise;
     readonly sqlHistory: RawQuery[];
     tables: TableSchema[];
-    invalidationTable: TableSchema | null;
-    mainTable: TableSchema | null;
+    invalidationTable: Nullable<TableSchema>;
+    mainTable: Nullable<TableSchema>;
     trigger: Trigger[];
 
     _process(): Promise<string[]>;
 
     startRound(): Promise<string[]>;
 
-    checkTableSchema(context: DatabaseContext): Promise<void>;
+    checkTableSchema(context: DatabaseContext): EmptyPromise;
 
     checkTables(tables: any, track: string[], ignore: string[]): void;
 
     initTableSchema(database: DatabaseSchema): void;
 
-    addSql<T>(query: string, parameter: MultiSingle<any>, value: T, uuid?: Uuid): T;
+    addSql<T>(query: string, parameter: MultiSingleValue<any>, value: T, uuid?: Uuid): T;
 
-    validateQuery(query: string, parameter: any): Promise<void>;
+    validateQuery(query: string, parameter: any): EmptyPromise;
 }
 
 interface Invalidation {
@@ -67,7 +67,7 @@ interface Invalidation {
 interface RawQuery {
     rawQuery: string;
 
-    parameter: MultiSingle<any>;
+    parameter: MultiSingleValue<any>;
 
     changedRows: number;
 
@@ -83,12 +83,12 @@ interface Query extends RawQuery {
 }
 
 interface Parser {
-    parse(value: RawQuery): Query | null;
+    parse(value: RawQuery): Nullable<Query>;
 }
 
 const UpdateParser: Parser = {
 
-    parse(rawQuery: RawQuery): Query | null {
+    parse(rawQuery: RawQuery): Nullable<Query> {
         const query = rawQuery.rawQuery;
         const exec = /update\s+(\w+)\s+set.+\s+WHERE\s+(\w+)\s*=\s*\?/i.exec(query);
 
@@ -140,7 +140,7 @@ const UpdateParser: Parser = {
     }
 };
 const InsertParser: Parser = {
-    parse(rawQuery: RawQuery): Query | null {
+    parse(rawQuery: RawQuery): Nullable<Query> {
         const query = rawQuery.rawQuery;
         const exec = /insert.+into\s+`?(\w+)`?\s*(\(.+\))?\s+VALUES\s*\((.+)\);?/i.exec(query);
         if (!exec) {
@@ -230,7 +230,7 @@ const InsertParser: Parser = {
     }
 };
 const DeleteParser: Parser = {
-    parse(rawQuery: RawQuery): Query | null {
+    parse(rawQuery: RawQuery): Nullable<Query> {
         const query = rawQuery.rawQuery;
         const exec = /delete\s+from\s+(\w+)\s*(where\s+(.+))?;?/i.exec(query);
 
@@ -256,8 +256,8 @@ const DeleteParser: Parser = {
             const concatenation = /^AND$/i;
             const finish = /^;$/i;
 
-            let previousState: RegExp | null = null;
-            let currentColumn: ColumnSchema | null = null;
+            let previousState: Nullable<RegExp> = null;
+            let currentColumn: Nullable<ColumnSchema> = null;
 
             for (const conditionPart of conditionsParts) {
                 if (previousState == null || previousState === concatenation) {
@@ -434,7 +434,7 @@ const StateProcessorImpl: StateProcessorImpl = {
 
             const separator = columnName.indexOf(".");
 
-            let columnSchema: ColumnSchema | undefined;
+            let columnSchema: Optional<ColumnSchema>;
             if (separator >= 0) {
                 const tableName = columnName.substring(0, separator);
                 const foundTable = this.tables.find((value) => equalsIgnore(value.name, tableName));
@@ -511,7 +511,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         }
     },
 
-    addSql(query: string, parameter: MultiSingle<any>, value: any, uuid ?: string): any {
+    addSql(query: string, parameter: MultiSingleValue<any>, value: any, uuid ?: string): any {
         if (value && ((Number.isInteger(value.affectedRows) && value.affectedRows)
             || (Number.isInteger(value.changedRows) && value.changedRows))) {
             this.sqlHistory.push({
@@ -649,7 +649,7 @@ const StateProcessorImpl: StateProcessorImpl = {
     },
 
 
-    async checkTableSchema(context: DatabaseContext): Promise<void> {
+    async checkTableSchema(context: DatabaseContext): EmptyPromise {
         // display all current tables
         const tables: any[] = await context.getTables();
 
@@ -669,7 +669,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         const separator = /\s+/;
 
         for (const [tablesKey, tableValue] of Object.entries(tables)) {
-            // @ts-ignore
+            // @ts-expect-error
             const tableDeclaration: string = tableValue;
 
             if (ignore.includes(tableDeclaration)) {

@@ -438,9 +438,7 @@ export const postListMedium: Handler = (req, res) => {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    // TODO: 27.02.2020 use uuid to check that listId is owned by uuid
-    // @ts-ignore
-    sendResult(res, internalListStorage.addItemToList(listId, mediumId, uuid));
+    sendResult(res, internalListStorage.addItemToList({listId, id: mediumId}, uuid));
 };
 export const putListMedium: Handler = (req, res) => {
     const { oldListId, newListId } = req.body;
@@ -872,17 +870,17 @@ function sendResult(res: Response, promise: Promise<any>) {
                 result
                     .stream({ objectMode: true, highWaterMark: 10 })
                     .pipe(stringify({ open: "[", close: "]" }))
-                    // @ts-ignore
+                    // @ts-expect-error
                     .pipe(res);
             } else {
-                // @ts-ignore
+                // @ts-expect-error
                 res.json(result);
             }
         })
         .catch((error) => {
             const errorCode = isError(error);
             res
-                // @ts-ignore
+                // @ts-expect-error
                 .status(errorCode ? 400 : 500)
                 .json({ error: errorCode ? error : Errors.INVALID_MESSAGE });
 
@@ -906,6 +904,6 @@ function sendResultCall(res: Response, callback: () => any) {
 
 // FIXME an error showed that req.query.something does not assign on first call, only on second???
 function extractQueryParam(request: Request, key: string) {
-    // @ts-ignore
+    // @ts-expect-error
     return request.query[key] || request.query[key];
 }

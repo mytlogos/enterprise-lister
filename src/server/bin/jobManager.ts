@@ -1,6 +1,6 @@
 import {remove, removeLike, stringify, getElseSet} from "./tools";
 import logger from "./logger";
-import {JobRequest} from "./types";
+import {JobRequest, EmptyPromise, Optional, Nullable} from "./types";
 import {getStore, runAsync, setContext, removeContext} from "./asyncStorage";
 import Timeout = NodeJS.Timeout;
 
@@ -79,7 +79,7 @@ export class JobQueue {
      * The intervalId of the current Interval for checking.
      * @private
      */
-    private intervalId: Timeout | undefined;
+    private intervalId: Optional<Timeout>;
     /**
      * Current time in milliseconds between checking for starting jobs.
      * @private
@@ -135,7 +135,7 @@ export class JobQueue {
      */
     public addJob(jobId: number, job: JobCallback): Job {
         const wasEmpty = this.isEmpty();
-        let lastRun: number | null = null;
+        let lastRun: Nullable<number> = null;
 
         const info: Job = {};
         const internJob: InternJob = {
@@ -147,7 +147,7 @@ export class JobQueue {
                 lastRun = last;
             },
             get lastRun() {
-                // @ts-ignore
+                // @ts-expect-error
                 return lastRun;
             },
             jobInfo: info
@@ -282,6 +282,10 @@ export class JobQueue {
         job.running = false;
         if (job.startRun) {
             const store = getStore();
+
+            if (!store) {
+                throw Error("Missing Store! Are you sure this was running in an AsyncResource?")
+            }
             const running = store.get("running");
             const waiting = store.get("waiting");
             logger.info(`Job ${job.jobId} executed in running ${running} ms and waiting ${waiting} ms, ${job.executed} times`);
@@ -441,7 +445,7 @@ interface InternJob {
     running?: boolean;
     active: boolean;
     executed: number;
-    lastRun: number | null;
+    lastRun: Nullable<number>;
 }
 
 export interface OutsideJob {
@@ -450,10 +454,10 @@ export interface OutsideJob {
     running?: boolean;
     active: boolean;
     executed: number;
-    lastRun: number | null;
+    lastRun: Nullable<number>;
 }
 
 export interface Job {
-    onStart?: () => void | Promise<void>;
-    onDone?: () => void | Promise<void>;
+    onStart?: () => void | EmptyPromise;
+    onDone?: () => void | EmptyPromise;
 }

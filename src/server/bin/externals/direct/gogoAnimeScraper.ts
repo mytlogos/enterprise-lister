@@ -1,6 +1,6 @@
 import {EpisodeContent, Hook, Toc, TocEpisode} from "../types";
 import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import cheerio from "cheerio";
 import logger from "../../logger";
@@ -9,7 +9,7 @@ import {checkTocContent} from "../scraperTools";
 import {SearchResult as TocSearchResult, searchToc} from "./directTools";
 import {UrlError} from "../errors";
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }> {
     const uri = "https://www.gogoanime.io/";
     const $ = await queueCheerioRequest(uri);
 
@@ -157,7 +157,7 @@ async function scrapeSearch(searchString: string, searchMedium: TocSearchMedium)
     return {done: false};
 }
 
-async function searchForToc(searchMedium: TocSearchMedium): Promise<Toc | undefined> {
+async function searchForToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
     return searchToc(
         searchMedium,
         scrapeToc,
