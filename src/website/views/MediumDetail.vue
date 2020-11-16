@@ -84,6 +84,7 @@
             <a
               :href="toc.link"
               target="_blank"
+              rel="noopener noreferrer"
             >
               {{ toc.title || details.title }}
             </a>
@@ -100,6 +101,7 @@
             <a
               :href="getHome(toc.link)"
               target="_blank"
+              rel="noopener noreferrer"
             >{{ getDomain(toc.link) }}</a>
           </td>
         </tr>
@@ -162,6 +164,7 @@
             <a
               :href="entry.link"
               target="_blank"
+              rel="noopener noreferrer"
             >
               {{ entry.title }}
             </a>

@@ -41,6 +41,7 @@
             <a
               v-if="item.host"
               target="_blank"
+              rel="noopener noreferrer"
               :href="item.host.link"
             >
               {{ item.host.name }}

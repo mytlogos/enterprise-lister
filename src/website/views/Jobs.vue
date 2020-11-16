@@ -180,7 +180,7 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue"
-import { AllJobStats, Job, SimpleMedium } from "../siteTypes"
+import { AllJobStats, Job, JobStats, SimpleMedium } from "../siteTypes"
 import { round } from "../init";
 
 interface LiveJob {
@@ -235,6 +235,7 @@ interface Data {
     liveJobs: { [key: number]: LiveJob };
     summary: JobsSummary;
     totalJobsStats: AllJobStats;
+    jobStats: { [key: string]: JobStats };
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
@@ -280,6 +281,7 @@ export default defineComponent({
                 maxQ: 0,
                 minQ: 0,
             },
+            jobStats: {},
             summary: {
                 waiting: 0,
                 running: 0,
@@ -348,6 +350,7 @@ export default defineComponent({
         });
 
         HttpClient.getJobsStats().then(stats => this.totalJobsStats = stats);
+        HttpClient.getJobsStatsGrouped().then(stats => this.jobStats = stats);
 
         // fetch live jobs data
         fetch("http://localhost:3003")

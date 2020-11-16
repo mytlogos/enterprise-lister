@@ -41,6 +41,7 @@
       </label>
       <a
         target="_blank"
+        rel="noopener noreferrer"
         :href="currentLink"
       >
         Open External

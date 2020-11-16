@@ -57,6 +57,7 @@
             <a
               :href="entry.link"
               target="_blank"
+              rel="noopener noreferrer"
             >
               {{ entry.title }}
             </a>
