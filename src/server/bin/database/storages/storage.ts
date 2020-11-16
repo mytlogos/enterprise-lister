@@ -1,9 +1,9 @@
 import mySql from "promise-mysql";
 import env from "../../env";
-import { Invalidation, MetaResult, Result, ScrapeItem, User, Uuid } from "../../types";
+import { Invalidation, MetaResult, Result, Uuid, PropertyNames, StringKeys, PromiseFunctions } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
-import { delay, isQuery } from "../../tools";
+import { delay, isQuery, isString } from "../../tools";
 import { SchemaManager } from "../schemaManager";
 import { Query } from "mysql";
 import { ContextCallback, ContextProvider, queryContextProvider } from "./storageTools";
@@ -11,7 +11,6 @@ import { QueryContext } from "../contexts/queryContext";
 import { ConnectionContext } from "../databaseTypes";
 import { MysqlServerError } from "../mysqlError";
 import { MediumContext } from "../contexts/mediumContext";
-import { SubContextProxyFactory, createStorage } from "../sqlTools";
 import { PartContext } from "../contexts/partContext";
 import { EpisodeContext } from "../contexts/episodeContext";
 import { NewsContext } from "../contexts/newsContext";
@@ -21,7 +20,7 @@ import { JobContext } from "../contexts/jobContext";
 import { InternalListContext } from "../contexts/internalListContext";
 import { ExternalUserContext } from "../contexts/externalUserContext";
 import { ExternalListContext } from "../contexts/externalListContext";
-import { SubContext } from '../contexts/subContext';
+import { SubContext } from "../contexts/subContext";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
     return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -326,6 +325,80 @@ export class Storage {
     public getInvalidatedStream(uuid: Uuid): Promise<Query> {
         return inContext((context) => context.getInvalidatedStream(uuid));
     }
+}
+
+/**
+ * Property names of QueryContext whose type extends from SubContext.
+ */
+type ContextName = PropertyNames<QueryContext, SubContext>;
+type ContextProxy<T extends SubContext, K extends StringKeys<T>> = new() => PromiseFunctions<T, K>;
+
+
+function inContextGeneric<T, C extends SubContext>(callback: ContextCallback<T, C>, context: ContextName) {
+    return storageInContext(callback, (con) => queryContextProvider(con)[context] as unknown as C, true);
+}
+
+export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T>>(contextName: ContextName, omitted: K[]): ContextProxy<T, K> {
+    const hiddenProps: K[] = [...omitted];
+    return function ContextProxy() {
+        return new Proxy(
+            {},
+            {
+                get(_target, prop) {
+                    // @ts-expect-error
+                    if (isString(prop) && hiddenProps.includes(prop)) {
+                        return () => {
+                            throw TypeError(`Property '${prop}' is not accessible`);
+                        };
+                    }
+                    // @ts-expect-error
+                    return (...args: any[]) => inContextGeneric<any, T>(context => context[prop](...args), contextName);
+                }
+            }
+        );
+    } as unknown as ContextProxy<T, K>;
+}
+
+export function SubContextProxyFactory<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(context: ContextName, omitted?: K[]): ContextProxy<T, K>  {
+    return ContextProxyFactory<T, K | keyof SubContext>(
+        context,
+        [
+            "commit",
+            "dmlQuery",
+            "parentContext",
+            "query",
+            "rollback",
+            "startTransaction",
+            ...(omitted || [])
+        ]
+    ) as ContextProxy<T, K>;
+}
+
+/**
+ * Creates a Factory which allows get access only.
+ * Always returns a functions creates a valid SubContext instance on every call,
+ * executing the requested function on the SubContext Instance.
+ * 
+ * Example:
+ * const mediumStorage = createStorage<MediumContext>("mediumContext");
+ * mediumStorage.addMedium(...args) // creates a valid MediumContext Instance
+ *                                  // and execute 'addMedium(...args)' on it
+ *                                  // returning the result
+ * 
+ * This should be treated as a standin for the respective Context Instance
+ * which allows restricted access.
+ * 
+ * One should provide the correct SubContext type for the property Name:
+ * Instead of:
+ *    createStorage<PartContext>("mediumContext") // thinks it is returning PartContext while returning MediumContext
+ * use correct type:
+ *    createStorage<MediumContext>("mediumContext") // thinks it is returning MediumContext while returning MediumContext
+ * 
+ * 
+ * @param context the property name on QueryContext
+ */
+export function createStorage<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(context: ContextName): PromiseFunctions<T, K> {
+    return new (SubContextProxyFactory<T, K>(context))();
 }
 
 export const storage = new Storage();

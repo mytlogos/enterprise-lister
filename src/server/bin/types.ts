@@ -393,3 +393,24 @@ export interface MediumRelease {
     locked?: boolean;
     date: Date;
 }
+
+export type StringKeys<T> = keyof T & string;
+
+/**
+ * Type consisting of Property names of T whose type extends from U.
+ */
+export type PropertyNames<T, U> = {
+    [K in keyof T]: T[K] extends U ? K : never;
+}[keyof T];
+
+/**
+ * Yield a type of T where all Properties have a Type which extends from U.
+ */
+export type Properties<T, U> = Pick<T, PropertyNames<T, U>>;
+export type PromiseFunction = (...args: any[]) => Promise<any>;
+
+/**
+ * Type of T where all Properties with name in K are omitted.
+ * All properties left are Functions which return a Promise.
+ */
+export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>, PromiseFunction>;
