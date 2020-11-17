@@ -59,38 +59,126 @@
           <th scope="col">
             Nr.
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('name')"
+          >
             Name
+            <i 
+              class="fas"
+              :class="sortedClass('name')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('state')"
+          >
             Status
+            <i 
+              class="fas"
+              :class="sortedClass('state')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('runningSince')"
+          >
             Time Running
+            <i 
+              class="fas"
+              :class="sortedClass('runningSince')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('runningSince')"
+          >
             Running Since
+            <i 
+              class="fas"
+              :class="sortedClass('runningSince')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
-            Next Run
+          <th
+            scope="col"
+            @click.left="toggleOrder('nextRun')"
+          >
+            Next Run 
+            <i 
+              class="fas"
+              :class="sortedClass('nextRun')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('failed')"
+          >
             Failure Rate
+            <i 
+              class="fas"
+              :class="sortedClass('failed')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('avgduration')"
+          >
             Avg Duration
+            <i 
+              class="fas"
+              :class="sortedClass('avgduration')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('avgnetwork')"
+          >
             Avg Network
+            <i 
+              class="fas"
+              :class="sortedClass('avgnetwork')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('avgreceived')"
+          >
             Avg Received
+            <i 
+              class="fas"
+              :class="sortedClass('avgreceived')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('queries')"
+          >
             Avg Queries
+            <i 
+              class="fas"
+              :class="sortedClass('queries')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('count')"
+          >
             Total Times Run
+            <i 
+              class="fas"
+              :class="sortedClass('count')" 
+              aria-hidden="true"
+            />
           </th>
         </tr>
       </thead>
@@ -253,7 +341,7 @@ interface JobsSummary {
 
 interface Data {
     jobs: Job[];
-    sortedOn: Array<keyof Job>;
+    sortedOn: Partial<Record<keyof Job | keyof JobStats, number>>;
     media: Map<number, SimpleMedium>;
     now: Date;
     liveJobs: { [key: number]: LiveJob };
@@ -278,7 +366,11 @@ export default defineComponent({
     data(): Data {
         return {
             jobs: [],
-            sortedOn: ["state", "runningSince", "nextRun"],
+            sortedOn: {
+                "state": 1,
+                "runningSince": 1,
+                "nextRun": 1
+            },
             media: new Map(),
             now: new Date(),
             liveJobs: {},
@@ -315,15 +407,31 @@ export default defineComponent({
     },
     computed: {
         computedJobs(): Job[] {
-            const jobs = [...this.jobs]
+            const jobs = [...this.jobs];
+            const sortEntries: Array<[string, number]> = Object.entries(this.sortedOn);
+            console.log("Sorting Jobs on Fields: " + JSON.stringify(this.sortedOn))
+
             jobs.sort((a, b) => {
-                for (const sort of this.sortedOn) {
-                    if (a[sort] > b[sort]) {
-                        return 1;
+                const statsA = this.jobStats[a.name];
+                const statsB = this.jobStats[b.name];
+
+                for (const [key, order] of sortEntries) {
+                    if (!order) {
+                        continue;
+                    }
+                    const compareA = key in a ? a : statsA;
+                    const compareB = key in b ? b : statsB;
+
+                    if (!compareA || !compareB) {
+                        continue;
                     }
 
-                    if (a[sort] < b[sort]) {
-                        return -1;
+                    if (compareA[key] > compareB[key]) {
+                        return 1 * order;
+                    }
+
+                    if (compareA[key] < compareB[key]) {
+                        return -1 * order;
                     }
                 }
                 return 0;
@@ -420,6 +528,18 @@ export default defineComponent({
             .catch(console.error);
     },
     methods: {
+        sortedClass(key: keyof Job) {
+            return this.sortedOn[key] > 0 ? "fa-sort-up" : this.sortedOn[key] < 0 ? "fa-sort-down" : "fa-sort";
+        },
+        toggleOrder(key: keyof Job): void {
+            const order = this.sortedOn[key];
+
+            if (order === 1 || order == null) {
+                this.sortedOn[key] = -1;
+            } else {
+                this.sortedOn[key] += 1;
+            }
+        },
         dateToString(date?: Date | null): string {
             if (!date) {
                 return "";
