@@ -203,6 +203,48 @@ export interface Job {
     nextRun?: Date | null;
 }
 
+export interface Modification {
+    created: number;
+    deleted: number;
+    updated: number;
+}
+
+export interface NetworkTrack {
+    count: number;
+    sent: number;
+    received: number;
+    history: Array<{
+        url: string;
+        method: string;
+        statusCode: number; 
+        send: number;
+        received: number;
+    }>;
+}
+
+export interface JobTrack {
+    modifications: Record<string, Modification>;
+    network: NetworkTrack;
+    queryCount: number; 
+}
+
+export type JobHistoryItem = Pick<Job, "id" | "name"> & {
+    type: string;
+    runAfter?: number;
+    arguments: string;
+    deleteAfterRun: boolean;
+    start: Date;
+    end: Date;
+    result: string;
+    message: string | JobTrack;
+    context: string;
+}
+
+export interface JobDetails {
+    job?: Job;
+    history: JobHistoryItem[];
+}
+
 export interface AllJobStats {
     count: number;
     avgnetwork: number;

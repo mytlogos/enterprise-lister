@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {JobItem, JobRequest, JobState, JobStats, AllJobStats, EmptyPromise, MultiSingleValue, PromiseMultiSingle, Optional} from "../../types";
+import {JobItem, JobRequest, JobState, JobStats, AllJobStats, EmptyPromise, MultiSingleValue, PromiseMultiSingle, Optional, JobDetails, JobHistoryItem} from "../../types";
 import {isString, promiseMultiSingle, multiSingle} from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
@@ -72,6 +72,31 @@ export class JobContext extends SubContext {
         }
         return values;
     }
+
+    public async getJobDetails(id: number): Promise<JobDetails> {
+        const jobPromise: Promise<JobItem[]> = this.query(
+            `
+            SELECT * FROM jobs WHERE id = ?
+            `,
+            id
+        );
+        const historyPromise: Promise<JobHistoryItem[]>  = this.query(
+            `
+            SELECT * FROM job_history
+            WHERE name = (SELECT name FROM job_history WHERE id = ? LIMIT 1)
+            ORDER BY start DESC;
+            `,
+            id
+        );
+
+        const [jobs, history] = await Promise.all([jobPromise, historyPromise]);
+
+        return {
+            job: jobs[0],
+            history
+        }
+    }
+
 
     public async removeJobLike(column: string, value: any): EmptyPromise {
         if (value == null) {

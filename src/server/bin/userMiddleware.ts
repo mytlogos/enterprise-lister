@@ -837,6 +837,19 @@ export const getJobsStatsGrouped: Handler = (_req, res) => {
     sendResult(res, jobStorage.getJobsStatsGrouped());
 };
 
+export const getJobDetails: Handler = (req, res) => {
+    const id = Number.parseInt(extractQueryParam(req, "id"));
+
+    if (isInvalidId(id)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+
+    console.log("querying jobdetails for: " + id);
+
+    sendResult(res, jobStorage.getJobDetails(id));
+};
+
 export const authenticate: Handler = (req, res, next) => {
     let { uuid, session } = req.body;
 

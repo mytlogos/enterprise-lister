@@ -197,11 +197,11 @@
             <td>{{ absoluteToRelative(job.runningSince) }}</td>
             <td>{{ dateToString(job.runningSince) }}</td>
             <td>{{ dateToString(job.nextRun) }}</td>
-            <td>{{ jobStats[job.name]?.failed }}</td>
-            <td>{{ jobStats[job.name]?.avgduration }}</td>
-            <td>{{ jobStats[job.name]?.avgnetwork }}</td>
-            <td>{{ jobStats[job.name]?.avgreceived }}</td>
-            <td>{{ jobStats[job.name]?.queries }}</td>
+            <td>{{ round(jobStats[job.name]?.failed || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.avgduration || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.avgnetwork || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.avgreceived || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.queries || 0) }}</td>
             <td>{{ jobStats[job.name]?.count }}</td>
           </tr>
           <tr
@@ -210,7 +210,14 @@
           >
             <!-- empty td as a natural margin left for index column -->
             <td />
-            <td colspan="5">
+            <td colspan="11">
+              <router-link
+                :to="{ name: 'job', params: { jobId: job.id } }"
+                tag="a"
+                class="btn btn-dark mb-2"
+              >
+                View Job
+              </router-link>
               <template v-if="liveJobs[job.id]">
                 <table class="table table-sm table-hover">
                   <caption class="sr-only">
@@ -293,7 +300,7 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue"
 import { AllJobStats, Job, JobStats, SimpleMedium } from "../siteTypes"
-import { round } from "../init";
+import { absoluteToRelative, formatDate, round } from "../init";
 
 interface LiveJob {
     /**
@@ -544,7 +551,7 @@ export default defineComponent({
             if (!date) {
                 return "";
             }
-            return date.toLocaleTimeString("de-DE");
+            return formatDate(date, true);
         },
         nameToString(name: string): string {
             const match = tocRegex.exec(name);
@@ -562,25 +569,7 @@ export default defineComponent({
             if (!date) {
                 return "";
             }
-            let seconds = (this.now.getTime() - date.getTime()) / 1000;
-            let result = [];
-
-            if (seconds > 3600) {
-                result.push(Math.floor(seconds / 3600) + "h");
-                seconds = seconds % 3600;
-            }
-            if (seconds > 60) {
-                result.push(Math.floor(seconds / 60) + "m");
-                seconds = seconds % 60;
-            }
-            if (seconds > 0) {
-                result.push(Math.floor(seconds) + "s");
-            }
-            if (result.length) {
-                return result.join(" ");
-            } else {
-                return "0 s";
-            }
+            return absoluteToRelative(date, this.now);
         },
         totalRow(liveJob: LiveJob): ContextPart[] {
             const map = new Map<string, ContextPart>();

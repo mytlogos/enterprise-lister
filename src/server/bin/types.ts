@@ -479,6 +479,19 @@ export interface JobStats extends AllJobStats {
     name: string;
 }
 
+export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfterRun" | "runAfter" | "arguments"> & {
+    start: Date;
+    end: Date;
+    result: string;
+    message: string;
+    context: string;
+}
+
+export interface JobDetails {
+    job?: JobItem;
+    history: JobHistoryItem[];
+}
+
 export enum MilliTime {
     SECOND = 1000,
     MINUTE = 60000,

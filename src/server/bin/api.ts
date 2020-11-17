@@ -164,6 +164,7 @@ function jobsRouter(): Router {
     const statsRouter = Router();
     statsRouter.get("/all", UserApi.getJobsStats);
     statsRouter.get("/grouped", UserApi.getJobsStatsGrouped);
+    statsRouter.get("/detail", UserApi.getJobDetails);
 
     router.use("/stats", statsRouter);
     return router;

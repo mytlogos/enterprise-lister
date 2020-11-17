@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc, JobStats, AllJobStats } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc, JobStats, AllJobStats, JobDetails } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -37,8 +37,11 @@ const restApi = {
                         get: true,
                     },
                     grouped: {
-                        get: true
-                    }
+                        get: true,
+                    },
+                    detail: {
+                        get: true,
+                    },
                 },
             },
             searchtoc: {
@@ -244,6 +247,7 @@ interface JobPath {
     readonly stats: { 
         all: GetPath;
         grouped: GetPath;
+        detail: GetPath;
     };
 }
 
@@ -267,7 +271,6 @@ interface Api {
     readonly user: UserPath;
 }
 
-// @ts-ignore
 const api: Api = (function pathGenerator() {
     const abbreviations: { [key: string]: string[] } = {};
     const allowedPreviousStates: { [key: string]: string[] } = {};
@@ -576,6 +579,14 @@ export const HttpClient = {
 
     getJobsStatsGrouped(): Promise<JobStats[]> {
         return this.queryServer(api.jobs.stats.grouped.get);
+    },
+
+    /**
+     * Get the Job Details of a single Job.
+     * @param id id of the Job
+     */
+    getJobDetails(id: number): Promise<JobDetails> {
+        return this.queryServer(api.jobs.stats.detail.get, { id });
     },
 
     getToc(link: string): Promise<Toc[]> {

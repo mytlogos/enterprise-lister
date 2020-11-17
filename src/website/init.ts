@@ -1,4 +1,5 @@
 import { SimpleMedium, FullMediumToc } from "siteTypes";
+import { renderSlot } from 'vue';
 
 /**
  *
@@ -183,6 +184,37 @@ export function timeDifference(current: Date, other: Date): string {
     return `${otherAfter ? "in ": ""}${value} ${unit}${value === 1 ? "s" : ""}${!otherAfter ? " ago" : ""}`;
 }
 
+export function absoluteToRelative(date: Date, now: Date): string {
+    let seconds = (now.getTime() - date.getTime()) / 1000;
+    const result = [];
+
+    if (seconds > 3600) {
+        result.push(Math.floor(seconds / 3600) + "h");
+        seconds = seconds % 3600;
+    }
+    if (seconds > 60) {
+        result.push(Math.floor(seconds / 60) + "m");
+        seconds = seconds % 60;
+    }
+    if (seconds > 0) {
+        result.push(Math.floor(seconds) + "s");
+    }
+    if (result.length) {
+        return result.join(" ");
+    } else {
+        return "0 s";
+    }
+}
+
+/**
+ * Checks whether the given value is a string.
+ * 
+ * @param value value to test
+ */
+export function isString(value: unknown): value is string {
+    return Object.prototype.toString.call(value) === "[object String]";
+}
+
 /**
  * Return 0 <= i <= array.length such that !pred(array[i - 1]) && pred(array[i]).
  * From Stackoverflow: https://stackoverflow.com/a/41956372
@@ -200,6 +232,27 @@ export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number
     return hi;
 }
 
-export function formatDate(date: Date): string {
-    return date.toLocaleString("de-De", { second: "2-digit", minute: "2-digit", hour: "2-digit", day: "2-digit", month: "2-digit", year: "2-digit" });
+let today = new Date().toLocaleDateString("de-De", { day: "2-digit", month: "2-digit", year: "2-digit" });
+
+setInterval(
+    () => today = new Date().toLocaleDateString("de-De", { day: "2-digit", month: "2-digit", year: "2-digit" }),
+    60_000
+);
+
+export function formatDate(date: Date, omitToday = false): string {
+    let result = date.toLocaleString(
+        "de-De",
+        {
+            second: "2-digit",
+            minute: "2-digit",
+            hour: "2-digit",
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit"
+        }
+    );
+    if (omitToday) {
+        result = result.replace(today, "").replace(",", "").trim();
+    }
+    return result;
 }
