@@ -56,7 +56,7 @@ export class JobContext extends SubContext {
                 end - start as duration
                 FROM job_history
             ) as job_history
-            ${grouped ? "group by name," : ""}
+            ${grouped ? "group by name" : ""}
             ;`
         );
         // 'all*' Properties are comma separated lists of number arrays
