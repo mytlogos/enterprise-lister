@@ -1,5 +1,5 @@
-import {EpisodeContent, Hook} from "../types";
-import {EpisodeNews, EpisodeRelease, LikeMedium, MultiSingle, News, SimpleEpisode} from "../../types";
+import {EpisodeContent, Hook, NewsScrapeResult} from "../types";
+import {EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise} from "../../types";
 import logger from "../../logger";
 import {queueCheerioRequest} from "../queueManager";
 import {max, MediaType, sanitizeString} from "../../tools";
@@ -7,7 +7,7 @@ import {episodeStorage, mediumStorage, partStorage} from "../../database/storage
 
 export const sourceType = "qidian_underground";
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     const uri = "https://toc.qidianunderground.org/";
 
     const $ = await queueCheerioRequest(uri);
@@ -15,7 +15,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
 
     const chapterReg = /(\d+)(\s*-\s*(\d+))?/;
 
-    const potentialMediaNews: Array<Promise<void>> = [];
+    const potentialMediaNews: EmptyPromise[] = [];
     const now = new Date();
 
     for (let tocRowIndex = 0; tocRowIndex < tocRows.length; tocRowIndex++) {
@@ -81,17 +81,17 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
 }
 
 // TODO: 25.06.2019 use caching for likeMedium?
-async function processMediumNews(mediumTitle: string, potentialNews: News[]): Promise<void> {
-    const likeMedia: MultiSingle<LikeMedium> = await mediumStorage.getLikeMedium({
+async function processMediumNews(mediumTitle: string, potentialNews: News[]): EmptyPromise {
+    const likeMedium = await mediumStorage.getLikeMedium({
         title: mediumTitle,
         link: "",
         type: MediaType.TEXT
     });
 
-    if (!likeMedia || Array.isArray(likeMedia) || !likeMedia.medium || !likeMedia.medium.id) {
+    if (!likeMedium || !likeMedium.medium || !likeMedium.medium.id) {
         return;
     }
-    const mediumId = likeMedia.medium.id;
+    const mediumId = likeMedium.medium.id;
     const latestReleases: SimpleEpisode[] = await episodeStorage.getLatestReleases(mediumId);
 
     const latestRelease = max(latestReleases, (previous, current) => {
@@ -172,7 +172,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Pr
                 }
             ],
             id: 0,
-            // @ts-ignore
+            // @ts-expect-error
             partId: standardPart.id
         };
     });

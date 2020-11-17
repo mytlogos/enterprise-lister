@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocContent, TocEpisode} from "../types";
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Nullable} from "../../types";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import * as url from "url";
 import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
@@ -20,7 +20,7 @@ interface NovelSearchData {
     url: string;
 }
 
-async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
+async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
     return searchToc(
         medium,
         tocAdapter,
@@ -275,7 +275,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }];
 }
 
-async function newsAdapter(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: EpisodeNews[] }> {
     const uri = "https://boxnovel.com";
     const $ = await queueCheerioRequest(uri);
     const items = $(".page-item-detail");
@@ -302,7 +302,7 @@ async function newsAdapter(): Promise<{ news?: News[]; episodes?: EpisodeNews[] 
             const dateString = timeStampElement.text().trim();
             const lowerDate = dateString.toLowerCase();
 
-            let date: Date | null;
+            let date: Nullable<Date>;
 
             if (lowerDate.includes("now") || lowerDate.includes("ago")) {
                 date = relativeToAbsoluteTime(dateString);

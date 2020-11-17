@@ -1,5 +1,5 @@
-import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeContentData, EpisodeNews, News, ReleaseState} from "../../types";
+import {EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult} from "../types";
+import {EpisodeContentData, EpisodeNews, ReleaseState, Optional} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
 import logger from "../../logger";
@@ -8,7 +8,7 @@ import * as request from "request";
 import {checkTocContent} from "../scraperTools";
 import {episodeStorage} from "../../database/storages/storage";
 import {MissingResourceError, UrlError} from "../errors";
-import { extractLinkable } from './directTools';
+import { extractLinkable } from "./directTools";
 
 const jar = request.jar();
 jar.setCookie(
@@ -43,7 +43,7 @@ interface ChapterResponse {
 
 interface ChapterTocResponse {
     manga: MangaChapter;
-    chapter: { [key: string]: ChapterChapterItem };
+    chapter: Record<string, ChapterChapterItem>;
     status: string;
 }
 
@@ -86,7 +86,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const chapterId = exec[1];
     const urlString = `https://mangadex.org/api/?id=${chapterId}&server=null&type=chapter`;
     const jsonPromise: Promise<any> = loadJson(urlString);
-    const contentData: EpisodeContentData = await episodeStorage.getEpisodeContent(chapterLink);
+    const contentData: EpisodeContentData = await episodeStorage.getEpisodeContentData(chapterLink);
 
     if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
         logger.warn(
@@ -133,7 +133,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<NewsScrapeResult> {
     // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
     //  with expiration date somewhere in 100 years to lessen load
 
@@ -360,8 +360,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
 
             const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
 
-            let part: TocPart | undefined = indexPartMap.get(volIndices.combi);
-
+            let part: Optional<TocPart> = indexPartMap.get(volIndices.combi);
 
             if (!chapIndices) {
                 logger.warn("changed episode format on mangadex toc: got no index " + urlString);

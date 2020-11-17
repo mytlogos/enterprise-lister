@@ -2,6 +2,7 @@ import {TableSchema} from "./tableSchema";
 import logger from "../logger";
 import {ColumnSchema} from "./columnSchema";
 import {ColumnType, Modifier} from "./databaseTypes";
+import { Optional, Nullable } from "../types";
 
 export class TableParser {
 
@@ -66,7 +67,7 @@ export class TableParser {
                 continue;
             }
             const foundColumn: ColumnSchema = table.columns[foundColumnIndex];
-            let keySize: number | undefined;
+            let keySize: Optional<number>;
 
             const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
 
@@ -109,7 +110,7 @@ export class TableParser {
                 continue;
             }
             const foundColumn: ColumnSchema = table.columns[foundColumnIndex];
-            let keySize: number | undefined;
+            let keySize: Optional<number>;
 
             const keySizeExec = /\w+\s*\((\d+)\)/.exec(columnName);
 
@@ -145,12 +146,12 @@ export class TableParser {
         table.uniqueIndices.push(uniqueIndex);
     }
 
-    public static parseDataColumn(table: TableSchema, tables: TableSchema[], value: string): ColumnSchema | null {
+    public static parseDataColumn(table: TableSchema, tables: TableSchema[], value: string): Nullable<ColumnSchema> {
         const parts = value.split(/\s+/).filter((s) => s);
         const name = parts[0];
         const partsType = parts[1];
         let type: ColumnType;
-        let typeSize: number | undefined;
+        let typeSize: Optional<number>;
 
         switch (partsType) {
         case ColumnType.INT:
@@ -193,8 +194,8 @@ export class TableParser {
         }
         }
         const modifiers: Modifier[] = [];
-        let defaultValue: string | undefined;
-        let updateValue: string | undefined;
+        let defaultValue: Optional<string>;
+        let updateValue: Optional<string>;
 
         for (let i = 2; i < parts.length; i++) {
             const modifierPart = parts[i];

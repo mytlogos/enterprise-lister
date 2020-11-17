@@ -1,5 +1,5 @@
-import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart, NewsScrapeResult} from "../types";
+import {EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, Optional, VoidablePromise, Nullable} from "../../types";
 import {queueCheerioRequest} from "../queueManager";
 import * as url from "url";
 import {extractIndices, isTocEpisode, isTocPart, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
@@ -8,7 +8,7 @@ import {EpisodePiece, getTextContent, scrapeToc, searchTocCheerio, TocMetaPiece,
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
-async function tocSearch(medium: TocSearchMedium): Promise<Toc | undefined> {
+async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
     return searchTocCheerio(
         medium,
         tocAdapterTooled,
@@ -103,7 +103,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
     if (!linkMatch) {
         throw new UrlError("not a valid toc url for NovelFull: " + tocLink, tocLink);
     }
-    let toc: Toc | undefined;
+    let toc: Optional<Toc>;
     const pagedTocLink = `https://novelfull.com/index.php/${linkMatch[1]}?page=`;
     const now = new Date();
 
@@ -225,7 +225,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     return [toc as Toc];
 }
 
-async function scrapeTocPage($: cheerio.Root, uri: string): Promise<Toc | undefined> {
+async function scrapeTocPage($: cheerio.Root, uri: string): VoidablePromise<Toc> {
 // TODO: 20.07.2019 scrape alternative titles and author too
     const mediumTitleElement = $(".desc .title").first();
     const mediumTitle = sanitizeString(mediumTitleElement.text());
@@ -267,7 +267,7 @@ async function scrapeTocPage($: cheerio.Root, uri: string): Promise<Toc | undefi
         checkTocContent(episode);
 
         if (partIndices) {
-            let part: TocPart | undefined = indexPartMap.get(partIndices.combi);
+            let part: Optional<TocPart> = indexPartMap.get(partIndices.combi);
 
             if (!part) {
                 part = {
@@ -295,7 +295,7 @@ async function scrapeTocPage($: cheerio.Root, uri: string): Promise<Toc | undefi
     };
 }
 
-async function newsAdapter(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function newsAdapter(): Promise<NewsScrapeResult> {
     const uri = "https://novelfull.com";
     const $ = await queueCheerioRequest(uri);
     const items = $("#list-index .list-new .row");
@@ -324,7 +324,7 @@ async function newsAdapter(): Promise<{ news?: News[]; episodes?: EpisodeNews[] 
             logger.warn(`changed time format on novelFull: '${date}' from '${timeStampElement.text().trim()}': news`);
             continue;
         }
-        let regexResult: string[] | null = titleRegex.exec(episodeTitle);
+        let regexResult: Nullable<string[]> = titleRegex.exec(episodeTitle);
         if (!regexResult) {
             let abbrev = "";
             for (const word of mediumTitle.split(/[\W'´`’′‘]+/)) {

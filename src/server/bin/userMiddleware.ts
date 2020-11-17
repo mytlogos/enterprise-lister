@@ -183,7 +183,7 @@ export const readNews: Handler = (req, res) => {
     }
     const currentlyReadNews = stringToNumberList(read);
 
-    sendResult(res, newsStorage.markNewsRead(uuid, currentlyReadNews));
+    sendResult(res, newsStorage.markRead(uuid, currentlyReadNews));
 };
 
 export const processReadEpisode: Handler = (req, res) => {
@@ -438,9 +438,7 @@ export const postListMedium: Handler = (req, res) => {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    // TODO: 27.02.2020 use uuid to check that listId is owned by uuid
-    // @ts-ignore
-    sendResult(res, internalListStorage.addItemToList(listId, mediumId, uuid));
+    sendResult(res, internalListStorage.addItemToList({listId, id: mediumId}, uuid));
 };
 export const putListMedium: Handler = (req, res) => {
     const { oldListId, newListId } = req.body;
@@ -751,13 +749,13 @@ export const getNews: Handler = (req, res) => {
     // if newsIds is specified, send only these news
     if (isString(newsIds)) {
         newsIds = stringToNumberList(newsIds);
-        sendResult(res, newsStorage.getNews({ uuid, newsIds }));
+        sendResult(res, newsStorage.getNews(uuid, undefined, undefined, newsIds));
     } else {
         // else send it based on time
         from = !from || from === "null" ? undefined : new Date(from);
         to = !to || to === "null" ? undefined : new Date(to);
 
-        sendResult(res, newsStorage.getNews({ uuid, since: from, till: to }));
+        sendResult(res, newsStorage.getNews(uuid, from, to));
     }
 };
 
@@ -772,7 +770,7 @@ export const getAllParts: Handler = (req, res) => {
 };
 
 export const getAllMediaFull: Handler = (req, res) => {
-    sendResult(res, mediumStorage.getAllFull());
+    sendResult(res, mediumStorage.getAllMediaFull());
 };
 
 export const getAllSecondary: Handler = (req, res) => {
@@ -831,6 +829,27 @@ export const getJobs: Handler = (_req, res) => {
     sendResult(res, jobStorage.getAllJobs());
 };
 
+export const getJobsStats: Handler = (_req, res) => {
+    sendResult(res, jobStorage.getJobsStats());
+};
+
+export const getJobsStatsGrouped: Handler = (_req, res) => {
+    sendResult(res, jobStorage.getJobsStatsGrouped());
+};
+
+export const getJobDetails: Handler = (req, res) => {
+    const id = Number.parseInt(extractQueryParam(req, "id"));
+
+    if (isInvalidId(id)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+
+    console.log("querying jobdetails for: " + id);
+
+    sendResult(res, jobStorage.getJobDetails(id));
+};
+
 export const authenticate: Handler = (req, res, next) => {
     let { uuid, session } = req.body;
 
@@ -864,17 +883,17 @@ function sendResult(res: Response, promise: Promise<any>) {
                 result
                     .stream({ objectMode: true, highWaterMark: 10 })
                     .pipe(stringify({ open: "[", close: "]" }))
-                    // @ts-ignore
+                    // @ts-expect-error
                     .pipe(res);
             } else {
-                // @ts-ignore
+                // @ts-expect-error
                 res.json(result);
             }
         })
         .catch((error) => {
             const errorCode = isError(error);
             res
-                // @ts-ignore
+                // @ts-expect-error
                 .status(errorCode ? 400 : 500)
                 .json({ error: errorCode ? error : Errors.INVALID_MESSAGE });
 
@@ -898,6 +917,6 @@ function sendResultCall(res: Response, callback: () => any) {
 
 // FIXME an error showed that req.query.something does not assign on first call, only on second???
 function extractQueryParam(request: Request, key: string) {
-    // @ts-ignore
+    // @ts-expect-error
     return request.query[key] || request.query[key];
 }

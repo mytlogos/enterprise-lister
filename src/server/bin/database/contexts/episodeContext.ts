@@ -4,7 +4,6 @@ import {
     EpisodeContentData,
     EpisodeRelease,
     MetaResult,
-    MultiSingle,
     ProgressResult,
     ReadEpisode,
     Result,
@@ -12,7 +11,13 @@ import {
     SimpleRelease,
     DisplayReleasesResponse,
     MediumRelease,
-    Uuid
+    Uuid,
+    EmptyPromise,
+    PromiseMultiSingle,
+    MultiSingleValue,
+    Optional,
+    Nullable,
+    UpdateMedium
 } from "../../types";
 import mySql from "promise-mysql";
 import {
@@ -49,7 +54,7 @@ export class EpisodeContext extends SubContext {
         );
     }
 
-    public async getDisplayReleases(latestDate: Date, untilDate: Date | null, read: boolean | null, uuid: Uuid): Promise<DisplayReleasesResponse> {
+    public async getDisplayReleases(latestDate: Date, untilDate: Nullable<Date>, read: Nullable<boolean>, uuid: Uuid): Promise<DisplayReleasesResponse> {
         const progressCondition = read == null ? "1" : read ? "progress = 1" : "(progress IS NULL OR progress < 1)";
         const releasePromise = this.query(
             "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId, progress " +
@@ -97,7 +102,7 @@ export class EpisodeContext extends SubContext {
     }
 
     public async getAssociatedEpisode(url: string): Promise<number> {
-        const result: Array<{ id: number }> = await this.query(
+        const result: Array<Pick<UpdateMedium, "id">> = await this.query(
             "SELECT id FROM episode INNER JOIN episode_release ON episode.id=episode_release.episode_id WHERE url=?",
             url
         );
@@ -121,7 +126,6 @@ export class EpisodeContext extends SubContext {
             "LIMIT 5;",
             mediumId
         );
-        // @ts-ignore
         return Promise.all(resultArray.map(async (rawEpisode) => {
             const releases = await this.getReleases(rawEpisode.id);
             return {
@@ -139,14 +143,13 @@ export class EpisodeContext extends SubContext {
         if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
             return [];
         }
-        const resultArray: any[] | undefined = await this.queryInList(
+        const resultArray: Optional<any[]> = await this.queryInList(
             "SELECT * FROM episode_release WHERE episode_id ",
             episodeId
         );
         if (!resultArray || !resultArray.length) {
             return [];
         }
-        // @ts-ignore
         return resultArray.map((value: any): EpisodeRelease => {
             return {
                 episodeId: value.episode_id,
@@ -163,14 +166,13 @@ export class EpisodeContext extends SubContext {
         if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
             return [];
         }
-        const resultArray: any[] | undefined = await this.queryInList(
+        const resultArray: Optional<any[]> = await this.queryInList(
             `SELECT * FROM episode_release WHERE locate(${mySql.escape(host)}, url) = 1 AND episode_id `,
             episodeId
         );
         if (!resultArray || !resultArray.length) {
             return [];
         }
-        // @ts-ignore
         return resultArray.map((value: any): EpisodeRelease => {
             return {
                 episodeId: value.episode_id,
@@ -186,7 +188,7 @@ export class EpisodeContext extends SubContext {
     public async getPartsEpisodeIndices(partId: number | number[])
         : Promise<Array<{ partId: number; episodes: number[] }>> {
 
-        const result: Array<{ part_id: number; combinedIndex: number }> | undefined = await this.queryInList(
+        const result: Optional<Array<{ part_id: number; combinedIndex: number }>> = await this.queryInList(
             "SELECT part_id, combiIndex as combinedIndex " +
             "FROM episode WHERE part_id ",
             partId
@@ -219,7 +221,7 @@ export class EpisodeContext extends SubContext {
      * Add progress of an user in regard to an episode to the storage.
      * Returns always true if it succeeded (no error).
      */
-    public async addProgress(uuid: Uuid, episodeId: number | number[], progress: number, readDate: Date | null)
+    public async addProgress(uuid: Uuid, episodeId: number | number[], progress: number, readDate: Nullable<Date>)
         : Promise<boolean> {
 
         if (progress < 0 || progress > 1) {
@@ -232,7 +234,6 @@ export class EpisodeContext extends SubContext {
             episodeId,
             (value) => [uuid, value, progress, readDate]
         );
-        // @ts-expect-error
         multiSingle(results, (value: OkPacket) => storeModifications("progress", "update", value))
         return true;
     }
@@ -259,14 +260,13 @@ export class EpisodeContext extends SubContext {
     /**
      * Sets the progress of an user in regard to an episode with one or multiple progressResult objects.
      */
-    public setProgress(uuid: Uuid, progressResult: ProgressResult | ProgressResult[]): Promise<void> {
-        // @ts-ignore
+    public setProgress(uuid: Uuid, progressResult: ProgressResult | ProgressResult[]): EmptyPromise {
         return promiseMultiSingle(progressResult, async (value: ProgressResult) => {
             const resultArray: any[] = await this.query(
                 "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
                 [value.novel, value.chapter, value.chapIndex]
             );
-            const episodeId: number | undefined = resultArray[0] && resultArray[0].episode_id;
+            const episodeId: Optional<number> = resultArray[0] && resultArray[0].episode_id;
 
             if (episodeId == null) {
                 const msg = `could not find an episode for '${value.novel}', '${value.chapter}', '${value.chapIndex}'`;
@@ -281,13 +281,12 @@ export class EpisodeContext extends SubContext {
      * Get the progress of an user in regard to an episode.
      */
     public async getProgress(uuid: Uuid, episodeId: number): Promise<number> {
-        const result = await this
-            .query(
-                "SELECT * FROM user_episode " +
-                "WHERE user_uuid = ? " +
-                "AND episode_id = ?",
-                [uuid, episodeId],
-            );
+        const result = await this.query(
+            "SELECT * FROM user_episode " +
+            "WHERE user_uuid = ? " +
+            "AND episode_id = ?",
+            [uuid, episodeId],
+        );
 
         return result[0].progress;
     }
@@ -295,7 +294,7 @@ export class EpisodeContext extends SubContext {
     /**
      * Updates the progress of an user in regard to an episode.
      */
-    public updateProgress(uuid: Uuid, episodeId: number, progress: number, readDate: Date | null): Promise<boolean> {
+    public updateProgress(uuid: Uuid, episodeId: number, progress: number, readDate: Nullable<Date>): Promise<boolean> {
         // TODO for now its the same as calling addProgress, but somehow do it better maybe?
         return this.addProgress(uuid, episodeId, progress, readDate);
     }
@@ -303,14 +302,12 @@ export class EpisodeContext extends SubContext {
     /**
      * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
      */
-    public async markEpisodeRead(uuid: Uuid, result: Result): Promise<void> {
+    public async markEpisodeRead(uuid: Uuid, result: Result): EmptyPromise {
         if (!result.accept) {
             return;
         }
         const teaserMatcher = /\(?teaser\)?$|(\s+$)/i;
-
-        // @ts-ignore
-        return promiseMultiSingle(result.result, async (value: MetaResult): void => {
+        return promiseMultiSingle(result.result, async (value: MetaResult): EmptyPromise => {
             // TODO what if it is not a serial medium but only an article? should it even save such things?
             if (!value.novel
                 || (!value.chapIndex && !value.chapter)
@@ -389,7 +386,7 @@ export class EpisodeContext extends SubContext {
                         volumeTitle = "Volume " + volIndex;
                     }
                     const addedVolume = await this.parentContext.partContext.addPart(
-                        // @ts-ignore
+                        // @ts-expect-error
                         { title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id }
                     );
                     volumeId = addedVolume.id;
@@ -462,7 +459,6 @@ export class EpisodeContext extends SubContext {
                         episodeId: 0
                     }],
                 });
-                // @ts-ignore
                 episodeId = episode.id;
             }
 
@@ -485,11 +481,10 @@ export class EpisodeContext extends SubContext {
         }).then(ignore);
     }
 
-    public addRelease(releases: EpisodeRelease): Promise<EpisodeRelease>;
-    public addRelease(releases: EpisodeRelease[]): Promise<EpisodeRelease[]>;
+    public async addRelease<T extends EpisodeRelease>(releases: T[]): Promise<T[]>;
+    public async addRelease<T extends EpisodeRelease>(releases: T): Promise<T>;
 
-    public async addRelease(releases: EpisodeRelease | EpisodeRelease[]):
-        Promise<EpisodeRelease | EpisodeRelease[]> {
+    public async addRelease<T extends MultiSingleValue<EpisodeRelease>>(releases: T): Promise<T> {
         const results = await this.multiInsert(
             "INSERT IGNORE INTO episode_release " +
             "(episode_id, title, url, source_type, releaseDate, locked, toc_id) " +
@@ -509,7 +504,6 @@ export class EpisodeContext extends SubContext {
                     release.tocId,
                 ];
             });
-        // @ts-expect-error
         multiSingle(results, (value: OkPacket) => storeModifications("release", "insert", value))
         return releases;
     }
@@ -548,9 +542,8 @@ export class EpisodeContext extends SubContext {
             }));
     }
 
-    public updateRelease(releases: MultiSingle<EpisodeRelease>): Promise<void> {
-        // @ts-ignore
-        return promiseMultiSingle(releases, async (value: EpisodeRelease): Promise<void> => {
+    public updateRelease(releases: MultiSingleValue<EpisodeRelease>): EmptyPromise {
+        return promiseMultiSingle(releases, async (value: EpisodeRelease): EmptyPromise => {
             if (value.episodeId) {
                 const result = await this.update(
                     "episode_release",
@@ -594,7 +587,7 @@ export class EpisodeContext extends SubContext {
         }).then(ignore);
     }
 
-    public async deleteRelease(release: EpisodeRelease): Promise<void> {
+    public async deleteRelease(release: EpisodeRelease): EmptyPromise {
         const result = await this.delete(
             "episode_release",
             {
@@ -639,15 +632,15 @@ export class EpisodeContext extends SubContext {
     /**
      * Adds a episode of a part to the storage.
      */
-    public addEpisode(episodes: MultiSingle<SimpleEpisode>): Promise<MultiSingle<Episode>> {
+    public addEpisode<T extends MultiSingleValue<SimpleEpisode>>(episodes: T): PromiseMultiSingle<T, Episode> {
         // TODO: 29.06.2019 insert multiple rows, what happens with insertId?
         const insertReleases: EpisodeRelease[] = [];
-        // @ts-ignore
+        // @ts-expect-error
         return promiseMultiSingle(episodes, async (episode: SimpleEpisode): Episode => {
             if (episode.partId == null || episode.partId <= 0) {
                 throw Error("episode without partId");
             }
-            let insertId: number | undefined;
+            let insertId: Optional<number>;
             const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
             try {
                 const result: any = await this.query(
@@ -675,15 +668,12 @@ export class EpisodeContext extends SubContext {
                 );
                 insertId = result[0].id;
             }
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
             if (!Number.isInteger(insertId)) {
                 throw Error(`invalid ID ${insertId}`);
             }
 
             if (episode.releases) {
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
+                // @ts-expect-error
                 episode.releases.forEach((value) => value.episodeId = insertId);
                 insertReleases.push(...episode.releases);
             }
@@ -696,9 +686,8 @@ export class EpisodeContext extends SubContext {
                 releases: episode.releases,
                 progress: 0,
                 readDate: null,
-            };
-
-        }).then(async (value: MultiSingle<Episode>) => {
+            } as Episode;
+        }).then(async (value: MultiSingleValue<Episode>) => {
             if (insertReleases.length) {
                 await this.addRelease(insertReleases);
             }
@@ -713,7 +702,7 @@ export class EpisodeContext extends SubContext {
      * Gets an episode from the storage.
      */
     public async getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
-        const episodes: any[] | undefined = await this.queryInList(
+        const episodes: Optional<any[]> = await this.queryInList(
             "SELECT * FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
             `WHERE (user_uuid IS NULL OR user_uuid=${mySql.escape(uuid)}) AND episode.id`,
             id
@@ -755,13 +744,8 @@ export class EpisodeContext extends SubContext {
         return this.query("SELECT id, combiIndex FROM episode WHERE part_id=?", partId);
     }
 
-    public async getPartEpisodePerIndex(partId: number, index: number): Promise<SimpleEpisode>;
-    public async getPartEpisodePerIndex(partId: number, index: number[]): Promise<SimpleEpisode[]>;
-
-    public async getPartEpisodePerIndex(partId: number, index: MultiSingle<number>)
-        : Promise<MultiSingle<SimpleEpisode>> {
-
-        const episodes: any[] | undefined = await this.queryInList(
+    public async getPartEpisodePerIndex(partId: number, index: number | number[]): Promise<SimpleEpisode[]> {
+        const episodes: Optional<any[]> = await this.queryInList(
             "SELECT * FROM episode " +
             `where part_id =${mySql.escape(partId)} AND combiIndex`,
             index
@@ -788,7 +772,6 @@ export class EpisodeContext extends SubContext {
             episode.releases.push(value);
         });
 
-        // @ts-ignore
         multiSingle(index, (value: number) => {
             if (!availableIndices.includes(value)) {
                 const separateValue = separateIndex(value);
@@ -809,10 +792,13 @@ export class EpisodeContext extends SubContext {
         });
     }
 
-    public async getMediumEpisodePerIndex(mediumId: number, index: MultiSingle<number>, ignoreRelease: boolean)
-        : Promise<MultiSingle<SimpleEpisode>> {
+    public async getMediumEpisodePerIndex(mediumId: number, index: number, ignoreRelease?: boolean): Promise<SimpleEpisode>;
+    public async getMediumEpisodePerIndex(mediumId: number, index: number[], ignoreRelease?: boolean): Promise<SimpleEpisode[]>;
 
-        const episodes: any[] | undefined = await this.queryInList(
+    public async getMediumEpisodePerIndex(mediumId: number, index: number | number[], ignoreRelease = false)
+        : Promise<SimpleEpisode | SimpleEpisode[]> {
+
+        const episodes: Optional<any[]> = await this.queryInList(
             "SELECT episode.* FROM episode INNER JOIN part ON part.id=episode.part_id " +
             `WHERE medium_id =${mySql.escape(mediumId)} AND episode.combiIndex`,
             index
@@ -839,7 +825,6 @@ export class EpisodeContext extends SubContext {
             episode.releases.push(value);
         });
 
-        // @ts-ignore
         multiSingle(index, (value: number) => {
             if (!availableIndices.includes(value)) {
                 const separateValue = separateIndex(value);
@@ -916,7 +901,6 @@ export class EpisodeContext extends SubContext {
             `WHERE part_id=${mySql.escape(oldPartId)} AND combiIndex`,
             changePartIds
         );
-        // @ts-expect-error
         multiSingle(result, value => storeModifications("release", "update", value));
         if (!replaceIds.length) {
             return true;
@@ -971,22 +955,18 @@ export class EpisodeContext extends SubContext {
         const oldIds = replaceIds.map((value) => value.oldId);
         // TODO: 26.08.2019 this does not go quite well, throws error with 'cannot delete parent reference'
         result = await this.queryInList("DELETE FROM episode_release WHERE episode_id ", deleteReleaseIds);
-        // @ts-expect-error
         multiSingle(result, value => storeModifications("release", "delete", value));
 
         result = await this.queryInList("DELETE FROM user_episode WHERE episode_id ", deleteProgressIds);
-        // @ts-expect-error
         multiSingle(result, value => storeModifications("progress", "delete", value));
 
         result = await this.queryInList("DELETE FROM result_episode WHERE episode_id ", deleteResultIds);
-        // @ts-expect-error
         multiSingle(result, value => storeModifications("result_episode", "delete", value));
 
         result = await this.queryInList(
             `DELETE FROM episode WHERE part_id=${mySql.escape(oldPartId)} AND id`,
             oldIds,
         );
-        // @ts-expect-error
         multiSingle(result, value => storeModifications("episode", "delete", value));
         return true;
     }
@@ -1051,7 +1031,7 @@ export class EpisodeContext extends SubContext {
         });
     }
 
-    public async markLowerIndicesRead(uuid: Uuid, id: number, partInd?: number, episodeInd?: number): Promise<void> {
+    public async markLowerIndicesRead(uuid: Uuid, id: number, partInd?: number, episodeInd?: number): EmptyPromise {
         if (!uuid || !id || (partInd == null && episodeInd == null)) {
             return;
         }

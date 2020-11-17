@@ -1,10 +1,11 @@
 import {ColumnType, Modifier, SqlFunction} from "./databaseTypes";
 import mySql from "promise-mysql";
 import {TableSchema} from "./tableSchema";
+import { Nullable } from "../types";
 
 export class ColumnSchema {
     public readonly name: string;
-    public table: TableSchema | null;
+    public table: Nullable<TableSchema>;
     public readonly type: ColumnType;
     public readonly typeSize?: number;
     public readonly modifiers: Modifier[];
@@ -32,12 +33,11 @@ export class ColumnSchema {
 
 
     public getSchema(): string {
-        // @ts-ignore
         let defValue: string | SqlFunction = " ";
 
         if (this.default) {
             const values = Object.values(SqlFunction);
-            // @ts-ignore
+            // @ts-expect-error
             if (values.includes(this.default.trim())) {
                 defValue += "DEFAULT " + this.default;
             } else {
@@ -45,12 +45,11 @@ export class ColumnSchema {
             }
         }
 
-        // @ts-ignore
         let updateValue: string | SqlFunction = " ";
 
         if (this.update) {
             const values = Object.values(SqlFunction);
-            // @ts-ignore
+            // @ts-expect-error
             if (values.includes(this.update.trim())) {
                 updateValue += "ON UPDATE " + this.update;
             } else {

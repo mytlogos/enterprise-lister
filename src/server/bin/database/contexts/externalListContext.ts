@@ -14,7 +14,6 @@ export class ExternalListContext extends SubContext {
             "WHERE eu.local_uuid = ?;",
             uuid
         );
-        // @ts-ignore
         return Promise.all(result.map((value: any) => this.createShallowExternalList(value)));
     }
 
@@ -72,7 +71,6 @@ export class ExternalListContext extends SubContext {
      */
     public async removeExternalList(uuid: Uuid, externalListId: number | number[]): Promise<boolean> {
         // TODO: 29.06.2019 replace with id IN (...) and list_id IN (...)
-        // @ts-ignore
         const results = await promiseMultiSingle(externalListId, async (item) => {
             // first delete any references of externalList: list-media links
             let result = await this.delete("external_list_medium", {column: "list_id", value: item});
@@ -121,7 +119,7 @@ export class ExternalListContext extends SubContext {
     }
 
     /**
-     * Gets an array of all lists of an user.
+     * Gets all external lists from the externalUser from the storage.
      */
     public async getExternalUserLists(uuid: Uuid): Promise<ExternalList[]> {
         const result = await this.query(
@@ -129,7 +127,6 @@ export class ExternalListContext extends SubContext {
             " FROM external_reading_list WHERE user_uuid = ?;",
             uuid
         );
-        // @ts-ignore
         return Promise.all(result.map((value: any) => this.createShallowExternalList(value)));
     }
 
@@ -173,7 +170,7 @@ export class ExternalListContext extends SubContext {
             (value) => [medium.listId, value]
         );
         let added = false;
-        // @ts-expect-error
+
         multiSingle(result, (value: OkPacket) => {
             storeModifications("external_list_item", "insert", value);
 
@@ -185,7 +182,7 @@ export class ExternalListContext extends SubContext {
     }
 
     /**
-     * Removes an item from a list.
+     * Removes an item from an external list.
      */
     public removeMedium(listId: number, mediumId: number | number[]): Promise<boolean> {
         return promiseMultiSingle(mediumId, async (value) => {

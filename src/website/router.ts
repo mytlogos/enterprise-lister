@@ -117,13 +117,25 @@ const router = createRouter({
                 {
                     path: "jobs",
                     name: "jobs",
-                    props: true,
                     // route level code-splitting
                     // this generates a separate chunk (login.[hash].js) for this route
                     // which is lazy-loaded when the route is visited.
                     component: () => import(/* webpackChunkName: "admin" */ "./views/Jobs.vue"),
-                }
-            ]
+                },
+                {
+                    path: "jobs/:jobId",
+                    name: "job",
+                    props: (to) => {
+                        return {
+                            id: Number.parseInt(to.params.jobId as string)
+                        }
+                    },
+                    // route level code-splitting
+                    // this generates a separate chunk (login.[hash].js) for this route
+                    // which is lazy-loaded when the route is visited.
+                    component: () => import(/* webpackChunkName: "admin" */ "./views/JobDetail.vue"),
+                },
+            ],
         },
         {
             path: "/:pathMatch(.*)*",

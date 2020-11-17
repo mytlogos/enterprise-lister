@@ -1,6 +1,6 @@
 import {SubContext} from "./subContext";
 import {MediumInWait} from "../databaseTypes";
-import {Medium, MultiSingle, SimpleMedium} from "../../types";
+import {Medium, SimpleMedium, MultiSingleValue, EmptyPromise} from "../../types";
 import {equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle} from "../../tools";
 import { storeModifications } from "../sqlTools";
 
@@ -66,11 +66,10 @@ export class MediumInWaitContext extends SubContext {
         return this.query("SELECT * FROM medium_in_wait");
     }
 
-    public async deleteMediaInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
+    public async deleteMediaInWait(mediaInWait: MultiSingleValue<MediumInWait>): EmptyPromise {
         if (!mediaInWait) {
             return;
         }
-        // @ts-ignore
         return promiseMultiSingle(mediaInWait, async (value: MediumInWait) => {
             const result = await this.delete(
                 "medium_in_wait",
@@ -89,13 +88,12 @@ export class MediumInWaitContext extends SubContext {
         }).then(ignore);
     }
 
-    public async addMediumInWait(mediaInWait: MultiSingle<MediumInWait>): Promise<void> {
+    public async addMediumInWait(mediaInWait: MultiSingleValue<MediumInWait>): EmptyPromise {
         const results = await this.multiInsert(
             "INSERT IGNORE INTO medium_in_wait (title, medium, link) VALUES ",
             mediaInWait,
             (value: any) => [value.title, value.medium, value.link]
         );
-        // @ts-expect-error
         multiSingle(results, (result) => storeModifications("medium_in_wait", "insert", result));
     }
 }

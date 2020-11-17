@@ -4,12 +4,13 @@ import {Trigger} from "./trigger";
 import {delay, equalsIgnore, getElseSet} from "../tools";
 import {DatabaseContext} from "./contexts/databaseContext";
 import logger from "../logger";
+import { EmptyPromise, Nullable } from "../types";
 
 export class SchemaManager {
     private databaseName = "";
     private dataBaseVersion = 0;
     private tables: TableSchema[] = [];
-    private mainTable: TableSchema | null = null;
+    private mainTable: Nullable<TableSchema> = null;
     private trigger: Trigger[] = [];
     private migrations: Migration[] = [];
 
@@ -22,7 +23,7 @@ export class SchemaManager {
         this.migrations.push(...database.migrations);
     }
 
-    public async checkTableSchema(context: DatabaseContext): Promise<void> {
+    public async checkTableSchema(context: DatabaseContext): EmptyPromise {
         logger.info("Starting Check on Storage Schema");
         await this.createMissing(context);
         const canMigrate = await context.startMigration();
@@ -54,7 +55,7 @@ export class SchemaManager {
      * 
      * @param context database context to use
      */
-    private async createMissing(context: DatabaseContext): Promise<void> {
+    private async createMissing(context: DatabaseContext): EmptyPromise {
         logger.info("Check on missing database structures");
 
         const tables: any[] = await context.getTables();

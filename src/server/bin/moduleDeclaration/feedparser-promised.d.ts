@@ -1,6 +1,5 @@
 declare module "feedparser-promised" {
-    // @ts-ignore
-    import FeedParser = require("node-feedparser");
+    import FeedParser from "node-feedparser";
 
     interface FeedParserOptions {
         /**

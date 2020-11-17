@@ -1,5 +1,5 @@
 import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Optional} from "../../types";
 import {equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
 import logger from "../../logger";
 import * as url from "url";
@@ -315,13 +315,13 @@ interface TocResponse {
     msg: string;
 }
 
-async function searchToc(searchMedium: TocSearchMedium): Promise<Toc | undefined> {
+async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
     logger.info("start searching webnovel " + searchMedium.mediumId);
     const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(searchMedium.title);
     const body = await loadBody(urlString);
     const titles = body("body > div.page  ul[class*=result] > li > h3 > a");
 
-    let bookId: string | undefined;
+    let bookId: Optional<string>;
     for (let i = 0; i < titles.length; i++) {
         const titleElement = titles.eq(i);
         const possibleTitles = [searchMedium.title, ...searchMedium.synonyms];

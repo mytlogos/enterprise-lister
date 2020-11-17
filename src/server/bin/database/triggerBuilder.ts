@@ -1,12 +1,13 @@
 import {Trigger, TriggerEvent, TriggerTiming} from "./trigger";
 import {DataBaseBuilder} from "./databaseBuilder";
+import { Nullable } from "../types";
 
 export class TriggerBuilder {
-    private _name: string | null = null;
-    private _timing: TriggerTiming | null = null;
-    private _event: TriggerEvent | null = null;
-    private _table: string | null = null;
-    private _body: string | null = null;
+    private _name: Nullable<string> = null;
+    private _timing: Nullable<TriggerTiming> = null;
+    private _event: Nullable<TriggerEvent> = null;
+    private _table: Nullable<string> = null;
+    private _body: Nullable<string> = null;
     private databaseBuilder: DataBaseBuilder;
 
     public constructor(databaseBuilder: DataBaseBuilder) {

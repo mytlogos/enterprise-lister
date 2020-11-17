@@ -1,9 +1,9 @@
 import logger from "../../logger";
-import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc} from "../types";
+import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson} from "../types";
 import {queueCheerioRequest} from "../queueManager";
 import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
 import * as url from "url";
-import {ReleaseState, TocSearchMedium} from "../../types";
+import {ReleaseState, TocSearchMedium, Optional, Nullable} from "../../types";
 import { checkTocContent } from "../scraperTools";
 
 export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string): EpisodeContent[] {
@@ -42,8 +42,7 @@ export function getTextContent(novelTitle: string, episodeTitle: string, urlStri
  * @param selector a valid css selector
  * @param uri a valid base url
  */
-export function extractLinkable($: cheerio.Root, selector: string, uri: string):
-    Array<{ name: string; link: string }> {
+export function extractLinkable($: cheerio.Root, selector: string, uri: string): LinkablePerson[] {
     const elements = $(selector);
     const result = [];
 
@@ -201,8 +200,8 @@ export interface TocMetaPiece extends TocPiece {
     readonly langTL?: string;
     readonly statusCOO: ReleaseState;
     readonly statusTl: ReleaseState;
-    readonly authors?: Array<{ name: string; link: string }>;
-    readonly artists?: Array<{ name: string; link: string }>;
+    readonly authors?: LinkablePerson[];
+    readonly artists?: LinkablePerson[];
 }
 
 export interface TocContentPiece extends TocPiece {
@@ -305,7 +304,7 @@ class TocLinkedList implements Iterable<Node> {
     }
 
     public [Symbol.iterator](): Iterator<Node> {
-        let node: Node | undefined = this.start;
+        let node: Optional<Node> = this.start;
         return {
             next(): IteratorResult<Node> {
                 if (node && node.next) {
@@ -323,7 +322,7 @@ class TocLinkedList implements Iterable<Node> {
     public iterate(forwards: boolean, from?: Node) {
         const nextKey = forwards ? "next" : "previous";
         const start = from || (forwards ? this.start : this.end);
-        let node: Node | undefined = start[nextKey] as Node;
+        let node: Optional<Node> = start[nextKey] as Node;
         return {
             [Symbol.iterator](): Iterator<Node> {
                 return {
@@ -381,8 +380,8 @@ interface InternalToc {
     langTL?: string;
     statusCOO: ReleaseState;
     statusTl: ReleaseState;
-    authors?: Array<{ name: string; link: string }>;
-    artists?: Array<{ name: string; link: string }>;
+    authors?: LinkablePerson[];
+    artists?: LinkablePerson[];
 }
 
 interface InternalTocContent extends Node {
@@ -398,7 +397,7 @@ interface InternalTocEpisode extends InternalTocContent {
     url: string;
     releaseDate?: Date;
     locked?: boolean;
-    match: TocMatch | null;
+    match: Nullable<TocMatch>;
     partCount?: number;
     part?: InternalTocPart;
     episodeRange?: number;
@@ -710,7 +709,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
         }
     }
     if (!state.tocMeta || !state.tocMeta.end) {
-        let possibleStartNode: Node | undefined;
+        let possibleStartNode: Optional<Node>;
         let volumeEncountered = false;
         for (const content of contents.iterate(ascending)) {
             if (!isUnusedPiece(content)) {
@@ -772,7 +771,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
         contents.replace(content, tocEpisode);
         index++;
     }
-    let lastSeenEpisode: InternalTocEpisode | undefined;
+    let lastSeenEpisode: Optional<InternalTocEpisode>;
     let offset = 101;
     for (const content of contents.iterate(ascending)) {
         if (isInternalEpisode(content)) {
@@ -790,7 +789,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
             offset++;
         }
     }
-    let volume: InternalTocPart | undefined;
+    let volume: Optional<InternalTocPart>;
     const volumeInserter = ascending ? TocLinkedList.prototype.insertBefore : TocLinkedList.prototype.insertAfter;
     for (const content of contents.iterate(!ascending)) {
         if (isInternalPart(content)) {
@@ -818,8 +817,8 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
     }
     volume = undefined;
     const episodeInserter = ascending ? Array.prototype.push : Array.prototype.unshift;
-    let lastVolume: InternalTocPart | undefined;
-    let lastVolumeLastEpisode: InternalTocEpisode | undefined;
+    let lastVolume: Optional<InternalTocPart>;
+    let lastVolumeLastEpisode: Optional<InternalTocEpisode>;
     let currentVolumeChecked = false;
     let hasRelativeIndices = false;
 
@@ -854,7 +853,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
                 const previous = ascending ? node.previous : node.next;
 
                 if (isPreviousVolume && hasRelativeIndices && !node.relativeIndices && previous && lastVolumeLastEpisode) {
-                    let lastEpisode: InternalTocEpisode | undefined;
+                    let lastEpisode: Optional<InternalTocEpisode>;
                     if (isInternalPart(previous)) {
                         lastEpisode = lastVolumeLastEpisode;
                     } else if (isInternalEpisode(previous)) {
@@ -926,7 +925,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
 
     matches.sort((a, b) => a.from - b.from);
     const possibleEpisodes: InternalTocEpisode[] = [];
-    let possibleVolume: InternalTocPart | undefined;
+    let possibleVolume: Optional<InternalTocPart>;
     let newVolume = false;
     const usedMatches: TocMatch[] = [];
 

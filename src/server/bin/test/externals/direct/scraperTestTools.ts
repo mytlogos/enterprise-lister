@@ -3,16 +3,21 @@ import * as tools from "../../../tools";
 import { TocContent } from "../../../externals/types";
 const MediaType = tools.MediaType;
 
-exports.testGeneralToc = function testGeneralToc(toc: { title: string; link: string; mediumType: tools.MediaType.TEXT; content: TocContent[]}) {
+interface GeneralToc {
+    title: string;
+    link: string;
+    mediumType: tools.MediaType.TEXT;
+    content: TocContent[];
+}
+
+exports.testGeneralToc = function testGeneralToc(toc: GeneralToc) {
     toc.should.be.an("object");
     toc.title.should.be.a("string");
     toc.link.should.be.a("string");
     toc.mediumType.should.equals(MediaType.TEXT);
     toc.content.should.be.an("array");
 
-    // noinspection JSMismatchedCollectionQueryUpdate
     const seenFirstLevelIndices = [];
-    // noinspection JSMismatchedCollectionQueryUpdate
     const seenSecondLevelIndices = [];
 
     for (let i = 0; i < toc.content.length; i++) {

@@ -4,13 +4,17 @@
       Jobs
     </h1>
     <div class="row">
-      <span class="col">Running Jobs: {{ summary.running }}</span>
+      <span class="col-2">Running Jobs: {{ summary.running }}</span>
+      <span class="col-2">Network Queries: </span>
+      <span class="col">{{ totalJobsStats.minnetwork }}-{{ totalJobsStats.avgnetwork }}-{{ totalJobsStats.maxnetwork }}</span>
     </div>
     <div class="row">
-      <span class="col">Waiting Jobs: {{ summary.waiting }}</span>
+      <span class="col-2">Waiting Jobs: {{ summary.waiting }}</span>
+      <span class="col-2">Network Send: </span>
+      <span class="col">{{ totalJobsStats.minsend }}-{{ round(totalJobsStats.avgsend) }}-{{ totalJobsStats.maxsend }}</span>
     </div>
     <div class="row">
-      <span class="col">Lagging Jobs:
+      <span class="col-2">Lagging Jobs:
         <span
           class="badge"
           :class="(summary.lagging / (summary.waiting + summary.running)) > 0.1 ? 'badge-danger' : 'badge-success'"
@@ -18,6 +22,33 @@
           {{ summary.lagging }}
         </span>
       </span>
+      <span class="col-2">Network Received:</span>
+      <span class="col">{{ totalJobsStats.minreceived }}-{{ round(totalJobsStats.avgreceived) }}-{{ totalJobsStats.maxreceived }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2">Total Jobs failed: {{ round(totalJobsStats.failed * 100) }}%</span>
+      <span class="col-2">SQL Queries: </span>
+      <span class="col">{{ totalJobsStats.minQ }}-{{ round(totalJobsStats.queries) }}-{{ totalJobsStats.maxQ }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2">Total Jobs succeeded: {{ round(totalJobsStats.succeeded * 100) }}%</span>
+      <span class="col-2">Duration: </span>
+      <span class="col">{{ totalJobsStats.minD }}-{{ round(totalJobsStats.avgduration) }}-{{ totalJobsStats.maxD }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2" />
+      <span class="col-2">Created: </span>
+      <span class="col">{{ totalJobsStats.allcreate }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2" />
+      <span class="col-2">Updated: </span>
+      <span class="col">{{ totalJobsStats.allupdate }}</span>
+    </div>
+    <div class="row">
+      <span class="col-2" />
+      <span class="col-2">Deleted: </span>
+      <span class="col">{{ totalJobsStats.alldelete }}</span>
     </div>
     <table
       class="table"
@@ -28,20 +59,126 @@
           <th scope="col">
             Nr.
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('name')"
+          >
             Name
+            <i 
+              class="fas"
+              :class="sortedClass('name')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('state')"
+          >
             Status
+            <i 
+              class="fas"
+              :class="sortedClass('state')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('runningSince')"
+          >
             Time Running
+            <i 
+              class="fas"
+              :class="sortedClass('runningSince')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
+          <th
+            scope="col"
+            @click.left="toggleOrder('runningSince')"
+          >
             Running Since
+            <i 
+              class="fas"
+              :class="sortedClass('runningSince')" 
+              aria-hidden="true"
+            />
           </th>
-          <th scope="col">
-            Next Run
+          <th
+            scope="col"
+            @click.left="toggleOrder('nextRun')"
+          >
+            Next Run 
+            <i 
+              class="fas"
+              :class="sortedClass('nextRun')" 
+              aria-hidden="true"
+            />
+          </th>
+          <th
+            scope="col"
+            @click.left="toggleOrder('failed')"
+          >
+            Failure Rate
+            <i 
+              class="fas"
+              :class="sortedClass('failed')" 
+              aria-hidden="true"
+            />
+          </th>
+          <th
+            scope="col"
+            @click.left="toggleOrder('avgduration')"
+          >
+            Avg Duration
+            <i 
+              class="fas"
+              :class="sortedClass('avgduration')" 
+              aria-hidden="true"
+            />
+          </th>
+          <th
+            scope="col"
+            @click.left="toggleOrder('avgnetwork')"
+          >
+            Avg Network
+            <i 
+              class="fas"
+              :class="sortedClass('avgnetwork')" 
+              aria-hidden="true"
+            />
+          </th>
+          <th
+            scope="col"
+            @click.left="toggleOrder('avgreceived')"
+          >
+            Avg Received
+            <i 
+              class="fas"
+              :class="sortedClass('avgreceived')" 
+              aria-hidden="true"
+            />
+          </th>
+          <th
+            scope="col"
+            @click.left="toggleOrder('queries')"
+          >
+            Avg Queries
+            <i 
+              class="fas"
+              :class="sortedClass('queries')" 
+              aria-hidden="true"
+            />
+          </th>
+          <th
+            scope="col"
+            @click.left="toggleOrder('count')"
+          >
+            Total Times Run
+            <i 
+              class="fas"
+              :class="sortedClass('count')" 
+              aria-hidden="true"
+            />
           </th>
         </tr>
       </thead>
@@ -60,6 +197,12 @@
             <td>{{ absoluteToRelative(job.runningSince) }}</td>
             <td>{{ dateToString(job.runningSince) }}</td>
             <td>{{ dateToString(job.nextRun) }}</td>
+            <td>{{ round(jobStats[job.name]?.failed || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.avgduration || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.avgnetwork || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.avgreceived || 0) }}</td>
+            <td>{{ round(jobStats[job.name]?.queries || 0) }}</td>
+            <td>{{ jobStats[job.name]?.count }}</td>
           </tr>
           <tr
             class="collapse"
@@ -67,7 +210,14 @@
           >
             <!-- empty td as a natural margin left for index column -->
             <td />
-            <td colspan="5">
+            <td colspan="11">
+              <router-link
+                :to="{ name: 'job', params: { jobId: job.id } }"
+                tag="a"
+                class="btn btn-dark mb-2"
+              >
+                View Job
+              </router-link>
               <template v-if="liveJobs[job.id]">
                 <table class="table table-sm table-hover">
                   <caption class="sr-only">
@@ -149,7 +299,8 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue"
-import { Job, SimpleMedium } from "../siteTypes"
+import { AllJobStats, Job, JobStats, SimpleMedium } from "../siteTypes"
+import { absoluteToRelative, formatDate, round } from "../init";
 
 interface LiveJob {
     /**
@@ -197,11 +348,13 @@ interface JobsSummary {
 
 interface Data {
     jobs: Job[];
-    sortedOn: Array<keyof Job>;
+    sortedOn: Partial<Record<keyof Job | keyof JobStats, number>>;
     media: Map<number, SimpleMedium>;
     now: Date;
     liveJobs: { [key: number]: LiveJob };
     summary: JobsSummary;
+    totalJobsStats: AllJobStats;
+    jobStats: { [key: string]: JobStats };
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
@@ -220,10 +373,38 @@ export default defineComponent({
     data(): Data {
         return {
             jobs: [],
-            sortedOn: ["state", "runningSince", "nextRun"],
+            sortedOn: {
+                "state": 1,
+                "runningSince": 1,
+                "nextRun": 1
+            },
             media: new Map(),
             now: new Date(),
             liveJobs: {},
+            totalJobsStats: {
+                count: 0,
+                avgnetwork: 0,
+                minnetwork: 0,
+                maxnetwork: 0,
+                avgreceived: 0,
+                minreceived: 0,
+                maxreceived: 0,
+                avgsend: 0,
+                minsend: 0,
+                maxsend: 0,
+                avgduration: 0,
+                maxD: 0,
+                minD: 0,
+                allupdate: 0,
+                allcreate: 0,
+                alldelete: 0,
+                failed: 0,
+                succeeded: 0,
+                queries: 0,
+                maxQ: 0,
+                minQ: 0,
+            },
+            jobStats: {},
             summary: {
                 waiting: 0,
                 running: 0,
@@ -233,15 +414,31 @@ export default defineComponent({
     },
     computed: {
         computedJobs(): Job[] {
-            const jobs = [...this.jobs]
+            const jobs = [...this.jobs];
+            const sortEntries: Array<[string, number]> = Object.entries(this.sortedOn);
+            console.log("Sorting Jobs on Fields: " + JSON.stringify(this.sortedOn))
+
             jobs.sort((a, b) => {
-                for (const sort of this.sortedOn) {
-                    if (a[sort] > b[sort]) {
-                        return 1;
+                const statsA = this.jobStats[a.name];
+                const statsB = this.jobStats[b.name];
+
+                for (const [key, order] of sortEntries) {
+                    if (!order) {
+                        continue;
+                    }
+                    const compareA = key in a ? a : statsA;
+                    const compareB = key in b ? b : statsB;
+
+                    if (!compareA || !compareB) {
+                        continue;
                     }
 
-                    if (a[sort] < b[sort]) {
-                        return -1;
+                    if (compareA[key] > compareB[key]) {
+                        return 1 * order;
+                    }
+
+                    if (compareA[key] < compareB[key]) {
+                        return -1 * order;
                     }
                 }
                 return 0;
@@ -291,6 +488,21 @@ export default defineComponent({
             this.jobs = data;
         });
 
+        HttpClient.getJobsStats().then(stats => this.totalJobsStats = stats);
+        HttpClient.getJobsStatsGrouped().then(stats => {
+            const currentNames = new Set(Object.keys(this.jobStats));
+
+            for (const stat of stats) {
+                this.jobStats[stat.name] = stat;
+                currentNames.delete(stat.name);
+            }
+
+            // remove the mapping of names which are not in grouped
+            for (const name of currentNames) {
+                delete this.jobStats[name];
+            }
+        });
+
         // fetch live jobs data
         fetch("http://localhost:3003")
             .then(response => response.json())
@@ -323,11 +535,23 @@ export default defineComponent({
             .catch(console.error);
     },
     methods: {
+        sortedClass(key: keyof Job) {
+            return this.sortedOn[key] > 0 ? "fa-sort-up" : this.sortedOn[key] < 0 ? "fa-sort-down" : "fa-sort";
+        },
+        toggleOrder(key: keyof Job): void {
+            const order = this.sortedOn[key];
+
+            if (order === 1 || order == null) {
+                this.sortedOn[key] = -1;
+            } else {
+                this.sortedOn[key] += 1;
+            }
+        },
         dateToString(date?: Date | null): string {
             if (!date) {
                 return "";
             }
-            return date.toLocaleTimeString("de-DE");
+            return formatDate(date, true);
         },
         nameToString(name: string): string {
             const match = tocRegex.exec(name);
@@ -345,25 +569,7 @@ export default defineComponent({
             if (!date) {
                 return "";
             }
-            let seconds = (this.now.getTime() - date.getTime()) / 1000;
-            let result = [];
-
-            if (seconds > 3600) {
-                result.push(Math.floor(seconds / 3600) + "h");
-                seconds = seconds % 3600;
-            }
-            if (seconds > 60) {
-                result.push(Math.floor(seconds / 60) + "m");
-                seconds = seconds % 60;
-            }
-            if (seconds > 0) {
-                result.push(Math.floor(seconds) + "s");
-            }
-            if (result.length) {
-                return result.join(" ");
-            } else {
-                return "0 s";
-            }
+            return absoluteToRelative(date, this.now);
         },
         totalRow(liveJob: LiveJob): ContextPart[] {
             const map = new Map<string, ContextPart>();
@@ -389,7 +595,10 @@ export default defineComponent({
                 value.runningWidth = (value.running / total) * 100;
             }
             return values;
-        }
+        },
+        round(value: number): number {
+            return round(value, 2);
+        },
     }
 })
 </script>

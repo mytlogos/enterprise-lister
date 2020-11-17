@@ -4,10 +4,16 @@ import {TableSchema} from "./tableSchema";
 import {Trigger} from "./trigger";
 import {TriggerBuilder} from "./triggerBuilder";
 
+interface InvalidationSchema {
+    table: TableSchema;
+    type: InvalidationType;
+    tableName?: string;
+}
+
 export class DataBaseBuilder {
     public readonly tables: TableSchema[] = [];
     private readonly triggers: Trigger[] = [];
-    private readonly invalidations: Array<{ table: TableSchema; type: InvalidationType; tableName?: string }> = [];
+    private readonly invalidations: InvalidationSchema[] = [];
     private readonly migrations: Migration[] = [];
     private readonly version: number;
 

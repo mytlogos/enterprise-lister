@@ -57,6 +57,7 @@
             <a
               :href="entry.link"
               target="_blank"
+              rel="noopener noreferrer"
             >
               {{ entry.title }}
             </a>
@@ -118,7 +119,7 @@
 import { DisplayRelease } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient as Client, HttpClient } from "../Httpclient";
-import { timeDifference } from "../init";
+import { formatDate, timeDifference } from "../init";
 import TripleFilter from "../components/triple-filter.vue"
 import $ from "jquery";
 
@@ -278,7 +279,7 @@ export default defineComponent({
          * Format a given Date to a german locale string.
          */
         dateToString(date: Date): string {
-            return date.toLocaleString("de");
+            return formatDate(date);
         },
     }
 })

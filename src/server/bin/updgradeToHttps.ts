@@ -1,22 +1,17 @@
 import * as storage from "./database/storages/storage";
-import {EpisodeRelease, JobItem, JobRequest, JobState, ScrapeName} from "./types";
+import {EpisodeRelease, JobItem, JobRequest, JobState, ScrapeName, MediumToc} from "./types";
 
-interface Toc {
-    link: string;
-    id: number;
-}
-
-async function updateReleaseProtocol(domainReg: RegExp, toc: Toc, values: Toc[]) {
+async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: MediumToc[]) {
     const domainMatch = domainReg.exec(toc.link);
     if (!domainMatch) {
         console.log(`could not match domain for '${toc.link}'`);
         return;
     }
     const domain = domainMatch[1];
-    const id = toc.id;
+    const id = toc.mediumId;
     let differentIds = false;
     for (const value of values) {
-        if (value.id !== id) {
+        if (value.mediumId !== id) {
             differentIds = true;
             break;
         }
@@ -80,9 +75,9 @@ async function updateHttps(): Promise<Change> {
     const httpsOnly = ["http://novelfull.com"];
     const jobItems = await storage.jobStorage.getJobsInState(JobState.WAITING);
     jobItems.push(...await storage.jobStorage.getJobsInState(JobState.RUNNING));
-    const allTocs: Array<{ link: string; id: number }> = await storage.mediumStorage.getAllTocs();
+    const allTocs: MediumToc[] = await storage.mediumStorage.getAllTocs();
 
-    const tocMap: Map<string, Array<{ link: string; id: number }>> = new Map();
+    const tocMap: Map<string, MediumToc[]> = new Map();
     const regExp = /https?:\/\/(.+)/;
     const domainReg = /https?:\/\/(.+?)(\/|$)/;
 
@@ -90,8 +85,8 @@ async function updateHttps(): Promise<Change> {
     const addJobs: JobItem[] = [];
     const addReleases: EpisodeRelease[] = [];
     const removeReleases: EpisodeRelease[] = [];
-    const removeTocs: Array<{ link: string; id: number }> = [];
-    const addTocs: Array<{ link: string; id: number }> = [];
+    const removeTocs: MediumToc[] = [];
+    const addTocs: MediumToc[] = [];
 
     for (const toc of allTocs) {
         const match = regExp.exec(toc.link);
@@ -213,7 +208,7 @@ async function updateHttps(): Promise<Change> {
             removeJobs.push(...deleteJobs);
             addJobs.push(...newJobs);
             removeTocs.push(toc);
-            addTocs.push({id: toc.id, link: toc.link.replace("http:", "https:")});
+            addTocs.push({mediumId: toc.mediumId, link: toc.link.replace("http:", "https:")});
 
             const changes = await updateReleaseProtocol(domainReg, toc, values);
             if (changes) {
@@ -256,8 +251,8 @@ async function updateHttps(): Promise<Change> {
 
 interface Change {
     addJobs: JobItem[];
-    removeTocs: Array<{ link: string; id: number }>;
-    addTocs: Array<{ link: string; id: number }>;
+    removeTocs: MediumToc[];
+    addTocs: MediumToc[];
     removeReleases: EpisodeRelease[];
     removeJobs: JobItem[];
     addReleases: EpisodeRelease[];
@@ -281,7 +276,7 @@ async function executeChange(changes: Change) {
         });
     }
     await storage.jobStorage.addJobs(jobRequests);
-    await Promise.all(changes.addTocs.map((value) => storage.mediumStorage.addToc(value.id, value.link)));
+    await Promise.all(changes.addTocs.map((value) => storage.mediumStorage.addToc(value.mediumId, value.link)));
     await storage.episodeStorage.addRelease(changes.addReleases);
     await Promise.all(changes.removeReleases.map((value) => storage.episodeStorage.deleteRelease(value)));
     await storage.jobStorage.removeJobs(changes.removeJobs);

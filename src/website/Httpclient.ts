@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc, JobStats, AllJobStats, JobDetails } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -32,6 +32,17 @@ const restApi = {
             },
             jobs: {
                 get: true,
+                stats: {
+                    all: {
+                        get: true,
+                    },
+                    grouped: {
+                        get: true,
+                    },
+                    detail: {
+                        get: true,
+                    },
+                },
             },
             searchtoc: {
                 get: true,
@@ -233,6 +244,11 @@ interface TocPath {
 
 interface JobPath {
     readonly get: MethodObject;
+    readonly stats: { 
+        all: GetPath;
+        grouped: GetPath;
+        detail: GetPath;
+    };
 }
 
 interface Api {
@@ -255,7 +271,6 @@ interface Api {
     readonly user: UserPath;
 }
 
-// @ts-ignore
 const api: Api = (function pathGenerator() {
     const abbreviations: { [key: string]: string[] } = {};
     const allowedPreviousStates: { [key: string]: string[] } = {};
@@ -556,6 +571,22 @@ export const HttpClient = {
 
     getJobs(): Promise<Job[]> {
         return this.queryServer(api.jobs.get);
+    },
+
+    getJobsStats(): Promise<AllJobStats> {
+        return this.queryServer(api.jobs.stats.all.get);
+    },
+
+    getJobsStatsGrouped(): Promise<JobStats[]> {
+        return this.queryServer(api.jobs.stats.grouped.get);
+    },
+
+    /**
+     * Get the Job Details of a single Job.
+     * @param id id of the Job
+     */
+    getJobDetails(id: number): Promise<JobDetails> {
+        return this.queryServer(api.jobs.stats.detail.get, { id });
     },
 
     getToc(link: string): Promise<Toc[]> {

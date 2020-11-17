@@ -1,5 +1,5 @@
 import {SubContext} from "./subContext";
-import {News, Uuid} from "../../types";
+import {News, Uuid, MultiSingleValue, PromiseMultiSingle, Optional} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
 import { storeModifications } from "../sqlTools";
 
@@ -13,9 +13,8 @@ export class NewsContext extends SubContext {
      * @param {News|Array<News>} news
      * @return {Promise<News|undefined|Array<News|undefined>>}
      */
-    public async addNews(news: News | News[]): Promise<News | undefined | Array<News | undefined>> {
+    public async addNews<T extends MultiSingleValue<News>>(news: T): PromiseMultiSingle<T, Optional<News>> {
         // TODO: 29.06.2019 if inserting multiple rows in a single insert, what happens with result.insertId?
-        // @ts-ignore
         return promiseMultiSingle(news, async (value: News) => {
             // an empty link may be the result of a faulty link (e.g. a link which leads to 404 error)
             if (!value.link) {
@@ -38,7 +37,6 @@ export class NewsContext extends SubContext {
             result = {...value, id: result.insertId};
             return result;
         });
-
     }
 
     public getLatestNews(domain: string): Promise<News[]> {

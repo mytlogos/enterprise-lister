@@ -1,24 +1,25 @@
 import {QueryContext, Condition} from "./queryContext";
 import {Query, OkPacket} from "mysql";
 import {ConnectionContext} from "../databaseTypes";
+import { MultiSingleValue, EmptyPromise, UnpackArray } from "../../types";
 
 
-type ParamCallback<T> = (value: T) => (any[] | any);
+type ParamCallback<T> = (value: UnpackArray<T>) => (any[] | any);
 type UpdateCallback = (updates: string[], values: any[]) => void;
 
 export class SubContext implements ConnectionContext {
     public constructor(public readonly parentContext: QueryContext) {
     }
 
-    public commit(): Promise<void> {
+    public commit(): EmptyPromise {
         return this.parentContext.commit();
     }
 
-    public rollback(): Promise<void> {
+    public rollback(): EmptyPromise {
         return this.parentContext.rollback();
     }
 
-    public startTransaction(): Promise<void> {
+    public startTransaction(): EmptyPromise {
         return this.parentContext.startTransaction();
     }
 
@@ -45,12 +46,12 @@ export class SubContext implements ConnectionContext {
         return this.parentContext.update(table, cb, ...condition);
     }
 
-    protected multiInsert<T>(query: string, value: T | T[], paramCallback: ParamCallback<T>): Promise<OkPacket | OkPacket[]> {
+    protected multiInsert<T extends MultiSingleValue<any>>(query: string, value: T, paramCallback: ParamCallback<T>): Promise<OkPacket | OkPacket[]> {
         return this.parentContext.multiInsert(query, value, paramCallback);
     }
 
-    protected async queryInList<T>(query: string, value: T | T[], afterQuery?: string, paramCallback?: ParamCallback<T>)
-        : Promise<any[] | undefined> {
+    protected async queryInList<T extends MultiSingleValue<any>>(query: string, value: T, afterQuery?: string, paramCallback?: ParamCallback<T>)
+        : Promise<any[]> {
         return this.parentContext.queryInList(query, value, afterQuery, paramCallback);
     }
 

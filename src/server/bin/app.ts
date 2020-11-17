@@ -24,9 +24,9 @@ app.use(logger(":method :url :status :response-time ms - :res[content-length]", 
         }
     }
 }));
-//@ts-ignore
+// @ts-expect-error
 app.use(helmet());
-//@ts-ignore
+// @ts-expect-error
 app.use(compression());
 
 // remove any emoji, dont need it and it can mess up my database
@@ -48,7 +48,6 @@ app.use(express.static(path.join(parentDirName, "dist", "website")));
 
 
 app.use((req, res) => {
-    //@ts-ignore
     if (!req.path.startsWith("/api") && req.method === "GET") {
         res.sendFile(path.join(parentDirName, path.join("dist", "website", "app.html")));
     }
@@ -62,13 +61,13 @@ app.use((req, res, next) => {
 // error handler
 app.use((err: HttpError, req: Request, res: Response) => {
     // set locals, only providing error in development
-    // @ts-ignore
+    // @ts-expect-error
     res.locals.message = err.message;
-    // @ts-ignore
+    // @ts-expect-error
     res.locals.error = req.app.get("env") === "development" ? err : {};
 
     // render the error page
-    // @ts-ignore
+    // @ts-expect-error
     res.sendStatus(err.status || 500);
 });
 

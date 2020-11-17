@@ -1,5 +1,5 @@
 import mySql, {Connection} from "promise-mysql";
-import {Invalidation, MetaResult, Result, Uuid} from "../../types";
+import {Invalidation, MetaResult, Result, Uuid, EmptyPromise, MultiSingleValue, Nullable, UnpackArray, PromiseMultiSingle, Optional, PageInfo} from "../../types";
 import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle} from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
@@ -22,8 +22,8 @@ import { storeCount } from "../sqlTools";
 
 const database = "enterprise";
 
-type ParamCallback<T> = (value: T) => (any[] | any);
-type UpdateCallback = (updates: string[], values: any[]) => void | Promise<void>;
+type ParamCallback<T> = (value: UnpackArray<T>) => any[] | any;
+type UpdateCallback = (updates: string[], values: any[]) => void | EmptyPromise;
 
 export interface DbTrigger {
     Trigger: string;
@@ -135,14 +135,14 @@ export class QueryContext implements ConnectionContext {
     /**
      *
      */
-    public startTransaction(): Promise<void> {
+    public startTransaction(): EmptyPromise {
         return this.query("START TRANSACTION;").then(ignore);
     }
 
     /**
      *
      */
-    public commit(): Promise<void> {
+    public commit(): EmptyPromise {
         return this.query("COMMIT;").then(ignore);
     }
 
@@ -150,7 +150,7 @@ export class QueryContext implements ConnectionContext {
     /**
      *
      */
-    public rollback(): Promise<void> {
+    public rollback(): EmptyPromise {
         return this.query("ROLLBACK;").then(ignore);
     }
 
@@ -159,7 +159,7 @@ export class QueryContext implements ConnectionContext {
      * Checks the database for incorrect structure
      * and tries to correct these.
      */
-    public async start(): Promise<void> {
+    public async start(): EmptyPromise {
         const exists = await this.databaseExists();
         if (!exists) {
             await this.query(`CREATE DATABASE ${database};`);
@@ -174,11 +174,10 @@ export class QueryContext implements ConnectionContext {
         return databases.find((data: { Database: string }) => data.Database === database) != null;
     }
 
-    public processResult(result: Result): Promise<MetaResult | MetaResult[]> {
+    public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
         if (!result.preliminary) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        // @ts-ignore
         return promiseMultiSingle(result.result, async (value: MetaResult) => {
             const resultArray: any[] = await this.query(
                 "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
@@ -192,14 +191,13 @@ export class QueryContext implements ConnectionContext {
         });
     }
 
-    public saveResult(result: Result): Promise<boolean> {
+    public saveResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
         if (!result.preliminary) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
-        // @ts-ignore
         return promiseMultiSingle(result.result, async (value) => {
             if (!result.accept) {
-                return false;
+                return null;
             }
             // if there is a title, search a medium which matches
 
@@ -208,7 +206,7 @@ export class QueryContext implements ConnectionContext {
         });
     }
 
-    public async getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
+    public async getPageInfo(link: string, key: string): Promise<PageInfo> {
         if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
@@ -223,7 +221,7 @@ export class QueryContext implements ConnectionContext {
         };
     }
 
-    public async updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void> {
+    public async updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): EmptyPromise {
         if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
@@ -237,7 +235,7 @@ export class QueryContext implements ConnectionContext {
         }));
     }
 
-    public async removePageInfo(link: string, key?: string, toDeleteValues?: string[]): Promise<void> {
+    public async removePageInfo(link: string, key?: string, toDeleteValues?: string[]): EmptyPromise {
         if (!validate.isString(link) || !link || (key && !validate.isString(key))) {
             return Promise.reject(Errors.INVALID_INPUT);
         }
@@ -261,7 +259,7 @@ export class QueryContext implements ConnectionContext {
         }
     }
 
-    public async queueNewTocs(): Promise<void> {
+    public async queueNewTocs(): EmptyPromise {
         throw Error("not supported");
     }
 
@@ -299,7 +297,7 @@ export class QueryContext implements ConnectionContext {
         });
     }
 
-    public clearInvalidationTable(): Promise<void> {
+    public clearInvalidationTable(): EmptyPromise {
         return this.query("TRUNCATE user_data_invalidation");
     }
 
@@ -342,7 +340,7 @@ export class QueryContext implements ConnectionContext {
      * Deletes one or multiple entries from one specific table,
      * with only one conditional.
      */
-    public async delete(table: string, ...condition: Array<{ column: string; value: any }>): Promise<OkPacket> {
+    public async delete(table: string, ...condition: Condition[]): Promise<OkPacket> {
         if (!condition || (Array.isArray(condition) && !condition.length)) {
             return Promise.reject(new Error(Errors.INVALID_INPUT));
         }
@@ -396,21 +394,25 @@ export class QueryContext implements ConnectionContext {
         return this.query(query, values);
     }
 
-    public multiInsert<T>(query: string, value: T | T[], paramCallback: ParamCallback<T>): Promise<OkPacket | OkPacket[]> {
+    public multiInsert<T extends MultiSingleValue<any>>(query: string, value: T, paramCallback: ParamCallback<T>): PromiseMultiSingle<T, OkPacket> {
         if (!value || (Array.isArray(value) && !value.length)) {
-            return Promise.resolve(emptyPacket());
+            return Promise.resolve(Array.isArray(value) ? [] : emptyPacket()) as any;
         }
         if (Array.isArray(value) && value.length > 100) {
-            // @ts-ignore
-            return this._batchFunction(value, query, paramCallback, (q, v, p) => this.multiInsert(q, v, p));
+            return this._batchFunction(
+                value,
+                query,
+                paramCallback,
+                // @ts-expect-error
+                (q, v, p) => this.multiInsert(q, v, p) as Promise<OkPacket[]>
+            ) as any;
         }
         let valuesQuery = "";
         let valuesQueries = "";
         let paramCount = -1;
         const param: any[] = [];
 
-        // @ts-ignore
-        multiSingle(value, (item: T, index, lastItem) => {
+        multiSingle(value, (item, index, lastItem) => {
             const items = paramCallback(item);
             if (Array.isArray(items)) {
                 param.push(...items);
@@ -436,29 +438,24 @@ export class QueryContext implements ConnectionContext {
         return this.query(`${query} ${valuesQueries};`, param);
     }
 
-    public async queryInList<T>(query: string, value: T | T[], afterQuery?: string, paramCallback?: ParamCallback<T>)
-        : Promise<any[] | undefined> {
+    public async queryInList<T extends MultiSingleValue<any>>(query: string, value: T, afterQuery?: string, paramCallback?: ParamCallback<T>)
+        : Promise<any[]> {
 
-        if (Array.isArray(value)) {
-            if (!value.length) {
-                return [];
-            }
-        } else if (!value) {
-            return;
+        if (!value || (Array.isArray(value) && !value.length)) {
+            return [];
         }
         if (Array.isArray(value) && value.length > 100) {
             return this._batchFunction(
                 value,
                 query,
                 paramCallback,
-                // @ts-ignore
+                // @ts-expect-error
                 (q, v, p) => this.queryInList(q, v, afterQuery, p)
             );
         }
         const placeholders: string[] = [];
         const param: any[] = [];
-        // @ts-ignore
-        multiSingle(value, (item: T) => {
+        multiSingle(value, (item) => {
             if (paramCallback) {
                 const items = paramCallback(item);
 
@@ -614,14 +611,14 @@ export class QueryContext implements ConnectionContext {
         }
 
         for (const list of await listPromise) {
-            const listMedia: any = getElseSetObj(lists, list.id, () => []);
+            const listMedia: number[] = getElseSetObj(lists, list.id, () => []);
             if (list.medium_id != null) {
                 listMedia.push(list.medium_id);
             }
         }
 
         for (const list of await exListPromise) {
-            const listMedia: any = getElseSetObj(extLists, list.id, () => []);
+            const listMedia: number[] = getElseSetObj(extLists, list.id, () => []);
 
             if (list.medium_id != null) {
                 listMedia.push(list.medium_id);
@@ -629,7 +626,7 @@ export class QueryContext implements ConnectionContext {
         }
 
         for (const user of await extUserPromise) {
-            const userLists: any = getElseSetObj(extUser, user.uuid, () => []);
+            const userLists: number[] = getElseSetObj(extUser, user.uuid, () => []);
             userLists.push(user.id);
         }
         return {
@@ -641,10 +638,8 @@ export class QueryContext implements ConnectionContext {
         };
     }
 
-    // noinspection JSMethodCanBeStatic
-    private async _batchFunction<T>(value: T[], query: string, paramCallback: ParamCallback<T> | undefined,
-        func:
-                                        (query: string, values: T[], paramCallback?: ParamCallback<T>) => Promise<any[]>
+    private async _batchFunction<T>(value: T[], query: string, paramCallback: Optional<ParamCallback<T>>,
+        func: (query: string, values: T[], paramCallback?: ParamCallback<T>) => Promise<any[]>
     ): Promise<any[]> {
 
         const length = value.length;

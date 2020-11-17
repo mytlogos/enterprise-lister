@@ -1,8 +1,9 @@
 import {Migration} from "./databaseTypes";
 import {MysqlServerError} from "./mysqlError";
 import {DatabaseContext} from "./contexts/databaseContext";
+import { EmptyPromise } from "../types";
 
-function ignoreError(func: () => Promise<void>, ignoreErrno: number[]): Promise<void> {
+function ignoreError(func: () => EmptyPromise, ignoreErrno: number[]): EmptyPromise {
     return func().catch((reason) => {
         if (reason && Number.isInteger(reason.errno) && !ignoreErrno.includes(reason.errno)) {
             throw reason;
@@ -14,7 +15,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 0,
         toVersion: 1,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             await ignoreError(async () => {
                 await context.addColumn(
                     "episode",
@@ -99,7 +100,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 1,
         toVersion: 2,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             await ignoreError(() => context.addColumn(
                 "episode_release",
                 "locked BOOLEAN DEFAULT 0"
@@ -111,7 +112,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 2,
         toVersion: 3,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             await ignoreError(() => context.changeColumn(
                 "scrape_board",
                 "last_date",
@@ -123,7 +124,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 3,
         toVersion: 4,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             await context.alterColumn(
                 "episode_release",
                 "url varchar(767) not null",
@@ -149,14 +150,14 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 4,
         toVersion: 5,
-        async migrate(): Promise<void> {
+        async migrate(): EmptyPromise {
             // empty migration as it adds trigger only
         }
     },
     {
         fromVersion: 5,
         toVersion: 6,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             await context.addColumn(
                 "jobs",
                 "runningSince DATETIME",
@@ -166,7 +167,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 6,
         toVersion: 7,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             // implicit drop of all triggers which insert rows in user_data_invalidation table
             await Promise.all([
                 "reading_list",
@@ -196,7 +197,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 7,
         toVersion: 8,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             await ignoreError(
                 () => context.addColumn(
                     "medium_toc",
@@ -209,7 +210,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 8,
         toVersion: 9,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             await ignoreError(() => context.dropForeignKey("medium_toc", "medium_toc_ibfk_1"),
                 [MysqlServerError.ER_CANT_DROP_FIELD_OR_KEY]
             );
@@ -267,7 +268,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 9,
         toVersion: 10,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             // add index to speed up queries on episode_release where releaseDate is a big factor
             await context.addIndex("episode_release", "episode_release_releaseDate_Index", ["releaseDate"]);
         }
@@ -275,7 +276,7 @@ export const Migrations: Migration[] = [
     {
         fromVersion: 10,
         toVersion: 11,
-        async migrate(context: DatabaseContext): Promise<void> {
+        async migrate(context: DatabaseContext): EmptyPromise {
             // TODO: should i ask for user input before?
             // remove all data, because this change is destructive
             // one cannot/should not simulate the data for the new columns

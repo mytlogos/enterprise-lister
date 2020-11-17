@@ -1,5 +1,5 @@
-import {Hook, Toc, TocEpisode} from "../types";
-import {EpisodeNews, News, ReleaseState, SearchResult} from "../../types";
+import {Hook, Toc, TocEpisode, NewsScrapeResult} from "../types";
+import {EpisodeNews, ReleaseState, SearchResult} from "../../types";
 import * as url from "url";
 import {queueCheerioRequest} from "../queueManager";
 import logger from "../../logger";
@@ -10,20 +10,20 @@ import * as normalRequest from "request";
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
-// @ts-ignore
+// @ts-expect-error
 const jar = request.jar();
 type RequestAPI = normalRequest.RequestAPI<CloudScraper, CloudscraperOptions, normalRequest.RequiredUriUrl>;
-// @ts-ignore
+// @ts-expect-error
 const defaultRequest: RequestAPI = request.defaults({
     jar
 });
 
 function loadBody(urlString: string, options?: CloudscraperOptions): Promise<cheerio.Root> {
-    // @ts-ignore
+    // @ts-expect-error
     return queueCheerioRequest(urlString, options, defaultRequest);
 }
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): Promise<NewsScrapeResult> {
     const uri = "https://kissanime.ru/";
     // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
     const $ = await loadBody(uri);

@@ -1,9 +1,10 @@
 import {SubContext} from "./subContext";
-import {ExternalUser, Uuid} from "../../types";
+import {ExternalUser, Uuid, MultiSingleValue, PromiseMultiSingle} from "../../types";
 import {Errors, promiseMultiSingle} from "../../tools";
 import {v1 as uuidGenerator} from "uuid";
 import {Query} from "mysql";
 import { storeModifications } from "../sqlTools";
+import { ExternalStorageUser } from "../../externals/types";
 
 export class ExternalUserContext extends SubContext {
     public async getAll(uuid: Uuid): Promise<Query> {
@@ -35,7 +36,6 @@ export class ExternalUserContext extends SubContext {
         [externalUser.identifier, localUuid, externalUser.type],
         );
         if (result.length) {
-            // @ts-ignore
             throw Error(Errors.USER_EXISTS_ALREADY);
         }
         const uuid = uuidGenerator();
@@ -58,7 +58,8 @@ export class ExternalUserContext extends SubContext {
     /**
      * Deletes an external user from the storage.
      */
-    public async deleteExternalUser(externalUuid: Uuid): Promise<boolean> {
+    public async deleteExternalUser(externalUuid: Uuid, userUuid: Uuid): Promise<boolean> {
+        // TODO: 27.02.2020 use uuid to check if uuid owns externalUser
         // We need a bottom-up approach to delete,
         // because deleting top-down
         // would violate the foreign keys restraints
@@ -86,7 +87,7 @@ export class ExternalUserContext extends SubContext {
     /**
      * Gets an external user.
      */
-    public async getExternalUser(externalUuid: Uuid | string[]): Promise<ExternalUser | ExternalUser[]> {
+    public async getExternalUser<T extends MultiSingleValue<Uuid>>(externalUuid: T): PromiseMultiSingle<T, ExternalUser> {
         return promiseMultiSingle(externalUuid, async (value) => {
             const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
             if (!resultArray.length) {
@@ -99,9 +100,7 @@ export class ExternalUserContext extends SubContext {
     /**
      * Gets an external user with cookies, without items.
      */
-    public async getExternalUserWithCookies(uuid: Uuid)
-        : Promise<{ userUuid: Uuid; type: number; uuid: Uuid; cookies: string }> {
-
+    public async getExternalUserWithCookies(uuid: Uuid): Promise<ExternalStorageUser> {
         const value = await this.query(
             "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
             uuid);

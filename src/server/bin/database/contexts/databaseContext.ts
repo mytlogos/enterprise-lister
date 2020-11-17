@@ -3,6 +3,7 @@ import { Trigger } from "../trigger";
 import mySql from "promise-mysql";
 import { DbTrigger, QueryContext } from "./queryContext";
 import { SubContext } from "./subContext";
+import { EmptyPromise } from "../../types";
 
 const database = "enterprise";
 
@@ -12,7 +13,7 @@ export class DatabaseContext extends SubContext {
     }
 
     public getDatabaseVersion (): Promise<Array<{ version: number }>> {
-        return this.query("SELECT version FROM enterprise_database_info LIMIT 1;") as Promise<Array<{ version: number }>>;
+        return this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
     }
 
     public async startMigration (): Promise<boolean> {
@@ -29,11 +30,11 @@ export class DatabaseContext extends SubContext {
             .then((value) => value && (value.changedRows === 1));
     }
 
-    public async updateDatabaseVersion (version: number): Promise<void> {
+    public async updateDatabaseVersion (version: number): EmptyPromise {
         return this.query("UPDATE enterprise_database_info SET version=?;", version).then(ignore);
     }
 
-    public createDatabase (): Promise<void> {
+    public createDatabase (): EmptyPromise {
         return this.query(`CREATE DATABASE ${database};`).then(ignore);
     }
 
@@ -50,34 +51,34 @@ export class DatabaseContext extends SubContext {
         return this.query(schema);
     }
 
-    public dropTrigger (trigger: string): Promise<void> {
+    public dropTrigger (trigger: string): EmptyPromise {
         return this.query(`DROP TRIGGER IF EXISTS ${mySql.escapeId(trigger)};`).then(ignore);
     }
 
-    public createTable (table: string, columns: string[]): Promise<void> {
+    public createTable (table: string, columns: string[]): EmptyPromise {
         return this.query(`CREATE TABLE ${mySql.escapeId(table)} (${columns.join(", ")});`).then(ignore);
     }
 
-    public addColumn (tableName: string, columnDefinition: string): Promise<void> {
+    public addColumn (tableName: string, columnDefinition: string): EmptyPromise {
         return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`).then(ignore);
     }
 
-    public alterColumn (tableName: string, columnDefinition: string): Promise<void> {
+    public alterColumn (tableName: string, columnDefinition: string): EmptyPromise {
         return this.query(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnDefinition};`).then(ignore);
     }
 
-    public changeColumn (tableName: string, oldName: string, newName: string, columnDefinition: string): Promise<void> {
+    public changeColumn (tableName: string, oldName: string, newName: string, columnDefinition: string): EmptyPromise {
         return this.query(`ALTER TABLE ${tableName} CHANGE COLUMN ${oldName} ${newName} ${columnDefinition};`).then(ignore);
     }
 
-    public addUnique (tableName: string, indexName: string, ...columns: string[]): Promise<void> {
+    public addUnique (tableName: string, indexName: string, ...columns: string[]): EmptyPromise {
         columns = columns.map((value) => mySql.escapeId(value));
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
         return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`).then(ignore);
     }
 
-    public dropIndex (tableName: string, indexName: string): Promise<void> {
+    public dropIndex (tableName: string, indexName: string): EmptyPromise {
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
         return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`).then(ignore);
@@ -92,7 +93,7 @@ export class DatabaseContext extends SubContext {
      * @param indexName the name for the index
      * @param columnNames the columns the index should be build for
      */
-    public addIndex (tableName: string, indexName: string, columnNames: string[]): Promise<void> {
+    public addIndex (tableName: string, indexName: string, columnNames: string[]): EmptyPromise {
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
         const columns = columnNames.map(name => mySql.escapeId(name)).join(",")
@@ -100,7 +101,7 @@ export class DatabaseContext extends SubContext {
     }
 
     public addForeignKey (tableName: string, constraintName: string, column: string, referencedTable: string,
-        referencedColumn: string, onDelete?: string, onUpdate?: string): Promise<void> {
+        referencedColumn: string, onDelete?: string, onUpdate?: string): EmptyPromise {
         const index = mySql.escapeId(column);
         const table = mySql.escapeId(tableName);
         const refTable = mySql.escapeId(referencedTable);
@@ -117,20 +118,20 @@ export class DatabaseContext extends SubContext {
         return this.query(query + ";").then(ignore);
     }
 
-    public dropForeignKey (tableName: string, indexName: string): Promise<void> {
+    public dropForeignKey (tableName: string, indexName: string): EmptyPromise {
         const index = mySql.escapeId(indexName);
         const table = mySql.escapeId(tableName);
         return this.query(`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`).then(ignore);
     }
 
-    public addPrimaryKey (tableName: string, ...columns: string[]): Promise<void> {
+    public addPrimaryKey (tableName: string, ...columns: string[]): EmptyPromise {
         columns = columns.map((value) => mySql.escapeId(value));
 
         const table = mySql.escapeId(tableName);
         return this.query(`ALTER TABLE ${table} ADD PRIMARY KEY (${columns.join(", ")})`).then(ignore);
     }
 
-    public dropPrimaryKey (tableName: string): Promise<void> {
+    public dropPrimaryKey (tableName: string): EmptyPromise {
         const table = mySql.escapeId(tableName);
         return this.query(`ALTER TABLE ${table} DROP PRIMARY KEY`).then(ignore);
     }

@@ -16,7 +16,7 @@ import {
 import {Job, JobQueue, OutsideJob} from "../jobManager";
 import {getElseSet, isString, maxValue, stringify} from "../tools";
 import logger from "../logger";
-import {JobItem, JobRequest, JobState, MilliTime, ScrapeName} from "../types";
+import {JobItem, JobRequest, JobState, MilliTime, ScrapeName, EmptyPromise, Optional} from "../types";
 import {jobStorage} from "../database/storages/storage";
 import * as dns from "dns";
 import {getStore} from "../asyncStorage";
@@ -56,7 +56,9 @@ export class JobScraperManager {
 
     private static initStore(item: JobItem) {
         const store = getStore();
-        store.set("label", [`job-${item.id}-${item.name}`]);
+        if (store) {
+            store.set("label", [`job-${item.id}-${item.name}`]);
+        }
     }
 
     public automatic = true;
@@ -66,17 +68,17 @@ export class JobScraperManager {
     private readonly queue = new JobQueue({maxActive: 50});
     private jobMap = new Map<number | string, Job>();
     private nameIdList: Array<[number, string]> = [];
-    private intervalId: Timeout | undefined;
+    private intervalId: Optional<Timeout>;
 
     public constructor() {
         this.helper.init();
     }
 
-    public on(event: string, callback: (value: any) => void | Promise<void>): void {
+    public on(event: string, callback: (value: any) => void | EmptyPromise): void {
         this.helper.on(event, callback);
     }
 
-    public async removeDependant(key: number | string): Promise<void> {
+    public async removeDependant(key: number | string): EmptyPromise {
         const job = this.jobMap.get(key);
         if (!job) {
             logger.warn("tried to remove non existant job");
@@ -105,7 +107,7 @@ export class JobScraperManager {
         return jobStorage.removeJob(key).catch(logger.error);
     }
 
-    public async setup(): Promise<void> {
+    public async setup(): EmptyPromise {
         // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
         await jobStorage.stopJobs().catch(logger.error);
         const jobs = this.helper.newsAdapter.map((value): JobRequest => {
@@ -196,14 +198,14 @@ export class JobScraperManager {
      * Mainly for test purposes
      * @param jobIds
      */
-    public async runJobs(...jobIds: number[]): Promise<void> {
+    public async runJobs(...jobIds: number[]): EmptyPromise {
         logger.info(`start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
         const jobs = await jobStorage.getJobsById(jobIds);
         this.processJobItems(jobs);
         logger.info(`fetched jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`);
     }
 
-    public async addJobs(...jobs: JobRequest[]): Promise<void> {
+    public async addJobs(...jobs: JobRequest[]): EmptyPromise {
         let waitForOtherRequest: JobRequest[] = [];
         const addJobs = jobs.filter((value) => {
             if (value.runAfter) {
@@ -318,7 +320,6 @@ export class JobScraperManager {
     private async checkRunningJobs() {
         const now = new Date();
         try {
-            // @ts-ignore
             await dns.promises.lookup("google.de");
             const timeoutDates = [...missingConnections.values()];
             const maxDate = maxValue(timeoutDates);
@@ -361,7 +362,7 @@ export class JobScraperManager {
         }
     }
 
-    private async fetchJobs(): Promise<void> {
+    private async fetchJobs(): EmptyPromise {
         if (!this.automatic) {
             return;
         }
@@ -379,7 +380,7 @@ export class JobScraperManager {
         const jobMap = new Map<ScrapeJob, any[]>();
         items
             .forEach((value) => {
-                let args: any | undefined;
+                let args: Optional<any>;
                 let jobType: ScrapeJob;
                 switch (value.type) {
                 case ScrapeName.newsAdapter:
@@ -465,7 +466,7 @@ export class JobScraperManager {
     }
 
     private processJobCallback(result: JobRequest | JobRequest[] | Promise<JobRequest | JobRequest[]>)
-        : Promise<void> | void {
+        : EmptyPromise | void {
 
         if (!result) {
             return;
@@ -527,7 +528,7 @@ export class JobScraperManager {
         };
     }
 
-    private collectEmittable(eventName: ScrapeEvent, value: Promise<any>): Promise<void> {
+    private collectEmittable(eventName: ScrapeEvent, value: Promise<any>): EmptyPromise {
         // TODO: 23.06.2019 collect e.g. 10 resolved items and then emit them, or emit them periodically if available
         // TODO: 23.06.2019 add timeout?
         return value

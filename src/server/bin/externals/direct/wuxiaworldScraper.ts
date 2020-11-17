@@ -1,5 +1,5 @@
-import {EpisodeContent, Hook, Toc, TocPart} from "../types";
-import {EpisodeNews, News, SearchResult, TocSearchMedium} from "../../types";
+import {EpisodeContent, Hook, Toc, TocPart, NewsScrapeResult} from "../types";
+import {EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Nullable} from "../../types";
 import logger from "../../logger";
 import * as url from "url";
 import {queueCheerioRequest, queueRequest} from "../queueManager";
@@ -7,7 +7,7 @@ import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString
 import {checkTocContent} from "../scraperTools";
 import {UrlError} from "../errors";
 
-async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     const uri = "https://www.wuxiaworld.com/";
 
     const $ = await queueCheerioRequest(uri);
@@ -37,7 +37,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
             logger.warn("changed time format on wuxiaworld");
             return;
         }
-        let regexResult: string[] | null = titleRegex.exec(episodeTitle);
+        let regexResult: Nullable<string[]> = titleRegex.exec(episodeTitle);
 
         if (!regexResult) {
             let abbrev = "";
@@ -284,7 +284,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
     return [episodeContent];
 }
 
-async function tocSearcher(medium: TocSearchMedium): Promise<Toc | undefined> {
+async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
     const words = medium.title.split(/\s+/).filter((value) => value);
     let tocLink = "";
     let searchWord = "";

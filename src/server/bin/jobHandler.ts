@@ -10,7 +10,7 @@ import {
     multiSingle,
     ignore
 } from "./tools";
-import {ListScrapeResult, ScrapeList, ScrapeMedium} from "./externals/listManager";
+import {ScrapeList, ScrapeMedium} from "./externals/listManager";
 import {
     EpisodeRelease,
     ExternalList,
@@ -24,10 +24,13 @@ import {
     ScrapeItem,
     ScrapeName,
     SimpleEpisode,
-    SimpleMedium
+    SimpleMedium,
+    EmptyPromise,
+    Optional,
+    NewsResult
 } from "./types";
 import logger from "./logger";
-import {ScrapeType, Toc, TocEpisode, TocPart} from "./externals/types";
+import {ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult} from "./externals/types";
 import * as validate from "validate.js";
 import {checkTocContent, remapMediumPart} from "./externals/scraperTools";
 import {DefaultJobScraper} from "./externals/jobScraperManager";
@@ -50,7 +53,7 @@ const scraper = DefaultJobScraper;
 /**
  *
  */
-async function processNews({link, rawNews}: { link: string; rawNews: News[] }): Promise<void> {
+async function processNews({link, rawNews}: NewsResult): EmptyPromise {
     if (!link || !validate.isString(link)) {
         throw Errors.INVALID_INPUT;
     }
@@ -92,15 +95,20 @@ async function processNews({link, rawNews}: { link: string; rawNews: News[] }): 
     // await Storage.linkNewsToMedium();
 }
 
-async function feedHandler({link, result}: { link: string; result: News[] }): Promise<void> {
-    result.forEach((value) => {
+async function feedHandler(result: NewsResult): EmptyPromise {
+    result.rawNews.forEach((value) => {
         value.title = value.title.replace(/(\s|\n|\t)+/g, " ");
     });
     try {
-        await processNews({link, rawNews: result});
+        await processNews(result);
     } catch (e) {
         logger.error(e);
     }
+}
+
+interface MediumTocContent {
+    parts: TocPart[];
+    episodes: TocEpisode[];
 }
 
 /**
@@ -111,16 +119,14 @@ async function feedHandler({link, result}: { link: string; result: News[] }): Pr
  * @param tocs tocs to map
  * @param uuid a user uuid
  */
-async function getTocMedia(tocs: Toc[], uuid?: Uuid)
-    : Promise<Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }>> {
+async function getTocMedia(tocs: Toc[], uuid?: Uuid): Promise<Map<SimpleMedium, MediumTocContent>> {
 
-    const media: Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }> = new Map();
+    const media: Map<SimpleMedium, MediumTocContent> = new Map();
 
     await Promise.all(tocs.map(async (toc) => {
-        let medium: SimpleMedium | undefined;
+        let medium: Optional<SimpleMedium>;
 
         if (toc.mediumId) {
-            // @ts-ignore
             medium = await mediumStorage.getSimpleMedium(toc.mediumId);
         } else {
             // get likemedium with similar title and same media type
@@ -142,7 +148,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid)
             await mediumStorage.addToc(medium.id as number, toc.link);
         }
         const mediumId = medium.id as number;
-        let currentToc = await mediumStorage.getToc(mediumId, toc.link);
+        let currentToc = await mediumStorage.getSpecificToc(mediumId, toc.link);
 
         // add toc if it does not still exist, instead of throwing an error
         if (!currentToc) {
@@ -228,7 +234,7 @@ interface TocPartMapping {
     }>;
 }
 
-async function addPartEpisodes(value: TocPartMapping): Promise<void> {
+async function addPartEpisodes(value: TocPartMapping): EmptyPromise {
     if (!value.part || !value.part.id) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
@@ -236,7 +242,6 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         checkTocContent(episode);
         value.episodeMap.set(episode.combiIndex, {tocEpisode: episode});
     });
-    // @ts-ignore
     const episodes: SimpleEpisode[] = await episodeStorage.getMediumEpisodePerIndex(
         value.part.mediumId,
         [...value.episodeMap.keys()],
@@ -273,9 +278,8 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
             }
             return {
                 id: 0,
-                // @ts-ignore
+                // @ts-expect-error
                 partId: value.part.id,
-                // @ts-ignore
                 totalIndex: episodeToc.tocEpisode.totalIndex,
                 partialIndex: episodeToc.tocEpisode.partialIndex,
                 releases: [{
@@ -304,7 +308,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
         const episodeReleases = await episodeStorage.getReleasesByHost(knownEpisodeIds, exec[0]);
         const updateReleases: EpisodeRelease[] = [];
 
-        const newReleases = nonNewIndices.map((index): EpisodeRelease | undefined => {
+        const newReleases = nonNewIndices.map((index): Optional<EpisodeRelease> => {
             const episodeValue = value.episodeMap.get(index);
 
             if (!episodeValue) {
@@ -360,7 +364,7 @@ async function addPartEpisodes(value: TocPartMapping): Promise<void> {
     }
 }
 
-export async function tocHandler(result: { tocs: Toc[]; uuid?: Uuid }): Promise<void> {
+export async function tocHandler(result: TocResult): EmptyPromise {
     if (!result) {
         // TODO: 01.09.2019 for now just return
         return;
@@ -376,9 +380,9 @@ export async function tocHandler(result: { tocs: Toc[]; uuid?: Uuid }): Promise<
     }
 
     // map tocs contents to medium
-    const media: Map<SimpleMedium, { parts: TocPart[]; episodes: TocEpisode[] }> = await getTocMedia(tocs, uuid);
+    const media: Map<SimpleMedium, MediumTocContent> = await getTocMedia(tocs, uuid);
 
-    const promises: Array<Promise<Array<Promise<void>>>> = Array.from(media.entries())
+    const promises: Array<Promise<EmptyPromise[]>> = Array.from(media.entries())
         .filter((entry) => entry[0].id)
         .map(async (entry) => {
             const mediumId = entry[0].id as number;
@@ -432,14 +436,13 @@ export async function tocHandler(result: { tocs: Toc[]; uuid?: Uuid }): Promise<
                     }
                     checkTocContent(partToc.tocPart, true);
                     return partStorage
-                        // @ts-ignore
+                        // @ts-expect-error
                         .addPart({
                             mediumId,
                             title: partToc.tocPart.title,
                             totalIndex: partToc.tocPart.totalIndex,
                             partialIndex: partToc.tocPart.partialIndex
                         })
-                        // @ts-ignore
                         .then((part: Part) => partToc.part = part);
                 }));
             // 'moves' episodes from the standard part to other parts, if they own the episodes too
@@ -459,7 +462,7 @@ export async function tocHandler(result: { tocs: Toc[]; uuid?: Uuid }): Promise<
     await Promise.all((await Promise.all(promises)).flat());
 }
 
-async function addFeeds(feeds: string[]): Promise<void> {
+async function addFeeds(feeds: string[]): EmptyPromise {
     if (!feeds.length) {
         return;
     }
@@ -484,6 +487,12 @@ async function addFeeds(feeds: string[]): Promise<void> {
     }));
 }
 
+interface StoredMedium {
+    title: string;
+    link: string;
+    medium: SimpleMedium;
+}
+
 /**
  *
  */
@@ -497,7 +506,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: U
     const currentLikeMedia: LikeMedium[] = await mediumStorage.getLikeMedium(likeMedia);
 
     const foundLikeMedia: LikeMedium[] = [];
-    const updateMediaPromises: Array<Promise<void>> = [];
+    const updateMediaPromises: EmptyPromise[] = [];
 
     // filter out the media which were found in the storage, leaving only the new ones
     const newMedia = media.filter((value) => {
@@ -532,7 +541,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: U
     });
     // if there are new media, queue it for scraping,
     // after adding it to the storage and pushing it to foundLikeMedia
-    let storedMedia: Array<{ title: string; link: string; medium: SimpleMedium }>;
+    let storedMedia: StoredMedium[];
     try {
         storedMedia = await Promise.all(newMedia.map(
             (scrapeMedium) => {
@@ -566,7 +575,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: U
 
 interface ChangeContent {
     removedLists: any;
-    result: { external: { cookies: string; uuid: Uuid; userUuid: Uuid; type: number }; lists: ListScrapeResult };
+    result: ExternalListResult;
     addedLists: ScrapeList[];
     renamedLists: ScrapeList[];
     allLists: ExternalList[];
@@ -629,7 +638,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
 
     // update externalUser with (new) cookies and a new lastScrape date (now)
     promisePool.push(externalUserStorage
-        // @ts-ignore
+        // @ts-expect-error
         .updateExternalUser({
             uuid: result.external.uuid,
             cookies: result.external.cookies,
@@ -643,12 +652,7 @@ async function updateDatabase({removedLists, result, addedLists, renamedLists, a
 /**
  *
  */
-async function listHandler(result: {
-    external: { cookies: string; uuid: Uuid; userUuid: Uuid; type: number };
-    lists: ListScrapeResult;
-})
-    : Promise<void> {
-
+async function listHandler(result: ExternalListResult): EmptyPromise {
     const feeds = result.lists.feed;
     const lists = result.lists.lists;
     const media = result.lists.media;
@@ -658,7 +662,7 @@ async function listHandler(result: {
     // add feeds to the storage and add them to the scraper
     await addFeeds(feeds);
 
-    const currentLists = await externalListStorage.getExternalLists(result.external.uuid);
+    const currentLists = await externalListStorage.getExternalUserLists(result.external.uuid);
 
     // all available stored list, which lie on the same index as the scraped lists
     const allLists: ExternalList[] = [];
@@ -691,7 +695,7 @@ async function listHandler(result: {
         }
 
         // map the scrapeMedia to their id in the storage
-        // @ts-ignore
+        // @ts-expect-error
         scrapeList.media = scrapeList.media.map((scrapeMedium: ScrapeMedium) => {
             const likeMedium = likeMedia.find((like: LikeMedium) => {
                 return like && like.link === scrapeMedium.title.link;
@@ -715,12 +719,12 @@ async function listHandler(result: {
     });
 }
 
-async function newsHandler({link, result}: { link: string; result: News[] }) {
-    result.forEach((value) => {
+async function newsHandler(result: NewsResult) {
+    result.rawNews.forEach((value) => {
         value.title = value.title.replace(/(\s|\n|\t)+/, " ");
     });
     try {
-        await processNews({link, rawNews: result});
+        await processNews(result);
     } catch (e) {
         logger.error(e);
     }
@@ -788,5 +792,5 @@ export const startCrawler = (): void => {
     scraper
         .setup()
         .then(() => scraper.start())
-        .catch((error) => logger.error(error));
+        .catch((error: Error) => logger.error(error));
 };

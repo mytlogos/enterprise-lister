@@ -1,6 +1,7 @@
 import stream from "stream";
 import {isString} from "./tools";
 import {StringDecoder} from "string_decoder";
+import { Nullable } from "./types";
 
 export class BufferToStringStream extends stream.Transform {
     private readonly decoder: StringDecoder;
@@ -11,7 +12,7 @@ export class BufferToStringStream extends stream.Transform {
         this.decoder = new StringDecoder("utf-8");
     }
 
-    public _transform(chunk: any, encoding: string, callback: (error?: (Error | null), data?: any) => void): void {
+    public _transform(chunk: any, encoding: string, callback: (error?: (Nullable<Error>), data?: any) => void): void {
         let data: string;
         if (Buffer.isBuffer(chunk)) {
             data = this.decoder.write(chunk);
@@ -36,7 +37,7 @@ export class ObjectToStringStream extends stream.Transform {
         });
     }
 
-    public _transform(chunk: any, encoding: string, callback: (error?: (Error | null), data?: any) => void): void {
+    public _transform(chunk: any, encoding: string, callback: (error?: (Nullable<Error>), data?: any) => void): void {
         this.push(JSON.stringify(chunk));
         callback(null, JSON.stringify(chunk));
     }

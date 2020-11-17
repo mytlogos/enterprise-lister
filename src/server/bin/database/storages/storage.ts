@@ -1,26 +1,26 @@
 import mySql from "promise-mysql";
 import env from "../../env";
-import {Invalidation, MetaResult, Result, ScrapeItem, User, Uuid} from "../../types";
+import { Invalidation, MetaResult, Result, Uuid, PropertyNames, StringKeys, PromiseFunctions, EmptyPromise, MultiSingleValue, Nullable } from "../../types";
 import logger from "../../logger";
-import {databaseSchema} from "../databaseSchema";
-import {delay, isQuery} from "../../tools";
-import {SchemaManager} from "../schemaManager";
-import {Query} from "mysql";
-import {ScrapeType} from "../../externals/types";
-import {ContextCallback, ContextProvider, queryContextProvider} from "./storageTools";
-import {QueryContext} from "../contexts/queryContext";
-import {ConnectionContext} from "../databaseTypes";
-import {MediumStorage} from "./mediumStorage";
-import {ExternalListStorage} from "./externalListStorage";
-import {ExternalUserStorage} from "./externalUserStorage";
-import {InternalListStorage} from "./internalListStorage";
-import {JobStorage} from "./jobStorage";
-import {UserStorage} from "./userStorage";
-import {MediumInWaitStorage} from "./mediumInWaitStorage";
-import {NewsStorage} from "./newsStorage";
-import {EpisodeStorage} from "./episodeStorage";
-import {PartStorage} from "./partStorage";
+import { databaseSchema } from "../databaseSchema";
+import { delay, isQuery, isString } from "../../tools";
+import { SchemaManager } from "../schemaManager";
+import { Query } from "mysql";
+import { ContextCallback, ContextProvider, queryContextProvider } from "./storageTools";
+import { QueryContext } from "../contexts/queryContext";
+import { ConnectionContext } from "../databaseTypes";
 import { MysqlServerError } from "../mysqlError";
+import { MediumContext } from "../contexts/mediumContext";
+import { PartContext } from "../contexts/partContext";
+import { EpisodeContext } from "../contexts/episodeContext";
+import { NewsContext } from "../contexts/newsContext";
+import { MediumInWaitContext } from "../contexts/mediumInWaitContext";
+import { UserContext } from "../contexts/userContext";
+import { JobContext } from "../contexts/jobContext";
+import { InternalListContext } from "../contexts/internalListContext";
+import { ExternalUserContext } from "../contexts/externalUserContext";
+import { ExternalListContext } from "../contexts/externalListContext";
+import { SubContext } from "../contexts/subContext";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
     return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -77,7 +77,7 @@ async function catchTransactionError<T, C extends ConnectionContext>(
     attempts: number,
     callback: ContextCallback<T, C>
 ) {
-// if it could not be commit due to error, roll back and rethrow error
+    // if it could not be commit due to error, roll back and rethrow error
     if (transaction) {
         // if there is a transaction first rollback and then throw error
         await context.rollback();
@@ -156,7 +156,7 @@ class SqlPoolProvider {
     }
 
     public useConfig(config: mySql.PoolConfig) {
-        this.config = {...this.defaultConfig(), ...config};
+        this.config = { ...this.defaultConfig(), ...config };
         this.remake = true;
     }
 
@@ -198,12 +198,12 @@ class SqlPoolProvider {
         }
     }
 
-    public async stop(): Promise<void> {
+    public async stop(): EmptyPromise {
         if (this.pool) {
             logger.info("Stopping Database");
             this.running = false;
             const pool = await this.pool;
-            pool.end();
+            await pool.end();
             logger.info("Database stopped now");
         } else {
             logger.info("Stopping Database... None running.");
@@ -256,7 +256,7 @@ class SqlPoolConfigUpdater {
         poolProvider.useConfig(config);
     }
 
-    public async recreate(immediate = false): Promise<void> {
+    public async recreate(immediate = false): EmptyPromise {
         poolProvider.recreate();
         if (immediate) {
             await poolProvider.provide();
@@ -272,28 +272,19 @@ export const poolConfig = new SqlPoolConfigUpdater();
 
 export class Storage {
 
-    /**
-     * Closes the Storage.
-     *
-     * @return {Promise<void>}
-     */
-    public stop(): Promise<void> {
-        return poolProvider.stop();
-    }
-
     public getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
         return inContext((context) => context.getPageInfo(link, key));
     }
 
-    public updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): Promise<void> {
+    public updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): EmptyPromise {
         return inContext((context) => context.updatePageInfo(link, key, values, toDeleteValues));
     }
 
-    public removePageInfo(link: string, key?: string): Promise<void> {
+    public removePageInfo(link: string, key?: string): EmptyPromise {
         return inContext((context) => context.removePageInfo(link, key));
     }
 
-    public queueNewTocs(): Promise<void> {
+    public queueNewTocs(): EmptyPromise {
         return inContext((context) => context.queueNewTocs());
     }
 
@@ -309,7 +300,7 @@ export class Storage {
      *
      * @param result
      */
-    public processResult(result: Result): Promise<MetaResult | MetaResult[]> {
+    public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
         return inContext((context) => context.processResult(result));
     }
 
@@ -317,40 +308,8 @@ export class Storage {
      *
      * @param result
      */
-    public saveResult(result: Result): Promise<boolean> {
+    public saveResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
         return inContext((context) => context.saveResult(result));
-    }
-
-    /**
-     *
-     */
-    public addScrape(scrape: ScrapeItem | ScrapeItem[]): Promise<boolean> {
-        throw Error("not supported");
-    }
-
-    /**
-     *
-     */
-    public getScrapes(): Promise<ScrapeItem[]> {
-        throw Error("not supported");
-    }
-
-    /**
-     *
-     */
-    public removeScrape(link: string, type: ScrapeType): Promise<boolean> {
-        throw Error("not supported");
-    }
-
-    public updateScrape(link: string, type: ScrapeType, nextScrape: number): Promise<boolean> {
-        throw Error("not supported");
-    }
-
-    /**
-     *
-     */
-    public showUser(): Promise<User[]> {
-        throw Error("not supported");
     }
 
     /**
@@ -366,23 +325,97 @@ export class Storage {
     public getInvalidatedStream(uuid: Uuid): Promise<Query> {
         return inContext((context) => context.getInvalidatedStream(uuid));
     }
-
 }
 
+/**
+ * Property names of QueryContext whose type extends from SubContext.
+ */
+type ContextName = PropertyNames<QueryContext, SubContext>;
+type ContextProxy<T extends SubContext, K extends StringKeys<T>> = new() => PromiseFunctions<T, K>;
+
+
+function inContextGeneric<T, C extends SubContext>(callback: ContextCallback<T, C>, context: ContextName) {
+    return storageInContext(callback, (con) => queryContextProvider(con)[context] as unknown as C, true);
+}
+
+export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T>>(contextName: ContextName, omitted: K[]): ContextProxy<T, K> {
+    const hiddenProps: K[] = [...omitted];
+    return function ContextProxy() {
+        return new Proxy(
+            {},
+            {
+                get(_target, prop) {
+                    // @ts-expect-error
+                    if (isString(prop) && hiddenProps.includes(prop)) {
+                        return () => {
+                            throw TypeError(`Property '${prop}' is not accessible`);
+                        };
+                    }
+                    // @ts-expect-error
+                    return (...args: any[]) => inContextGeneric<any, T>(context => context[prop](...args), contextName);
+                }
+            }
+        );
+    } as unknown as ContextProxy<T, K>;
+}
+
+export function SubContextProxyFactory<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(context: ContextName, omitted?: K[]): ContextProxy<T, K>  {
+    return ContextProxyFactory<T, K | keyof SubContext>(
+        context,
+        [
+            "commit",
+            "dmlQuery",
+            "parentContext",
+            "query",
+            "rollback",
+            "startTransaction",
+            ...(omitted || [])
+        ]
+    ) as ContextProxy<T, K>;
+}
+
+/**
+ * Creates a Factory which allows get access only.
+ * Always returns a functions creates a valid SubContext instance on every call,
+ * executing the requested function on the SubContext Instance.
+ * 
+ * Example:
+ * const mediumStorage = createStorage<MediumContext>("mediumContext");
+ * mediumStorage.addMedium(...args) // creates a valid MediumContext Instance
+ *                                  // and execute 'addMedium(...args)' on it
+ *                                  // returning the result
+ * 
+ * This should be treated as a standin for the respective Context Instance
+ * which allows restricted access.
+ * 
+ * One should provide the correct SubContext type for the property Name:
+ * Instead of:
+ *    createStorage<PartContext>("mediumContext") // thinks it is returning PartContext while returning MediumContext
+ * use correct type:
+ *    createStorage<MediumContext>("mediumContext") // thinks it is returning MediumContext while returning MediumContext
+ * 
+ * 
+ * @param context the property name on QueryContext
+ */
+export function createStorage<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(context: ContextName): PromiseFunctions<T, K> {
+    return new (SubContextProxyFactory<T, K>(context))();
+}
 
 export const storage = new Storage();
-export const mediumStorage = new MediumStorage();
-export const partStorage = new PartStorage();
-export const episodeStorage = new EpisodeStorage();
-export const newsStorage = new NewsStorage();
-export const mediumInWaitStorage = new MediumInWaitStorage();
-export const userStorage = new UserStorage();
-export const jobStorage = new JobStorage();
-export const internalListStorage = new InternalListStorage();
-export const externalUserStorage = new ExternalUserStorage();
-export const externalListStorage = new ExternalListStorage();
+export const mediumStorage = createStorage<MediumContext>("mediumContext");
+export const partStorage = createStorage<PartContext>("partContext");
+export const episodeStorage = createStorage<EpisodeContext>("episodeContext");
+export const newsStorage = createStorage<NewsContext>("newsContext");
+export const mediumInWaitStorage = createStorage<MediumInWaitContext>("mediumInWaitContext");
+export const userStorage = createStorage<UserContext>("userContext");
+export const jobStorage = createStorage<JobContext>("jobContext");
+export const internalListStorage = createStorage<InternalListContext>("internalListContext");
+export const externalUserStorage = createStorage<ExternalUserContext>("externalUserContext");
+export const externalListStorage = createStorage<ExternalListContext>("externalListContext");
 
 /**
  *
  */
 export const startStorage = (): void => poolProvider.start();
+
+export const stopStorage = (): EmptyPromise => poolProvider.stop();

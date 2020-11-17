@@ -1,4 +1,4 @@
-import {EpisodeRelease, MultiSingle, Uuid} from "./types";
+import {EpisodeRelease, MultiSingle, Uuid, PromiseMultiSingle, EmptyPromise, Unpack, UnpackArray, Optional, Nullable, Indexable, ExtractedIndex} from "./types";
 import {TocEpisode, TocPart, TocContent} from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
@@ -42,30 +42,26 @@ export function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: ArrayCall
     }
 }
 
-type multiSingleCallback<T, R> = (value: T, index?: number, last?: boolean) => R;
+type multiSingleCallback<T, R> = (value: T, index?: number, last?: boolean) => R | Promise<R>;
 
-export function promiseMultiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>): Promise<R>;
-export function promiseMultiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): Promise<R[]>;
-
-export function promiseMultiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): Promise<MultiSingle<R>> {
+export function promiseMultiSingle<T, R>(item: T, cb: multiSingleCallback<Unpack<T>, R>): PromiseMultiSingle<T, Unpack<R>> {
     if (typeof cb !== "function") {
-        return Promise.reject(new TypeError(`callback is not a function: '${cb}'`));
+        return Promise.reject(new TypeError(`callback is not a function: '${cb}'`)) as any;
     }
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
+        // @ts-expect-error
         return Promise.all(item.map((value: T, index) => Promise.resolve(cb(value, index, index < maxIndex))));
     }
     return new Promise((resolve, reject) => {
         try {
+            // @ts-expect-error
             resolve(cb(item, 0, false));
         } catch (e) {
             reject(e);
         }
     });
 }
-
-export function multiSingle<T, R>(item: T, cb: multiSingleCallback<T, R>): R;
-export function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): R[];
 
 /**
  * Calls the callback on the parameter item or on all elements of item if item is an Array.
@@ -75,11 +71,13 @@ export function multiSingle<T, R>(item: T[], cb: multiSingleCallback<T, R>): R[]
  * @param item value to act on
  * @param cb function to be called on a single or multiple values
  */
-export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>): R | R[] {
+export function multiSingle<T, R>(item: T, cb: multiSingleCallback<UnpackArray<T>, R>): MultiSingle<T, R> {
     if (Array.isArray(item)) {
         const maxIndex = item.length - 1;
+        // @ts-expect-error
         return item.map((value, index) => cb(value, index, index >= maxIndex));
     }
+    // @ts-expect-error
     return cb(item, 0, true);
 }
 
@@ -91,7 +89,7 @@ export function multiSingle<T, R>(item: T | T[], cb: multiSingleCallback<T, R>):
  * @param item item or items to add to the array
  * @param allowNull if a null-ish item value can be added to the array
  */
-export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
+export function addMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
             array.push(...item);
@@ -109,7 +107,7 @@ export function addMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: 
  * @param item item or items to remove from the array
  * @param allowNull if a null-ish item value can be removed from the array
  */
-export function removeMultiSingle<T>(array: T[], item: MultiSingle<T>, allowNull?: boolean): void {
+export function removeMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean): void {
     if (item != null || allowNull) {
         if (Array.isArray(item)) {
             item.forEach((value) => remove(array, value));
@@ -136,11 +134,9 @@ export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
     return value;
 }
 
-export function getElseSetObj<K, V>(map: Record<string | number, K>, key: string | number, valueCb: () => V): V {
-    // @ts-ignore
+export function getElseSetObj<K extends (string | number), V>(map: Record<K, V>, key: K, valueCb: () => V): V {
     let value: V = map[key];
     if (value == null) {
-        // @ts-ignore
         map[key] = value = valueCb();
     }
     return value;
@@ -295,12 +291,12 @@ export type Comparator<T> = (previous: T, current: T) => number;
  * @param array array to inspect
  * @param comparator field comparator or value comparator to compare values with
  */
-export function max<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined {
+export function max<T>(array: T[], comparator: keyof T | Comparator<T>): Optional<T> {
     if (!array.length) {
         return;
     }
     const comparatorFunction: Comparator<T> = isString(comparator)
-        // @ts-ignore
+        // @ts-expect-error
         ? (previousValue: T, currentValue: T) => previousValue[comparator] - currentValue[comparator]
         : comparator as Comparator<T>;
 
@@ -316,7 +312,7 @@ export function max<T>(array: T[], comparator: keyof T | Comparator<T>): T | und
  * 
  * @param array array to inspect
  */
-export function maxValue<T>(array: T[]): T | undefined {
+export function maxValue<T>(array: T[]): Optional<T> {
     if (!array.length) {
         return;
     }
@@ -332,7 +328,7 @@ export function maxValue<T>(array: T[]): T | undefined {
  * 
  * @param array array to inspect
  */
-export function minValue<T>(array: T[]): T | undefined {
+export function minValue<T>(array: T[]): Optional<T> {
     if (!array.length) {
         return;
     }
@@ -351,15 +347,15 @@ export function minValue<T>(array: T[]): T | undefined {
  * @param array array to inspect
  * @param comparator field comparator or value comparator to compare values with
  */
-export function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | undefined {
+export function min<T>(array: T[], comparator: keyof T | Comparator<T>): Optional<T> {
     if (!array.length) {
         return;
     }
-    // @ts-ignore
+
     const comparatorFunction: Comparator<T> = isString(comparator)
-        // @ts-ignore
+        // @ts-expect-error
         ? (previousValue: T, currentValue: T) => previousValue[comparator] - currentValue[comparator]
-        : comparator;
+        : comparator as Comparator<T>;
 
     return array.reduce((previousValue, currentValue) => {
         return comparatorFunction(previousValue, currentValue) < 0 ? previousValue : currentValue;
@@ -374,8 +370,8 @@ export function min<T>(array: T[], comparator: keyof T | Comparator<T>): T | und
  * 
  * @param relative string to parse to a absolute time
  */
-export function relativeToAbsoluteTime(relative: string): Date | null {
-    let exec: string[] | null = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
+export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
+    let exec: Nullable<string[]> = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
     if (!exec) {
         if (!relative || relative.toLowerCase() !== "just now") {
             return null;
@@ -426,7 +422,7 @@ export function relativeToAbsoluteTime(relative: string): Date | null {
  * 
  * @param timeout time to delay the promise
  */
-export function delay(timeout = 1000): Promise<void> {
+export function delay(timeout = 1000): EmptyPromise {
     return new Promise((resolve) => {
         setTimeout(AsyncResource.bind(() => resolve()), timeout);
     });
@@ -478,7 +474,7 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
         const error: any = {};
 
         Object.getOwnPropertyNames(value).forEach((errorKey) => {
-            // @ts-ignore
+            // @ts-expect-error
             error[errorKey] = value[errorKey];
         });
 
@@ -654,7 +650,7 @@ export enum Errors {
  * @param error value to check
  */
 export const isError = (error: unknown): boolean => {
-    // @ts-ignore
+    // @ts-expect-error
     return Object.values(Errors).includes(error);
 };
 
@@ -703,7 +699,7 @@ export function promisify<T>(callback: () => T): Promise<T> {
  * 
  * @param value object to combine
  */
-export function combiIndex(value: { totalIndex: number; partialIndex?: number }): number {
+export function combiIndex(value: Indexable): number {
     const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
     if (Number.isNaN(combi)) {
         throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
@@ -718,7 +714,7 @@ export function combiIndex(value: { totalIndex: number; partialIndex?: number })
  * 
  * @param value value to check the Indices from
  */
-export function checkIndices(value: { totalIndex: number; partialIndex?: number }): void {
+export function checkIndices(value: Indexable): void {
     if (value.totalIndex == null || value.totalIndex < -1 || !Number.isInteger(value.totalIndex)) {
         throw Error("invalid toc content, totalIndex invalid");
     }
@@ -727,9 +723,7 @@ export function checkIndices(value: { totalIndex: number; partialIndex?: number 
     }
 }
 
-export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number)
-    : { combi: number; total: number; fraction?: number } | null {
-
+export function extractIndices(groups: string[], allPosition: number, totalPosition: number, partialPosition: number): Nullable<ExtractedIndex> {
     const whole = Number(groups[allPosition]);
 
     if (Number.isNaN(whole)) {
@@ -754,7 +748,7 @@ const indexRegex = /(-?\d+)(\.(\d+))?/;
  * 
  * @param value the number to separate
  */
-export function separateIndex(value: number): { totalIndex: number; partialIndex?: number } {
+export function separateIndex(value: number): Indexable {
     if (!isNumber(value)) {
         throw Error("not a number");
     }
@@ -765,7 +759,6 @@ export function separateIndex(value: number): { totalIndex: number; partialIndex
     const totalIndex = Number(exec[1]);
     const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
 
-    // @ts-ignore
     if (Number.isNaN(totalIndex) || Number.isNaN(partialIndex)) {
         throw Error("invalid number");
     }
@@ -837,7 +830,7 @@ export interface InternetTester extends EventEmitter.EventEmitter {
     stop(): void;
 }
 
-export function getDate(value: string): Date | null {
+export function getDate(value: string): Nullable<Date> {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
 }

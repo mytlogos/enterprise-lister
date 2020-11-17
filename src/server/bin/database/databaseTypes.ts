@@ -2,7 +2,7 @@ import {TableSchema} from "./tableSchema";
 import {MediaType} from "../tools";
 import {Trigger} from "./trigger";
 import {DatabaseContext} from "./contexts/databaseContext";
-import { Uuid } from "../types";
+import { Uuid, EmptyPromise } from "../types";
 
 export interface DatabaseSchema {
     readonly version: number;
@@ -18,7 +18,7 @@ export interface Migration {
     readonly fromVersion: number;
     readonly toVersion: number;
 
-    migrate(context: DatabaseContext): Promise<void>;
+    migrate(context: DatabaseContext): EmptyPromise;
 }
 
 export enum SqlFunction {
@@ -64,11 +64,11 @@ export interface MediumInWait {
 }
 
 export interface ConnectionContext {
-    startTransaction(): Promise<void>;
+    startTransaction(): EmptyPromise;
 
-    commit(): Promise<void>;
+    commit(): EmptyPromise;
 
-    rollback(): Promise<void>;
+    rollback(): EmptyPromise;
 }
 
 export interface ChangeUser {
