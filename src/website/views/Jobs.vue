@@ -74,6 +74,24 @@
           <th scope="col">
             Next Run
           </th>
+          <th scope="col">
+            Failure Rate
+          </th>
+          <th scope="col">
+            Avg Duration
+          </th>
+          <th scope="col">
+            Avg Network
+          </th>
+          <th scope="col">
+            Avg Received
+          </th>
+          <th scope="col">
+            Avg Queries
+          </th>
+          <th scope="col">
+            Total Times Run
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -91,6 +109,12 @@
             <td>{{ absoluteToRelative(job.runningSince) }}</td>
             <td>{{ dateToString(job.runningSince) }}</td>
             <td>{{ dateToString(job.nextRun) }}</td>
+            <td>{{ jobStats[job.name]?.failed }}</td>
+            <td>{{ jobStats[job.name]?.avgduration }}</td>
+            <td>{{ jobStats[job.name]?.avgnetwork }}</td>
+            <td>{{ jobStats[job.name]?.avgreceived }}</td>
+            <td>{{ jobStats[job.name]?.queries }}</td>
+            <td>{{ jobStats[job.name]?.count }}</td>
           </tr>
           <tr
             class="collapse"
@@ -350,7 +374,19 @@ export default defineComponent({
         });
 
         HttpClient.getJobsStats().then(stats => this.totalJobsStats = stats);
-        HttpClient.getJobsStatsGrouped().then(stats => this.jobStats = stats);
+        HttpClient.getJobsStatsGrouped().then(stats => {
+            const currentNames = new Set(Object.keys(this.jobStats));
+
+            for (const stat of stats) {
+                this.jobStats[stat.name] = stat;
+                currentNames.delete(stat.name);
+            }
+
+            // remove the mapping of names which are not in grouped
+            for (const name of currentNames) {
+                delete this.jobStats[name];
+            }
+        });
 
         // fetch live jobs data
         fetch("http://localhost:3003")
