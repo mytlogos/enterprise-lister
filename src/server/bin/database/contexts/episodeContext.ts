@@ -19,7 +19,6 @@ import {
     Nullable,
     UpdateMedium
 } from "../../types";
-import mySql from "promise-mysql";
 import {
     checkIndices,
     combiIndex,
@@ -29,7 +28,8 @@ import {
     MediaType,
     multiSingle,
     promiseMultiSingle,
-    separateIndex
+    separateIndex,
+    batch
 } from "../../tools";
 import logger from "../../logger";
 import { MysqlServerError } from "../mysqlError";
@@ -566,49 +566,39 @@ export class EpisodeContext extends SubContext {
             }));
     }
 
-    public updateRelease(releases: MultiSingleValue<EpisodeRelease>): EmptyPromise {
-        return promiseMultiSingle(releases, async (value: EpisodeRelease): EmptyPromise => {
-            if (value.episodeId) {
-                const result = await this.update(
-                    "episode_release",
-                    (updates, values) => {
-                        if (value.title) {
-                            updates.push("title=?");
-                            values.push(value.title);
-                        }
-                        if (value.releaseDate) {
-                            updates.push("releaseDate=?");
-                            values.push(value.releaseDate);
-                        }
-                        if (value.sourceType) {
-                            updates.push("source_type=?");
-                            values.push(value.sourceType);
-                        }
-                        if (value.locked != null) {
-                            updates.push("locked=?");
-                            values.push(value.locked);
-                        }
-                        if (value.tocId != null) {
-                            updates.push("toc_id=?");
-                            values.push(value.tocId);
-                        }
-                    }, {
-                        column: "episode_id",
-                        value: value.episodeId,
-                    }, {
-                        column: "url",
-                        value: value.url,
-                    }
-                );
-                storeModifications("release", "update", result);
-            } else if (value.sourceType) {
-                const result = await this.query(
-                    "UPDATE episode_release SET url=? WHERE source_type=? AND url != ? AND title=?",
-                    [value.url, value.sourceType, value.url, value.title]
-                );
-                storeModifications("release", "update", result);
-            }
-        }).then(ignore);
+    public async updateRelease(releases: MultiSingleValue<EpisodeRelease>): EmptyPromise {
+        if (!Array.isArray(releases)) {
+            releases = [releases];
+        }
+        const batches = batch(releases, 100);
+        await Promise.all(batches.map(async (releaseBatch) => {
+            const params = releaseBatch.flatMap(release => {
+                return [
+                    release.episodeId,
+                    release.url,
+                    release.title,
+                    release.releaseDate,
+                    release.sourceType,
+                    !!release.locked,
+                    release.tocId
+                ];
+            })
+            const result: OkPacket = await this.query(
+                `
+                INSERT INTO episode_release
+                (episode_id, url, title, releaseDate, source_type, locked, toc_id) 
+                VALUES ${"(?,?,?,?,?,?,?),".repeat(releaseBatch.length).slice(0, -1)}
+                ON DUPLICATE KEY UPDATE 
+                title = VALUES(title),
+                releaseDate = VALUES(releaseDate),
+                source_type = VALUES(source_type),
+                locked = VALUES(locked),
+                toc_id = VALUES(toc_id);
+                `,
+                params
+            );
+            storeModifications("release", "update", result);
+        }));
     }
 
     public async deleteRelease(release: EpisodeRelease): EmptyPromise {
