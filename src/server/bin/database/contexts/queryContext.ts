@@ -1,6 +1,19 @@
 import mySql, {Connection} from "promise-mysql";
-import {Invalidation, MetaResult, Result, Uuid, EmptyPromise, MultiSingleValue, Nullable, UnpackArray, PromiseMultiSingle, Optional, PageInfo} from "../../types";
-import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle} from "../../tools";
+import {
+    Invalidation,
+    MetaResult,
+    Result,
+    Uuid,
+    EmptyPromise,
+    MultiSingleValue,
+    Nullable,
+    UnpackArray,
+    PromiseMultiSingle,
+    Optional,
+    PageInfo,
+    Primitive
+} from "../../types";
+import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch} from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
 import {Query, OkPacket} from "mysql";
@@ -24,6 +37,9 @@ const database = "enterprise";
 
 type ParamCallback<T> = (value: UnpackArray<T>) => any[] | any;
 type UpdateCallback = (updates: string[], values: any[]) => void | EmptyPromise;
+export type SqlPrimitive = Primitive | Date;
+export type QueryValue = SqlPrimitive | SqlPrimitive[];
+export type QueryInValue = SqlPrimitive | Array<SqlPrimitive | SqlPrimitive[]>;
 
 export interface DbTrigger {
     Trigger: string;
@@ -438,41 +454,99 @@ export class QueryContext implements ConnectionContext {
         return this.query(`${query} ${valuesQueries};`, param);
     }
 
-    public async queryInList<T extends MultiSingleValue<any>>(query: string, value: T, afterQuery?: string, paramCallback?: ParamCallback<T>)
-        : Promise<any[]> {
-
+    /**
+     * Expects either a primitive value or a list of primitive values and at most one list of primitive values.
+     * Currently it does a simple String Search for the List Placeholder '??' (instead the normal sql one '?'),
+     * so one needs to take care of not using a '??' string in the sql query itself, use parameter.
+     * 
+     * Example:
+     * queryInList(
+     *     "SELECT * FROM example_table WHERE id = ? AND setting IN ?? ORDER BY date;",
+     *     [1, [1,2,3,4,5,6,7]]
+     * ) // normal query
+     * 
+     * queryInList(
+     *     "SELECT * FROM example_table WHERE id = ? ORDER BY date;",
+     *     [1] // or only 1
+     * ) // normal query
+     * 
+     * queryInList(
+     *     "SELECT * FROM example_table WHERE id = ? AND setting IN ?? ORDER BY date;",
+     *     [1, []]
+     * ) // no nested list values, return an empty list by default
+     * 
+     * queryInList(
+     *     "SELECT * FROM example_table WHERE id = ? AND setting IN ?? ORDER BY date;",
+     *     undefined
+     * ) // no value given returns an empty list by default
+     * 
+     * queryInList(
+     *     "SELECT * FROM example_table WHERE id = ? AND setting IN ?? ORDER BY date;",
+     *     [1, 1,2,3,4,5,6,7]
+     * ) // list placeholder '??' is present but no nested list results in a thrown error
+     * 
+     * queryInList(
+     *     "SELECT * FROM example_table WHERE id = ? AND setting IN ?? AND value IN ?? ORDER BY date;",
+     *     [1, [1,2,3,4,5],[6,7]]
+     * ) // multiple list placeholder '??' are present but currently not allowd and results in a thrown error
+     * 
+     * @param query the sql query string
+     * @param value placeholder values
+     */
+    public async queryInList(query: string, value: QueryInValue): Promise<any[]> {
         if (!value || (Array.isArray(value) && !value.length)) {
             return [];
         }
-        if (Array.isArray(value) && value.length > 100) {
-            return this._batchFunction(
-                value,
-                query,
-                paramCallback,
-                // @ts-expect-error
-                (q, v, p) => this.queryInList(q, v, afterQuery, p)
-            );
-        }
-        const placeholders: string[] = [];
-        const param: any[] = [];
-        multiSingle(value, (item) => {
-            if (paramCallback) {
-                const items = paramCallback(item);
 
-                if (Array.isArray(items)) {
-                    param.push(...items);
-                } else {
-                    param.push(items);
-                }
-            } else {
-                param.push(item);
+        if (!Array.isArray(value)) {
+            value = [value];
+        }
+        const placeHolderValues = value;
+
+        const listPlaceholderIndex = query.indexOf("??");
+
+        if (listPlaceholderIndex !== query.lastIndexOf("??")) {
+            throw Error("Invalid Query: multiple Listplaceholder are currently not allowed");
+        }
+        const params: Array<[string, any[]]> = [];
+        const listParams = placeHolderValues
+            .map((param, index) => Array.isArray(param) ? [param, index] : undefined)
+            .filter(v => v) as Array<[any[], number]>;
+        
+        if (listParams.length > 1) {
+            throw Error("Using multiple ListParams is not supported");
+        }
+        if (listParams.length) {
+            const [listParam, index] = listParams[0];
+
+            if (!listParam.length) {
+                return [];
             }
-            placeholders.push("?");
-        });
-        if (!param.length) {
+            batch(listParam, 100).forEach((param: any[]) => {
+                const values = [
+                    // placeholder values before the listParam
+                    ...placeHolderValues.slice(0, index),
+                    ...param,
+                    // placeholder values after the listParam, is empty if index + 1 is greater than the array
+                    ...placeHolderValues.slice(index + 1)
+                ];
+                const placeholder = "?,".repeat(param.length).slice(0, -1);                
+                params.push([placeholder, values]);
+            });
+        } else {
+            // if no listParam was found, it is used with a primitive value if that index exists
+            const placeholder = listPlaceholderIndex < 0 ? "" : "?";
+            params.push([placeholder, placeHolderValues]);
+        }
+        if (!params.length) {
             throw Error(`no params for '${query}'`);
         }
-        return this.query(`${query} IN (${placeholders.join(",")}) ${afterQuery ? afterQuery : ""};`, param);
+        const result: any[][] = await Promise.all(params.map(param => {
+            const [placeholder, values] = param;
+            const newQuery = query.replace("??", placeholder);
+            return this.query(newQuery, values);
+        }));
+        return result.flat(1);
     }
 
     public queryStream(query: string, parameter?: any | any[]): Query {

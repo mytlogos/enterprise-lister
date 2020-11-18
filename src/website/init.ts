@@ -1,5 +1,4 @@
 import { SimpleMedium, FullMediumToc } from "siteTypes";
-import { renderSlot } from 'vue';
 
 /**
  *

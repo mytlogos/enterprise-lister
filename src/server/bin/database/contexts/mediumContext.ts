@@ -19,7 +19,7 @@ import {
 } from "../../types";
 import {count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
 import {escapeLike} from "../storages/storageTools";
-import {escape, Query, OkPacket} from "mysql";
+import {Query, OkPacket} from "mysql";
 import { storeModifications } from "../sqlTools";
 
 export class MediumContext extends SubContext {
@@ -35,8 +35,10 @@ export class MediumContext extends SubContext {
     }
 
     public async removeToc(tocLink: string): EmptyPromise {
-        const result = await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
-        storeModifications("toc", "delete", result);
+        const result: any[] = await this.query("SELECT medium_id FROM medium_toc WHERE link = ?", tocLink);
+        await Promise.all(result.map(value => {
+            return this.removeMediumToc(value.medium_id, tocLink);
+        }));
     }
 
     /**
@@ -357,8 +359,7 @@ export class MediumContext extends SubContext {
     }
 
     public async getSynonyms(mediumId: number | number[]): Promise<Synonyms[]> {
-        // TODO: 29.06.2019 replace with 'medium_id IN (list)'
-        const synonyms = await this.queryInList("SELECT * FROM medium_synonyms WHERE medium_id ", mediumId);
+        const synonyms = await this.queryInList("SELECT * FROM medium_synonyms WHERE medium_id  IN (??);", [mediumId]);
         if (!synonyms) {
             return [];
         }
@@ -427,8 +428,8 @@ export class MediumContext extends SubContext {
             "SELECT id, medium_id as mediumId, link, " +
             "countryOfOrigin, languageOfOrigin, author, title," +
             "medium, artist, lang, stateOrigin, stateTL, series, universe " +
-            "FROM medium_toc WHERE medium_id ",
-            mediumId
+            "FROM medium_toc WHERE medium_id IN (??);",
+            [mediumId]
         ) as Promise<FullMediumToc[]>;
     }
 
@@ -474,9 +475,9 @@ export class MediumContext extends SubContext {
             "DELETE ue FROM user_episode as ue, episode as e, part as p" +
             " WHERE ue.episode_id = e.id" +
             " AND e.part_id = p.id" +
-            ` AND p.medium_id = ${escape(mediumId)}` +
-            " AND e.id",
-            removeEpisodesAfter
+            " AND p.medium_id = ?" +
+            " AND e.id IN (??);",
+            [mediumId, removeEpisodesAfter]
         );
         multiSingle(deletedProgressResult, value => storeModifications("progress", "delete", value));
 
@@ -484,15 +485,15 @@ export class MediumContext extends SubContext {
             "DELETE re FROM result_episode as re, episode as e, part as p" +
             " WHERE re.episode_id = e.id" +
             " AND e.part_id = p.id" +
-            ` AND p.medium_id = ${escape(mediumId)}` +
-            " AND e.id",
-            removeEpisodesAfter
+            " AND p.medium_id = ?" +
+            " AND e.id IN (??);",
+            [mediumId, removeEpisodesAfter]
         );
         multiSingle(deletedResultResult, value => storeModifications("result_episode", "delete", value));
 
         const deletedEpisodesResult = await this.queryInList(
-            "DELETE FROM episode WHERE episode.id",
-            removeEpisodesAfter
+            "DELETE FROM episode WHERE episode.id IN (??);",
+            [removeEpisodesAfter]
         );
         multiSingle(deletedEpisodesResult, value => storeModifications("episode", "delete", value));
 
@@ -701,10 +702,10 @@ export class MediumContext extends SubContext {
         const copyEpisodesResult = await this.queryInList(
             "INSERT IGNORE INTO episode" +
             " (part_id, totalIndex, partialIndex, combiIndex, updated_at)" +
-            ` SELECT ${escape(standardPartId)}, episode.totalIndex, episode.partialIndex, episode.combiIndex, episode.updated_at` +
+            " SELECT ?, episode.totalIndex, episode.partialIndex, episode.combiIndex, episode.updated_at" +
             " FROM episode INNER JOIN part ON part.id=episode.part_id" +
-            ` WHERE part.medium_id = ${escape(sourceMediumId)} AND episode.id`,
-            copyEpisodes
+            " WHERE part.medium_id = ? AND episode.id IN (??);",
+            [standardPartId, sourceMediumId, copyEpisodes]
         );
         multiSingle(copyEpisodesResult, value => storeModifications("episode", "insert", value));
 
@@ -726,11 +727,11 @@ export class MediumContext extends SubContext {
             " SET user_episode.episode_id = dest_e.id" +
             " WHERE user_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
-            ` AND part.medium_id = ${escape(sourceMediumId)}` +
-            ` AND dest_e.part_id = ${escape(standardPartId)}` +
+            " AND part.medium_id = ?" +
+            " AND dest_e.part_id = ?" +
             " AND src_e.combiIndex = dest_e.combiIndex" +
-            " AND src_e.id",
-            removeEpisodesAfter
+            " AND src_e.id IN (??);",
+            [sourceMediumId, standardPartId, removeEpisodesAfter]
         );
         multiSingle(updatedProgressResult, value => storeModifications("progress", "update", value));
 
@@ -739,39 +740,39 @@ export class MediumContext extends SubContext {
             " SET result_episode.episode_id = dest_e.id" +
             " WHERE result_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
-            ` AND part.medium_id = ${escape(sourceMediumId)}` +
-            ` AND dest_e.part_id = ${escape(standardPartId)}` +
+            " AND part.medium_id = ?" +
+            " AND dest_e.part_id = ?" +
             " AND src_e.combiIndex = dest_e.combiIndex" +
-            " AND src_e.id",
-            removeEpisodesAfter
+            " AND src_e.id IN (??);",
+            [sourceMediumId, standardPartId, removeEpisodesAfter]
         );
         multiSingle(updatedResultResult, value => storeModifications("result_episode", "update", value));
 
         const deletedReleasesResult = await this.queryInList(
             "DELETE FROM episode_release" +
-            " WHERE episode_id",
-            removeEpisodesAfter
+            " WHERE episode_id IN (??);",
+            [removeEpisodesAfter]
         );
         multiSingle(deletedReleasesResult, value => storeModifications("release", "delete", value));
 
         const deletedUserEpisodesResult = await this.queryInList(
             "DELETE FROM user_episode" +
-            " WHERE episode_id",
-            removeEpisodesAfter
+            " WHERE episode_id IN (??);",
+            [removeEpisodesAfter]
         );
         multiSingle(deletedUserEpisodesResult, value => storeModifications("progress", "delete", value));
 
         const deletedResultEpisodesResult = await this.queryInList(
             "DELETE FROM result_episode" +
-            " WHERE episode_id",
-            removeEpisodesAfter
+            " WHERE episode_id IN (??);",
+            [removeEpisodesAfter]
         );
         multiSingle(deletedResultEpisodesResult, value => storeModifications("result_episode", "delete", value));
 
         const deletedEpisodesResult = await this.queryInList(
             "DELETE FROM episode" +
-            " WHERE id",
-            removeEpisodesAfter
+            " WHERE id IN (??);",
+            [removeEpisodesAfter]
         );
         multiSingle(deletedEpisodesResult, value => storeModifications("episode", "delete", value));
 
@@ -783,11 +784,11 @@ export class MediumContext extends SubContext {
             " FROM user_episode, episode as src_e, episode as dest_e, part" +
             " WHERE user_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
-            ` AND part.medium_id = ${escape(sourceMediumId)}` +
-            ` AND dest_e.part_id = ${escape(standardPartId)}` +
+            " AND part.medium_id = ?" +
+            " AND dest_e.part_id = ?" +
             " AND src_e.combiIndex = dest_e.combiIndex" +
-            " AND src_e.id",
-            copiedOnlyEpisodes
+            " AND src_e.id IN (??);",
+            [sourceMediumId, standardPartId,copiedOnlyEpisodes]
         );
         multiSingle(copiedProgressResult, value => storeModifications("progress", "insert", value));
 
@@ -799,11 +800,11 @@ export class MediumContext extends SubContext {
             " FROM result_episode, episode as src_e, episode as dest_e, part" +
             " WHERE result_episode.episode_id = src_e.id" +
             " AND src_e.part_id = part.id" +
-            ` AND part.medium_id = ${escape(sourceMediumId)}` +
-            ` AND dest_e.part_id = ${escape(standardPartId)}` +
+            " AND part.medium_id = ?" +
+            " AND dest_e.part_id = ?" +
             " AND src_e.combiIndex = dest_e.combiIndex" +
-            " AND src_e.id",
-            copiedOnlyEpisodes
+            " AND src_e.id IN (??);",
+            [sourceMediumId, standardPartId,copiedOnlyEpisodes]
         );
         multiSingle(copiedResultResult, value => storeModifications("result_episode", "insert", value));
         return true;

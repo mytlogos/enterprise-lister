@@ -94,6 +94,10 @@ export interface SimpleEpisode extends Indexable {
     releases: EpisodeRelease[];
 }
 
+export type CombinedEpisode = SimpleEpisode & {
+    combiIndex: number;
+}
+
 export interface Episode extends SimpleEpisode {
     progress: number;
     readDate: Nullable<Date>;
@@ -375,6 +379,8 @@ export type PromiseFunction = (...args: any[]) => Promise<any>;
  * All properties left are Functions which return a Promise.
  */
 export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>, PromiseFunction>;
+
+export type Primitive = string | number | boolean;
 
 export interface Invalidation {
     mediumId?: number;

@@ -27,7 +27,8 @@ import {
     SimpleMedium,
     EmptyPromise,
     Optional,
-    NewsResult
+    NewsResult,
+    CombinedEpisode
 } from "./types";
 import logger from "./logger";
 import {ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult} from "./externals/types";
@@ -109,6 +110,7 @@ async function feedHandler(result: NewsResult): EmptyPromise {
 interface MediumTocContent {
     parts: TocPart[];
     episodes: TocEpisode[];
+    url: string;
 }
 
 /**
@@ -187,7 +189,8 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid): Promise<Map<SimpleMedium, 
         const mediumValue = getElseSet(media, medium, () => {
             return {
                 episodes: [],
-                parts: []
+                parts: [],
+                url: toc.link
             };
         });
 
@@ -234,7 +237,7 @@ interface TocPartMapping {
     }>;
 }
 
-async function addPartEpisodes(value: TocPartMapping): EmptyPromise {
+async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<CombinedEpisode[]>, storageReleses: Readonly<EpisodeRelease[]>): EmptyPromise {
     if (!value.part || !value.part.id) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
@@ -242,11 +245,10 @@ async function addPartEpisodes(value: TocPartMapping): EmptyPromise {
         checkTocContent(episode);
         value.episodeMap.set(episode.combiIndex, {tocEpisode: episode});
     });
-    const episodes: SimpleEpisode[] = await episodeStorage.getMediumEpisodePerIndex(
-        value.part.mediumId,
-        [...value.episodeMap.keys()],
-        true
-    );
+
+    const episodes: SimpleEpisode[] = storageEpisodes.filter(episode => {
+        return value.episodeMap.has(episode.combiIndex);
+    });
 
     episodes.forEach((episode) => {
         if (!episode.id) {
@@ -296,16 +298,6 @@ async function addPartEpisodes(value: TocPartMapping): EmptyPromise {
         .map((episode: SimpleEpisode) => episode.id);
 
     if (knownEpisodeIds.length) {
-        const next = value.episodeMap.values().next();
-
-        if (!next.value) {
-            throw Error("no episode values for part " + value.part.id);
-        }
-        const exec = /https?:\/\/([^/]+)/.exec(next.value.tocEpisode.url);
-        if (!exec) {
-            throw Error("invalid url for release: " + next.value.tocEpisode.url);
-        }
-        const episodeReleases = await episodeStorage.getReleasesByHost(knownEpisodeIds, exec[0]);
         const updateReleases: EpisodeRelease[] = [];
 
         const newReleases = nonNewIndices.map((index): Optional<EpisodeRelease> => {
@@ -320,7 +312,7 @@ async function addPartEpisodes(value: TocPartMapping): EmptyPromise {
                 throw Error("known episode has no episode from storage");
             }
             const id = currentEpisode.id;
-            const foundRelease = episodeReleases.find((release) =>
+            const foundRelease = storageReleses.find((release) =>
                 release.url === episodeValue.tocEpisode.url
                 && release.episodeId === id);
 
@@ -334,7 +326,7 @@ async function addPartEpisodes(value: TocPartMapping): EmptyPromise {
             };
             if (foundRelease) {
                 const date = foundRelease.releaseDate < tocRelease.releaseDate 
-                    ? foundRelease.releaseDate 
+                    ? foundRelease.releaseDate
                     : tocRelease.releaseDate;
                 
                 // check in what way the releases differ, there are cases there
@@ -342,7 +334,7 @@ async function addPartEpisodes(value: TocPartMapping): EmptyPromise {
                 // from a non changing relative Time value, thus having a later absolute time
                 // a release should only be update if any value except releaseDate is different
                 // or the releaseDate of the new value is earlier then the previous one
-                if (date !== tocRelease.releaseDate || !equalsRelease(foundRelease, tocRelease)) {
+                if (tocRelease.releaseDate < foundRelease.releaseDate || !equalsRelease(foundRelease, tocRelease)) {
                     // use the earliest release date as value
                     tocRelease.releaseDate = date;
                     updateReleases.push(tocRelease);
@@ -386,10 +378,10 @@ export async function tocHandler(result: TocResult): EmptyPromise {
         .filter((entry) => entry[0].id)
         .map(async (entry) => {
             const mediumId = entry[0].id as number;
+            const tocContent = entry[1];
+            const tocParts = tocContent.parts;
 
-            const tocParts = entry[1].parts;
-
-            if (!tocParts.length && !entry[1].episodes.length) {
+            if (!tocParts.length && !tocContent.episodes.length) {
                 return [];
             }
 
@@ -403,9 +395,9 @@ export async function tocHandler(result: TocResult): EmptyPromise {
                 indexPartsMap.set(value.combiIndex, {tocPart: value, episodeMap: new Map()});
             });
 
-            if (entry[1].episodes.length) {
+            if (tocContent.episodes.length) {
                 indexPartsMap.set(-1, {
-                    tocPart: {title: "", totalIndex: -1, combiIndex: -1, episodes: entry[1].episodes},
+                    tocPart: {title: "", totalIndex: -1, combiIndex: -1, episodes: tocContent.episodes},
                     episodeMap: new Map()
                 });
             }
@@ -451,8 +443,13 @@ export async function tocHandler(result: TocResult): EmptyPromise {
             } catch (e) {
                 logger.error(e);
             }
-
-            return [...indexPartsMap.values()].map((value) => addPartEpisodes(value));
+            const episodes = await episodeStorage.getMediumEpisodes(mediumId);
+            const exec = /https?:\/\/([^/]+)/.exec(tocContent.url);
+            if (!exec) {
+                throw Error("invalid url for release: " + tocContent.url);
+            }
+            const releases: EpisodeRelease[] = await episodeStorage.getMediumReleasesByHost(mediumId, exec[0]);
+            return [...indexPartsMap.values()].map((value) => addPartEpisodes(value, episodes, releases));
             // catch all errors from promises, so it will not affect others
         })
         .map((value) => value.catch((reason) => {

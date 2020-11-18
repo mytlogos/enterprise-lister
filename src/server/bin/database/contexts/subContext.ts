@@ -1,4 +1,4 @@
-import {QueryContext, Condition} from "./queryContext";
+import {QueryContext, Condition, QueryInValue} from "./queryContext";
 import {Query, OkPacket} from "mysql";
 import {ConnectionContext} from "../databaseTypes";
 import { MultiSingleValue, EmptyPromise, UnpackArray } from "../../types";
@@ -50,9 +50,8 @@ export class SubContext implements ConnectionContext {
         return this.parentContext.multiInsert(query, value, paramCallback);
     }
 
-    protected async queryInList<T extends MultiSingleValue<any>>(query: string, value: T, afterQuery?: string, paramCallback?: ParamCallback<T>)
-        : Promise<any[]> {
-        return this.parentContext.queryInList(query, value, afterQuery, paramCallback);
+    protected async queryInList(query: string, value: QueryInValue): Promise<any[]> {
+        return this.parentContext.queryInList(query, value);
     }
 
     protected queryStream(query: string, parameter?: any | any[]): Query {
