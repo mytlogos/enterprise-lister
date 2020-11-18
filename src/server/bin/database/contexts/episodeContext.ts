@@ -939,7 +939,7 @@ export class EpisodeContext extends SubContext {
         let result = await this.queryInList(
             "UPDATE episode SET part_id= ? " +
             "WHERE part_id= ? AND combiIndex IN (??);",
-            [newPartId, changePartIds]
+            [newPartId, oldPartId, changePartIds]
         );
         multiSingle(result, value => storeModifications("release", "update", value));
         if (!replaceIds.length) {
