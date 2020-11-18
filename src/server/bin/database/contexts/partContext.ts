@@ -1,6 +1,5 @@
 import {SubContext} from "./subContext";
 import {Episode, FullPart, MinPart, Part, ShallowPart, SimpleEpisode, Uuid, MultiSingleNumber, Optional, VoidablePromise, SimpleRelease} from "../../types";
-import mySql from "promise-mysql";
 import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
 import {Query} from "mysql";
 import { MysqlServerError } from "../mysqlError";
@@ -37,7 +36,7 @@ export class PartContext extends SubContext {
         }
 
         const episodesIds: MinEpisode[] = await this.queryInList(
-            "SELECT id, part_id as partId FROM episode WHERE part_id",
+            "SELECT id, part_id as partId FROM episode WHERE part_id IN (??)",
             standardPartResult.id,
         );
 
@@ -80,10 +79,8 @@ export class PartContext extends SubContext {
             return part;
         });
         const episodesIds: MinEpisode[] = await this.queryInList(
-            "SELECT id, part_id as partId FROM episode WHERE part_id",
-            parts,
-            undefined,
-            (value) => value.id
+            "SELECT id, part_id as partId FROM episode WHERE part_id IN (??);",
+            [parts.map(v => v.id)]
         );
 
         if (episodesIds.length) {
@@ -118,9 +115,8 @@ export class PartContext extends SubContext {
      */
     public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: MultiSingleNumber): Promise<MinPart[]> {
         const parts: Optional<any[]> = await this.queryInList(
-            "SELECT * FROM part " +
-            `WHERE medium_id = ${mySql.escape(mediumId)} AND combiIndex `,
-            partCombiIndex
+            "SELECT * FROM part WHERE medium_id = ? AND combiIndex IN (??);",
+            [mediumId, partCombiIndex]
         );
         if (!parts || !parts.length) {
             return [];
@@ -148,19 +144,17 @@ export class PartContext extends SubContext {
      * Returns all parts of an medium.
      */
     public async getParts<T extends MultiSingleNumber>(partId: T, uuid: Uuid): Promise<Part[]> {
-        const parts: Optional<any[]> = await this.queryInList("SELECT * FROM part WHERE id", partId);
+        const parts: Optional<any[]> = await this.queryInList("SELECT * FROM part WHERE id IN (??);", [partId]);
         if (!parts || !parts.length) {
             return [];
         }
         const partIdMap = new Map<number, any>();
         const episodesResult: Optional<any[]> = await this.queryInList(
-            "SELECT id FROM episode WHERE part_id ",
-            parts,
-            undefined,
-            (value) => {
+            "SELECT id FROM episode WHERE part_id IN (??);",
+            [parts.map(value => {
                 partIdMap.set(value.id, value);
                 return value.id;
-            }
+            })]
         );
 
         const episodes = episodesResult || [];
@@ -199,8 +193,8 @@ export class PartContext extends SubContext {
             return {};
         }
         const episodesResult: MinEpisode[] = await this.queryInList(
-            "SELECT id, part_id as partId FROM episode WHERE part_id ",
-            partIds
+            "SELECT id, part_id as partId FROM episode WHERE part_id IN (??);",
+            [partIds]
         );
 
         const result = {};
@@ -222,8 +216,8 @@ export class PartContext extends SubContext {
             return {};
         }
         const episodesResult: Array<SimpleRelease & { part_id: number }> = await this.queryInList(
-            "SELECT id as episodeId, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id ",
-            partIds
+            "SELECT id as episodeId, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id IN (??);",
+            [partIds]
         );
 
         const result = {};
@@ -246,10 +240,9 @@ export class PartContext extends SubContext {
         }
         const results = await this.queryInList(
             "SELECT part_id FROM episode WHERE combiIndex IN" +
-            `(SELECT combiIndex FROM episode WHERE part_id = ${mySql.escape(standardId)}) ` +
-            "AND part_id",
-            nonStandardPartIds,
-            "group by part_id"
+            "(SELECT combiIndex FROM episode WHERE part_id = ?) " +
+            "AND part_id IN (??) GROUP BY part_id;",
+            [standardId, nonStandardPartIds]
         );
         if (!results) {
             return [];

@@ -144,8 +144,8 @@ export class EpisodeContext extends SubContext {
             return [];
         }
         const resultArray: Optional<any[]> = await this.queryInList(
-            "SELECT * FROM episode_release WHERE episode_id ",
-            episodeId
+            "SELECT * FROM episode_release WHERE episode_id IN (??)",
+            [episodeId]
         );
         if (!resultArray || !resultArray.length) {
             return [];
@@ -167,8 +167,8 @@ export class EpisodeContext extends SubContext {
             return [];
         }
         const resultArray: Optional<any[]> = await this.queryInList(
-            `SELECT * FROM episode_release WHERE locate(${mySql.escape(host)}, url) = 1 AND episode_id `,
-            episodeId
+            "SELECT * FROM episode_release WHERE locate(?, url) = 1 AND episode_id IN (??);",
+            [host, episodeId]
         );
         if (!resultArray || !resultArray.length) {
             return [];
@@ -214,8 +214,8 @@ export class EpisodeContext extends SubContext {
 
         const result: Optional<Array<{ part_id: number; combinedIndex: number }>> = await this.queryInList(
             "SELECT part_id, combiIndex as combinedIndex " +
-            "FROM episode WHERE part_id ",
-            partId
+            "FROM episode WHERE part_id IN (??)",
+            [partId]
         );
         if (!result) {
             return [];
@@ -534,8 +534,8 @@ export class EpisodeContext extends SubContext {
 
     public getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]> {
         return this.queryInList(
-            "SELECT episode_id as episodeId, url FROM episode_release WHERE episode_id ",
-            episodeIds
+            "SELECT episode_id as episodeId, url FROM episode_release WHERE episode_id IN (??)",
+            [episodeIds]
         ) as Promise<SimpleRelease[]>;
     }
 
@@ -718,8 +718,8 @@ export class EpisodeContext extends SubContext {
     public async getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
         const episodes: Optional<any[]> = await this.queryInList(
             "SELECT * FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
-            `WHERE (user_uuid IS NULL OR user_uuid=${mySql.escape(uuid)}) AND episode.id`,
-            id
+            "WHERE (user_uuid IS NULL OR user_uuid=?) AND episode.id IN (??);",
+            [uuid, id]
         );
         if (!episodes || !episodes.length) {
             return [];
@@ -760,9 +760,8 @@ export class EpisodeContext extends SubContext {
 
     public async getPartEpisodePerIndex(partId: number, index: number | number[]): Promise<SimpleEpisode[]> {
         const episodes: Optional<any[]> = await this.queryInList(
-            "SELECT * FROM episode " +
-            `where part_id =${mySql.escape(partId)} AND combiIndex`,
-            index
+            "SELECT * FROM episode WHERE part_id = ? AND combiIndex IN (??);",
+            [partId, index]
         );
         if (!episodes || !episodes.length) {
             return [];
@@ -833,13 +832,16 @@ export class EpisodeContext extends SubContext {
         });
     }
 
+    public getMediumEpisodePerIndex(mediumId: number, index: number, ignoreRelease?: boolean): Promise<SimpleEpisode>;
+    public getMediumEpisodePerIndex(mediumId: number, index: number[], ignoreRelease?: boolean): Promise<SimpleEpisode[]>;
+
     public async getMediumEpisodePerIndex(mediumId: number, index: number | number[], ignoreRelease = false)
         : Promise<SimpleEpisode | SimpleEpisode[]> {
 
         const episodes: Optional<any[]> = await this.queryInList(
             "SELECT episode.* FROM episode INNER JOIN part ON part.id=episode.part_id " +
-            `WHERE medium_id =${mySql.escape(mediumId)} AND episode.combiIndex`,
-            index
+            "WHERE medium_id = ? AND episode.combiIndex IN (??);",
+            [mediumId, index]
         );
         if (!episodes || !episodes.length) {
             return [];
@@ -935,9 +937,9 @@ export class EpisodeContext extends SubContext {
         const changePartIds: number[] = changePartIdsResult.map((value) => value.id);
 
         let result = await this.queryInList(
-            `UPDATE episode SET part_id=${mySql.escape(newPartId)} ` +
-            `WHERE part_id=${mySql.escape(oldPartId)} AND combiIndex`,
-            changePartIds
+            "UPDATE episode SET part_id= ? " +
+            "WHERE part_id= ? AND combiIndex IN (??);",
+            [newPartId, changePartIds]
         );
         multiSingle(result, value => storeModifications("release", "update", value));
         if (!replaceIds.length) {
@@ -992,18 +994,18 @@ export class EpisodeContext extends SubContext {
         }));
         const oldIds = replaceIds.map((value) => value.oldId);
         // TODO: 26.08.2019 this does not go quite well, throws error with 'cannot delete parent reference'
-        result = await this.queryInList("DELETE FROM episode_release WHERE episode_id ", deleteReleaseIds);
+        result = await this.queryInList("DELETE FROM episode_release WHERE episode_id IN (??);", [deleteReleaseIds]);
         multiSingle(result, value => storeModifications("release", "delete", value));
 
-        result = await this.queryInList("DELETE FROM user_episode WHERE episode_id ", deleteProgressIds);
+        result = await this.queryInList("DELETE FROM user_episode WHERE episode_id IN (??);", [deleteProgressIds]);
         multiSingle(result, value => storeModifications("progress", "delete", value));
 
-        result = await this.queryInList("DELETE FROM result_episode WHERE episode_id ", deleteResultIds);
+        result = await this.queryInList("DELETE FROM result_episode WHERE episode_id IN (??);", [deleteResultIds]);
         multiSingle(result, value => storeModifications("result_episode", "delete", value));
 
         result = await this.queryInList(
-            `DELETE FROM episode WHERE part_id=${mySql.escape(oldPartId)} AND id`,
-            oldIds,
+            "DELETE FROM episode WHERE part_id= ? AND id IN (??);",
+            [oldPartId, oldIds],
         );
         multiSingle(result, value => storeModifications("episode", "delete", value));
         return true;

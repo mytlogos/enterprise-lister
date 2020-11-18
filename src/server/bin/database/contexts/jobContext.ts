@@ -134,15 +134,15 @@ export class JobContext extends SubContext {
 
     public getJobsById(jobIds: number[]): Promise<JobItem[]> {
         return this.queryInList(
-            "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND id ",
-            jobIds
+            "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND id IN (??);",
+            [jobIds]
         ) as Promise<JobItem[]>;
     }
 
     public getJobsByName(names: string[]): Promise<JobItem[]> {
         return this.queryInList(
-            "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND name ",
-            names
+            "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND name IN (??);",
+            [names]
         ) as Promise<JobItem[]>;
     }
 
@@ -204,7 +204,8 @@ export class JobContext extends SubContext {
     }
 
     public async removeJobs(jobs: JobItem | JobItem[], finished?: Date): EmptyPromise {
-        const result = await this.queryInList("DELETE FROM jobs WHERE id", jobs, undefined, (value) => value.id);
+        const params = multiSingle(jobs, (val) => val.id);
+        const result = await this.queryInList("DELETE FROM jobs WHERE id IN (??);", [params]);
         multiSingle(result, value => storeModifications("job", "delete", value));
 
         if (finished) {
@@ -292,7 +293,8 @@ export class JobContext extends SubContext {
                     finished,
                     result,
                     message,
-                    JSON.stringify(context),
+                    // context take too much space, ignore it for now
+                    "",
                     args
                 ]
             );
