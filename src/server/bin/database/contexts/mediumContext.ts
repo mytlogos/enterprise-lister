@@ -35,8 +35,10 @@ export class MediumContext extends SubContext {
     }
 
     public async removeToc(tocLink: string): EmptyPromise {
-        const result = await this.query("DELETE FROM medium_toc WHERE link = ?", tocLink);
-        storeModifications("toc", "delete", result);
+        const result: any[] = await this.query("SELECT medium_id FROM medium_toc WHERE link = ?", tocLink);
+        await Promise.all(result.map(value => {
+            return this.removeMediumToc(value.medium_id, tocLink);
+        }));
     }
 
     /**
