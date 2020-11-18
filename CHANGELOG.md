@@ -1,3 +1,30 @@
+# [1.10.0](https://github.com/mytlogos/enterprise-lister/compare/v1.9.0...v1.10.0) (2020-11-18)
+
+
+### Bug Fixes
+
+* add missing placeholder value ([bc27b2f](https://github.com/mytlogos/enterprise-lister/commit/bc27b2fdd144aa3109279a3abad4364dfc5f0bf4))
+* fix referenced rows not deleted ([a2b9c67](https://github.com/mytlogos/enterprise-lister/commit/a2b9c67b7ba3d0bd76444c4d0b5b15986f270327))
+* **storage:** await pool.end ([ed0e3c7](https://github.com/mytlogos/enterprise-lister/commit/ed0e3c732879fd6b05c7d3b32cf66d82f1f863f1))
+* **storage:** fix query ([4eb01b7](https://github.com/mytlogos/enterprise-lister/commit/4eb01b7b9fcf6c468e523ebaa97850013127fba2))
+* prevent possible pishing from opening external websites ([94812dd](https://github.com/mytlogos/enterprise-lister/commit/94812dd580a9dcc737441ebad01ebd52ddd4f972))
+* **views:** uniform datetime representation ([c851bde](https://github.com/mytlogos/enterprise-lister/commit/c851bde9c2cf2857282cdc79ff53f7c820601419))
+
+
+### Features
+
+* refactor queryInList for better readability and flexibility ([cfaeb14](https://github.com/mytlogos/enterprise-lister/commit/cfaeb147e44dbe8568f42c12b33cf7e192851f51))
+* **jobsview:** add sort order on table ([9c141f5](https://github.com/mytlogos/enterprise-lister/commit/9c141f556136ce38fd162ae5c69b1d1d29a59f69))
+* **jobsview:** display more stats about jobs ([1323e28](https://github.com/mytlogos/enterprise-lister/commit/1323e28e9415a825b092a60632d036e14b392522))
+* **jobsview:** display overall stats ([21e8288](https://github.com/mytlogos/enterprise-lister/commit/21e82885478162ab8751fcb6a342e034eadc8685))
+* **jobsviews:** add JobsDetail view, enhance JobsView ([af16923](https://github.com/mytlogos/enterprise-lister/commit/af1692369ccba735dfb5332af01f710cab0fcd99))
+
+
+### Performance Improvements
+
+* optimize release update ([8952d2d](https://github.com/mytlogos/enterprise-lister/commit/8952d2d18783f63f07ed636f94e7003e74c719de))
+* reduce number of sql queries ([92cd66c](https://github.com/mytlogos/enterprise-lister/commit/92cd66c1f46532c28128f2750508dead59c3cbe9))
+
 # [1.9.0](https://github.com/mytlogos/enterprise-lister/compare/v1.8.0...v1.9.0) (2020-11-14)
 
 
