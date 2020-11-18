@@ -835,6 +835,48 @@ export function getDate(value: string): Nullable<Date> {
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * Return 0 <= i <= array.length such that !pred(array[i - 1]) && pred(array[i]).
+ * From Stackoverflow: https://stackoverflow.com/a/41956372
+ */
+export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number {
+    let lo = -1, hi = array.length;
+    while (1 + lo < hi) {
+        const mi = lo + ((hi - lo) >> 1);
+        if (pred(array[mi])) {
+            hi = mi;
+        } else {
+            lo = mi;
+        }
+    }
+    return hi;
+}
+
+/**
+ * Splits an array into multiple batches with each a length of batchSize.
+ * The last batch may have less than batchSize, but is never empty.
+ * A negative batchSize always yields an array with a single batch with all values.
+ * 
+ * @param array the array to batch
+ * @param batchSize the maximum size of a batch
+ */
+export function batch<T>(array: T[], batchSize: number): T[][] {
+    const batches = [];
+    let currentBatch = [];
+
+    for (const value of array) {
+        if (currentBatch.length >= batchSize) {
+            batches.push(currentBatch);
+            currentBatch = [];
+        }
+        currentBatch.push(value);
+    }
+    if (currentBatch.length) {
+        batches.push(currentBatch);
+    }
+    return batches;
+}
+
 class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTester {
     private offline?: boolean = undefined;
     private since: Date = new Date();

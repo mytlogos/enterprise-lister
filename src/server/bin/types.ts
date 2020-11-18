@@ -94,6 +94,10 @@ export interface SimpleEpisode extends Indexable {
     releases: EpisodeRelease[];
 }
 
+export type CombinedEpisode = SimpleEpisode & {
+    combiIndex: number;
+}
+
 export interface Episode extends SimpleEpisode {
     progress: number;
     readDate: Nullable<Date>;

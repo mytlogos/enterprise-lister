@@ -185,6 +185,30 @@ export class EpisodeContext extends SubContext {
         });
     }
 
+    public async getMediumReleasesByHost(mediumId: number, host: string): Promise<EpisodeRelease[]> {
+        const resultArray: any[] = await this.query(
+            `
+            SELECT er.* FROM episode_release as er
+            INNER JOIN episode as e ON e.id=er.episode_id
+            INNER JOIN part as p ON p.id=e.part_id
+            WHERE medium_id = ? 
+            AND locate(?, url) = 1
+            `,
+            [mediumId, host]
+        );
+        return resultArray.map((value: any): EpisodeRelease => {
+            return {
+                episodeId: value.episode_id,
+                sourceType: value.source_type,
+                releaseDate: value.releaseDate,
+                locked: !!value.locked,
+                url: value.url,
+                title: value.title,
+                tocId: value.toc_id,
+            };
+        });
+    }
+
     public async getPartsEpisodeIndices(partId: number | number[])
         : Promise<Array<{ partId: number; episodes: number[] }>> {
 
@@ -792,8 +816,32 @@ export class EpisodeContext extends SubContext {
         });
     }
 
-    public async getMediumEpisodePerIndex(mediumId: number, index: number, ignoreRelease?: boolean): Promise<SimpleEpisode>;
-    public async getMediumEpisodePerIndex(mediumId: number, index: number[], ignoreRelease?: boolean): Promise<SimpleEpisode[]>;
+
+    public async getMediumEpisodes(mediumId: number): Promise<Array<SimpleEpisode & { combiIndex: number }>> {
+        const episodes: any[] = await this.query(
+            `
+            SELECT episode.*
+            FROM episode
+            INNER JOIN part ON part.id=episode.part_id
+            WHERE medium_id = ?;
+            `,
+            mediumId
+        );
+        if (!episodes || !episodes.length) {
+            return [];
+        }
+        return episodes.map((value) => {
+            checkIndices(value);
+            return {
+                id: value.id,
+                partId: value.part_id,
+                totalIndex: value.totalIndex,
+                partialIndex: value.partialIndex,
+                combiIndex: value.combiIndex || combiIndex(value),
+                releases: []
+            };
+        });
+    }
 
     public async getMediumEpisodePerIndex(mediumId: number, index: number | number[], ignoreRelease = false)
         : Promise<SimpleEpisode | SimpleEpisode[]> {
