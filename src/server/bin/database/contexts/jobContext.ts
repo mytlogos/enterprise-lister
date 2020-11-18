@@ -1,5 +1,21 @@
 import {SubContext} from "./subContext";
-import {JobItem, JobRequest, JobState, JobStats, AllJobStats, EmptyPromise, MultiSingleValue, PromiseMultiSingle, Optional, JobDetails, JobHistoryItem} from "../../types";
+import {
+    JobItem,
+    JobRequest,
+    JobState,
+    JobStats,
+    AllJobStats,
+    EmptyPromise,
+    MultiSingleValue,
+    PromiseMultiSingle,
+    Optional,
+    JobDetails,
+    JobHistoryItem,
+    JobStatFilter,
+    BasicJobStats,
+    TimeBucket,
+    TimeJobStats,
+} from "../../types";
 import {isString, promiseMultiSingle, multiSingle} from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
@@ -9,43 +25,64 @@ import { storeModifications } from "../sqlTools";
 
 export class JobContext extends SubContext {
     public async getJobsStats(): Promise<AllJobStats> {
-        const results = await this.getStats();
+        const results: AllJobStats[] = await this.getStats();
         return results[0];
     }
 
     public getJobsStatsGrouped(): Promise<JobStats[]> {
-        return this.getStats(true);
+        return this.getStats({type: "named"});
     }
 
-    private async getStats<Stat extends AllJobStats>(grouped = false): Promise<Stat[]> {
+    public getJobsStatsTimed(bucket: TimeBucket): Promise<TimeJobStats[]> {
+        return this.getStats({type: "timed", unit: bucket});
+    }
+
+    private async getStats<Stat extends BasicJobStats>(statFilter?: JobStatFilter): Promise<Stat[]> {
+        let filterColumn = "";
+        let minMax = true
+
+        if (statFilter?.type === "named") {
+            filterColumn = "name,";
+        } else if (statFilter?.type === "timed") {
+            minMax = false;
+
+            if (statFilter.unit === "day") {
+                filterColumn = "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60-HOUR(start)*3600, start) as timepoint,";
+            } else if (statFilter.unit === "hour") {
+                filterColumn = "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60, start) as timepoint,";
+            } else if (statFilter.unit === "minute") {
+                filterColumn = "TIMESTAMPADD(second, -SECOND(`start`), start) as timepoint,";
+            }
+        }
         const values = await this.query(`
             SELECT 
-            ${grouped ? "name," : ""} 
+            ${filterColumn}
             AVG(network) as avgnetwork, 
-            MIN(network) as minnetwork, 
-            MAX(network) as maxnetwork, 
+            ${minMax ? "MIN(network) as minnetwork," : ""} 
+            ${minMax ? "MAX(network) as maxnetwork, " : ""} 
             AVG(received) as avgreceived, 
-            MIN(received) as minreceived, 
-            MAX(received) as maxreceived, 
+            ${minMax ? "MIN(received) as minreceived," : ""}  
+            ${minMax ? "MAX(received) as maxreceived, " : ""} 
             AVG(send) as avgsend, 
-            MIN(send) as minsend, 
-            MAX(send) as maxsend, 
+            ${minMax ? "MIN(send) as minsend, " : ""} 
+            ${minMax ? "MAX(send) as maxsend, " : ""} 
             AVG(duration) as avgduration, 
-            MAX(duration) maxD, 
-            MIN(duration) minD,
+            ${minMax ? "MAX(duration) maxD, " : ""} 
+            ${minMax ? "MIN(duration) minD," : ""} 
             Count(*) as count,
             GROUP_CONCAT(\`update\`) as allupdate,
             GROUP_CONCAT(\`create\`) as allcreate,
             GROUP_CONCAT(\`delete\`) as alldelete,
             (SUM(CASE WHEN \`result\` = 'failed' THEN 1 ELSE 0 END) / Count(*)) as failed, 
             (SUM(CASE WHEN \`result\` = 'success' THEN 1 ELSE 0 END) / COUNT(*)) as succeeded,
-            AVG(query) as queries,
-            MAX(query) maxQ, 
-            MIN(CASE WHEN query = 0 THEN NULL ELSE query END) minQ
+            AVG(query) as queries${minMax ? "," : ""}
+            ${minMax ? "MAX(query) maxQ, " : ""} 
+            ${minMax ? "MIN(CASE WHEN query = 0 THEN NULL ELSE query END) minQ" : ""} 
             FROM (
                 SELECT 
                 name, 
-                \`result\`,
+                start,
+                result,
                 JSON_EXTRACT(message, "$.modifications.*.updated") as \`update\`,
                 JSON_EXTRACT(message, "$.modifications.*.deleted") as \`delete\`,
                 JSON_EXTRACT(message, "$.modifications.*.created") as \`create\`,
@@ -56,7 +93,7 @@ export class JobContext extends SubContext {
                 end - start as duration
                 FROM job_history
             ) as job_history
-            ${grouped ? "group by name" : ""}
+            ${statFilter?.type === "named" ? "group by name" : statFilter?.type === "timed" ? "group by timepoint" :""}
             ;`
         );
         // 'all*' Properties are comma separated lists of number arrays
@@ -69,6 +106,10 @@ export class JobContext extends SubContext {
 
             numberArrays = JSON.parse("[" + value.allupdate + "]");
             value.allupdate = numberArrays.flat().reduce((v1_2, v2_2) => v1_2 + v2_2, 0);
+
+            if (statFilter?.type === "timed") {
+                value.timepoint = new Date(value.timepoint);
+            }
         }
         return values;
     }

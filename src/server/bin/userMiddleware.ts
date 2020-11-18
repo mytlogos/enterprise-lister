@@ -845,9 +845,17 @@ export const getJobDetails: Handler = (req, res) => {
         return;
     }
 
-    console.log("querying jobdetails for: " + id);
-
     sendResult(res, jobStorage.getJobDetails(id));
+};
+
+export const getJobStatsTimed: Handler = (req, res) => {
+    const bucket = extractQueryParam(req, "bucket");
+
+    if (!["day", "hour", "minute"].includes(bucket)) {
+        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+        return;
+    }
+    sendResult(res, jobStorage.getJobsStatsTimed(bucket));
 };
 
 export const authenticate: Handler = (req, res, next) => {

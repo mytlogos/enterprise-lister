@@ -3,7 +3,7 @@
  *
  * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc, JobStats, AllJobStats, JobDetails } from "./siteTypes";
+import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc, JobStats, AllJobStats, JobDetails, BasicJobStats, TimeJobStats, TimeBucket } from "./siteTypes";
 
 const Methods = {
     post: "POST",
@@ -40,6 +40,9 @@ const restApi = {
                         get: true,
                     },
                     detail: {
+                        get: true,
+                    },
+                    timed: {
                         get: true,
                     },
                 },
@@ -248,6 +251,7 @@ interface JobPath {
         all: GetPath;
         grouped: GetPath;
         detail: GetPath;
+        timed: GetPath;
     };
 }
 
@@ -579,6 +583,10 @@ export const HttpClient = {
 
     getJobsStatsGrouped(): Promise<JobStats[]> {
         return this.queryServer(api.jobs.stats.grouped.get);
+    },
+
+    getJobsStatsTimed(bucket: TimeBucket): Promise<TimeJobStats[]> {
+        return this.queryServer(api.jobs.stats.timed.get, { bucket });
     },
 
     /**

@@ -11,6 +11,15 @@
             Jobs
           </router-link>
         </li>
+        <li class="nav-item">
+          <router-link
+            :to="{ name: 'job-stats' }"
+            tag="a"
+            class="nav-link"
+          >
+            Job Statistics
+          </router-link>
+        </li>
       </ul>
     </div>
     <router-view />
