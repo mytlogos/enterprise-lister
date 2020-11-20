@@ -1,21 +1,21 @@
 <template>
   <div class="d-flex">
     <div class="navbar navbar-expand-xl navbar-dark align-items-start">
-      <ul class="navbar-nav bg-dark align-items-start">
-        <li class="nav-item">
+      <ul class="navbar-nav bg-dark align-items-start flex-column">
+        <li class="nav-item m-auto">
           <router-link
             :to="{ name: 'jobs' }"
             tag="a"
-            class="nav-link active"
+            class="nav-link"
           >
             Jobs
           </router-link>
         </li>
-        <li class="nav-item">
+        <li class="nav-item m-auto">
           <router-link
             :to="{ name: 'job-stats' }"
             tag="a"
-            class="nav-link"
+            class="nav-link text-nowrap"
           >
             Job Statistics
           </router-link>
