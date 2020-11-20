@@ -102,11 +102,24 @@ export default defineComponent({
             data: {},
             options: {
                 scales: {
-                    yAxes: [{
-                        ticks: {
-                            beginAtZero: true
+                    yAxes: [
+                        {
+                            id: "left-y-axis",
+                            type: "linear",
+                            position: "left",
+                            ticks: {
+                                beginAtZero: true
+                            },
+                        },
+                        {
+                            id: "right-y-axis",
+                            type: "linear",
+                            position: "right",
+                            ticks: {
+                                beginAtZero: true
+                            },
                         }
-                    }]
+                    ]
                 }
             }
         });
@@ -157,7 +170,21 @@ export default defineComponent({
                     label: leftFilter.name,
                     data: yValues,
                     borderWidth: 1,
-                    borderColor: "black"
+                    borderColor: "black",
+                    // This binds the dataset to the right y axis
+                    yAxisID: "left-y-axis"
+                });
+            }
+            if (rightFilter) {
+                const yValues = this.data.map(value => value[rightFilter.key]);
+
+                newDataSet.push({
+                    label: rightFilter.name,
+                    data: yValues,
+                    borderWidth: 1,
+                    borderColor: "blue",
+                    // This binds the dataset to the right y axis
+                    yAxisID: "right-y-axis",
                 });
             }
             this.chart.data.labels = points;
