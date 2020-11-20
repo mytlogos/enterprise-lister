@@ -144,6 +144,12 @@ export default defineComponent({
             if (doNoLeftChange && doNoRightChange) {
                 return;
             }
+            if (!doNoLeftChange && item.right) {
+                item.right = false;
+            }
+            if (!doNoRightChange && item.left) {
+                item.left = false;
+            }
             this.filter.forEach(value => {
                 if (value === item) {
                     return;
