@@ -49,10 +49,15 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import Chart from "chart.js";
-import { formatDate } from "../init";
+import { TimeJobStats } from "../siteTypes";
+
+interface ChartJobDatum extends TimeJobStats {
+    modifications: number;
+    succeeded: number;
+}
 
 interface Data {
-    filter: any[];
+    filter: Array<{name: string; key: keyof ChartJobDatum; left: boolean; right: boolean}>;
     data: any[];
     chart?: Chart;
     dirty: boolean;
@@ -65,20 +70,74 @@ export default defineComponent({
             dirty: false,
             filter: [
                 {
-                    name: "Avg. Duration",
+                    name: "Duration",
                     key: "avgduration",
                     left: true,
                     right: false,
                 },
                 {
-                    name: "Avg. Network",
+                    name: "Network",
                     key: "avgnetwork",
                     left: false,
                     right: false,
                 },
                 {
-                    name: "Avg. Received",
+                    name: "Received",
                     key: "avgreceived",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Send",
+                    key: "avgsend",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Jobscount",
+                    key: "count",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "SQL Queries",
+                    key: "queries",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Data Modification",
+                    key: "modifications",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Data updated",
+                    key: "allupdate",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Data created",
+                    key: "allcreate",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Data deleted",
+                    key: "alldelete",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Failure Rate",
+                    key: "failed",
+                    left: false,
+                    right: false,
+                },
+                {
+                    name: "Success Rate",
+                    key: "succeeded",
                     left: false,
                     right: false,
                 },
@@ -102,6 +161,18 @@ export default defineComponent({
             data: {},
             options: {
                 scales: {
+                    xAxes: [
+                        {
+                            type: "time",
+                            distribution: "series",
+                            time: {
+                                unit: "hour",
+                                displayFormats: {
+                                    hour: "DD.MM HH:mm",
+                                }
+                            }
+                        },
+                    ],
                     yAxes: [
                         {
                             id: "left-y-axis",
@@ -123,7 +194,14 @@ export default defineComponent({
                 }
             }
         });
-        HttpClient.getJobsStatsTimed("hour").then(result => this.data = result);
+        HttpClient.getJobsStatsTimed("hour").then(result => {
+            result.forEach(value => {
+                const datum = value as ChartJobDatum;
+                datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
+                datum.succeeded = 1 - datum.failed;
+            })
+            this.data = result;
+        });
     },
     methods: {
         startUpdate() {
@@ -163,7 +241,7 @@ export default defineComponent({
             return
         }, 
         update() {
-            const points = this.data.map(value => formatDate(new Date(value.timepoint)));
+            const points = this.data.map(value => new Date(value.timepoint));
             const [leftFilter] = this.filter.filter(value => value.left);
             const [rightFilter] = this.filter.filter(value => value.right);
 
