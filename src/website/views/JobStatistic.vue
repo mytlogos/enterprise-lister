@@ -7,6 +7,12 @@
       <canvas ref="chart" />
     </div>
     <div class="flex-fill">
+      <button
+        class="btn btn-dark mt-1"
+        @click.left="loadData"
+      >
+        Refresh
+      </button>
       <div class="row row-cols-3">
         <div class="col" />
         <div class="col-1">
@@ -194,16 +200,19 @@ export default defineComponent({
                 }
             }
         });
-        HttpClient.getJobsStatsTimed("hour").then(result => {
-            result.forEach(value => {
-                const datum = value as ChartJobDatum;
-                datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
-                datum.succeeded = 1 - datum.failed;
-            })
-            this.data = result;
-        });
+        this.loadData();
     },
     methods: {
+        loadData() {
+            HttpClient.getJobsStatsTimed("hour").then(result => {
+                result.forEach(value => {
+                    const datum = value as ChartJobDatum;
+                    datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
+                    datum.succeeded = 1 - datum.failed;
+                })
+                this.data = result;
+            });
+        },
         startUpdate() {
             if (this.dirty) {
                 return;
