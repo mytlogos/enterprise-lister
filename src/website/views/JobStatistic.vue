@@ -13,6 +13,18 @@
       >
         Refresh
       </button>
+      <select
+        v-model="selectedTime"
+        class="custom-select ml-1 mt-1"
+      >
+        <option
+          v-for="item of timeGrouping"
+          :key="item.key"
+          :value="item.key"
+        >
+          {{ item.name }}
+        </option>
+      </select>
       <div class="row row-cols-3">
         <div class="col" />
         <div class="col-1">
@@ -55,7 +67,7 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import Chart from "chart.js";
-import { TimeJobStats } from "../siteTypes";
+import { TimeBucket, TimeJobStats } from "../siteTypes";
 
 interface ChartJobDatum extends TimeJobStats {
     modifications: number;
@@ -67,6 +79,8 @@ interface Data {
     data: any[];
     chart?: Chart;
     dirty: boolean;
+    selectedTime: TimeBucket;
+    timeGrouping: Array<{name: string; key: TimeBucket}>;
 }
 
 export default defineComponent({
@@ -74,6 +88,21 @@ export default defineComponent({
     data(): Data {
         return {
             dirty: false,
+            selectedTime: "hour",
+            timeGrouping: [
+                {
+                    name: "Day",
+                    key: "day",
+                },
+                {
+                    name: "Hour",
+                    key: "hour",
+                },
+                {
+                    name: "Minute",
+                    key: "minute",
+                }
+            ],
             filter: [
                 {
                     name: "Duration",
@@ -160,6 +189,7 @@ export default defineComponent({
         data: {
             handler: "startUpdate",
         },
+        selectedTime: "loadData"
     },
     mounted() {
         this.chart = new Chart(this.$refs.chart, {
@@ -204,7 +234,7 @@ export default defineComponent({
     },
     methods: {
         loadData() {
-            HttpClient.getJobsStatsTimed("hour").then(result => {
+            HttpClient.getJobsStatsTimed(this.selectedTime).then(result => {
                 result.forEach(value => {
                     const datum = value as ChartJobDatum;
                     datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
