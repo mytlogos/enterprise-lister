@@ -121,14 +121,17 @@ import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import Chart from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
+import { round } from "../init";
 
 interface ChartJobDatum extends TimeJobStats {
     modifications: number;
     succeeded: number;
 }
 
+type Unit = "Milliseconds" | "Bytes" | "Count" | "Percent";
+
 interface Data {
-    filter: Array<{ name: string; key: keyof ChartJobDatum; left: boolean; right: boolean }>;
+    filter: Array<{ name: string; key: keyof ChartJobDatum; left: boolean; right: boolean; unit: Unit }>;
     data: any[];
     chart?: Chart;
     dirty: boolean;
@@ -173,10 +176,11 @@ export default defineComponent({
     name: "JobStatistics",
     data(): Data {
         const now = new Date();
+        const dateString = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
         return {
-            fromDate: now.toDateString(),
-            fromTime: "0:00:01",
-            toDate: now.toDateString(),
+            fromDate: dateString,
+            fromTime: "00:00",
+            toDate: dateString,
             toTime: "23:59",
             dirty: false,
             groupByDomain: {
@@ -204,72 +208,84 @@ export default defineComponent({
                     key: "avgduration",
                     left: true,
                     right: false,
+                    unit: "Milliseconds",
                 },
                 {
                     name: "Network",
                     key: "avgnetwork",
                     left: false,
                     right: false,
+                    unit: "Count",
                 },
                 {
                     name: "Received",
                     key: "avgreceived",
                     left: false,
                     right: false,
+                    unit: "Bytes",
                 },
                 {
                     name: "Send",
                     key: "avgsend",
                     left: false,
                     right: false,
+                    unit: "Bytes",
                 },
                 {
                     name: "Jobscount",
                     key: "count",
                     left: false,
                     right: false,
+                    unit: "Count",
                 },
                 {
                     name: "SQL Queries",
                     key: "queries",
                     left: false,
                     right: false,
+                    unit: "Count",
                 },
                 {
                     name: "Data Modification",
                     key: "modifications",
                     left: false,
                     right: false,
+                    unit: "Count",
                 },
                 {
                     name: "Data updated",
                     key: "allupdate",
                     left: false,
                     right: false,
+                    unit: "Count",
                 },
                 {
                     name: "Data created",
                     key: "allcreate",
                     left: false,
                     right: false,
+                    unit: "Count",
                 },
                 {
                     name: "Data deleted",
                     key: "alldelete",
                     left: false,
                     right: false,
+                    unit: "Count",
                 },
                 {
                     name: "Failure Rate",
                     key: "failed",
                     left: false,
                     right: false,
+                    unit: "Percent",
                 },
                 {
                     name: "Success Rate",
                     key: "succeeded",
                     left: false,
                     right: false,
+                    unit: "Percent",
                 },
             ],
             data: [],
@@ -314,19 +330,27 @@ export default defineComponent({
                     ],
                     yAxes: [
                         {
+                            display: false,
                             id: "left-y-axis",
                             type: "linear",
                             position: "left",
                             ticks: {
-                                beginAtZero: true
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: "Unused"
                             },
                         },
                         {
+                            display: false,
                             id: "right-y-axis",
                             type: "linear",
                             position: "right",
                             ticks: {
-                                beginAtZero: true
+                            },
+                            scaleLabel: {
+                                display: true,
+                                labelString: "Unused"
                             },
                         }
                     ]
@@ -342,7 +366,9 @@ export default defineComponent({
                 result.forEach(value => {
                     const datum = value as ChartJobDatum;
                     datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
-                    datum.succeeded = 1 - datum.failed;
+                    // transform from decimal value to percentage with two decimal places
+                    datum.failed = round(datum.failed * 100, 2);
+                    datum.succeeded = 100 - datum.failed;
                 })
                 this.data = result;
             });
@@ -393,7 +419,6 @@ export default defineComponent({
         update() {
             const [from, to] = this.getTimeRange();
             if (!from || !to) {
-                console.log(from, to);
                 return;
             }
             const points = this.data.map(value => new Date(value.timepoint)) as Date[];
@@ -402,11 +427,16 @@ export default defineComponent({
 
             const newDataSet = [];
 
+            // hide axis when unused
+            (this.chart as Chart).options.scales.yAxes[0].display = leftFilter;
+            (this.chart as Chart).options.scales.yAxes[1].display = rightFilter;
+
             if (leftFilter) {
                 const yValues = this.data.map(value => value[leftFilter.key]);
+                (this.chart as Chart).options.scales.yAxes[0].scaleLabel.labelString = leftFilter.name + " - " + leftFilter.unit;
 
                 newDataSet.push({
-                    label: leftFilter.name,
+                    label: "All",
                     data: yValues,
                     backgroundColor: bgColorPalette[newDataSet.length],
                     borderWidth: 1,
@@ -420,9 +450,10 @@ export default defineComponent({
             }
             if (rightFilter) {
                 const yValues = this.data.map(value => value[rightFilter.key]);
+                (this.chart as Chart).options.scales.yAxes[1].scaleLabel.labelString = rightFilter.name + " - " + rightFilter.unit;
 
                 newDataSet.push({
-                    label: rightFilter.name,
+                    label: "All",
                     data: yValues,
                     backgroundColor: bgColorPalette[newDataSet.length],
                     borderWidth: 1,
@@ -433,8 +464,12 @@ export default defineComponent({
                 if (this.groupByDomain.right) {
                     this.groupedData(rightFilter, newDataSet, "right-y-axis");
                 }
+            } else {
+                // hide axis when unused
+                (this.chart as Chart).options.scales.yAxes[1].display = false;
             }
 
+            // remove the points which are not in datetime range
             for (let index = 0; index < points.length; index++) {
                 const point = points[index];
 
@@ -481,7 +516,7 @@ export default defineComponent({
                     yValues.push(element.value);
                 }
                 dataset.push({
-                    label: filter.name + "-" + domain,
+                    label: domain,
                     data: yValues,
                     backgroundColor: bgColorPalette[dataset.length],
                     borderWidth: 1,
