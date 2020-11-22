@@ -1,118 +1,174 @@
 <template>
-  <div class="container-fluid d-flex">
-    <div
-      class="chart-container w-75"
-      style="height: 40vh"
-    >
-      <canvas ref="chart" />
-    </div>
-    <div class="flex-fill">
-      <button
-        class="btn btn-dark mt-1"
-        @click.left="loadData"
-      >
-        Refresh
-      </button>
-      <select
-        v-model="selectedTime"
-        class="custom-select ml-1 mt-1 w-auto"
-      >
-        <option
-          v-for="item of timeGrouping"
+  <div class="container-fluid">
+    <div class="container-fluid d-flex">
+      <div class="chart-container w-75">
+        <canvas ref="chart" />
+      </div>
+      <div class="flex-fill">
+        <button
+          class="btn btn-dark mt-1"
+          @click.left="loadData"
+        >
+          Refresh
+        </button>
+        <select
+          v-model="selectedTime"
+          class="custom-select ml-1 mt-1 w-auto"
+        >
+          <option
+            v-for="item of timeGrouping"
+            :key="item.key"
+            :value="item.key"
+          >
+            {{ item.name }}
+          </option>
+        </select>
+        <div class="mt-1">
+          <span
+            class="mr-1 d-inline-block"
+            style="width: 2.5em"
+          >From:</span>
+          <input
+            v-model="fromDate"
+            type="date"
+            class="mr-1"
+            name="from-date"
+          >
+          <input
+            v-model="fromTime"
+            type="time"
+            name="from-time"
+          >
+        </div>
+        <div class="mt-1">
+          <span
+            class="mr-1 d-inline-block"
+            style="width: 2.5em"
+          >To:</span>
+          <input
+            v-model="toDate"
+            type="date"
+            class="mr-1"
+            name="to-date"
+          >
+          <input
+            v-model="toTime"
+            type="time"
+            name="to-time"
+          >
+        </div>
+        <div class="row row-cols-3">
+          <div class="col" />
+          <div class="col-1">
+            Left
+          </div>
+          <div class="col-1">
+            Right
+          </div>
+        </div>
+        <div
+          v-for="item of filter"
           :key="item.key"
-          :value="item.key"
+          class="row row-cols-3"
         >
-          {{ item.name }}
-        </option>
-      </select>
-      <div class="mt-1">
-        <span
-          class="mr-1 d-inline-block"
-          style="width: 2.5em"
-        >From:</span>
-        <input
-          v-model="fromDate"
-          type="date"
-          class="mr-1"
-          name="from-date"
-        >
-        <input
-          v-model="fromTime"
-          type="time"
-          name="from-time"
-        >
-      </div>
-      <div class="mt-1">
-        <span
-          class="mr-1 d-inline-block"
-          style="width: 2.5em"
-        >To:</span>
-        <input
-          v-model="toDate"
-          type="date"
-          class="mr-1"
-          name="to-date"
-        >
-        <input
-          v-model="toTime"
-          type="time"
-          name="to-time"
-        >
-      </div>
-      <div class="row row-cols-3">
-        <div class="col" />
-        <div class="col-1">
-          Left
+          <div class="col">
+            {{ item.name }}
+          </div>
+          <div class="col-1">
+            <input
+              v-model="item.left"
+              type="checkbox"
+              name="left"
+              @click.left="changeFilter(item, 'left')"
+            >
+          </div>
+          <div class="col-1">
+            <input
+              v-model="item.right"
+              type="checkbox"
+              name="right"
+              @click.left="changeFilter(item, 'right')"
+            >
+          </div>
         </div>
-        <div class="col-1">
-          Right
-        </div>
-      </div>
-      <div
-        v-for="item of filter"
-        :key="item.key"
-        class="row row-cols-3"
-      >
-        <div class="col">
-          {{ item.name }}
-        </div>
-        <div class="col-1">
-          <input
-            v-model="item.left"
-            type="checkbox"
-            name="left"
-            @click.left="changeFilter(item, 'left')"
-          >
-        </div>
-        <div class="col-1">
-          <input
-            v-model="item.right"
-            type="checkbox"
-            name="right"
-            @click.left="changeFilter(item, 'right')"
-          >
-        </div>
-      </div>
-      <div class="row row-cols-3">
-        <div class="col">
-          Group by Domain
-        </div>
-        <div class="col-1">
-          <input
-            v-model="groupByDomain.left"
-            type="checkbox"
-            name="left"
-          >
-        </div>
-        <div class="col-1">
-          <input
-            v-model="groupByDomain.right"
-            type="checkbox"
-            name="right"
-          >
+        <div class="row row-cols-3">
+          <div class="col text-nowrap">
+            Group by Domain
+          </div>
+          <div class="col-1">
+            <input
+              v-model="groupByDomain.left"
+              type="checkbox"
+              name="left"
+            >
+          </div>
+          <div class="col-1">
+            <input
+              v-model="groupByDomain.right"
+              type="checkbox"
+              name="right"
+            >
+          </div>
         </div>
       </div>
     </div>
+    <table class="table table-responsive table-striped">
+      <thead>
+        <tr>
+          <th scope="col">
+            Time
+          </th>
+          <th scope="col">
+            Avg. Duration
+          </th>
+          <th scope="col">
+            Network
+          </th>
+          <th scope="col">
+            Received
+          </th>
+          <th scope="col">
+            Send
+          </th>
+          <th scope="col">
+            Jobscount
+          </th>
+          <th scope="col">
+            SQL Queries
+          </th>
+          <th scope="col">
+            Data updated
+          </th>
+          <th scope="col">
+            Data created
+          </th>
+          <th scope="col">
+            Data deleted
+          </th>
+          <th scope="col">
+            Failure Rate
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          v-for="item of data"
+          :key="item.timepoint"
+        >
+          <td>{{ formatDate(item.timepoint) }}</td>
+          <td>{{ item.avgduration }}</td>
+          <td>{{ item.avgnetwork }}</td>
+          <td>{{ item.avgreceived }}</td>
+          <td>{{ item.avgsend }}</td>
+          <td>{{ item.queries }}</td>
+          <td>{{ item.count }}</td>
+          <td>{{ item.allupdate }}</td>
+          <td>{{ item.allcreate }}</td>
+          <td>{{ item.alldelete }}</td>
+          <td>{{ item.failed + "%" }}</td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 
@@ -121,7 +177,7 @@ import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import Chart from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
-import { round } from "../init";
+import { formatDate, round } from "../init";
 
 interface ChartJobDatum extends TimeJobStats {
     modifications: number;
@@ -132,7 +188,7 @@ type Unit = "Milliseconds" | "Bytes" | "Count" | "Percent";
 
 interface Data {
     filter: Array<{ name: string; key: keyof ChartJobDatum; left: boolean; right: boolean; unit: Unit }>;
-    data: any[];
+    data: ChartJobDatum[];
     chart?: Chart;
     dirty: boolean;
     selectedTime: TimeBucket;
@@ -360,6 +416,9 @@ export default defineComponent({
         this.loadData();
     },
     methods: {
+        formatDate(date: Date): string {
+            return formatDate(date);
+        },
         loadData() {
             const groupByDomain = this.groupByDomain.left || this.groupByDomain.right;
             HttpClient.getJobsStatsTimed(this.selectedTime, groupByDomain).then(result => {
@@ -369,6 +428,15 @@ export default defineComponent({
                     // transform from decimal value to percentage with two decimal places
                     datum.failed = round(datum.failed * 100, 2);
                     datum.succeeded = 100 - datum.failed;
+                    datum.alldelete = round(datum.alldelete, 2);
+                    datum.allcreate = round(datum.allcreate, 2);
+                    datum.allupdate = round(datum.allupdate, 2);
+                    datum.avgnetwork = round(datum.avgnetwork, 2);
+                    datum.avgreceived = round(datum.avgreceived, 2);
+                    datum.avgsend = round(datum.avgsend, 2);
+                    datum.avgduration = round(datum.avgduration, 2);
+                    datum.queries = round(datum.queries, 2);
+                    datum.timepoint = new Date(datum.timepoint);
                 })
                 this.data = result;
             });
@@ -419,7 +487,7 @@ export default defineComponent({
             if (!from || !to) {
                 return;
             }
-            const points = this.data.map(value => new Date(value.timepoint)) as Date[];
+            const points = this.data.map(value => value.timepoint) as Date[];
             const [leftFilter] = this.filter.filter(value => value.left);
             const [rightFilter] = this.filter.filter(value => value.right);
 
