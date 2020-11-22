@@ -103,6 +103,34 @@ interface Data {
     timeGrouping: Array<{ name: string; key: TimeBucket }>;
 }
 
+/**
+ * Slightly modified from: https://stackoverflow.com/a/21648508
+ */
+function hexToRgbA(hex: string, opacity = 1) {
+    if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex) && (opacity < 1 || opacity > 0)) {
+        let c = hex.substring(1).split("");
+        if (c.length == 3) {
+            c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+        }
+        const fullHex = Number("0x" + c.join(""));
+        return `rgba(${[(fullHex >> 16) & 255, (fullHex >> 8) & 255, fullHex & 255].join(",")},${opacity})`;
+    }
+    throw new Error("Bad Hex");
+}
+
+const colorPalette = [
+    "#003f5c",
+    "#2f4b7c",
+    "#665191",
+    "#a05195",
+    "#d45087",
+    "#f95d6a",
+    "#ff7c43",
+    "#ffa600",
+];
+
+const bgColorPalette = colorPalette.map(color => hexToRgbA(color, 0.5));
+
 export default defineComponent({
     name: "JobStatistics",
     data(): Data {
@@ -321,8 +349,9 @@ export default defineComponent({
                 newDataSet.push({
                     label: leftFilter.name,
                     data: yValues,
+                    backgroundColor: bgColorPalette[newDataSet.length],
                     borderWidth: 1,
-                    borderColor: "black",
+                    borderColor: colorPalette[newDataSet.length],
                     // This binds the dataset to the left y axis
                     yAxisID: "left-y-axis"
                 });
@@ -336,8 +365,9 @@ export default defineComponent({
                 newDataSet.push({
                     label: rightFilter.name,
                     data: yValues,
+                    backgroundColor: bgColorPalette[newDataSet.length],
                     borderWidth: 1,
-                    borderColor: "blue",
+                    borderColor: colorPalette[newDataSet.length],
                     // This binds the dataset to the right y axis
                     yAxisID: "right-y-axis",
                 });
@@ -384,7 +414,9 @@ export default defineComponent({
                 dataset.push({
                     label: filter.name + "-" + domain,
                     data: yValues,
+                    backgroundColor: bgColorPalette[dataset.length],
                     borderWidth: 1,
+                    borderColor: colorPalette[dataset.length],
                     yAxisID,
                 });
             }
