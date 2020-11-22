@@ -25,6 +25,40 @@
           {{ item.name }}
         </option>
       </select>
+      <div class="mt-1">
+        <span
+          class="mr-1 d-inline-block"
+          style="width: 2.5em"
+        >From:</span>
+        <input
+          v-model="fromDate"
+          type="date"
+          class="mr-1"
+          name="from-date"
+        >
+        <input
+          v-model="fromTime"
+          type="time"
+          name="from-time"
+        >
+      </div>
+      <div class="mt-1">
+        <span
+          class="mr-1 d-inline-block"
+          style="width: 2.5em"
+        >To:</span>
+        <input
+          v-model="toDate"
+          type="date"
+          class="mr-1"
+          name="to-date"
+        >
+        <input
+          v-model="toTime"
+          type="time"
+          name="to-time"
+        >
+      </div>
       <div class="row row-cols-3">
         <div class="col" />
         <div class="col-1">
@@ -101,6 +135,10 @@ interface Data {
     selectedTime: TimeBucket;
     groupByDomain: { left: boolean; right: boolean };
     timeGrouping: Array<{ name: string; key: TimeBucket }>;
+    fromDate: string;
+    fromTime: string;
+    toDate: string;
+    toTime: string;
 }
 
 /**
@@ -134,7 +172,12 @@ const bgColorPalette = colorPalette.map(color => hexToRgbA(color, 0.5));
 export default defineComponent({
     name: "JobStatistics",
     data(): Data {
+        const now = new Date();
         return {
+            fromDate: now.toDateString(),
+            fromTime: "0:00:01",
+            toDate: now.toDateString(),
+            toTime: "23:59",
             dirty: false,
             groupByDomain: {
                 left: false,
@@ -245,7 +288,11 @@ export default defineComponent({
         data: {
             handler: "startUpdate",
         },
-        selectedTime: "loadData"
+        selectedTime: "loadData",
+        fromDate: "update",
+        fromTime: "update",
+        toDate: "update",
+        toTime: "update",
     },
     mounted() {
         this.chart = new Chart(this.$refs.chart, {
@@ -336,8 +383,20 @@ export default defineComponent({
             });
             return
         },
+        getTimeRange(): [null | Date, null | Date] {
+            console.log(this.fromDate + " " + this.fromTime);
+            const from = new Date(this.fromDate + " " + this.fromTime);
+            console.log(from);
+            const to = new Date(this.toDate + " " + this.toTime);
+            return [Number.isNaN(from.getTime()) ? null : from, Number.isNaN(to.getTime()) ? null : to];
+        },
         update() {
-            const points = this.data.map(value => new Date(value.timepoint));
+            const [from, to] = this.getTimeRange();
+            if (!from || !to) {
+                console.log(from, to);
+                return;
+            }
+            const points = this.data.map(value => new Date(value.timepoint)) as Date[];
             const [leftFilter] = this.filter.filter(value => value.left);
             const [rightFilter] = this.filter.filter(value => value.right);
 
@@ -373,6 +432,16 @@ export default defineComponent({
                 });
                 if (this.groupByDomain.right) {
                     this.groupedData(rightFilter, newDataSet, "right-y-axis");
+                }
+            }
+
+            for (let index = 0; index < points.length; index++) {
+                const point = points[index];
+
+                if (point < from || point > to) {
+                    points.splice(index, 1);
+                    newDataSet.forEach(value => value.data.splice(index, 1));
+                    index--;
                 }
             }
             this.chart.data.labels = points;
