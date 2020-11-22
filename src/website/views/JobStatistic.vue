@@ -410,9 +410,7 @@ export default defineComponent({
             return
         },
         getTimeRange(): [null | Date, null | Date] {
-            console.log(this.fromDate + " " + this.fromTime);
             const from = new Date(this.fromDate + " " + this.fromTime);
-            console.log(from);
             const to = new Date(this.toDate + " " + this.toTime);
             return [Number.isNaN(from.getTime()) ? null : from, Number.isNaN(to.getTime()) ? null : to];
         },
