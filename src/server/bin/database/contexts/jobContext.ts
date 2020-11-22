@@ -203,6 +203,10 @@ export class JobContext extends SubContext {
 
             for (const value of dateMapping.values()) {
                 for (const key of keys) {
+                    // count is a sum, not average value
+                    if (key === "count") {
+                        continue
+                    }
                     // @ts-expect-error
                     value.value[key] /= value.count;
                 }
@@ -210,6 +214,10 @@ export class JobContext extends SubContext {
 
                 for (const [domain, domainValue] of Object.entries(value.domain)) {
                     for (const key of keys) {
+                        // count is a sum, not average value
+                        if (key === "count") {
+                            continue
+                        }
                         // @ts-expect-error
                         domainValue.value[key] /= domainValue.count;
                     }
