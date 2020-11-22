@@ -1,4 +1,4 @@
-import {SubContext} from "./subContext";
+import { SubContext } from "./subContext";
 import {
     JobItem,
     JobRequest,
@@ -15,13 +15,28 @@ import {
     BasicJobStats,
     TimeBucket,
     TimeJobStats,
+    PropertyNames,
 } from "../../types";
-import {isString, promiseMultiSingle, multiSingle} from "../../tools";
+import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
-import {escapeLike} from "../storages/storageTools";
+import { escapeLike } from "../storages/storageTools";
 import { getStore } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
+
+interface CountValue<T> {
+    count: number;
+    value: T;
+}
+
+type MergeableKey<T> = PropertyNames<T, number>;
+
+function merge<T>(mergeInto: T, merger: T, keys: Array<MergeableKey<T>>) {
+    for (const key of keys) {
+        // @ts-expect-error
+        mergeInto[key] = mergeInto[key] + merger[key];
+    }
+}
 
 export class JobContext extends SubContext {
     public async getJobsStats(): Promise<AllJobStats> {
@@ -30,28 +45,36 @@ export class JobContext extends SubContext {
     }
 
     public getJobsStatsGrouped(): Promise<JobStats[]> {
-        return this.getStats({type: "named"});
+        return this.getStats({ type: "named" });
     }
 
-    public getJobsStatsTimed(bucket: TimeBucket): Promise<TimeJobStats[]> {
-        return this.getStats({type: "timed", unit: bucket});
+    public getJobsStatsTimed(bucket: TimeBucket, groupByDomain: boolean): Promise<TimeJobStats[]> {
+        return this.getStats({ type: "timed", unit: bucket, groupByDomain });
     }
 
     private async getStats<Stat extends BasicJobStats>(statFilter?: JobStatFilter): Promise<Stat[]> {
         let filterColumn = "";
+        let groupBy = "";
         let minMax = true
 
         if (statFilter?.type === "named") {
             filterColumn = "name,";
+            groupBy = "group by name";
         } else if (statFilter?.type === "timed") {
             minMax = false;
+            groupBy = "group by timepoint";
+
+            if (statFilter.groupByDomain) {
+                groupBy += ", name";
+                filterColumn += "name,";
+            }
 
             if (statFilter.unit === "day") {
-                filterColumn = "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60-HOUR(start)*3600, start) as timepoint,";
+                filterColumn += "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60-HOUR(start)*3600, start) as timepoint,";
             } else if (statFilter.unit === "hour") {
-                filterColumn = "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60, start) as timepoint,";
+                filterColumn += "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60, start) as timepoint,";
             } else if (statFilter.unit === "minute") {
-                filterColumn = "TIMESTAMPADD(second, -SECOND(`start`), start) as timepoint,";
+                filterColumn += "TIMESTAMPADD(second, -SECOND(`start`), start) as timepoint,";
             }
         }
         const values = await this.query(`
@@ -93,7 +116,7 @@ export class JobContext extends SubContext {
                 end - start as duration
                 FROM job_history
             ) as job_history
-            ${statFilter?.type === "named" ? "group by name" : statFilter?.type === "timed" ? "group by timepoint" :""}
+            ${groupBy}
             ;`
         );
         // 'all*' Properties are comma separated lists of number arrays
@@ -111,6 +134,91 @@ export class JobContext extends SubContext {
                 value.timepoint = new Date(value.timepoint);
             }
         }
+        if (statFilter?.type === "timed" && statFilter.groupByDomain) {
+            const dateMapping = new Map<number, CountValue<TimeJobStats> & { domain: Record<string, CountValue<TimeJobStats>> }>();
+            const tocJob = /^toc-\d+-https?:\/\/(www\.)?([^.]+).+$/;
+            const searchTocJob = /^(.+)-searchForToc-\d+$/;
+            const newsJob = /^(.+)-newsadapter$/;
+            const keys: Array<MergeableKey<TimeJobStats>> = [
+                "allcreate", "alldelete", "allupdate", "avgduration", "avgnetwork", "avgreceived",
+                "avgsend", "count", "failed", "queries", "succeeded"
+            ];
+
+            for (const value of (values as Array<JobStats & TimeJobStats>)) {
+                let match = tocJob.exec(value.name);
+
+                let group = dateMapping.get(value.timepoint.getTime());
+
+                if (!group) {
+                    const copy = { ...value };
+                    delete copy.name;
+
+                    group = {
+                        count: 1,
+                        value: copy,
+                        domain: {},
+                    };
+                    dateMapping.set(value.timepoint.getTime(), group);
+
+                } else {
+                    group.count++;
+                    merge(group.value, value, keys);
+                }
+                let domain = ""
+
+                if (match) {
+                    domain = match[2];
+                } else {
+                    match = searchTocJob.exec(value.name);
+
+                    if (match) {
+                        domain = match[1];
+                    } else {
+                        match = newsJob.exec(value.name);
+
+                        if (match) {
+                            domain = match[1];
+                        }
+                    }
+                }
+                if (domain) {
+                    const domainValue = group.domain[domain];
+                    if (!domainValue) {
+                        const copy = { ...value };
+                        delete copy.name;
+                        delete copy.timepoint;
+
+                        group.domain[domain] = {
+                            count: 1,
+                            value: copy,
+                        };
+                    } else {
+                        domainValue.count++;
+                        merge(domainValue.value, value, keys);
+                    }
+                }
+            }
+            // empty the array
+            values.length = 0;
+
+            for (const value of dateMapping.values()) {
+                for (const key of keys) {
+                    // @ts-expect-error
+                    value.value[key] /= value.count;
+                }
+                value.value.domain = {};
+
+                for (const [domain, domainValue] of Object.entries(value.domain)) {
+                    for (const key of keys) {
+                        // @ts-expect-error
+                        domainValue.value[key] /= domainValue.count;
+                    }
+                    value.value.domain[domain] = domainValue.value;
+                }
+
+                values.push(value.value);
+            }
+        }
         return values;
     }
 
@@ -121,7 +229,7 @@ export class JobContext extends SubContext {
             `,
             id
         );
-        const historyPromise: Promise<JobHistoryItem[]>  = this.query(
+        const historyPromise: Promise<JobHistoryItem[]> = this.query(
             `
             SELECT * FROM job_history
             WHERE name = (SELECT name FROM job_history WHERE id = ? LIMIT 1)

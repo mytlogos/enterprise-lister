@@ -585,8 +585,8 @@ export const HttpClient = {
         return this.queryServer(api.jobs.stats.grouped.get);
     },
 
-    getJobsStatsTimed(bucket: TimeBucket): Promise<TimeJobStats[]> {
-        return this.queryServer(api.jobs.stats.timed.get, { bucket });
+    getJobsStatsTimed(bucket: TimeBucket, groupByDomain: boolean): Promise<TimeJobStats[]> {
+        return this.queryServer(api.jobs.stats.timed.get, { bucket, groupByDomain });
     },
 
     /**

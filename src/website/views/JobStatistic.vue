@@ -2,7 +2,7 @@
   <div class="container-fluid d-flex">
     <div
       class="chart-container w-75"
-      style="height: 40vh;"
+      style="height: 40vh"
     >
       <canvas ref="chart" />
     </div>
@@ -15,7 +15,7 @@
       </button>
       <select
         v-model="selectedTime"
-        class="custom-select ml-1 mt-1"
+        class="custom-select ml-1 mt-1 w-auto"
       >
         <option
           v-for="item of timeGrouping"
@@ -59,6 +59,25 @@
           >
         </div>
       </div>
+      <div class="row row-cols-3">
+        <div class="col">
+          Group by Domain
+        </div>
+        <div class="col-1">
+          <input
+            v-model="groupByDomain.left"
+            type="checkbox"
+            name="left"
+          >
+        </div>
+        <div class="col-1">
+          <input
+            v-model="groupByDomain.right"
+            type="checkbox"
+            name="right"
+          >
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -75,12 +94,13 @@ interface ChartJobDatum extends TimeJobStats {
 }
 
 interface Data {
-    filter: Array<{name: string; key: keyof ChartJobDatum; left: boolean; right: boolean}>;
+    filter: Array<{ name: string; key: keyof ChartJobDatum; left: boolean; right: boolean }>;
     data: any[];
     chart?: Chart;
     dirty: boolean;
     selectedTime: TimeBucket;
-    timeGrouping: Array<{name: string; key: TimeBucket}>;
+    groupByDomain: { left: boolean; right: boolean };
+    timeGrouping: Array<{ name: string; key: TimeBucket }>;
 }
 
 export default defineComponent({
@@ -88,6 +108,10 @@ export default defineComponent({
     data(): Data {
         return {
             dirty: false,
+            groupByDomain: {
+                left: false,
+                right: false,
+            },
             selectedTime: "hour",
             timeGrouping: [
                 {
@@ -186,6 +210,10 @@ export default defineComponent({
             deep: true,
             handler: "startUpdate",
         },
+        groupByDomain: {
+            deep: true,
+            handler: "loadData",
+        },
         data: {
             handler: "startUpdate",
         },
@@ -234,7 +262,8 @@ export default defineComponent({
     },
     methods: {
         loadData() {
-            HttpClient.getJobsStatsTimed(this.selectedTime).then(result => {
+            const groupByDomain = this.groupByDomain.left || this.groupByDomain.right;
+            HttpClient.getJobsStatsTimed(this.selectedTime, groupByDomain).then(result => {
                 result.forEach(value => {
                     const datum = value as ChartJobDatum;
                     datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
@@ -278,7 +307,7 @@ export default defineComponent({
                 }
             });
             return
-        }, 
+        },
         update() {
             const points = this.data.map(value => new Date(value.timepoint));
             const [leftFilter] = this.filter.filter(value => value.left);
@@ -294,9 +323,12 @@ export default defineComponent({
                     data: yValues,
                     borderWidth: 1,
                     borderColor: "black",
-                    // This binds the dataset to the right y axis
+                    // This binds the dataset to the left y axis
                     yAxisID: "left-y-axis"
                 });
+                if (this.groupByDomain.left) {
+                    this.groupedData(leftFilter, newDataSet, "left-y-axis");
+                }
             }
             if (rightFilter) {
                 const yValues = this.data.map(value => value[rightFilter.key]);
@@ -309,6 +341,9 @@ export default defineComponent({
                     // This binds the dataset to the right y axis
                     yAxisID: "right-y-axis",
                 });
+                if (this.groupByDomain.right) {
+                    this.groupedData(rightFilter, newDataSet, "right-y-axis");
+                }
             }
             this.chart.data.labels = points;
             this.chart.data.datasets = newDataSet;
@@ -316,7 +351,44 @@ export default defineComponent({
 
             // no longer dirty as it is "tidied up" now
             this.dirty = false;
-        }
+        },
+        groupedData(filter: { key: string; name: string }, dataset: any[], yAxisID: string) {
+            const domainData = new Map<string, Array<{ index: number; value: number }>>();
+            this.data.forEach((value, index) => {
+                if (value.domain) {
+                    for (const [domain, domainValue] of Object.entries(value.domain)) {
+                        let yValues = domainData.get(domain);
+
+                        if (!yValues) {
+                            yValues = [];
+                            domainData.set(domain, yValues);
+                        }
+                        yValues.push({ index, value: domainValue[filter.key] });
+                    }
+                }
+            });
+            for (const [domain, values] of domainData.entries()) {
+                const yValues = [];
+
+                for (let i = 0; i < values.length; i++) {
+                    const element = values[i];
+                    // calculate the number of missing values for this data point
+                    const missingValues = element.index - yValues.length;
+
+                    // fill the missing values with zero
+                    for (let j = 0; j < missingValues; j++) {
+                        yValues.push(0);
+                    }
+                    yValues.push(element.value);
+                }
+                dataset.push({
+                    label: filter.name + "-" + domain,
+                    data: yValues,
+                    borderWidth: 1,
+                    yAxisID,
+                });
+            }
+        },
     },
 });
 </script>

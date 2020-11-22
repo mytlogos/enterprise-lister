@@ -850,12 +850,13 @@ export const getJobDetails: Handler = (req, res) => {
 
 export const getJobStatsTimed: Handler = (req, res) => {
     const bucket = extractQueryParam(req, "bucket");
+    const groupByDomain = (extractQueryParam(req, "groupByDomain") || "").toLowerCase() === "true";
 
     if (!["day", "hour", "minute"].includes(bucket)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, jobStorage.getJobsStatsTimed(bucket));
+    sendResult(res, jobStorage.getJobsStatsTimed(bucket, groupByDomain));
 };
 
 export const authenticate: Handler = (req, res, next) => {

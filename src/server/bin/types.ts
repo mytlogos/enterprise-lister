@@ -473,6 +473,7 @@ export interface BasicJobStats {
 
 export interface TimeJobStats extends BasicJobStats {
     timepoint: Date;
+    domain?: Record<string, BasicJobStats>;
 }
 
 export interface AllJobStats extends BasicJobStats {
@@ -515,6 +516,7 @@ export type TimeBucket = "day" | "hour" | "minute";
 export interface TimeJobStatFilter {
     type: "timed";
     unit: TimeBucket;
+    groupByDomain: boolean;
 }
 
 export enum MilliTime {
