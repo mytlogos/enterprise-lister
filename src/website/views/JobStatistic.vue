@@ -113,6 +113,9 @@
       </div>
     </div>
     <table class="table table-responsive table-striped">
+      <caption class="sr-only">
+        Table of all Data for the Chart
+      </caption>
       <thead>
         <tr>
           <th scope="col">
