@@ -1,11 +1,28 @@
+import { 
+    ExternalUser,
+    List,
+    Medium,
+    News,
+    User,
+    DisplayReleasesResponse,
+    SimpleMedium,
+    MediumRelease,
+    Job,
+    Toc,
+    AddMedium,
+    SecondaryMedium,
+    FullMediumToc,
+    JobStats,
+    AllJobStats,
+    JobDetails,
+    TimeJobStats,
+    TimeBucket 
+} from "./siteTypes";
+
 /**
  * Allowed Methods for the API.
- *
- * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc, JobStats, AllJobStats, JobDetails, BasicJobStats, TimeJobStats, TimeBucket } from "./siteTypes";
-
-const Methods = {
+const Methods: { post: string; get: string; put: string; delete: string } = {
     post: "POST",
     get: "GET",
     put: "PUT",
