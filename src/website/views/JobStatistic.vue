@@ -178,6 +178,7 @@ import { defineComponent } from "vue";
 import Chart from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
 import { formatDate, round } from "../init";
+import * as storage from "../storage";
 
 interface ChartJobDatum extends TimeJobStats {
     modifications: number;
@@ -186,8 +187,16 @@ interface ChartJobDatum extends TimeJobStats {
 
 type Unit = "Milliseconds" | "Bytes" | "Count" | "Percent";
 
+interface Filter {
+    name: string;
+    key: keyof ChartJobDatum;
+    left: boolean;
+    right: boolean;
+    unit: Unit;
+}
+
 interface Data {
-    filter: Array<{ name: string; key: keyof ChartJobDatum; left: boolean; right: boolean; unit: Unit }>;
+    filter: Filter[];
     data: ChartJobDatum[];
     chart?: Chart;
     dirty: boolean;
@@ -227,23 +236,121 @@ const colorPalette = [
 ];
 
 const bgColorPalette = colorPalette.map(color => hexToRgbA(color, 0.5));
+const storageKey = "jobstatistic-config";
+type Config = Omit<Data, "data" | "dirty" | "timeGrouping" | "chart">;
 
 export default defineComponent({
     name: "JobStatistics",
     data(): Data {
         const now = new Date();
         const dateString = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-        return {
-            fromDate: dateString,
-            fromTime: "00:00",
-            toDate: dateString,
-            toTime: "23:59",
-            dirty: false,
-            groupByDomain: {
+        const config = storage.get(storageKey) as Config | undefined;
+        const filter: Filter[] = [
+            {
+                name: "Duration",
+                key: "avgduration",
+                left: true,
+                right: false,
+                unit: "Milliseconds",
+            },
+            {
+                name: "Network",
+                key: "avgnetwork",
                 left: false,
                 right: false,
+                unit: "Count",
             },
-            selectedTime: "hour",
+            {
+                name: "Received",
+                key: "avgreceived",
+                left: false,
+                right: false,
+                unit: "Bytes",
+            },
+            {
+                name: "Send",
+                key: "avgsend",
+                left: false,
+                right: false,
+                unit: "Bytes",
+            },
+            {
+                name: "Jobscount",
+                key: "count",
+                left: false,
+                right: false,
+                unit: "Count",
+            },
+            {
+                name: "SQL Queries",
+                key: "queries",
+                left: false,
+                right: false,
+                unit: "Count",
+            },
+            {
+                name: "Data Modification",
+                key: "modifications",
+                left: false,
+                right: false,
+                unit: "Count",
+            },
+            {
+                name: "Data updated",
+                key: "allupdate",
+                left: false,
+                right: false,
+                unit: "Count",
+            },
+            {
+                name: "Data created",
+                key: "allcreate",
+                left: false,
+                right: false,
+                unit: "Count",
+            },
+            {
+                name: "Data deleted",
+                key: "alldelete",
+                left: false,
+                right: false,
+                unit: "Count",
+            },
+            {
+                name: "Failure Rate",
+                key: "failed",
+                left: false,
+                right: false,
+                unit: "Percent",
+            },
+            {
+                name: "Success Rate",
+                key: "succeeded",
+                left: false,
+                right: false,
+                unit: "Percent",
+            },
+        ];
+        if (config) {
+            filter.forEach(value => {
+                const found = config.filter.find(configValue => configValue.key === value.key);
+                if (found) {
+                    value.left = found.left;
+                    value.right = found.right;
+                }
+            });
+        }
+        return {
+            fromDate: config?.fromDate || dateString,
+            fromTime: config?.fromTime || "00:00",
+            toDate: config?.toDate || dateString,
+            toTime: config?.toTime || "23:59",
+            dirty: false,
+            groupByDomain: {
+                left: config?.groupByDomain?.left || false,
+                right: config?.groupByDomain?.right || false,
+            },
+            selectedTime: config?.selectedTime || "hour",
             timeGrouping: [
                 {
                     name: "Day",
@@ -258,92 +365,7 @@ export default defineComponent({
                     key: "minute",
                 }
             ],
-            filter: [
-                {
-                    name: "Duration",
-                    key: "avgduration",
-                    left: true,
-                    right: false,
-                    unit: "Milliseconds",
-                },
-                {
-                    name: "Network",
-                    key: "avgnetwork",
-                    left: false,
-                    right: false,
-                    unit: "Count",
-                },
-                {
-                    name: "Received",
-                    key: "avgreceived",
-                    left: false,
-                    right: false,
-                    unit: "Bytes",
-                },
-                {
-                    name: "Send",
-                    key: "avgsend",
-                    left: false,
-                    right: false,
-                    unit: "Bytes",
-                },
-                {
-                    name: "Jobscount",
-                    key: "count",
-                    left: false,
-                    right: false,
-                    unit: "Count",
-                },
-                {
-                    name: "SQL Queries",
-                    key: "queries",
-                    left: false,
-                    right: false,
-                    unit: "Count",
-                },
-                {
-                    name: "Data Modification",
-                    key: "modifications",
-                    left: false,
-                    right: false,
-                    unit: "Count",
-                },
-                {
-                    name: "Data updated",
-                    key: "allupdate",
-                    left: false,
-                    right: false,
-                    unit: "Count",
-                },
-                {
-                    name: "Data created",
-                    key: "allcreate",
-                    left: false,
-                    right: false,
-                    unit: "Count",
-                },
-                {
-                    name: "Data deleted",
-                    key: "alldelete",
-                    left: false,
-                    right: false,
-                    unit: "Count",
-                },
-                {
-                    name: "Failure Rate",
-                    key: "failed",
-                    left: false,
-                    right: false,
-                    unit: "Percent",
-                },
-                {
-                    name: "Success Rate",
-                    key: "succeeded",
-                    left: false,
-                    right: false,
-                    unit: "Percent",
-                },
-            ],
+            filter,
             data: [],
             chart: undefined,
         };
@@ -351,20 +373,41 @@ export default defineComponent({
     watch: {
         filter: {
             deep: true,
-            handler: "startUpdate",
+            handler() {
+                this.saveConfig();
+                this.startUpdate();
+            },
         },
         groupByDomain: {
             deep: true,
-            handler: "loadData",
+            handler() {
+                this.saveConfig();
+                this.loadData();
+            },
         },
         data: {
             handler: "startUpdate",
         },
-        selectedTime: "loadData",
-        fromDate: "update",
-        fromTime: "update",
-        toDate: "update",
-        toTime: "update",
+        selectedTime() {
+            this.saveConfig();
+            this.loadData();
+        },
+        fromDate() {
+            this.saveConfig();
+            this.update();
+        },
+        fromTime() {
+            this.saveConfig();
+            this.update();
+        },
+        toDate() {
+            this.saveConfig();
+            this.update();
+        },
+        toTime() {
+            this.saveConfig();
+            this.update();
+        },
     },
     mounted() {
         this.chart = new Chart(this.$refs.chart, {
@@ -416,6 +459,18 @@ export default defineComponent({
         this.loadData();
     },
     methods: {
+        saveConfig() {
+            const config: Config = {
+                filter: this.filter,
+                selectedTime: this.selectedTime,
+                groupByDomain: this.groupByDomain,
+                fromDate: this.fromDate,
+                fromTime: this.fromTime,
+                toDate: this.toDate,
+                toTime: this.toTime,
+            };
+            storage.set(storageKey, config);
+        },
         formatDate(date: Date): string {
             return formatDate(date);
         },
