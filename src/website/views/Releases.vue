@@ -6,6 +6,12 @@
     <div class="p-1">
       <button
         class="btn btn-dark"
+        @click.left="fetchReleases(true)"
+      >
+        Refresh
+      </button>
+      <button
+        class="btn btn-dark ml-1"
         @click.left="fetchReleases"
       >
         Fetch new Releases
@@ -190,14 +196,16 @@ export default defineComponent({
             return timeDifference(this.currentDate, date);
         },
 
-        async fetchReleases() {
+        async fetchReleases(replace = false) {
             // do not fetch if already fetching or this component is already unmounted
             if (this.fetching || this.unmounted) {
                 return;
             }
+            replace = replace || this.replace;
             this.fetching = true;
             let until: Date | undefined;
-            if (this.releases.length && !this.replace) {
+
+            if (this.releases.length && !replace) {
                 until = this.computedReleases[0].date;
             } else {
                 // this is more of a hotfix to speedup the queries
@@ -220,7 +228,7 @@ export default defineComponent({
                 })
                 this.currentDate = new Date();
                 // replace previous releases if necessary
-                const releases = this.replace ? reactive([]) : this.releases;
+                const releases = replace ? reactive([]) : this.releases;
                 this.replace = false;
                 // when filter changed while a previous query is still running, it may lead to wrong results
                 // should not happen because no two fetches should happen at the same time
