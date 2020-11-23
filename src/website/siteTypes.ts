@@ -261,6 +261,7 @@ export interface BasicJobStats {
 
 export interface TimeJobStats extends BasicJobStats {
     timepoint: Date;
+    domain?: Record<string, BasicJobStats>;
 }
 
 export type TimeBucket = "day" | "hour" | "minute";

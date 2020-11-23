@@ -179,7 +179,7 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import Chart from "chart.js";
-import { TimeBucket, TimeJobStats } from "../siteTypes";
+import { BasicJobStats, TimeBucket, TimeJobStats } from "../siteTypes";
 import { formatDate, round } from "../init";
 import * as storage from "../storage";
 
@@ -477,23 +477,29 @@ export default defineComponent({
         formatDate(date: Date): string {
             return formatDate(date);
         },
+        conformJobStat(datum: ChartJobDatum) {
+            datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
+            // transform from decimal value to percentage with two decimal places
+            datum.failed = round(datum.failed * 100, 2);
+            datum.succeeded = 100 - datum.failed;
+            datum.alldelete = round(datum.alldelete, 2);
+            datum.allcreate = round(datum.allcreate, 2);
+            datum.allupdate = round(datum.allupdate, 2);
+            datum.avgnetwork = round(datum.avgnetwork, 2);
+            datum.avgreceived = round(datum.avgreceived, 2);
+            datum.avgsend = round(datum.avgsend, 2);
+            datum.avgduration = round(datum.avgduration, 2);
+            datum.queries = round(datum.queries, 2);
+        },
         loadData() {
             const groupByDomain = this.groupByDomain.left || this.groupByDomain.right;
             HttpClient.getJobsStatsTimed(this.selectedTime, groupByDomain).then(result => {
                 result.forEach(value => {
                     const datum = value as ChartJobDatum;
-                    datum.modifications = datum.alldelete + datum.allupdate + datum.allcreate;
-                    // transform from decimal value to percentage with two decimal places
-                    datum.failed = round(datum.failed * 100, 2);
-                    datum.succeeded = 100 - datum.failed;
-                    datum.alldelete = round(datum.alldelete, 2);
-                    datum.allcreate = round(datum.allcreate, 2);
-                    datum.allupdate = round(datum.allupdate, 2);
-                    datum.avgnetwork = round(datum.avgnetwork, 2);
-                    datum.avgreceived = round(datum.avgreceived, 2);
-                    datum.avgsend = round(datum.avgsend, 2);
-                    datum.avgduration = round(datum.avgduration, 2);
-                    datum.queries = round(datum.queries, 2);
+                    if (datum.domain) {
+                        Object.values(datum.domain).forEach(this.conformJobStat);
+                    }
+                    this.conformJobStat(datum);
                     datum.timepoint = new Date(datum.timepoint);
                 })
                 this.data = result;
