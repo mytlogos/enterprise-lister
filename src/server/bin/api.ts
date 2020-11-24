@@ -165,6 +165,7 @@ function jobsRouter(): Router {
     statsRouter.get("/all", UserApi.getJobsStats);
     statsRouter.get("/grouped", UserApi.getJobsStatsGrouped);
     statsRouter.get("/detail", UserApi.getJobDetails);
+    statsRouter.get("/timed", UserApi.getJobStatsTimed);
 
     router.use("/stats", statsRouter);
     return router;

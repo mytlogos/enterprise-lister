@@ -1,51 +1,111 @@
-import {SubContext} from "./subContext";
-import {JobItem, JobRequest, JobState, JobStats, AllJobStats, EmptyPromise, MultiSingleValue, PromiseMultiSingle, Optional, JobDetails, JobHistoryItem} from "../../types";
-import {isString, promiseMultiSingle, multiSingle} from "../../tools";
+import { SubContext } from "./subContext";
+import {
+    JobItem,
+    JobRequest,
+    JobState,
+    JobStats,
+    AllJobStats,
+    EmptyPromise,
+    MultiSingleValue,
+    PromiseMultiSingle,
+    Optional,
+    JobDetails,
+    JobHistoryItem,
+    JobStatFilter,
+    BasicJobStats,
+    TimeBucket,
+    TimeJobStats,
+    PropertyNames,
+} from "../../types";
+import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
-import {escapeLike} from "../storages/storageTools";
+import { escapeLike } from "../storages/storageTools";
 import { getStore } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
 
+interface CountValue<T> {
+    count: number;
+    value: T;
+}
+
+type MergeableKey<T> = PropertyNames<T, number>;
+
+function merge<T>(mergeInto: T, merger: T, keys: Array<MergeableKey<T>>) {
+    for (const key of keys) {
+        // @ts-expect-error
+        mergeInto[key] = mergeInto[key] + merger[key];
+    }
+}
+
 export class JobContext extends SubContext {
     public async getJobsStats(): Promise<AllJobStats> {
-        const results = await this.getStats();
+        const results: AllJobStats[] = await this.getStats();
         return results[0];
     }
 
     public getJobsStatsGrouped(): Promise<JobStats[]> {
-        return this.getStats(true);
+        return this.getStats({ type: "named" });
     }
 
-    private async getStats<Stat extends AllJobStats>(grouped = false): Promise<Stat[]> {
+    public getJobsStatsTimed(bucket: TimeBucket, groupByDomain: boolean): Promise<TimeJobStats[]> {
+        return this.getStats({ type: "timed", unit: bucket, groupByDomain });
+    }
+
+    private async getStats<Stat extends BasicJobStats>(statFilter?: JobStatFilter): Promise<Stat[]> {
+        let filterColumn = "";
+        let groupBy = "";
+        let minMax = true
+
+        if (statFilter?.type === "named") {
+            filterColumn = "name,";
+            groupBy = "group by name";
+        } else if (statFilter?.type === "timed") {
+            minMax = false;
+            groupBy = "group by timepoint";
+
+            if (statFilter.groupByDomain) {
+                groupBy += ", name";
+                filterColumn += "name,";
+            }
+
+            if (statFilter.unit === "day") {
+                filterColumn += "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60-HOUR(start)*3600, start) as timepoint,";
+            } else if (statFilter.unit === "hour") {
+                filterColumn += "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60, start) as timepoint,";
+            } else if (statFilter.unit === "minute") {
+                filterColumn += "TIMESTAMPADD(second, -SECOND(`start`), start) as timepoint,";
+            }
+        }
         const values = await this.query(`
             SELECT 
-            ${grouped ? "name," : ""} 
+            ${filterColumn}
             AVG(network) as avgnetwork, 
-            MIN(network) as minnetwork, 
-            MAX(network) as maxnetwork, 
+            ${minMax ? "MIN(network) as minnetwork," : ""} 
+            ${minMax ? "MAX(network) as maxnetwork, " : ""} 
             AVG(received) as avgreceived, 
-            MIN(received) as minreceived, 
-            MAX(received) as maxreceived, 
+            ${minMax ? "MIN(received) as minreceived," : ""}  
+            ${minMax ? "MAX(received) as maxreceived, " : ""} 
             AVG(send) as avgsend, 
-            MIN(send) as minsend, 
-            MAX(send) as maxsend, 
+            ${minMax ? "MIN(send) as minsend, " : ""} 
+            ${minMax ? "MAX(send) as maxsend, " : ""} 
             AVG(duration) as avgduration, 
-            MAX(duration) maxD, 
-            MIN(duration) minD,
+            ${minMax ? "MAX(duration) maxD, " : ""} 
+            ${minMax ? "MIN(duration) minD," : ""} 
             Count(*) as count,
             GROUP_CONCAT(\`update\`) as allupdate,
             GROUP_CONCAT(\`create\`) as allcreate,
             GROUP_CONCAT(\`delete\`) as alldelete,
             (SUM(CASE WHEN \`result\` = 'failed' THEN 1 ELSE 0 END) / Count(*)) as failed, 
             (SUM(CASE WHEN \`result\` = 'success' THEN 1 ELSE 0 END) / COUNT(*)) as succeeded,
-            AVG(query) as queries,
-            MAX(query) maxQ, 
-            MIN(CASE WHEN query = 0 THEN NULL ELSE query END) minQ
+            AVG(query) as queries${minMax ? "," : ""}
+            ${minMax ? "MAX(query) maxQ, " : ""} 
+            ${minMax ? "MIN(CASE WHEN query = 0 THEN NULL ELSE query END) minQ" : ""} 
             FROM (
                 SELECT 
                 name, 
-                \`result\`,
+                start,
+                result,
                 JSON_EXTRACT(message, "$.modifications.*.updated") as \`update\`,
                 JSON_EXTRACT(message, "$.modifications.*.deleted") as \`delete\`,
                 JSON_EXTRACT(message, "$.modifications.*.created") as \`create\`,
@@ -56,7 +116,7 @@ export class JobContext extends SubContext {
                 end - start as duration
                 FROM job_history
             ) as job_history
-            ${grouped ? "group by name" : ""}
+            ${groupBy}
             ;`
         );
         // 'all*' Properties are comma separated lists of number arrays
@@ -69,6 +129,103 @@ export class JobContext extends SubContext {
 
             numberArrays = JSON.parse("[" + value.allupdate + "]");
             value.allupdate = numberArrays.flat().reduce((v1_2, v2_2) => v1_2 + v2_2, 0);
+
+            if (statFilter?.type === "timed") {
+                value.timepoint = new Date(value.timepoint);
+            }
+        }
+        if (statFilter?.type === "timed" && statFilter.groupByDomain) {
+            const dateMapping = new Map<number, CountValue<TimeJobStats> & { domain: Record<string, CountValue<TimeJobStats>> }>();
+            const tocJob = /^toc-\d+-https?:\/\/(www\.)?([^.]+).+$/;
+            const searchTocJob = /^(.+)-searchForToc-\d+$/;
+            const newsJob = /^(.+)-newsadapter$/;
+            const keys: Array<MergeableKey<TimeJobStats>> = [
+                "allcreate", "alldelete", "allupdate", "avgduration", "avgnetwork", "avgreceived",
+                "avgsend", "count", "failed", "queries", "succeeded"
+            ];
+
+            for (const value of (values as Array<JobStats & TimeJobStats>)) {
+                let match = tocJob.exec(value.name);
+
+                let group = dateMapping.get(value.timepoint.getTime());
+
+                if (!group) {
+                    const copy = { ...value };
+                    delete copy.name;
+
+                    group = {
+                        count: 1,
+                        value: copy,
+                        domain: {},
+                    };
+                    dateMapping.set(value.timepoint.getTime(), group);
+
+                } else {
+                    group.count++;
+                    merge(group.value, value, keys);
+                }
+                let domain = ""
+
+                if (match) {
+                    domain = match[2];
+                } else {
+                    match = searchTocJob.exec(value.name);
+
+                    if (match) {
+                        domain = match[1];
+                    } else {
+                        match = newsJob.exec(value.name);
+
+                        if (match) {
+                            domain = match[1];
+                        }
+                    }
+                }
+                if (domain) {
+                    const domainValue = group.domain[domain];
+                    if (!domainValue) {
+                        const copy = { ...value };
+                        delete copy.name;
+                        delete copy.timepoint;
+
+                        group.domain[domain] = {
+                            count: 1,
+                            value: copy,
+                        };
+                    } else {
+                        domainValue.count++;
+                        merge(domainValue.value, value, keys);
+                    }
+                }
+            }
+            // empty the array
+            values.length = 0;
+
+            for (const value of dateMapping.values()) {
+                for (const key of keys) {
+                    // count is a sum, not average value
+                    if (key === "count") {
+                        continue
+                    }
+                    // @ts-expect-error
+                    value.value[key] /= value.count;
+                }
+                value.value.domain = {};
+
+                for (const [domain, domainValue] of Object.entries(value.domain)) {
+                    for (const key of keys) {
+                        // count is a sum, not average value
+                        if (key === "count") {
+                            continue
+                        }
+                        // @ts-expect-error
+                        domainValue.value[key] /= domainValue.count;
+                    }
+                    value.value.domain[domain] = domainValue.value;
+                }
+
+                values.push(value.value);
+            }
         }
         return values;
     }
@@ -80,7 +237,7 @@ export class JobContext extends SubContext {
             `,
             id
         );
-        const historyPromise: Promise<JobHistoryItem[]>  = this.query(
+        const historyPromise: Promise<JobHistoryItem[]> = this.query(
             `
             SELECT * FROM job_history
             WHERE name = (SELECT name FROM job_history WHERE id = ? LIMIT 1)

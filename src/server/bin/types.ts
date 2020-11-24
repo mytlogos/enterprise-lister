@@ -457,26 +457,34 @@ export interface JobRequest {
     arguments?: string;
 }
 
-export interface AllJobStats {
+export interface BasicJobStats {
     count: number;
     avgnetwork: number;
-    minnetwork: number;
-    maxnetwork: number;
     avgreceived: number;
-    minreceived: number;
-    maxreceived: number;
     avgsend: number;
-    minsend: number;
-    maxsend: number;
     avgduration: number;
-    maxD: number;
-    minD: number;
     allupdate: number;
     allcreate: number;
     alldelete: number;
     failed: number;
     succeeded: number;
     queries: number;
+}
+
+export interface TimeJobStats extends BasicJobStats {
+    timepoint: Date;
+    domain?: Record<string, BasicJobStats>;
+}
+
+export interface AllJobStats extends BasicJobStats {
+    minnetwork: number;
+    maxnetwork: number;
+    minreceived: number;
+    maxreceived: number;
+    minsend: number;
+    maxsend: number;
+    maxD: number;
+    minD: number;
     maxQ: number;
     minQ: number;
 }
@@ -496,6 +504,19 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
 export interface JobDetails {
     job?: JobItem;
     history: JobHistoryItem[];
+}
+export type JobStatFilter = NamedJobStatFilter | TimeJobStatFilter;
+
+export interface NamedJobStatFilter {
+    type: "named";
+}
+
+export type TimeBucket = "day" | "hour" | "minute";
+
+export interface TimeJobStatFilter {
+    type: "timed";
+    unit: TimeBucket;
+    groupByDomain: boolean;
 }
 
 export enum MilliTime {

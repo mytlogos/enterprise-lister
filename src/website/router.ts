@@ -115,6 +115,14 @@ const router = createRouter({
 
             children: [
                 {
+                    path: "jobsStat",
+                    name: "job-stats",
+                    // route level code-splitting
+                    // this generates a separate chunk (login.[hash].js) for this route
+                    // which is lazy-loaded when the route is visited.
+                    component: () => import(/* webpackChunkName: "admin" */ "./views/JobStatistic.vue"),
+                },
+                {
                     path: "jobs",
                     name: "jobs",
                     // route level code-splitting

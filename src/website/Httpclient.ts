@@ -1,11 +1,28 @@
+import { 
+    ExternalUser,
+    List,
+    Medium,
+    News,
+    User,
+    DisplayReleasesResponse,
+    SimpleMedium,
+    MediumRelease,
+    Job,
+    Toc,
+    AddMedium,
+    SecondaryMedium,
+    FullMediumToc,
+    JobStats,
+    AllJobStats,
+    JobDetails,
+    TimeJobStats,
+    TimeBucket 
+} from "./siteTypes";
+
 /**
  * Allowed Methods for the API.
- *
- * @type {{post: string, get: string, put: string, delete: string}}
  */
-import { ExternalUser, List, Medium, News, User, DisplayReleasesResponse, SimpleMedium, MediumRelease, Job, Toc, AddMedium, SecondaryMedium, FullMediumToc, JobStats, AllJobStats, JobDetails } from "./siteTypes";
-
-const Methods = {
+const Methods: { post: string; get: string; put: string; delete: string } = {
     post: "POST",
     get: "GET",
     put: "PUT",
@@ -40,6 +57,9 @@ const restApi = {
                         get: true,
                     },
                     detail: {
+                        get: true,
+                    },
+                    timed: {
                         get: true,
                     },
                 },
@@ -248,6 +268,7 @@ interface JobPath {
         all: GetPath;
         grouped: GetPath;
         detail: GetPath;
+        timed: GetPath;
     };
 }
 
@@ -579,6 +600,10 @@ export const HttpClient = {
 
     getJobsStatsGrouped(): Promise<JobStats[]> {
         return this.queryServer(api.jobs.stats.grouped.get);
+    },
+
+    getJobsStatsTimed(bucket: TimeBucket, groupByDomain: boolean): Promise<TimeJobStats[]> {
+        return this.queryServer(api.jobs.stats.timed.get, { bucket, groupByDomain });
     },
 
     /**
