@@ -1,3 +1,31 @@
+# [1.11.0](https://github.com/mytlogos/enterprise-lister/compare/v1.10.0...v1.11.0) (2020-11-24)
+
+
+### Bug Fixes
+
+* **jobstatistic:** normalize grouped domain values as well ([a5e1fb5](https://github.com/mytlogos/enterprise-lister/commit/a5e1fb5d6145c7290daa21464be05d394aa383c1))
+* add missing file ([b5df50a](https://github.com/mytlogos/enterprise-lister/commit/b5df50a02813cc75ad6c382f9529f3ae49d98f7f))
+* **jobstatistic:** fix disallow single property on multiple axis ([5e1bb32](https://github.com/mytlogos/enterprise-lister/commit/5e1bb32aa2cf236d8bb1ce3d681a13f98d86219f))
+* **jobstatistic:** skip properties which are not a average value ([12f5b49](https://github.com/mytlogos/enterprise-lister/commit/12f5b49e848acad9db6dfce9a32e80e45903e08e))
+
+
+### Features
+
+* **jobstatistic:** add chart coloring ([61b2a73](https://github.com/mytlogos/enterprise-lister/commit/61b2a735ec9ba8442c2b9b207231a8f4c52c246a))
+* **jobstatistic:** add feature go add datasets grouped by domain ([76b90a3](https://github.com/mytlogos/enterprise-lister/commit/76b90a3ef1a1beda73b837a7d9753a7d3e33f30d))
+* **jobstatistic:** add from and to datetime range ([c978766](https://github.com/mytlogos/enterprise-lister/commit/c978766bd3d97892f87be71d33e7a6815952520a))
+* **jobstatistic:** add more labelling ([8f574ef](https://github.com/mytlogos/enterprise-lister/commit/8f574ef3705e49a498cfb3dd4bd8403fca3c3541))
+* **jobstatistic:** add refresh button ([0043250](https://github.com/mytlogos/enterprise-lister/commit/00432505bb24029659c33d2d0d85ce7f3aac9a74))
+* **jobstatistic:** add table accessibility caption ([38c0bf9](https://github.com/mytlogos/enterprise-lister/commit/38c0bf916327263e4f1b3ada56880c21bf342987))
+* **jobstatistic:** allow different properties to be used on the left y axis ([4ae9b7f](https://github.com/mytlogos/enterprise-lister/commit/4ae9b7f6a86f7c081688a8add00651091c675cb2))
+* **jobstatistic:** allow more attributes to be displayed ([99eb46b](https://github.com/mytlogos/enterprise-lister/commit/99eb46b690a8f444e81e5b7f092cd9793a29a4fa))
+* **jobstatistic:** allow user to choose time grouping ([cd81a69](https://github.com/mytlogos/enterprise-lister/commit/cd81a698074a3219ba53badea17042c00e9df9fc))
+* **jobstatistic:** display data in table ([0178dcf](https://github.com/mytlogos/enterprise-lister/commit/0178dcfe1446bbfd6a2bb48107e89deac445990b))
+* **jobstatistic:** enable user to select what property to display on the right axis ([0f6b502](https://github.com/mytlogos/enterprise-lister/commit/0f6b50211d8c0a0ccbf711cdd0795140dc13da2b))
+* **jobstatistic:** remember current config selection ([dcd5139](https://github.com/mytlogos/enterprise-lister/commit/dcd51394820edbb4922378af2f5d8bc602904f85))
+* **jobsviews:** add initial general jobs statistics ([a2a0acb](https://github.com/mytlogos/enterprise-lister/commit/a2a0acb2589a61f1fff3da179e1472b17bfb4751))
+* **releases:** add refresh button ([5a3d651](https://github.com/mytlogos/enterprise-lister/commit/5a3d65107c59282a5c1299d3f8f2cb3a9a939bc3))
+
 # [1.10.0](https://github.com/mytlogos/enterprise-lister/compare/v1.9.0...v1.10.0) (2020-11-18)
 
 
