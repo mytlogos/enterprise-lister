@@ -60,13 +60,13 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-    const animeAliasReg = /^https?:\/\/www\d*\.gogoanime\.io\/category\/(.+)/;
+    const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.io\/category\/(.+)/;
     const aliasExec = animeAliasReg.exec(urlString);
 
     if (!aliasExec) {
         throw new UrlError("invalid toc url for GogoAnime: " + urlString, urlString);
     }
-    const animeAlias = aliasExec[1];
+    const animeAlias = aliasExec[2];
 
     const $ = await queueCheerioRequest(urlString);
     const contentElement = $(".content_left .main_body");
@@ -223,7 +223,7 @@ export function getHook(): Hook {
     return {
         name: "gogoanime",
         medium: MediaType.VIDEO,
-        domainReg: /^https?:\/\/www\d*\.gogoanime\.io/,
+        domainReg: /^https?:\/\/(www\d*\.)?gogoanime\.io/,
         searchAdapter: search,
         newsAdapter: scrapeNews,
         tocAdapter: scrapeToc,
