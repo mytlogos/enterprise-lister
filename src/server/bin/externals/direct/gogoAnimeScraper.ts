@@ -17,11 +17,21 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
     const news: EpisodeNews[] = [];
     const titlePattern = /Episode\s*((\d+)(\.(\d+))?)/i;
+    const linkPattern = /(.+\/\/.+\/)(.+)-episode-\d+$/;
+
     for (let i = 0; i < newsRows.length; i++) {
         const newsRow = newsRows.eq(i);
 
         const mediumElement = newsRow.find(".name a");
         const link = url.resolve(uri, mediumElement.attr("href") as string);
+        const linkMatch = linkPattern.exec(link)
+
+        if (!linkMatch) {
+            logger.warn(`Unknown GogoAnime News Link Format: '${link}'`);
+            continue
+        }
+        const tocLink = linkMatch[1] + "category/" + linkMatch[2];
+
         const episodeTitleElement = newsRow.children(".episode");
 
         const mediumTitle = sanitizeString(mediumElement.text());
@@ -43,7 +53,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
         news.push({
             link,
             mediumType: MediaType.VIDEO,
-            mediumTocLink: link,
+            mediumTocLink: tocLink,
             mediumTitle,
             episodeTitle,
             episodeIndex: episodeIndices.combi,
