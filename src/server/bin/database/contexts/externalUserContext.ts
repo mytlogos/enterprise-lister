@@ -113,12 +113,12 @@ export class ExternalUserContext extends SubContext {
     }
 
     /**
-     *
+     * Return all ExternalUser not scraped in the last seven days.
      */
     public async getScrapeExternalUser(): Promise<ExternalUser[]> {
         const result = await this.query(
             "SELECT uuid, local_uuid, service, cookies, name, last_scrape FROM external_user " +
-            "WHERE last_scrape IS NULL OR last_scrape > NOW() - 7",
+            "WHERE last_scrape IS NULL OR last_scrape < TIMESTAMPADD(day, -7, now())",
         );
 
         return result.map((value: any): ExternalUser => {
