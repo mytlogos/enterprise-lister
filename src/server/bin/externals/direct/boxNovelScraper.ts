@@ -50,7 +50,7 @@ async function search(text: string): Promise<SearchResult[]> {
 
     if (parsed.success && parsed.data && parsed.data.length) {
         for (const datum of parsed.data) {
-            searchResults.push({link: datum.url, title: datum.title});
+            searchResults.push({link: datum.url.replace("-boxnovel", ""), title: datum.title});
         }
     }
     return searchResults;
@@ -80,7 +80,7 @@ export async function searchAjax(searchWords: string, medium: TocSearchMedium): 
         }
         for (const datum of parsed.data) {
             if (equalsIgnore(datum.title, medium.title) || medium.synonyms.some((s) => equalsIgnore(datum.title, s))) {
-                return {value: datum.url, done: true};
+                return {value: datum.url.replace("-boxnovel", ""), done: true};
             }
         }
         return {done: false};
@@ -287,7 +287,8 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
         const newsRow = items.eq(i);
 
         const mediumTitleElement = newsRow.find(".post-title a");
-        const tocLink = url.resolve(uri, mediumTitleElement.attr("href") as string);
+        const tocLink = url.resolve(uri, mediumTitleElement.attr("href") as string).replace("-boxnovel", "");
+
         const mediumTitle = sanitizeString(mediumTitleElement.text());
 
         const titleElement = newsRow.find(".chapter-item .chapter a");
