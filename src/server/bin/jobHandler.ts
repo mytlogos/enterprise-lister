@@ -237,7 +237,7 @@ interface TocPartMapping {
     }>;
 }
 
-async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<CombinedEpisode[]>, storageReleses: Readonly<EpisodeRelease[]>): EmptyPromise {
+async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<CombinedEpisode[]>, storageReleases: Readonly<EpisodeRelease[]>): EmptyPromise {
     if (!value.part || !value.part.id) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
@@ -312,7 +312,7 @@ async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<
                 throw Error("known episode has no episode from storage");
             }
             const id = currentEpisode.id;
-            const foundRelease = storageReleses.find((release) =>
+            const foundRelease = storageReleases.find((release) =>
                 release.url === episodeValue.tocEpisode.url
                 && release.episodeId === id);
 
