@@ -1,3 +1,20 @@
+# [1.12.0](https://github.com/mytlogos/enterprise-lister/compare/v1.11.0...v1.12.0) (2020-11-30)
+
+
+### Bug Fixes
+
+* **logger:** remove useless and misleading "zippedArchive" attribute ([b7fc122](https://github.com/mytlogos/enterprise-lister/commit/b7fc122e1e50c74abe3df86a226ca15a1684e1ec))
+* **scraper:** enforce uniform toc links ([c23b8fc](https://github.com/mytlogos/enterprise-lister/commit/c23b8fc12075d348401ca44b4459e3284bde1921))
+* **scraper:** fix attribute name not matching expected name ([7d08a40](https://github.com/mytlogos/enterprise-lister/commit/7d08a4086e66caf051417952945f220e703f2fab))
+* **scraper:** fix link regex ([4fcc8cc](https://github.com/mytlogos/enterprise-lister/commit/4fcc8cc3158b269522a22faea9939b7d888c0f7f))
+* **scraper:** fix scraper emitting wrong toc link ([e08091a](https://github.com/mytlogos/enterprise-lister/commit/e08091a2131d05264cc1df6c9c0d5bf694fdbbdb))
+* **scraper:** fix sql query ([7dc296b](https://github.com/mytlogos/enterprise-lister/commit/7dc296bb7ab68e5de1ef065f3ecece89e6b90593))
+
+
+### Features
+
+* **scraper:** estimate closest possible release date time ([b1dd4f9](https://github.com/mytlogos/enterprise-lister/commit/b1dd4f94d5001ee2283f872ab75d3902d277cdf0))
+
 # [1.11.0](https://github.com/mytlogos/enterprise-lister/compare/v1.10.0...v1.11.0) (2020-11-24)
 
 
