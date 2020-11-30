@@ -1,12 +1,12 @@
-import request, {FullResponse, Options} from "cloudscraper";
-import requestNative, {RequestAPI} from "request";
+import request, { FullResponse, Options } from "cloudscraper";
+import requestNative, { RequestAPI } from "request";
 import cheerio from "cheerio";
 import ParserStream from "parse5-parser-stream";
 import * as htmlparser2 from "htmlparser2";
-import {BufferToStringStream} from "../transform";
-import {StatusCodeError} from "request-promise-native/errors";
+import { BufferToStringStream } from "../transform";
+import { StatusCodeError } from "request-promise-native/errors";
 import requestPromise from "request-promise-native";
-import {MissingResourceError} from "./errors";
+import { MissingResourceError } from "./errors";
 import { setContext, removeContext, getStore, bindContext } from "../asyncStorage";
 import http from "http";
 import https from "https";
@@ -27,14 +27,14 @@ interface HttpModule {
 function patchRequest(module: HttpModule, protocol: string) {
     const originalRequest = module.request;
 
-    module.request = function(opt, callback) {
+    module.request = function (opt, callback) {
         const target = isString(opt) ? opt : (protocol + "://" + opt.host + "" + opt.path);
 
         const clientRequest = originalRequest(opt);
         clientRequest.on("response", bindContext((res) => {
             function listener() {
                 let socket: Socket;
-    
+
                 if (clientRequest.socket) {
                     socket = clientRequest.socket;
                 } else {
@@ -43,14 +43,14 @@ function patchRequest(module: HttpModule, protocol: string) {
                 }
                 const bytesSend = socket.bytesWritten;
                 const bytesReceived = socket.bytesRead;
-    
+
                 const store = getStore();
-    
+
                 if (!store) {
                     return;
                 }
-    
-                const stats = getElseSet(store, "network", () => { return {count: 0, sent: 0, received: 0, history: []}});
+
+                const stats = getElseSet(store, "network", () => { return { count: 0, sent: 0, received: 0, history: [] } });
                 stats.count += 1;
                 stats.sent += bytesSend;
                 stats.received += bytesReceived;
@@ -61,13 +61,13 @@ function patchRequest(module: HttpModule, protocol: string) {
                     send: bytesSend,
                     received: bytesReceived,
                 });
-    
+
                 const url = target.slice(0, 70).padEnd(70);
                 const method = clientRequest.method.slice(0, 5).padEnd(5);
                 const httpCode = ((res.statusCode + "") || "?").slice(0, 5).padEnd(5);
                 const send = ("" + bytesSend).slice(0, 10).padEnd(10);
                 const received = ("" + bytesReceived).slice(0, 10).padEnd(10);
-                        
+
                 logger.debug(`${url} ${method} ${httpCode} ${send} ${received}`);
             }
             res.once("close", bindContext(listener));
@@ -145,22 +145,22 @@ function methodToRequest(options: Optional<Options>, toUseRequest: Request) {
     const method = options && options.method ? options.method : "";
 
     switch (method.toLowerCase()) {
-    case "get":
-        return toUseRequest.get(options);
-    case "head":
-        return toUseRequest.head(options);
-    case "put":
-        return toUseRequest.put(options);
-    case "post":
-        return toUseRequest.post(options);
-    case "patch":
-        return toUseRequest.patch(options);
-    case "del":
-        return toUseRequest.del(options);
-    case "delete":
-        return toUseRequest.delete(options);
-    default:
-        return toUseRequest.get(options);
+        case "get":
+            return toUseRequest.get(options);
+        case "head":
+            return toUseRequest.head(options);
+        case "put":
+            return toUseRequest.put(options);
+        case "post":
+            return toUseRequest.post(options);
+        case "patch":
+            return toUseRequest.patch(options);
+        case "del":
+            return toUseRequest.del(options);
+        case "delete":
+            return toUseRequest.delete(options);
+        default:
+            return toUseRequest.get(options);
     }
 }
 
@@ -187,14 +187,14 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
     }
 
     const toUseRequest: Request = otherRequest || request;
-    return {toUseRequest, queue};
+    return { toUseRequest, queue };
 }
 
 export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): Promise<string> => {
 
-    const {toUseRequest, queue} = processRequest(uri, otherRequest);
+    const { toUseRequest, queue } = processRequest(uri, otherRequest);
     if (!options) {
-        options = {uri};
+        options = { uri };
     } else {
         // @ts-expect-error
         options.url = uri;
@@ -205,10 +205,10 @@ export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): 
 export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (uri, options, otherRequest):
     Promise<CheerioStatic> => {
 
-    const {toUseRequest, queue} = processRequest(uri, otherRequest);
+    const { toUseRequest, queue } = processRequest(uri, otherRequest);
 
     if (!options) {
-        options = {uri};
+        options = { uri };
     }
     options.transform = transformCheerio;
     return queue.push(() => methodToRequest(options, toUseRequest));
@@ -220,12 +220,12 @@ type Resolve<T> = (value?: T | PromiseLike<T>) => void;
 type Reject = (reason?: any) => void;
 
 function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: string, options?: Options) {
-// i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly
+    // i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly
     // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
     //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
     //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
     // @ts-expect-error
-    const parser = new ParserStream<CheerioElement>({treeAdapter: ParserStream.treeAdapters.htmlparser2});
+    const parser = new ParserStream<CheerioElement>({ treeAdapter: ParserStream.treeAdapters.htmlparser2 });
     parser.on("finish", () => {
         if (parser.document && parser.document.children) {
             const load = cheerio.load(parser.document.children);
@@ -248,7 +248,7 @@ function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: stri
                 resp.destroy();
 
                 if (!options) {
-                    options = {uri};
+                    options = { uri };
                 }
                 options.transform = transformCheerio;
                 resolve(request(options));
@@ -269,14 +269,14 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
         new htmlparser2.DomHandler(
             (error, dom) => {
                 // @ts-expect-error
-                const load = cheerio.load(dom, {decodeEntities: false});
+                const load = cheerio.load(dom, { decodeEntities: false });
                 resolve(load);
             }, {
-                // FIXME: 02.09.2019 why does it not accept this property?
-                // @ts-expect-error
-                withDomLvl1: true,
-                normalizeWhitespace: false,
-            }
+            // FIXME: 02.09.2019 why does it not accept this property?
+            // @ts-expect-error
+            withDomLvl1: true,
+            normalizeWhitespace: false,
+        }
         )
         ,
         {
@@ -292,7 +292,7 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
                 resp.destroy();
 
                 if (!options) {
-                    options = {uri};
+                    options = { uri };
                 }
                 options.transform = transformCheerio;
                 resolve(request(options));
@@ -314,21 +314,21 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
 
 export const queueCheerioRequestStream: QueueRequest<CheerioStatic> = (uri, options): Promise<CheerioStatic> => {
 
-    const {queue} = processRequest(uri);
+    const { queue } = processRequest(uri);
 
     if (!options) {
-        options = {uri};
+        options = { uri };
     }
     return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
 };
 
 export const queueCheerioRequest = queueCheerioRequestBuffered;
 
-const transformCheerio = (body: string): CheerioStatic => cheerio.load(body, {decodeEntities: false});
+const transformCheerio = (body: string): CheerioStatic => cheerio.load(body, { decodeEntities: false });
 
 const queueFullResponseWithLimit = (uri: string, options?: Options, otherRequest?: Request,
     queueToUse = queues, limit?: number): Promise<FullResponse> => {
-    const {toUseRequest, queue} = processRequest(uri, otherRequest, queueToUse, limit);
+    const { toUseRequest, queue } = processRequest(uri, otherRequest, queueToUse, limit);
 
     // @ts-expect-error
     const requestOptions: Options = options || {};

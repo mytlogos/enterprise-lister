@@ -1,12 +1,12 @@
-import {EpisodeContent, Hook, Toc, TocEpisode, TocPart} from "../types";
-import {EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Optional} from "../../types";
-import {equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import { EpisodeContent, Hook, Toc, TocEpisode, TocPart } from "../types";
+import { EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Optional } from "../../types";
+import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString } from "../../tools";
 import logger from "../../logger";
 import * as url from "url";
-import {queueCheerioRequest, queueRequest} from "../queueManager";
+import { queueCheerioRequest, queueRequest } from "../queueManager";
 import * as request from "request-promise-native";
-import {checkTocContent} from "../scraperTools";
-import {UrlError} from "../errors";
+import { checkTocContent } from "../scraperTools";
+import { UrlError } from "../errors";
 
 const jar = request.jar();
 const defaultRequest = request.defaults({
@@ -83,7 +83,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
             locked: true
         });
     }
-    return {episodes: news};
+    return { episodes: news };
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
@@ -370,7 +370,7 @@ async function search(text: string): Promise<SearchResult[]> {
         }
         const mediumTocLink = `https://www.webnovel.com/book/${mediumTocLinkGroup[3]}`;
 
-        searchResult.push({title, link: mediumTocLink, coverUrl});
+        searchResult.push({ title, link: mediumTocLink, coverUrl });
     }
     return searchResult;
 }

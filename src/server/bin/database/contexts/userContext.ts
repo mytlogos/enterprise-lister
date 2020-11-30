@@ -1,7 +1,7 @@
-import {SubContext} from "./subContext";
-import {SimpleUser, User, Uuid, Nullable, UpdateUser} from "../../types";
-import {allTypes, BcryptHash, Errors, Hasher, Hashes} from "../../tools";
-import {v1 as uuidGenerator, v4 as sessionGenerator} from "uuid";
+import { SubContext } from "./subContext";
+import { SimpleUser, User, Uuid, Nullable, UpdateUser } from "../../types";
+import { allTypes, BcryptHash, Errors, Hasher, Hashes } from "../../tools";
+import { v1 as uuidGenerator, v4 as sessionGenerator } from "uuid";
 
 /**
  * Checks whether the password equals to the given hash
@@ -52,7 +52,7 @@ export class UserContext extends SubContext {
         }
         // if userName is new, proceed to register
         const id = uuidGenerator();
-        const {salt, hash} = await StandardHash.hash(password);
+        const { salt, hash } = await StandardHash.hash(password);
 
         // insert the full user and loginUser right after
         await this.query(
@@ -62,7 +62,7 @@ export class UserContext extends SubContext {
 
         // every user gets a standard list for everything that got no list assigned
         // this standard list name 'Standard' is reserved for this purpose
-        await this.parentContext.internalListContext.addList(id, {name: standardListName, medium: allTypes()});
+        await this.parentContext.internalListContext.addList(id, { name: standardListName, medium: allTypes() });
 
         return this.loginUser(userName, password, ip);
     }
@@ -92,7 +92,7 @@ export class UserContext extends SubContext {
             return Promise.reject(new Error(Errors.INVALID_CREDENTIALS));
         }
         // if there exists a session already for that device, remove it
-        await this.delete("user_log", {column: "ip", value: ip});
+        await this.delete("user_log", { column: "ip", value: ip });
 
         // generate session key
         const session = sessionGenerator();
@@ -168,7 +168,7 @@ export class UserContext extends SubContext {
      * Logs a user out.
      */
     public logoutUser(uuid: Uuid, ip: string): Promise<boolean> {
-        return this.delete("user_log", {column: "ip", value: ip}).then(v => v.affectedRows > 0);
+        return this.delete("user_log", { column: "ip", value: ip }).then(v => v.affectedRows > 0);
     }
 
 
@@ -185,7 +185,7 @@ export class UserContext extends SubContext {
         // => external_list_medium => external_reading_list
         // => external_user => user_episode
         // delete sessions
-        await this.delete("user_log", {column: "user_uuid", value: uuid});
+        await this.delete("user_log", { column: "user_uuid", value: uuid });
 
         // delete reading lists contents
         await this.query(
@@ -196,7 +196,7 @@ export class UserContext extends SubContext {
             , uuid,
         );
         // delete lists
-        await this.delete("reading_list", {column: "user_uuid", value: uuid});
+        await this.delete("reading_list", { column: "user_uuid", value: uuid });
         // delete external reading lists contents
         await this.query(
             "DELETE FROM external_list_medium " +
@@ -216,16 +216,16 @@ export class UserContext extends SubContext {
             uuid,
         );
         // delete external user
-        await this.delete("external_user", {column: "local_uuid", value: uuid});
+        await this.delete("external_user", { column: "local_uuid", value: uuid });
 
         // delete progress track?
-        await this.delete("user_episode", {column: "user_uuid", value: uuid});
+        await this.delete("user_episode", { column: "user_uuid", value: uuid });
 
         // delete user itself
         // TODO check if delete was successful, what if not?
         //  in case the deletion was unsuccessful, just 'ban' any further access to that account
         //  and delete it manually?
-        const result = await this.delete("user", {column: "uuid", value: uuid});
+        const result = await this.delete("user", { column: "uuid", value: uuid });
         return result.affectedRows > 0;
     }
 
@@ -252,7 +252,7 @@ export class UserContext extends SubContext {
                 if (!user.password) {
                     return Promise.reject(new Error(Errors.INVALID_INPUT));
                 }
-                const {salt, hash} = await StandardHash.hash(user.newPassword);
+                const { salt, hash } = await StandardHash.hash(user.newPassword);
 
                 updates.push("alg = ?");
                 values.push(StandardHash.tag);

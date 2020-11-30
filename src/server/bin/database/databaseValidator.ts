@@ -1,14 +1,14 @@
 import logger from "../logger";
-import {ColumnType, DatabaseSchema, InvalidationType, Modifier} from "./databaseTypes";
-import {TableSchema} from "./tableSchema";
-import {ColumnSchema} from "./columnSchema";
-import {TableParser} from "./tableParser";
-import {equalsIgnore, getElseSet, isString, unique} from "../tools";
+import { ColumnType, DatabaseSchema, InvalidationType, Modifier } from "./databaseTypes";
+import { TableSchema } from "./tableSchema";
+import { ColumnSchema } from "./columnSchema";
+import { TableParser } from "./tableParser";
+import { equalsIgnore, getElseSet, isString, unique } from "../tools";
 import mySql from "promise-mysql";
-import {Uuid, MultiSingleValue, EmptyPromise, Optional, Nullable} from "../types";
-import {DatabaseContext} from "./contexts/databaseContext";
+import { Uuid, MultiSingleValue, EmptyPromise, Optional, Nullable } from "../types";
+import { DatabaseContext } from "./contexts/databaseContext";
 import * as validate from "validate.js";
-import {Counter} from "../counter";
+import { Counter } from "../counter";
 
 interface StateProcessor {
     addSql<T>(query: string, parameter: MultiSingleValue<any>, value: T, uuid?: Uuid): T;
@@ -135,7 +135,7 @@ const UpdateParser: Parser = {
             operation: InvalidationType.UPDATE,
             target: tableMeta,
             uuid: rawQuery.uuid,
-            columnTarget: [{column, value: idValue}]
+            columnTarget: [{ column, value: idValue }]
         };
     }
 };
@@ -162,7 +162,7 @@ const InsertParser: Parser = {
             columns = table.columns.map((value) => value.name);
         } else {
             columns = insertColumns
-            // remove the parenthesis
+                // remove the parenthesis
                 .substring(1, insertColumns.length - 1)
                 .split(",")
                 .map((value) => {
@@ -215,7 +215,7 @@ const InsertParser: Parser = {
                 logger.warn(`could not find any columns for '${columnName}' in '${table.name}'`);
                 return null;
             }
-            columnTargets.push({column, value});
+            columnTargets.push({ column, value });
         }
         return {
             rawQuery: query,
@@ -287,7 +287,7 @@ const DeleteParser: Parser = {
                     if (!value.test(conditionPart)) {
                         return null;
                     }
-                    columnTargets.push({column: currentColumn, value: conditionPart});
+                    columnTargets.push({ column: currentColumn, value: conditionPart });
 
                 } else if (previousState === value) {
                     if (concatenation.test(conditionPart)) {
@@ -511,7 +511,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         }
     },
 
-    addSql(query: string, parameter: MultiSingleValue<any>, value: any, uuid ?: string): any {
+    addSql(query: string, parameter: MultiSingleValue<any>, value: any, uuid?: string): any {
         if (value && ((Number.isInteger(value.affectedRows) && value.affectedRows)
             || (Number.isInteger(value.changedRows) && value.changedRows))) {
             this.sqlHistory.push({
@@ -619,7 +619,7 @@ const StateProcessorImpl: StateProcessorImpl = {
             if (!found) {
                 throw Error(`no corresponding foreign key in invalidationTable for column '${tableKey.name}'`);
             }
-            return {column: found.name, value};
+            return { column: found.name, value };
         };
 
         for (const table of this.tables) {

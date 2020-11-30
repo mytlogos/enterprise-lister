@@ -1,20 +1,20 @@
-import {EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult} from "../types";
-import {EpisodeContentData, EpisodeNews, ReleaseState, Optional} from "../../types";
+import { EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult } from "../types";
+import { EpisodeContentData, EpisodeNews, ReleaseState, Optional } from "../../types";
 import * as url from "url";
-import {queueCheerioRequest, queueRequest} from "../queueManager";
+import { queueCheerioRequest, queueRequest } from "../queueManager";
 import logger from "../../logger";
-import {extractIndices, MediaType, sanitizeString} from "../../tools";
+import { extractIndices, MediaType, sanitizeString } from "../../tools";
 import * as request from "request";
-import {checkTocContent} from "../scraperTools";
-import {episodeStorage} from "../../database/storages/storage";
-import {MissingResourceError, UrlError} from "../errors";
+import { checkTocContent } from "../scraperTools";
+import { episodeStorage } from "../../database/storages/storage";
+import { MissingResourceError, UrlError } from "../errors";
 import { extractLinkable } from "./directTools";
 
 const jar = request.jar();
 jar.setCookie(
     "mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;",
     "https://mangadex.org/",
-    {secure: false}
+    { secure: false }
 );
 
 function loadJson(urlString: string): Promise<any> {
@@ -139,7 +139,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
     const uri = "https://mangadex.org/";
     const requestLink = uri + "updates";
-    const $ = await queueCheerioRequest(requestLink, {jar, uri: requestLink});
+    const $ = await queueCheerioRequest(requestLink, { jar, uri: requestLink });
     const newsRows = $(".table tbody tr");
 
     const episodeNews: EpisodeNews[] = [];
@@ -239,7 +239,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
             date
         });
     }
-    return {episodes: episodeNews};
+    return { episodes: episodeNews };
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {

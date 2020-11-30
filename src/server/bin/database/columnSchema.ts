@@ -1,6 +1,6 @@
-import {ColumnType, Modifier, SqlFunction} from "./databaseTypes";
+import { ColumnType, Modifier, SqlFunction } from "./databaseTypes";
 import mySql from "promise-mysql";
-import {TableSchema} from "./tableSchema";
+import { TableSchema } from "./tableSchema";
 import { Nullable } from "../types";
 
 export class ColumnSchema {

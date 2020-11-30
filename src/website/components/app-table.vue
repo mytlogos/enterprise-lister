@@ -23,7 +23,7 @@
           :key="column"
           class="btn btn-secondary"
           type="button"
-          :class="{checked: column.show}"
+          :class="{ checked: column.show }"
           @click="column.show = !column.show"
         >
           {{ column.name }}
@@ -32,7 +32,7 @@
       <form class="form-inline">
         <div
           class="mr-sm-2 dropdown dropdown-btn"
-          :class="{hidden: !showSearch}"
+          :class="{ hidden: !showSearch }"
         >
           <input
             v-model="filter"
@@ -79,18 +79,29 @@
           @click.ctrl="openMedium(entry.id)"
           @keyup.enter.ctrl="openMedium(marked.id)"
         >
-          <td :class="{marked: marked.id != null && marked.id === entry.id}">
-            {{ entry.id != null ? index+1: "" }}
+          <td
+            :class="{
+              marked: marked.id != null && marked.id === entry.id,
+            }"
+          >
+            {{ entry.id != null ? index + 1 : "" }}
           </td>
           <td
             v-for="column in columns"
             v-show="column.show"
             :key="column"
-            :class="{marked: marked.id != null && marked.id === entry.id}"
-            @click="mark(entry,index, column.prop)"
+            :class="{
+              marked: marked.id != null && marked.id === entry.id,
+            }"
+            @click="mark(entry, index, column.prop)"
             @dblclick="startEdit(entry, column.prop)"
           >
-            <label v-if="editCell.id === entry.id && editCell.prop === column.prop">
+            <label
+              v-if="
+                editCell.id === entry.id &&
+                  editCell.prop === column.prop
+              "
+            >
               <input
                 v-model="editCell.value"
                 @blur="stopEdit"
@@ -108,7 +119,7 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent, onBusEvent} from "../bus";
+import { emitBusEvent, onBusEvent } from "../bus";
 import deleteModal from "./modal/delete-modal.vue";
 
 // FIXME user can edit empty rows
@@ -151,7 +162,7 @@ import { Column, Medium } from "../siteTypes";
 
 export default defineComponent({
     name: "AppTable",
-    components: {deleteModal},
+    components: { deleteModal },
     props: {
         data: { type: Array as PropType<Medium[]>, required: true },
         columns: { type: Array as PropType<Column[]>, required: true },
@@ -429,7 +440,7 @@ export default defineComponent({
 </script>
 
 <style scoped>
-    /* .narrow {
+/* .narrow {
         width: 20px;
     }
 

@@ -1,4 +1,4 @@
-import {AsyncLocalStorage, createHook, AsyncResource} from "async_hooks";
+import { AsyncLocalStorage, createHook, AsyncResource } from "async_hooks";
 import { EmptyPromise, Optional } from "./types";
 
 const localStorage = new AsyncLocalStorage();
@@ -38,7 +38,7 @@ createHook({
         if (waitStart) {
             const now = Date.now();
             const waitingDuration = now - waitStart;
-            
+
             if (waitingDuration > 0) {
                 waiting += waitingDuration;
                 const lastEntry = history[history.length - 1];
@@ -52,7 +52,7 @@ createHook({
                         context = [defaultContext];
                         store.set("context", context);
                     }
-                    history.push({duration: waitingDuration, type: "waiting", context: context.join("--")});
+                    history.push({ duration: waitingDuration, type: "waiting", context: context.join("--") });
                 }
                 store.set("waiting", waiting);
             }
@@ -101,7 +101,7 @@ createHook({
                         store.set("context", context);
                     }
 
-                    history.push({duration: runningDuration, type: "running", context: context.join("--")});
+                    history.push({ duration: runningDuration, type: "running", context: context.join("--") });
                 }
                 store.set("running", running);
             }
@@ -186,7 +186,7 @@ export function runAsync(id: number, store: Map<string, any>, callback: (...args
  */
 export function bindContext<Func extends (...args: any[]) => any>(func: Func): Func & { asyncResource: AsyncResource } {
     // @ts-expect-error
-    return AsyncResource.bind(function(...args: any[]) {
+    return AsyncResource.bind(function (...args: any[]) {
         // @ts-expect-error
         return func(this, ...args);
     }) as Func & { asyncResource: AsyncResource };

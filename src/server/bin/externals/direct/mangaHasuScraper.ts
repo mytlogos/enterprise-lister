@@ -1,12 +1,12 @@
-import {EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult} from "../types";
-import {EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Optional} from "../../types";
+import { EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult } from "../types";
+import { EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Optional } from "../../types";
 import * as url from "url";
-import {queueCheerioRequest} from "../queueManager";
+import { queueCheerioRequest } from "../queueManager";
 import logger from "../../logger";
-import {equalsIgnore, extractIndices, MediaType, sanitizeString, delay} from "../../tools";
-import {checkTocContent} from "../scraperTools";
-import {SearchResult as TocSearchResult, searchToc, extractLinkable} from "./directTools";
-import {MissingResourceError, UrlError, UnreachableError} from "../errors";
+import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay } from "../../tools";
+import { checkTocContent } from "../scraperTools";
+import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
+import { MissingResourceError, UrlError, UnreachableError } from "../errors";
 
 async function tryRequest(link: string, retry = 0): Promise<cheerio.Root> {
     try {
@@ -123,7 +123,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
         const date = news[i].date;
         date.setMinutes(date.getMinutes() - i * 15);
     }
-    return {episodes: news};
+    return { episodes: news };
 }
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
@@ -355,7 +355,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
     const links = $("a.a-item");
 
     if (!links.length) {
-        return {done: true};
+        return { done: true };
     }
     for (let i = 0; i < links.length; i++) {
         const linkElement = links.eq(i);
@@ -365,11 +365,11 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
 
         if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
             const tocLink = linkElement.attr("href") as string;
-            return {value: tocLink, done: true};
+            return { value: tocLink, done: true };
         }
     }
 
-    return {done: false};
+    return { done: false };
 }
 
 async function search(searchWords: string): Promise<SearchResult[]> {
@@ -404,7 +404,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const author = sanitizeString(authorElement.text());
         const coverLink = coverElement.attr("src");
 
-        searchResults.push({coverUrl: coverLink, author, link, title: text});
+        searchResults.push({ coverUrl: coverLink, author, link, title: text });
     }
 
     return searchResults;

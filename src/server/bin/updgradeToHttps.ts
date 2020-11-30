@@ -1,5 +1,5 @@
 import * as storage from "./database/storages/storage";
-import {EpisodeRelease, JobItem, JobRequest, JobState, ScrapeName, MediumToc} from "./types";
+import { EpisodeRelease, JobItem, JobRequest, JobState, ScrapeName, MediumToc } from "./types";
 
 async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: MediumToc[]) {
     const domainMatch = domainReg.exec(toc.link);
@@ -64,11 +64,11 @@ async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: 
         } else {
             const release = releases[0];
             if (release.url.startsWith("http://")) {
-                updateToHttpsReleases.push({...release, url: release.url.replace("http", "https")});
+                updateToHttpsReleases.push({ ...release, url: release.url.replace("http", "https") });
             }
         }
     }
-    return {delete: deleteReleases, update: updateToHttpsReleases};
+    return { delete: deleteReleases, update: updateToHttpsReleases };
 }
 
 async function updateHttps(): Promise<Change> {
@@ -142,7 +142,7 @@ async function updateHttps(): Promise<Change> {
                     if (hasSameJobType) {
                         continue;
                     }
-                    const httpsJob = {...deleteJob};
+                    const httpsJob = { ...deleteJob };
                     httpsJob.name = httpsJob.name.replace("http", "https");
                     if (httpsJob.arguments) {
                         httpsJob.arguments = httpsJob.arguments.replace(/http:/g, "https:");
@@ -197,7 +197,7 @@ async function updateHttps(): Promise<Change> {
                 if (hasSameJobType) {
                     continue;
                 }
-                const httpsJob = {...deleteJob};
+                const httpsJob = { ...deleteJob };
                 httpsJob.name = httpsJob.name.replace("http", "https");
                 if (httpsJob.arguments) {
                     httpsJob.arguments = httpsJob.arguments.replace(/http:/g, "https:");
@@ -208,7 +208,7 @@ async function updateHttps(): Promise<Change> {
             removeJobs.push(...deleteJobs);
             addJobs.push(...newJobs);
             removeTocs.push(toc);
-            addTocs.push({mediumId: toc.mediumId, link: toc.link.replace("http:", "https:")});
+            addTocs.push({ mediumId: toc.mediumId, link: toc.link.replace("http:", "https:") });
 
             const changes = await updateReleaseProtocol(domainReg, toc, values);
             if (changes) {
@@ -228,7 +228,7 @@ async function updateHttps(): Promise<Change> {
             if (!httpsOnly.some((value) => url.startsWith(value))) {
                 continue;
             }
-            const httpsJob = {...jobItem};
+            const httpsJob = { ...jobItem };
             httpsJob.name = httpsJob.name.replace("http", "https");
             httpsJob.arguments = (httpsJob.arguments as string).replace(/http:/g, "https:");
 
@@ -246,7 +246,7 @@ async function updateHttps(): Promise<Change> {
             addJobs.push(httpsJob);
         }
     }
-    return {addJobs, removeJobs, addReleases, removeReleases, removeTocs, addTocs};
+    return { addJobs, removeJobs, addReleases, removeReleases, removeTocs, addTocs };
 }
 
 interface Change {

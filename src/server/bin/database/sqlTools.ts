@@ -27,7 +27,7 @@ export function storeModifications(key: ModificationKey, queryType: QueryType, r
     }
     const modifications = getElseSet(store, "modifications", () => { return {}; });
     const modification: Modification = getElseSetObj(modifications, key, () => { return { created: 0, deleted: 0, updated: 0 }; });
-    
+
     if (queryType === "delete") {
         modification.deleted += result.affectedRows;
     } else if (queryType === "insert") {

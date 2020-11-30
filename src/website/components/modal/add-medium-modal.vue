@@ -48,68 +48,83 @@
         </label>
       </div>
       <div class="artist autocomplete">
-        <label>Artist: <input
-          v-model="medium.artist"
-          name="artist"
-          title="Artist"
-          type="text"
-        > </label>
+        <label>Artist:
+          <input
+            v-model="medium.artist"
+            name="artist"
+            title="Artist"
+            type="text"
+          >
+        </label>
       </div>
       <div class="series autocomplete">
-        <label>Series: <input
-          v-model="medium.series"
-          name="series"
-          title="Series"
-          type="text"
-        > </label>
+        <label>Series:
+          <input
+            v-model="medium.series"
+            name="series"
+            title="Series"
+            type="text"
+          >
+        </label>
       </div>
       <div class="universe autocomplete">
-        <label>Universe: <input
-          v-model="medium.universe"
-          name="universe"
-          title="Universe"
-          type="text"
-        > </label>
+        <label>Universe:
+          <input
+            v-model="medium.universe"
+            name="universe"
+            title="Universe"
+            type="text"
+          >
+        </label>
       </div>
       <div class="language autocomplete">
-        <label>Language: <input
-          v-model="medium.language"
-          name="language"
-          title="Language"
-          type="text"
-        > </label>
+        <label>Language:
+          <input
+            v-model="medium.language"
+            name="language"
+            title="Language"
+            type="text"
+          >
+        </label>
       </div>
       <div class="countryOfOrigin autocomplete">
-        <label>Country Of Origin: <input
-          v-model="medium.countryOfOrigin"
-          name="countryOfOrigin"
-          title="Country Of Origin"
-          type="text"
-        > </label>
+        <label>Country Of Origin:
+          <input
+            v-model="medium.countryOfOrigin"
+            name="countryOfOrigin"
+            title="Country Of Origin"
+            type="text"
+          >
+        </label>
       </div>
       <div class="langOfOrigin autocomplete">
-        <label>Language Of Origin: <input
-          v-model="medium.langOfOrigin"
-          name="langOfOrigin"
-          title="Language Of Origin"
-          type="text"
-        > </label>
+        <label>Language Of Origin:
+          <input
+            v-model="medium.langOfOrigin"
+            name="langOfOrigin"
+            title="Language Of Origin"
+            type="text"
+          >
+        </label>
       </div>
       <div class="stateTl autocomplete">
-        <label>Status of Translator: <input
-          v-model="medium.stateTl"
-          name="stateTl"
-          title="Status of Translator"
-          type="text"
-        > </label>
+        <label>Status of Translator:
+          <input
+            v-model="medium.stateTl"
+            name="stateTl"
+            title="Status of Translator"
+            type="text"
+          >
+        </label>
       </div>
       <div class="stateCOO autocomplete">
-        <label>Status in COO: <input
-          v-model="medium.stateCOO"
-          name="stateCOO"
-          title="Status in COO"
-          type="text"
-        >
+        <label>Status in COO:
+          <input
+            v-model="medium.stateCOO"
+            name="stateCOO"
+            title="Status in COO"
+            type="text"
+          >
         </label>
       </div>
       <div class="list select-container">
@@ -141,32 +156,32 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../../bus";
+import { emitBusEvent } from "../../bus";
 import modal from "./modal";
 
 interface GuiMediaType {
-  value: number;
-  name: string;
-  checked: boolean;
+    value: number;
+    name: string;
+    checked: boolean;
 }
 
 interface AddMedium {
-  title: string;
-  author: string;
-  artist: string;
-  series: string;
-  universe: string;
-  language: string;
-  countryOfOrigin: string;
-  langOfOrigin: string;
-  stateTl: string;
-  stateCOO: string;
+    title: string;
+    author: string;
+    artist: string;
+    series: string;
+    universe: string;
+    language: string;
+    countryOfOrigin: string;
+    langOfOrigin: string;
+    stateTl: string;
+    stateCOO: string;
 }
 
 interface Data {
-  mediaTypes: GuiMediaType[];
-  name: string;
-  medium: AddMedium;
+    mediaTypes: GuiMediaType[];
+    name: string;
+    medium: AddMedium;
 }
 
 import { defineComponent, PropType } from "vue";
@@ -174,7 +189,7 @@ import { List } from "../../siteTypes";
 
 export default defineComponent({
     name: "AddMediumModal",
-    components: {modal},
+    components: { modal },
     props: {
         show: Boolean,
         error: { type: String, required: true },
@@ -228,7 +243,7 @@ export default defineComponent({
                     mediumType |= value.values;
                 }
             });
-            const result = {type: mediumType};
+            const result = { type: mediumType };
             Object.assign(result, this.medium);
             console.log(result);
             emitBusEvent("do:add-medium", result);

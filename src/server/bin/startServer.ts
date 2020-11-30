@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-import {app} from "./app";
+import { app } from "./app";
 import debug from "debug";
-import {createServer, Server} from "http";
+import { createServer, Server } from "http";
 import env from "./env";
 // start storage (connect to database)
-import {startStorage} from "./database/storages/storage";
+import { startStorage } from "./database/storages/storage";
 import "./deviceVerificator";
 // start crawler (setup and start running)
 import os from "os";
 import logger from "./logger";
-import {startTunneling} from "./tunnel";
+import { startTunneling } from "./tunnel";
 
 const port = env.port || process.env.port;
 // first start storage

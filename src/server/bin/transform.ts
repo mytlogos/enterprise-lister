@@ -1,6 +1,6 @@
 import stream from "stream";
-import {isString} from "./tools";
-import {StringDecoder} from "string_decoder";
+import { isString } from "./tools";
+import { StringDecoder } from "string_decoder";
 import { Nullable } from "./types";
 
 export class BufferToStringStream extends stream.Transform {
@@ -8,7 +8,7 @@ export class BufferToStringStream extends stream.Transform {
 
 
     public constructor() {
-        super({decodeStrings: false, encoding: "utf-8"});
+        super({ decodeStrings: false, encoding: "utf-8" });
         this.decoder = new StringDecoder("utf-8");
     }
 

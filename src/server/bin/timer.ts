@@ -1,4 +1,4 @@
-import {Handler} from "express";
+import { Handler } from "express";
 
 const workFrom = 7;
 const workTo = 11;

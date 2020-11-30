@@ -438,7 +438,7 @@ export const postListMedium: Handler = (req, res) => {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, internalListStorage.addItemToList({listId, id: mediumId}, uuid));
+    sendResult(res, internalListStorage.addItemToList({ listId, id: mediumId }, uuid));
 };
 export const putListMedium: Handler = (req, res) => {
     const { oldListId, newListId } = req.body;

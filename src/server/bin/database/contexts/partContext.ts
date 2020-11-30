@@ -1,7 +1,7 @@
-import {SubContext} from "./subContext";
-import {Episode, FullPart, MinPart, Part, ShallowPart, SimpleEpisode, Uuid, MultiSingleNumber, Optional, VoidablePromise, SimpleRelease} from "../../types";
-import {combiIndex, getElseSetObj, multiSingle, separateIndex} from "../../tools";
-import {Query} from "mysql";
+import { SubContext } from "./subContext";
+import { Episode, FullPart, MinPart, Part, ShallowPart, SimpleEpisode, Uuid, MultiSingleNumber, Optional, VoidablePromise, SimpleRelease } from "../../types";
+import { combiIndex, getElseSetObj, multiSingle, separateIndex } from "../../tools";
+import { Query } from "mysql";
 import { MysqlServerError } from "../mysqlError";
 import { storeModifications } from "../sqlTools";
 
@@ -308,7 +308,7 @@ export class PartContext extends SubContext {
      */
     public async updatePart(part: Part): Promise<boolean> {
         const result = await this.update(
-            "part", 
+            "part",
             (updates, values) => {
                 if (part.title) {
                     updates.push("title = ?");

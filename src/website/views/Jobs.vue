@@ -6,34 +6,67 @@
     <div class="row">
       <span class="col-2">Running Jobs: {{ summary.running }}</span>
       <span class="col-2">Network Queries: </span>
-      <span class="col">{{ totalJobsStats.minnetwork }}-{{ totalJobsStats.avgnetwork }}-{{ totalJobsStats.maxnetwork }}</span>
+      <span
+        class="col"
+      >{{ totalJobsStats.minnetwork }}-{{
+        totalJobsStats.avgnetwork
+      }}-{{ totalJobsStats.maxnetwork }}</span>
     </div>
     <div class="row">
       <span class="col-2">Waiting Jobs: {{ summary.waiting }}</span>
       <span class="col-2">Network Send: </span>
-      <span class="col">{{ totalJobsStats.minsend }}-{{ round(totalJobsStats.avgsend) }}-{{ totalJobsStats.maxsend }}</span>
+      <span
+        class="col"
+      >{{ totalJobsStats.minsend }}-{{
+        round(totalJobsStats.avgsend)
+      }}-{{ totalJobsStats.maxsend }}</span>
     </div>
     <div class="row">
-      <span class="col-2">Lagging Jobs:
+      <span
+        class="col-2"
+      >Lagging Jobs:
         <span
           class="badge"
-          :class="(summary.lagging / (summary.waiting + summary.running)) > 0.1 ? 'badge-danger' : 'badge-success'"
+          :class="
+            summary.lagging / (summary.waiting + summary.running) >
+              0.1
+              ? 'badge-danger'
+              : 'badge-success'
+          "
         >
           {{ summary.lagging }}
         </span>
       </span>
       <span class="col-2">Network Received:</span>
-      <span class="col">{{ totalJobsStats.minreceived }}-{{ round(totalJobsStats.avgreceived) }}-{{ totalJobsStats.maxreceived }}</span>
+      <span
+        class="col"
+      >{{ totalJobsStats.minreceived }}-{{
+        round(totalJobsStats.avgreceived)
+      }}-{{ totalJobsStats.maxreceived }}</span>
     </div>
     <div class="row">
-      <span class="col-2">Total Jobs failed: {{ round(totalJobsStats.failed * 100) }}%</span>
+      <span
+        class="col-2"
+      >Total Jobs failed:
+        {{ round(totalJobsStats.failed * 100) }}%</span>
       <span class="col-2">SQL Queries: </span>
-      <span class="col">{{ totalJobsStats.minQ }}-{{ round(totalJobsStats.queries) }}-{{ totalJobsStats.maxQ }}</span>
+      <span
+        class="col"
+      >{{ totalJobsStats.minQ }}-{{
+        round(totalJobsStats.queries)
+      }}-{{ totalJobsStats.maxQ }}</span>
     </div>
     <div class="row">
-      <span class="col-2">Total Jobs succeeded: {{ round(totalJobsStats.succeeded * 100) }}%</span>
+      <span
+        class="col-2"
+      >Total Jobs succeeded:
+        {{ round(totalJobsStats.succeeded * 100) }}%</span>
       <span class="col-2">Duration: </span>
-      <span class="col">{{ totalJobsStats.minD }}-{{ round(totalJobsStats.avgduration) }}-{{ totalJobsStats.maxD }}</span>
+      <span
+        class="col"
+      >{{ totalJobsStats.minD }}-{{
+        round(totalJobsStats.avgduration)
+      }}-{{ totalJobsStats.maxD }}</span>
     </div>
     <div class="row">
       <span class="col-2" />
@@ -64,9 +97,9 @@
             @click.left="toggleOrder('name')"
           >
             Name
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('name')" 
+              :class="sortedClass('name')"
               aria-hidden="true"
             />
           </th>
@@ -75,9 +108,9 @@
             @click.left="toggleOrder('state')"
           >
             Status
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('state')" 
+              :class="sortedClass('state')"
               aria-hidden="true"
             />
           </th>
@@ -86,9 +119,9 @@
             @click.left="toggleOrder('runningSince')"
           >
             Time Running
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('runningSince')" 
+              :class="sortedClass('runningSince')"
               aria-hidden="true"
             />
           </th>
@@ -97,9 +130,9 @@
             @click.left="toggleOrder('runningSince')"
           >
             Running Since
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('runningSince')" 
+              :class="sortedClass('runningSince')"
               aria-hidden="true"
             />
           </th>
@@ -107,10 +140,10 @@
             scope="col"
             @click.left="toggleOrder('nextRun')"
           >
-            Next Run 
-            <i 
+            Next Run
+            <i
               class="fas"
-              :class="sortedClass('nextRun')" 
+              :class="sortedClass('nextRun')"
               aria-hidden="true"
             />
           </th>
@@ -119,9 +152,9 @@
             @click.left="toggleOrder('failed')"
           >
             Failure Rate
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('failed')" 
+              :class="sortedClass('failed')"
               aria-hidden="true"
             />
           </th>
@@ -130,9 +163,9 @@
             @click.left="toggleOrder('avgduration')"
           >
             Avg Duration
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('avgduration')" 
+              :class="sortedClass('avgduration')"
               aria-hidden="true"
             />
           </th>
@@ -141,9 +174,9 @@
             @click.left="toggleOrder('avgnetwork')"
           >
             Avg Network
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('avgnetwork')" 
+              :class="sortedClass('avgnetwork')"
               aria-hidden="true"
             />
           </th>
@@ -152,9 +185,9 @@
             @click.left="toggleOrder('avgreceived')"
           >
             Avg Received
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('avgreceived')" 
+              :class="sortedClass('avgreceived')"
               aria-hidden="true"
             />
           </th>
@@ -163,9 +196,9 @@
             @click.left="toggleOrder('queries')"
           >
             Avg Queries
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('queries')" 
+              :class="sortedClass('queries')"
               aria-hidden="true"
             />
           </th>
@@ -174,9 +207,9 @@
             @click.left="toggleOrder('count')"
           >
             Total Times Run
-            <i 
+            <i
               class="fas"
-              :class="sortedClass('count')" 
+              :class="sortedClass('count')"
               aria-hidden="true"
             />
           </th>
@@ -198,9 +231,15 @@
             <td>{{ dateToString(job.runningSince) }}</td>
             <td>{{ dateToString(job.nextRun) }}</td>
             <td>{{ round(jobStats[job.name]?.failed || 0) }}</td>
-            <td>{{ round(jobStats[job.name]?.avgduration || 0) }}</td>
-            <td>{{ round(jobStats[job.name]?.avgnetwork || 0) }}</td>
-            <td>{{ round(jobStats[job.name]?.avgreceived || 0) }}</td>
+            <td>
+              {{ round(jobStats[job.name]?.avgduration || 0) }}
+            </td>
+            <td>
+              {{ round(jobStats[job.name]?.avgnetwork || 0) }}
+            </td>
+            <td>
+              {{ round(jobStats[job.name]?.avgreceived || 0) }}
+            </td>
             <td>{{ round(jobStats[job.name]?.queries || 0) }}</td>
             <td>{{ jobStats[job.name]?.count }}</td>
           </tr>
@@ -221,7 +260,8 @@
               <template v-if="liveJobs[job.id]">
                 <table class="table table-sm table-hover">
                   <caption class="sr-only">
-                    Time spent in Running or Waiting depending on contexts
+                    Time spent in Running or Waiting
+                    depending on contexts
                   </caption>
                   <thead>
                     <tr>
@@ -241,7 +281,9 @@
                   </thead>
                   <tbody>
                     <tr
-                      v-for="row in totalRow(liveJobs[job.id])"
+                      v-for="row in totalRow(
+                        liveJobs[job.id]
+                      )"
                       :key="row"
                     >
                       <td class="fit">
@@ -252,7 +294,9 @@
                           class="bg-success"
                           style="padding: 3px 0"
                           :style="{
-                            width: row.runningWidth + '%'
+                            width:
+                              row.runningWidth +
+                              '%',
                           }"
                         >
                           {{ row.running }}ms
@@ -263,7 +307,9 @@
                           class="bg-danger"
                           style="padding: 3px 0"
                           :style="{
-                            width: row.waitingWidth + '%'
+                            width:
+                              row.waitingWidth +
+                              '%',
                           }"
                         >
                           {{ row.waiting }}ms
@@ -282,7 +328,15 @@
                   </tbody>
                 </table>
                 <div class="row">
-                  <span class="col">Current: {{ liveJobs[job.id].context[liveJobs[job.id].context.length - 1] }}</span>
+                  <span
+                    class="col"
+                  >Current:
+                    {{
+                      liveJobs[job.id].context[
+                        liveJobs[job.id].context
+                          .length - 1
+                      ]
+                    }}</span>
                 </div>
               </template>
               <template v-else>
@@ -607,7 +661,8 @@ tr[data-toggle] {
     cursor: pointer;
 }
 
-.table td.fit, .table th.fit {
+.table td.fit,
+.table th.fit {
     width: 1%;
     white-space: nowrap;
 }

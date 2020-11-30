@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent, onBusEvent} from "../../bus";
+import { emitBusEvent, onBusEvent } from "../../bus";
 
 import { defineComponent, PropType } from "vue";
 
@@ -58,7 +58,7 @@ export default defineComponent({
                 evt.stopImmediatePropagation();
                 this.close();
             }
-        }, {capture: true});
+        }, { capture: true });
         onBusEvent("deletion", (failure) => {
             if (!this.show) {
                 return;

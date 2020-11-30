@@ -1,6 +1,6 @@
-import {SubContext} from "./subContext";
-import {List, Medium, Uuid, MultiSingleNumber, MinList, StorageList} from "../../types";
-import {Errors, promiseMultiSingle, multiSingle} from "../../tools";
+import { SubContext } from "./subContext";
+import { List, Medium, Uuid, MultiSingleNumber, MinList, StorageList } from "../../types";
+import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 
 export class InternalListContext extends SubContext {
@@ -8,7 +8,7 @@ export class InternalListContext extends SubContext {
      * Adds a list to the storage and
      * links it to the user of the uuid.
      */
-    public async addList(uuid: Uuid, {name, medium}: MinList): Promise<List> {
+    public async addList(uuid: Uuid, { name, medium }: MinList): Promise<List> {
         const result = await this.query(
             "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)",
             [uuid, name, medium],
@@ -49,7 +49,7 @@ export class InternalListContext extends SubContext {
 
         const loadedMedia = await this.parentContext.mediumContext.getMedium([...toLoadMedia], uuid);
 
-        return {list: lists, media: loadedMedia};
+        return { list: lists, media: loadedMedia };
     }
 
     /**
@@ -114,11 +114,11 @@ export class InternalListContext extends SubContext {
             return Promise.reject(new Error(Errors.DOES_NOT_EXIST));
         }
         // first remove all links between a list and their media
-        let deleteResult = await this.delete("list_medium", {column: "list_id", value: listId});
+        let deleteResult = await this.delete("list_medium", { column: "list_id", value: listId });
         storeModifications("list_item", "delete", deleteResult);
 
         // lastly delete the list itself
-        deleteResult = await this.delete("reading_list", {column: "id", value: listId});
+        deleteResult = await this.delete("reading_list", { column: "id", value: listId });
         storeModifications("list", "delete", deleteResult);
         return deleteResult.affectedRows > 0;
     }
@@ -185,7 +185,7 @@ export class InternalListContext extends SubContext {
         // first remove medium from old list
         await this.removeMedium(oldListId, mediumId);
         // add item to new list
-        return this.addItemToList( {listId: newListId, id: mediumId});
+        return this.addItemToList({ listId: newListId, id: mediumId });
     }
 
     /**

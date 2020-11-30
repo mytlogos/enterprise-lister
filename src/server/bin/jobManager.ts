@@ -1,7 +1,7 @@
-import {remove, removeLike, stringify, getElseSet} from "./tools";
+import { remove, removeLike, stringify, getElseSet } from "./tools";
 import logger from "./logger";
-import {JobRequest, EmptyPromise, Optional, Nullable} from "./types";
-import {getStore, runAsync, setContext, removeContext} from "./asyncStorage";
+import { JobRequest, EmptyPromise, Optional, Nullable } from "./types";
+import { getStore, runAsync, setContext, removeContext } from "./asyncStorage";
 import Timeout = NodeJS.Timeout;
 
 /**
@@ -117,7 +117,7 @@ export class JobQueue {
      * @param memorySize the units of the Memory Limit, by default Bytes
      * @param maxActive the maximum number of active jobs, negative values are replaced by 1, by default 5
      */
-    public constructor({memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5} = {}) {
+    public constructor({ memoryLimit = 0, memorySize = MemorySize.B, maxActive = 5 } = {}) {
         this.memoryLimit = memoryLimit;
         this.memorySize = memorySize;
         this.maxActive = maxActive < 0 ? 1 : maxActive;

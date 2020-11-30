@@ -21,8 +21,8 @@
 
 <script lang="ts">
 import appHeader from "./components/app-header.vue";
-import {emitBusEvent, onBusEvent} from "./bus";
-import {HttpClient} from "./Httpclient";
+import { emitBusEvent, onBusEvent } from "./bus";
+import { HttpClient } from "./Httpclient";
 import { defineComponent, PropType } from "vue";
 import { List, News, Column, Medium, ExternalUser } from "./siteTypes";
 

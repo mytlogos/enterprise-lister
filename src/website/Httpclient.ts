@@ -1,4 +1,4 @@
-import { 
+import {
     ExternalUser,
     List,
     Medium,
@@ -16,7 +16,7 @@ import {
     AllJobStats,
     JobDetails,
     TimeJobStats,
-    TimeBucket 
+    TimeBucket
 } from "./siteTypes";
 
 /**
@@ -264,7 +264,7 @@ interface TocPath {
 
 interface JobPath {
     readonly get: MethodObject;
-    readonly stats: { 
+    readonly stats: {
         all: GetPath;
         grouped: GetPath;
         detail: GetPath;
@@ -428,7 +428,7 @@ export const HttpClient = {
         });
     },
 
-    set user(user : any) {
+    set user(user: any) {
         this._user = user;
         this._init = true;
     },
@@ -587,7 +587,7 @@ export const HttpClient = {
      * @param progress the new progress value
      */
     updateProgress(episodeId: number | number[], progress: number): Promise<boolean> {
-        return this.queryServer(api.progress.post, {episodeId, progress});
+        return this.queryServer(api.progress.post, { episodeId, progress });
     },
 
     getJobs(): Promise<Job[]> {
@@ -616,15 +616,15 @@ export const HttpClient = {
 
     getToc(link: string): Promise<Toc[]> {
         link = encodeURIComponent(link);
-        return this.queryServer(api.searchtoc.get, {link});
+        return this.queryServer(api.searchtoc.get, { link });
     },
 
     getTocs(mediumId: number | number[]): Promise<FullMediumToc[]> {
-        return this.queryServer(api.toc.get, {mediumId});
+        return this.queryServer(api.toc.get, { mediumId });
     },
 
     addToc(link: string, id: number): Promise<boolean> {
-        return this.queryServer(api.toc.post, {toc: link, mediumId: id});
+        return this.queryServer(api.toc.post, { toc: link, mediumId: id });
     },
 
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {

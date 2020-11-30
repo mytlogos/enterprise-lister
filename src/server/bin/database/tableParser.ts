@@ -1,7 +1,7 @@
-import {TableSchema} from "./tableSchema";
+import { TableSchema } from "./tableSchema";
 import logger from "../logger";
-import {ColumnSchema} from "./columnSchema";
-import {ColumnType, Modifier} from "./databaseTypes";
+import { ColumnSchema } from "./columnSchema";
+import { ColumnType, Modifier } from "./databaseTypes";
 import { Optional, Nullable } from "../types";
 
 export class TableParser {
@@ -59,7 +59,7 @@ export class TableParser {
         }
         for (const columnName of exec[1].split(/[,\s]+/)) {
             const foundColumnIndex = table.columns.findIndex((value) => {
-                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);                
+                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
             });
 
             if (foundColumnIndex < 0) {
@@ -102,7 +102,7 @@ export class TableParser {
         const uniqueIndex: ColumnSchema[] = [];
         for (const columnName of exec[1].split(/[,\s]+/)) {
             const foundColumnIndex = table.columns.findIndex((value) => {
-                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);                
+                return value.name === columnName || new RegExp(value.name + "\\s*\\((\\d+)\\)").test(columnName);
             });
 
             if (foundColumnIndex < 0) {
@@ -154,44 +154,44 @@ export class TableParser {
         let typeSize: Optional<number>;
 
         switch (partsType) {
-        case ColumnType.INT:
-            type = ColumnType.INT;
-            break;
-        case ColumnType.DATETIME:
-            type = ColumnType.DATETIME;
-            break;
-        case ColumnType.TIMESTAMP:
-            type = ColumnType.TIMESTAMP;
-            break;
-        case ColumnType.BOOLEAN:
-            type = ColumnType.BOOLEAN;
-            break;
-        case ColumnType.FLOAT:
-            type = ColumnType.FLOAT;
-            break;
-        case ColumnType.DOUBLE:
-            type = ColumnType.DOUBLE;
-            break;
-        case ColumnType.TEXT:
-            type = ColumnType.TEXT;
-            break;
-        default: {
-            let exec = /VARCHAR\((\d+)\)/i.exec(partsType);
-            if (exec) {
-                type = ColumnType.VARCHAR;
-                typeSize = Number(exec[1]);
-            } else {
-                exec = /CHAR\((\d+)\)/i.exec(partsType);
-
+            case ColumnType.INT:
+                type = ColumnType.INT;
+                break;
+            case ColumnType.DATETIME:
+                type = ColumnType.DATETIME;
+                break;
+            case ColumnType.TIMESTAMP:
+                type = ColumnType.TIMESTAMP;
+                break;
+            case ColumnType.BOOLEAN:
+                type = ColumnType.BOOLEAN;
+                break;
+            case ColumnType.FLOAT:
+                type = ColumnType.FLOAT;
+                break;
+            case ColumnType.DOUBLE:
+                type = ColumnType.DOUBLE;
+                break;
+            case ColumnType.TEXT:
+                type = ColumnType.TEXT;
+                break;
+            default: {
+                let exec = /VARCHAR\((\d+)\)/i.exec(partsType);
                 if (exec) {
-                    type = ColumnType.CHAR;
+                    type = ColumnType.VARCHAR;
                     typeSize = Number(exec[1]);
                 } else {
-                    logger.warn(`could not parse column type for: '${value}'`);
-                    return null;
+                    exec = /CHAR\((\d+)\)/i.exec(partsType);
+
+                    if (exec) {
+                        type = ColumnType.CHAR;
+                        typeSize = Number(exec[1]);
+                    } else {
+                        logger.warn(`could not parse column type for: '${value}'`);
+                        return null;
+                    }
                 }
             }
-        }
         }
         const modifiers: Modifier[] = [];
         let defaultValue: Optional<string>;
@@ -202,56 +202,56 @@ export class TableParser {
             let modifier;
 
             switch (modifierPart.toUpperCase()) {
-            case Modifier.AUTO_INCREMENT:
-                modifier = Modifier.AUTO_INCREMENT;
-                break;
-            case Modifier.NOT:
-                i++;
-                if (parts[i] === Modifier.NULL) {
-                    modifier = Modifier.NOT_NULL;
-                } else {
-                    logger.warn(`unknown not modifier, expected 'NULL' but got '${parts[i]}'`);
-                    return null;
-                }
-                break;
-            case Modifier.UNIQUE:
-                modifier = Modifier.UNIQUE;
-                break;
-            case Modifier.UNSIGNED:
-                modifier = Modifier.UNSIGNED;
-                break;
-            case "DEFAULT": {
-                i++;
-                const defaultValueObj = this._getExpressionValue(parts, i);
+                case Modifier.AUTO_INCREMENT:
+                    modifier = Modifier.AUTO_INCREMENT;
+                    break;
+                case Modifier.NOT:
+                    i++;
+                    if (parts[i] === Modifier.NULL) {
+                        modifier = Modifier.NOT_NULL;
+                    } else {
+                        logger.warn(`unknown not modifier, expected 'NULL' but got '${parts[i]}'`);
+                        return null;
+                    }
+                    break;
+                case Modifier.UNIQUE:
+                    modifier = Modifier.UNIQUE;
+                    break;
+                case Modifier.UNSIGNED:
+                    modifier = Modifier.UNSIGNED;
+                    break;
+                case "DEFAULT": {
+                    i++;
+                    const defaultValueObj = this._getExpressionValue(parts, i);
 
-                if (!defaultValueObj || !defaultValueObj.value) {
-                    logger.warn(`no default value specified for '${name}' of ${table.name}`);
-                    return null;
-                }
-                defaultValue = defaultValueObj.value;
-                i = defaultValueObj.index;
-                break;
-            }
-            case "ON": {
-                i++;
-                if (parts[i].toLowerCase() !== "update") {
-                    // for now skip all column 'triggers'? which are not triggered on update
+                    if (!defaultValueObj || !defaultValueObj.value) {
+                        logger.warn(`no default value specified for '${name}' of ${table.name}`);
+                        return null;
+                    }
+                    defaultValue = defaultValueObj.value;
+                    i = defaultValueObj.index;
                     break;
                 }
-                i++;
-                const updateValueObj = this._getExpressionValue(parts, i);
+                case "ON": {
+                    i++;
+                    if (parts[i].toLowerCase() !== "update") {
+                        // for now skip all column 'triggers'? which are not triggered on update
+                        break;
+                    }
+                    i++;
+                    const updateValueObj = this._getExpressionValue(parts, i);
 
-                if (!updateValueObj || !updateValueObj.value) {
-                    logger.warn(`no update value specified for '${name}' of ${table.name}`);
-                    return null;
+                    if (!updateValueObj || !updateValueObj.value) {
+                        logger.warn(`no update value specified for '${name}' of ${table.name}`);
+                        return null;
+                    }
+                    updateValue = updateValueObj.value;
+                    i = updateValueObj.index;
+                    break;
                 }
-                updateValue = updateValueObj.value;
-                i = updateValueObj.index;
-                break;
-            }
-            default:
-                logger.warn(`could not parse modifier for: '${modifierPart}'`);
-                break;
+                default:
+                    logger.warn(`could not parse modifier for: '${modifierPart}'`);
+                    break;
             }
             if (modifier) {
                 modifiers.push(modifier);
@@ -290,6 +290,6 @@ export class TableParser {
                 throw Error(`invalid default value: no closing parenthesis in '${columnParts.join(" ")}'`);
             }
         }
-        return {index, value: defaultValue};
+        return { index, value: defaultValue };
     }
 }

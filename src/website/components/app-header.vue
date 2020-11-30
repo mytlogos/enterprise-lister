@@ -139,7 +139,7 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../bus";
+import { emitBusEvent } from "../bus";
 
 import { defineComponent } from "vue";
 

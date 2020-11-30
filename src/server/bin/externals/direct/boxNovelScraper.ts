@@ -1,14 +1,14 @@
-import {EpisodeContent, Hook, Toc, TocContent, TocEpisode} from "../types";
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Nullable} from "../../types";
-import {queueCheerioRequest, queueRequest} from "../queueManager";
+import { EpisodeContent, Hook, Toc, TocContent, TocEpisode } from "../types";
+import { EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Nullable } from "../../types";
+import { queueCheerioRequest, queueRequest } from "../queueManager";
 import * as url from "url";
-import {equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import { equalsIgnore, extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString } from "../../tools";
 import logger from "../../logger";
-import {getTextContent, SearchResult as TocSearchResult, searchToc, extractLinkable} from "./directTools";
-import {checkTocContent} from "../scraperTools";
-import {MissingResourceError, UrlError} from "../errors";
-import {StatusCodeError} from "cloudscraper/errors";
-import {StatusCodeError as RequestStatusCodeError} from "request-promise-native/errors";
+import { getTextContent, SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
+import { checkTocContent } from "../scraperTools";
+import { MissingResourceError, UrlError } from "../errors";
+import { StatusCodeError } from "cloudscraper/errors";
+import { StatusCodeError as RequestStatusCodeError } from "request-promise-native/errors";
 
 interface NovelSearchResponse {
     success: boolean;
@@ -50,7 +50,7 @@ async function search(text: string): Promise<SearchResult[]> {
 
     if (parsed.success && parsed.data && parsed.data.length) {
         for (const datum of parsed.data) {
-            searchResults.push({link: datum.url.replace("-boxnovel", ""), title: datum.title});
+            searchResults.push({ link: datum.url.replace("-boxnovel", ""), title: datum.title });
         }
     }
     return searchResults;
@@ -70,22 +70,22 @@ export async function searchAjax(searchWords: string, medium: TocSearchMedium): 
         });
     } catch (e) {
         logger.error(e);
-        return {done: true};
+        return { done: true };
     }
     const parsed: NovelSearchResponse = JSON.parse(response);
 
     if (parsed.success && parsed.data && parsed.data.length) {
         if (!parsed.data.length) {
-            return {done: true};
+            return { done: true };
         }
         for (const datum of parsed.data) {
             if (equalsIgnore(datum.title, medium.title) || medium.synonyms.some((s) => equalsIgnore(datum.title, s))) {
-                return {value: datum.url.replace("-boxnovel", ""), done: true};
+                return { value: datum.url.replace("-boxnovel", ""), done: true };
             }
         }
-        return {done: false};
+        return { done: false };
     } else {
-        return {done: true};
+        return { done: true };
     }
 }
 
@@ -360,7 +360,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
             });
         }
     }
-    return {episodes: episodeNews};
+    return { episodes: episodeNews };
 }
 
 newsAdapter.link = "https://boxnovel.com";

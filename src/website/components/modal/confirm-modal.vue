@@ -22,11 +22,11 @@ import { defineComponent } from "vue";
 
 export default defineComponent({
     name: "ConfirmModal",
-    components: {modal},
+    components: { modal },
     props: {
-        text: { type: String, required: true},
+        text: { type: String, required: true },
         show: Boolean,
-        error: { type: String, required: true},
+        error: { type: String, required: true },
     }
 });
 </script>

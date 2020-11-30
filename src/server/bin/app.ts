@@ -1,5 +1,5 @@
-import createError, {HttpError} from "http-errors";
-import express, {Request, Response} from "express";
+import createError, { HttpError } from "http-errors";
+import express, { Request, Response } from "express";
 import path from "path";
 import logger from "morgan";
 import compression from "compression";
@@ -7,10 +7,10 @@ import compression from "compression";
 import helmet from "helmet";
 // own router
 import log from "./logger";
-import {apiRouter} from "./api";
-import {blockRequests} from "./timer";
+import { apiRouter } from "./api";
+import { blockRequests } from "./timer";
 import emojiStrip from "emoji-strip";
-import {isString} from "./tools";
+import { isString } from "./tools";
 
 export const app = express();
 

@@ -1,5 +1,5 @@
 import diagram from "dgram";
-import {isString} from "./tools";
+import { isString } from "./tools";
 import env from "./env";
 import logger from "./logger";
 

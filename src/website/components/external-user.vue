@@ -96,13 +96,13 @@ import { defineComponent, PropType } from "vue";
 import { ExternalUser } from "../siteTypes";
 
 interface ExternalListHost {
-  link: string;
-  value: number;
-  name: string;
+    link: string;
+    value: number;
+    name: string;
 }
 
 interface ExternalUserItem extends ExternalUser {
-  host: ExternalListHost;
+    host: ExternalListHost;
 }
 
 export default defineComponent({

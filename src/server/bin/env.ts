@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
-import {findProjectDirPath} from "./tools";
+import { findProjectDirPath } from "./tools";
 
 const envPath = findProjectDirPath("env.env");
 
-const config = dotenv.config({path: envPath});
+const config = dotenv.config({ path: envPath });
 
 if (config.error) {
     throw config.error;

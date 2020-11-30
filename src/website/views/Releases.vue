@@ -69,7 +69,12 @@
             </a>
           </td>
           <td>
-            <router-link :to="{ name: 'medium', params: { id: entry.mediumId } }">
+            <router-link
+              :to="{
+                name: 'medium',
+                params: { id: entry.mediumId },
+              }"
+            >
               {{ media[entry.mediumId] }}
             </router-link>
           </td>
@@ -78,13 +83,17 @@
               class="btn"
               data-toggle="tooltip"
               data-placement="top"
-              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
+              :title="
+                entry.progress < 1 ? 'Mark read' : 'Mark unread'
+              "
               @click.left="changeReadStatus(entry)"
             >
               <i
                 class="fas fa-check"
                 aria-hidden="true"
-                :class="{ 'text-success': entry.progress === 1 }"
+                :class="{
+                  'text-success': entry.progress === 1,
+                }"
               />
             </button>
           </td>
@@ -152,7 +161,7 @@ $(".toast").toast();
 
 export default defineComponent({
     name: "Releases",
-    components: {TripleFilter},
+    components: { TripleFilter },
 
     props: {
         read: Boolean
@@ -176,7 +185,7 @@ export default defineComponent({
     },
     watch: {
         readFilter() {
-            this.$router.push({ query: { read: this.readFilter} });
+            this.$router.push({ query: { read: this.readFilter } });
         },
         read() {
             // when release filter changed, set replace current items flag and fetch anew

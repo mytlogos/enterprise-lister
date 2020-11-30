@@ -6,9 +6,12 @@
         :key="item"
         :class="{
           active: item.show,
-          marked: markClassId === item.id && (item.external == null || markClassExternal === item.external)
+          marked:
+            markClassId === item.id &&
+            (item.external == null ||
+              markClassExternal === item.external),
         }"
-        @click="select(item.id,item.external,i, $event)"
+        @click="select(item.id, item.external, i, $event)"
       >
         {{ item.name }}
       </li>
@@ -22,7 +25,7 @@
 <script lang="ts">
 // FIXME do it better with marked list
 // FIXME still is focused after being not shown
-import {emitBusEvent} from "../bus";
+import { emitBusEvent } from "../bus";
 import { List } from "../siteTypes"
 
 interface Data {
@@ -62,7 +65,7 @@ export default defineComponent({
                 // match with filter insensitive
                 lists = lists
                     .map((value) => {
-                        return {value, match: regFilter.exec(value.name)};
+                        return { value, match: regFilter.exec(value.name) };
                     })
                     .filter((value) => value.match)
                     .map((value) => value.value);

@@ -38,7 +38,7 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../bus";
+import { emitBusEvent } from "../bus";
 
 import { defineComponent } from "vue";
 
@@ -62,7 +62,7 @@ export default defineComponent({
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("do:login", {user: this.user, pw: this.pw});
+            emitBusEvent("do:login", { user: this.user, pw: this.pw });
         },
     }
 });

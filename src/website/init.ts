@@ -180,7 +180,7 @@ export function timeDifference(current: Date, other: Date): string {
         value = Math.round(elapsed / msPerYear);
         unit = "year";
     }
-    return `${otherAfter ? "in ": ""}${value} ${unit}${value === 1 ? "s" : ""}${!otherAfter ? " ago" : ""}`;
+    return `${otherAfter ? "in " : ""}${value} ${unit}${value === 1 ? "s" : ""}${!otherAfter ? " ago" : ""}`;
 }
 
 export function absoluteToRelative(date: Date, now: Date): string {

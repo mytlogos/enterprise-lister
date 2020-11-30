@@ -1,6 +1,6 @@
-import {EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Uuid, VoidablePromise, MultiSingleValue} from "../types";
-import {MediaType} from "../tools";
-import {JobCallback} from "../jobManager";
+import { EpisodeNews, News, ReleaseState, SearchResult, TocSearchMedium, Uuid, VoidablePromise, MultiSingleValue } from "../types";
+import { MediaType } from "../tools";
+import { JobCallback } from "../jobManager";
 import { ListScrapeResult } from "./listManager";
 
 export interface ScraperJob {

@@ -1,12 +1,12 @@
 import request from "request-promise-native";
 import url from "url";
-import {Errors, isString, MediaType, unique} from "../tools";
-import {queueCheerioRequest, queueRequest, queueRequestFullResponse} from "./queueManager";
-import {CookieJar} from "tough-cookie";
-import {Hook, Toc} from "./types";
+import { Errors, isString, MediaType, unique } from "../tools";
+import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "./queueManager";
+import { CookieJar } from "tough-cookie";
+import { Hook, Toc } from "./types";
 import logger from "../logger";
 import cheerio from "cheerio";
-import {ReleaseState, EmptyPromise, Optional} from "../types";
+import { ReleaseState, EmptyPromise, Optional } from "../types";
 
 interface SimpleReadingList {
     menu: string;
@@ -38,7 +38,7 @@ class SimpleNovelUpdates implements ListManager {
     }
 
     private static loadCheerio(link: string): Promise<cheerio.Root> {
-        return queueCheerioRequest(link, {url: link});
+        return queueCheerioRequest(link, { url: link });
     }
 
     private static getStatusCoo(s: string): ReleaseState {
@@ -84,13 +84,13 @@ class SimpleNovelUpdates implements ListManager {
         if (!this.profile || !this.id) {
             throw Error("no valid user data injected");
         }
-        const result: ListScrapeResult = {feed: [], lists: [], media: []};
+        const result: ListScrapeResult = { feed: [], lists: [], media: [] };
         const [list, numberLists] = await this.scrapeList(0);
         result.media.push(...list.media as ScrapeMedium[]);
         result.lists.push(list);
 
         for (let i = 1; i < numberLists; i++) {
-            const [otherList, ] = await this.scrapeList(i);
+            const [otherList,] = await this.scrapeList(i);
             result.media.push(...otherList.media as ScrapeMedium[]);
             result.lists.push(otherList);
         }
@@ -232,7 +232,7 @@ class SimpleNovelUpdates implements ListManager {
             const tableData = row.children();
 
             const link = tableData.eq(1).children("a").first();
-            const title = {text: link.text().trim(), link: link.attr("href") as string};
+            const title = { text: link.text().trim(), link: link.attr("href") as string };
             const stand = tableData.eq(2).text();
 
             const progressExec = progressReg.exec(stand);
@@ -255,7 +255,7 @@ class SimpleNovelUpdates implements ListManager {
             });
         }
         return [
-            {link: this.profile as string, media: currentMedia, medium: MediaType.TEXT, name: lists[page]},
+            { link: this.profile as string, media: currentMedia, medium: MediaType.TEXT, name: lists[page] },
             lists.length
         ];
     }
@@ -266,7 +266,7 @@ class NovelUpdates implements ListManager {
 
     public static scrapeListRow(i: number, tableData: cheerio.Cheerio) {
         const link = tableData.eq(i).children("a").first();
-        return {text: link.text().trim(), link: link.attr("href") as string};
+        return { text: link.text().trim(), link: link.attr("href") as string };
     }
 
     public jar: any;
@@ -466,7 +466,7 @@ class NovelUpdates implements ListManager {
      * @return {Promise<cheerio.Root>}
      */
     public loadCheerio(link: string): Promise<cheerio.Root> {
-        return queueCheerioRequest(link, {url: link}, this.defaults);
+        return queueCheerioRequest(link, { url: link }, this.defaults);
     }
 
     public scrapeList($: cheerio.Root, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {
@@ -555,7 +555,7 @@ async function novelUpdatesTocAdapter(uri: string) {
         current: {},
         latest: {},
         medium: MediaType.TEXT,
-        title: {text: "", link: uri}
+        title: { text: "", link: uri }
     };
     await new SimpleNovelUpdates().scrapeMedium(medium);
     // await storage.updatePageInfo(uri, "scraped", [new Date().toISOString()]);

@@ -54,19 +54,19 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../../bus";
+import { emitBusEvent } from "../../bus";
 import modal from "./modal.vue";
 import { defineComponent, PropType } from "vue";
 
 interface Option {
-  name: string;
-  link: string;
-  value: number;
+    name: string;
+    link: string;
+    value: number;
 }
 
 export default defineComponent({
     name: "AddExternalModal",
-    components: {modal},
+    components: { modal },
     props: {
         show: Boolean,
         error: { type: String, required: true },
@@ -95,7 +95,7 @@ export default defineComponent({
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("add:externalUser", {identifier: this.user, pwd: this.pw, type: this.selected});
+            emitBusEvent("add:externalUser", { identifier: this.user, pwd: this.pw, type: this.selected });
         },
     }
 });

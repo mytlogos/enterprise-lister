@@ -1,6 +1,6 @@
 import localtunnel from "localtunnel";
 import env from "./env";
-import {internetTester, remove, stringify} from "./tools";
+import { internetTester, remove, stringify } from "./tools";
 import logger from "./logger";
 
 const tunnels: localtunnel.Tunnel[] = [];
@@ -11,7 +11,7 @@ if (Number.isNaN(port) || port <= 0 || port > 65535) {
 }
 
 function requestTunnel(host?: string) {
-    localtunnel({port: 3000, host})
+    localtunnel({ port: 3000, host })
         .then((tunnel) => {
             tunnels.push(tunnel);
             logger.info(`opening tunnel to ${tunnel.url}`);

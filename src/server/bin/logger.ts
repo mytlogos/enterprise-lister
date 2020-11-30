@@ -1,8 +1,8 @@
-import winston, {format} from "winston";
-import {isString, jsonReplacer, stringify} from "./tools";
-import {join as joinPath} from "path";
+import winston, { format } from "winston";
+import { isString, jsonReplacer, stringify } from "./tools";
+import { join as joinPath } from "path";
 import env from "./env";
-import {getStore} from "./asyncStorage";
+import { getStore } from "./asyncStorage";
 import DailyRotateFile from "winston-daily-rotate-file"
 
 let filePrefix: string;
@@ -34,8 +34,8 @@ const logger = winston.createLogger({
     levels: winston.config.npm.levels,
     level: logLevel,
     format: format.combine(
-        format.timestamp({format: "DD.MM.YYYY HH:mm:ss"}),
-        format.json({replacer: jsonReplacer})
+        format.timestamp({ format: "DD.MM.YYYY HH:mm:ss" }),
+        format.json({ replacer: jsonReplacer })
     ),
     exceptionHandlers: [
         new winston.transports.File({
@@ -59,7 +59,7 @@ const logger = winston.createLogger({
         new winston.transports.Console({
             format: format.combine(
                 format.colorize(),
-                format.timestamp({format: "DD.MM.YYYY HH:mm:ss"}),
+                format.timestamp({ format: "DD.MM.YYYY HH:mm:ss" }),
                 format.printf((info) => {
                     if (!info.message) {
                         const timestamp = info.timestamp;
@@ -98,7 +98,7 @@ function log(level: string, value: any, meta?: any) {
         } else {
             label = [stringify(meta)];
         }
-        meta = {label};
+        meta = { label };
     } else if (!meta.label) {
         meta.label = [];
     }

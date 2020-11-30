@@ -1,8 +1,8 @@
-import {SubContext} from "./subContext";
-import {ExternalUser, Uuid, MultiSingleValue, PromiseMultiSingle} from "../../types";
-import {Errors, promiseMultiSingle} from "../../tools";
-import {v1 as uuidGenerator} from "uuid";
-import {Query} from "mysql";
+import { SubContext } from "./subContext";
+import { ExternalUser, Uuid, MultiSingleValue, PromiseMultiSingle } from "../../types";
+import { Errors, promiseMultiSingle } from "../../tools";
+import { v1 as uuidGenerator } from "uuid";
+import { Query } from "mysql";
 import { storeModifications } from "../sqlTools";
 import { ExternalStorageUser } from "../../externals/types";
 
@@ -33,7 +33,7 @@ export class ExternalUserContext extends SubContext {
             "WHERE name = ? " +
             "AND local_uuid = ? " +
             "AND service = ?",
-        [externalUser.identifier, localUuid, externalUser.type],
+            [externalUser.identifier, localUuid, externalUser.type],
         );
         if (result.length) {
             throw Error(Errors.USER_EXISTS_ALREADY);
@@ -75,11 +75,11 @@ export class ExternalUserContext extends SubContext {
         storeModifications("external_list_item", "delete", result);
 
         // proceed to delete lists of external user
-        result = await this.delete("external_reading_list", {column: "user_uuid", value: externalUuid});
+        result = await this.delete("external_reading_list", { column: "user_uuid", value: externalUuid });
         storeModifications("external_list", "delete", result);
 
         // finish by deleting external user itself
-        result = await this.delete("external_user", {column: "uuid", value: externalUuid});
+        result = await this.delete("external_user", { column: "uuid", value: externalUuid });
         storeModifications("external_user", "delete", result);
         return result.affectedRows > 0;
     }
@@ -174,7 +174,7 @@ export class ExternalUserContext extends SubContext {
             } else if (externalUser.cookies == null) {
                 updates.push("cookies = NULL");
             }
-        }, {column: "uuid", value: externalUser.uuid});
+        }, { column: "uuid", value: externalUser.uuid });
         storeModifications("external_user", "update", result);
         return result.changedRows > 0;
     }

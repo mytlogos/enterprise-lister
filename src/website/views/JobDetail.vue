@@ -1,9 +1,7 @@
 <template>
   <div>
     <h1>Name: {{ job ? nameToString(job.name) : "Unknown" }}</h1>
-    <table
-      class="table table-hover"
-    >
+    <table class="table table-hover">
       <caption class="sr-only">
         Job History
       </caption>
@@ -12,44 +10,28 @@
           <th scope="col">
             Nr.
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             Name
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             Result
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             Duration
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             Network
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             Received
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             Queries
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             Start
           </th>
-          <th
-            scope="col"
-          >
+          <th scope="col">
             End
           </th>
         </tr>
@@ -66,17 +48,44 @@
             <td>{{ index + 1 }}</td>
             <td>{{ nameToString(item.name) }}</td>
             <td>
-              <span 
+              <span
                 class="badge"
-                :class="item.result === 'success' ? 'badge-success' : item.result === 'failed' ? 'badge-danger' : 'badge-light'"
+                :class="
+                  item.result === 'success'
+                    ? 'badge-success'
+                    : item.result === 'failed'
+                      ? 'badge-danger'
+                      : 'badge-light'
+                "
               >
                 {{ item.result }}
               </span>
             </td>
             <td>{{ absoluteToRelative(item) }}</td>
-            <td>{{ trackingStat(item, (value) => value.network.count || 0) }}</td>
-            <td>{{ trackingStat(item, (value) => value.network.received || 0) }}</td>
-            <td>{{ trackingStat(item, (value) => value.queryCount || 0) }}</td>
+            <td>
+              {{
+                trackingStat(
+                  item,
+                  (value) => value.network.count || 0
+                )
+              }}
+            </td>
+            <td>
+              {{
+                trackingStat(
+                  item,
+                  (value) => value.network.received || 0
+                )
+              }}
+            </td>
+            <td>
+              {{
+                trackingStat(
+                  item,
+                  (value) => value.queryCount || 0
+                )
+              }}
+            </td>
             <td>{{ dateToString(item.start) }}</td>
             <td>{{ dateToString(item.end) }}</td>
           </tr>
@@ -113,7 +122,7 @@ export default defineComponent({
         return {
             job: undefined,
             history: [],
-            media: new Map(), 
+            media: new Map(),
         }
     },
     mounted() {

@@ -4,7 +4,7 @@
 
 <script lang="ts">
 // TODO implement this table component
-import {onBusEvent} from "../bus";
+import { onBusEvent } from "../bus";
 import { defineComponent, PropType } from "vue";
 
 interface Data {

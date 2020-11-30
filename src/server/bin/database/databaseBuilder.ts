@@ -1,8 +1,8 @@
-import {TableBuilder} from "./tableBuilder";
-import {DatabaseSchema, InvalidationType, Migration} from "./databaseTypes";
-import {TableSchema} from "./tableSchema";
-import {Trigger} from "./trigger";
-import {TriggerBuilder} from "./triggerBuilder";
+import { TableBuilder } from "./tableBuilder";
+import { DatabaseSchema, InvalidationType, Migration } from "./databaseTypes";
+import { TableSchema } from "./tableSchema";
+import { Trigger } from "./trigger";
+import { TriggerBuilder } from "./triggerBuilder";
 
 interface InvalidationSchema {
     table: TableSchema;
@@ -38,7 +38,7 @@ export class DataBaseBuilder {
             } else {
                 table = value.table;
             }
-            value.table.invalidations.push({table, type: value.type});
+            value.table.invalidations.push({ table, type: value.type });
         });
         let mainTable;
         let invalidationTable;
@@ -120,7 +120,7 @@ export class DataBaseBuilder {
     public addTable(table: TableSchema, invalidations: Array<{ type: InvalidationType; table?: string }>): this {
         this.tables.push(table);
         for (const value of invalidations) {
-            this.invalidations.push({tableName: value.table, table, type: value.type});
+            this.invalidations.push({ tableName: value.table, table, type: value.type });
         }
         return this;
     }

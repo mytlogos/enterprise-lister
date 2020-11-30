@@ -1,6 +1,6 @@
-import {Migration} from "./databaseTypes";
-import {MysqlServerError} from "./mysqlError";
-import {DatabaseContext} from "./contexts/databaseContext";
+import { Migration } from "./databaseTypes";
+import { MysqlServerError } from "./mysqlError";
+import { DatabaseContext } from "./contexts/databaseContext";
 import { EmptyPromise } from "../types";
 
 function ignoreError(func: () => EmptyPromise, ignoreErrno: number[]): EmptyPromise {
@@ -25,19 +25,19 @@ export const Migrations: Migration[] = [
                     "UPDATE episode SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
                 );
             },
-            [MysqlServerError.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "info TEXT"
             ),
-            [MysqlServerError.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(() => context.addColumn(
                 "scrape_board",
                 "external_uuid char(36)"
             ),
-            [MysqlServerError.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await ignoreError(async () => {
                 await context.addColumn(
@@ -48,7 +48,7 @@ export const Migrations: Migration[] = [
                     "UPDATE part SET combiIndex=(concat(`totalIndex`, '.', coalesce(`partialIndex`, 0)) + 0)"
                 );
             },
-            [MysqlServerError.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
             await context.alterColumn(
                 "external_user",
@@ -105,7 +105,7 @@ export const Migrations: Migration[] = [
                 "episode_release",
                 "locked BOOLEAN DEFAULT 0"
             ),
-            [MysqlServerError.ER_DUP_FIELDNAME]
+                [MysqlServerError.ER_DUP_FIELDNAME]
             );
         }
     },

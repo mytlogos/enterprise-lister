@@ -1,6 +1,6 @@
-import {SubContext} from "./subContext";
-import {News, Uuid, MultiSingleValue, PromiseMultiSingle, Optional} from "../../types";
-import {Errors, promiseMultiSingle} from "../../tools";
+import { SubContext } from "./subContext";
+import { News, Uuid, MultiSingleValue, PromiseMultiSingle, Optional } from "../../types";
+import { Errors, promiseMultiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 
 export class NewsContext extends SubContext {
@@ -34,7 +34,7 @@ export class NewsContext extends SubContext {
             if (!result.affectedRows) {
                 return;
             }
-            result = {...value, id: result.insertId};
+            result = { ...value, id: result.insertId };
             return result;
         });
     }

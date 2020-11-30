@@ -1,4 +1,4 @@
-import {SubContext} from "./subContext";
+import { SubContext } from "./subContext";
 import {
     FullMediumToc,
     LikeMedium,
@@ -17,9 +17,9 @@ import {
     MultiSingleNumber,
     MediumToc
 } from "../../types";
-import {count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle} from "../../tools";
-import {escapeLike} from "../storages/storageTools";
-import {Query, OkPacket} from "mysql";
+import { count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle } from "../../tools";
+import { escapeLike } from "../storages/storageTools";
+import { Query, OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
 
 export class MediumContext extends SubContext {
@@ -229,7 +229,7 @@ export class MediumContext extends SubContext {
             "SELECT part.medium_id as id, COUNT(part.medium_id) as totalEpisodes, COUNT(user.episode_id) as readEpisodes " +
             "FROM part " +
             "INNER JOIN episode ON part.id=episode.part_id " +
-            "LEFT JOIN (SELECT * FROM user_episode WHERE ? = user_uuid AND progress = 1) as user ON user.episode_id=episode.id " + 
+            "LEFT JOIN (SELECT * FROM user_episode WHERE ? = user_uuid AND progress = 1) as user ON user.episode_id=episode.id " +
             "GROUP BY part.medium_id;",
             uuid
         );
@@ -251,7 +251,7 @@ export class MediumContext extends SubContext {
         for (const toc of tocs) {
             let secondary = idMap.get(toc.mediumId);
             if (!secondary) {
-                secondary = {id: toc.mediumId, readEpisodes: 0, totalEpisodes: 0, tocs: []};
+                secondary = { id: toc.mediumId, readEpisodes: 0, totalEpisodes: 0, tocs: [] };
             }
             secondary.tocs.push(toc);
         }
@@ -269,8 +269,8 @@ export class MediumContext extends SubContext {
      */
     public getLikeMedium<T extends MultiSingleValue<LikeMediumQuery>>(likeMedia: T): PromiseMultiSingle<T, LikeMedium> {
         return promiseMultiSingle(likeMedia, async (value) => {
-            const escapedLinkQuery = escapeLike(value.link || "", {noRightBoundary: true});
-            const escapedTitle = escapeLike(value.title, {singleQuotes: true});
+            const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
+            const escapedTitle = escapeLike(value.title, { singleQuotes: true });
 
             let result: any[] = await this.query(
                 "SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
@@ -303,10 +303,10 @@ export class MediumContext extends SubContext {
         const conditions = [];
 
         if (invalidId(mediumToc.id)) {
-            conditions.push({column: "medium_id", value: mediumToc.mediumId});
-            conditions.push({column: "link", value: mediumToc.link});
+            conditions.push({ column: "medium_id", value: mediumToc.mediumId });
+            conditions.push({ column: "link", value: mediumToc.link });
         } else {
-            conditions.push({column: "id", value: mediumToc.id});
+            conditions.push({ column: "id", value: mediumToc.id });
         }
         const result = await this.update("medium_toc", (updates, values) => {
             for (const key of keys) {
@@ -353,7 +353,7 @@ export class MediumContext extends SubContext {
                     values.push(value);
                 }
             }
-        }, {column: "id", value: medium.id});
+        }, { column: "id", value: medium.id });
         storeModifications("medium", "update", result);
         return result.changedRows > 0;
     }
@@ -367,7 +367,7 @@ export class MediumContext extends SubContext {
         synonyms.forEach((value: any) => {
             let synonym = synonymMap.get(value.medium_id);
             if (!synonym) {
-                synonym = {mediumId: value.medium_id, synonym: []};
+                synonym = { mediumId: value.medium_id, synonym: [] };
                 synonymMap.set(value.medium_id, synonym);
             }
             synonym.synonym.push(value.synonym);
@@ -499,8 +499,8 @@ export class MediumContext extends SubContext {
 
         const result = await this.delete(
             "medium_toc",
-            {column: "medium_id", value: mediumId},
-            {column: "link", value: link}
+            { column: "medium_id", value: mediumId },
+            { column: "link", value: link }
         );
         storeModifications("toc", "delete", result);
         return result.affectedRows > 0;
@@ -536,7 +536,7 @@ export class MediumContext extends SubContext {
         );
 
         // remove all tocs of source
-        let result = await this.delete("medium_toc", {column: "medium_id", value: sourceMediumId});
+        let result = await this.delete("medium_toc", { column: "medium_id", value: sourceMediumId });
         storeModifications("toc", "delete", result);
 
         result = await this.query(
@@ -545,7 +545,7 @@ export class MediumContext extends SubContext {
         );
         storeModifications("list_item", "update", result);
 
-        result = await this.delete("list_medium", {column: "medium_id", value: sourceMediumId});
+        result = await this.delete("list_medium", { column: "medium_id", value: sourceMediumId });
         storeModifications("list_item", "delete", result);
 
         result = await this.query(
@@ -554,7 +554,7 @@ export class MediumContext extends SubContext {
         );
         storeModifications("external_list_item", "update", result);
 
-        result = await this.delete("external_list_medium", {column: "medium_id", value: sourceMediumId});
+        result = await this.delete("external_list_medium", { column: "medium_id", value: sourceMediumId });
         storeModifications("external_list_item", "delete", result);
 
         result = await this.query(
@@ -563,7 +563,7 @@ export class MediumContext extends SubContext {
         );
         storeModifications("synonym", "update", result);
 
-        result = await this.delete("medium_synonyms", {column: "medium_id", value: sourceMediumId});
+        result = await this.delete("medium_synonyms", { column: "medium_id", value: sourceMediumId });
         storeModifications("synonym", "delete", result);
 
         await this.query(
@@ -571,7 +571,7 @@ export class MediumContext extends SubContext {
             [destMediumId, sourceMediumId]
         );
 
-        await this.delete("news_medium", {column: "medium_id", value: sourceMediumId});
+        await this.delete("news_medium", { column: "medium_id", value: sourceMediumId });
         const deletedReleaseResult = await this.query(
             "DELETE er FROM episode_release as er, episode as e, part as p" +
             " WHERE er.episode_id = e.id" +
@@ -788,7 +788,7 @@ export class MediumContext extends SubContext {
             " AND dest_e.part_id = ?" +
             " AND src_e.combiIndex = dest_e.combiIndex" +
             " AND src_e.id IN (??);",
-            [sourceMediumId, standardPartId,copiedOnlyEpisodes]
+            [sourceMediumId, standardPartId, copiedOnlyEpisodes]
         );
         multiSingle(copiedProgressResult, value => storeModifications("progress", "insert", value));
 
@@ -804,7 +804,7 @@ export class MediumContext extends SubContext {
             " AND dest_e.part_id = ?" +
             " AND src_e.combiIndex = dest_e.combiIndex" +
             " AND src_e.id IN (??);",
-            [sourceMediumId, standardPartId,copiedOnlyEpisodes]
+            [sourceMediumId, standardPartId, copiedOnlyEpisodes]
         );
         multiSingle(copiedResultResult, value => storeModifications("result_episode", "insert", value));
         return true;

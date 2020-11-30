@@ -2,7 +2,10 @@
   <div>
     <h1>MediumDetail</h1>
     <div class="container-fluid details">
-      <h2><type-icon :type="computedMedium.medium" /> {{ computedMedium.title }}</h2>
+      <h2>
+        <type-icon :type="computedMedium.medium" />
+        {{ computedMedium.title }}
+      </h2>
       <div class="row">
         <div class="col-2">
           Release State of TL:
@@ -93,7 +96,9 @@
               class="fas fa-exclamation-triangle text-warning ml-1"
               data-toggle="tooltip"
               data-placement="top"
-              :title="`Expected ${mediumToString(details.medium)} but got ${mediumToString(toc.medium)}`"
+              :title="`Expected ${mediumToString(
+                details.medium
+              )} but got ${mediumToString(toc.medium)}`"
               aria-hidden="true"
             />
           </td>
@@ -119,7 +124,7 @@
       data-autohide="false"
       style="position: absolute; margin-top: -7em"
     />
-    <button 
+    <button
       class="btn btn-dark"
       @click.left="markAll(true)"
     >
@@ -174,12 +179,16 @@
               class="btn"
               data-toggle="tooltip"
               data-placement="top"
-              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
+              :title="
+                entry.progress < 1 ? 'Mark read' : 'Mark unread'
+              "
               @click.left="changeReadStatus(entry)"
             >
               <i
                 class="fas fa-check"
-                :class="{ 'text-success': entry.progress === 1 }"
+                :class="{
+                  'text-success': entry.progress === 1,
+                }"
                 aria-hidden="true"
               />
             </button>
@@ -208,10 +217,10 @@ import $ from "jquery";
 import { batch, formatDate, mergeMediaToc } from "../init";
 
 interface Data {
-  releases: any[];
-  details: SimpleMedium;
-  tocs: FullMediumToc[];
-  markToast: { message: string; success: boolean };
+    releases: any[];
+    details: SimpleMedium;
+    tocs: FullMediumToc[];
+    markToast: { message: string; success: boolean };
 }
 
 // initialize all tooltips on this page
@@ -266,7 +275,7 @@ export default defineComponent({
         },
         computedMedium(): SimpleMedium {
             // merge tocs to a single display result
-            return mergeMediaToc({...this.details}, this.tocs);
+            return mergeMediaToc({ ...this.details }, this.tocs);
         }
     },
 
@@ -413,6 +422,6 @@ export default defineComponent({
 
 <style scoped>
 .details .col-2 {
-  text-align: right;
+    text-align: right;
 }
 </style>

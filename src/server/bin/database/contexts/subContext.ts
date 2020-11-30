@@ -1,6 +1,6 @@
-import {QueryContext, Condition, QueryInValue} from "./queryContext";
-import {Query, OkPacket} from "mysql";
-import {ConnectionContext} from "../databaseTypes";
+import { QueryContext, Condition, QueryInValue } from "./queryContext";
+import { Query, OkPacket } from "mysql";
+import { ConnectionContext } from "../databaseTypes";
 import { MultiSingleValue, EmptyPromise, UnpackArray } from "../../types";
 
 

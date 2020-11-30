@@ -1,11 +1,11 @@
-import {readFileSync} from "fs";
-import {join as joinPath} from "path";
-import {getHooks} from "../externals/direct/directScraper";
-import {getElseSet} from "../tools";
+import { readFileSync } from "fs";
+import { join as joinPath } from "path";
+import { getHooks } from "../externals/direct/directScraper";
+import { getElseSet } from "../tools";
 import cheerio from "cheerio";
 
 const path = joinPath(process.cwd(), "tests", "results", "Test Results - tests_mocha_hook_test_js.html");
-const html = readFileSync(path, {encoding: "utf-8"});
+const html = readFileSync(path, { encoding: "utf-8" });
 const $ = cheerio.load(html);
 const hooks = getHooks();
 

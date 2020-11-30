@@ -1,5 +1,5 @@
-import {Trigger, TriggerEvent, TriggerTiming} from "./trigger";
-import {DataBaseBuilder} from "./databaseBuilder";
+import { Trigger, TriggerEvent, TriggerTiming } from "./trigger";
+import { DataBaseBuilder } from "./databaseBuilder";
 import { Nullable } from "../types";
 
 export class TriggerBuilder {

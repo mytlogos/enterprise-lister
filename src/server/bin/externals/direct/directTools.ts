@@ -1,9 +1,9 @@
 import logger from "../../logger";
-import {EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson} from "../types";
-import {queueCheerioRequest} from "../queueManager";
-import {combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify} from "../../tools";
+import { EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson } from "../types";
+import { queueCheerioRequest } from "../queueManager";
+import { combiIndex, equalsIgnore, extractIndices, MediaType, sanitizeString, stringify } from "../../tools";
 import * as url from "url";
-import {ReleaseState, TocSearchMedium, Optional, Nullable} from "../../types";
+import { ReleaseState, TocSearchMedium, Optional, Nullable } from "../../types";
 import { checkTocContent } from "../scraperTools";
 
 export function getTextContent(novelTitle: string, episodeTitle: string, urlString: string, content: string): EpisodeContent[] {
@@ -129,7 +129,7 @@ function searchForWords(
         const links = $(linkSelector);
 
         if (!links.length) {
-            return {done: true};
+            return { done: true };
         }
         for (let i = 0; i < links.length; i++) {
             const linkElement = links.eq(i);
@@ -138,10 +138,10 @@ function searchForWords(
 
             if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
                 const tocLink = linkElement.attr("href") as string;
-                return {value: url.resolve(uri, tocLink), done: true};
+                return { value: url.resolve(uri, tocLink), done: true };
             }
         }
-        return {done: false};
+        return { done: false };
     };
 }
 
@@ -209,8 +209,8 @@ export interface TocContentPiece extends TocPiece {
 }
 
 class TocLinkedList implements Iterable<Node> {
-    private start: Node = {type: "sentinel", next: {type: "dummy"}};
-    private end: Node = {type: "sentinel", previous: {type: "dummy"}};
+    private start: Node = { type: "sentinel", next: { type: "dummy" } };
+    private end: Node = { type: "sentinel", previous: { type: "dummy" } };
     private listLength = 0;
 
     public constructor() {
@@ -310,11 +310,11 @@ class TocLinkedList implements Iterable<Node> {
                 if (node && node.next) {
                     node = node.next;
                     if (node.next) {
-                        return {value: node};
+                        return { value: node };
                     }
-                    return {value: node, done: true};
+                    return { value: node, done: true };
                 }
-                return {value: {}, done: true};
+                return { value: {}, done: true };
             }
         };
     }
@@ -332,12 +332,12 @@ class TocLinkedList implements Iterable<Node> {
                             node = node[nextKey];
 
                             if (node) {
-                                return {value: current};
+                                return { value: current };
                             }
-                            return {value: undefined, done: true};
+                            return { value: undefined, done: true };
                         }
                         // should never reach here
-                        return {value: {}, done: true};
+                        return { value: {}, done: true };
                     }
                 };
             }
@@ -534,7 +534,7 @@ function markWithRegex(regExp: RegExp, title: string, type: TocMatchType, matche
         throw Error("Need a Regex with global Flag enabled, else it will crash");
     }
     for (let match = regExp.exec(title); match; match = regExp.exec(title)) {
-        matches.push({match, from: match.index, to: match.index + match[0].length, ignore: false, remove: true, type});
+        matches.push({ match, from: match.index, to: match.index + match[0].length, ignore: false, remove: true, type });
         if (matchAfter) {
             regExp.lastIndex = matchAfter(match);
         }
@@ -701,7 +701,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
         }
         let insertNeighbour = content;
         for (let i = content.totalIndex + 1; i <= content.episodeRange; i++) {
-            const episode = {...content, next: undefined, previous: undefined} as InternalTocEpisode;
+            const episode = { ...content, next: undefined, previous: undefined } as InternalTocEpisode;
             episode.totalIndex = i;
             episode.combiIndex = combiIndex(episode);
             rangeInserter.call(contents, episode, insertNeighbour);
@@ -1222,7 +1222,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
     if (possibleEpisodes.length) {
         result.push(...possibleEpisodes);
     } else if (isEpisodePiece(tocPiece)) {
-        result.push({type: "unusedPiece", ...tocPiece, part: possibleVolume} as UnusedPiece);
+        result.push({ type: "unusedPiece", ...tocPiece, part: possibleVolume } as UnusedPiece);
     }
     return result;
 }

@@ -1,6 +1,6 @@
-import {Request, Response, Router} from "express";
+import { Request, Response, Router } from "express";
 import * as UserApi from "./userMiddleware";
-import {NextFunction} from "express-serve-static-core";
+import { NextFunction } from "express-serve-static-core";
 
 /**
  *  Returns the Router for the User Api.

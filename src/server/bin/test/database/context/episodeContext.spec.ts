@@ -13,7 +13,7 @@ chai.use(sinon_chai);
 chai.use(chaiAsPromised);
 chai.should();
 
-before(async function() {
+before(async function () {
     this.timeout(60000);
     await setupTestDatabase();
     await tools.delay(2000)
@@ -32,46 +32,46 @@ function inContext<T>(callback: storageTools.ContextCallback<T, EpisodeContext>,
 }
 
 describe("episodeContext", () => {
-    describe("getDisplayReleases", function() {
-        it("should not throw, when using valid parameters", async function() {
+    describe("getDisplayReleases", function () {
+        it("should not throw, when using valid parameters", async function () {
             await inContext(context => context.getDisplayReleases(new Date(), new Date(), true, "12")).should.eventually.not.be.rejected;
             await inContext(context => context.getDisplayReleases(new Date(), null, null, "12")).should.eventually.not.be.rejected;
         });
     });
 
-    describe("getAll", function() {
+    describe("getAll", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getAllReleases", function() {
+    describe("getAllReleases", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getDisplayReleases", function() {
+    describe("getDisplayReleases", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getMediumReleases", function() {
+    describe("getMediumReleases", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getAssociatedEpisode", function() {
+    describe("getAssociatedEpisode", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getLatestReleases", function() {
+    describe("getLatestReleases", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getReleases", function() {
+    describe("getReleases", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getReleasesByHost", function() {
+    describe("getReleasesByHost", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getPartsEpisodeIndices", function() {
+    describe("getPartsEpisodeIndices", function () {
         it("should not throw when using valid parameters");
     });
 
@@ -81,119 +81,119 @@ describe("episodeContext", () => {
     /**
      * Removes progress of an user in regard to an episode.
      */
-    describe("removeProgress", function() {
+    describe("removeProgress", function () {
         it("should not throw when using valid parameters");
     });
 
     /**
      * Sets the progress of an user in regard to an episode with one or multiple progressResult objects.
      */
-    describe("setProgress", function() {
+    describe("setProgress", function () {
         it("should not throw when using valid parameters");
     });
 
     /**
      * Get the progress of an user in regard to an episode.
      */
-    describe("getProgress", function() {
+    describe("getProgress", function () {
         it("should not throw when using valid parameters");
     });
 
     /**
      * Updates the progress of an user in regard to an episode.
      */
-    describe("updateProgress", function() {
+    describe("updateProgress", function () {
         it("should not throw when using valid parameters");
     });
 
     /**
      * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
      */
-    describe("markEpisodeRead", function() {
+    describe("markEpisodeRead", function () {
         it("should not throw when using valid parameters");
     });
-    describe("addRelease", function() {
-        it("should not throw when using valid parameters");
-    });
-
-    describe("getEpisodeLinksByMedium", function() {
+    describe("addRelease", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getSourcedReleases", function() {
+    describe("getEpisodeLinksByMedium", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("updateRelease", function() {
+    describe("getSourcedReleases", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("deleteRelease", function() {
+    describe("updateRelease", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getEpisodeContentData", function() {
+    describe("deleteRelease", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("addEpisode", function() {
+    describe("getEpisodeContentData", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getEpisode", function() {
+    describe("addEpisode", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getPartMinimalEpisodes", function() {
+    describe("getEpisode", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getPartEpisodePerIndex", function() {
+    describe("getPartMinimalEpisodes", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getMediumEpisodePerIndex", function() {
+    describe("getPartEpisodePerIndex", function () {
         it("should not throw when using valid parameters");
     });
 
-    /**
-     * Updates an episode from the storage.
-     */
-    describe("updateEpisode", function() {
+    describe("getMediumEpisodePerIndex", function () {
         it("should not throw when using valid parameters");
     });
 
     /**
      * Updates an episode from the storage.
      */
-    describe("moveEpisodeToPart", function() {
+    describe("updateEpisode", function () {
+        it("should not throw when using valid parameters");
+    });
+
+    /**
+     * Updates an episode from the storage.
+     */
+    describe("moveEpisodeToPart", function () {
         it("should not throw when using valid parameters");
     });
 
     /**
      * Deletes an episode from the storage irreversibly.
      */
-    describe("deleteEpisode", function() {
+    describe("deleteEpisode", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getChapterIndices", function() {
+    describe("getChapterIndices", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getAllChapterLinks", function() {
+    describe("getAllChapterLinks", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getUnreadChapter", function() {
+    describe("getUnreadChapter", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("getReadToday", function() {
+    describe("getReadToday", function () {
         it("should not throw when using valid parameters");
     });
 
-    describe("markLowerIndicesRead", function() {
+    describe("markLowerIndicesRead", function () {
         it("should not throw when using valid parameters");
     });
 });

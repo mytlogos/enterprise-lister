@@ -99,17 +99,23 @@
         </th>
       </thead>
       <tbody>
-        <tr 
+        <tr
           v-for="medium of filteredMedia"
           :key="medium.id"
         >
           <td>
-            <router-link :to="{ name: 'medium', params: { id: medium.id } }">
+            <router-link
+              :to="{ name: 'medium', params: { id: medium.id } }"
+            >
               {{ medium.title }}
             </router-link>
           </td>
           <td><type-icon :type="medium.medium" /></td>
-          <td>{{ medium.readEpisodes || 0 }}/{{ medium.totalEpisodes || 0 }}</td>
+          <td>
+            {{ medium.readEpisodes || 0 }}/{{
+              medium.totalEpisodes || 0
+            }}
+          </td>
           <td><release-state :state="medium.stateOrigin" /></td>
           <td><release-state :state="medium.stateTL" /></td>
           <td>{{ medium.author }}</td>

@@ -1,4 +1,4 @@
-import mySql, {Connection} from "promise-mysql";
+import mySql, { Connection } from "promise-mysql";
 import {
     Invalidation,
     MetaResult,
@@ -13,22 +13,22 @@ import {
     PageInfo,
     Primitive
 } from "../../types";
-import {Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch} from "../../tools";
+import { Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
-import {Query, OkPacket} from "mysql";
-import {DatabaseContext} from "./databaseContext";
-import {UserContext} from "./userContext";
-import {ExternalUserContext} from "./externalUserContext";
-import {InternalListContext} from "./internalListContext";
-import {ExternalListContext} from "./externalListContext";
-import {NewsContext} from "./newsContext";
-import {EpisodeContext} from "./episodeContext";
-import {MediumContext} from "./mediumContext";
-import {PartContext} from "./partContext";
-import {JobContext} from "./jobContext";
-import {MediumInWaitContext} from "./mediumInWaitContext";
-import {ConnectionContext} from "../databaseTypes";
+import { Query, OkPacket } from "mysql";
+import { DatabaseContext } from "./databaseContext";
+import { UserContext } from "./userContext";
+import { ExternalUserContext } from "./externalUserContext";
+import { InternalListContext } from "./internalListContext";
+import { ExternalListContext } from "./externalListContext";
+import { NewsContext } from "./newsContext";
+import { EpisodeContext } from "./episodeContext";
+import { MediumContext } from "./mediumContext";
+import { PartContext } from "./partContext";
+import { JobContext } from "./jobContext";
+import { MediumInWaitContext } from "./mediumInWaitContext";
+import { ConnectionContext } from "../databaseTypes";
 import env from "../../env";
 import { setContext, removeContext } from "../../asyncStorage";
 import { storeCount } from "../sqlTools";
@@ -512,7 +512,7 @@ export class QueryContext implements ConnectionContext {
         const listParams = placeHolderValues
             .map((param, index) => Array.isArray(param) ? [param, index] : undefined)
             .filter(v => v) as Array<[any[], number]>;
-        
+
         if (listParams.length > 1) {
             throw Error("Using multiple ListParams is not supported");
         }
@@ -530,7 +530,7 @@ export class QueryContext implements ConnectionContext {
                     // placeholder values after the listParam, is empty if index + 1 is greater than the array
                     ...placeHolderValues.slice(index + 1)
                 ];
-                const placeholder = "?,".repeat(param.length).slice(0, -1);                
+                const placeholder = "?,".repeat(param.length).slice(0, -1);
                 params.push([placeholder, values]);
             });
         } else {
@@ -657,7 +657,7 @@ export class QueryContext implements ConnectionContext {
         const tocs = await tocPromise;
         const parts = await partPromise;
         const episodes = await episodePromise;
-        const emptyPart = {episodeCount: 0, episodeSum: 0, releaseCount: 0};
+        const emptyPart = { episodeCount: 0, episodeSum: 0, releaseCount: 0 };
         const partMap = new Map();
 
         for (const episode of episodes) {

@@ -25,7 +25,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import {onBusEvent} from "../bus";
+import { onBusEvent } from "../bus";
 import listComp from "../components/list-comp.vue";
 import externalUser from "../components/external-user.vue";
 import { ExternalUser } from "../siteTypes";
@@ -44,7 +44,7 @@ export default defineComponent({
         return {
             lists: [
                 // TODO get options from server
-                {name: "External", id: 0, show: false}
+                { name: "External", id: 0, show: false }
             ],
             filter: "",
             listFocused: false,
@@ -53,7 +53,7 @@ export default defineComponent({
     },
     mounted(): void {
         const list = document.querySelector(".settings-list .list") as Node;
-        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target as Node), {capture: true});
+        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target as Node), { capture: true });
         onBusEvent("select:list", (id) => this.selectList(id));
     },
     methods: {
@@ -75,31 +75,31 @@ export default defineComponent({
 </script>
 
 <style scoped>
-    .settings input {
-        height: 20px;
-        font-size: 14px;
-        padding-left: 5px;
-    }
+.settings input {
+    height: 20px;
+    font-size: 14px;
+    padding-left: 5px;
+}
 
-    .settings .settings-list input {
-        border-radius: 10px;
-        padding-left: 10px;
-        margin: 5px 0;
-    }
+.settings .settings-list input {
+    border-radius: 10px;
+    padding-left: 10px;
+    margin: 5px 0;
+}
 
-    .settings-list {
-        padding: 5px;
-    }
+.settings-list {
+    padding: 5px;
+}
 
-    .settings {
-        display: flex;
-    }
+.settings {
+    display: flex;
+}
 
-    .settings > .page {
-        flex: 80%;
-    }
+.settings > .page {
+    flex: 80%;
+}
 
-    .settings > .settings-list {
-        flex: 20%;
-    }
+.settings > .settings-list {
+    flex: 20%;
+}
 </style>

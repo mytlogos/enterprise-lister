@@ -33,6 +33,6 @@ export default defineComponent({
                 return "fa-question";
             }
         }
-    } 
+    }
 });
 </script>

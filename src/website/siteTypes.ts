@@ -216,7 +216,7 @@ export interface NetworkTrack {
     history: Array<{
         url: string;
         method: string;
-        statusCode: number; 
+        statusCode: number;
         send: number;
         received: number;
     }>;
@@ -225,7 +225,7 @@ export interface NetworkTrack {
 export interface JobTrack {
     modifications: Record<string, Modification>;
     network: NetworkTrack;
-    queryCount: number; 
+    queryCount: number;
 }
 
 export type JobHistoryItem = Pick<Job, "id" | "name"> & {

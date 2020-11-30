@@ -1,9 +1,9 @@
-import {EpisodeContent, Hook, NewsScrapeResult} from "../types";
-import {EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise} from "../../types";
+import { EpisodeContent, Hook, NewsScrapeResult } from "../types";
+import { EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise } from "../../types";
 import logger from "../../logger";
-import {queueCheerioRequest} from "../queueManager";
-import {max, MediaType, sanitizeString} from "../../tools";
-import {episodeStorage, mediumStorage, partStorage} from "../../database/storages/storage";
+import { queueCheerioRequest } from "../queueManager";
+import { max, MediaType, sanitizeString } from "../../tools";
+import { episodeStorage, mediumStorage, partStorage } from "../../database/storages/storage";
 
 export const sourceType = "qidian_underground";
 
@@ -66,11 +66,11 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
             if (!Number.isNaN(endChapterIndex)) {
                 for (let chapterIndex = startChapterIndex; chapterIndex <= endChapterIndex; chapterIndex++) {
                     const title = sanitizeString(`${mediumTitle} - ${chapterIndex}`);
-                    potentialNews.push({title, link, date});
+                    potentialNews.push({ title, link, date });
                 }
             } else {
                 const title = sanitizeString(`${mediumTitle} - ${startChapterIndex}`);
-                potentialNews.push({title, link, date});
+                potentialNews.push({ title, link, date });
             }
         }
         if (potentialNews.length) {

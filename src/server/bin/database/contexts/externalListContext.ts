@@ -1,6 +1,6 @@
-import {SubContext} from "./subContext";
-import {ExternalList, Uuid} from "../../types";
-import {Errors, promiseMultiSingle, multiSingle} from "../../tools";
+import { SubContext } from "./subContext";
+import { ExternalList, Uuid } from "../../types";
+import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { OkPacket } from "mysql";
 
@@ -61,7 +61,7 @@ export class ExternalListContext extends SubContext {
                 updates.push("name = ?");
                 values.push(externalList.name);
             }
-        }, {column: "user_uuid", value: externalList.id});
+        }, { column: "user_uuid", value: externalList.id });
         storeModifications("external_list", "delete", result);
         return result.changedRows > 0;
     }
@@ -73,7 +73,7 @@ export class ExternalListContext extends SubContext {
         // TODO: 29.06.2019 replace with id IN (...) and list_id IN (...)
         const results = await promiseMultiSingle(externalListId, async (item) => {
             // first delete any references of externalList: list-media links
-            let result = await this.delete("external_list_medium", {column: "list_id", value: item});
+            let result = await this.delete("external_list_medium", { column: "list_id", value: item });
             storeModifications("external_list_item", "delete", result);
 
             // then delete list itself

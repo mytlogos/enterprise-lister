@@ -1,9 +1,9 @@
-import {DataBaseBuilder} from "./databaseBuilder";
-import {ColumnBuilder} from "./columnBuilder";
-import {TableSchema} from "./tableSchema";
-import {ColumnSchema} from "./columnSchema";
-import {TableParser} from "./tableParser";
-import {InvalidationType} from "./databaseTypes";
+import { DataBaseBuilder } from "./databaseBuilder";
+import { ColumnBuilder } from "./columnBuilder";
+import { TableSchema } from "./tableSchema";
+import { ColumnSchema } from "./columnSchema";
+import { TableParser } from "./tableParser";
+import { InvalidationType } from "./databaseTypes";
 
 export class TableBuilder {
     private columns: ColumnSchema[] = [];
@@ -76,7 +76,7 @@ export class TableBuilder {
     }
 
     public addInvalidation(type: InvalidationType, tableName?: string): this {
-        this.invalidations.push({type, table: tableName});
+        this.invalidations.push({ type, table: tableName });
         return this;
     }
 

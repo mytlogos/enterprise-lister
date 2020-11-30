@@ -1,6 +1,6 @@
-import {ColumnType, Modifier, SqlFunction} from "./databaseTypes";
-import {TableBuilder} from "./tableBuilder";
-import {ColumnSchema} from "./columnSchema";
+import { ColumnType, Modifier, SqlFunction } from "./databaseTypes";
+import { TableBuilder } from "./tableBuilder";
+import { ColumnSchema } from "./columnSchema";
 
 export class ColumnBuilder {
     private readonly tableBuilder: TableBuilder;

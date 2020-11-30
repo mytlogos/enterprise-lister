@@ -1,14 +1,14 @@
-import {Hook, Toc, TocEpisode, NewsScrapeResult} from "../types";
-import {EpisodeNews, ReleaseState, SearchResult} from "../../types";
+import { Hook, Toc, TocEpisode, NewsScrapeResult } from "../types";
+import { EpisodeNews, ReleaseState, SearchResult } from "../../types";
 import * as url from "url";
-import {queueCheerioRequest} from "../queueManager";
+import { queueCheerioRequest } from "../queueManager";
 import logger from "../../logger";
-import {extractIndices, MediaType, sanitizeString} from "../../tools";
+import { extractIndices, MediaType, sanitizeString } from "../../tools";
 import * as request from "cloudscraper";
-import {CloudScraper, CloudscraperOptions} from "cloudscraper";
+import { CloudScraper, CloudscraperOptions } from "cloudscraper";
 import * as normalRequest from "request";
-import {checkTocContent} from "../scraperTools";
-import {UrlError} from "../errors";
+import { checkTocContent } from "../scraperTools";
+import { UrlError } from "../errors";
 
 // @ts-expect-error
 const jar = request.jar();
@@ -64,7 +64,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
             }
         } else if (groups[6]) {
             episodeTitle = mediumTitle;
-            episodeIndices = {total: 1, combi: 1};
+            episodeIndices = { total: 1, combi: 1 };
         } else {
             logger.info(`unknown news format on kissanime: ${rawTitle}`);
             continue;
@@ -85,7 +85,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
         return {};
     }
 
-    return {episodes: news};
+    return { episodes: news };
 }
 
 /*
@@ -299,7 +299,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const text = sanitizeString(linkElement.text());
         const link = url.resolve("https://kissanime.ru/", linkElement.attr("href") as string);
 
-        searchResults.push({link, title: text});
+        searchResults.push({ link, title: text });
 
     }
     if (searchResults.length === 1 && searchResults[0].link === "https://kissanime.ru/Search/SearchSuggestx") {

@@ -10,7 +10,7 @@ import {
     multiSingle,
     ignore
 } from "./tools";
-import {ScrapeList, ScrapeMedium} from "./externals/listManager";
+import { ScrapeList, ScrapeMedium } from "./externals/listManager";
 import {
     EpisodeRelease,
     ExternalList,
@@ -31,10 +31,10 @@ import {
     CombinedEpisode
 } from "./types";
 import logger from "./logger";
-import {ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult} from "./externals/types";
+import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult } from "./externals/types";
 import * as validate from "validate.js";
-import {checkTocContent, remapMediumPart} from "./externals/scraperTools";
-import {DefaultJobScraper} from "./externals/jobScraperManager";
+import { checkTocContent, remapMediumPart } from "./externals/scraperTools";
+import { DefaultJobScraper } from "./externals/jobScraperManager";
 import {
     episodeStorage,
     externalListStorage,
@@ -45,7 +45,7 @@ import {
     partStorage,
     storage
 } from "./database/storages/storage";
-import {MissingResourceError, UrlError} from "./externals/errors";
+import { MissingResourceError, UrlError } from "./externals/errors";
 import { getStore } from "./asyncStorage";
 
 const scraper = DefaultJobScraper;
@@ -54,7 +54,7 @@ const scraper = DefaultJobScraper;
 /**
  *
  */
-async function processNews({link, rawNews}: NewsResult): EmptyPromise {
+async function processNews({ link, rawNews }: NewsResult): EmptyPromise {
     if (!link || !validate.isString(link)) {
         throw Errors.INVALID_INPUT;
     }
@@ -132,7 +132,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid): Promise<Map<SimpleMedium, 
             medium = await mediumStorage.getSimpleMedium(toc.mediumId);
         } else {
             // get likemedium with similar title and same media type
-            const likeMedium = await mediumStorage.getLikeMedium({title: toc.title, type: toc.mediumType, link: ""});
+            const likeMedium = await mediumStorage.getLikeMedium({ title: toc.title, type: toc.mediumType, link: "" });
             medium = likeMedium.medium;
         }
 
@@ -183,7 +183,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid): Promise<Map<SimpleMedium, 
         // ensure synonyms exist
         // TODO: shouldnt these synonyms be toc specific?
         if (toc.synonyms) {
-            await mediumStorage.addSynonyms({mediumId, synonym: toc.synonyms});
+            await mediumStorage.addSynonyms({ mediumId, synonym: toc.synonyms });
         }
 
         const mediumValue = getElseSet(media, medium, () => {
@@ -243,7 +243,7 @@ async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<
     }
     value.tocPart.episodes.forEach((episode) => {
         checkTocContent(episode);
-        value.episodeMap.set(episode.combiIndex, {tocEpisode: episode});
+        value.episodeMap.set(episode.combiIndex, { tocEpisode: episode });
     });
 
     const episodes: SimpleEpisode[] = storageEpisodes.filter(episode => {
@@ -325,10 +325,10 @@ async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<
                 tocId: episodeValue.tocEpisode.tocId,
             };
             if (foundRelease) {
-                const date = foundRelease.releaseDate < tocRelease.releaseDate 
+                const date = foundRelease.releaseDate < tocRelease.releaseDate
                     ? foundRelease.releaseDate
                     : tocRelease.releaseDate;
-                
+
                 // check in what way the releases differ, there are cases there
                 // only the time changes, as the same releases is extracted
                 // from a non changing relative Time value, thus having a later absolute time
@@ -364,7 +364,7 @@ export async function tocHandler(result: TocResult): EmptyPromise {
     const tocs = result.tocs;
     const uuid = result.uuid;
     logger.debug(`handling tocs ${tocs.length}: ${tocs.map((value) => {
-        return {...value, content: value.content.length};
+        return { ...value, content: value.content.length };
     })} ${uuid}`);
 
     if (!tocs || !tocs.length) {
@@ -392,12 +392,12 @@ export async function tocHandler(result: TocResult): EmptyPromise {
                 if (value.totalIndex == null) {
                     throw Error(`totalIndex should not be null! mediumId: '${mediumId}'`);
                 }
-                indexPartsMap.set(value.combiIndex, {tocPart: value, episodeMap: new Map()});
+                indexPartsMap.set(value.combiIndex, { tocPart: value, episodeMap: new Map() });
             });
 
             if (tocContent.episodes.length) {
                 indexPartsMap.set(-1, {
-                    tocPart: {title: "", totalIndex: -1, combiIndex: -1, episodes: tocContent.episodes},
+                    tocPart: { title: "", totalIndex: -1, combiIndex: -1, episodes: tocContent.episodes },
                     episodeMap: new Map()
                 });
             }
@@ -606,7 +606,7 @@ interface ChangeContent {
     lists: any;
 }
 
-async function updateDatabase({removedLists, result, addedLists, renamedLists, allLists, lists}: ChangeContent) {
+async function updateDatabase({ removedLists, result, addedLists, renamedLists, allLists, lists }: ChangeContent) {
     // TODO: check if this whole message thing is solved with invalidation table from database
     const promisePool: Array<Promise<any>> = [];
 
@@ -799,7 +799,7 @@ scraper.on("list:error", (errorValue: any) => {
     logger.error(errorValue);
 });
 
-scraper.on("news:error", (errorValue: any) =>  {
+scraper.on("news:error", (errorValue: any) => {
     const store = getStore();
     if (store) {
         store.set("result", "failed");

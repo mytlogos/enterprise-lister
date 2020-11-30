@@ -1,7 +1,7 @@
-import {SubContext} from "./subContext";
-import {MediumInWait} from "../databaseTypes";
-import {Medium, SimpleMedium, MultiSingleValue, EmptyPromise} from "../../types";
-import {equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle} from "../../tools";
+import { SubContext } from "./subContext";
+import { MediumInWait } from "../databaseTypes";
+import { Medium, SimpleMedium, MultiSingleValue, EmptyPromise } from "../../types";
+import { equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 
 export class MediumInWaitContext extends SubContext {
@@ -26,12 +26,12 @@ export class MediumInWaitContext extends SubContext {
                 .filter((value) => !equalsIgnore(value, medium.title));
 
             if (synonyms.length) {
-                await this.parentContext.mediumContext.addSynonyms({mediumId: id, synonym: synonyms});
+                await this.parentContext.mediumContext.addSynonyms({ mediumId: id, synonym: synonyms });
             }
             toDeleteMediaInWaits.push(...same);
         }
         if (listId) {
-            await this.parentContext.internalListContext.addItemToList({id, listId});
+            await this.parentContext.internalListContext.addItemToList({ id, listId });
         }
         if (medium.link) {
             await this.parentContext.mediumContext.addToc(id, medium.link);
@@ -57,7 +57,7 @@ export class MediumInWaitContext extends SubContext {
 
         const synonyms: string[] = same.map((value) => sanitizeString(value.title));
 
-        await this.parentContext.mediumContext.addSynonyms({mediumId, synonym: synonyms});
+        await this.parentContext.mediumContext.addSynonyms({ mediumId, synonym: synonyms });
         await this.deleteMediaInWait(same);
         return true;
     }

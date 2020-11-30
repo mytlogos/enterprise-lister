@@ -9,14 +9,14 @@ function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, t
 }
 
 export async function setupTestDatabase(): EmptyPromise {
-    storage.poolConfig.update({host: "localhost"});
+    storage.poolConfig.update({ host: "localhost" });
     await storage.poolConfig.recreate(true);
     storage.startStorage();
     await delay(5000);
 
     await inContext(context => context.query("CREATE DATABASE IF NOT EXISTS enterprise_test;"));
 
-    storage.poolConfig.update({database: "enterprise_test", host: "localhost"});
+    storage.poolConfig.update({ database: "enterprise_test", host: "localhost" });
     await storage.poolConfig.recreate(true);
     storage.startStorage();
     await delay(5000);

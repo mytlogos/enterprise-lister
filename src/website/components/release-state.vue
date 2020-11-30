@@ -1,5 +1,5 @@
 <template>
-  <span 
+  <span
     class="badge"
     :class="stateClass"
   >

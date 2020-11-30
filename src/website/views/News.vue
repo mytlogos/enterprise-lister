@@ -1,8 +1,6 @@
 <template>
   <div>
-    <reading-list
-      :lists="displayLists"
-    />
+    <reading-list :lists="displayLists" />
     <div>
       <h1 id="news-title">
         News
@@ -38,11 +36,12 @@
             v-for="(item, index) in displayNews"
             :key="item"
             v-observe-visibility="{
-              callback: (visible)=> markNewsRead(visible, item, index),
+              callback: (visible) =>
+                markNewsRead(visible, item, index),
               throttle: 300,
               intersection: {
                 threshold: 1.0,
-              }
+              },
             }"
             @dblclick.left="openNews(item.link)"
           >
@@ -59,7 +58,7 @@
 // TODO unread news should fade out slowly (more like that a marker slowly disappears)
 // TODO user should be able to mark all news as read
 // TODO replace vue picker with date and time input
-import {emitBusEvent, onBusEvent} from "../bus";
+import { emitBusEvent, onBusEvent } from "../bus";
 import readingList from "../components/reading-list.vue";
 // noinspection NpmUsedModulesInstalled
 import VueCtkDateTimePicker from "vue-ctk-date-time-picker";
@@ -104,7 +103,7 @@ export default defineComponent({
             const toDisplayLists = this.lists
                 .filter((value?: any) => value)
                 .map((value: any) => {
-                    return {...value, show: false};
+                    return { ...value, show: false };
                 });
 
             // eslint-disable-next-line vue/no-side-effects-in-computed-properties
@@ -136,11 +135,11 @@ export default defineComponent({
         },
 
         fromDate(newDate: Date): void {
-            emitBusEvent("get:news", {from: newDate, to: this.toDate});
+            emitBusEvent("get:news", { from: newDate, to: this.toDate });
         },
 
         toDate(newDate: Date): void {
-            emitBusEvent("get:news", {from: this.fromDate, to: newDate});
+            emitBusEvent("get:news", { from: this.fromDate, to: newDate });
         },
 
         currentLength(): void {
@@ -149,10 +148,10 @@ export default defineComponent({
     },
     mounted(): void {
         const list = document.querySelector(".news-page .list") as Node;
-        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target as Node), {capture: true});
+        document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target as Node), { capture: true });
         onBusEvent("select:list", (id, external) => this.selectList(id, external));
         onBusEvent("window:resize", () => this.emptySpaceDirty = true);
-        emitBusEvent("get:news", {from: this.from, to: this.to});
+        emitBusEvent("get:news", { from: this.from, to: this.to });
     },
     methods: {
         markNewsRead(visible: boolean, news: News, index: number): void {
@@ -165,10 +164,10 @@ export default defineComponent({
                         .map((value) => value.date)
                         .reduce((previous, next) => previous < next ? previous : next);
 
-                    emitBusEvent("get:news", {from: this.from, to: toDate});
+                    emitBusEvent("get:news", { from: this.from, to: toDate });
                 } else if (!index) {
                     // if index is zero
-                    emitBusEvent("get:news", {from: news.date, to: this.to});
+                    emitBusEvent("get:news", { from: news.date, to: this.to });
                 }
             }
         },
@@ -258,26 +257,26 @@ export default defineComponent({
 </script>
 
 <style scoped>
-    .news-page {
-        width: 100%;
-    }
+.news-page {
+    width: 100%;
+}
 
+.date-filter {
+    margin: 2px;
+}
+
+.date-filter > * {
+    margin: 2px;
+}
+
+.date-filter span {
+    display: inline-flex;
+    align-items: center;
+}
+
+@media screen and (max-width: 550px) {
     .date-filter {
-        margin: 2px;
+        flex-direction: column;
     }
-
-    .date-filter > * {
-        margin: 2px;
-    }
-
-    .date-filter span {
-        display: inline-flex;
-        align-items: center;
-    }
-
-    @media screen and (max-width: 550px) {
-        .date-filter {
-            flex-direction: column;
-        }
-    }
+}
 </style>

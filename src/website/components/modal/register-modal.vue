@@ -45,14 +45,14 @@
   </modal>
 </template>
 <script lang="ts">
-import {emitBusEvent} from "../../bus";
+import { emitBusEvent } from "../../bus";
 import modal from "./modal";
 
 import { defineComponent } from "vue";
 
 export default defineComponent({
     name: "LoginModal",
-    components: {modal},
+    components: { modal },
     props: {
         show: Boolean,
         error: { type: String, required: true },
@@ -74,7 +74,7 @@ export default defineComponent({
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("do:login", {lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat});
+            emitBusEvent("do:login", { lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat });
         },
     },
 });

@@ -3,7 +3,7 @@
     <div class="d-flex flex-column dropdown-container">
       <div
         class="select-container"
-        :class="{open: selectOpen}"
+        :class="{ open: selectOpen }"
         @click="selectOpen = !selectOpen"
       >
         <select
@@ -32,7 +32,7 @@
       </button>
       <div
         class="dropdown dropdown-btn"
-        :class="{hidden: !showSearch}"
+        :class="{ hidden: !showSearch }"
       >
         <input
           v-model="filter"
@@ -54,12 +54,12 @@
 import listComp from "./list-comp.vue";
 
 interface Data {
-  selectOpen: boolean;
-  showSearch: boolean;
-  filter: string;
-  sorter: Array<{ name: string; value: number; sort: (a, b) => number }>;
-  selectedSorter: number;
-  listFocused: boolean;
+    selectOpen: boolean;
+    showSearch: boolean;
+    filter: string;
+    sorter: Array<{ name: string; value: number; sort: (a, b) => number }>;
+    selectedSorter: number;
+    listFocused: boolean;
 }
 
 import { defineComponent, PropType } from "vue";
@@ -67,7 +67,7 @@ import { List } from "../siteTypes";
 
 export default defineComponent({
     name: "ReadingList",
-    components: {listComp},
+    components: { listComp },
     props: {
         lists: { type: Array as PropType<List[]>, required: true },
     },
@@ -116,7 +116,7 @@ export default defineComponent({
     mounted(): void {
         console.log("read", this);
         const element = this.$el.querySelector(".select-container");
-        document.addEventListener("click", (evt) => this.listFocused = this.$el.contains(evt.target), {capture: true});
+        document.addEventListener("click", (evt) => this.listFocused = this.$el.contains(evt.target), { capture: true });
 
         window.addEventListener("click", (evt) => {
             if (!element.contains(evt.target)) {

@@ -1,7 +1,5 @@
 <template>
-  <div>
-    ReadHistory
-  </div>
+  <div>ReadHistory</div>
 </template>
 
 <script lang="ts">

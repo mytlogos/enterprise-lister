@@ -1,6 +1,6 @@
-import {factory, getListManagerHooks, ListScrapeResult, ListType} from "./listManager";
+import { factory, getListManagerHooks, ListScrapeResult, ListType } from "./listManager";
 import feedParserPromised from "feedparser-promised";
-import {combiIndex, getElseSet, hasMediaType, ignore, isTocPart, max, maxValue, MediaType, multiSingle} from "../tools";
+import { combiIndex, getElseSet, hasMediaType, ignore, isTocPart, max, maxValue, MediaType, multiSingle } from "../tools";
 import {
     Episode,
     EpisodeNews,
@@ -38,13 +38,13 @@ import {
 } from "./types";
 import * as directScraper from "./direct/directScraper";
 import * as url from "url";
-import {Cache} from "../cache";
+import { Cache } from "../cache";
 import * as validate from "validate.js";
 import request from "request";
-import {FullResponse} from "cloudscraper";
-import {queueFastRequestFullResponse} from "./queueManager";
+import { FullResponse } from "cloudscraper";
+import { queueFastRequestFullResponse } from "./queueManager";
 import env from "../env";
-import {sourceType} from "./direct/undergroundScraper";
+import { sourceType } from "./direct/undergroundScraper";
 import {
     episodeStorage,
     externalUserStorage,
@@ -53,7 +53,7 @@ import {
     partStorage,
     storage
 } from "../database/storages/storage";
-import {MissingResourceError, UrlError} from "./errors";
+import { MissingResourceError, UrlError } from "./errors";
 
 const redirects: RegExp[] = [];
 const tocScraper: Map<RegExp, TocScraper> = new Map();
@@ -77,7 +77,7 @@ export const filterScrapeAble = (urls: string): ScrapeableFilterResult => {
             regs.push(entry[1].domainReg);
         }
     }
-    const result: ScrapeableFilterResult = {available: [], unavailable: []};
+    const result: ScrapeableFilterResult = { available: [], unavailable: [] };
 
     for (const link of urls) {
         let found = false;
@@ -155,11 +155,11 @@ async function processMediumNews(
     title: string, type: MediaType, tocLink: Optional<string>, potentialNews: EpisodeNews[], update = false
 ): EmptyPromise {
 
-    const likeMedium: LikeMedium = await mediumStorage.getLikeMedium({title, type});
+    const likeMedium: LikeMedium = await mediumStorage.getLikeMedium({ title, type });
 
     if (!likeMedium || !likeMedium.medium || !likeMedium.medium.id) {
         if (tocLink) {
-            await mediumInWaitStorage.addMediumInWait({title, medium: type, link: tocLink});
+            await mediumInWaitStorage.addMediumInWait({ title, medium: type, link: tocLink });
         }
         return;
     }
@@ -327,7 +327,7 @@ export async function searchForToc(item: TocSearchMedium, searcher: TocSearchScr
 
     if (maxDate && maxDate.toDateString() === new Date().toDateString()) {
         // don't search on the same page the same medium twice in a day
-        return {tocs: []};
+        return { tocs: [] };
     }
     let newToc: Optional<Toc>;
     try {
@@ -341,7 +341,7 @@ export async function searchForToc(item: TocSearchMedium, searcher: TocSearchScr
         newToc.mediumId = item.mediumId;
         tocs.push(newToc);
     }
-    return {tocs};
+    return { tocs };
 }
 
 function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: string[]): JobRequest[] {
@@ -477,7 +477,7 @@ export const queueTocsJob = async (): Promise<JobRequest[]> => {
     return tocs.map((value): JobRequest => {
         return {
             runImmediately: true,
-            arguments: JSON.stringify({mediumId: value.mediumId, url: value.link} as TocRequest),
+            arguments: JSON.stringify({ mediumId: value.mediumId, url: value.link } as TocRequest),
             type: ScrapeName.toc,
             name: `${ScrapeName.toc}-${value.mediumId}-${value.link}`,
             interval: MilliTime.HOUR,
@@ -489,7 +489,7 @@ export const queueTocs = async (): EmptyPromise => {
     await storage.queueNewTocs();
 };
 
-export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRequest): Promise<TocResult> => {
+export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: TocRequest): Promise<TocResult> => {
     logger.info("scraping one time toc: " + link);
     const path = url.parse(link).path;
 
@@ -511,7 +511,7 @@ export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRe
     if (!allTocPromise) {
         // TODO use the default scraper here, after creating it
         logger.warn(`no scraper found for: '${link}'`);
-        return {tocs: [], uuid};
+        return { tocs: [], uuid };
     }
 
     let allTocs: Toc[];
@@ -527,7 +527,7 @@ export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRe
 
     if (!allTocs.length) {
         logger.warn(`no tocs found on: '${link}'`);
-        return {tocs: [], uuid};
+        return { tocs: [], uuid };
     }
     if (mediumId && allTocs.length === 1) {
         allTocs[0].mediumId = mediumId;
@@ -552,7 +552,7 @@ export const oneTimeToc = async ({url: link, uuid, mediumId, lastRequest}: TocRe
             }
         }
     }
-    return {tocs: allTocs, uuid};
+    return { tocs: allTocs, uuid };
 };
 
 export const news = async (link: string): Promise<{ link: string; result: News[] }> => {
@@ -628,7 +628,7 @@ export const list = async (value: { info: string; uuid: Uuid }): Promise<Externa
             lists
         };
     } catch (e) {
-        return Promise.reject({...value, error: e});
+        return Promise.reject({ ...value, error: e });
     }
 };
 
@@ -655,7 +655,7 @@ export const feed = async (feedLink: string): Promise<NewsResult> => {
                 rawNews: value
             };
         })
-        .catch((error) => Promise.reject({feed: feedLink, error}));
+        .catch((error) => Promise.reject({ feed: feedLink, error }));
 };
 
 export function checkTocContent(content: TocContent, allowMinusOne = false): void {
@@ -681,8 +681,8 @@ export function checkTocContent(content: TocContent, allowMinusOne = false): voi
 }
 
 // TODO: 21.06.2019 save cache in database?
-const cache = new Cache({size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2});
-const errorCache = new Cache({size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2});
+const cache = new Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
+const errorCache = new Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
 
 export interface ListScrapeEvent {
     external: { cookies: string; uuid: Uuid; userUuid: Uuid; type: number };
@@ -985,7 +985,7 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
                 const href: string = response.request.uri.href;
 
                 if (linkKey) {
-                    cache.set(linkKey, {redirect: link, followed: href});
+                    cache.set(linkKey, { redirect: link, followed: href });
                 }
 
                 resolve(href);
@@ -994,7 +994,7 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
                 if (reason && reason.statusCode && reason.statusCode === 404) {
                     // TODO if resource does not exist what to do?
                     if (linkKey) {
-                        cache.set(linkKey, {redirect: link, followed: ""});
+                        cache.set(linkKey, { redirect: link, followed: "" });
                     }
                     resolve("");
                     return;

@@ -44,21 +44,21 @@
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../../bus";
+import { emitBusEvent } from "../../bus";
 import modal from "./modal";
 
 
 interface GuiMediaType {
-  value: number;
-  name: string;
-  checked: boolean;
+    value: number;
+    name: string;
+    checked: boolean;
 }
 
 import { defineComponent } from "vue";
 
 export default defineComponent({
     name: "AddListModal",
-    components: {modal},
+    components: { modal },
     props: {
         show: Boolean,
         error: { type: String, required: true },
@@ -99,7 +99,7 @@ export default defineComponent({
                     mediumType |= value.values;
                 }
             });
-            emitBusEvent("do:add-list", {name: this.name, type: mediumType});
+            emitBusEvent("do:add-list", { name: this.name, type: mediumType });
         }
     }
 });

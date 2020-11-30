@@ -214,7 +214,7 @@ export interface News {
 
 export interface NewsResult {
     link: string;
-    rawNews: News[] ;
+    rawNews: News[];
 }
 
 export interface EpisodeNews {

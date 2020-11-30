@@ -1,13 +1,13 @@
-import {EpisodeContent, Hook, Toc, TocEpisode, NewsScrapeResult} from "../types";
-import {equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
-import {EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise} from "../../types";
-import {queueCheerioRequest, queueRequest} from "../queueManager";
+import { EpisodeContent, Hook, Toc, TocEpisode, NewsScrapeResult } from "../types";
+import { equalsIgnore, extractIndices, MediaType, sanitizeString } from "../../tools";
+import { EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise } from "../../types";
+import { queueCheerioRequest, queueRequest } from "../queueManager";
 import cheerio from "cheerio";
 import logger from "../../logger";
 import * as url from "url";
-import {checkTocContent} from "../scraperTools";
-import {SearchResult as TocSearchResult, searchToc} from "./directTools";
-import {UrlError} from "../errors";
+import { checkTocContent } from "../scraperTools";
+import { SearchResult as TocSearchResult, searchToc } from "./directTools";
+import { UrlError } from "../errors";
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
     const uri = "https://www.gogoanime.io/";
@@ -66,7 +66,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
         return {};
     }
 
-    return {episodes: news};
+    return { episodes: news };
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
@@ -156,15 +156,15 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 async function scrapeSearch(searchString: string, searchMedium: TocSearchMedium): Promise<TocSearchResult> {
     const searchResults = await search(searchString);
     if (!searchResults || !searchResults.length) {
-        return {done: true};
+        return { done: true };
     }
     for (const searchResult of searchResults) {
         const title = searchResult.title;
         if (equalsIgnore(title, searchMedium.title) || searchMedium.synonyms.some((s) => equalsIgnore(title, s))) {
-            return {value: searchResult.link, done: true};
+            return { value: searchResult.link, done: true };
         }
     }
-    return {done: false};
+    return { done: false };
 }
 
 async function searchForToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
@@ -199,7 +199,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
             logger.warn(`On search gogoanime: Style with coverLink not matchable '${coverStyle}'`);
             continue;
         }
-        searchResults.push({coverUrl: exec[1], link, title: text});
+        searchResults.push({ coverUrl: exec[1], link, title: text });
     }
 
     return searchResults;
@@ -226,7 +226,7 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
     const downloadLink = downloadPage(".dowload a").first().attr("href") as string;
     const mediumTitle = sanitizeString($(".anime-info a").text());
 
-    return [{content: [downloadLink], index: 1, mediumTitle, episodeTitle: `Episode ${exec[1]}`}];
+    return [{ content: [downloadLink], index: 1, mediumTitle, episodeTitle: `Episode ${exec[1]}` }];
 }
 
 export function getHook(): Hook {

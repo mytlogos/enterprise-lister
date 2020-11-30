@@ -1,7 +1,7 @@
-import {startCrawler} from "./jobHandler";
-import {startStorage} from "./database/storages/storage";
+import { startCrawler } from "./jobHandler";
+import { startStorage } from "./database/storages/storage";
 import logger from "./logger";
-import {createServer, Server} from "http";
+import { createServer, Server } from "http";
 import { stringify } from "./tools";
 import { getStores } from "./asyncStorage";
 import os from "os";

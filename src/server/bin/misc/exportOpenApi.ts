@@ -243,7 +243,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     return result;
 
     function routeEntryToResult(routerEntry: RouterEntry): RouterResult {
-        const routerResult: RouterResult = {paths: [], routes: {}, middlewares: [], subRouter: {}};
+        const routerResult: RouterResult = { paths: [], routes: {}, middlewares: [], subRouter: {} };
 
         for (const [routerPath, functionCallEntry] of Object.entries(routerEntry.subRouter)) {
             const subRouterSymbol = functionCallEntry.returnRouter;
@@ -297,7 +297,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     function middlewareToResult(middleware: Middleware): MiddlewareResult {
         const middlewareSymbol = checker.getSymbolAtLocation(middleware);
 
-        const middlewareResult: MiddlewareResult = {returnTypes: null};
+        const middlewareResult: MiddlewareResult = { returnTypes: null };
         if (!middlewareSymbol) {
             return middlewareResult;
         }
@@ -327,7 +327,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             middlewareResult,
             callStack: [],
             middleware,
-            requestInfo: {bodyParams: {}, queryParams: {}},
+            requestInfo: { bodyParams: {}, queryParams: {} },
             responseInfo: {},
             currentStackElement: stackElement
         };
@@ -501,7 +501,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     }
 
     function processResponseCall(callExpression: CallExpression, methodName: string, container: SearchContainer) {
-        const responseInfo: ResponseInfo = {header: {}, body: null};
+        const responseInfo: ResponseInfo = { header: {}, body: null };
         if (methodName === "append") {
             // by Express v4.11.0+
             const headerKey = callExpression.arguments[0];
@@ -1074,7 +1074,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
 
     function getRouterEntry(symbol: ts.Symbol): RouterEntry {
         return getOrInit(routerMap, symbol, () => {
-            return {routes: {}, middlewares: [], paths: [], subRouter: {}} as RouterEntry;
+            return { routes: {}, middlewares: [], paths: [], subRouter: {} } as RouterEntry;
         });
     }
 
@@ -1343,7 +1343,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
                 requestObject.content["application/json"] = {
                     schema: {
                         type: "object",
-                        properties: {...middleware.bodyType}
+                        properties: { ...middleware.bodyType }
                     }
                 } as MediaTypeObject;
             }
@@ -1378,7 +1378,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
                 pathRequestObject.content["application/json"] = {
                     schema: {
                         type: "object",
-                        properties: {...middleware.bodyType}
+                        properties: { ...middleware.bodyType }
                     }
                 } as MediaTypeObject;
             }
@@ -1415,7 +1415,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
     }
 
     for (const [pathKey, routeValue] of Object.entries(router.routes)) {
-        const pathObject: PathItemObject = paths[absolutePath + pathKey] =  {};
+        const pathObject: PathItemObject = paths[absolutePath + pathKey] = {};
 
         for (const [method, middleware] of Object.entries(routeValue)) {
             const routeRequestObject: RequestBodyObject = {
@@ -1431,7 +1431,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
                     routeRequestObject.content["application/json"] = {
                         schema: {
                             type: "object",
-                            properties: {...middleware.bodyType}
+                            properties: { ...middleware.bodyType }
                         }
                     } as MediaTypeObject;
                 }
@@ -1842,7 +1842,7 @@ function GenerateOpenApi(file: string) {
 
     const openApiObject = transformToOpenApi(expressResult);
     const templateResult = templateOpenApi(openApiObject);
-    fs.writeFileSync("../../../result.yaml", templateResult, {encoding: "utf8"});
+    fs.writeFileSync("../../../result.yaml", templateResult, { encoding: "utf8" });
     console.log(templateResult);
 }
 

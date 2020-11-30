@@ -1,12 +1,12 @@
-import {EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart, NewsScrapeResult} from "../types";
-import {EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, Optional, VoidablePromise, Nullable} from "../../types";
-import {queueCheerioRequest} from "../queueManager";
+import { EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart, NewsScrapeResult } from "../types";
+import { EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, Optional, VoidablePromise, Nullable } from "../../types";
+import { queueCheerioRequest } from "../queueManager";
 import * as url from "url";
-import {extractIndices, isTocEpisode, isTocPart, MediaType, relativeToAbsoluteTime, sanitizeString} from "../../tools";
+import { extractIndices, isTocEpisode, isTocPart, MediaType, relativeToAbsoluteTime, sanitizeString } from "../../tools";
 import logger from "../../logger";
-import {EpisodePiece, getTextContent, scrapeToc, searchTocCheerio, TocMetaPiece, TocPiece, extractLinkable} from "./directTools";
-import {checkTocContent} from "../scraperTools";
-import {UrlError} from "../errors";
+import { EpisodePiece, getTextContent, scrapeToc, searchTocCheerio, TocMetaPiece, TocPiece, extractLinkable } from "./directTools";
+import { checkTocContent } from "../scraperTools";
+import { UrlError } from "../errors";
 
 async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
     return searchTocCheerio(
@@ -38,7 +38,7 @@ async function search(text: string): Promise<SearchResult[]> {
         let tocLink = linkElement.attr("href") as string;
         tocLink = url.resolve(uri, tocLink);
 
-        searchResults.push({title, link: tocLink, author, coverUrl: coverLink});
+        searchResults.push({ title, link: tocLink, author, coverUrl: coverLink });
     }
     return searchResults;
 }
@@ -121,7 +121,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
                 const newsRow = items.eq(itemIndex);
                 const link = url.resolve(uri, newsRow.attr("href") as string);
                 const episodeTitle = sanitizeString(newsRow.text());
-                yield {title: episodeTitle, url: link, releaseDate: now} as EpisodePiece;
+                yield { title: episodeTitle, url: link, releaseDate: now } as EpisodePiece;
             }
 
             if ($(".pagination .last.disabled, .pagination .next.disabled").length) {
@@ -226,7 +226,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 }
 
 async function scrapeTocPage($: cheerio.Root, uri: string): VoidablePromise<Toc> {
-// TODO: 20.07.2019 scrape alternative titles and author too
+    // TODO: 20.07.2019 scrape alternative titles and author too
     const mediumTitleElement = $(".desc .title").first();
     const mediumTitle = sanitizeString(mediumTitleElement.text());
 
@@ -369,7 +369,7 @@ async function newsAdapter(): Promise<NewsScrapeResult> {
             date,
         });
     }
-    return {episodes: episodeNews};
+    return { episodes: episodeNews };
 }
 
 newsAdapter.link = "https://novelfull.com";

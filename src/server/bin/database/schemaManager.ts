@@ -1,8 +1,8 @@
-import {DatabaseSchema, Migration} from "./databaseTypes";
-import {TableSchema} from "./tableSchema";
-import {Trigger} from "./trigger";
-import {delay, equalsIgnore, getElseSet} from "../tools";
-import {DatabaseContext} from "./contexts/databaseContext";
+import { DatabaseSchema, Migration } from "./databaseTypes";
+import { TableSchema } from "./tableSchema";
+import { Trigger } from "./trigger";
+import { delay, equalsIgnore, getElseSet } from "../tools";
+import { DatabaseContext } from "./contexts/databaseContext";
 import logger from "../logger";
 import { EmptyPromise, Nullable } from "../types";
 
@@ -174,7 +174,7 @@ export class SchemaManager {
 
         for (const migration of this.migrations) {
             const fromMigrations = getElseSet(fromVersionMap, migration.fromVersion, () => []);
-            fromMigrations.push({migration, children: [], parents: []});
+            fromMigrations.push({ migration, children: [], parents: [] });
         }
         for (const [from, value] of fromVersionMap.entries()) {
             if (from === previousVersion) {

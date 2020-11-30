@@ -1,5 +1,5 @@
 import NodeCache from "node-cache";
-import {max} from "./tools";
+import { max } from "./tools";
 import logger from "./logger";
 
 export interface CacheOptions extends NodeCache.Options {

@@ -25,7 +25,7 @@
   </div>
 </template>
 <script lang="ts">
-import {emitBusEvent} from "../../bus";
+import { emitBusEvent } from "../../bus";
 
 import { defineComponent } from "vue";
 
@@ -44,7 +44,7 @@ export default defineComponent({
                 evt.preventDefault();
                 this.close();
             }
-        }, {capture: true});
+        }, { capture: true });
     },
     methods: {
         close(): void {

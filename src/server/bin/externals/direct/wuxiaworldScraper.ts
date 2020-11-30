@@ -1,11 +1,11 @@
-import {EpisodeContent, Hook, Toc, TocPart, NewsScrapeResult} from "../types";
-import {EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Nullable} from "../../types";
+import { EpisodeContent, Hook, Toc, TocPart, NewsScrapeResult } from "../types";
+import { EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Nullable } from "../../types";
 import logger from "../../logger";
 import * as url from "url";
-import {queueCheerioRequest, queueRequest} from "../queueManager";
-import {countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString} from "../../tools";
-import {checkTocContent} from "../scraperTools";
-import {UrlError} from "../errors";
+import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString } from "../../tools";
+import { checkTocContent } from "../scraperTools";
+import { UrlError } from "../errors";
 
 async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     const uri = "https://www.wuxiaworld.com/";
@@ -109,7 +109,7 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
         const pageNewsElement = pageNewsElements.eq(i);
     }
     // TODO: 07.07.2019 scrape news (not new episodes)
-    return {episodes: episodeNews, news};
+    return { episodes: episodeNews, news };
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
@@ -333,7 +333,7 @@ async function search(text: string): Promise<SearchResult[]> {
     }
     for (const item of parsed.items) {
         const tocLink = "https://www.wuxiaworld.com/novel/" + item.slug;
-        searchResult.push({coverUrl: item.coverUrl, link: tocLink, title: item.name});
+        searchResult.push({ coverUrl: item.coverUrl, link: tocLink, title: item.name });
     }
     return searchResult;
 }

@@ -1,5 +1,5 @@
-import {EpisodeRelease, MultiSingle, Uuid, PromiseMultiSingle, EmptyPromise, Unpack, UnpackArray, Optional, Nullable, Indexable, ExtractedIndex} from "./types";
-import {TocEpisode, TocPart, TocContent} from "./externals/types";
+import { EpisodeRelease, MultiSingle, Uuid, PromiseMultiSingle, EmptyPromise, Unpack, UnpackArray, Optional, Nullable, Indexable, ExtractedIndex } from "./types";
+import { TocEpisode, TocPart, TocContent } from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
 // FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
@@ -8,7 +8,7 @@ import bcrypt from "bcryptjs";
 import emojiStrip from "emoji-strip";
 import * as fs from "fs";
 import * as path from "path";
-import {Query} from "mysql";
+import { Query } from "mysql";
 import * as dns from "dns";
 import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
@@ -233,7 +233,7 @@ export function equalsIgnore(s1: string, s2: string): boolean {
     if (apostrophe.test(s2)) {
         s2 = s2.replace(apostrophe, "");
     }
-    return s1.localeCompare(s2, undefined, {sensitivity: "base"}) === 0;
+    return s1.localeCompare(s2, undefined, { sensitivity: "base" }) === 0;
 }
 
 /**
@@ -560,7 +560,7 @@ export const ShaHash: ShaHasher = {
             const salt = crypt.randomBytes(Math.ceil(saltLength / 2))
                 .toString("hex") // convert to hexadecimal format
                 .slice(0, saltLength); // return required number of characters */
-            return {salt, hash: this.innerHash(text, salt)};
+            return { salt, hash: this.innerHash(text, salt) };
         });
     },
 
@@ -596,7 +596,7 @@ export const Md5Hash: Hasher = {
                 .createHash("md5")
                 .update(text)
                 .digest("hex");
-            return {hash: newsHash};
+            return { hash: newsHash };
         });
     },
 
@@ -612,7 +612,7 @@ export const BcryptHash: Hasher = {
 
     hash(text) {
         return bcrypt.hash(text, 10).then((hash) => {
-            return {salt: undefined, hash};
+            return { salt: undefined, hash };
         });
     },
 
@@ -735,7 +735,7 @@ export function extractIndices(groups: string[], allPosition: number, totalPosit
     if (groups[partialPosition]) {
         partialIndex = Number(groups[partialPosition]);
     }
-    return {combi: whole, total: totalIndex, fraction: partialIndex};
+    return { combi: whole, total: totalIndex, fraction: partialIndex };
 }
 
 const indexRegex = /(-?\d+)(\.(\d+))?/;
@@ -762,7 +762,7 @@ export function separateIndex(value: number): Indexable {
     if (Number.isNaN(totalIndex) || Number.isNaN(partialIndex)) {
         throw Error("invalid number");
     }
-    return {totalIndex, partialIndex};
+    return { totalIndex, partialIndex };
 }
 
 export function createCircularReplacer(): (key: any, value: any) => any {

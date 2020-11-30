@@ -331,7 +331,7 @@ export class Storage {
  * Property names of QueryContext whose type extends from SubContext.
  */
 type ContextName = PropertyNames<QueryContext, SubContext>;
-type ContextProxy<T extends SubContext, K extends StringKeys<T>> = new() => PromiseFunctions<T, K>;
+type ContextProxy<T extends SubContext, K extends StringKeys<T>> = new () => PromiseFunctions<T, K>;
 
 
 function inContextGeneric<T, C extends SubContext>(callback: ContextCallback<T, C>, context: ContextName) {
@@ -359,7 +359,7 @@ export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T
     } as unknown as ContextProxy<T, K>;
 }
 
-export function SubContextProxyFactory<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(context: ContextName, omitted?: K[]): ContextProxy<T, K>  {
+export function SubContextProxyFactory<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(context: ContextName, omitted?: K[]): ContextProxy<T, K> {
     return ContextProxyFactory<T, K | keyof SubContext>(
         context,
         [

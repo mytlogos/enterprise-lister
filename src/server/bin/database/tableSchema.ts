@@ -1,5 +1,5 @@
-import {InvalidationType} from "./databaseTypes";
-import {ColumnSchema} from "./columnSchema";
+import { InvalidationType } from "./databaseTypes";
+import { ColumnSchema } from "./columnSchema";
 
 export class TableSchema {
     public readonly columns: ColumnSchema[];
@@ -72,7 +72,7 @@ export class TableSchema {
                 }));
             }
         }
-        return {name: this.name, columns: schemata};
+        return { name: this.name, columns: schemata };
     }
 
     public getSchema(): string {
