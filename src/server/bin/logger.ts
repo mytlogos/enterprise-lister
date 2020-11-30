@@ -3,6 +3,7 @@ import {isString, jsonReplacer, stringify} from "./tools";
 import {join as joinPath} from "path";
 import env from "./env";
 import {getStore} from "./asyncStorage";
+import DailyRotateFile from "winston-daily-rotate-file"
 
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
@@ -50,11 +51,10 @@ const logger = winston.createLogger({
         new winston.transports.File({
             filename: filePrefix + "error.log",
             level: "error",
-            maxsize: 10_000_000
-        }),
-        new winston.transports.File({
-            filename: filePrefix + "combined.log",
             maxsize: 20_000_000
+        }),
+        new DailyRotateFile({
+            filename: `${filePrefix}combined.log-%DATE%`,
         }),
         new winston.transports.Console({
             format: format.combine(
