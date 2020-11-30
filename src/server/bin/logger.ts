@@ -39,7 +39,6 @@ const logger = winston.createLogger({
     exceptionHandlers: [
         new winston.transports.File({
             filename: filePrefix + "exception.log",
-            zippedArchive: true,
             maxsize: 10_000_000
         })
     ],
@@ -51,12 +50,10 @@ const logger = winston.createLogger({
         new winston.transports.File({
             filename: filePrefix + "error.log",
             level: "error",
-            zippedArchive: true,
             maxsize: 10_000_000
         }),
         new winston.transports.File({
             filename: filePrefix + "combined.log",
-            zippedArchive: true,
             maxsize: 20_000_000
         }),
         new winston.transports.Console({

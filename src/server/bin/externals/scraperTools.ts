@@ -578,9 +578,9 @@ export const toc = async (value: TocRequest): Promise<TocResult> => {
 /**
  * Scrapes ListWebsites and follows possible redirected pages.
  */
-export const list = async (value: { cookies: string; uuid: Uuid }): Promise<ExternalListResult> => {
+export const list = async (value: { info: string; uuid: Uuid }): Promise<ExternalListResult> => {
     // TODO: 10.03.2020 for now list scrape novelupdates only, later it should take listtype as an argument
-    const manager = factory(ListType.NOVELUPDATES, value.cookies);
+    const manager = factory(ListType.NOVELUPDATES, value.info);
     try {
         const lists = await manager.scrapeLists();
         const listsPromise: EmptyPromise = Promise.all(lists.lists.map(
@@ -622,7 +622,8 @@ export const list = async (value: { cookies: string; uuid: Uuid }): Promise<Exte
                 type: ListType.NOVELUPDATES,
                 // TODO: add useruuid here
                 userUuid: "",
-                ...value
+                cookies: value.info,
+                uuid: value.uuid
             },
             lists
         };

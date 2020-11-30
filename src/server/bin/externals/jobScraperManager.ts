@@ -58,6 +58,7 @@ export class JobScraperManager {
         const store = getStore();
         if (store) {
             store.set("label", [`job-${item.id}-${item.name}`]);
+            store.set("lastRun", item.lastRun);
         }
     }
 

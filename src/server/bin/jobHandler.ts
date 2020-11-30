@@ -237,7 +237,7 @@ interface TocPartMapping {
     }>;
 }
 
-async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<CombinedEpisode[]>, storageReleses: Readonly<EpisodeRelease[]>): EmptyPromise {
+async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<CombinedEpisode[]>, storageReleases: Readonly<EpisodeRelease[]>): EmptyPromise {
     if (!value.part || !value.part.id) {
         throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
     }
@@ -288,7 +288,7 @@ async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<
                     episodeId: 0,
                     title: episodeToc.tocEpisode.title,
                     url: episodeToc.tocEpisode.url,
-                    releaseDate: episodeToc.tocEpisode.releaseDate || new Date()
+                    releaseDate: getLatestDate(episodeToc.tocEpisode.releaseDate || new Date())
                 }]
             };
         });
@@ -312,13 +312,13 @@ async function addPartEpisodes(value: TocPartMapping, storageEpisodes: Readonly<
                 throw Error("known episode has no episode from storage");
             }
             const id = currentEpisode.id;
-            const foundRelease = storageReleses.find((release) =>
+            const foundRelease = storageReleases.find((release) =>
                 release.url === episodeValue.tocEpisode.url
                 && release.episodeId === id);
 
             const tocRelease: EpisodeRelease = {
                 episodeId: id,
-                releaseDate: episodeValue.tocEpisode.releaseDate || new Date(),
+                releaseDate: getLatestDate(episodeValue.tocEpisode.releaseDate || new Date()),
                 title: episodeValue.tocEpisode.title,
                 url: episodeValue.tocEpisode.url,
                 locked: episodeValue.tocEpisode.locked,
@@ -458,6 +458,33 @@ export async function tocHandler(result: TocResult): EmptyPromise {
         }));
     await Promise.all((await Promise.all(promises)).flat());
 }
+
+/**
+ * Return the most likely latest Date.
+ * Checks with the "lastRun" Item in the AsyncStore.
+ * Checks only dates which are on the same day as the lastRun value.
+ * 
+ * Some site use the date only without time, so it may happen that a new job
+ * encounters dates which seem to occurr earlier than it really happened.
+ * Should always be checked against the dates in the storage.
+ * 
+ * @param date date to check
+ */
+function getLatestDate(date: Date): Date {
+    const store = getStore();
+    const lastRun = store?.get("lastRun") as Date | undefined;
+
+    // check if lastrun does not exist or is earlier than given date
+    if (!lastRun || lastRun < date) {
+        return date;
+    }
+    // check if lastRun happened on the same day, if it does, it should be the better date
+    if (date.toDateString() !== lastRun.toDateString()) {
+        return date;
+    }
+    return lastRun;
+}
+
 
 async function addFeeds(feeds: string[]): EmptyPromise {
     if (!feeds.length) {
