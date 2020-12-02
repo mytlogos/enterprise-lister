@@ -4,14 +4,13 @@ import sinon_chai from "sinon-chai";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import * as storage from "../../../database/storages/storage";
-import * as storageTools from "../../../database/storages/storageTools";
-import { EpisodeContext } from "../../../database/contexts/episodeContext";
-import { setupTestDatabase } from "./contextHelper";
+import { episodeStorage } from "../../../database/storages/storage";
+import { setupTestDatabase, checkEmptyQuery, cleanUserEpisode, cleanAll, fillUserTable, resultFromQuery, getDatabaseData, fillUserEpisodeTable } from "./contextHelper";
 import { before, after, describe, it } from "mocha"
 
 chai.use(sinon_chai);
 chai.use(chaiAsPromised);
-chai.should();
+const should = chai.should();
 
 before(async function () {
     this.timeout(60000);
@@ -24,23 +23,73 @@ after(async () => {
     tools.internetTester.stop();
     return storage.stopStorage();
 });
-/**
-     * Convenience Function for accessing a valid EpisodeContext
-     */
-function inContext<T>(callback: storageTools.ContextCallback<T, EpisodeContext>, transaction = true) {
-    return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con).episodeContext, transaction);
-}
 
 describe("episodeContext", () => {
     describe("getDisplayReleases", function () {
         it("should not throw, when using valid parameters", async function () {
-            await inContext(context => context.getDisplayReleases(new Date(), new Date(), true, "12")).should.eventually.not.be.rejected;
-            await inContext(context => context.getDisplayReleases(new Date(), null, null, "12")).should.eventually.not.be.rejected;
+            await episodeStorage.getDisplayReleases(new Date(), new Date(), true, "12").should.eventually.not.be.rejected;
+            await episodeStorage.getDisplayReleases(new Date(), null, null, "12").should.eventually.not.be.rejected;
         });
     });
 
     describe("getAll", function () {
-        it("should not throw when using valid parameters");
+        after(() => cleanAll());
+        afterEach(() => cleanUserEpisode());
+        it("should not return any rows", async () => {
+            const query = await episodeStorage.getAll("");
+            // on the first query it should not produce any rows
+            const checkEmpty = checkEmptyQuery(query);
+            query.start();
+            await checkEmpty.should.be.eventually.not.rejected;
+        });
+        it("should return correct rows", async function() {
+            // the data available in the table
+            await fillUserEpisodeTable();
+
+            // query without a user uuid which exists
+            let query = await episodeStorage.getAll("");
+            // should return all episodes with progress = 0
+            let result = await resultFromQuery(query);
+            
+            const data = getDatabaseData();
+            // check that any episode has the corresponding
+            data[1].episodes.forEach(value => {
+                const index = result.findIndex(progress => progress.id === value.id)
+                // every episode in database should be returned from query
+                index.should.not.equal(-1);
+                // remove every progress hit
+                const [episodeProgress] = result.splice(index, 1)
+                // progress needs to be zero
+                episodeProgress.progress.should.equal(0);
+            });
+            // there should not be any episodes progress left
+            result.should.be.empty;
+
+            const existingUser = Object.values(data[0])[0];
+
+            // query without a user uuid which exists
+            query = await episodeStorage.getAll(existingUser.uuid);
+            // should return all episodes with progress = 0
+            result = await resultFromQuery(query);
+            result.should.not.be.empty;
+
+            // check that any episode has the corresponding progress
+            data[1].episodes.forEach(value => {
+                const index = result.findIndex(progress => progress.id === value.id)
+                // every episode in database should be returned from query
+                index.should.not.equal(-1);
+                // remove every progress hit
+                const [episodeProgress] = result.splice(index, 1)
+
+                const expectedProgress = existingUser.progress.find(progress => progress.episodeId === episodeProgress.id);
+                should.exist(expectedProgress);
+
+                // progress needs to be zero
+                episodeProgress.progress.should.equal(expectedProgress?.progress);
+            });
+            // there should not be any episodes progress left
+            result.should.be.empty;
+        });
     });
 
     describe("getAllReleases", function () {
