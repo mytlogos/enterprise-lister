@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/mytlogos/enterprise-lister/compare/v1.13.0...v1.14.0) (2020-12-02)
+
+
+### Features
+
+* **scraper:** add open library hook ([2be467f](https://github.com/mytlogos/enterprise-lister/commit/2be467f01fc951220910351a57da51ed2d622a47))
+
 # [1.13.0](https://github.com/mytlogos/enterprise-lister/compare/v1.12.0...v1.13.0) (2020-12-02)
 
 
