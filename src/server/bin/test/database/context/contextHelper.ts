@@ -4,6 +4,7 @@ import { QueryContext } from "../../../database/contexts/queryContext";
 import { MediaType, delay } from "../../../tools";
 import { EmptyPromise } from "../../../types";
 import { Query } from "mysql";
+import bcrypt from "bcryptjs";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
     return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);
@@ -123,8 +124,8 @@ const user: User[] = [
     {
         name: "Almani",
         uuid: "123789",
-        password: "123",
-        alg: "",
+        password: bcrypt.hashSync("test-password", 10),
+        alg: "bcrypt",
         externalUser: [],
         list_medium: [],
         progress: [
