@@ -1,11 +1,10 @@
 import * as tools from "../../../tools";
-import sinon from "sinon";
 import sinon_chai from "sinon-chai";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import * as storage from "../../../database/storages/storage";
 import { episodeStorage } from "../../../database/storages/storage";
-import { setupTestDatabase, checkEmptyQuery, cleanUserEpisode, cleanAll, fillUserTable, resultFromQuery, getDatabaseData, fillUserEpisodeTable } from "./contextHelper";
+import { setupTestDatabase, checkEmptyQuery, cleanUserEpisode, cleanAll, resultFromQuery, getDatabaseData, fillUserEpisodeTable } from "./contextHelper";
 import { before, after, describe, it } from "mocha"
 
 chai.use(sinon_chai);
