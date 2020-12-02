@@ -1,3 +1,15 @@
+# [1.13.0](https://github.com/mytlogos/enterprise-lister/compare/v1.12.0...v1.13.0) (2020-12-02)
+
+
+### Bug Fixes
+
+* fix linter (indent) errors ([6f0563d](https://github.com/mytlogos/enterprise-lister/commit/6f0563d3586df440e7ce942a4e63f708f23cc88a))
+
+
+### Features
+
+* **logger:** use daily log rotate for combined level transport ([a6b6ecc](https://github.com/mytlogos/enterprise-lister/commit/a6b6ecc87216dba8c4aff821d6eb7f9be9fc5abd))
+
 # [1.12.0](https://github.com/mytlogos/enterprise-lister/compare/v1.11.0...v1.12.0) (2020-11-30)
 
 
