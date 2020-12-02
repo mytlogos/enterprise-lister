@@ -145,22 +145,22 @@ function methodToRequest(options: Optional<Options>, toUseRequest: Request) {
     const method = options && options.method ? options.method : "";
 
     switch (method.toLowerCase()) {
-        case "get":
-            return toUseRequest.get(options);
-        case "head":
-            return toUseRequest.head(options);
-        case "put":
-            return toUseRequest.put(options);
-        case "post":
-            return toUseRequest.post(options);
-        case "patch":
-            return toUseRequest.patch(options);
-        case "del":
-            return toUseRequest.del(options);
-        case "delete":
-            return toUseRequest.delete(options);
-        default:
-            return toUseRequest.get(options);
+    case "get":
+        return toUseRequest.get(options);
+    case "head":
+        return toUseRequest.head(options);
+    case "put":
+        return toUseRequest.put(options);
+    case "post":
+        return toUseRequest.post(options);
+    case "patch":
+        return toUseRequest.patch(options);
+    case "del":
+        return toUseRequest.del(options);
+    case "delete":
+        return toUseRequest.delete(options);
+    default:
+        return toUseRequest.get(options);
     }
 }
 
@@ -274,14 +274,14 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
             }, {
             // FIXME: 02.09.2019 why does it not accept this property?
             // @ts-expect-error
-            withDomLvl1: true,
-            normalizeWhitespace: false,
-        }
-        )
-        ,
+                withDomLvl1: true,
+                normalizeWhitespace: false,
+            }
+        ),
         {
             decodeEntities: false,
-        }).on("error", (err) => reject(err));
+        }
+    ).on("error", (err) => reject(err));
     const stream = new BufferToStringStream();
 
     requestNative(uri, options)

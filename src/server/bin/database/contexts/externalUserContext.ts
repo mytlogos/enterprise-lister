@@ -29,7 +29,8 @@ export class ExternalUserContext extends SubContext {
      * Adds an external user of an user to the storage.
      */
     public async addExternalUser(localUuid: Uuid, externalUser: ExternalUser): Promise<ExternalUser> {
-        let result = await this.query("SELECT * FROM external_user " +
+        let result = await this.query(
+            "SELECT * FROM external_user " +
             "WHERE name = ? " +
             "AND local_uuid = ? " +
             "AND service = ?",
