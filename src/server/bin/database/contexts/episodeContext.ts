@@ -38,12 +38,15 @@ import { Query, OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
 
 export class EpisodeContext extends SubContext {
+    /**
+     * Return a Query of all episodes and together with the read progress and date of the given user uuid.
+     * @param uuid uuid to check the progress of
+     */
     public async getAll(uuid: Uuid): Promise<Query> {
         return this.queryStream(
             "SELECT episode.id, episode.partialIndex, episode.totalIndex, episode.combiIndex, " +
             "episode.part_id as partId, coalesce(progress, 0) as progress, read_date as readDate " +
-            "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
-            "WHERE user_uuid IS NULL OR user_uuid=?",
+            "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id AND user_uuid IS NULL OR user_uuid=?",
             uuid
         );
     }
