@@ -210,7 +210,7 @@ export default defineComponent({
         select(result: SearchResult) {
             this.medium.title = result.title;
             this.medium.url = result.link;
-            this.medium.medium = MediaType.TEXT;
+            this.medium.medium = result.medium;
         },
         add() {
             HttpClient.createMedium({
