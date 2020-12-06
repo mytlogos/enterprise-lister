@@ -1,3 +1,19 @@
+# [1.15.0](https://github.com/mytlogos/enterprise-lister/compare/v1.14.0...v1.15.0) (2020-12-06)
+
+
+### Bug Fixes
+
+* **scraper:** fix openlibrary search ([036e71c](https://github.com/mytlogos/enterprise-lister/commit/036e71c18933264aee927bf165bac3d08e9d2750))
+* **scraper:** ignore empty search item ([67e619a](https://github.com/mytlogos/enterprise-lister/commit/67e619a5c78572eff93bd2ca8aad9b1464c83b29))
+* **searchview:** replace static mediatype with selected ([11f7ff7](https://github.com/mytlogos/enterprise-lister/commit/11f7ff7636452cbf9e27c606ae56eaf668585eb3))
+* ignore failed searches ([70385ef](https://github.com/mytlogos/enterprise-lister/commit/70385ef29a20ed189436b1ff492ef068e9928532))
+
+
+### Features
+
+* **searchview:** add search view for adding new media ([a6b5830](https://github.com/mytlogos/enterprise-lister/commit/a6b58303985425843ba568cf68e02a0719fd5aea))
+* **searchview:** allow user to specify the media type to search for ([644acc6](https://github.com/mytlogos/enterprise-lister/commit/644acc67d688735f5e1ee3ea7a0c4eed4208a3fc))
+
 # [1.14.0](https://github.com/mytlogos/enterprise-lister/compare/v1.13.0...v1.14.0) (2020-12-02)
 
 
