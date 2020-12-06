@@ -333,7 +333,7 @@ async function search(text: string): Promise<SearchResult[]> {
     }
     for (const item of parsed.items) {
         const tocLink = "https://www.wuxiaworld.com/novel/" + item.slug;
-        searchResult.push({ coverUrl: item.coverUrl, link: tocLink, title: item.name });
+        searchResult.push({ coverUrl: item.coverUrl, link: tocLink, title: item.name, medium: MediaType.TEXT });
     }
     return searchResult;
 }

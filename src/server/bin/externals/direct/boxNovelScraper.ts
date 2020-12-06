@@ -50,7 +50,7 @@ async function search(text: string): Promise<SearchResult[]> {
 
     if (parsed.success && parsed.data && parsed.data.length) {
         for (const datum of parsed.data) {
-            searchResults.push({ link: datum.url.replace("-boxnovel", ""), title: datum.title });
+            searchResults.push({ link: datum.url.replace("-boxnovel", ""), title: datum.title, medium: MediaType.TEXT });
         }
     }
     return searchResults;

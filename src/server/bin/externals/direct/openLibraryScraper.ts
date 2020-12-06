@@ -129,12 +129,14 @@ async function search(text: string, medium: number): Promise<SearchResult[]> {
     }
     const response = await queueRequest(`http://openlibrary.org/search.json?q=${encodeURIComponent(text)}`);
     const result: OpenLibrarySearchResult = JSON.parse(response);
-    return result.docs.map(value => {
+    // not all have cover_edition_key, ignore those, that dont have it for now
+    return result.docs.filter(v => v.cover_edition_key).map(value => {
         return {
             link: `https://openlibrary.org/api/books?bibkeys=OLID:${value.cover_edition_key}&jscmd=data&format=json`,
             title: value.title,
             author: value.author_name && value.author_name[0],
-            coverUrl: `https://covers.openlibrary.org/b/id/${value.cover_i}-M.jpg`
+            coverUrl: `https://covers.openlibrary.org/b/id/${value.cover_i}-M.jpg`,
+            medium: MediaType.TEXT
         };
     });
 }

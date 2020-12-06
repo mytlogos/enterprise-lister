@@ -404,7 +404,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const author = sanitizeString(authorElement.text());
         const coverLink = coverElement.attr("src");
 
-        searchResults.push({ coverUrl: coverLink, author, link, title: text });
+        searchResults.push({ coverUrl: coverLink, author, link, title: text, medium: MediaType.IMAGE });
     }
 
     return searchResults;

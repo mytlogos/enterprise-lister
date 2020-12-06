@@ -38,7 +38,7 @@ async function search(text: string): Promise<SearchResult[]> {
         let tocLink = linkElement.attr("href") as string;
         tocLink = url.resolve(uri, tocLink);
 
-        searchResults.push({ title, link: tocLink, author, coverUrl: coverLink });
+        searchResults.push({ title, link: tocLink, author, coverUrl: coverLink, medium: MediaType.TEXT });
     }
     return searchResults;
 }

@@ -331,3 +331,11 @@ export interface AddMedium {
     series?: string;
     universe?: string;
 }
+
+export interface SearchResult {
+    coverUrl?: string;
+    link: string;
+    title: string;
+    author?: string;
+    medium: MediaType;
+}

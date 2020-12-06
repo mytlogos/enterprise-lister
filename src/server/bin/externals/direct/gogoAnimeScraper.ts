@@ -199,7 +199,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
             logger.warn(`On search gogoanime: Style with coverLink not matchable '${coverStyle}'`);
             continue;
         }
-        searchResults.push({ coverUrl: exec[1], link, title: text });
+        searchResults.push({ coverUrl: exec[1], link, title: text, medium: MediaType.VIDEO });
     }
 
     return searchResults;

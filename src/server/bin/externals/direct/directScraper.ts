@@ -6,6 +6,7 @@ import { getHook as getMangaHasuHook } from "./mangaHasuScraper";
 import { getHook as getWebnovelHook } from "./webnovelScraper";
 import { getHook as getNovelFullHook } from "./novelFullScraper";
 import { getHook as getBoxnovelHook } from "./boxNovelScraper";
+import { getHook as getOpenLibraryHook } from "./openLibraryScraper";
 
 export function getHooks(): Hook[] {
     return [
@@ -20,5 +21,6 @@ export function getHooks(): Hook[] {
         getWebnovelHook(),
         getBoxnovelHook(),
         getNovelFullHook(),
+        getOpenLibraryHook(),
     ];
 }

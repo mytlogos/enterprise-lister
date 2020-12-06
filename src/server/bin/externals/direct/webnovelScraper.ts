@@ -356,6 +356,11 @@ async function search(text: string): Promise<SearchResult[]> {
 
     for (let i = 0; i < results.length; i++) {
         const result = results.eq(i);
+
+        if (result.hasClass("_no_results")) {
+            continue;
+        }
+
         const titleElement = result.find("h3 > a");
         const coverElement = result.find("img");
         const title = sanitizeString(titleElement.text());
@@ -370,7 +375,7 @@ async function search(text: string): Promise<SearchResult[]> {
         }
         const mediumTocLink = `https://www.webnovel.com/book/${mediumTocLinkGroup[3]}`;
 
-        searchResult.push({ title, link: mediumTocLink, coverUrl });
+        searchResult.push({ title, link: mediumTocLink, coverUrl, medium: MediaType.TEXT });
     }
     return searchResult;
 }
