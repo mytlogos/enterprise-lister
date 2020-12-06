@@ -79,6 +79,15 @@
           </li>
           <li class="nav-item">
             <router-link
+              :to="{ name: 'search' }"
+              tag="a"
+              class="nav-link"
+            >
+              Search
+            </router-link>
+          </li>
+          <li class="nav-item">
+            <router-link
               :to="{ name: 'admin' }"
               tag="a"
               class="nav-link"

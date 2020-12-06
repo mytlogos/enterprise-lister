@@ -16,7 +16,9 @@ import {
     AllJobStats,
     JobDetails,
     TimeJobStats,
-    TimeBucket
+    TimeBucket,
+    MediaType,
+    SearchResult
 } from "./siteTypes";
 
 /**
@@ -135,6 +137,9 @@ const restApi = {
                 },
             },
             news: {
+                get: true,
+            },
+            search: {
                 get: true,
             },
         },
@@ -290,6 +295,7 @@ interface Api {
     readonly login: LoginPath;
     readonly register: RegisterPath;
     readonly user: UserPath;
+    readonly search: GetPath;
 }
 
 const api: Api = (function pathGenerator() {
@@ -625,6 +631,14 @@ export const HttpClient = {
 
     addToc(link: string, id: number): Promise<boolean> {
         return this.queryServer(api.toc.post, { toc: link, mediumId: id });
+    },
+
+    search(title: string, type: MediaType): Promise<SearchResult[]> {
+        return this.queryServer(api.search.get, { text: title, medium: type });
+    },
+
+    addListItem(listId: number, mediumId: number): Promise<void> {
+        return this.queryServer(api.list.medium.post, { listId, mediumId });
     },
 
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
