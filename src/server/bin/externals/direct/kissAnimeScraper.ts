@@ -299,7 +299,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const text = sanitizeString(linkElement.text());
         const link = url.resolve("https://kissanime.ru/", linkElement.attr("href") as string);
 
-        searchResults.push({ link, title: text });
+        searchResults.push({ link, title: text, medium: MediaType.IMAGE });
 
     }
     if (searchResults.length === 1 && searchResults[0].link === "https://kissanime.ru/Search/SearchSuggestx") {

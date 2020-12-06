@@ -375,7 +375,7 @@ async function search(text: string): Promise<SearchResult[]> {
         }
         const mediumTocLink = `https://www.webnovel.com/book/${mediumTocLinkGroup[3]}`;
 
-        searchResult.push({ title, link: mediumTocLink, coverUrl });
+        searchResult.push({ title, link: mediumTocLink, coverUrl, medium: MediaType.TEXT });
     }
     return searchResult;
 }

@@ -337,4 +337,5 @@ export interface SearchResult {
     link: string;
     title: string;
     author?: string;
+    medium: MediaType;
 }

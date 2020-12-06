@@ -806,7 +806,8 @@ export async function search(title: string, medium: number): Promise<SearchResul
     checkHooks();
     const promises: Array<Promise<SearchResult[]>> = [];
     for (const searcher of searchAdapter) {
-        if (searcher.medium === medium) {
+        // check if wanted medium and defined medium overlap
+        if (searcher.medium & medium) {
             promises.push(searcher(title, medium));
         }
     }

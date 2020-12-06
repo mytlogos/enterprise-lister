@@ -10,11 +10,15 @@
         @keyup.enter="search"
       >
       <button
-        class="btn btn-dark"
+        class="btn btn-dark mr-2"
         @click.left="search"
       >
         Search
       </button>
+      <media-filter
+        :state="type"
+        @update:state="type = $event"
+      />
     </div>
     <div class="d-flex flex-wrap">
       <div
@@ -44,6 +48,7 @@
               >
                 {{ item.title }}
               </a>
+              <type-icon :type="item.medium" />
               <small class="text-muted">{{
                 item.author || "N/A"
               }}</small>
@@ -169,6 +174,7 @@ import { defineComponent } from "vue";
 import { MediaType, SearchResult } from "../siteTypes";
 import $ from "jquery"
 import TypeIcon from "../components/type-icon.vue";
+import mediaFilter from "../components/media-filter.vue";
 
 $(function () {
     $("[data-toggle=\"tooltip\"]").tooltip()
@@ -177,6 +183,7 @@ $(function () {
 export default defineComponent({
     name: "Search",
     components: {
+        mediaFilter: mediaFilter,
         typeIcon: TypeIcon,
     },
     data() {
