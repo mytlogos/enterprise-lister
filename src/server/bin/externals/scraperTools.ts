@@ -810,8 +810,14 @@ export async function search(title: string, medium: number): Promise<SearchResul
             promises.push(searcher(title, medium));
         }
     }
-    const results = await Promise.all(promises);
-    return results.flat(1);
+    const results = await Promise.allSettled(promises);
+    return results.flat(1).map(value => {
+        if (value.status === "fulfilled") {
+            return value.value;
+        }
+        logger.error(value.reason);
+        return null;
+    }).filter(value => value) as unknown as SearchResult[];
 }
 
 export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]> {
