@@ -203,7 +203,7 @@ export function generateExpressApiObject(fileNames: string[], options: ts.Compil
     }
     const result: ExportExpressResult = parser.getExpressResult();
 
-    // console.log(JSON.stringify(result, null, 4));
+    // log(JSON.stringify(result, null, 4));
     // print out the doc
     // fs.writeFileSync("classes.json", JSON.stringify(output, undefined, 4));
     return transformToOpenApi(result);
@@ -233,7 +233,7 @@ class TypeInferrer {
             const symbol = this.getSymbol(node);
 
             if (!symbol) {
-                console.log("No Symbol for Identifier: " + node);
+                log("No Symbol for Identifier: " + node);
             } else {
                 const type = this.checker.getTypeOfSymbolAtLocation(symbol, node);
 
@@ -249,15 +249,15 @@ class TypeInferrer {
             const identifier = getFirstCallIdentifier(node);
 
             if (!identifier) {
-                console.log("No Identifier for CallExpression: " + node.getText());
+                log("No Identifier for CallExpression: " + node.getText());
             } else {
                 const callSymbol = this.getSymbol(identifier);
                 if (!callSymbol) {
-                    console.log("No Symbol for Identifier of CallExpression: " + node.getText());
+                    log("No Symbol for Identifier of CallExpression: " + node.getText());
                 } else {
                     const signature = this.checker.getSignatureFromDeclaration(callSymbol.valueDeclaration as FunctionDeclaration);
                     if (!signature) {
-                        console.log("No Signature for CallExpression: " + node.getText());
+                        log("No Signature for CallExpression: " + node.getText());
                     } else {
                         const type = this.checker.getReturnTypeOfSignature(signature);
                     }
@@ -359,7 +359,7 @@ class TypeInferrer {
         const symbol = type.getSymbol();
 
         if (!symbol) {
-            console.log("No Symbol for Type: " + type);
+            log("No Symbol for Type: " + type);
             return null;
         }
         if (ts.isFunctionLike(symbol.valueDeclaration)) {
@@ -378,7 +378,7 @@ class TypeInferrer {
                     elementType,
                 } as ArrayType;
             } else {
-                console.log("Array type does not have exactly one TypeParameter: " + arrayTypes);
+                log("Array type does not have exactly one TypeParameter: " + arrayTypes);
                 return null;
             }
         }
@@ -468,7 +468,7 @@ class Parser {
             const returnedRouter = functionEntry.returnRouter;
 
             if (!returnedRouter) {
-                console.log("Exported Function does not return a router: " + name);
+                log("Exported Function does not return a router: " + name);
                 continue;
             }
             const routerEntry = this.routerMap.get(returnedRouter);
@@ -489,7 +489,7 @@ class Parser {
             const subRouterSymbol = functionCallEntry.returnRouter;
 
             if (!subRouterSymbol) {
-                console.log("Middleware Function does not return router");
+                log("Middleware Function does not return router");
                 continue;
             }
             if (subRouterSymbol === this.currentlyConvertingRouter) {
@@ -584,7 +584,7 @@ class Parser {
         const currentFunctionSymbol = container.currentStackElement.symbol;
         // prevent infinite recursion
         if (container.callStack.find((value) => value.symbol === currentFunctionSymbol)) {
-            console.log("Recursive call of: " + middlewareSignature.getText());
+            log("Recursive call of: " + middlewareSignature.getText());
             return;
         }
         container.callStack.push(container.currentStackElement);
@@ -602,7 +602,7 @@ class Parser {
         });
 
         if (!requestParamSymbol && !responseParamSymbol) {
-            console.log(
+            log(
                 "Faulty Function: Missing either Request and Response Parameter: " + container.middleware.getText()
             );
             return;
@@ -655,7 +655,7 @@ class Parser {
                         container.requestInfo.queryParams[queryProperty] = {};
                     }
                 } else {
-                    console.log("unknown request.query property: " + requestAccess.getText());
+                    log("unknown request.query property: " + requestAccess.getText());
                 }
             } else if (propertyIdentifier.text === "body") {
                 const queryProperties = this.getPropertyAccess(requestAccess, container);
@@ -666,7 +666,7 @@ class Parser {
                         container.requestInfo.queryParams[queryProperty] = {};
                     }
                 } else {
-                    console.log("unknown request.body property: " + requestAccess.getText());
+                    log("unknown request.body property: " + requestAccess.getText());
                 }
             }
         }
@@ -685,7 +685,7 @@ class Parser {
             const identifier = getFirstCallIdentifier(callExpression);
 
             if (!identifier) {
-                console.log("No Identifier for Response.method: " + callExpression.getText());
+                log("No Identifier for Response.method: " + callExpression.getText());
                 continue;
             }
             this.processResponseCall(callExpression, identifier.text, container);
@@ -707,12 +707,12 @@ class Parser {
             if (ts.isIdentifierOrPrivateIdentifier(callExpression.expression)) {
                 const callSymbol = this.checker.getSymbolAtLocation(callExpression.expression);
                 if (!callSymbol) {
-                    console.log("No Symbol for Call: " + callExpression.expression.getText());
+                    log("No Symbol for Call: " + callExpression.expression.getText());
                     continue;
                 }
                 const declaration = callSymbol.valueDeclaration;
                 if (!ts.isFunctionLike(declaration)) {
-                    console.log(
+                    log(
                         "Value Declaration of Call Symbol is no SignatureDeclaration: "
                         + callExpression.expression.getText()
                     );
@@ -748,7 +748,7 @@ class Parser {
             const headerValue = callExpression.arguments[1];
 
             if (!headerKey || !ts.isStringLiteralLike(headerKey)) {
-                console.log("expected string literal as header key: " + callExpression.getText());
+                log("expected string literal as header key: " + callExpression.getText());
                 return;
             }
             let value = null;
@@ -756,7 +756,7 @@ class Parser {
             // TODO: 10.08.2020 accept string array also
             if (headerValue) {
                 if (!ts.isStringLiteralLike(headerValue)) {
-                    console.log("expected string literal as header key: " + callExpression.getText());
+                    log("expected string literal as header key: " + callExpression.getText());
                     return;
                 } else {
                     value = headerValue.text;
@@ -843,7 +843,7 @@ class Parser {
             const type = callExpression.arguments[0];
         } else {
             // or a call of a super type of express.Response like http.ServerResponse or http.OutgoingMessage
-            console.log("Unknown call on response: " + callExpression.getText());
+            log("Unknown call on response: " + callExpression.getText());
         }
     }
 
@@ -879,7 +879,7 @@ class Parser {
             const keySymbol = this.getSymbol(node);
 
             if (!keySymbol) {
-                console.log("cannot find symbol for ElementAccess of: " + node.parent.getText());
+                log("cannot find symbol for ElementAccess of: " + node.parent.getText());
                 return null;
             }
             if (ts.isParameter(keySymbol.valueDeclaration)) {
@@ -891,11 +891,11 @@ class Parser {
                 }
                 return this.getStringLiteralValue(argument, container, stackLevel - 1);
             } else {
-                console.log("Unknown node type, not a parameter: " + keySymbol.valueDeclaration.getText());
+                log("Unknown node type, not a parameter: " + keySymbol.valueDeclaration.getText());
             }
             // TODO: 10.08.2020 try to infer from variableDeclaration
         } else {
-            console.log("unknown node: neither StringLiteral or Identifier: " + node.getText());
+            log("unknown node: neither StringLiteral or Identifier: " + node.getText());
         }
         return null;
     }
@@ -917,13 +917,13 @@ class Parser {
                         || identifierSymbol === variableSymbol);
             });
         if (returnNodes.length > 1) {
-            console.log("more than one return router statement");
+            log("more than one return router statement");
         } else if (returnNodes.length === 1) {
             const lastReturn = returnNodes.pop() as ts.Node;
             const routerIdentifier = getFirst(lastReturn, SyntaxKind.Identifier) as ts.Node;
             return this.checker.getSymbolAtLocation(routerIdentifier) as ts.Symbol;
         } else {
-            console.log("No Router returned for function: " + outerFunction.getText());
+            log("No Router returned for function: " + outerFunction.getText());
         }
     }
 
@@ -946,7 +946,7 @@ class Parser {
                     const outerFunctionSymbol = this.checker.getSymbolAtLocation(outerFunction.name as Identifier);
 
                     if (!outerFunctionSymbol) {
-                        console.log("Missing Symbol for outer Function: " + outerFunction.getText());
+                        log("Missing Symbol for outer Function: " + outerFunction.getText());
                         return;
                     }
                     const functionEntry = this.getFunctionEntry(outerFunctionSymbol);
@@ -960,12 +960,12 @@ class Parser {
                     const routerSymbol = this.checker.getSymbolAtLocation(routerIdentifier);
 
                     if (!routerSymbol) {
-                        console.log("No Symbol for Router Variable at position: " + routerIdentifier.pos);
+                        log("No Symbol for Router Variable at position: " + routerIdentifier.pos);
                         return;
                     }
                     const call = getFirst(initializer, SyntaxKind.CallExpression) as CallExpression;
                     if (call.arguments.length !== 1) {
-                        console.log("Require exactly on argument for method 'route' on position: " + call.pos);
+                        log("Require exactly on argument for method 'route' on position: " + call.pos);
                         return;
                     } else {
                         const expression = call.arguments[0];
@@ -976,14 +976,14 @@ class Parser {
                             const routePath = expression.text;
                             routerEntry.routes[routePath] = this.getRouteEntry(variableSymbol);
                         } else {
-                            console.log("Require string literal as path for method 'route' on position: " + call.pos);
+                            log("Require string literal as path for method 'route' on position: " + call.pos);
                         }
                     }
                 } else {
-                    console.log(`Unknown Call Symbol for ${symbol.getName()}`);
+                    log(`Unknown Call Symbol for ${symbol.getName()}`);
                 }
             } else {
-                console.log(`No Symbol for ${node.getText()}`);
+                log(`No Symbol for ${node.getText()}`);
             }
         }
     }
@@ -994,7 +994,7 @@ class Parser {
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
         if (isHttpMethod(name)) {
             if (!parameterList) {
-                console.log("No Parameter for Http method call!");
+                log("No Parameter for Http method call!");
                 return;
             }
             const pathLiteral = parameterList.getChildAt(0) as StringLiteral;
@@ -1008,7 +1008,7 @@ class Parser {
             });
         } else if (name.toLowerCase() === "use") {
             if (!parameterList) {
-                console.log(`No Middleware supplied to ${variableIdentifier.getText()}.use!`);
+                log(`No Middleware supplied to ${variableIdentifier.getText()}.use!`);
                 return;
             }
             if (parameterList.getChildCount() === 1) {
@@ -1023,6 +1023,7 @@ class Parser {
                     const nextCall = getFirst(middleWareNode, ts.SyntaxKind.CallExpression);
 
                     const routerEntry: RouterEntry = this.getRouterEntry(variableSymbol);
+                    // type of *.use("my-path", functionReturninARouter())
                     if (nextCall && ts.isCallExpression(nextCall)) {
                         const callIdentifier = getFirstCallIdentifier(nextCall);
 
@@ -1034,22 +1035,22 @@ class Parser {
                                 const subRouter = routerEntry.subRouter;
                                 subRouter[text] = functionEntry;
                             } else {
-                                console.log("No Function symbol for: " + callIdentifier.getText());
+                                log("No Function symbol for: " + callIdentifier.getText());
                             }
                         } else {
-                            console.log("No Call Identifier for Call Expression: " + nextCall.getText());
+                            log("No Call Identifier for Call Expression: " + nextCall.getText());
                         }
                     } else {
-                        console.log("Router.use where second argument is not a router:" + node.getText());
+                        log("Router.use where second argument is not a router:" + node.getText());
                     }
                 } else {
-                    console.log("Expected a string literal as path: " + node.getText());
+                    log("Expected a string literal as path: " + node.getText());
                 }
             } else {
-                console.log(`Not exactly one or two Arguments supplied to *.use!: ${propertyName.parent.getText()}`);
+                log(`Not exactly one or two Arguments supplied to *.use!: ${propertyName.parent.getText()}`);
             }
         } else {
-            console.log(`Non http Method call: ${name}() on ${variableIdentifier.getText()}`);
+            log(`Non http Method call: ${name}() on ${variableIdentifier.getText()}`);
         }
     }
 
@@ -1059,7 +1060,7 @@ class Parser {
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
         if (isHttpMethod(name)) {
             if (!parameterList) {
-                console.log("No Parameter for Http method call!");
+                log("No Parameter for Http method call!");
                 return;
             }
             const middleWareNode = parameterList.getChildAt(0);
@@ -1067,7 +1068,7 @@ class Parser {
             const routeEntry = this.getRouteEntry(variableSymbol);
             routeEntry[name] = middleWareNode;
         } else {
-            console.log(`Non http Method call: ${name}() on ${variableIdentifier.getText()}`);
+            log(`Non http Method call: ${name}() on ${variableIdentifier.getText()}`);
         }
     }
 
@@ -1084,7 +1085,7 @@ class Parser {
             const variableSymbol = this.checker.getSymbolAtLocation(variableIdentifier);
 
             if (!variableSymbol) {
-                console.log("Variable Property Access has no Symbol: " + node.getText());
+                log("Variable Property Access has no Symbol: " + node.getText());
                 return;
             }
             if (this.routerVariables.has(variableSymbol)) {
@@ -1092,7 +1093,7 @@ class Parser {
             } else if (this.routeMap.has(variableSymbol)) {
                 this.processRoute(propertyName, node, variableSymbol, variableIdentifier);
             } else {
-                console.log("Unknown Method Call: " + node.getText());
+                log("Unknown Method Call: " + node.getText());
             }
         } else {
             const firstIdentifier = getFirst(node, ts.SyntaxKind.Identifier);
@@ -1100,9 +1101,9 @@ class Parser {
                 const symbol = this.checker.getSymbolAtLocation(firstIdentifier);
 
                 if (symbol) {
-                    console.log(`${ts.SyntaxKind[node.kind]}: Call ${node.getFullText()}`);
+                    log(`${ts.SyntaxKind[node.kind]}: Call ${node.getFullText()}`);
                 } else {
-                    console.log(`No Symbol for ${firstIdentifier.getText()}`);
+                    log(`No Symbol for ${firstIdentifier.getText()}`);
                 }
             }
         }
@@ -1457,7 +1458,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
         const pathObject: PathItemObject = paths[currentPath] = {};
 
         for (const [method, middleware] of Object.entries(routeValue)) {
-            console.log(`${currentPath}: ${method}`);
+            log(`${currentPath}: ${method}`);
             const routeRequestObject: RequestBodyObject = {
                 content: JSON.parse(contentCopyString)
             };
@@ -1514,4 +1515,8 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
         const subPath = (absolutePath + pathKey).replace("//", "/");
         routerResultToOpenApi(subRouter, paths, subPath);
     }
+}
+
+function log(...any: any[]): void {
+    console.log(...any);
 }
