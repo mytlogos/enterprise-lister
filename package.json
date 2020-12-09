@@ -19,7 +19,8 @@
     "start:crawler": "node dist/server/startCrawler.js",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
     "migrate": "node dist/server/misc/migrate.js",
-    "commit": "npx git-cz"
+    "commit": "npx git-cz",
+    "generate:api": "node dist/server/misc/openapi/generate.js"
   },
   "husky": {
     "hooks": {
