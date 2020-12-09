@@ -221,6 +221,218 @@ export function generateExpressApiObject(fileNames: string[], options: ts.Compil
     }
 }
 
+class TypeInferrer {
+    private checker: ts.TypeChecker;
+
+    public constructor(checker: ts.TypeChecker) {
+        this.checker = checker
+    }
+
+    public inferType(body: ts.Node, stackElement: StackElement): Nullable<TypeResult> {
+        if (ts.isIdentifier(body)) {
+            const symbol = this.getSymbol(body);
+
+            if (!symbol) {
+                console.log("No Symbol for Identifier: " + body);
+            } else {
+                const type = this.checker.getTypeOfSymbolAtLocation(symbol, body);
+
+                if (this.checker.typeToString(type) === "any") {
+                    return this.inferAny(symbol, stackElement);
+                } else {
+                    // TODO: 11.08.2020 do cool stuff with type
+                }
+            }
+        } else if (ts.isLiteralExpression(body)) {
+            const contextualType = this.checker.getContextualType(body);
+        } else if (ts.isCallExpression(body)) {
+            const identifier = getFirstCallIdentifier(body);
+
+            if (!identifier) {
+                console.log("No Identifier for CallExpression: " + body.getText());
+            } else {
+                const callSymbol = this.getSymbol(identifier);
+                if (!callSymbol) {
+                    console.log("No Symbol for Identifier of CallExpression: " + body.getText());
+                } else {
+                    const signature = this.checker.getSignatureFromDeclaration(callSymbol.valueDeclaration as FunctionDeclaration);
+                    if (!signature) {
+                        console.log("No Signature for CallExpression: " + body.getText());
+                    } else {
+                        const type = this.checker.getReturnTypeOfSignature(signature);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private inferAny(symbol: ts.Symbol, stackElement: StackElement): Nullable<TypeResult> {
+        if (isParameter(symbol.valueDeclaration)) {
+            const parentOfFunction = symbol.valueDeclaration.parent.parent;
+
+            if (ts.isCallExpression(parentOfFunction) && ts.isPropertyAccessExpression(parentOfFunction.expression)) {
+                const property = parentOfFunction.expression.name.text;
+
+                if (property === "then") {
+                    const leftHandSideExpression = parentOfFunction.expression.expression;
+
+                    if (ts.isIdentifier(leftHandSideExpression)) {
+                        const leftSideSymbol = this.getSymbol(leftHandSideExpression);
+
+                        if (leftSideSymbol && ts.isParameter(leftSideSymbol.valueDeclaration) && leftSideSymbol.valueDeclaration.parent === stackElement.signature) {
+                            const index = stackElement.signature.parameters.indexOf(leftSideSymbol.valueDeclaration);
+                            const argument = stackElement.arguments[index];
+
+                            if (ts.isCallExpression(argument)) {
+                                if (ts.isPropertyAccessExpression(argument.expression)) {
+                                    const targetValue = argument.expression.expression;
+                                    if (ts.isIdentifier(targetValue)) {
+                                        const method = argument.expression.name;
+                                        if (targetValue.text === "Promise") {
+
+                                            if (method.text === "resolve" && argument.arguments.length === 1) {
+                                                const resolveValue = argument.arguments[0];
+
+                                                if (ts.isLiteralExpression(resolveValue)) {
+                                                    const promiseType = this.checker.getContextualType(resolveValue);
+                                                } else if (ts.isPropertyAccessExpression(resolveValue)) {
+                                                    resolveValue.name;
+                                                }
+                                            }
+                                        } else {
+                                            const methodSymbol = this.getSymbol(method);
+                                            if (methodSymbol && ts.isFunctionLike(methodSymbol.valueDeclaration)) {
+                                                const signature = this.checker.getSignatureFromDeclaration(methodSymbol.valueDeclaration);
+
+                                                if (signature) {
+                                                    const returnType = this.checker.getReturnTypeOfSignature(signature);
+                                                    const typeSymbol = returnType.getSymbol();
+
+                                                    if (typeSymbol && typeSymbol.getName() === "Promise") {
+                                                        // @ts-expect-error
+                                                        const promiseTypes = this.checker.getTypeArguments(returnType);
+
+                                                        if (promiseTypes.length === 1) {
+                                                            const promiseType = promiseTypes[0];
+                                                            return this.typeToResult(promiseType);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            } else if (ts.isIdentifier(argument)) {
+                                // TODO: do sth here
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (isVariableDeclaration(symbol.valueDeclaration)) {
+            // TODO: 11.08.2020 infer from variable declaration
+        }
+        return null;
+    }
+
+    private typeToResult(type: ts.Type): Nullable<TypeResult> {
+        const typeString = this.checker.typeToString(type);
+        if (typeString === "number") {
+            return {
+                type: "number",
+            } as NumberType;
+        } else if (typeString === "boolean") {
+            return {
+                type: "boolean",
+            } as BooleanType;
+        } else if (typeString === "string") {
+            return {
+                type: "string",
+            } as StringType;
+        } else if (typeString === "void" || typeString === "undefined" || typeString === "null") {
+            return {
+                type: "null",
+            } as NullType;
+        }
+        // TODO: 12.08.2020 literalValue
+        const symbol = type.getSymbol();
+
+        if (!symbol) {
+            console.log("No Symbol for Type: " + type);
+            return null;
+        }
+        if (ts.isFunctionLike(symbol.valueDeclaration)) {
+            return null;
+        }
+        if (symbol.name === "Array") {
+            // @ts-expect-error
+            const arrayTypes = this.checker.getTypeArguments(type);
+
+            if (arrayTypes.length === 1) {
+                const arrayType: ts.Type = arrayTypes[0];
+                const elementType = this.typeToResult(arrayType);
+                // const elementProperties = checker.getPropertiesOfType(arrayType);
+                return {
+                    type: "Array",
+                    elementType,
+                } as ArrayType;
+            } else {
+                console.log("Array type does not have exactly one TypeParameter: " + arrayTypes);
+                return null;
+            }
+        }
+        if (symbol.valueDeclaration && ts.isEnumDeclaration(symbol.valueDeclaration)) {
+            const enumMember = getChildrenThat(
+                symbol.valueDeclaration,
+                (t) => t.kind === ts.SyntaxKind.EnumMember
+            ) as EnumMember[];
+            const unions: TypeResult[] = [];
+            for (const member of enumMember) {
+                const first = getFirst(member, ts.SyntaxKind.FirstLiteralToken);
+                if (first) {
+                    const firstType = this.checker.getTypeAtLocation(first);
+                    if (firstType.isNumberLiteral()) {
+                        unions.push({
+                            type: "number"
+                        } as NumberType);
+                    } else if (firstType.isStringLiteral()) {
+                        unions.push({
+                            type: "string"
+                        } as StringType);
+                    }
+                } else {
+                    unions.push({
+                        type: "string"
+                    } as StringType);
+                }
+            }
+            return {
+                type: "Union",
+                unionTypes: unions
+            } as UnionType;
+        }
+        // assume a object type
+        const properties: ObjectProperties = {};
+        for (const value of this.checker.getPropertiesOfType(type)) {
+            const symbolType = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration);
+            const typeResult = this.typeToResult(symbolType);
+
+            if (typeResult) {
+                properties[value.getName()] = typeResult;
+            }
+        }
+        return {
+            type: "object",
+            properties
+        } as ObjectType;
+    }
+
+    private getSymbol(value: ts.Node) {
+        return this.checker.getSymbolAtLocation(value);
+    }
+}
+
 class Parser {
     private routerVariables: Set<ts.Symbol> = new Set();
     private routerMap: Map<ts.Symbol, RouterEntry> = new Map();
@@ -228,9 +440,11 @@ class Parser {
     private currentlyConvertingRouter: Nullable<ts.Symbol> = null;
     private checker: ts.TypeChecker;
     public functionMap: Map<ts.Symbol, FunctionEntry> = new Map();
+    private inferrer: TypeInferrer;
 
     public constructor(checker: ts.TypeChecker) {
         this.checker = checker;
+        this.inferrer = new TypeInferrer(checker);
     }
 
     public getExpressResult(): ExportExpressResult {
@@ -581,105 +795,7 @@ class Parser {
         } else if (methodName === "json") {
             // optional body, send object after JSON.stringify-ing it (afterwards it is send automatically)
             const body = callExpression.arguments[0];
-            if (ts.isIdentifier(body)) {
-                const symbol = this.getSymbol(body);
-
-                if (!symbol) {
-                    console.log("No Symbol for Identifier: " + body);
-                } else {
-                    const type = this.checker.getTypeOfSymbolAtLocation(symbol, body);
-
-                    if (this.checker.typeToString(type) === "any") {
-                        if (isParameter(symbol.valueDeclaration)) {
-                            const parentOfFunction = symbol.valueDeclaration.parent.parent;
-
-                            if (ts.isCallExpression(parentOfFunction) && ts.isPropertyAccessExpression(parentOfFunction.expression)) {
-                                const property = parentOfFunction.expression.name.text;
-
-                                if (property === "then") {
-                                    const leftHandSideExpression = parentOfFunction.expression.expression;
-
-                                    if (ts.isIdentifier(leftHandSideExpression)) {
-                                        const leftSideSymbol = this.getSymbol(leftHandSideExpression);
-
-                                        if (leftSideSymbol && ts.isParameter(leftSideSymbol.valueDeclaration) && leftSideSymbol.valueDeclaration.parent === container.currentStackElement.signature) {
-                                            const index = container.currentStackElement.signature.parameters.indexOf(leftSideSymbol.valueDeclaration);
-                                            const argument = container.currentStackElement.arguments[index];
-
-                                            if (ts.isCallExpression(argument)) {
-                                                if (ts.isPropertyAccessExpression(argument.expression)) {
-                                                    const targetValue = argument.expression.expression;
-                                                    if (ts.isIdentifier(targetValue)) {
-                                                        const method = argument.expression.name;
-                                                        if (targetValue.text === "Promise") {
-
-                                                            if (method.text === "resolve" && argument.arguments.length === 1) {
-                                                                const resolveValue = argument.arguments[0];
-
-                                                                if (ts.isLiteralExpression(resolveValue)) {
-                                                                    const promiseType = this.checker.getContextualType(resolveValue);
-                                                                } else if (ts.isPropertyAccessExpression(resolveValue)) {
-                                                                    resolveValue.name;
-                                                                }
-                                                            }
-                                                        } else {
-                                                            const methodSymbol = this.getSymbol(method);
-                                                            if (methodSymbol && ts.isFunctionLike(methodSymbol.valueDeclaration)) {
-                                                                const signature = this.checker.getSignatureFromDeclaration(methodSymbol.valueDeclaration);
-
-                                                                if (signature) {
-                                                                    const returnType = this.checker.getReturnTypeOfSignature(signature);
-                                                                    const typeSymbol = returnType.getSymbol();
-
-                                                                    if (typeSymbol && typeSymbol.getName() === "Promise") {
-                                                                        // @ts-expect-error
-                                                                        const promiseTypes = this.checker.getTypeArguments(returnType);
-
-                                                                        if (promiseTypes.length === 1) {
-                                                                            const promiseType = promiseTypes[0];
-                                                                            responseInfo.body = this.typeToResult(promiseType);
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            } else if (ts.isIdentifier(argument)) {
-                                                // TODO: do sth here
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } else if (isVariableDeclaration(symbol.valueDeclaration)) {
-                            // TODO: 11.08.2020 infer from variable declaration
-                        }
-                    } else {
-                        // TODO: 11.08.2020 do cool stuff with type
-                    }
-                }
-            } else if (ts.isLiteralExpression(body)) {
-                const contextualType = this.checker.getContextualType(body);
-            } else if (ts.isCallExpression(body)) {
-                const identifier = getFirstCallIdentifier(body);
-
-                if (!identifier) {
-                    console.log("No Identifier for CallExpression: " + body.getText());
-                } else {
-                    const callSymbol = this.getSymbol(identifier);
-                    if (!callSymbol) {
-                        console.log("No Symbol for Identifier of CallExpression: " + body.getText());
-                    } else {
-                        const signature = this.checker.getSignatureFromDeclaration(callSymbol.valueDeclaration as FunctionDeclaration);
-                        if (!signature) {
-                            console.log("No Signature for CallExpression: " + body.getText());
-                        } else {
-                            const type = this.checker.getReturnTypeOfSignature(signature);
-                        }
-                    }
-                }
-            }
+            responseInfo.body = this.inferrer.inferType(body, container.currentStackElement);
         } else if (methodName === "jsonp") {
             // optional body, send object after JSON.stringify-ing it (afterwards it is send automatically)
             // the body is wrapped in a function call (used in tandem with <script lang="ts">), by default 'callback'
@@ -729,99 +845,6 @@ class Parser {
             // or a call of a super type of express.Response like http.ServerResponse or http.OutgoingMessage
             console.log("Unknown call on response: " + callExpression.getText());
         }
-    }
-
-    private typeToResult(type: ts.Type): Nullable<TypeResult> {
-        const typeString = this.checker.typeToString(type);
-        if (typeString === "number") {
-            return {
-                type: "number",
-            } as NumberType;
-        } else if (typeString === "boolean") {
-            return {
-                type: "boolean",
-            } as BooleanType;
-        } else if (typeString === "string") {
-            return {
-                type: "string",
-            } as StringType;
-        } else if (typeString === "void" || typeString === "undefined" || typeString === "null") {
-            return {
-                type: "null",
-            } as NullType;
-        }
-        // TODO: 12.08.2020 literalValue
-        const symbol = type.getSymbol();
-
-        if (!symbol) {
-            console.log("No Symbol for Type: " + type);
-            return null;
-        }
-        if (ts.isFunctionLike(symbol.valueDeclaration)) {
-            return null;
-        }
-        if (symbol.name === "Array") {
-            // @ts-expect-error
-            const arrayTypes = this.checker.getTypeArguments(type);
-
-            if (arrayTypes.length === 1) {
-                const arrayType: ts.Type = arrayTypes[0];
-                const elementType = this.typeToResult(arrayType);
-                // const elementProperties = checker.getPropertiesOfType(arrayType);
-                return {
-                    type: "Array",
-                    elementType,
-                } as ArrayType;
-            } else {
-                console.log("Array type does not have exactly one TypeParameter: " + arrayTypes);
-                return null;
-            }
-        }
-        if (symbol.valueDeclaration && ts.isEnumDeclaration(symbol.valueDeclaration)) {
-            const enumMember = getChildrenThat(
-                symbol.valueDeclaration,
-                (t) => t.kind === ts.SyntaxKind.EnumMember
-            ) as EnumMember[];
-            const unions: TypeResult[] = [];
-            for (const member of enumMember) {
-                const first = getFirst(member, ts.SyntaxKind.FirstLiteralToken);
-                if (first) {
-                    const firstType = this.checker.getTypeAtLocation(first);
-                    if (firstType.isNumberLiteral()) {
-                        unions.push({
-                            type: "number"
-                        } as NumberType);
-                    } else if (firstType.isStringLiteral()) {
-                        unions.push({
-                            type: "string"
-                        } as StringType);
-                    }
-                } else {
-                    unions.push({
-                        type: "string"
-                    } as StringType);
-                }
-            }
-            return {
-                type: "Union",
-                unionTypes: unions
-            } as UnionType;
-        }
-        // assume a object type
-        const properties: ObjectProperties = {};
-        for (const value of this.checker.getPropertiesOfType(type)) {
-            const symbolType = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration);
-            const typeResult = this.typeToResult(symbolType);
-
-            if (typeResult) {
-                properties[value.getName()] = typeResult;
-            }
-        }
-        return {
-            type: "object",
-            properties
-        } as ObjectType;
-
     }
 
     private getPropertyAccess(node: ts.Node, container: SearchContainer): string[] {
