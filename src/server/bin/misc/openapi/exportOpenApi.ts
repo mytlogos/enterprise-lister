@@ -927,6 +927,12 @@ class Parser {
         }
     }
 
+    /**
+     * Inspect a Variable Declaration for Declarations
+     * of a Route or Router.
+     * 
+     * @param node the variable declaration to inspect
+     */
     public inspectVariableDeclaration(node: ts.VariableDeclaration) {
         const initializer = node.initializer;
         if (!initializer) {
@@ -992,6 +998,7 @@ class Parser {
         variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
         const name = propertyName.text;
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
+
         if (isHttpMethod(name)) {
             if (!parameterList) {
                 log("No Parameter for Http method call!");
@@ -1007,50 +1014,77 @@ class Parser {
                 method: name
             });
         } else if (name.toLowerCase() === "use") {
-            if (!parameterList) {
-                log(`No Middleware supplied to ${variableIdentifier.getText()}.use!`);
-                return;
-            }
-            if (parameterList.getChildCount() === 1) {
-                const middleWareNode = parameterList.getChildAt(0);
-                const routerEntry = this.getRouterEntry(variableSymbol);
-                routerEntry.middlewares.push(middleWareNode);
-            } else if (parameterList.getChildCount() === 3) {
-                const pathLiteral = parameterList.getChildAt(0);
-
-                if (ts.isStringLiteral(pathLiteral)) {
-                    const middleWareNode = parameterList.getChildAt(2);
-                    const nextCall = getFirst(middleWareNode, ts.SyntaxKind.CallExpression);
-
-                    const routerEntry: RouterEntry = this.getRouterEntry(variableSymbol);
-                    // type of *.use("my-path", functionReturninARouter())
-                    if (nextCall && ts.isCallExpression(nextCall)) {
-                        const callIdentifier = getFirstCallIdentifier(nextCall);
-
-                        if (callIdentifier) {
-                            const functionSymbol = this.checker.getSymbolAtLocation(callIdentifier);
-                            if (functionSymbol) {
-                                const functionEntry = this.getFunctionEntry(functionSymbol);
-                                const text = pathLiteral.text;
-                                const subRouter = routerEntry.subRouter;
-                                subRouter[text] = functionEntry;
-                            } else {
-                                log("No Function symbol for: " + callIdentifier.getText());
-                            }
-                        } else {
-                            log("No Call Identifier for Call Expression: " + nextCall.getText());
-                        }
-                    } else {
-                        log("Router.use where second argument is not a router:" + node.getText());
-                    }
-                } else {
-                    log("Expected a string literal as path: " + node.getText());
-                }
-            } else {
-                log(`Not exactly one or two Arguments supplied to *.use!: ${propertyName.parent.getText()}`);
-            }
+            this.processUseMiddleware(parameterList, variableIdentifier, variableSymbol, node);
         } else {
             log(`Non http Method call: ${name}() on ${variableIdentifier.getText()}`);
+        }
+    }
+
+    /**
+     * Process the Arguments of a <router>.use(*) Call.
+     * 
+     * @param parameterList 
+     * @param variableIdentifier 
+     * @param variableSymbol 
+     * @param node 
+     */
+    private processUseMiddleware(parameterList: ts.SyntaxList, variableIdentifier: ts.LeftHandSideExpression, variableSymbol: ts.Symbol, node: ts.Node) {
+        if (!parameterList) {
+            log(`No Middleware supplied to ${variableIdentifier.getText()}.use!`);
+            return;
+        }
+        // if only a single parameter is available, it is most likely a middleware function
+        if (parameterList.getChildCount() === 1) {
+            const middleWareNode = parameterList.getChildAt(0);
+            const routerEntry = this.getRouterEntry(variableSymbol);
+            routerEntry.middlewares.push(middleWareNode);
+        // if parameter list has 3 children: 'path', ',', 'middleware'
+        } else if (parameterList.getChildCount() === 3) {
+            const pathLiteral = parameterList.getChildAt(0);
+
+            if (ts.isStringLiteral(pathLiteral)) {
+                const middleWareNode = parameterList.getChildAt(2);
+                const nextCall = getFirst(middleWareNode, ts.SyntaxKind.CallExpression);
+
+                const routerEntry: RouterEntry = this.getRouterEntry(variableSymbol);
+                // type of *.use("my-path", functionReturninARouter())
+                if (nextCall && ts.isCallExpression(nextCall)) {
+                    const callIdentifier = getFirstCallIdentifier(nextCall);
+
+                    if (callIdentifier) {
+                        const functionSymbol = this.checker.getSymbolAtLocation(callIdentifier);
+                        if (functionSymbol) {
+                            const functionEntry = this.getFunctionEntry(functionSymbol);
+                            const text = pathLiteral.text;
+                            const subRouter = routerEntry.subRouter;
+                            subRouter[text] = functionEntry;
+                        } else {
+                            log("No Function symbol for: " + callIdentifier.getText());
+                        }
+                    } else {
+                        log("No Call Identifier for Call Expression: " + nextCall.getText());
+                    }
+                } else if (isIdentifier(middleWareNode)) {
+                    const routerSymbol = this.getSymbol(middleWareNode);
+                    // if multiple router are declared in the same function
+                    // emulate as if it were declared in a own function
+                    if (routerSymbol && this.routerVariables.has(routerSymbol)) {
+                        routerEntry.subRouter[pathLiteral.text] = {
+                            exported: false,
+                            router: [routerSymbol],
+                            returnRouter: routerSymbol
+                        };
+                    } else {
+                        log("Expected a Symbol: " + middleWareNode.getText());
+                    }
+                } else {
+                    log("Router.use where second argument is not a router:" + node.getText());
+                }
+            } else {
+                log("Expected a string literal as path: " + node.getText());
+            }
+        } else {
+            log(`Not exactly one or two Arguments supplied to *.use!: ${node.getText()}`);
         }
     }
 
@@ -1077,6 +1111,7 @@ class Parser {
             node,
             ts.SyntaxKind.PropertyAccessExpression
         ) as PropertyAccessExpression;
+        console.log("Call: ", node.getText());
 
         // if there is a property access, assume a method is called with 'identifier.method()'
         if (propertyAccess) {
@@ -1097,6 +1132,7 @@ class Parser {
             }
         } else {
             const firstIdentifier = getFirst(node, ts.SyntaxKind.Identifier);
+
             if (firstIdentifier) {
                 const symbol = this.checker.getSymbolAtLocation(firstIdentifier);
 
@@ -1450,15 +1486,14 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
                 }
             }
         } as OperationObject;
-        paths[absolutePath + routerPath.path] = pathObject;
+        paths[normalizePath(absolutePath + routerPath.path)] = pathObject;
     }
 
     for (const [pathKey, routeValue] of Object.entries(router.routes)) {
-        const currentPath = absolutePath + pathKey;
+        const currentPath = normalizePath(absolutePath + pathKey);
         const pathObject: PathItemObject = paths[currentPath] = {};
 
         for (const [method, middleware] of Object.entries(routeValue)) {
-            log(`${currentPath}: ${method}`);
             const routeRequestObject: RequestBodyObject = {
                 content: JSON.parse(contentCopyString)
             };
@@ -1512,9 +1547,13 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
     parentRouter.path = absolutePath;
 
     for (const [pathKey, subRouter] of Object.entries(router.subRouter)) {
-        const subPath = (absolutePath + pathKey).replace("//", "/");
+        const subPath = normalizePath(absolutePath + pathKey);
         routerResultToOpenApi(subRouter, paths, subPath);
     }
+}
+
+function normalizePath(s: string): string {
+    return s.replace(/\/+/g, "/");
 }
 
 function log(...any: any[]): void {
