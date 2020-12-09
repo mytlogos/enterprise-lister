@@ -228,14 +228,14 @@ class TypeInferrer {
         this.checker = checker
     }
 
-    public inferType(body: ts.Node, stackElement: StackElement): Nullable<TypeResult> {
-        if (ts.isIdentifier(body)) {
-            const symbol = this.getSymbol(body);
+    public inferType(node: ts.Node, stackElement: StackElement): Nullable<TypeResult> {
+        if (ts.isIdentifier(node)) {
+            const symbol = this.getSymbol(node);
 
             if (!symbol) {
-                console.log("No Symbol for Identifier: " + body);
+                console.log("No Symbol for Identifier: " + node);
             } else {
-                const type = this.checker.getTypeOfSymbolAtLocation(symbol, body);
+                const type = this.checker.getTypeOfSymbolAtLocation(symbol, node);
 
                 if (this.checker.typeToString(type) === "any") {
                     return this.inferAny(symbol, stackElement);
@@ -243,21 +243,21 @@ class TypeInferrer {
                     // TODO: 11.08.2020 do cool stuff with type
                 }
             }
-        } else if (ts.isLiteralExpression(body)) {
-            const contextualType = this.checker.getContextualType(body);
-        } else if (ts.isCallExpression(body)) {
-            const identifier = getFirstCallIdentifier(body);
+        } else if (ts.isLiteralExpression(node)) {
+            const contextualType = this.checker.getContextualType(node);
+        } else if (ts.isCallExpression(node)) {
+            const identifier = getFirstCallIdentifier(node);
 
             if (!identifier) {
-                console.log("No Identifier for CallExpression: " + body.getText());
+                console.log("No Identifier for CallExpression: " + node.getText());
             } else {
                 const callSymbol = this.getSymbol(identifier);
                 if (!callSymbol) {
-                    console.log("No Symbol for Identifier of CallExpression: " + body.getText());
+                    console.log("No Symbol for Identifier of CallExpression: " + node.getText());
                 } else {
                     const signature = this.checker.getSignatureFromDeclaration(callSymbol.valueDeclaration as FunctionDeclaration);
                     if (!signature) {
-                        console.log("No Signature for CallExpression: " + body.getText());
+                        console.log("No Signature for CallExpression: " + node.getText());
                     } else {
                         const type = this.checker.getReturnTypeOfSignature(signature);
                     }
