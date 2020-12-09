@@ -579,9 +579,16 @@ class Parser {
         return middlewareResult;
     }
 
+    /**
+     * Extract Informations about the what a possible Request
+     * going through this Middleware would require and what it would deliver.
+     * 
+     * @param container a container for storing information and the result
+     */
     private searchMiddlewareStack(container: SearchContainer): void {
         const middlewareSignature = container.currentStackElement.signature;
         const currentFunctionSymbol = container.currentStackElement.symbol;
+
         // prevent infinite recursion
         if (container.callStack.find((value) => value.symbol === currentFunctionSymbol)) {
             log("Recursive call of: " + middlewareSignature.getText());
@@ -596,6 +603,7 @@ class Parser {
             const typeSymbol = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
             return typeSymbol && typeSymbol.name === "Request";
         });
+
         const responseParamSymbol = parameterSymbols.find((value) => {
             const typeSymbol = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
             return typeSymbol && typeSymbol.name === "Response";
@@ -630,19 +638,28 @@ class Parser {
         }
     }
 
+    /**
+     * Searches in the Statement/Node about possible uses of a
+     * request and/or response variable. 
+     * 
+     * @param body 
+     * @param container 
+     */
     private searchMiddlewareStatement(body: ts.Node, container: SearchContainer) {
+        // search for all property accesses which contain the request variable
         const requestAccesses = getChildrenThat(body, (t) => {
             if (ts.isPropertyAccessExpression(t)) {
                 if (t.expression.kind !== SyntaxKind.Identifier) {
                     return false;
                 }
-                // the value which property will be accessed
+                // the value whose property will be accessed
                 const valueSymbol = this.checker.getSymbolAtLocation(t.expression);
                 return valueSymbol === container.currentStackElement.requestSymbol;
             } else {
                 return false;
             }
         }) as PropertyAccessExpression[];
+
         for (const requestAccess of requestAccesses) {
             const propertyIdentifier = requestAccess.name;
 
@@ -663,15 +680,15 @@ class Parser {
                 if (queryProperties.length) {
                     for (const queryProperty of queryProperties) {
                         // TODO: 10.08.2020 infer type for query
-                        container.requestInfo.queryParams[queryProperty] = {};
+                        container.requestInfo.bodyParams[queryProperty] = {};
                     }
                 } else {
                     log("unknown request.body property: " + requestAccess.getText());
                 }
             }
         }
-        nodeToString(body);
 
+        // search for all property accesses which contain the request variable
         const callsOnResponse = getChildrenThat(body, (t) => {
             if (ts.isCallExpression(t)) {
                 return ts.isPropertyAccessExpression(t.expression)
@@ -1401,35 +1418,28 @@ function transformToOpenApi(expressApi: ExportExpressResult): OpenApiObject {
         paths,
     };
 }
+/**
+ * HTTP Methods which require (or can be used) a Request body.
+ * All other Methods are assumed to get their parameter via query string.
+ */
+const bodyMethods = ["post", "put", "patch"];
 
-function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolutePath = "/") {
+function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolutePath = "/", parentParameters = {}) {
     const parameterObjects: ParameterObject[] = [];
     const requestObject: RequestBodyObject = {
         content: {}
     };
     const currentReturnTypes: TypeResult[] = [];
+    const genericParameters: Record<string, null> = {
+        ...parentParameters
+    };
 
     for (const middleware of router.middlewares) {
         if (middleware.bodyType) {
-            const bodyKeys = Object.keys(middleware.bodyType);
-
-            if (bodyKeys.length) {
-                // @ts-expect-error
-                requestObject.content["application/json"] = {
-                    schema: {
-                        type: "object",
-                        properties: { ...middleware.bodyType }
-                    }
-                } as MediaTypeObject;
-            }
+            Object.assign(genericParameters, middleware.bodyType);
         }
         if (middleware.queryType) {
-            for (const queryTypeKey of Object.keys(middleware.queryType)) {
-                parameterObjects.push({
-                    in: "query",
-                    name: queryTypeKey,
-                });
-            }
+            Object.assign(genericParameters, middleware.queryType);
         }
         if (middleware.returnTypes) {
             currentReturnTypes.push(middleware.returnTypes);
@@ -1445,27 +1455,29 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
         };
         const middleware = routerPath.middleware;
 
-        if (middleware.bodyType) {
-            const bodyKeys = Object.keys(middleware.bodyType);
+        if (middleware.bodyType && !isEmpty(middleware.bodyType)) {
+            setRequestBody(pathRequestObject, genericParameters, middleware.bodyType);
+        }
+        if (middleware.queryType && !isEmpty(middleware.queryType)) {
+            setRequestQuery(routerPath.method, pathParameters, genericParameters, middleware.queryType);
+        }
 
-            if (bodyKeys.length) {
-                // @ts-expect-error
-                pathRequestObject.content["application/json"] = {
-                    schema: {
-                        type: "object",
-                        properties: { ...middleware.bodyType }
-                    }
-                } as MediaTypeObject;
+        // if no parameters are required by this middleware itself, but from a parent middleware
+        if (!middleware.queryType && !middleware.bodyType && Object.keys(genericParameters).length) {
+            const lowerMethod = routerPath.method.toLowerCase();
+
+            if (bodyMethods.includes(lowerMethod)) {
+                setRequestBody(pathRequestObject, genericParameters, {});
+            } else {
+                for (const queryTypeKey of Object.keys(genericParameters)) {
+                    pathParameters.push({
+                        in: "query",
+                        name: queryTypeKey,
+                    });
+                }
             }
         }
-        if (middleware.queryType) {
-            for (const queryTypeKey of Object.keys(middleware.queryType)) {
-                pathParameters.push({
-                    in: "query",
-                    name: queryTypeKey,
-                });
-            }
-        }
+
         if (middleware.returnTypes) {
             currentReturnTypes.push(middleware.returnTypes);
         }
@@ -1499,29 +1511,30 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
             };
             const routeParameterObjects: ParameterObject[] = [...parameterObjects];
 
-            if (middleware.bodyType) {
-                const bodyKeys = Object.keys(middleware.bodyType);
-
-                if (bodyKeys.length) {
-                    // @ts-expect-error
-                    routeRequestObject.content["application/json"] = {
-                        schema: {
-                            type: "object",
-                            properties: { ...middleware.bodyType }
-                        }
-                    } as MediaTypeObject;
-                }
+            if (middleware.bodyType && !isEmpty(middleware.bodyType)) {
+                setRequestBody(routeRequestObject, genericParameters, middleware.bodyType);
             }
-            if (middleware.queryType) {
-                for (const queryTypeKey of Object.keys(middleware.queryType)) {
-                    routeParameterObjects.push({
-                        in: "query",
-                        name: queryTypeKey,
-                    });
-                }
+            if (middleware.queryType && !isEmpty(middleware.queryType)) {
+                setRequestQuery(method, routeParameterObjects, genericParameters, middleware.queryType);
             }
             if (middleware.returnTypes) {
                 currentReturnTypes.push(middleware.returnTypes);
+            }
+
+            // if no parameters are required by this middleware itself, but from a parent middleware
+            if (!middleware.queryType && !middleware.bodyType && Object.keys(genericParameters).length) {
+                const lowerMethod = method.toLowerCase();
+
+                if (bodyMethods.includes(lowerMethod)) {
+                    setRequestBody(routeRequestObject, genericParameters, {});
+                } else {
+                    for (const queryTypeKey of Object.keys(genericParameters)) {
+                        routeParameterObjects.push({
+                            in: "query",
+                            name: queryTypeKey,
+                        });
+                    }
+                }
             }
 
             // @ts-expect-error
@@ -1548,8 +1561,51 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
 
     for (const [pathKey, subRouter] of Object.entries(router.subRouter)) {
         const subPath = normalizePath(absolutePath + pathKey);
-        routerResultToOpenApi(subRouter, paths, subPath);
+        routerResultToOpenApi(subRouter, paths, subPath, genericParameters);
     }
+}
+
+function setRequestBody(pathRequestObject: RequestBodyObject, genericParameters: Record<string, null>, bodyType: Record<string, null>): void {
+    // @ts-expect-error
+    pathRequestObject.content["application/json"] = {
+        schema: {
+            type: "object",
+            properties: { 
+                // let generic parameter be overwritten from this one
+                ...genericParameters,
+                ...bodyType
+            },
+        }
+    } as MediaTypeObject;
+}
+
+function setRequestQuery(method: string, parameter: ParameterObject[], genericParameters: Record<string, null>, queryType:Record<string, null>): void {
+    if (bodyMethods.includes(method)) {
+        log("Query Parameter supplied in a Body Method!");
+    }
+    for (const queryTypeKey of Object.keys(genericParameters)) {
+        parameter.push({
+            in: "query",
+            name: queryTypeKey,
+        });
+    }
+    for (const queryTypeKey of Object.keys(queryType)) {
+        const index = parameter.findIndex(value => value.name === queryTypeKey);
+
+        // remove any possible generic parameter which is a duplicate of this one
+        if (index >= 0) {
+            parameter.splice(index, 1);
+        }
+
+        parameter.push({
+            in: "query",
+            name: queryTypeKey,
+        });
+    }
+}
+
+function isEmpty(obj: any): boolean {
+    return Object.keys(obj).length === 0;
 }
 
 function normalizePath(s: string): string {
