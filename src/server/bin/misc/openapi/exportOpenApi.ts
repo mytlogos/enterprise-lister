@@ -1,4 +1,4 @@
-import * as ts from "typescript";
+import ts from "typescript";
 import {
     CallExpression,
     EnumMember,
@@ -14,9 +14,8 @@ import {
     SyntaxList
 } from "typescript";
 import path from "path";
-import yaml from "js-yaml";
-import * as fs from "fs";
-import { Optional, Nullable } from "../types";
+import { Optional, Nullable } from "../../types";
+import { RequestBodyObject, ParameterObject, OpenApiObject, PathsObject, MediaTypeObject, PathItemObject, OperationObject } from "./types";
 
 interface DocEntry {
     name?: string;
@@ -184,7 +183,7 @@ interface SearchContainer {
 }
 
 /** Generate documentation for all classes in a set of .ts files */
-function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptions): ExportExpressResult {
+export function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptions): OpenApiObject {
     // Build a program using the set of root file names in fileNames
     const program = ts.createProgram(fileNames, options);
 
@@ -192,12 +191,8 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
     const checker = program.getTypeChecker();
     const baseFiles = fileNames.map((value) => path.basename(value));
     const sourceFiles = program.getSourceFiles().filter((value) => baseFiles.includes(path.basename(value.fileName)));
-    const functionMap: Map<ts.Symbol, FunctionEntry> = new Map();
-    const routerVariables: Set<ts.Symbol> = new Set();
-    const routerMap: Map<ts.Symbol, RouterEntry> = new Map();
-    const routeMap: Map<ts.Symbol, RouteEntry> = new Map();
 
-    let currentlyConvertingRouter: Nullable<ts.Symbol> = null;
+    const parser = new Parser(checker);
 
     // Visit every sourceFile in the program
     for (const sourceFile of sourceFiles) {
@@ -206,43 +201,74 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             ts.forEachChild(sourceFile, visit);
         }
     }
-    const result: ExportExpressResult = {};
+    const result: ExportExpressResult = parser.getExpressResult();
 
-    for (const [key, functionEntry] of functionMap.entries()) {
-        // we are interested only in exported router
-        if (!functionEntry.exported) {
-            continue;
-        }
-        const name = key.getName();
-        // skip anonymous functions
-        if (!name) {
-            continue;
-        }
-
-        if (!functionEntry.returnRouter) {
-            functionEntry.returnRouter = getReturnRouter(key.valueDeclaration as ts.FunctionDeclaration, null);
-        }
-
-        const returnedRouter = functionEntry.returnRouter;
-
-        if (!returnedRouter) {
-            console.log("Exported Function does not return a router: " + name);
-            continue;
-        }
-        const routerEntry = routerMap.get(returnedRouter);
-
-        if (!routerEntry) {
-            throw Error("No entry available for: " + returnedRouter);
-        }
-        currentlyConvertingRouter = returnedRouter;
-        result[name] = routeEntryToResult(routerEntry);
-    }
-    console.log(JSON.stringify(result, null, 4));
+    // console.log(JSON.stringify(result, null, 4));
     // print out the doc
     // fs.writeFileSync("classes.json", JSON.stringify(output, undefined, 4));
-    return result;
+    return transformToOpenApi(result);
 
-    function routeEntryToResult(routerEntry: RouterEntry): RouterResult {
+
+    /** visit nodes finding exported classes */
+    function visit(node: ts.Node) {
+        if (ts.isVariableDeclaration(node) && ts.SyntaxKind.Identifier === node.name.kind) {
+            parser.inspectVariableDeclaration(node);
+        } else if (ts.isCallExpression(node)) {
+            parser.inspectCall(node);
+        } else {
+            ts.forEachChild(node, visit);
+        }
+    }
+}
+
+class Parser {
+    private routerVariables: Set<ts.Symbol> = new Set();
+    private routerMap: Map<ts.Symbol, RouterEntry> = new Map();
+    private routeMap: Map<ts.Symbol, RouteEntry> = new Map();
+    private currentlyConvertingRouter: Nullable<ts.Symbol> = null;
+    private checker: ts.TypeChecker;
+    public functionMap: Map<ts.Symbol, FunctionEntry> = new Map();
+
+    public constructor(checker: ts.TypeChecker) {
+        this.checker = checker;
+    }
+
+    public getExpressResult(): ExportExpressResult {
+        const result: ExportExpressResult = {};
+
+        for (const [key, functionEntry] of this.functionMap.entries()) {
+            // we are interested only in exported router
+            if (!functionEntry.exported) {
+                continue;
+            }
+            const name = key.getName();
+            // skip anonymous functions
+            if (!name) {
+                continue;
+            }
+
+            if (!functionEntry.returnRouter) {
+                functionEntry.returnRouter = this.getReturnRouter(key.valueDeclaration as ts.FunctionDeclaration, null);
+            }
+
+            const returnedRouter = functionEntry.returnRouter;
+
+            if (!returnedRouter) {
+                console.log("Exported Function does not return a router: " + name);
+                continue;
+            }
+            const routerEntry = this.routerMap.get(returnedRouter);
+
+            if (!routerEntry) {
+                throw Error("No entry available for: " + returnedRouter);
+            }
+            this.currentlyConvertingRouter = returnedRouter;
+            result[name] = this.routeEntryToResult(routerEntry);
+        }
+        return result;
+    }
+
+    private routeEntryToResult(routerEntry: RouterEntry): RouterResult {
         const routerResult: RouterResult = { paths: [], routes: {}, middlewares: [], subRouter: {} };
 
         for (const [routerPath, functionCallEntry] of Object.entries(routerEntry.subRouter)) {
@@ -252,21 +278,21 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                 console.log("Middleware Function does not return router");
                 continue;
             }
-            if (subRouterSymbol === currentlyConvertingRouter) {
+            if (subRouterSymbol === this.currentlyConvertingRouter) {
                 throw Error("Currently converting Router is recursively a sub router of itself!: " + subRouterSymbol);
             }
-            const subRouterEntry = routerMap.get(subRouterSymbol);
+            const subRouterEntry = this.routerMap.get(subRouterSymbol);
 
             if (!subRouterEntry) {
                 throw Error("Sub router as no entry: " + subRouterSymbol);
             }
-            routerResult.subRouter[routerPath] = routeEntryToResult(subRouterEntry);
+            routerResult.subRouter[routerPath] = this.routeEntryToResult(subRouterEntry);
         }
         for (const [routePath, route] of Object.entries(routerEntry.routes)) {
             const routeResult: RouteResult = routerResult.routes[routePath] = {};
 
             for (const [method, middleware] of Object.entries(route)) {
-                routeResult[method] = middlewareToResult(middleware);
+                routeResult[method] = this.middlewareToResult(middleware);
             }
         }
         for (const pathEntry of routerEntry.paths) {
@@ -274,28 +300,28 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                 path: pathEntry.path,
                 // @ts-expect-error
                 method: pathEntry.method,
-                middleware: middlewareToResult(pathEntry.middleware)
+                middleware: this.middlewareToResult(pathEntry.middleware)
             });
         }
-        routerResult.middlewares = routerEntry.middlewares.map(middlewareToResult);
+        routerResult.middlewares = routerEntry.middlewares.map((value) => this.middlewareToResult(value));
         return routerResult;
     }
 
-    function createStackElement(signature: SignatureDeclaration, symbolNode?: ts.Node): Nullable<StackElement> {
+    private createStackElement(signature: SignatureDeclaration, symbolNode?: ts.Node): Nullable<StackElement> {
         if (!symbolNode) {
             return null;
         }
-        const symbol = getSymbol(symbolNode);
+        const symbol = this.getSymbol(symbolNode);
         return !symbol ? null : {
             signature,
             symbol,
             arguments: [],
-            isGlobal: hasOuterFunction(signature)
+            isGlobal: this.hasOuterFunction(signature)
         };
     }
 
-    function middlewareToResult(middleware: Middleware): MiddlewareResult {
-        const middlewareSymbol = checker.getSymbolAtLocation(middleware);
+    private middlewareToResult(middleware: Middleware): MiddlewareResult {
+        const middlewareSymbol = this.checker.getSymbolAtLocation(middleware);
 
         const middlewareResult: MiddlewareResult = { returnTypes: null };
         if (!middlewareSymbol) {
@@ -310,13 +336,13 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                 return middlewareResult;
             }
             if (ts.isFunctionLike(initializer)) {
-                stackElement = createStackElement(initializer, valueDeclaration.name);
+                stackElement = this.createStackElement(initializer, valueDeclaration.name);
             } else {
                 // TODO: 10.08.2020 middleware aliases like putProgress
                 return middlewareResult;
             }
         } else if (ts.isFunctionDeclaration(valueDeclaration)) {
-            stackElement = createStackElement(valueDeclaration, valueDeclaration.name);
+            stackElement = this.createStackElement(valueDeclaration, valueDeclaration.name);
         } else {
             return middlewareResult;
         }
@@ -332,14 +358,14 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             currentStackElement: stackElement
         };
 
-        searchMiddlewareStack(container);
+        this.searchMiddlewareStack(container);
         middlewareResult.queryType = container.requestInfo.queryParams;
         middlewareResult.bodyType = container.requestInfo.bodyParams;
         middlewareResult.returnTypes = container.responseInfo[200] ? container.responseInfo[200].body : null;
         return middlewareResult;
     }
 
-    function searchMiddlewareStack(container: SearchContainer): void {
+    private searchMiddlewareStack(container: SearchContainer): void {
         const middlewareSignature = container.currentStackElement.signature;
         const currentFunctionSymbol = container.currentStackElement.symbol;
         // prevent infinite recursion
@@ -349,15 +375,15 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
         container.callStack.push(container.currentStackElement);
         const parameterSymbols = middlewareSignature.parameters
-            .map((value) => getSymbol(value.name))
+            .map((value) => this.getSymbol(value.name))
             .filter((value) => value) as ts.Symbol[];
 
         const requestParamSymbol = parameterSymbols.find((value) => {
-            const typeSymbol = checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
+            const typeSymbol = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
             return typeSymbol && typeSymbol.name === "Request";
         });
         const responseParamSymbol = parameterSymbols.find((value) => {
-            const typeSymbol = checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
+            const typeSymbol = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
             return typeSymbol && typeSymbol.name === "Response";
         });
 
@@ -377,7 +403,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             if (ts.isBlock(body)) {
                 functionStatements = body.statements;
             } else {
-                searchMiddlewareStatement(body, container);
+                this.searchMiddlewareStatement(body, container);
             }
         } else if ((ts.isFunctionDeclaration(middlewareSignature)
             || ts.isFunctionExpression(middlewareSignature)) && middlewareSignature.body) {
@@ -385,19 +411,19 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
         if (functionStatements) {
             for (const statement of functionStatements) {
-                searchMiddlewareStatement(statement, container);
+                this.searchMiddlewareStatement(statement, container);
             }
         }
     }
 
-    function searchMiddlewareStatement(body: ts.Node, container: SearchContainer) {
+    private searchMiddlewareStatement(body: ts.Node, container: SearchContainer) {
         const requestAccesses = getChildrenThat(body, (t) => {
             if (ts.isPropertyAccessExpression(t)) {
                 if (t.expression.kind !== SyntaxKind.Identifier) {
                     return false;
                 }
                 // the value which property will be accessed
-                const valueSymbol = checker.getSymbolAtLocation(t.expression);
+                const valueSymbol = this.checker.getSymbolAtLocation(t.expression);
                 return valueSymbol === container.currentStackElement.requestSymbol;
             } else {
                 return false;
@@ -407,7 +433,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             const propertyIdentifier = requestAccess.name;
 
             if (propertyIdentifier.text === "query") {
-                const queryProperties = getPropertyAccess(requestAccess, container);
+                const queryProperties = this.getPropertyAccess(requestAccess, container);
 
                 if (queryProperties.length) {
                     for (const queryProperty of queryProperties) {
@@ -418,7 +444,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                     console.log("unknown request.query property: " + requestAccess.getText());
                 }
             } else if (propertyIdentifier.text === "body") {
-                const queryProperties = getPropertyAccess(requestAccess, container);
+                const queryProperties = this.getPropertyAccess(requestAccess, container);
 
                 if (queryProperties.length) {
                     for (const queryProperty of queryProperties) {
@@ -435,7 +461,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         const callsOnResponse = getChildrenThat(body, (t) => {
             if (ts.isCallExpression(t)) {
                 return ts.isPropertyAccessExpression(t.expression)
-                    && isSymbol(t.expression.expression, container.currentStackElement.responseSymbol);
+                    && this.isSymbol(t.expression.expression, container.currentStackElement.responseSymbol);
             } else {
                 return false;
             }
@@ -448,15 +474,15 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                 console.log("No Identifier for Response.method: " + callExpression.getText());
                 continue;
             }
-            processResponseCall(callExpression, identifier.text, container);
+            this.processResponseCall(callExpression, identifier.text, container);
         }
 
         const callsWithEitherReqOrRes = getChildrenThat(body, (t) => {
             if (ts.isCallExpression(t)) {
                 for (const argument of t.arguments) {
                     if (ts.isIdentifierOrPrivateIdentifier(argument)) {
-                        return isSymbol(argument, container.currentStackElement.requestSymbol)
-                            || isSymbol(argument, container.currentStackElement.responseSymbol);
+                        return this.isSymbol(argument, container.currentStackElement.requestSymbol)
+                            || this.isSymbol(argument, container.currentStackElement.responseSymbol);
                     }
                 }
             }
@@ -465,7 +491,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
 
         for (const callExpression of callsWithEitherReqOrRes) {
             if (ts.isIdentifierOrPrivateIdentifier(callExpression.expression)) {
-                const callSymbol = checker.getSymbolAtLocation(callExpression.expression);
+                const callSymbol = this.checker.getSymbolAtLocation(callExpression.expression);
                 if (!callSymbol) {
                     console.log("No Symbol for Call: " + callExpression.expression.getText());
                     continue;
@@ -478,7 +504,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                     );
                     continue;
                 }
-                const currentStackElement = createStackElement(declaration, declaration.name);
+                const currentStackElement = this.createStackElement(declaration, declaration.name);
 
                 if (!currentStackElement) {
                     continue;
@@ -486,21 +512,21 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
 
                 currentStackElement.arguments.push(...callExpression.arguments);
                 container.currentStackElement = currentStackElement;
-                searchMiddlewareStack(container);
+                this.searchMiddlewareStack(container);
                 container.callStack.pop();
             }
         }
     }
 
-    function hasOuterFunction(func: ts.Node): boolean {
+    private hasOuterFunction(func: ts.Node): boolean {
         return !hasParentThat(func, (node) => ts.isFunctionLike(node));
     }
 
-    function isSymbol(node: ts.Node, symbol?: ts.Symbol): boolean {
-        return !!symbol && getSymbol(node) === symbol;
+    private isSymbol(node: ts.Node, symbol?: ts.Symbol): boolean {
+        return !!symbol && this.getSymbol(node) === symbol;
     }
 
-    function processResponseCall(callExpression: CallExpression, methodName: string, container: SearchContainer) {
+    private processResponseCall(callExpression: CallExpression, methodName: string, container: SearchContainer) {
         const responseInfo: ResponseInfo = { header: {}, body: null };
         if (methodName === "append") {
             // by Express v4.11.0+
@@ -556,14 +582,14 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             // optional body, send object after JSON.stringify-ing it (afterwards it is send automatically)
             const body = callExpression.arguments[0];
             if (ts.isIdentifier(body)) {
-                const symbol = getSymbol(body);
+                const symbol = this.getSymbol(body);
 
                 if (!symbol) {
                     console.log("No Symbol for Identifier: " + body);
                 } else {
-                    const type = checker.getTypeOfSymbolAtLocation(symbol, body);
+                    const type = this.checker.getTypeOfSymbolAtLocation(symbol, body);
 
-                    if (checker.typeToString(type) === "any") {
+                    if (this.checker.typeToString(type) === "any") {
                         if (isParameter(symbol.valueDeclaration)) {
                             const parentOfFunction = symbol.valueDeclaration.parent.parent;
 
@@ -574,7 +600,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                                     const leftHandSideExpression = parentOfFunction.expression.expression;
 
                                     if (ts.isIdentifier(leftHandSideExpression)) {
-                                        const leftSideSymbol = getSymbol(leftHandSideExpression);
+                                        const leftSideSymbol = this.getSymbol(leftHandSideExpression);
 
                                         if (leftSideSymbol && ts.isParameter(leftSideSymbol.valueDeclaration) && leftSideSymbol.valueDeclaration.parent === container.currentStackElement.signature) {
                                             const index = container.currentStackElement.signature.parameters.indexOf(leftSideSymbol.valueDeclaration);
@@ -591,27 +617,27 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                                                                 const resolveValue = argument.arguments[0];
 
                                                                 if (ts.isLiteralExpression(resolveValue)) {
-                                                                    const promiseType = checker.getContextualType(resolveValue);
+                                                                    const promiseType = this.checker.getContextualType(resolveValue);
                                                                 } else if (ts.isPropertyAccessExpression(resolveValue)) {
                                                                     resolveValue.name;
                                                                 }
                                                             }
                                                         } else {
-                                                            const methodSymbol = getSymbol(method);
+                                                            const methodSymbol = this.getSymbol(method);
                                                             if (methodSymbol && ts.isFunctionLike(methodSymbol.valueDeclaration)) {
-                                                                const signature = checker.getSignatureFromDeclaration(methodSymbol.valueDeclaration);
+                                                                const signature = this.checker.getSignatureFromDeclaration(methodSymbol.valueDeclaration);
 
                                                                 if (signature) {
-                                                                    const returnType = checker.getReturnTypeOfSignature(signature);
+                                                                    const returnType = this.checker.getReturnTypeOfSignature(signature);
                                                                     const typeSymbol = returnType.getSymbol();
 
                                                                     if (typeSymbol && typeSymbol.getName() === "Promise") {
                                                                         // @ts-expect-error
-                                                                        const promiseTypes = checker.getTypeArguments(returnType);
+                                                                        const promiseTypes = this.checker.getTypeArguments(returnType);
 
                                                                         if (promiseTypes.length === 1) {
                                                                             const promiseType = promiseTypes[0];
-                                                                            responseInfo.body = typeToResult(promiseType);
+                                                                            responseInfo.body = this.typeToResult(promiseType);
                                                                         }
                                                                     }
                                                                 }
@@ -634,22 +660,22 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                     }
                 }
             } else if (ts.isLiteralExpression(body)) {
-                const contextualType = checker.getContextualType(body);
+                const contextualType = this.checker.getContextualType(body);
             } else if (ts.isCallExpression(body)) {
                 const identifier = getFirstCallIdentifier(body);
 
                 if (!identifier) {
                     console.log("No Identifier for CallExpression: " + body.getText());
                 } else {
-                    const callSymbol = getSymbol(identifier);
+                    const callSymbol = this.getSymbol(identifier);
                     if (!callSymbol) {
                         console.log("No Symbol for Identifier of CallExpression: " + body.getText());
                     } else {
-                        const signature = checker.getSignatureFromDeclaration(callSymbol.valueDeclaration as FunctionDeclaration);
+                        const signature = this.checker.getSignatureFromDeclaration(callSymbol.valueDeclaration as FunctionDeclaration);
                         if (!signature) {
                             console.log("No Signature for CallExpression: " + body.getText());
                         } else {
-                            const type = checker.getReturnTypeOfSignature(signature);
+                            const type = this.checker.getReturnTypeOfSignature(signature);
                         }
                     }
                 }
@@ -705,8 +731,8 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
     }
 
-    function typeToResult(type: ts.Type): Nullable<TypeResult> {
-        const typeString = checker.typeToString(type);
+    private typeToResult(type: ts.Type): Nullable<TypeResult> {
+        const typeString = this.checker.typeToString(type);
         if (typeString === "number") {
             return {
                 type: "number",
@@ -736,11 +762,11 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
         if (symbol.name === "Array") {
             // @ts-expect-error
-            const arrayTypes = checker.getTypeArguments(type);
+            const arrayTypes = this.checker.getTypeArguments(type);
 
             if (arrayTypes.length === 1) {
                 const arrayType: ts.Type = arrayTypes[0];
-                const elementType = typeToResult(arrayType);
+                const elementType = this.typeToResult(arrayType);
                 // const elementProperties = checker.getPropertiesOfType(arrayType);
                 return {
                     type: "Array",
@@ -760,7 +786,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             for (const member of enumMember) {
                 const first = getFirst(member, ts.SyntaxKind.FirstLiteralToken);
                 if (first) {
-                    const firstType = checker.getTypeAtLocation(first);
+                    const firstType = this.checker.getTypeAtLocation(first);
                     if (firstType.isNumberLiteral()) {
                         unions.push({
                             type: "number"
@@ -783,9 +809,9 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
         // assume a object type
         const properties: ObjectProperties = {};
-        for (const value of checker.getPropertiesOfType(type)) {
-            const symbolType = checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration);
-            const typeResult = typeToResult(symbolType);
+        for (const value of this.checker.getPropertiesOfType(type)) {
+            const symbolType = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration);
+            const typeResult = this.typeToResult(symbolType);
 
             if (typeResult) {
                 properties[value.getName()] = typeResult;
@@ -798,12 +824,12 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
 
     }
 
-    function getPropertyAccess(node: ts.Node, container: SearchContainer): string[] {
+    private getPropertyAccess(node: ts.Node, container: SearchContainer): string[] {
         const parent = node.parent;
 
         if (ts.isElementAccessExpression(parent)) {
             const keyNode = parent.argumentExpression;
-            const value = getStringLiteralValue(keyNode, container);
+            const value = this.getStringLiteralValue(keyNode, container);
             return value ? [value] : [];
         } else if (ts.isPropertyAccessExpression(parent)) {
             return [parent.name.text];
@@ -815,7 +841,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         return [];
     }
 
-    function getStringLiteralValue(node: ts.Node, container: SearchContainer, stackLevel?: number): Nullable<string> {
+    private getStringLiteralValue(node: ts.Node, container: SearchContainer, stackLevel?: number): Nullable<string> {
         if (stackLevel == null) {
             stackLevel = container.callStack.length - 1;
         }
@@ -827,7 +853,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         if (ts.isStringLiteralLike(node)) {
             return node.text;
         } else if (ts.isIdentifier(node)) {
-            const keySymbol = getSymbol(node);
+            const keySymbol = this.getSymbol(node);
 
             if (!keySymbol) {
                 console.log("cannot find symbol for ElementAccess of: " + node.parent.getText());
@@ -840,7 +866,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                 if (!argument) {
                     return null;
                 }
-                return getStringLiteralValue(argument, container, stackLevel - 1);
+                return this.getStringLiteralValue(argument, container, stackLevel - 1);
             } else {
                 console.log("Unknown node type, not a parameter: " + keySymbol.valueDeclaration.getText());
             }
@@ -851,7 +877,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         return null;
     }
 
-    function getReturnRouter(outerFunction: ts.FunctionDeclaration,
+    private getReturnRouter(outerFunction: ts.FunctionDeclaration,
         variableSymbol: Nullable<ts.Symbol>): Optional<ts.Symbol> {
         if (!outerFunction.body) {
             return;
@@ -862,9 +888,9 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                 if (!identifier) {
                     return false;
                 }
-                const identifierSymbol = checker.getSymbolAtLocation(identifier);
+                const identifierSymbol = this.checker.getSymbolAtLocation(identifier);
                 return identifierSymbol
-                    && (routerVariables.has(identifierSymbol)
+                    && (this.routerVariables.has(identifierSymbol)
                         || identifierSymbol === variableSymbol);
             });
         if (returnNodes.length > 1) {
@@ -872,13 +898,13 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         } else if (returnNodes.length === 1) {
             const lastReturn = returnNodes.pop() as ts.Node;
             const routerIdentifier = getFirst(lastReturn, SyntaxKind.Identifier) as ts.Node;
-            return checker.getSymbolAtLocation(routerIdentifier) as ts.Symbol;
+            return this.checker.getSymbolAtLocation(routerIdentifier) as ts.Symbol;
         } else {
             console.log("No Router returned for function: " + outerFunction.getText());
         }
     }
 
-    function inspectVariableDeclaration(node: ts.VariableDeclaration) {
+    public inspectVariableDeclaration(node: ts.VariableDeclaration) {
         const initializer = node.initializer;
         if (!initializer) {
             return;
@@ -886,29 +912,29 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         const firstCallIdentifier = getFirstCallIdentifier(initializer);
         // check if the right side of the declaration is a router creation call
         if (firstCallIdentifier) {
-            const symbol = checker.getSymbolAtLocation(firstCallIdentifier);
+            const symbol = this.checker.getSymbolAtLocation(firstCallIdentifier);
             if (symbol) {
                 if (symbol.getName() === "Router") {
                     const outerFunction = getFirstParent(
                         node,
                         ts.SyntaxKind.FunctionDeclaration
                     ) as ts.FunctionDeclaration;
-                    const variableSymbol = checker.getSymbolAtLocation(node.name) as ts.Symbol;
-                    const outerFunctionSymbol = checker.getSymbolAtLocation(outerFunction.name as Identifier);
+                    const variableSymbol = this.checker.getSymbolAtLocation(node.name) as ts.Symbol;
+                    const outerFunctionSymbol = this.checker.getSymbolAtLocation(outerFunction.name as Identifier);
 
                     if (!outerFunctionSymbol) {
                         console.log("Missing Symbol for outer Function: " + outerFunction.getText());
                         return;
                     }
-                    const functionEntry = getFunctionEntry(outerFunctionSymbol);
+                    const functionEntry = this.getFunctionEntry(outerFunctionSymbol);
                     functionEntry.router.push(variableSymbol);
                     functionEntry.exported = isNodeExported(outerFunction);
-                    functionEntry.returnRouter = getReturnRouter(outerFunction, variableSymbol);
+                    functionEntry.returnRouter = this.getReturnRouter(outerFunction, variableSymbol);
 
-                    routerVariables.add(variableSymbol);
+                    this.routerVariables.add(variableSymbol);
                 } else if (symbol.getName() === "route") {
                     const routerIdentifier = getFirst(initializer, ts.SyntaxKind.Identifier) as Identifier;
-                    const routerSymbol = checker.getSymbolAtLocation(routerIdentifier);
+                    const routerSymbol = this.checker.getSymbolAtLocation(routerIdentifier);
 
                     if (!routerSymbol) {
                         console.log("No Symbol for Router Variable at position: " + routerIdentifier.pos);
@@ -920,12 +946,12 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                         return;
                     } else {
                         const expression = call.arguments[0];
-                        const routerEntry = getRouterEntry(routerSymbol);
-                        const variableSymbol = checker.getSymbolAtLocation(node.name) as ts.Symbol;
+                        const routerEntry = this.getRouterEntry(routerSymbol);
+                        const variableSymbol = this.checker.getSymbolAtLocation(node.name) as ts.Symbol;
 
                         if (ts.isStringLiteral(expression)) {
                             const routePath = expression.text;
-                            routerEntry.routes[routePath] = getRouteEntry(variableSymbol);
+                            routerEntry.routes[routePath] = this.getRouteEntry(variableSymbol);
                         } else {
                             console.log("Require string literal as path for method 'route' on position: " + call.pos);
                         }
@@ -939,7 +965,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
     }
 
-    function processRouter(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
+    private processRouter(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
         variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
         const name = propertyName.text;
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
@@ -951,7 +977,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             const pathLiteral = parameterList.getChildAt(0) as StringLiteral;
             const middleWareNode = parameterList.getChildAt(2);
 
-            const routerEntry = getRouterEntry(variableSymbol);
+            const routerEntry = this.getRouterEntry(variableSymbol);
             routerEntry.paths.push({
                 path: pathLiteral.text,
                 middleware: middleWareNode,
@@ -964,7 +990,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             }
             if (parameterList.getChildCount() === 1) {
                 const middleWareNode = parameterList.getChildAt(0);
-                const routerEntry = getRouterEntry(variableSymbol);
+                const routerEntry = this.getRouterEntry(variableSymbol);
                 routerEntry.middlewares.push(middleWareNode);
             } else if (parameterList.getChildCount() === 3) {
                 const pathLiteral = parameterList.getChildAt(0);
@@ -973,14 +999,14 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
                     const middleWareNode = parameterList.getChildAt(2);
                     const nextCall = getFirst(middleWareNode, ts.SyntaxKind.CallExpression);
 
-                    const routerEntry: RouterEntry = getRouterEntry(variableSymbol);
+                    const routerEntry: RouterEntry = this.getRouterEntry(variableSymbol);
                     if (nextCall && ts.isCallExpression(nextCall)) {
                         const callIdentifier = getFirstCallIdentifier(nextCall);
 
                         if (callIdentifier) {
-                            const functionSymbol = checker.getSymbolAtLocation(callIdentifier);
+                            const functionSymbol = this.checker.getSymbolAtLocation(callIdentifier);
                             if (functionSymbol) {
-                                const functionEntry = getFunctionEntry(functionSymbol);
+                                const functionEntry = this.getFunctionEntry(functionSymbol);
                                 const text = pathLiteral.text;
                                 const subRouter = routerEntry.subRouter;
                                 subRouter[text] = functionEntry;
@@ -1004,7 +1030,7 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
     }
 
-    function processRoute(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
+    private processRoute(propertyName: ts.Identifier | ts.PrivateIdentifier, node: ts.Node,
         variableSymbol: ts.Symbol, variableIdentifier: ts.LeftHandSideExpression) {
         const name = propertyName.text;
         const parameterList = getFirst(node, ts.SyntaxKind.SyntaxList) as SyntaxList;
@@ -1015,14 +1041,14 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
             }
             const middleWareNode = parameterList.getChildAt(0);
 
-            const routeEntry = getRouteEntry(variableSymbol);
+            const routeEntry = this.getRouteEntry(variableSymbol);
             routeEntry[name] = middleWareNode;
         } else {
             console.log(`Non http Method call: ${name}() on ${variableIdentifier.getText()}`);
         }
     }
 
-    function inspectCall(node: ts.Node) {
+    public inspectCall(node: ts.Node) {
         const propertyAccess = getFirst(
             node,
             ts.SyntaxKind.PropertyAccessExpression
@@ -1032,23 +1058,23 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         if (propertyAccess) {
             const variableIdentifier = propertyAccess.expression;
             const propertyName = propertyAccess.name;
-            const variableSymbol = checker.getSymbolAtLocation(variableIdentifier);
+            const variableSymbol = this.checker.getSymbolAtLocation(variableIdentifier);
 
             if (!variableSymbol) {
                 console.log("Variable Property Access has no Symbol: " + node.getText());
                 return;
             }
-            if (routerVariables.has(variableSymbol)) {
-                processRouter(propertyName, node, variableSymbol, variableIdentifier);
-            } else if (routeMap.has(variableSymbol)) {
-                processRoute(propertyName, node, variableSymbol, variableIdentifier);
+            if (this.routerVariables.has(variableSymbol)) {
+                this.processRouter(propertyName, node, variableSymbol, variableIdentifier);
+            } else if (this.routeMap.has(variableSymbol)) {
+                this.processRoute(propertyName, node, variableSymbol, variableIdentifier);
             } else {
                 console.log("Unknown Method Call: " + node.getText());
             }
         } else {
             const firstIdentifier = getFirst(node, ts.SyntaxKind.Identifier);
             if (firstIdentifier) {
-                const symbol = checker.getSymbolAtLocation(firstIdentifier);
+                const symbol = this.checker.getSymbolAtLocation(firstIdentifier);
 
                 if (symbol) {
                     console.log(`${ts.SyntaxKind[node.kind]}: Call ${node.getFullText()}`);
@@ -1059,12 +1085,12 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         }
     }
 
-    function getSymbol(value: ts.Node) {
-        return checker.getSymbolAtLocation(value);
+    private getSymbol(value: ts.Node) {
+        return this.checker.getSymbolAtLocation(value);
     }
 
-    function getFunctionEntry(symbol: ts.Symbol): FunctionEntry {
-        return getOrInit(functionMap, symbol, () => {
+    private getFunctionEntry(symbol: ts.Symbol): FunctionEntry {
+        return getOrInit(this.functionMap, symbol, () => {
             return {
                 exported: false,
                 router: []
@@ -1072,71 +1098,60 @@ function generateExpressApiObject(fileNames: string[], options: ts.CompilerOptio
         });
     }
 
-    function getRouterEntry(symbol: ts.Symbol): RouterEntry {
-        return getOrInit(routerMap, symbol, () => {
+    private getRouterEntry(symbol: ts.Symbol): RouterEntry {
+        return getOrInit(this.routerMap, symbol, () => {
             return { routes: {}, middlewares: [], paths: [], subRouter: {} } as RouterEntry;
         });
     }
 
-    function getRouteEntry(symbol: ts.Symbol): RouteEntry {
-        return getOrInit(routeMap, symbol, () => {
+    private getRouteEntry(symbol: ts.Symbol): RouteEntry {
+        return getOrInit(this.routeMap, symbol, () => {
             return {} as RouteEntry;
         });
     }
 
-    /** visit nodes finding exported classes */
-    function visit(node: ts.Node) {
-        if (ts.isVariableDeclaration(node) && ts.SyntaxKind.Identifier === node.name.kind) {
-            inspectVariableDeclaration(node);
-        } else if (ts.isCallExpression(node)) {
-            inspectCall(node);
-        } else {
-            ts.forEachChild(node, visit);
-        }
-    }
-
     /** Serialize a symbol into a json object */
-    function serializeSymbol(symbol: ts.Symbol): DocEntry {
+    private serializeSymbol(symbol: ts.Symbol): DocEntry {
         return {
             name: symbol.getName(),
-            documentation: ts.displayPartsToString(symbol.getDocumentationComment(checker)),
-            type: checker.typeToString(
-                checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!)
+            documentation: ts.displayPartsToString(symbol.getDocumentationComment(this.checker)),
+            type: this.checker.typeToString(
+                this.checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration)
             )
         };
     }
 
     /** Serialize a class symbol information */
-    function serializeClass(symbol: ts.Symbol) {
-        const details = serializeSymbol(symbol);
+    private serializeClass(symbol: ts.Symbol) {
+        const details = this.serializeSymbol(symbol);
 
         // Get the construct signatures
-        const constructorType = checker.getTypeOfSymbolAtLocation(
+        const constructorType = this.checker.getTypeOfSymbolAtLocation(
             symbol,
-            symbol.valueDeclaration!
+            symbol.valueDeclaration
         );
         details.constructors = constructorType
             .getConstructSignatures()
-            .map(serializeSignature);
+            .map((value) => this.serializeSignature(value));
         return details;
     }
 
     /** Serialize a signature (call or construct) */
-    function serializeSignature(signature: ts.Signature) {
+    private serializeSignature(signature: ts.Signature) {
         return {
-            parameters: signature.parameters.map(serializeSymbol),
-            returnType: checker.typeToString(signature.getReturnType()),
-            documentation: ts.displayPartsToString(signature.getDocumentationComment(checker))
+            parameters: signature.parameters.map((value) => this.serializeSymbol(value)),
+            returnType: this.checker.typeToString(signature.getReturnType()),
+            documentation: ts.displayPartsToString(signature.getDocumentationComment(this.checker))
         };
     }
+}
 
-    /** True if this is visible outside this file, false otherwise */
-    function isNodeExported(node: ts.Node): boolean {
-        return (
-            (ts.getCombinedModifierFlags(node as ts.Declaration) & ts.ModifierFlags.Export) !== 0
-            // || (!!node.parent && node.parent.kind === ts.SyntaxKind.SourceFile)
-        );
-    }
+/** True if this is visible outside this file, false otherwise */
+function isNodeExported(node: ts.Node): boolean {
+    return (
+        (ts.getCombinedModifierFlags(node as ts.Declaration) & ts.ModifierFlags.Export) !== 0
+        // || (!!node.parent && node.parent.kind === ts.SyntaxKind.SourceFile)
+    );
 }
 
 const httpMethods = ["post", "get", "put", "delete"];
@@ -1310,7 +1325,7 @@ function getFirst(node: ts.Node, kind: ts.SyntaxKind): Nullable<ts.Node> {
 function transformToOpenApi(expressApi: ExportExpressResult): OpenApiObject {
     const keys = Object.keys(expressApi);
 
-    const paths = {};
+    const paths: PathsObject = {};
 
     if (keys.length) {
         const [first] = keys;
@@ -1415,9 +1430,11 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
     }
 
     for (const [pathKey, routeValue] of Object.entries(router.routes)) {
-        const pathObject: PathItemObject = paths[absolutePath + pathKey] = {};
+        const currentPath = absolutePath + pathKey;
+        const pathObject: PathItemObject = paths[currentPath] = {};
 
         for (const [method, middleware] of Object.entries(routeValue)) {
+            console.log(`${currentPath}: ${method}`);
             const routeRequestObject: RequestBodyObject = {
                 content: JSON.parse(contentCopyString)
             };
@@ -1475,375 +1492,3 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
         routerResultToOpenApi(subRouter, paths, subPath);
     }
 }
-
-/**
- * OpenApi v3 Specification.
- */
-interface OpenApiObject {
-    /**
-     * Semantic OpenApi Version
-     */
-    openapi: string;
-    info: InfoObject;
-    servers?: ServerObject[];
-    paths: PathsObject;
-    components?: ComponentsObject;
-    security?: SecurityRequirementObject[];
-    tags?: TagObject[];
-    externalDocs?: ExternalDocumentationObject;
-}
-
-interface ExternalDocumentationObject {
-    description?: string;
-    url: string;
-}
-
-interface TagObject {
-    name: string;
-    description?: string;
-    externalDocs?: ExternalDocumentationObject;
-}
-
-interface SecurityRequirementObject {
-    [securitySchemeName: string]: string[];
-}
-
-/**
- * Requirement on string keys: '^[a-zA-Z0-9\.\-_]+$'.
- */
-interface ComponentsObject {
-    schemas?: ApiMap<SchemaObject | ReferenceObject>;
-    responses?: ApiMap<ResponseObject | ReferenceObject>;
-    parameters?: ApiMap<ExampleObject | ReferenceObject>;
-    requestBodies?: ApiMap<RequestBodyObject | ReferenceObject>;
-    headers?: ApiMap<HeaderObject | ReferenceObject>;
-    securitySchemes?: ApiMap<SecuritySchemeObject | ReferenceObject>;
-    links?: ApiMap<LinkObject | ReferenceObject>;
-    callbacks?: ApiMap<CallbackObject | ReferenceObject>;
-}
-
-interface CallbackObject {
-    [expression: string]: PathItemObject;
-}
-
-interface LinkObject {
-    operationRef?: string;
-    operationId?: string;
-    parameters?: ApiMap<any | string>;
-    requestBody?: any | string;
-    description?: string;
-    server?: ServerObject;
-}
-
-interface SecuritySchemeObject {
-    type: "apiKey" | "http" | "oauth2" | "openIdConnect";
-    description?: string;
-}
-
-interface ApikeySecuritySchemeObject extends SecuritySchemeObject {
-    type: "apiKey";
-    name: string;
-    in: "query" | "header" | "cookie";
-}
-
-interface HttpSecuritySchemeObject extends SecuritySchemeObject {
-    type: "http";
-    scheme: string;
-    bearerFormat?: string;
-}
-
-interface OAuth2SecuritySchemeObject extends SecuritySchemeObject {
-    type: "oauth2";
-    flows: OAuthFlowsObject;
-}
-
-interface OAuthFlowsObject {
-    implicit?: OAuthFlowObject;
-    password?: OAuthFlowObject;
-    clientCredentials?: OAuthFlowObject;
-    authorizationCode?: OAuthFlowObject;
-}
-
-interface OAuthFlowObject {
-    authorizationUrl: string;
-    tokenUrl: string;
-    refreshUrl?: string;
-    scopes: ApiMap<string>;
-}
-
-interface OpenIdConnectSecuritySchemeObject extends SecuritySchemeObject {
-    type: "openIdConnect";
-    openIdConnectUrl: string;
-}
-
-interface HeaderObject {
-    description?: string;
-    required?: boolean;
-    deprecated?: boolean;
-    allowEmptyValue?: boolean;
-    style?: string;
-    explode?: boolean;
-    allowReserved?: boolean;
-    schema?: SchemaObject | ReferenceObject;
-    example?: any;
-    examples?: ApiMap<ExampleObject | ReferenceObject>;
-    content?: ApiMap<MediaTypeObject>;
-}
-
-interface RequestBodyObject {
-    description?: string;
-    content: ApiMap<MediaTypeObject>;
-    required?: boolean;
-}
-
-interface ExampleObject {
-    summary?: string;
-    description?: string;
-    value?: any;
-    externalValue?: string;
-}
-
-interface ResponseObject {
-    description: string;
-    headers?: ApiMap<HeaderObject | ReferenceObject>;
-    content?: ApiMap<MediaTypeObject>;
-    links?: ApiMap<LinkObject | ReferenceObject>;
-}
-
-interface ReferenceObject {
-    $ref: string;
-}
-
-interface SchemaObject {
-    type: string;
-    title?: string;
-    /**
-     * for type number
-     */
-    multipleOf?: number;
-    /**
-     * for type number
-     */
-    maximum?: number;
-    /**
-     * for type number
-     */
-    exclusiveMaximum?: number;
-    /**
-     * for type string
-     */
-    maxLength?: number;
-    /**
-     * for type string
-     */
-    minLength?: number;
-    /**
-     * for type string
-     */
-    pattern?: RegExp;
-    /**
-     * for type array
-     */
-    maxItems?: number;
-    /**
-     * for type array
-     */
-    minItems?: number;
-    /**
-     * for type array
-     */
-    uniqueItems?: boolean;
-    /**
-     * for type object
-     */
-    maxProperties?: number;
-    /**
-     * for type object
-     */
-    minProperties?: number;
-    /**
-     * for type object
-     */
-    required?: string[];
-    enum?: any[];
-    allOf?: Array<SchemaObject | ReferenceObject>;
-    anyOf?: Array<SchemaObject | ReferenceObject>;
-    oneOf?: Array<SchemaObject | ReferenceObject>;
-    not?: Array<SchemaObject | ReferenceObject>;
-    items?: Array<SchemaObject | ReferenceObject>;
-    properties?: { [property: string]: SchemaObject | ReferenceObject };
-    additionalProperties?: boolean | SchemaObject | ReferenceObject;
-    description?: string;
-    /**
-     * <table>
-     *     <tr><th>type</th>    <th>format</th> <th>Comments</th></tr>
-     *     <tr><td>integer</td> <td>int32</td>    <td>signed 32 bits</td></tr>
-     *     <tr><td>integer</td> <td>int64</td>    <td>signed 64 bits (a.k.a long)</td></tr>
-     *     <tr><td>number</td>    <td>float</td>  <td></td></tr>
-     *     <tr><td>number</td>    <td>double</td> <td></td></tr>
-     *     <tr><td>string</td>  <td></td>       <td></td></tr>
-     *     <tr><td>string</td>    <td>byte</td>    <td>base64 encoded characters</td></tr>
-     *     <tr><td>string</td>    <td>binary</td> <td>any sequence of octets</td></tr>
-     *     <tr><td>boolean</td> <td></td>       <td></td></tr>
-     *     <tr><td>string</td>    <td>date</td>    <td>As defined by full-date - [RFC3339]</td></tr>
-     *     <tr><td>string</td>    <td>date-time</td>    <td>As defined by date-time - [RFC3339]</td></tr>
-     *     <tr><td>string</td>    <td>password</td>    <td>A hint to UIs to obscure input.</td></tr>
-     * </table>
-     */
-    format?: string;
-    default?: any;
-    nullable?: string;
-    discriminator?: DiscriminatorObject;
-    readOnly?: boolean;
-    writeOnly?: boolean;
-    xml?: XMLObject;
-    externalDocs?: ExternalDocumentationObject;
-    example?: any;
-    deprecated?: boolean;
-}
-
-interface XMLObject {
-    name?: string;
-    namespace?: string;
-    prefix?: string;
-    attribute?: boolean;
-    wrapped?: boolean;
-}
-
-interface DiscriminatorObject {
-    propertyName: string;
-    mapping?: ApiMap<string>;
-}
-
-/**
- * Path must begin with '/'.
- */
-interface PathsObject {
-    [path: string]: PathItemObject;
-}
-
-interface PathItemObject {
-    /**
-     * Exmaple: #/components/schemas/Pet
-     */
-    $ref?: string;
-    summary?: string;
-    description?: string;
-    get?: OperationObject;
-    put?: OperationObject;
-    post?: OperationObject;
-    delete?: OperationObject;
-    options?: OperationObject;
-    head?: OperationObject;
-    patch?: OperationObject;
-    trace?: OperationObject;
-    servers?: ServerObject[];
-    parameters?: Array<ParameterObject | ReferenceObject>;
-}
-
-interface ParameterObject {
-    name: string;
-    in: "query" | "header" | "path" | "cookie";
-    description?: string;
-    required?: boolean;
-    deprecated?: boolean;
-    allowEmptyValue?: boolean;
-    style?: string;
-    explode?: boolean;
-    allowReserved?: boolean;
-    schema?: SchemaObject | ReferenceObject;
-    example?: any;
-    examples?: ApiMap<ExampleObject | ReferenceObject>;
-    content?: ApiMap<MediaTypeObject>;
-}
-
-interface MediaTypeObject {
-    schema?: SchemaObject | ReferenceObject;
-    example?: any;
-    examples?: ApiMap<ExampleObject | ReferenceObject>;
-    encoding?: ApiMap<EncodingObject>;
-}
-
-interface EncodingObject {
-    contentType?: string;
-    headers?: ApiMap<HeaderObject | ReferenceObject>;
-    style?: string;
-    explode?: string;
-    allowReserved?: string;
-}
-
-interface OperationObject {
-    tags?: string[];
-    summary?: string;
-    description?: string;
-    externalDocs?: ExternalDocumentationObject;
-    operationId?: string;
-    parameters?: Array<ParameterObject | ReferenceObject>;
-    requestBody?: RequestBodyObject | ReferenceObject;
-    responses: ResponsesObject;
-    callbacks?: ApiMap<CallbackObject | ReferenceObject>;
-    deprecated?: boolean;
-    security?: SecurityRequirementObject[];
-    server?: ServerObject[];
-}
-
-interface ResponsesObject {
-    default?: ResponseObject | ReferenceObject;
-
-    [code: number]: ResponseObject | ReferenceObject;
-}
-
-interface ServerObject {
-    url: string;
-    description?: string;
-    variables?: ApiMap<ServerVariableObject>;
-}
-
-interface ServerVariableObject {
-    enum?: string[];
-    default: string;
-    description?: string;
-}
-
-interface InfoObject {
-    title: string;
-    description?: string;
-    termsOfService?: string;
-    contact?: ContactObject;
-    license?: LicenseObject;
-    /**
-     * Version of the specific Document
-     */
-    version: string;
-}
-
-type ApiMap<T> = Record<string, T> | Map<string, T>;
-
-interface LicenseObject {
-    name: string;
-    url?: string;
-}
-
-interface ContactObject {
-    name?: string;
-    url?: string;
-    email?: string;
-}
-
-function templateOpenApi(openApi: OpenApiObject): string {
-    return yaml.dump(openApi);
-}
-
-function GenerateOpenApi(file: string) {
-    const expressResult = generateExpressApiObject([file], {
-        target: ts.ScriptTarget.ES5,
-        module: ts.ModuleKind.CommonJS
-    });
-
-    const openApiObject = transformToOpenApi(expressResult);
-    const templateResult = templateOpenApi(openApiObject);
-    fs.writeFileSync("../../../result.yaml", templateResult, { encoding: "utf8" });
-    console.log(templateResult);
-}
-
-GenerateOpenApi("../../bin/api.ts");
