@@ -578,12 +578,12 @@ export const postEpisode: Handler = (req, res) => {
     sendResult(res, episodeStorage.addEpisode(episode));
 };
 export const putEpisode: Handler = (req, res) => {
-    const { episode, uuid } = req.body;
+    const { episode } = req.body;
     if (!episode || (Array.isArray(episode) && !episode.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, episode.updateEpisode(episode, uuid));
+    sendResult(res, episodeStorage.updateEpisode(episode));
 };
 export const deleteEpisode: Handler = (req, res) => {
     const { episodeId } = req.body;
