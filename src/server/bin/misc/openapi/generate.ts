@@ -1,12 +1,7 @@
 import { OpenApiObject } from "./types";
 import { generateExpressApiObject } from "./exportOpenApi";
 import ts from "typescript";
-import yaml from "js-yaml";
-import fs from "fs";
-
-function templateOpenApi(openApi: OpenApiObject): string {
-    return yaml.dump(openApi);
-}
+import { generateOpenApiSpec, generateWebClient } from "./transformer";
 
 function GenerateOpenApi(file: string) {
     const openApiObject = generateExpressApiObject([file], {
@@ -14,8 +9,8 @@ function GenerateOpenApi(file: string) {
         module: ts.ModuleKind.CommonJS
     });
 
-    const templateResult = templateOpenApi(openApiObject);
-    fs.writeFileSync("./result.yaml", templateResult, { encoding: "utf8" });
+    generateOpenApiSpec(openApiObject);
+    generateWebClient(openApiObject);
 }
 
 GenerateOpenApi("./src/server/bin/api.ts");

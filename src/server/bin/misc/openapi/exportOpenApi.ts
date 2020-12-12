@@ -15,7 +15,16 @@ import {
 } from "typescript";
 import path from "path";
 import { Optional, Nullable } from "../../types";
-import { RequestBodyObject, ParameterObject, OpenApiObject, PathsObject, MediaTypeObject, PathItemObject, OperationObject } from "./types";
+import {
+    RequestBodyObject,
+    ParameterObject,
+    OpenApiObject,
+    PathsObject,
+    MediaTypeObject,
+    PathItemObject,
+    OperationObject,
+    SchemaObject
+} from "./types";
 
 interface DocEntry {
     name?: string;
@@ -86,6 +95,7 @@ interface ObjectProperties {
 
 interface ObjectType extends TypeResult {
     type: "object";
+    name: string;
     properties: ObjectProperties;
     literalValue?: Record<string, unknown>;
 }
@@ -327,7 +337,7 @@ class TypeInferrer {
                                                     if (propertySymbol) {
                                                         const declaration = propertySymbol.valueDeclaration;
 
-                                                        if (ts.hasOnlyExpressionInitializer(declaration) && declaration.initializer ) {
+                                                        if (ts.hasOnlyExpressionInitializer(declaration) && declaration.initializer) {
 
                                                             result = this.literalToResult(declaration.initializer);
 
@@ -356,7 +366,7 @@ class TypeInferrer {
                                                     return this.inferFunctionLike(methodSymbol.valueDeclaration);
                                                 } else {
                                                     const declaration = methodSymbol.declarations[0];
-                                                    
+
                                                     if (ts.isFunctionLike(declaration)) {
                                                         return this.inferFunctionLike(declaration);
                                                     } else {
@@ -519,11 +529,11 @@ class TypeInferrer {
                     } as UnionType;
                 } else {
                     // for now assume an intersection happens only on object types
-                    return this.getObjectType((type as ts.Type).getApparentProperties());
+                    return this.getObjectType(type, (type as ts.Type).getApparentProperties());
                 }
             } else {
                 const constraint = type.getConstraint();
-    
+
                 if (constraint?.isUnionOrIntersection()) {
                     return this.typeToResult(constraint);
                 } else {
@@ -569,6 +579,7 @@ class TypeInferrer {
                 (t) => t.kind === ts.SyntaxKind.EnumMember
             ) as EnumMember[];
             const unions: TypeResult[] = [];
+
             for (const member of enumMember) {
                 const first = getFirst(member, ts.SyntaxKind.FirstLiteralToken);
                 if (first) {
@@ -595,10 +606,10 @@ class TypeInferrer {
                 unionTypes: unions
             } as UnionType;
         }
-        return this.getObjectType(this.checker.getPropertiesOfType(type));
+        return this.getObjectType(type, this.checker.getPropertiesOfType(type));
     }
 
-    private getObjectType(propSymbols: ts.Symbol[]): ObjectType {
+    private getObjectType(type: ts.Type, propSymbols: ts.Symbol[]): ObjectType {
         // assume a object type
         const properties: ObjectProperties = {};
         for (const value of propSymbols) {
@@ -615,7 +626,8 @@ class TypeInferrer {
         }
         return {
             type: "object",
-            properties
+            properties,
+            name: type.symbol?.escapedName || type.aliasSymbol?.escapedName || ""
         } as ObjectType;
     }
 
@@ -1269,7 +1281,7 @@ class Parser {
             const middleWareNode = parameterList.getChildAt(0);
             const routerEntry = this.getRouterEntry(variableSymbol);
             routerEntry.middlewares.push(middleWareNode);
-        // if parameter list has 3 children: 'path', ',', 'middleware'
+            // if parameter list has 3 children: 'path', ',', 'middleware'
         } else if (parameterList.getChildCount() === 3) {
             const pathLiteral = parameterList.getChildAt(0);
 
@@ -1786,9 +1798,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
                     200: {
                         content: {
                             "application/json": {
-                                schema: {
-                                    type: middleware.returnTypes && middleware.returnTypes.type
-                                }
+                                schema: toSchema(middleware.returnTypes)
                             }
                         },
                         description: "",
@@ -1811,7 +1821,7 @@ function setRequestBody(pathRequestObject: RequestBodyObject, genericParameters:
     pathRequestObject.content["application/json"] = {
         schema: {
             type: "object",
-            properties: { 
+            properties: {
                 // let generic parameter be overwritten from this one
                 ...genericParameters,
                 ...bodyType
@@ -1820,7 +1830,7 @@ function setRequestBody(pathRequestObject: RequestBodyObject, genericParameters:
     } as MediaTypeObject;
 }
 
-function setRequestQuery(method: string, parameter: ParameterObject[], genericParameters: Record<string, null>, queryType:Record<string, null>): void {
+function setRequestQuery(method: string, parameter: ParameterObject[], genericParameters: Record<string, null>, queryType: Record<string, null>): void {
     if (bodyMethods.includes(method)) {
         log("Query Parameter supplied in a Body Method!");
     }
@@ -1843,6 +1853,31 @@ function setRequestQuery(method: string, parameter: ParameterObject[], genericPa
             name: queryTypeKey,
         });
     }
+}
+
+function toSchema(params?: TypeResult | null): SchemaObject | undefined {
+    if (!params) {
+        return;
+    }
+    const schema: SchemaObject = {
+        type: params.type
+    };
+
+    if (params.type === "object") {
+        const obj = (params as ObjectType);
+        schema.title = obj.name;
+        const properties: Record<string, SchemaObject> = {};
+
+        for (const [key, value] of Object.entries(obj.properties)) {
+            const property_schema = toSchema(value);
+
+            if (property_schema) {
+                properties[key] = property_schema;
+            }
+        }
+        schema.properties = properties;
+    }
+    return schema;
 }
 
 function isEmpty(obj: any): boolean {

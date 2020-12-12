@@ -193,7 +193,7 @@ export interface SchemaObject {
     oneOf?: Array<SchemaObject | ReferenceObject>;
     not?: Array<SchemaObject | ReferenceObject>;
     items?: Array<SchemaObject | ReferenceObject>;
-    properties?: { [property: string]: SchemaObject | ReferenceObject };
+    properties?: Record<string, SchemaObject | ReferenceObject>;
     additionalProperties?: boolean | SchemaObject | ReferenceObject;
     description?: string;
     /**
@@ -339,7 +339,7 @@ export interface InfoObject {
     version: string;
 }
 
-export type ApiMap<T> = Record<string, T> | Map<string, T>;
+export type ApiMap<T> = Record<string, T>;
 
 export interface LicenseObject {
     name: string;
