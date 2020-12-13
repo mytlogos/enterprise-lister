@@ -431,21 +431,7 @@ class TypeInferrer {
 
         if (signature) {
             const returnType = this.checker.getReturnTypeOfSignature(signature);
-            const typeSymbol = returnType.getSymbol();
-
-            if (typeSymbol && typeSymbol.getName() === "Promise") {
-                // @ts-expect-error
-                const promiseTypes = this.checker.getTypeArguments(returnType);
-
-                if (promiseTypes.length === 1) {
-                    const promiseType = promiseTypes[0];
-                    return this.typeToResult(promiseType);
-                } else {
-                    log("?");
-                }
-            } else {
-                return this.typeToResult(returnType);
-            }
+            return this.typeToResult(returnType);
         } else {
             log("?");
         }
