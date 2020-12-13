@@ -1,4 +1,3 @@
-import { OpenApiObject } from "./types";
 import { generateExpressApiObject } from "./exportOpenApi";
 import ts from "typescript";
 import { generateOpenApiSpec, generateWebClient } from "./transformer";

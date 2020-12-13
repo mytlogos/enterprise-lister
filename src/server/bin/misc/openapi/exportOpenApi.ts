@@ -270,7 +270,19 @@ class TypeInferrer {
                 }
             }
         } else if (ts.isLiteralExpression(node)) {
-            const contextualType = this.checker.getContextualType(node);
+            const type = this.checker.getTypeAtLocation(node);
+
+            if (this.checker.typeToString(type) === "any") {
+                const symbol = this.checker.getSymbolAtLocation(node);
+
+                if (!symbol) {
+                    return null;
+                }
+                return this.inferAny(symbol, stackElement);
+            } else {
+                return this.typeToResult(type);
+            }
+
         } else if (ts.isCallExpression(node)) {
             const identifier = getFirstCallIdentifier(node);
 
@@ -293,10 +305,12 @@ class TypeInferrer {
                 }
             } else {
                 const callSymbol = this.getSymbol(identifier);
+
                 if (!callSymbol) {
                     log("No Symbol for Identifier of CallExpression: " + node.getText());
                 } else {
                     const signature = this.checker.getSignatureFromDeclaration(callSymbol.valueDeclaration as FunctionDeclaration);
+
                     if (!signature) {
                         log("No Signature for CallExpression: " + node.getText());
                     } else {
@@ -342,7 +356,8 @@ class TypeInferrer {
                                             if ((method.text === "resolve") && argument.arguments.length === 1) {
                                                 const resolveValue = argument.arguments[0];
 
-                                                let result = this.literalToResult(resolveValue);
+                                                const type = this.checker.getTypeAtLocation(resolveValue);
+                                                const result = this.typeToResult(type);
 
                                                 if (result) {
                                                     return result;
@@ -355,13 +370,8 @@ class TypeInferrer {
                                                         const declaration = propertySymbol.valueDeclaration;
 
                                                         if (ts.hasOnlyExpressionInitializer(declaration) && declaration.initializer) {
-
-                                                            result = this.literalToResult(declaration.initializer);
-
-                                                            if (result) {
-                                                                return result;
-                                                            }
-                                                            log("Some Non-Literal Initializer");
+                                                            const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
+                                                            return this.typeToResult(initializerType);
                                                         } else {
                                                             log("Declaration without Initialization");
                                                         }
@@ -369,8 +379,7 @@ class TypeInferrer {
                                                         log("Unexpected Property Access Expression");
                                                     }
                                                 } else {
-                                                    const type = this.checker.getTypeAtLocation(resolveValue);
-                                                    return this.typeToResult(type);
+                                                    log("?");
                                                 }
                                             } else {
                                                 log("Some other Promise method");
@@ -438,31 +447,10 @@ class TypeInferrer {
         return null;
     }
 
-    private literalToResult(node: ts.Node): Nullable<TypeResult> {
-        if (isBooleanLiteral(node)) {
-            return createBooleanLiteralType(node);
-        } else if (ts.isStringLiteral(node)) {
-            return {
-                type: "string",
-                literalValue: node.getText()
-            } as StringType;
-        } else if (ts.isNumericLiteral(node)) {
-            const literal = Number(node.getText());
-
-            if (Number.isNaN(literal)) {
-                throw Error(`Literal is not a Number: '${node.getText()}'!`)
-            }
-            return {
-                type: "number",
-                literalValue: literal
-            } as NumberType;
-        }
-        return null;
-    }
-
     private typeToResult(type: ts.Type): Nullable<TypeResult> {
         try {
             if (this.counter > 10) {
+                log("Type resolving goes too deep for: " + this.checker.typeToString(type))
                 return null;
             }
             this.counter++;
@@ -1584,25 +1572,6 @@ function isHttpMethod(name: string): boolean {
     return httpMethods.includes(name.toLowerCase());
 }
 
-function nodeToString(node: ts.Node): string {
-    let s = "";
-    visitor(node, (node1, level) => {
-        const nodeText = node1.getText().replace(/\n/, "");
-        const nodeKind = ts.SyntaxKind[node1.kind];
-        const indent = "-".repeat(level);
-        s += `${indent}${nodeKind}: ${nodeText}\n`;
-        return false;
-    });
-    return s;
-}
-
-function visitor(node: ts.Node, callback: (node: ts.Node, level: number) => boolean, level = 0) {
-    // do not visit children if true is returned
-    if (!callback(node, level)) {
-        ts.forEachChild(node, (child) => visitor(child, callback, level + 1));
-    }
-}
-
 function getOrInit<K, V>(map: Map<K, V>, key: K, value: () => V) {
     const v = map.get(key);
 
@@ -1661,29 +1630,10 @@ function hasParentThat(node: ts.Node, predicate: (node: ts.Node) => boolean): bo
     return false;
 }
 
-function previousNode(node: ts.Node): Nullable<ts.Node> {
-    if (!node.parent) {
-        return null;
-    }
-    const children = node.parent.getChildren();
-    const index = children.indexOf(node);
-
-    // if index is smaller than 1, it is either at index 0 or not in parent children list (ignore that)
-    if (index < 1) {
-        return null;
-    }
-    return node.parent.getChildAt(index - 1);
-}
-
 function isIdentifier(value: ts.Node): value is ts.Identifier {
     return value.kind === ts.SyntaxKind.Identifier;
 }
 type BooleanLiteralType = ts.Type & { flags: ts.TypeFlags.BooleanLiteral };
-type LiteralType = ts.StringLiteralType | ts.NumberLiteralType | BooleanLiteralType | ts.EnumType | ts.BigIntLiteralType;
-
-function isLiteralType(value: ts.Type): value is LiteralType {
-    return !!(value.flags & ts.TypeFlags.Literal);
-}
 
 function isNumberLiteralType(value: ts.Type): value is ts.NumberLiteralType {
     return !!(value.flags & ts.TypeFlags.NumberLiteral);
@@ -1695,17 +1645,6 @@ function isBooleanLiteralType(value: ts.Type): value is BooleanLiteralType {
 
 function isStringLiteralType(value: ts.Type): value is ts.StringLiteralType {
     return !!(value.flags & ts.TypeFlags.StringLiteral);
-}
-
-function isBooleanLiteral(value: ts.Node): value is ts.BooleanLiteral {
-    return value.kind === ts.SyntaxKind.TrueKeyword || value.kind === ts.SyntaxKind.FalseKeyword;
-}
-
-function createBooleanLiteralType(value: ts.Node): BooleanType {
-    return {
-        type: "boolean",
-        literalValue: value.getText() === "true"
-    };
 }
 
 function nextNode(node: ts.Node): Nullable<ts.Node> {
