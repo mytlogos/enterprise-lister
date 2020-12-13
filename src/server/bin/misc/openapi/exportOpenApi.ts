@@ -98,6 +98,7 @@ interface ObjectType extends TypeResult {
     name: string;
     properties: ObjectProperties;
     literalValue?: Record<string, unknown>;
+    isGlobal?: boolean;
 }
 
 interface BooleanType extends TypeResult {
@@ -693,7 +694,34 @@ class TypeInferrer {
         } as EnumType;
     }
 
+    /**
+     * Checks if the given type is a globally available one.
+     * A global member is assumed to be defined in a lib.es*.d.ts file from typescript.
+     * 
+     * @param type type to check
+     */
+    private isGlobalMember(type: ts.Type): boolean {
+        let node: ts.Node = type.symbol?.valueDeclaration;
+        while (node) {
+            if (ts.isSourceFile(node)) {
+                return node.fileName.match(/.+\/typescript\/lib\/lib\.es.*\.d\.ts/) !== null;
+            }
+            node = node.parent;
+        }
+        return false;
+    }
+
     private getObjectType(type: ts.Type, propSymbols: ts.Symbol[]): ObjectType {
+        const name = type.symbol?.escapedName || type.aliasSymbol?.escapedName || "";
+
+        if (this.isGlobalMember(type)) {
+            return {
+                type: "object",
+                properties: {},
+                name,
+                isGlobal: true,
+            } as ObjectType;
+        }
         // assume a object type
         const properties: ObjectProperties = {};
         for (const value of propSymbols) {
@@ -711,7 +739,7 @@ class TypeInferrer {
         return {
             type: "object",
             properties,
-            name: type.symbol?.escapedName || type.aliasSymbol?.escapedName || ""
+            name,
         } as ObjectType;
     }
 
@@ -1936,6 +1964,12 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
     if (params.type === "object") {
         const obj = (params as ObjectType);
         schema.title = obj.name;
+
+        if (obj.name === "Date") {
+            schema.type = "string";
+            schema.format = "date-time";
+            return schema;
+        }
         const properties: Record<string, SchemaObject> = {};
 
         for (const [key, value] of Object.entries(obj.properties)) {

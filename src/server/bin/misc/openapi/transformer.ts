@@ -174,6 +174,8 @@ class JSWebClientGenerator extends TemplateGenerator {
             return schema.title || "unknown";
         } else if (schema.type === "Union") {
             return schema.anyOf ? schema.anyOf.map(v => isRefObj(v) ? v.$ref : this.schemaToJSType(v)).join(" | ") : "unknown";
+        } else if (schema.type === "string" && schema.format === "date-time") {
+            return "Date";
         }
         return new handlebars.SafeString(schema.type || "unknown");
     }
