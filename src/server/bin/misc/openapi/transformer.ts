@@ -6,9 +6,11 @@ import {
     PathItemObject,
     ReferenceObject,
     MediaTypeObject,
-    SchemaObject
+    SchemaObject,
+    enumNameSymbol
 } from "./types";
 import yaml from "js-yaml";
+import { isString } from "validate.js";
 
 interface TemplateApiPath {
     path: string;
@@ -75,6 +77,10 @@ abstract class TemplateGenerator {
                 schemata[schema.title] = schema;
                 Object.values(schema.properties || {}).forEach(value => this.setSchemata(schemata, value));
             }
+            if (schema.type === "Enum" && schema.title) {
+                schemata[schema.title] = schema;
+                (schema.enum || []).forEach(value => this.setSchemata(schemata, value));
+            }
             schema.allOf?.forEach(value => this.setSchemata(schemata, value));
             schema.anyOf?.forEach(value => this.setSchemata(schemata, value));
             schema.oneOf?.forEach(value => this.setSchemata(schemata, value));
@@ -132,7 +138,7 @@ abstract class TemplateGenerator {
     protected abstract createContext(): TemplateContext;
 
     public async generate(): Promise<void> {
-        const context = this.createContext()
+        const context = this.createContext();
         const content = await fs.readFile("./src/server/bin/misc/openapi/webclient.ts.handlebars", { encoding: "utf-8" });
         const template = handlebars.compile(content);
         const output = template(context);
@@ -164,8 +170,8 @@ class JSWebClientGenerator extends TemplateGenerator {
                 return new handlebars.SafeString(`${genericType}[]`);
             }
             return new handlebars.SafeString(`Array<${genericType}>`);
-        } else if (schema.type === "object") {
-            return schema.title || "any";
+        } else if (schema.type === "object" || schema.type === "Enum") {
+            return schema.title || "unknown";
         } else if (schema.type === "Union") {
             return schema.anyOf ? schema.anyOf.map(v => isRefObj(v) ? v.$ref : this.schemaToJSType(v)).join(" | ") : "unknown";
         }
@@ -173,6 +179,10 @@ class JSWebClientGenerator extends TemplateGenerator {
     }
 
     private addHelper() {
+        handlebars.registerHelper("isType", (value: SchemaObject, type: string) => {
+            return value.type === type;
+        });
+
         handlebars.registerHelper("toKey", (key: string) => {
             return key.replace(this.keyReg, "_").slice(1);
         });
@@ -195,6 +205,12 @@ class JSWebClientGenerator extends TemplateGenerator {
 
         handlebars.registerHelper("toProperty", (property: string, schema: SchemaObject) => {
             return new handlebars.SafeString(`${property}: ${this.schemaToJSType(schema).toString()};`);
+        });
+
+        handlebars.registerHelper("toEnumMember", (value: any, index: number, enumValue: any[]) => {
+            const isStr = isString(value);
+            // @ts-expect-error
+            return new handlebars.SafeString(`${enumValue[enumNameSymbol][index]} = ${isStr ? "\"" : ""}${value}${isStr ? "\"" : ""},`);
         });
 
         handlebars.registerHelper("toReturnType", (returnType?: SchemaObject) => {
@@ -238,7 +254,7 @@ class JSWebClientGenerator extends TemplateGenerator {
 }
 
 function isRefObj(value: any): value is ReferenceObject {
-    return value && "$ref" in value;
+    return typeof value === "object" && "$ref" in value;
 }
 
 export async function generateOpenApiSpec(data: OpenApiObject): Promise<void> {

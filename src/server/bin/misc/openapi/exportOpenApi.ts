@@ -24,7 +24,8 @@ import {
     PathItemObject,
     OperationObject,
     SchemaObject,
-    ResponsesObject
+    ResponsesObject,
+    enumNameSymbol
 } from "./types";
 
 interface DocEntry {
@@ -127,6 +128,7 @@ interface PromiseType extends TypeResult {
 
 interface EnumType extends TypeResult {
     type: "Enum";
+    name: string;
     member: Record<string, TypeResult>;
     // the exact member if available
     literalValue?: string;
@@ -582,40 +584,31 @@ class TypeInferrer {
             }
         }
         if (symbol.valueDeclaration && ts.isEnumDeclaration(symbol.valueDeclaration)) {
-            // replace union type with enum type
-            const enumMember = getChildrenThat(
-                symbol.valueDeclaration,
-                (t) => t.kind === ts.SyntaxKind.EnumMember
-            ) as EnumMember[];
-            const unions: TypeResult[] = [];
-
-            for (const member of enumMember) {
-                const first = getFirst(member, ts.SyntaxKind.FirstLiteralToken);
-                if (first) {
-                    const firstType = this.checker.getTypeAtLocation(first);
-                    if (firstType.isNumberLiteral()) {
-                        unions.push({
-                            type: "number"
-                        } as NumberType);
-                    } else if (firstType.isStringLiteral()) {
-                        unions.push({
-                            type: "string"
-                        } as StringType);
-                    } else {
-                        log("Unknown Enum Member type: " + this.checker.typeToString(firstType))
-                    }
-                } else {
-                    unions.push({
-                        type: "string"
-                    } as StringType);
-                }
-            }
-            return {
-                type: "Union",
-                unionTypes: this.filterUniqueType(unions),
-            } as UnionType;
+            return this.getEnumType(type, symbol);
         }
         return this.getObjectType(type, this.checker.getPropertiesOfType(type));
+    }
+
+    private getTypeFlags(type: ts.Type): string[] {
+        return this.getFlagNames(type.flags, ts.TypeFlags);
+    }
+
+    private getSymbolFlags(symbol: ts.Symbol): string[] {
+        return this.getFlagNames(symbol.flags, ts.SymbolFlags);
+    }
+
+    private getNodeFlags(node: ts.Node): string[] {
+        return this.getFlagNames(node.flags, ts.NodeFlags);
+    }
+
+    private getFlagNames(current: number, flagEnum: Record<string, number | string>): string[] {
+        const flags = [];
+        for (const [name, flag] of Object.entries(flagEnum)) {
+            if ((Number.isInteger(flag) ? flag as number : Number(flag)) & current) {
+                flags.push(name);
+            }
+        }
+        return flags;
     }
 
     private filterUniqueType(types: TypeResult[]): TypeResult[] {
@@ -678,6 +671,26 @@ class TypeInferrer {
             }
         }
         return true;
+    }
+
+    private getEnumType(type: ts.Type, symbol: ts.Symbol): Nullable<EnumType> {
+        const enumMember: Record<string, TypeResult> = {};
+
+        for (const member of (type as ts.UnionType).types) {
+            const typeResult = this.typeToResult(member);
+            const memberName = this.checker.symbolToString(member.symbol);
+
+            if (!typeResult) {
+                log(`unable to resolve member type of ${this.checker.symbolToString(symbol)}.${memberName}`);
+                return null;
+            }
+            enumMember[memberName] = typeResult;
+        }
+        return {
+            type: "Enum",
+            member: enumMember,
+            name: this.checker.typeToString(type),
+        } as EnumType;
     }
 
     private getObjectType(type: ts.Type, propSymbols: ts.Symbol[]): ObjectType {
@@ -1941,6 +1954,19 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
     } else if (params.type === "Array") {
         const array = params as ArrayType;
         schema.items = toSchema(array.elementType);
+    } else if (params.type === "Enum") {
+        const enumParam = params as EnumType;
+        schema.title = enumParam.name;
+
+        const enumValues: any[] = [];
+        // @ts-expect-error
+        const memberNames: string[] = enumValues[enumNameSymbol] = [];
+
+        Object.entries(enumParam.member).forEach(v => {
+            enumValues.push(v[1].literalValue)
+            memberNames.push(v[0]);
+        });
+        schema.enum = enumValues;
     }
     return schema;
 }

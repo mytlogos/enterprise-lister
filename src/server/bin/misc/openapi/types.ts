@@ -351,3 +351,5 @@ export interface ContactObject {
     url?: string;
     email?: string;
 }
+
+export const enumNameSymbol = Symbol("enumName");

@@ -8,11 +8,20 @@ const Methods: { post: string; get: string; put: string; delete: string } = {
     delete: "DELETE",
 };
 {{#each schemata}}
+{{#if (isType . "object")}}
 interface {{@key}} {
 {{#each properties}}
     {{toProperty @key .}}
 {{/each}}
 }
+{{/if}}
+{{#if (isType . "Enum")}}
+enum {{@key}} {
+{{#each enum}}
+    {{toEnumMember . @index ../enum}}
+{{/each}}
+}
+{{/if}}
 {{/each}}
 
 const api = {
