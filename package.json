@@ -48,6 +48,7 @@
     "emoji-strip": "latest",
     "express": "^4.17.1",
     "feedparser-promised": "^2.0.1",
+    "handlebars": "^4.7.6",
     "helmet": "^3.23.3",
     "htmlparser2": "^4.1.0",
     "http-errors": "^1.8.0",
