@@ -23,7 +23,8 @@ import {
     MediaTypeObject,
     PathItemObject,
     OperationObject,
-    SchemaObject
+    SchemaObject,
+    ResponsesObject
 } from "./types";
 
 interface DocEntry {
@@ -70,7 +71,7 @@ interface ExportExpressResult {
 }
 
 interface TypeResult {
-    type: "Array" | "boolean" | "number" | "string" | "object" | "null" | "Union";
+    type: "Array" | "boolean" | "number" | "string" | "object" | "null" | "Union" | "Promise" | "Enum";
     /**
      * for literal values
      */
@@ -89,9 +90,7 @@ interface ArrayType extends TypeResult {
     literalValue?: any[];
 }
 
-interface ObjectProperties {
-    [key: string]: TypeResult;
-}
+type ObjectProperties = Record<string, TypeResult>;
 
 interface ObjectType extends TypeResult {
     type: "object";
@@ -120,10 +119,23 @@ interface NullType extends TypeResult {
     literalValue?: null;
 }
 
+interface PromiseType extends TypeResult {
+    type: "Promise";
+    genericType: TypeResult;
+    rejected: boolean;
+}
+
+interface EnumType extends TypeResult {
+    type: "Enum";
+    member: Record<string, TypeResult>;
+    // the exact member if available
+    literalValue?: string;
+}
+
 // this should hold the requirements on the request
 // and the possible return types and error codes
 interface MiddlewareResult {
-    returnTypes: null | TypeResult;
+    returnTypes: Record<number, TypeResult>;
     queryType?: Record<string, null>;
     bodyType?: Record<string, null>;
 }
@@ -170,9 +182,7 @@ interface ResponseInfo {
     body: Nullable<TypeResult>;
 }
 
-interface TotalResponseInfo {
-    [code: number]: ResponseInfo;
-}
+type TotalResponseInfo = Record<number,  ResponseInfo>;
 
 interface StackElement {
     requestSymbol?: ts.Symbol;
@@ -234,6 +244,7 @@ export function generateExpressApiObject(fileNames: string[], options: ts.Compil
 class TypeInferrer {
     private checker: ts.TypeChecker;
     private counter = 0;
+    private inErrorBlock = false;
 
     public constructor(checker: ts.TypeChecker) {
         this.checker = checker;
@@ -302,15 +313,20 @@ class TypeInferrer {
         if (isParameter(symbol.valueDeclaration)) {
             const parentOfFunction = symbol.valueDeclaration.parent.parent;
 
+            // check if this is a callback in a function
             if (ts.isCallExpression(parentOfFunction) && ts.isPropertyAccessExpression(parentOfFunction.expression)) {
                 const property = parentOfFunction.expression.name.text;
 
+                // if this a then-able Call, assume a promiselike.then
                 if (property === "then") {
                     const leftHandSideExpression = parentOfFunction.expression.expression;
 
+                    // get the promiselike identifier
                     if (ts.isIdentifier(leftHandSideExpression)) {
                         const leftSideSymbol = this.getSymbol(leftHandSideExpression);
 
+                        // if the promiselike identifier is a parameter of the function
+                        // then to resolve the type one needs the argument to this function
                         if (leftSideSymbol && ts.isParameter(leftSideSymbol.valueDeclaration) && leftSideSymbol.valueDeclaration.parent === stackElement.signature) {
                             const index = stackElement.signature.parameters.indexOf(leftSideSymbol.valueDeclaration);
                             const argument = stackElement.arguments[index];
@@ -318,11 +334,12 @@ class TypeInferrer {
                             if (ts.isCallExpression(argument)) {
                                 if (ts.isPropertyAccessExpression(argument.expression)) {
                                     const targetValue = argument.expression.expression;
+
                                     if (ts.isIdentifier(targetValue)) {
                                         const method = argument.expression.name;
                                         if (targetValue.text === "Promise") {
                                             // inspect Promise.* uses
-                                            if ((method.text === "resolve" || method.text === "reject") && argument.arguments.length === 1) {
+                                            if ((method.text === "resolve") && argument.arguments.length === 1) {
                                                 const resolveValue = argument.arguments[0];
 
                                                 let result = this.literalToResult(resolveValue);
@@ -523,9 +540,10 @@ class TypeInferrer {
                         log("Failed to resolve union type");
                         return null;
                     }
+
                     return {
                         type: "Union",
-                        unionTypes: subTypes
+                        unionTypes: this.filterUniqueType(subTypes as TypeResult[]),
                     } as UnionType;
                 } else {
                     // for now assume an intersection happens only on object types
@@ -556,6 +574,22 @@ class TypeInferrer {
                 return null;
             }
         }
+        // an interface extending the mysql "Query" Interface
+        // for typing the packet values
+        if (symbol.name === "TypedQuery") {
+            // @ts-expect-error
+            const typeArguments = this.checker.getTypeArguments(type);
+
+            if (typeArguments.length === 1) {
+                return {
+                    type: "Array",
+                    elementType: this.typeToResult(typeArguments[0]),
+                } as ArrayType;
+            } else {
+                log("TypedQuery should have only one Type argument! Got: " + typeArguments.length);
+                return null;
+            }
+        }
         if (symbol.name === "Array") {
             // @ts-expect-error
             const arrayTypes = this.checker.getTypeArguments(type);
@@ -574,6 +608,7 @@ class TypeInferrer {
             }
         }
         if (symbol.valueDeclaration && ts.isEnumDeclaration(symbol.valueDeclaration)) {
+            // replace union type with enum type
             const enumMember = getChildrenThat(
                 symbol.valueDeclaration,
                 (t) => t.kind === ts.SyntaxKind.EnumMember
@@ -603,10 +638,72 @@ class TypeInferrer {
             }
             return {
                 type: "Union",
-                unionTypes: unions
+                unionTypes: this.filterUniqueType(unions),
             } as UnionType;
         }
         return this.getObjectType(type, this.checker.getPropertiesOfType(type));
+    }
+
+    private filterUniqueType(types: TypeResult[]): TypeResult[] {
+        for (let i = 0; i < types.length; i++) {
+            const type = types[i];
+
+            for (let j = i + 1; j < types.length; j++) {
+                const otherType = types[j];
+
+                if (this.equalType(type, otherType)) {
+                    types.splice(j, 1);
+                    j--;
+                }
+            }
+        }
+        return types;
+    }
+
+    private equalType(type: TypeResult, other: TypeResult): boolean {
+        if (type === other) {
+            return true;
+        }
+        if (!type || !other || type.type !== other.type) {
+            return false;
+        }
+        if (type.type === "object") {
+            const subTypes = (type as ObjectType).properties;
+            const subOthers = (other as ObjectType).properties;
+            const typeKeys = Object.keys(subTypes);
+            const otherKeys = Object.keys(subOthers);
+
+            if (typeKeys.length !== otherKeys.length) {
+                return false;
+            }
+
+            for (let index = 0; index < typeKeys.length; index++) {
+                const key = typeKeys[index];
+                const otherIndex = otherKeys.findIndex(v => v === key);
+
+                if (otherIndex < 0) {
+                    return false;
+                }
+                otherKeys.splice(otherIndex, 1);
+
+                if (!this.equalType(subTypes[key], subOthers[key])) {
+                    return false;
+                }
+            }
+            // if some other keys are left, the types do not match
+            return !otherKeys.length;
+        }
+        if (type.type === "Union") {
+            const subTypes = (type as UnionType).unionTypes;
+            const subOthers = (other as UnionType).unionTypes;
+
+            for (let index = 0; index < subTypes.length; index++) {
+                if (!this.equalType(subTypes[index], subOthers[index])) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private getObjectType(type: ts.Type, propSymbols: ts.Symbol[]): ObjectType {
@@ -748,7 +845,7 @@ class Parser {
     private middlewareToResult(middleware: Middleware): MiddlewareResult {
         const middlewareSymbol = this.checker.getSymbolAtLocation(middleware);
 
-        const middlewareResult: MiddlewareResult = { returnTypes: null };
+        const middlewareResult: MiddlewareResult = { returnTypes: {} };
         if (!middlewareSymbol) {
             return middlewareResult;
         }
@@ -786,7 +883,13 @@ class Parser {
         this.searchMiddlewareStack(container);
         middlewareResult.queryType = container.requestInfo.queryParams;
         middlewareResult.bodyType = container.requestInfo.bodyParams;
-        middlewareResult.returnTypes = container.responseInfo[200] ? container.responseInfo[200].body : null;
+        middlewareResult.returnTypes = {};
+
+        for (const [code, response] of Object.entries(container.responseInfo)) {
+            if (response.body) {
+                middlewareResult.returnTypes[Number(code)] = response.body;
+            }
+        }
         log(`Middleware ${middleware.getText()} has no returnType: ${middlewareResult.returnTypes == null}`)
         return middlewareResult;
     }
@@ -910,14 +1013,19 @@ class Parser {
             }
         }) as CallExpression[];
 
-        for (const callExpression of callsOnResponse) {
-            const identifier = getFirstCallIdentifier(callExpression);
+        for (let callExpression of callsOnResponse) {
+            // there may be a chain call on response variable
+            // so go from innermost callexpression to outermost callexpression
+            while(callExpression  && ts.isCallExpression(callExpression)) {
+                const identifier = getFirstCallIdentifier(callExpression);
 
-            if (!identifier) {
-                log("No Identifier for Response.method: " + callExpression.getText());
-                continue;
+                if (!identifier) {
+                    log("No Identifier for Response.method: " + callExpression.getText());
+                    break;
+                }
+                this.processResponseCall(callExpression, identifier.text, container);
+                callExpression = callExpression.parent?.parent as ts.CallExpression;
             }
-            this.processResponseCall(callExpression, identifier.text, container);
         }
 
         const callsWithEitherReqOrRes = getChildrenThat(body, (t) => {
@@ -973,10 +1081,38 @@ class Parser {
         return !!symbol && this.getSymbol(node) === symbol;
     }
 
+    private isInErrorBlock(node: ts.Node): boolean {
+        let target = node;
+        let end = false;
+        let errorBlock = false
+        let previousTarget = node;
+
+        while (!end && target) {
+            if ((ts.isCallExpression(target) && this.getCalledName(target) === "catch" && target.arguments.includes(previousTarget as ts.Expression)) || ts.isCatchClause(target)) {
+                end = true;
+                errorBlock = true;                
+            // for now just stop at the first parent function declaration
+            } else if (ts.isFunctionDeclaration(target)) {
+                end = true;
+            }
+            previousTarget = target;
+            target = target.parent;
+        }
+        return errorBlock;
+    }
+
+    private getCalledName(node: ts.CallExpression): string {
+        if (ts.isPropertyAccessExpression(node.expression)) {
+            return node.expression.name.getText();
+        }
+        return "";
+    }
+
     private processResponseCall(callExpression: CallExpression, methodName: string, container: SearchContainer) {
         const responseInfo: ResponseInfo = { header: {}, body: null };
+        const isInErrorBlock = this.isInErrorBlock(callExpression);
         // default statuscode
-        const statusCode = 200;
+        const statusCode = isInErrorBlock ? 400 : 200;
 
         if (methodName === "append") {
             // by Express v4.11.0+
@@ -1694,8 +1830,8 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
         if (middleware.queryType) {
             Object.assign(genericParameters, middleware.queryType);
         }
-        if (middleware.returnTypes) {
-            currentReturnTypes.push(middleware.returnTypes);
+        if (middleware.returnTypes[200]) {
+            currentReturnTypes.push(middleware.returnTypes[200]);
         }
     }
     const contentCopyString = JSON.stringify(requestObject.content);
@@ -1731,25 +1867,14 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
             }
         }
 
-        if (middleware.returnTypes) {
-            currentReturnTypes.push(middleware.returnTypes);
+        if (middleware.returnTypes[200]) {
+            currentReturnTypes.push(middleware.returnTypes[200]);
         }
 
         pathObject[routerPath.method] = {
             parameters: pathParameters,
             requestBody: pathRequestObject,
-            responses: {
-                200: {
-                    content: {
-                        "application/json": {
-                            schema: {
-                                type: routerPath.middleware.returnTypes && routerPath.middleware.returnTypes.type
-                            }
-                        }
-                    },
-                    description: "",
-                }
-            }
+            responses: toResponses(middleware.returnTypes),
         } as OperationObject;
         paths[normalizePath(absolutePath + routerPath.path)] = pathObject;
     }
@@ -1770,8 +1895,8 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
             if (middleware.queryType && !isEmpty(middleware.queryType)) {
                 setRequestQuery(method, routeParameterObjects, genericParameters, middleware.queryType);
             }
-            if (middleware.returnTypes) {
-                currentReturnTypes.push(middleware.returnTypes);
+            if (middleware.returnTypes[200]) {
+                currentReturnTypes.push(middleware.returnTypes[200]);
             }
 
             // if no parameters are required by this middleware itself, but from a parent middleware
@@ -1794,16 +1919,7 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
             pathObject[method] = {
                 parameters: routeParameterObjects,
                 requestBody: routeRequestObject,
-                responses: {
-                    200: {
-                        content: {
-                            "application/json": {
-                                schema: toSchema(middleware.returnTypes)
-                            }
-                        },
-                        description: "",
-                    }
-                }
+                responses: toResponses(middleware.returnTypes)
             } as OperationObject;
         }
     }
@@ -1855,6 +1971,22 @@ function setRequestQuery(method: string, parameter: ParameterObject[], genericPa
     }
 }
 
+function toResponses(returnTypes: Record<number, TypeResult>): ResponsesObject {
+    const responses: ResponsesObject = {};
+
+    for (const [key, typeResult] of Object.entries(returnTypes)) {
+        responses[Number(key)] = {
+            content: {
+                "application/json": {
+                    schema: toSchema(typeResult)
+                }
+            },
+            description: "",
+        }
+    }
+    return responses;
+}
+
 function toSchema(params?: TypeResult | null): SchemaObject | undefined {
     if (!params) {
         return;
@@ -1876,6 +2008,14 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
             }
         }
         schema.properties = properties;
+    } else if (params.type === "Union") {
+        const union = params as UnionType;
+        const anyOf = union.unionTypes.map(toSchema).filter(v => v) as SchemaObject[];
+        schema.anyOf = anyOf;
+        schema.title = params.type + anyOf.map(v => v.title || v.type).map(v => v.slice(0, 1).toUpperCase() + v.slice(1)).join("")
+    } else if (params.type === "Array") {
+        const array = params as ArrayType;
+        schema.items = toSchema(array.elementType);
     }
     return schema;
 }

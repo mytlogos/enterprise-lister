@@ -15,11 +15,12 @@ import {
     PromiseMultiSingle,
     MultiSingleValue,
     MultiSingleNumber,
-    MediumToc
+    MediumToc,
+    TypedQuery
 } from "../../types";
 import { count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
-import { Query, OkPacket } from "mysql";
+import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
 
 export class MediumContext extends SubContext {
@@ -215,7 +216,7 @@ export class MediumContext extends SubContext {
         });
     }
 
-    public async getAllMediaFull(): Promise<Query> {
+    public async getAllMediaFull(): Promise<TypedQuery<SimpleMedium>> {
         return this.queryStream(
             "SELECT " +
             "id, countryOfOrigin, languageOfOrigin, author, title," +

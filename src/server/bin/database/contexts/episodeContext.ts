@@ -17,7 +17,9 @@ import {
     MultiSingleValue,
     Optional,
     Nullable,
-    UpdateMedium
+    UpdateMedium,
+    TypedQuery,
+    PureEpisode
 } from "../../types";
 import {
     checkIndices,
@@ -34,11 +36,11 @@ import {
 import logger from "../../logger";
 import { MysqlServerError } from "../mysqlError";
 import { escapeLike } from "../storages/storageTools";
-import { Query, OkPacket } from "mysql";
+import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
 
 export class EpisodeContext extends SubContext {
-    public async getAll(uuid: Uuid): Promise<Query> {
+    public async getAll(uuid: Uuid): Promise<TypedQuery<PureEpisode>> {
         return this.queryStream(
             "SELECT episode.id, episode.partialIndex, episode.totalIndex, episode.combiIndex, " +
             "episode.part_id as partId, coalesce(progress, 0) as progress, read_date as readDate " +
@@ -48,9 +50,9 @@ export class EpisodeContext extends SubContext {
         );
     }
 
-    public async getAllReleases(): Promise<Query> {
+    public async getAllReleases(): Promise<TypedQuery<EpisodeRelease>> {
         return this.queryStream(
-            "SELECT episode_id as episodeId, source_type as sourceType, releaseDate, locked, url, title FROM episode_release"
+            "SELECT episode_id as episodeId, source_type as sourceType, toc_id as tocId, releaseDate, locked, url, title FROM episode_release"
         );
     }
 

@@ -192,7 +192,7 @@ export interface SchemaObject {
     anyOf?: Array<SchemaObject | ReferenceObject>;
     oneOf?: Array<SchemaObject | ReferenceObject>;
     not?: Array<SchemaObject | ReferenceObject>;
-    items?: Array<SchemaObject | ReferenceObject>;
+    items?: SchemaObject | ReferenceObject;
     properties?: Record<string, SchemaObject | ReferenceObject>;
     additionalProperties?: boolean | SchemaObject | ReferenceObject;
     description?: string;

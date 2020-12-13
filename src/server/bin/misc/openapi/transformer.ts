@@ -5,7 +5,8 @@ import {
     OperationObject,
     PathItemObject,
     ReferenceObject,
-    MediaTypeObject
+    MediaTypeObject,
+    SchemaObject
 } from "./types";
 import yaml from "js-yaml";
 
@@ -23,7 +24,7 @@ interface TemplateApiMethod {
 }
 
 interface TemplateApiParam {
-    type: any;
+    type: SchemaObject;
     name: string;
 }
 
@@ -36,6 +37,27 @@ export async function generateWebClient(data: OpenApiObject): Promise<void> {
     const keyReg = /\/+/g;
     const validKeyReg = /^[a-z_][a-zA-Z_0-9]*$/;
 
+    function schemaToJSType(schema?: SchemaObject): string | handlebars.SafeString {
+        if (!schema) {
+            return "unknown";
+        } else if (schema.type === "Array") {
+            if (schema.items && "$ref" in schema.items) {
+                return "unknown[]";
+            }
+            const genericType = schemaToJSType(schema.items);
+
+            if (genericType.toString().match(/^\w+$/)) {
+                return new handlebars.SafeString(`${genericType}[]`);
+            }
+            return new handlebars.SafeString(`Array<${genericType}>`);
+        } else if (schema.type === "object") {
+            return schema.title || "any";
+        } else if (schema.type === "Union") {
+            return schema.anyOf ? schema.anyOf.map(v => isRefObj(v) ? v.$ref : schemaToJSType(v)).join(" | ") : "unknown";
+        }
+        return new handlebars.SafeString(schema.type || "unknown");
+    }
+
     handlebars.registerHelper("toKey", (key: string) => {
         return key.replace(keyReg, "_").slice(1);
     });
@@ -46,7 +68,7 @@ export async function generateWebClient(data: OpenApiObject): Promise<void> {
     });
 
     handlebars.registerHelper("toParameter", (param: TemplateApiParam[]) => {
-        return new handlebars.SafeString(param.map(value => `${value.name}: string`).join(", "));
+        return new handlebars.SafeString(param.map(value => `${value.name}: ${schemaToJSType(value.type)}`).join(", "));
     });
 
     handlebars.registerHelper("toQueryParam", (param: TemplateApiParam[]) => {
@@ -56,20 +78,17 @@ export async function generateWebClient(data: OpenApiObject): Promise<void> {
         return new handlebars.SafeString(", { " + param.map(value => value.name).join(", ") + " }");
     });
 
-    handlebars.registerHelper("toReturnType", (returnType?: any) => {
-        if (!returnType) {
-            return "unknown";
-        } else if (returnType.type === "Array") {
-            return new handlebars.SafeString("any[]");
-        } else if (returnType.type === "object") {
-            return "any";
-        }
-        return new handlebars.SafeString(returnType.type || "unknown");
+    handlebars.registerHelper("toProperty", (property: string, schema: SchemaObject) => {
+        return new handlebars.SafeString(`${property}: ${schemaToJSType(schema).toString()};`);
+    });
+
+    handlebars.registerHelper("toReturnType", (returnType?: SchemaObject) => {
+        return schemaToJSType(returnType);
     });
 
     const context: TemplateContext = {
         paths: [],
-        schemata: [],
+        schemata: {},
     }
 
     for (const [key, path] of Object.entries(data.paths)) {
@@ -112,11 +131,8 @@ function toMethod(context: TemplateContext, kebubName: string, method: string, p
             if (isRefObj(value)) {
                 (value as ReferenceObject).$ref
             } else if (value.in === "query") {
-                parameter.push({ type: "", name: value.name });
-
-                if (value.schema && !(isRefObj(value.schema)) && value.schema.type === "object" && value.schema.title) {
-                    context.schemata[value.schema.title] = value.schema;
-                }
+                parameter.push({ type: {type: "string"}, name: value.name });
+                setSchemata(context.schemata, value.schema);
             }
         });
     }
@@ -124,11 +140,8 @@ function toMethod(context: TemplateContext, kebubName: string, method: string, p
         const typeObject: MediaTypeObject = operation.requestBody.content["application/json"]
 
         if (typeObject && typeObject.schema && !(isRefObj(typeObject.schema)) && typeObject.schema.title) {
-            parameter.push({ type: "", name: typeObject.schema.title });
-
-            if (typeObject.schema.type === "object") {
-                context.schemata[typeObject.schema.title] = typeObject.schema;
-            }
+            parameter.push({ type: {type: "string"}, name: typeObject.schema.title });
+            setSchemata(context.schemata, typeObject.schema);
         }
     }
     let returnType = null;
@@ -140,9 +153,7 @@ function toMethod(context: TemplateContext, kebubName: string, method: string, p
         const schema = operation.responses[200].content["application/json"].schema;
         returnType = schema;
 
-        if (schema.type === "object" && schema.title) {
-            context.schemata[schema.title] = schema;
-        }
+        setSchemata(context.schemata, schema);
     }
     return {
         name: method + kebubName,
@@ -151,6 +162,19 @@ function toMethod(context: TemplateContext, kebubName: string, method: string, p
         parameter,
         returnType,
     };
+}
+
+function setSchemata(schemata: any, schema?: SchemaObject | ReferenceObject) {
+    if (schema && !(isRefObj(schema))) {
+        if (schema.type === "object" && schema.title) {
+            schemata[schema.title] = schema;
+            Object.values(schema.properties || {}).forEach(value => setSchemata(schemata, value));
+        }
+        schema.allOf?.forEach(value => setSchemata(schemata, value));
+        schema.anyOf?.forEach(value => setSchemata(schemata, value));
+        schema.oneOf?.forEach(value => setSchemata(schemata, value));
+        setSchemata(schemata, schema.items);
+    }
 }
 
 function isRefObj(value: any): value is ReferenceObject {

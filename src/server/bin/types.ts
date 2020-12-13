@@ -1,5 +1,6 @@
 import { MediaType } from "./tools";
 import { ScrapeType } from "./externals/types";
+import { Query } from "mysql";
 
 export interface SearchResult {
     coverUrl?: string;
@@ -104,6 +105,8 @@ export interface Episode extends SimpleEpisode {
     readDate: Nullable<Date>;
 }
 
+export type PureEpisode = Omit<Episode, "releases">
+
 export interface ReadEpisode {
     episodeId: number;
     readDate: Date;
@@ -202,6 +205,8 @@ export interface ExternalUser {
     lastScrape?: Date;
     cookies?: Nullable<string>;
 }
+
+export type DisplayExternalUser = Omit<ExternalUser, "lastScrape" | "cookies">;
 
 export interface News {
     title: string;
@@ -525,4 +530,9 @@ export enum MilliTime {
     MINUTE = 60000,
     HOUR = 3600000,
     DAY = 86400000
+}
+
+// @ts-expect-error
+export interface TypedQuery<Packet> extends Query {
+    on(ev: "packet", callback: (packet: Packet) => void): Query;
 }

@@ -1,7 +1,6 @@
 import { SubContext } from "./subContext";
-import { Episode, FullPart, MinPart, Part, ShallowPart, SimpleEpisode, Uuid, MultiSingleNumber, Optional, VoidablePromise, SimpleRelease } from "../../types";
+import { Episode, FullPart, MinPart, Part, ShallowPart, SimpleEpisode, Uuid, MultiSingleNumber, Optional, VoidablePromise, SimpleRelease, TypedQuery } from "../../types";
 import { combiIndex, getElseSetObj, multiSingle, separateIndex } from "../../tools";
-import { Query } from "mysql";
 import { MysqlServerError } from "../mysqlError";
 import { storeModifications } from "../sqlTools";
 
@@ -11,7 +10,7 @@ interface MinEpisode {
 }
 
 export class PartContext extends SubContext {
-    public async getAll(): Promise<Query> {
+    public async getAll(): Promise<TypedQuery<MinPart>> {
         return this.queryStream(
             "SELECT id, totalIndex, partialIndex, title, medium_id as mediumId FROM part"
         );

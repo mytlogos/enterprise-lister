@@ -9,7 +9,9 @@ const Methods: { post: string; get: string; put: string; delete: string } = {
 };
 {{#each schemata}}
 interface {{@key}} {
-
+{{#each properties}}
+    {{toProperty @key .}}
+{{/each}}
 }
 {{/each}}
 
