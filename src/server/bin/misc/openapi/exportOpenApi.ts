@@ -72,7 +72,7 @@ interface ExportExpressResult {
 }
 
 interface TypeResult {
-    type: "Array" | "boolean" | "number" | "string" | "object" | "null" | "Union" | "Promise" | "Enum" | "Record";
+    type: "Array" | "boolean" | "number" | "string" | "object" | "null" | "Union" | "Promise" | "Enum" | "Record" | "any";
     /**
      * for literal values
      */
@@ -147,8 +147,8 @@ interface RecordType extends TypeResult {
 // and the possible return types and error codes
 interface MiddlewareResult {
     returnTypes: Record<number, TypeResult>;
-    queryType?: Record<string, null>;
-    bodyType?: Record<string, null>;
+    queryType?: Record<string, TypeResult>;
+    bodyType?: Record<string, TypeResult>;
 }
 
 type HttpMethod = "get" | "delete" | "post" | "put";
@@ -184,8 +184,8 @@ interface ParentRouterResult extends RouterResult {
 // TODO: 08.08.2020 associate the returned router with correct symbol and called function with correct symbol
 
 interface RequestInfo {
-    queryParams: Record<string, any>;
-    bodyParams: any;
+    queryParams: Record<string, TypeResult>;
+    bodyParams: Record<string, TypeResult>;
 }
 
 interface ResponseInfo {
@@ -1160,7 +1160,9 @@ class Parser {
                 if (queryProperties.length) {
                     for (const queryProperty of queryProperties) {
                         // TODO: 10.08.2020 infer type for query
-                        container.requestInfo.queryParams[queryProperty] = {};
+                        container.requestInfo.queryParams[queryProperty] = {
+                            type: "any"
+                        };
                     }
                 } else {
                     log("unknown request.query property: " + requestAccess.getText());
@@ -1171,7 +1173,9 @@ class Parser {
                 if (queryProperties.length) {
                     for (const queryProperty of queryProperties) {
                         // TODO: 10.08.2020 infer type for query
-                        container.requestInfo.bodyParams[queryProperty] = {};
+                        container.requestInfo.bodyParams[queryProperty] = {
+                            type: "any"
+                        };
                     }
                 } else {
                     log("unknown request.body property: " + requestAccess.getText());
@@ -1941,11 +1945,9 @@ function transformToOpenApi(expressApi: ExportExpressResult): OpenApiObject {
 const bodyMethods = ["post", "put", "patch"];
 
 function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolutePath = "/", parentParameters = {}) {
-    const parameterObjects: ParameterObject[] = [];
     const requestObject: RequestBodyObject = {
         content: {}
     };
-    const currentReturnTypes: TypeResult[] = [];
     const genericParameters: Record<string, null> = {
         ...parentParameters
     };
@@ -1957,52 +1959,17 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
         if (middleware.queryType) {
             Object.assign(genericParameters, middleware.queryType);
         }
-        if (middleware.returnTypes[200]) {
-            currentReturnTypes.push(middleware.returnTypes[200]);
-        }
     }
     const contentCopyString = JSON.stringify(requestObject.content);
 
     for (const routerPath of router.paths) {
         const pathObject: PathItemObject = {};
-        const pathParameters: ParameterObject[] = [];
         const pathRequestObject: RequestBodyObject = {
             content: JSON.parse(contentCopyString)
         };
         const middleware = routerPath.middleware;
-
-        if (middleware.bodyType && !isEmpty(middleware.bodyType)) {
-            setRequestBody(pathRequestObject, genericParameters, middleware.bodyType);
-        }
-        if (middleware.queryType && !isEmpty(middleware.queryType)) {
-            setRequestQuery(routerPath.method, pathParameters, genericParameters, middleware.queryType);
-        }
-
-        // if no parameters are required by this middleware itself, but from a parent middleware
-        if (!middleware.queryType && !middleware.bodyType && Object.keys(genericParameters).length) {
-            const lowerMethod = routerPath.method.toLowerCase();
-
-            if (bodyMethods.includes(lowerMethod)) {
-                setRequestBody(pathRequestObject, genericParameters, {});
-            } else {
-                for (const queryTypeKey of Object.keys(genericParameters)) {
-                    pathParameters.push({
-                        in: "query",
-                        name: queryTypeKey,
-                    });
-                }
-            }
-        }
-
-        if (middleware.returnTypes[200]) {
-            currentReturnTypes.push(middleware.returnTypes[200]);
-        }
-
-        pathObject[routerPath.method] = {
-            parameters: pathParameters,
-            requestBody: pathRequestObject,
-            responses: toResponses(middleware.returnTypes),
-        } as OperationObject;
+        const operation = setPathObject(middleware, routerPath.method, pathRequestObject, genericParameters);
+        pathObject[routerPath.method] = operation;
         paths[normalizePath(absolutePath + routerPath.path)] = pathObject;
     }
 
@@ -2014,40 +1981,10 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
             const routeRequestObject: RequestBodyObject = {
                 content: JSON.parse(contentCopyString)
             };
-            const routeParameterObjects: ParameterObject[] = [...parameterObjects];
 
-            if (middleware.bodyType && !isEmpty(middleware.bodyType)) {
-                setRequestBody(routeRequestObject, genericParameters, middleware.bodyType);
-            }
-            if (middleware.queryType && !isEmpty(middleware.queryType)) {
-                setRequestQuery(method, routeParameterObjects, genericParameters, middleware.queryType);
-            }
-            if (middleware.returnTypes[200]) {
-                currentReturnTypes.push(middleware.returnTypes[200]);
-            }
-
-            // if no parameters are required by this middleware itself, but from a parent middleware
-            if (!middleware.queryType && !middleware.bodyType && Object.keys(genericParameters).length) {
-                const lowerMethod = method.toLowerCase();
-
-                if (bodyMethods.includes(lowerMethod)) {
-                    setRequestBody(routeRequestObject, genericParameters, {});
-                } else {
-                    for (const queryTypeKey of Object.keys(genericParameters)) {
-                        routeParameterObjects.push({
-                            in: "query",
-                            name: queryTypeKey,
-                        });
-                    }
-                }
-            }
-
+            const operation = setPathObject(middleware, method, routeRequestObject, genericParameters);
             // @ts-expect-error
-            pathObject[method] = {
-                parameters: routeParameterObjects,
-                requestBody: routeRequestObject,
-                responses: toResponses(middleware.returnTypes)
-            } as OperationObject;
+            pathObject[method] = operation;
         }
     }
     const parentRouter = router as ParentRouterResult;
@@ -2059,8 +1996,42 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
     }
 }
 
-function setRequestBody(pathRequestObject: RequestBodyObject, genericParameters: Record<string, null>, bodyType: Record<string, null>): void {
-    // @ts-expect-error
+function setPathObject(middleware: MiddlewareResult, method: string, request: RequestBodyObject, genericParams: Record<string, null>): OperationObject {
+    const hasBodyParams = middleware.bodyType && !isEmpty(middleware.bodyType);
+    const hasQueryParams = middleware.queryType && !isEmpty(middleware.queryType);
+    const pathParameters: ParameterObject[] = [];
+
+    if (hasBodyParams) {
+        setRequestBody(request, genericParams, middleware.bodyType as Record<string, TypeResult>);
+    }
+    if (hasQueryParams) {
+        setRequestQuery(method, pathParameters, genericParams, middleware.queryType as Record<string, TypeResult>);
+    }
+
+    // if no parameters are required by this middleware itself, but from a parent middleware
+    if (!hasBodyParams && !hasQueryParams && Object.keys(genericParams).length) {
+        const lowerMethod = method.toLowerCase();
+
+        if (bodyMethods.includes(lowerMethod)) {
+            setRequestBody(request, genericParams, {});
+        } else {
+            for (const queryTypeKey of Object.keys(genericParams)) {
+                pathParameters.push({
+                    in: "query",
+                    name: queryTypeKey,
+                });
+            }
+        }
+    }
+
+    return {
+        parameters: pathParameters,
+        requestBody: request,
+        responses: toResponses(middleware.returnTypes),
+    } as OperationObject;
+}
+
+function setRequestBody(pathRequestObject: RequestBodyObject, genericParameters: Record<string, null>, bodyType: Record<string, TypeResult>): void {
     pathRequestObject.content["application/json"] = {
         schema: {
             type: "object",
@@ -2073,7 +2044,7 @@ function setRequestBody(pathRequestObject: RequestBodyObject, genericParameters:
     } as MediaTypeObject;
 }
 
-function setRequestQuery(method: string, parameter: ParameterObject[], genericParameters: Record<string, null>, queryType: Record<string, null>): void {
+function setRequestQuery(method: string, parameter: ParameterObject[], genericParameters: Record<string, null>, queryType: Record<string, TypeResult>): void {
     if (bodyMethods.includes(method)) {
         log("Query Parameter supplied in a Body Method!");
     }

@@ -117,6 +117,10 @@ abstract class TemplateGenerator {
                 if (schema.title) {
                     parameter.push({ type: { type: "string" }, name: schema.title });
                     this.setSchemata(context.schemata, schema);
+                } else {
+                    Object.keys(schema.properties || {}).forEach(value => {
+                        parameter.push({ type: { type: "string" }, name: value });
+                    })
                 }
             }
         }
@@ -225,16 +229,30 @@ class JSWebClientGenerator extends TemplateGenerator {
             key = key.replace(this.keyReg, "_").slice(1);
             return new handlebars.SafeString(this.validKeyReg.test(key) ? "." + key : `["${key}"]`);
         });
+        // these variables are automatically included if necessary in the queryServer method
+        const autoIncluded = ["session", "uuid"];
 
         handlebars.registerHelper("toParameter", (param: TemplateApiParam[]) => {
-            return new handlebars.SafeString(param.map(value => `${value.name}: ${this.schemaToJSType(value.type)}`).join(", "));
+            return new handlebars.SafeString(
+                param
+                    .filter(value => !autoIncluded.includes(value.name))
+                    .map(value => `${value.name}: ${this.schemaToJSType(value.type)}`)
+                    .join(", ")
+            );
         });
 
         handlebars.registerHelper("toQueryParam", (param: TemplateApiParam[]) => {
             if (!param.length) {
                 return "";
             }
-            return new handlebars.SafeString(", { " + param.map(value => value.name).join(", ") + " }");
+            return new handlebars.SafeString(
+                ", { " + 
+                param
+                    .filter(value => !autoIncluded.includes(value.name))
+                    .map(value => value.name)
+                    .join(", ") + 
+                " }"
+            );
         });
 
         handlebars.registerHelper("toProperty", (property: string, schema: SchemaObject, requiredFields: string[]) => {
