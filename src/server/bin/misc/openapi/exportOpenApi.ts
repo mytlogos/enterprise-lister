@@ -1033,8 +1033,10 @@ class Parser {
             }
             if (ts.isFunctionLike(initializer)) {
                 stackElement = this.createStackElement(initializer, valueDeclaration.name);
-            } else {
+            } else if (ts.isIdentifierOrPrivateIdentifier(initializer)) {
                 // TODO: 10.08.2020 middleware aliases like putProgress
+                return this.middlewareToResult(initializer);
+            } else {
                 return middlewareResult;
             }
         } else if (ts.isFunctionDeclaration(valueDeclaration)) {
