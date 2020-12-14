@@ -623,7 +623,7 @@ export const postExternalUser: Handler = (req, res) => {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResultCall(res, async () => {
+    sendResult(res, (async () => {
         const listManager = factory(Number(externalUser.type));
         const valid = await listManager.test({ identifier: externalUser.identifier, password: externalUser.pwd });
 
@@ -634,7 +634,7 @@ export const postExternalUser: Handler = (req, res) => {
         externalUser.cookies = listManager.stringifyCookies();
 
         return externalUserStorage.addExternalUser(uuid, externalUser);
-    });
+    })());
 };
 export const deleteExternalUser: Handler = (req, res) => {
     const { externalUuid, uuid } = req.body;
