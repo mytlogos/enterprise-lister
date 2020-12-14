@@ -7,10 +7,11 @@ import {
     ReferenceObject,
     MediaTypeObject,
     SchemaObject,
-    enumNameSymbol
+    enumNameSymbol,
+    keyTypeSymbol
 } from "./types";
 import yaml from "js-yaml";
-import { isString } from "validate.js";
+import { isString, isBoolean } from "validate.js";
 
 interface TemplateApiPath {
     path: string;
@@ -84,6 +85,10 @@ abstract class TemplateGenerator {
             schema.allOf?.forEach(value => this.setSchemata(schemata, value));
             schema.anyOf?.forEach(value => this.setSchemata(schemata, value));
             schema.oneOf?.forEach(value => this.setSchemata(schemata, value));
+
+            if (typeof(schema.additionalProperties) === "object" && !isRefObj(schema.additionalProperties)) {
+                this.setSchemata(schemata, schema.additionalProperties);
+            }
             this.setSchemata(schemata, schema.items);
         }
     }
@@ -170,12 +175,39 @@ class JSWebClientGenerator extends TemplateGenerator {
                 return new handlebars.SafeString(`${genericType}[]`);
             }
             return new handlebars.SafeString(`Array<${genericType}>`);
-        } else if (schema.type === "object" || schema.type === "Enum") {
+        } else if (schema.type === "Enum") {
             return schema.title || "unknown";
+        } else if (schema.type === "object") {
+
+            if (schema.title) {
+                return schema.title;
+            }
+
+            const entries = Object.entries(schema.properties || {});
+
+            if (!entries.length) {
+                return "unknown";
+            }
+
+            const properties = entries.map(entry => {
+                const subSchema = isRefObj(entry[1]) ? this.resolveReference(entry[1]) : entry[1];
+                return `${entry[0]}: ${this.schemaToJSType(subSchema)}`;
+            }).join("; ");
+            return new handlebars.SafeString(`{ ${properties} }`);
         } else if (schema.type === "Union") {
             return schema.anyOf ? schema.anyOf.map(v => isRefObj(v) ? v.$ref : this.schemaToJSType(v)).join(" | ") : "unknown";
         } else if (schema.type === "string" && schema.format === "date-time") {
             return "Date";
+        } else if (schema.type === "Record") {
+            const valueSchema = schema.additionalProperties;
+            // @ts-expect-error
+            const keyType: SchemaObject = valueSchema[keyTypeSymbol];
+            const valueType = isRefObj(valueSchema)
+                ? this.resolveReference(valueSchema)
+                : isBoolean(valueSchema)
+                    ? "string"
+                    : this.schemaToJSType(valueSchema as SchemaObject);
+            return new handlebars.SafeString(`Record<${this.schemaToJSType(keyType)}, ${valueType}>`);
         }
         return new handlebars.SafeString(schema.type || "unknown");
     }
@@ -205,8 +237,8 @@ class JSWebClientGenerator extends TemplateGenerator {
             return new handlebars.SafeString(", { " + param.map(value => value.name).join(", ") + " }");
         });
 
-        handlebars.registerHelper("toProperty", (property: string, schema: SchemaObject) => {
-            return new handlebars.SafeString(`${property}: ${this.schemaToJSType(schema).toString()};`);
+        handlebars.registerHelper("toProperty", (property: string, schema: SchemaObject, requiredFields: string[]) => {
+            return new handlebars.SafeString(`${property}${requiredFields.includes(property) ? "" : "?"}: ${this.schemaToJSType(schema).toString()};`);
         });
 
         handlebars.registerHelper("toEnumMember", (value: any, index: number, enumValue: any[]) => {

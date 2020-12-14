@@ -1,7 +1,6 @@
 import ts from "typescript";
 import {
     CallExpression,
-    EnumMember,
     FunctionDeclaration,
     Identifier,
     isParameter,
@@ -25,7 +24,8 @@ import {
     OperationObject,
     SchemaObject,
     ResponsesObject,
-    enumNameSymbol
+    enumNameSymbol,
+    keyTypeSymbol
 } from "./types";
 
 interface DocEntry {
@@ -72,11 +72,13 @@ interface ExportExpressResult {
 }
 
 interface TypeResult {
-    type: "Array" | "boolean" | "number" | "string" | "object" | "null" | "Union" | "Promise" | "Enum";
+    type: "Array" | "boolean" | "number" | "string" | "object" | "null" | "Union" | "Promise" | "Enum" | "Record";
     /**
      * for literal values
      */
     literalValue?: any;
+    optional?: boolean;
+    nullable?: boolean;
 }
 
 interface UnionType extends TypeResult {
@@ -135,6 +137,12 @@ interface EnumType extends TypeResult {
     literalValue?: string;
 }
 
+interface RecordType extends TypeResult {
+    type: "Record";
+    keyType: TypeResult;
+    valueType: TypeResult;
+}
+
 // this should hold the requirements on the request
 // and the possible return types and error codes
 interface MiddlewareResult {
@@ -185,7 +193,7 @@ interface ResponseInfo {
     body: Nullable<TypeResult>;
 }
 
-type TotalResponseInfo = Record<number,  ResponseInfo>;
+type TotalResponseInfo = Record<number, ResponseInfo>;
 
 interface StackElement {
     requestSymbol?: ts.Symbol;
@@ -443,27 +451,27 @@ class TypeInferrer {
 
         if (signature) {
             const returnType = this.checker.getReturnTypeOfSignature(signature);
-            return this.typeToResult(returnType);
+            return this.typeToResult(returnType, declaration.type);
         } else {
             log("?");
         }
         return null;
     }
 
-    private typeToResult(type: ts.Type): Nullable<TypeResult> {
+    private typeToResult(type: ts.Type, typeNode?: ts.TypeNode): Nullable<TypeResult> {
         try {
             if (this.counter > 10) {
                 log("Type resolving goes too deep for: " + this.checker.typeToString(type))
                 return null;
             }
             this.counter++;
-            return this.recursingTypeToResult(type);
+            return this.recursingTypeToResult(type, typeNode);
         } finally {
             this.counter--;
         }
     }
 
-    private recursingTypeToResult(type: ts.Type): Nullable<TypeResult> {
+    private recursingTypeToResult(type: ts.Type, typeNode?: ts.TypeNode): Nullable<TypeResult> {
         const typeString = this.checker.typeToString(type);
 
         if (typeString === "number") {
@@ -506,36 +514,47 @@ class TypeInferrer {
             } as StringType;
         }
 
+        if (type.isUnionOrIntersection()) {
+            const subTypes = type.types.map(subType => this.typeToResult(subType));
+            if (subTypes.some(value => !value)) {
+                log("Failed to resolve UnionOrIntersection Type");
+                return null;
+            }
+            if (type.isUnion()) {
+                return {
+                    type: "Union",
+                    unionTypes: this.filterUniqueType(subTypes as TypeResult[]),
+                } as UnionType;
+            } else {
+                const intersection = (type as ts.IntersectionType);
+
+                // for now assume an intersection happens only on object types
+                if (subTypes.some(v => v?.type !== "object")) {
+                    log("Failed to resolve intersection. Not all participants resolved to object types!");
+                    return null;
+                }
+                const name = intersection.symbol?.escapedName || intersection.aliasSymbol?.escapedName || "";
+                const properties: ObjectProperties = Object.assign({}, ...(subTypes as ObjectType[]).map(v => v.properties));
+                return {
+                    name,
+                    type: "object",
+                    properties,
+                } as ObjectType;
+            }
+        } else {
+            const constraint = type.getConstraint();
+
+            if (constraint?.isUnionOrIntersection()) {
+                return this.typeToResult(constraint);
+            }
+        }
+
         // TODO: 12.08.2020 literalValue
         const symbol = type.getSymbol();
 
         if (!symbol) {
-            if (type.isUnionOrIntersection()) {
-                if (type.isUnion()) {
-                    const subTypes = type.types.map(subType => this.typeToResult(subType));
-                    if (subTypes.some(value => !value)) {
-                        log("Failed to resolve union type");
-                        return null;
-                    }
-
-                    return {
-                        type: "Union",
-                        unionTypes: this.filterUniqueType(subTypes as TypeResult[]),
-                    } as UnionType;
-                } else {
-                    // for now assume an intersection happens only on object types
-                    return this.getObjectType(type, (type as ts.Type).getApparentProperties());
-                }
-            } else {
-                const constraint = type.getConstraint();
-
-                if (constraint?.isUnionOrIntersection()) {
-                    return this.typeToResult(constraint);
-                } else {
-                    log("Failed to resolve type for: " + typeString);
-                    return null;
-                }
-            }
+            log("No Symbol for Type");
+            return null;
         }
         if (ts.isFunctionLike(symbol.valueDeclaration)) {
             return this.inferFunctionLike(symbol.valueDeclaration);
@@ -545,7 +564,7 @@ class TypeInferrer {
             const typeArguments = this.checker.getTypeArguments(type);
 
             if (typeArguments.length === 1) {
-                return this.typeToResult(typeArguments[0]);
+                return this.typeToResult(typeArguments[0], this.getFirstTypeNodeArgument(typeNode));
             } else {
                 log("Promise should have only one Type argument! Got: " + typeArguments.length);
                 return null;
@@ -560,7 +579,7 @@ class TypeInferrer {
             if (typeArguments.length === 1) {
                 return {
                     type: "Array",
-                    elementType: this.typeToResult(typeArguments[0]),
+                    elementType: this.typeToResult(typeArguments[0], this.getFirstTypeNodeArgument(typeNode)),
                 } as ArrayType;
             } else {
                 log("TypedQuery should have only one Type argument! Got: " + typeArguments.length);
@@ -584,10 +603,150 @@ class TypeInferrer {
                 return null;
             }
         }
+        if (type.aliasSymbol && type.aliasSymbol.name === "Record") {
+            return this.convertRecordType(type);
+        }
+        if (type.aliasSymbol && type.aliasSymbol.name === "Partial") {
+            return this.convertPartialType(type);
+        }
+        if (type.aliasSymbol && type.aliasSymbol.name === "Pick") {
+            return this.convertPickType(type, typeNode);
+        }
         if (symbol.valueDeclaration && ts.isEnumDeclaration(symbol.valueDeclaration)) {
             return this.getEnumType(type, symbol);
         }
         return this.getObjectType(type, this.checker.getPropertiesOfType(type));
+    }
+
+    private convertRecordType(type: ts.Type) {
+        const keyType = type.aliasTypeArguments && type.aliasTypeArguments[0];
+        const valueType = type.aliasTypeArguments && type.aliasTypeArguments[1];
+
+        if (!keyType || !valueType) {
+            log("Missing either key or alias type for Record!");
+            return null;
+        }
+        return {
+            type: "Record",
+            keyType: this.typeToResult(keyType),
+            valueType: this.typeToResult(valueType),
+        } as RecordType;
+    }
+
+    private convertPartialType(type: ts.Type) {
+        const keyType = type.aliasTypeArguments && type.aliasTypeArguments[0];
+
+        if (!keyType) {
+            log("Missing type parameter for Partial!");
+            return null;
+        }
+        const result = this.typeToResult(keyType);
+
+        if (!result || result.type !== "object") {
+            log("Expected Object Parameter for Partial");
+            return null;
+        }
+        Object.values((result as ObjectType).properties).forEach(value => {
+            if (value) {
+                value.optional = true;
+            }
+        });
+        return result;
+    }
+
+    private convertPickType(type: ts.Type, typeNode?: ts.TypeNode) {
+        const targetType = type.aliasTypeArguments && type.aliasTypeArguments[0];
+        const keysType = type.aliasTypeArguments && type.aliasTypeArguments[1];
+
+        if (!targetType || !keysType) {
+            log("Missing target or keys type parameter for Pick!");
+            return null;
+        }
+        if (!keysType.isUnion() && !isStringLiteralType(keysType)) {
+            log("Cannot resolve Pick if keystype is not an string or union type");
+            return null;
+        }
+        const result = this.typeToResult(targetType);
+
+        if (!result || result.type !== "object") {
+            log("Expected Object Target Parameter for Pick");
+            return null;
+        }
+        const properties = (result as ObjectType).properties;
+        const pickedProperties: ObjectProperties = {};
+
+        if (keysType.isUnion()) {
+            for (const keyType of keysType.types) {
+                if (keyType.isStringLiteral()) {
+                    pickedProperties[keyType.value] = properties[keyType.value];
+                }
+            }
+        } else {
+            pickedProperties[keysType.value] = properties[keysType.value];
+        }
+        if (typeNode) {
+            (result as ObjectType).name = (typeNode as ts.TypeReferenceNode).typeName.getText();
+        }
+        return {
+            ...result,
+            properties: pickedProperties
+        } as ObjectType;
+    }
+
+    private getFirstTypeNodeArgument(typeNode?: ts.TypeNode): ts.TypeNode | undefined {
+        if (typeNode) {
+            const typeArguments = (typeNode as ts.NodeWithTypeArguments).typeArguments
+
+            if (typeArguments) {
+                return typeArguments[0];
+            }
+        }
+    }
+
+    /**
+     * Debugging Code for displaying most information concerning a type itself
+     * 
+     * @param type type to get info from
+     */
+    private typeInfo(type: ts.Type): any {
+        return {
+            type,
+            name: this.checker.typeToString(type),
+            flags: this.getTypeFlags(type),
+            symbolName: type.symbol && this.checker.symbolToString(type.symbol),
+            symbolFlags: type.symbol && this.getSymbolFlags(type.symbol),
+            getFlags: type.getFlags(),
+            getSymbol: type.getSymbol(),
+            getProperties: type.getProperties(),
+            getApparentProperties: type.getApparentProperties(),
+            getCallSignatures: type.getCallSignatures(),
+            getConstructSignatures: type.getConstructSignatures(),
+            getStringIndexType: type.getStringIndexType(),
+            getNumberIndexType: type.getNumberIndexType(),
+            getBaseTypes: type.getBaseTypes(),
+            getNonNullableType: type.getNonNullableType(),
+            getConstraint: type.getConstraint(),
+            getDefault: type.getDefault(),
+            isUnion: type.isUnion(),
+            isIntersection: type.isIntersection(),
+            isUnionOrIntersection: type.isUnionOrIntersection(),
+            isLiteral: type.isLiteral(),
+            isStringLiteral: type.isStringLiteral(),
+            isNumberLiteral: type.isNumberLiteral(),
+            isTypeParameter: type.isTypeParameter(),
+            isClassOrInterface: type.isClassOrInterface(),
+            isClass: type.isClass(),
+            typeArguments: this.checker.getTypeArguments(type as ts.TypeReference),
+            widenedType: this.checker.getWidenedType(type),
+            apparentType: this.checker.getApparentType(type),
+            defaultFromTypeParameter: this.checker.getDefaultFromTypeParameter(type),
+            getBaseConstraintOfType: this.checker.getBaseConstraintOfType(type),
+            getAugmentedPropertiesOfType: this.checker.getAugmentedPropertiesOfType(type),
+            stringIndexInfoOfType: this.checker.getIndexInfoOfType(type, ts.IndexKind.String),
+            numberIndexInfoOfType: this.checker.getIndexInfoOfType(type, ts.IndexKind.Number),
+            stringIndexTypeOfType: this.checker.getIndexTypeOfType(type, ts.IndexKind.String),
+            numberIndexTypeOfType: this.checker.getIndexTypeOfType(type, ts.IndexKind.Number),
+        };
     }
 
     private getTypeFlags(type: ts.Type): string[] {
@@ -739,7 +898,7 @@ class TypeInferrer {
         return {
             type: "object",
             properties,
-            name,
+            name: name === "__type" ? "" : name,
         } as ObjectType;
     }
 
@@ -1031,7 +1190,7 @@ class Parser {
         for (let callExpression of callsOnResponse) {
             // there may be a chain call on response variable
             // so go from innermost callexpression to outermost callexpression
-            while(callExpression  && ts.isCallExpression(callExpression)) {
+            while (callExpression && ts.isCallExpression(callExpression)) {
                 const identifier = getFirstCallIdentifier(callExpression);
 
                 if (!identifier) {
@@ -1105,8 +1264,8 @@ class Parser {
         while (!end && target) {
             if ((ts.isCallExpression(target) && this.getCalledName(target) === "catch" && target.arguments.includes(previousTarget as ts.Expression)) || ts.isCatchClause(target)) {
                 end = true;
-                errorBlock = true;                
-            // for now just stop at the first parent function declaration
+                errorBlock = true;
+                // for now just stop at the first parent function declaration
             } else if (ts.isFunctionDeclaration(target)) {
                 end = true;
             }
@@ -1971,6 +2130,7 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
             return schema;
         }
         const properties: Record<string, SchemaObject> = {};
+        const requiredProperties = [];
 
         for (const [key, value] of Object.entries(obj.properties)) {
             const property_schema = toSchema(value);
@@ -1978,8 +2138,15 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
             if (property_schema) {
                 properties[key] = property_schema;
             }
+            if (value && !value.optional) {
+                requiredProperties.push(key);
+            }
         }
         schema.properties = properties;
+
+        if (requiredProperties.length) {
+            schema.required = requiredProperties;
+        }
     } else if (params.type === "Union") {
         const union = params as UnionType;
         const anyOf = union.unionTypes.map(toSchema).filter(v => v) as SchemaObject[];
@@ -2001,6 +2168,12 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
             memberNames.push(v[0]);
         });
         schema.enum = enumValues;
+    } else if (params.type === "Record") {
+        const record = params as RecordType;
+        const valueSchema = toSchema(record.valueType);
+        // @ts-expect-error
+        valueSchema[keyTypeSymbol] = toSchema(record.keyType);
+        schema.additionalProperties = valueSchema;
     }
     return schema;
 }

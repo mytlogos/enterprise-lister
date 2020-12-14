@@ -105,7 +105,7 @@ export interface Episode extends SimpleEpisode {
     readDate: Nullable<Date>;
 }
 
-export type PureEpisode = Omit<Episode, "releases">
+export type PureEpisode = Omit<Episode, "releases">;
 
 export interface ReadEpisode {
     episodeId: number;
@@ -125,6 +125,8 @@ export interface EpisodeRelease extends SimpleRelease {
     sourceType?: string;
     tocId?: number;
 }
+
+export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">
 
 export interface DisplayRelease {
     episodeId: number;
@@ -154,6 +156,10 @@ export interface MediumRelease {
 export interface MinList {
     name: string;
     medium: number;
+}
+
+export type UserList = MinList & {
+    id: number;
 }
 
 export interface StorageList extends MinList {
@@ -196,6 +202,8 @@ export interface ExternalList {
     items: number[];
 }
 
+export type PureExternalList = Omit<ExternalList, "items">;
+
 export interface ExternalUser {
     localUuid: Uuid;
     uuid: Uuid;
@@ -207,6 +215,7 @@ export interface ExternalUser {
 }
 
 export type DisplayExternalUser = Omit<ExternalUser, "lastScrape" | "cookies">;
+export type PureExternalUser = Omit<DisplayExternalUser, "lists">;
 
 export interface News {
     title: string;
@@ -217,6 +226,8 @@ export interface News {
     mediumId?: number;
     mediumTitle?: number;
 }
+
+export type PureNews = Omit<News, "mediumId" | "mediumTitle">;
 
 export interface NewsResult {
     link: string;
@@ -535,4 +546,36 @@ export enum MilliTime {
 // @ts-expect-error
 export interface TypedQuery<Packet> extends Query {
     on(ev: "packet", callback: (packet: Packet) => void): Query;
+}
+
+export interface ListMedia {
+    list: List[] | List;
+    media: Medium[];
+}
+
+export interface DataStats {
+    media: Record<number, Record<number, { episodeCount: number; episodeSum: number; releaseCount: number }>>;
+    mediaStats: Record<number, { tocs: number }>;
+    lists: Record<number, number[]>;
+    extLists: Record<number, number[]>;
+    extUser: Record<string, number[]>;
+}
+
+export interface NewData {
+    tocs: FullMediumToc[];
+    media: SimpleMedium[];
+    releases: PureDisplayRelease[];
+    episodes: PureEpisode[];
+    parts: MinPart[];
+    lists: UserList[];
+    extLists: PureExternalList[];
+    extUser: PureExternalUser[];
+    mediaInWait: MediumInWait[];
+    news: PureNews[];
+}
+
+export interface MediumInWait {
+    title: string;
+    medium: MediaType;
+    link: string;
 }

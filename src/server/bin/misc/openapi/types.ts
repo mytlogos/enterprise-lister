@@ -353,3 +353,4 @@ export interface ContactObject {
 }
 
 export const enumNameSymbol = Symbol("enumName");
+export const keyTypeSymbol = Symbol("keyType");

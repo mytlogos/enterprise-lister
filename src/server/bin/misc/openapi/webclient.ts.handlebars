@@ -11,7 +11,7 @@ const Methods: { post: string; get: string; put: string; delete: string } = {
 {{#if (isType . "object")}}
 interface {{@key}} {
 {{#each properties}}
-    {{toProperty @key .}}
+    {{toProperty @key . ../required}}
 {{/each}}
 }
 {{/if}}
