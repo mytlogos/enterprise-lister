@@ -9,14 +9,14 @@ const Methods: { post: string; get: string; put: string; delete: string } = {
 };
 {{#each schemata}}
 {{#if (isType . "object")}}
-interface {{@key}} {
+export interface {{@key}} {
 {{#each properties}}
     {{toProperty @key . ../required}}
 {{/each}}
 }
 {{/if}}
 {{#if (isType . "Enum")}}
-enum {{@key}} {
+export enum {{@key}} {
 {{#each enum}}
     {{toEnumMember . @index ../enum}}
 {{/each}}
