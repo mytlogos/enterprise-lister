@@ -214,7 +214,7 @@ export interface SchemaObject {
      */
     format?: string;
     default?: any;
-    nullable?: string;
+    nullable?: boolean;
     discriminator?: DiscriminatorObject;
     readOnly?: boolean;
     writeOnly?: boolean;
