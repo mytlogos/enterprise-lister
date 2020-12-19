@@ -253,13 +253,14 @@ class JSWebClientGenerator extends TemplateGenerator {
         });
 
         handlebars.registerHelper("toQueryParam", (param: TemplateApiParam[]) => {
+            param = param.filter(value => !autoIncluded.includes(value.name));
+
             if (!param.length) {
                 return "";
             }
             return new handlebars.SafeString(
                 ", { " + 
                 param
-                    .filter(value => !autoIncluded.includes(value.name))
                     .map(value => value.name)
                     .join(", ") + 
                 " }"
