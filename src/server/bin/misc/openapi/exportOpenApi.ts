@@ -1963,19 +1963,19 @@ function routerResultToOpenApi(router: RouterResult, paths: PathsObject, absolut
     const contentCopyString = JSON.stringify(requestObject.content);
 
     for (const routerPath of router.paths) {
-        const pathObject: PathItemObject = {};
+        const currentPath = normalizePath(absolutePath + routerPath.path);
+        const pathObject: PathItemObject = paths[currentPath] ? paths[currentPath] : (paths[currentPath] = {});
         const pathRequestObject: RequestBodyObject = {
             content: JSON.parse(contentCopyString)
         };
         const middleware = routerPath.middleware;
         const operation = setPathObject(middleware, routerPath.method, pathRequestObject, genericParameters);
         pathObject[routerPath.method] = operation;
-        paths[normalizePath(absolutePath + routerPath.path)] = pathObject;
     }
 
     for (const [pathKey, routeValue] of Object.entries(router.routes)) {
         const currentPath = normalizePath(absolutePath + pathKey);
-        const pathObject: PathItemObject = paths[currentPath] = {};
+        const pathObject: PathItemObject = paths[currentPath] ? paths[currentPath] : (paths[currentPath] = {});
 
         for (const [method, middleware] of Object.entries(routeValue)) {
             const routeRequestObject: RequestBodyObject = {
@@ -2122,9 +2122,9 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
         }
     } else if (params.type === "Union") {
         const union = params as UnionType;
-        const anyOf = union.unionTypes.map(toSchema).filter(v => v) as SchemaObject[];
-        schema.anyOf = anyOf;
-        schema.title = params.type + anyOf.map(v => v.title || v.type).map(v => v.slice(0, 1).toUpperCase() + v.slice(1)).join("")
+        const oneOf = union.unionTypes.map(toSchema).filter(v => v) as SchemaObject[];
+        schema.oneOf = oneOf;
+        schema.title = params.type + oneOf.map(v => v.title || v.type).map(v => v.slice(0, 1).toUpperCase() + v.slice(1)).join("")
     } else if (params.type === "Array") {
         const array = params as ArrayType;
         schema.items = toSchema(array.elementType);
