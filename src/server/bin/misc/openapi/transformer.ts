@@ -36,6 +36,24 @@ interface TemplateContext {
     schemata: Record<string, any>;
 }
 
+export function resolveReference(root: OpenApiObject, reference: ReferenceObject): SchemaObject {
+    // check if it refers to current root
+    if (reference.$ref.startsWith("#")) {
+        if (reference.$ref.startsWith("#/components/schemas/")) {
+            if (!root.components?.schemas) {
+                throw Error("Unable to Resolve Reference: " + reference.$ref + ", missing schemata");
+            }
+            const schema = root.components.schemas[reference.$ref.slice("#/components/schemas/".length)]
+
+            // for now do not recursively check reference
+            if (schema && !isRefObj(schema)) {
+                return schema;
+            }
+        }
+    }
+    throw Error("Unable to Resolve Reference: " + reference.$ref);
+}
+
 export async function generateWebClient(data: Readonly<OpenApiObject>): Promise<void> {
     return new JSWebClientGenerator(data).generate()
 }
@@ -52,21 +70,11 @@ abstract class TemplateGenerator {
     }
 
     protected resolveReference(reference: ReferenceObject): SchemaObject {
-        // check if it refers to current root
-        if (reference.$ref.startsWith("#")) {
-            if (reference.$ref.startsWith("#/components/schemas/")) {
-                if (!this.root.components?.schemas) {
-                    throw Error("Unable to Resolve Reference: " + reference.$ref + ", missing schemata");
-                }
-                const schema = this.root.components.schemas[reference.$ref.slice("#/components/schemas/".length)]
+        return resolveReference(this.root, reference);
+    }
 
-                // for now do not recursively check reference
-                if (schema && !isRefObj(schema)) {
-                    return schema;
-                }
-            }
-        }
-        throw Error("Unable to Resolve Reference: " + reference.$ref);
+    private getSchema(value?: SchemaObject | ReferenceObject): SchemaObject | undefined {
+        return value && isRefObj(value) ? this.resolveReference(value) : value;
     }
 
     private setSchemata(schemata: any, schema?: SchemaObject | ReferenceObject) {
@@ -101,7 +109,8 @@ abstract class TemplateGenerator {
                 if (isRefObj(value)) {
                     this.resolveReference(value);
                 } else if (value.in === "query") {
-                    parameter.push({ type: { type: "string" }, name: value.name });
+                    const schema = this.getSchema(value.schema) || { type: "string" };
+                    parameter.push({ type: schema, name: value.name });
                     this.setSchemata(context.schemata, value.schema);
                 }
             });
@@ -110,16 +119,18 @@ abstract class TemplateGenerator {
             const typeObject: MediaTypeObject = operation.requestBody.content["application/json"]
 
             if (typeObject && typeObject.schema) {
-                const schema = isRefObj(typeObject.schema)
-                    ? this.resolveReference(typeObject.schema)
-                    : typeObject.schema;
+                const schema = this.getSchema(typeObject.schema) as SchemaObject;
 
                 if (schema.title) {
-                    parameter.push({ type: { type: "string" }, name: schema.title });
+                    parameter.push({ type: schema, name: schema.title });
                     this.setSchemata(context.schemata, schema);
                 } else {
-                    Object.keys(schema.properties || {}).forEach(value => {
-                        parameter.push({ type: { type: "string" }, name: value });
+                    Object.entries(schema.properties || {}).forEach(value => {
+                        const [name, propRefSchema] = value;
+                        const propSchema = this.getSchema(propRefSchema) as SchemaObject;
+
+                        this.setSchemata(context.schemata, propSchema);
+                        parameter.push({ type: propSchema, name });
                     })
                 }
             }
@@ -199,7 +210,7 @@ class JSWebClientGenerator extends TemplateGenerator {
             }).join("; ");
             return new handlebars.SafeString(`{ ${properties} }`);
         } else if (schema.type === "Union") {
-            return schema.anyOf ? schema.anyOf.map(v => isRefObj(v) ? v.$ref : this.schemaToJSType(v)).join(" | ") : "unknown";
+            return schema.oneOf ? schema.oneOf.map(v => isRefObj(v) ? v.$ref : this.schemaToJSType(v)).join(" | ") : "unknown";
         } else if (schema.type === "string" && schema.format === "date-time") {
             return "Date";
         } else if (schema.type === "Record") {
@@ -255,8 +266,8 @@ class JSWebClientGenerator extends TemplateGenerator {
             );
         });
 
-        handlebars.registerHelper("toProperty", (property: string, schema: SchemaObject, requiredFields: string[]) => {
-            return new handlebars.SafeString(`${property}${requiredFields.includes(property) ? "" : "?"}: ${this.schemaToJSType(schema).toString()};`);
+        handlebars.registerHelper("toProperty", (property: string, schema: SchemaObject, requiredFields?: string[]) => {
+            return new handlebars.SafeString(`${property}${(requiredFields || []).includes(property) ? "" : "?"}: ${this.schemaToJSType(schema).toString()};`);
         });
 
         handlebars.registerHelper("toEnumMember", (value: any, index: number, enumValue: any[]) => {
@@ -305,7 +316,7 @@ class JSWebClientGenerator extends TemplateGenerator {
     }
 }
 
-function isRefObj(value: any): value is ReferenceObject {
+export function isRefObj(value: any): value is ReferenceObject {
     return typeof value === "object" && "$ref" in value;
 }
 
