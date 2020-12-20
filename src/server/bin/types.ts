@@ -3,15 +3,15 @@ import { ScrapeType } from "./externals/types";
 import { Query } from "mysql";
 
 export interface SearchResult {
-    coverUrl?: string;
-    link: string;
+    coverUrl?: Link;
+    link: Link;
     title: string;
     author?: string;
     medium: MediaType;
 }
 
 export interface SimpleMedium {
-    id?: number;
+    id?: Id;
     countryOfOrigin?: string;
     languageOfOrigin?: string;
     author?: string;
@@ -19,8 +19,8 @@ export interface SimpleMedium {
     medium: MediaType;
     artist?: string;
     lang?: string;
-    stateOrigin?: number;
-    stateTL?: number;
+    stateOrigin?: ReleaseState;
+    stateTL?: ReleaseState;
     series?: string;
     universe?: string;
 
@@ -28,25 +28,25 @@ export interface SimpleMedium {
 }
 
 export interface SecondaryMedium {
-    id: number;
+    id: Id;
     totalEpisodes: number;
     readEpisodes: number;
     tocs: FullMediumToc[];
 }
 
 export type UpdateMedium = Partial<SimpleMedium> & {
-    id: number;
+    id: Id;
 }
 
 export interface Medium extends SimpleMedium {
-    parts?: number[];
+    parts?: Id[];
     latestReleased: number[];
-    currentRead: number;
-    unreadEpisodes: number[];
+    currentRead: Id;
+    unreadEpisodes: Id[];
 }
 
 export interface TocSearchMedium {
-    mediumId: number;
+    mediumId: Id;
     hosts?: string[];
     title: string;
     medium: MediaType;
@@ -54,8 +54,8 @@ export interface TocSearchMedium {
 }
 
 export interface MediumToc {
-    mediumId: number;
-    link: string;
+    mediumId: Id;
+    link: Link;
 }
 
 export type FullMediumToc = MediumToc & UpdateMedium;
@@ -72,13 +72,13 @@ export interface Indexable {
 }
 
 export interface MinPart extends Indexable {
-    id: number;
+    id: Id;
     title?: string;
     mediumId: number;
 }
 
 export interface Part extends MinPart {
-    episodes: Episode[] | number[];
+    episodes: Episode[] | Id[];
 }
 
 export interface FullPart extends Part {
@@ -86,12 +86,12 @@ export interface FullPart extends Part {
 }
 
 export interface ShallowPart extends Part {
-    episodes: number[];
+    episodes: Id[];
 }
 
 export interface SimpleEpisode extends Indexable {
-    id: number;
-    partId: number;
+    id: Id;
+    partId: Id;
     combiIndex?: number;
     releases: EpisodeRelease[];
 }
@@ -108,14 +108,14 @@ export interface Episode extends SimpleEpisode {
 export type PureEpisode = Omit<Episode, "releases">;
 
 export interface ReadEpisode {
-    episodeId: number;
+    episodeId: Id;
     readDate: Date;
     progress: number;
 }
 
 export interface SimpleRelease {
-    episodeId: number;
-    url: string;
+    episodeId: Id;
+    url: Link;
 }
 
 export interface EpisodeRelease extends SimpleRelease {
@@ -123,16 +123,16 @@ export interface EpisodeRelease extends SimpleRelease {
     releaseDate: Date;
     locked?: boolean;
     sourceType?: string;
-    tocId?: number;
+    tocId?: Id;
 }
 
 export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">
 
 export interface DisplayRelease {
-    episodeId: number;
+    episodeId: Id;
     title: string;
-    link: string;
-    mediumId: number;
+    link: Link;
+    mediumId: Id;
     locked?: boolean;
     date: Date;
     progress: number;
@@ -140,14 +140,14 @@ export interface DisplayRelease {
 
 export interface DisplayReleasesResponse {
     releases: DisplayRelease[];
-    media: Record<number, string>;
+    media: Record<Id, string>;
     latest: Date;
 }
 
 export interface MediumRelease {
-    episodeId: number;
+    episodeId: Id;
     title: string;
-    link: string;
+    link: Link;
     combiIndex: number;
     locked?: boolean;
     date: Date;
@@ -159,18 +159,18 @@ export interface MinList {
 }
 
 export type UserList = MinList & {
-    id: number;
+    id: Id;
 }
 
 export interface StorageList extends MinList {
-    id: number;
+    id: Id;
     user_uuid: Uuid;
 }
 
 export interface List extends MinList {
-    id: number;
+    id: Id;
     userUuid: Uuid;
-    items: number[];
+    items: Id[];
 }
 
 export interface UpdateUser {
@@ -186,8 +186,8 @@ export interface SimpleUser {
 }
 
 export interface User extends SimpleUser {
-    unreadNews: number[];
-    unreadChapter: number[];
+    unreadNews: Id[];
+    unreadChapter: Id[];
     readToday: ReadEpisode[];
     externalUser: ExternalUser[];
     lists: List[];
@@ -195,10 +195,10 @@ export interface User extends SimpleUser {
 
 export interface ExternalList {
     uuid?: Uuid;
-    id: number;
+    id: Id;
     name: string;
     medium: number;
-    url: string;
+    url: Link;
     items: number[];
 }
 
@@ -219,24 +219,24 @@ export type PureExternalUser = Omit<DisplayExternalUser, "lists">;
 
 export interface News {
     title: string;
-    link: string;
+    link: Link;
     date: Date;
-    id?: number;
+    id?: Id;
     read?: boolean;
-    mediumId?: number;
+    mediumId?: Id;
     mediumTitle?: number;
 }
 
 export type PureNews = Omit<News, "mediumId" | "mediumTitle">;
 
 export interface NewsResult {
-    link: string;
+    link: Link;
     rawNews: News[];
 }
 
 export interface EpisodeNews {
     mediumType: MediaType;
-    mediumTocLink?: string;
+    mediumTocLink?: Link;
     mediumTitle: string;
     partIndex?: number;
     partTotalIndex?: number;
@@ -246,35 +246,35 @@ export interface EpisodeNews {
     episodeTotalIndex: number;
     episodePartialIndex?: number;
     locked?: boolean;
-    link: string;
+    link: Link;
     date: Date;
 }
 
 export interface Synonyms {
-    mediumId: number;
+    mediumId: Id;
     synonym: string[];
 }
 
 export interface ScrapeItem {
-    link: string;
+    link: Link;
     type: ScrapeType;
     nextScrape?: Date;
-    userId?: string;
-    externalUserId?: string;
-    mediumId?: number;
+    userId?: Uuid;
+    externalUserId?: Uuid;
+    mediumId?: Id;
     info?: string;
 }
 
 export interface LikeMedium {
     medium?: SimpleMedium;
     title: string;
-    link: string;
+    link: Link;
 }
 
 export interface LikeMediumQuery {
     title: string;
-    link?: string;
-    type?: number;
+    link?: Link;
+    type?: MediaType;
 }
 
 export interface MetaResult {
@@ -283,7 +283,7 @@ export interface MetaResult {
     volIndex?: string;
     chapter?: string;
     chapIndex?: string;
-    type: string;
+    type: MediaType;
     seeAble: boolean;
 }
 
@@ -291,7 +291,7 @@ export interface Result {
     result: MetaResult | MetaResult[];
     preliminary?: boolean;
     accept?: boolean;
-    url: string;
+    url: Link;
 }
 
 export interface ProgressResult extends MetaResult {
@@ -300,7 +300,7 @@ export interface ProgressResult extends MetaResult {
 }
 
 export interface PageInfo {
-    link: string;
+    link: Link;
     key: string;
     values: string[];
 }
@@ -397,18 +397,25 @@ export type PromiseFunction = (...args: any[]) => Promise<any>;
  */
 export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>, PromiseFunction>;
 
+/**
+ * Set specific properties with string keys as required.
+ */
+export type NonNull<T, K extends StringKeys<T>> = T & {
+    [S in K]-?: T[K];
+};
+
 export type Primitive = string | number | boolean;
 
 export interface Invalidation {
-    mediumId?: number;
-    partId?: number;
-    episodeId?: number;
+    mediumId?: Id;
+    partId?: Id;
+    episodeId?: Id;
     uuid: Nullable<Uuid>;
     userUuid?: boolean;
     externalUuid?: Uuid;
-    externalListId?: number;
-    listId?: number;
-    newsId?: number;
+    externalListId?: Id;
+    listId?: Id;
+    newsId?: Id;
 }
 
 export interface EpisodeContentData {
@@ -430,6 +437,16 @@ export enum ReleaseState {
  * A String in RFC UUID Format with a length of 36 characters.
  */
 export type Uuid = string;
+
+/**
+ * A String in a HTTP Url Format.
+ */
+export type Link = string;
+
+/**
+ * An Integer between 1 (inclusive) and 2^64 (inclusive?)
+ */
+export type Id = number;
 
 export enum ScrapeName {
     searchForToc = "searchForToc",
@@ -455,9 +472,9 @@ export interface JobItem {
     state: JobState;
     interval: number;
     deleteAfterRun: boolean;
-    id: number;
+    id: Id;
     name: string;
-    runAfter?: number;
+    runAfter?: Id;
     runningSince?: Date;
     nextRun?: Date;
     lastRun?: Date;
@@ -554,11 +571,11 @@ export interface ListMedia {
 }
 
 export interface DataStats {
-    media: Record<number, Record<number, { episodeCount: number; episodeSum: number; releaseCount: number }>>;
-    mediaStats: Record<number, { tocs: number }>;
-    lists: Record<number, number[]>;
-    extLists: Record<number, number[]>;
-    extUser: Record<string, number[]>;
+    media: Record<Id, Record<Id, { episodeCount: number; episodeSum: number; releaseCount: number }>>;
+    mediaStats: Record<Id, { tocs: number }>;
+    lists: Record<Id, Id[]>;
+    extLists: Record<Id, Id[]>;
+    extUser: Record<Uuid, Id[]>;
 }
 
 export interface NewData {
