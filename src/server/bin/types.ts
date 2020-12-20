@@ -16,7 +16,7 @@ export interface SimpleMedium {
     languageOfOrigin?: string;
     author?: string;
     title: string;
-    medium: number;
+    medium: MediaType;
     artist?: string;
     lang?: string;
     stateOrigin?: number;
