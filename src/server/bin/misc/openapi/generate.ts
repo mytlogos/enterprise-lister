@@ -1,6 +1,6 @@
 import { generateExpressApiObject } from "./exportOpenApi";
 import ts from "typescript";
-import { generateOpenApiSpec, generateWebClient } from "./transformer";
+import { generateOpenApiSpec, generateWebClient, generateValidator } from "./transformer";
 import { OperationObject, ParameterObject, SchemaObject, RequestBodyObject, OpenApiObject } from "./types";
 import yaml from "js-yaml";
 import fs from "fs/promises";
@@ -15,6 +15,7 @@ async function GenerateOpenApi(file: string) {
 
     await generateOpenApiSpec(openApiObject);
     await generateWebClient(openApiObject);
+    await generateValidator(openApiObject);
 }
 
 async function readHook(openApiObject: OpenApiObject) {

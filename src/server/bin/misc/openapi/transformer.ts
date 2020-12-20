@@ -55,7 +55,11 @@ export function resolveReference(root: OpenApiObject, reference: ReferenceObject
 }
 
 export async function generateWebClient(data: Readonly<OpenApiObject>): Promise<void> {
-    return new JSWebClientGenerator(data).generate()
+    return new TSWebClientGenerator(data).generate();
+}
+
+export async function generateValidator(data: Readonly<OpenApiObject>): Promise<void> {
+    return new TSRequestValidatorGenerator(data).generate();
 }
 
 abstract class TemplateGenerator {
@@ -171,16 +175,20 @@ abstract class TemplateGenerator {
     }
 }
 
-class JSWebClientGenerator extends TemplateGenerator {
+function camelCase(s: string): string {
+    return s.slice(0, 1).toUpperCase() + s.slice(1);
+}
+
+class TSTemplateGenerator extends TemplateGenerator {
     private keyReg = /\/+/g;
     private validKeyReg = /^[a-z_][a-zA-Z_0-9]*$/;
 
-    public constructor(data: Readonly<OpenApiObject>) {
-        super(data, "./src/server/bin/misc/openapi/webclient.ts.handlebars", "./src/server/bin/misc/openapi/webclient.ts");
+    public constructor(data: Readonly<OpenApiObject>, source: string, target: string) {
+        super(data, source, target);
         this.addHelper();
     }
 
-    private schemaToJSType(schema?: SchemaObject): string | handlebars.SafeString {
+    protected schemaToJSType(schema?: SchemaObject): string | handlebars.SafeString {
         if (!schema) {
             return "unknown";
         } else if (schema.type === "Array") {
@@ -235,6 +243,12 @@ class JSWebClientGenerator extends TemplateGenerator {
     }
 
     private addHelper() {
+        handlebars.registerHelper("camelCase", camelCase);
+    
+        handlebars.registerHelper("is", (value: any, other: any) => {
+            return value === other;
+        });
+
         handlebars.registerHelper("isType", (value: SchemaObject, type: string) => {
             return value.type === type;
         });
@@ -299,7 +313,7 @@ class JSWebClientGenerator extends TemplateGenerator {
         for (const [key, path] of Object.entries(this.root.paths)) {
             const kebubName = key
                 .split(this.keyReg)
-                .filter(s => s).map(s => s.slice(0, 1).toUpperCase() + s.slice(1))
+                .filter(s => s).map(camelCase)
                 .join("");
 
             const templatePath: TemplateApiPath = {
@@ -322,6 +336,38 @@ class JSWebClientGenerator extends TemplateGenerator {
             context.paths.push(templatePath);
         }
         return context;
+    }
+}
+
+class TSWebClientGenerator extends TSTemplateGenerator {
+    public constructor(data: Readonly<OpenApiObject>) {
+        super(data, "./src/server/bin/misc/openapi/webclient.ts.handlebars", "./src/server/bin/misc/openapi/webclient.ts");
+    }
+}
+
+class TSRequestValidatorGenerator extends TSTemplateGenerator {
+    public constructor(data: Readonly<OpenApiObject>) {
+        super(data, "./src/server/bin/misc/openapi/validateMiddleware.ts.handlebars", "./src/server/bin/misc/openapi/validateMiddleware.ts");
+        this.addHandler();
+    }
+
+    private addHandler() {
+        handlebars.registerHelper("paramToReturnType", (apiParams: TemplateApiParam[]) => {
+            return new handlebars.SafeString(`{ ${
+                apiParams
+                    .map(value => `${value.name}: ${this.schemaToJSType(value.type)}`)
+                    .join("; ")
+            } }`)
+        });
+        handlebars.registerHelper("toConvertName", (schema: SchemaObject) => {
+            if (schema.type === "object" && !schema.title) {
+                return "toObject";
+            }
+            if (schema.type === "Array") {
+                return "toArray";
+            }
+            return `to${camelCase(this.schemaToJSType(schema).toString())}`;
+        });
     }
 }
 
