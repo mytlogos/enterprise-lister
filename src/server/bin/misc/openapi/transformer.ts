@@ -164,10 +164,10 @@ abstract class TemplateGenerator {
 
     public async generate(): Promise<void> {
         const context = this.createContext();
-        const content = await fs.readFile("./src/server/bin/misc/openapi/webclient.ts.handlebars", { encoding: "utf-8" });
+        const content = await fs.readFile(this.templateSource, { encoding: "utf-8" });
         const template = handlebars.compile(content);
         const output = template(context);
-        await fs.writeFile("./src/server/bin/misc/openapi/webclient.ts", output, { encoding: "utf-8" });
+        await fs.writeFile(this.templateTarget, output, { encoding: "utf-8" });
     }
 }
 
