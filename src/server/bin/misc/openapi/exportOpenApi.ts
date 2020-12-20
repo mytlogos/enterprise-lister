@@ -514,6 +514,11 @@ class TypeInferrer {
             } as StringType;
         }
 
+        // check if it is enum before checking if it is an union, because enums are "special" unions
+        if (isEnumLikeType(type)) {
+            return this.getEnumType(type, type.getSymbol() as ts.Symbol);
+        }
+
         if (type.isUnionOrIntersection()) {
             const subTypes = type.types.map(subType => this.typeToResult(subType));
             if (subTypes.some(value => !value)) {
@@ -1852,6 +1857,11 @@ function isBooleanLiteralType(value: ts.Type): value is BooleanLiteralType {
 function isStringLiteralType(value: ts.Type): value is ts.StringLiteralType {
     return !!(value.flags & ts.TypeFlags.StringLiteral);
 }
+
+function isEnumLikeType(value: ts.Type): boolean {
+    return !!(value.flags & ts.TypeFlags.EnumLike);
+}
+
 
 function nextNode(node: ts.Node): Nullable<ts.Node> {
     if (!node.parent) {

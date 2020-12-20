@@ -87,8 +87,13 @@ abstract class TemplateGenerator {
                 Object.values(schema.properties || {}).forEach(value => this.setSchemata(schemata, value));
             }
             if (schema.type === "Enum" && schema.title) {
-                schemata[schema.title] = schema;
-                (schema.enum || []).forEach(value => this.setSchemata(schemata, value));
+                // @ts-expect-error
+                if (schema.enum && schema.enum[enumNameSymbol]) {
+                    schemata[schema.title] = schema;
+                    schema.enum.forEach(value => this.setSchemata(schemata, value));
+                } else {
+                    console.log(`Enum '${schema.title}' without enum values or enum names!`);
+                }
             }
             schema.allOf?.forEach(value => this.setSchemata(schemata, value));
             schema.anyOf?.forEach(value => this.setSchemata(schemata, value));
@@ -274,7 +279,8 @@ class JSWebClientGenerator extends TemplateGenerator {
         handlebars.registerHelper("toEnumMember", (value: any, index: number, enumValue: any[]) => {
             const isStr = isString(value);
             // @ts-expect-error
-            return new handlebars.SafeString(`${enumValue[enumNameSymbol][index]} = ${isStr ? "\"" : ""}${value}${isStr ? "\"" : ""},`);
+            const name = enumValue[enumNameSymbol] ? enumValue[enumNameSymbol][index] : index;
+            return new handlebars.SafeString(`${name} = ${isStr ? "\"" : ""}${value}${isStr ? "\"" : ""},`);
         });
 
         handlebars.registerHelper("toReturnType", (returnType?: SchemaObject) => {
