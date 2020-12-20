@@ -152,6 +152,14 @@ export interface SchemaObject {
      */
     exclusiveMaximum?: number;
     /**
+     * for type number
+     */
+    minimum?: number;
+    /**
+     * for type number
+     */
+    exclusiveMinimum?: number;
+    /**
      * for type string
      */
     maxLength?: number;
