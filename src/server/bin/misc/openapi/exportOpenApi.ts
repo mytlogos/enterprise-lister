@@ -111,11 +111,13 @@ interface BooleanType extends TypeResult {
 interface NumberType extends TypeResult {
     type: "number";
     literalValue?: number;
+    title?: string;
 }
 
 interface StringType extends TypeResult {
     type: "string";
     literalValue?: string;
+    title?: string;
 }
 
 interface NullType extends TypeResult {
@@ -477,6 +479,7 @@ class TypeInferrer {
         if (typeString === "number") {
             return {
                 type: "number",
+                title: typeNode && ts.isTypeReferenceNode(typeNode) && typeNode.typeName.getText()
             } as NumberType;
         } else if (typeString === "boolean") {
             return {
@@ -485,6 +488,7 @@ class TypeInferrer {
         } else if (typeString === "string") {
             return {
                 type: "string",
+                title: typeNode && ts.isTypeReferenceNode(typeNode) && typeNode.typeName.getText()
             } as StringType;
         } else if (typeString === "void" || typeString === "undefined" || typeString === "null") {
             return {
@@ -554,7 +558,6 @@ class TypeInferrer {
             }
         }
 
-        // TODO: 12.08.2020 literalValue
         const symbol = type.getSymbol();
 
         if (!symbol) {
@@ -893,8 +896,9 @@ class TypeInferrer {
             if (ts.isFunctionLike(value.valueDeclaration)) {
                 continue;
             }
-            const symbolType = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration);
-            const typeResult = this.typeToResult(symbolType);
+            const propertySignature = value.valueDeclaration as ts.PropertySignature;
+            const symbolType = this.checker.getTypeOfSymbolAtLocation(value, propertySignature);
+            const typeResult = this.typeToResult(symbolType, propertySignature.type);
 
             if (typeResult) {
                 properties[value.getName()] = typeResult;
@@ -2157,6 +2161,27 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
         // @ts-expect-error
         valueSchema[keyTypeSymbol] = toSchema(record.keyType);
         schema.additionalProperties = valueSchema;
+    } else if (params.type === "string" && (params as StringType).title) {
+        const stringType = params as StringType;
+
+        if (stringType.title?.toLowerCase() === "uuid") {
+            // from: https://stackoverflow.com/a/13653180
+            schema.pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[089ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            schema.title = "uuid";
+        } else if (stringType.title?.toLowerCase() === "link") {
+            // TODO: use better link regex
+            schema.pattern = /^https?:\/\/[^/]+\.[^/]$/i;
+            schema.title = "link";
+        }
+    } else if (params.type === "number" && (params as NumberType).title) {
+        const stringType = params as NumberType;
+
+        if (stringType.title?.toLowerCase() === "id") {
+            schema.minimum = 0;
+            schema.type = "integer";
+            schema.format = "int64";
+            schema.title = "id";
+        }
     }
     return schema;
 }

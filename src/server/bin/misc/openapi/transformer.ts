@@ -228,6 +228,8 @@ class JSWebClientGenerator extends TemplateGenerator {
                     ? "string"
                     : this.schemaToJSType(valueSchema as SchemaObject);
             return new handlebars.SafeString(`Record<${this.schemaToJSType(keyType)}, ${valueType}>`);
+        } else if (schema.type === "integer") {
+            return "number";
         }
         return new handlebars.SafeString(schema.type || "unknown");
     }
