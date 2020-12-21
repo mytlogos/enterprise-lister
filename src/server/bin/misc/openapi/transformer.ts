@@ -11,7 +11,7 @@ import {
     keyTypeSymbol
 } from "./types";
 import yaml from "js-yaml";
-import { isString, isBoolean } from "validate.js";
+import { isString, isBoolean, isNumber } from "validate.js";
 
 interface TemplateApiPath {
     path: string;
@@ -103,7 +103,7 @@ abstract class TemplateGenerator {
             schema.anyOf?.forEach(value => this.setSchemata(schemata, value));
             schema.oneOf?.forEach(value => this.setSchemata(schemata, value));
 
-            if (typeof(schema.additionalProperties) === "object" && !isRefObj(schema.additionalProperties)) {
+            if (typeof (schema.additionalProperties) === "object" && !isRefObj(schema.additionalProperties)) {
                 this.setSchemata(schemata, schema.additionalProperties);
             }
             this.setSchemata(schemata, schema.items);
@@ -244,7 +244,7 @@ class TSTemplateGenerator extends TemplateGenerator {
 
     private addHelper() {
         handlebars.registerHelper("camelCase", camelCase);
-    
+
         handlebars.registerHelper("is", (value: any, other: any) => {
             return value === other;
         });
@@ -280,10 +280,10 @@ class TSTemplateGenerator extends TemplateGenerator {
                 return "";
             }
             return new handlebars.SafeString(
-                ", { " + 
+                ", { " +
                 param
                     .map(value => value.name)
-                    .join(", ") + 
+                    .join(", ") +
                 " }"
             );
         });
@@ -299,8 +299,8 @@ class TSTemplateGenerator extends TemplateGenerator {
             return new handlebars.SafeString(`${name} = ${isStr ? "\"" : ""}${value}${isStr ? "\"" : ""},`);
         });
 
-        handlebars.registerHelper("toReturnType", (returnType?: SchemaObject) => {
-            return this.schemaToJSType(returnType);
+        handlebars.registerHelper("toType", (type?: SchemaObject) => {
+            return this.schemaToJSType(type);
         });
     }
 
@@ -368,6 +368,160 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
             }
             return `to${camelCase(this.schemaToJSType(schema).toString())}`;
         });
+        handlebars.registerHelper("toTSValue", (value) => {
+            if (isString(value)) {
+                return new handlebars.SafeString(`"${value}"`);
+            } else if (isBoolean(value)) {
+                return `${value}`;
+            } else if (isNumber(value)) {
+                return `${value}`;
+            } else if (value === null) {
+                return "null";
+            } else if (value === undefined) {
+                return "undefined";
+            }
+            throw Error(`Unknown TSValue: '${value}'`)
+        });
+        handlebars.registerHelper("findEnumMember", (value: any, enumValues: any[]) => {
+            const index = enumValues.indexOf(value);
+
+            if (index < 0) {
+                throw Error(`Unknown EnumValue: '${value}'`);
+            }
+            // @ts-expect-error
+            return enumValues[enumNameSymbol] ? enumValues[enumNameSymbol][index] : index;
+        });
+        handlebars.registerHelper("concat", (value: any, other: any) => {
+            if (value != null && other != null) {
+                return value + other;
+            } else if (value != null) {
+                return value;
+            } else if (other != null) {
+                return other;
+            } else {
+                return "";
+            }
+        });
+        handlebars.registerHelper("add", (value: any, other: any) => {
+            if (value != null && other != null) {
+                return value + other;
+            } else if (value != null) {
+                return value;
+            } else if (other != null) {
+                return other;
+            } else {
+                return 0;
+            }
+        });
+        handlebars.registerHelper("hasSingleProp", (value) => Object.keys(value).length === 1);
+        handlebars.registerHelper("and", (value, other) => value && other);
+        handlebars.registerHelper("not", value => !value);
+        handlebars.registerHelper("toRecordKeyConverter", (schema: SchemaObject) => {
+            const valueSchema = schema.additionalProperties;
+            // @ts-expect-error
+            const keyType: SchemaObject = valueSchema[keyTypeSymbol];
+            return `to${camelCase(this.schemaToJSType(keyType).toString())}`;
+        });
+        // expects a context of { variable: string; type: SchemaObject; depth: number }
+        handlebars.registerPartial(
+            "toRecord",
+            `
+for (const [key{{#if depth}}{{depth}}{{/if}}, keyValue{{#if depth}}{{depth}}{{/if}}] of Object.entries({{variable}} as {{toType type}})) {
+    const newKey{{#if depth}}{{depth}}{{/if}} = {{toRecordKeyConverter type}}(key{{#if depth}}{{depth}}{{/if}});
+
+    if (newKey{{#if depth}}{{depth}}{{/if}} == null) {
+        return null;
+    }
+{{#if (isType type.additionalProperties "Array")}}
+    let newValue{{#if depth}}{{depth}}{{/if}} = {{toConvertName type.additionalProperties}}(keyValue{{#if depth}}{{depth}}{{/if}});
+
+    if (newValue{{#if depth}}{{depth}}{{/if}} == null) {
+        return null;
+    }
+    newValue{{#if depth}}{{depth}}{{/if}} = newValue{{#if depth}}{{depth}}{{/if}}.map({{toConvertName type.additionalProperties.items}});
+
+    if (newValue{{#if depth}}{{depth}}{{/if}}.some((v: any | null) => v == null)) {
+        return null;
+    }
+    {{variable}}[newKey{{#if depth}}{{depth}}{{/if}}] = newValue{{#if depth}}{{depth}}{{/if}};
+{{else if (isType type.additionalProperties "Record")}}
+    {{> toRecord variable=(concat "keyValue" depth) type=type.additionalProperties depth=(add depth 1)}}
+{{else if (and (isType type.additionalProperties "object") (not type.additionalProperties.title))}}
+    {{> toObject type=type.additionalProperties variable=(concat "keyValue" depth)}}
+{{else}}
+    const newValue{{#if depth}}{{depth}}{{/if}} = {{toConvertName type.additionalProperties}}(keyValue{{#if depth}}{{depth}}{{/if}});
+
+    if (newValue{{#if depth}}{{depth}}{{/if}} == null) {
+        return null;
+    }
+    {{variable}}[newKey{{#if depth}}{{depth}}{{/if}}] = newValue{{#if depth}}{{depth}}{{/if}};
+{{/if}}
+}
+`);
+        // expects a context of SchemaObject
+        handlebars.registerPartial(
+            "toObject",
+            `
+if (typeof {{variable}} !== "object") {
+    return null;
+}
+const keys = Object.keys({{variable}});
+let index;
+{{#if type.properties}}
+{{#each type.properties}}
+{{#if (is type "Union")}}
+{{#each oneOf}}
+if ({{../../variable}}.{{@../key}} == null) {
+    index = keys.indexOf("{{@../key}}");
+    if (index < 0) {
+        return null;
+    }
+    keys.splice(index, 1);
+    {{../../variable}}.{{@../key}} = {{toConvertName .}}({{../../variable}}.{{@../key}});
+{{#if (is type "Array")}}
+    if ({{../../variable}}.{{@../key}}) {
+        {{../../variable}}.{{@../key}} = {{../../variable}}.{{@../key}}.map({{toConvertName items}});
+
+        if ({{../../variable}}.some((v: any | null) => v == null)) {
+            return null;
+        }
+    }
+{{/if}}
+}
+{{/each}}
+if ({{../variable}}.{{@key}} == null) {
+    return null;
+}
+{{else if (is type "Record")}}
+{{> toRecord variable=(concat ../variable (concat "." @key)) type=this}}
+{{else}}
+index = keys.indexOf("{{@key}}");
+if (index < 0) {
+    return null;
+}
+keys.splice(index, 1);
+
+{{../variable}}.{{@key}} = {{toConvertName .}}({{../variable}}.{{@key}});
+{{#if (is type "Array")}}
+{{../variable}}.{{@key}} = {{../variable}}.{{@key}}.map({{toConvertName items}});
+
+if ({{../variable}}.some((v: any | null) => v == null)) {
+    return null;
+}
+{{else}}
+if ({{../variable}}.{{@key}} == null) {
+    return null;
+}
+{{/if}}
+{{/if}}
+{{/each}}
+{{else if (is type.type "Record")}}
+{{> toRecord variable=variable type=type}}
+{{/if}}
+if (keys.length) {
+    return null;
+}
+`);
     }
 }
 

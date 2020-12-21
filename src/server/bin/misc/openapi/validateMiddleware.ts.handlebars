@@ -20,7 +20,20 @@ export enum {{@key}} {
 {{#each schemata}}
 
 function to{{camelCase @key}}(value: any): {{@key}} | null {
+{{#if (isType . "object")}}
+    {{> toObject type=. variable="value"}}
+    return value;
+{{else if (isType . "Enum")}}
+{{#each enum}}
+    if (value === {{toTSValue .}}) {
+        return {{@../key}}.{{findEnumMember . ../enum}};
+    }
+{{/each}}
     return null;
+{{else}}
+    console.log("No validation for Schema '{{@key}}' implemented, always invalid.");
+    return null;
+{{/if}}
 }
 {{/each}}
 
@@ -28,8 +41,11 @@ function isString(value: any): value is string {
     return Object.prototype.toString.call(value) === "[object String]";
 }
 
-function toString(value: string): string {
-    return value;
+function toString(value: unknown): string | null {
+    if (isString(value)) {
+        return value;
+    }
+    return null;
 }
 
 function toNumber(value: any): number | null {

@@ -68,7 +68,7 @@ export const HttpClient = {
     {{#each paths}}
     {{#each methods}}
 
-    {{name}}({{toParameter parameter}}): Promise<{{toReturnType returnType}}> {
+    {{name}}({{toParameter parameter}}): Promise<{{toType returnType}}> {
         return this.queryServer(api{{objectAccess ../path}}.{{method}}{{toQueryParam parameter}});
     },
     {{/each}}
