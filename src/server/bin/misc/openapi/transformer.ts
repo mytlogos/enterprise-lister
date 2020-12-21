@@ -351,6 +351,42 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
         this.addHandler();
     }
 
+    /**
+     * Inspect schema if it should have an own validator method and return
+     * @param schema schema to inspect
+     */
+    private gatherSchemataNames(schema?: SchemaObject | ReferenceObject): string[] {
+        const result: string[] = [];
+
+        if (schema) {
+            if (isRefObj(schema)) {
+                schema = this.resolveReference(schema);
+            }
+            if (schema.type === "object" && schema.title) {
+                result.push(schema.title);
+                result.push(...Object.values(schema.properties || {}).flatMap(value => this.gatherSchemataNames(value)));
+            }
+            if (schema.type === "Enum" && schema.title) {
+                result.push(schema.title);
+                // @ts-expect-error
+                if (schema.enum && schema.enum[enumNameSymbol]) {
+                    result.push(...schema.enum.flatMap(value => this.gatherSchemataNames(value)));
+                } else {
+                    console.log(`Enum '${schema.title}' without enum values or enum names!`);
+                }
+            }
+            schema.allOf?.map(value => this.gatherSchemataNames(value)).forEach(v => result.push(...v));
+            schema.anyOf?.map(value => this.gatherSchemataNames(value)).forEach(v => result.push(...v));
+            schema.oneOf?.map(value => this.gatherSchemataNames(value)).forEach(v => result.push(...v));
+
+            if (typeof (schema.additionalProperties) === "object" && !isRefObj(schema.additionalProperties)) {
+                result.push(...this.gatherSchemataNames(schema.additionalProperties));
+            }
+            result.push(...this.gatherSchemataNames(schema.items));
+        }
+        return result;
+    }
+
     private addHandler() {
         handlebars.registerHelper("paramToReturnType", (apiParams: TemplateApiParam[]) => {
             return new handlebars.SafeString(`{ ${
@@ -422,6 +458,17 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
             const keyType: SchemaObject = valueSchema[keyTypeSymbol];
             return `to${camelCase(this.schemaToJSType(keyType).toString())}`;
         });
+        handlebars.registerHelper("filterByParam", (schemata: Record<string, SchemaObject>, paths: TemplateApiPath[]) => {
+            const names = new Set(paths.flatMap(path => path.methods.flatMap(method => method.parameter.flatMap(param => this.gatherSchemataNames(param.type)))));
+            const newSchemata: Record<string, SchemaObject> = {};
+
+            for (const key of Object.keys(schemata)) {
+                if (names.has(key)) {
+                    newSchemata[key] = schemata[key];
+                }
+            }
+            return newSchemata;
+        })
         // expects a context of { variable: string; type: SchemaObject; depth: number }
         handlebars.registerPartial(
             "toRecord",

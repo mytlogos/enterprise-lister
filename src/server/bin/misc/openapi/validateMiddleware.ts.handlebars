@@ -1,6 +1,6 @@
 import { Request } from "express-serve-static-core";
 
-{{#each schemata}}
+{{#each (filterByParam schemata paths)}}
 {{#if (isType . "object")}}
 export interface {{@key}} {
 {{#each properties}}
@@ -17,7 +17,7 @@ export enum {{@key}} {
 {{/if}}
 {{/each}}
 
-{{#each schemata}}
+{{#each (filterByParam schemata paths)}}
 
 function to{{camelCase @key}}(value: any): {{@key}} | null {
 {{#if (isType . "object")}}
