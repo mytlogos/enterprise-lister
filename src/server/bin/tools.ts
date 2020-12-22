@@ -2,8 +2,6 @@ import { EpisodeRelease, MultiSingle, Uuid, PromiseMultiSingle, EmptyPromise, Un
 import { TocEpisode, TocPart, TocContent } from "./externals/types";
 import crypt from "crypto";
 import crypto from "crypto";
-// FIXME: bcrypt-nodejs is now deprecated/not maintained anymore, test whether a switch
-//  to 'https://github.com/dcodeIO/bcrypt.js' is feasible
 import bcrypt from "bcryptjs";
 import emojiStrip from "emoji-strip";
 import * as fs from "fs";

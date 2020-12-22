@@ -35,6 +35,9 @@ module.exports = {
         "eslint-plugin-import",
         "eslint-plugin-jsdoc",
         "eslint-plugin-prefer-arrow",
+        "eslint-plugin-promise",
+        "eslint-plugin-node",
+        "eslint-plugin-vue",
         "@typescript-eslint",
         "@typescript-eslint/tslint",
         "vue"

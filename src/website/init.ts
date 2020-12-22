@@ -1,4 +1,4 @@
-import { SimpleMedium, FullMediumToc } from "siteTypes";
+import { SimpleMedium, FullMediumToc } from "./siteTypes";
 
 /**
  *
