@@ -19,7 +19,8 @@
     "start:crawler": "node dist/server/startCrawler.js",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
     "migrate": "node dist/server/misc/migrate.js",
-    "commit": "npx git-cz"
+    "commit": "npx git-cz",
+    "generate:api": "node dist/server/misc/openapi/generate.js"
   },
   "husky": {
     "hooks": {
@@ -47,6 +48,7 @@
     "emoji-strip": "latest",
     "express": "^4.17.1",
     "feedparser-promised": "^2.0.1",
+    "handlebars": "^4.7.6",
     "helmet": "^3.23.3",
     "htmlparser2": "^4.1.0",
     "http-errors": "^1.8.0",

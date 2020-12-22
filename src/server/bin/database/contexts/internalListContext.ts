@@ -1,5 +1,5 @@
 import { SubContext } from "./subContext";
-import { List, Medium, Uuid, MultiSingleNumber, MinList, StorageList } from "../../types";
+import { List, Medium, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia } from "../../types";
 import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 
@@ -30,9 +30,7 @@ export class InternalListContext extends SubContext {
      * Returns all mediums of a list with
      * the list_id.
      */
-    public async getList<T extends MultiSingleNumber>(listId: T, media: number[], uuid: Uuid):
-        Promise<{ list: List[] | List; media: Medium[] }> {
-
+    public async getList<T extends MultiSingleNumber>(listId: T, media: number[], uuid: Uuid): Promise<ListMedia> {
         const toLoadMedia: Set<number> = new Set();
         // TODO: 29.06.2019 replace with id IN (...)
         const lists = await promiseMultiSingle(listId, async (id: number) => {

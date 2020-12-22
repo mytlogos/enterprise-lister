@@ -1,6 +1,6 @@
 import mySql from "promise-mysql";
 import env from "../../env";
-import { Invalidation, MetaResult, Result, Uuid, PropertyNames, StringKeys, PromiseFunctions, EmptyPromise, MultiSingleValue, Nullable } from "../../types";
+import { Invalidation, MetaResult, Result, Uuid, PropertyNames, StringKeys, PromiseFunctions, EmptyPromise, MultiSingleValue, Nullable, DataStats, NewData } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
 import { delay, isQuery, isString } from "../../tools";
@@ -288,11 +288,11 @@ export class Storage {
         return inContext((context) => context.queueNewTocs());
     }
 
-    public getStats(uuid: Uuid): Promise<any> {
+    public getStats(uuid: Uuid): Promise<DataStats> {
         return inContext((context) => context.getStat(uuid));
     }
 
-    public getNew(uuid: Uuid, date?: Date): Promise<any> {
+    public getNew(uuid: Uuid, date?: Date): Promise<NewData> {
         return inContext((context) => context.getNew(uuid, date));
     }
 

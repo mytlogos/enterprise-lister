@@ -151,7 +151,6 @@ export const getAllMedia: Handler = (req, res) => {
     sendResult(res, mediumStorage.getAllMedia());
 };
 
-
 export const putConsumeUnusedMedia: Handler = (req, res) => {
     const { mediumId, tocsMedia } = req.body;
 
@@ -177,6 +176,7 @@ export const getUnusedMedia: Handler = (req, res) => {
 
 export const readNews: Handler = (req, res) => {
     const { uuid, read } = req.body;
+    // TODO: change this validation, should expect a number[]
     if (!read || !isString(read)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
@@ -235,14 +235,6 @@ export const processResult: Handler = (req, res) => {
     sendResult(res, storage.processResult(req.body));
 };
 
-export const saveResult: Handler = (req, res) => {
-    if (!req.body) {
-        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-        return;
-    }
-    sendResult(res, storage.saveResult(req.body));
-};
-
 export const getTunnel: Handler = (req, res) => {
     sendResult(res, Promise.resolve(getTunnelUrls()));
 };
@@ -280,20 +272,12 @@ export const register: Handler = (req, res) => {
 
 export const logout: Handler = (req, res) => {
     const { uuid } = req.body;
+    // TODO: should logout only with valid session
     if (!uuid) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
     sendResult(res, userStorage.logoutUser(uuid, req.ip));
-};
-
-export const getInvalidated: Handler = (req, res) => {
-    const uuid = extractQueryParam(req, "uuid");
-    if (!uuid) {
-        sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-        return;
-    }
-    sendResult(res, storage.getInvalidatedStream(uuid));
 };
 
 export const addBookmarked: Handler = (req, res) => {
@@ -445,6 +429,7 @@ export const putListMedium: Handler = (req, res) => {
     let { mediumId } = req.body;
 
     if (!Number.isInteger(mediumId)) {
+        // FIXME: should expect number[] not string
         if (isString(mediumId)) {
             mediumId = stringToNumberList(mediumId);
 
@@ -466,6 +451,7 @@ export const deleteListMedium: Handler = (req, res) => {
     const { listId } = req.body;
     let { mediumId } = req.body;
 
+    // FIXME: expect number[] nod string
     // if it is a string, it is likely a list of episodeIds was send
     if (isString(mediumId)) {
         mediumId = stringToNumberList(mediumId);
@@ -578,18 +564,33 @@ export const postEpisode: Handler = (req, res) => {
     sendResult(res, episodeStorage.addEpisode(episode));
 };
 export const putEpisode: Handler = (req, res) => {
-    const { episode, uuid } = req.body;
+    const { episode } = req.body;
     if (!episode || (Array.isArray(episode) && !episode.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, episode.updateEpisode(episode, uuid));
+    if (Array.isArray(episode)) {
+        sendResult(res, Promise.all(episode.map(value => episodeStorage.updateEpisode(value))).then(values => {
+            // check if at least one updated
+            return values.findIndex(value => value) >= 0;
+        }));
+    } else {
+        sendResult(res, episodeStorage.updateEpisode(episode));
+    }
 };
 export const deleteEpisode: Handler = (req, res) => {
     const { episodeId } = req.body;
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
+    }
+    if (Array.isArray(episodeId)) {
+        sendResult(res, Promise.all(episodeId.map(value => episodeStorage.updateEpisode(value))).then(values => {
+            // check if at least one updated
+            return values.findIndex(value => value) >= 0;
+        }));
+    } else {
+        sendResult(res, episodeStorage.updateEpisode(episodeId));
     }
     sendResult(res, episodeStorage.deleteEpisode(episodeId));
 };
@@ -623,7 +624,7 @@ export const postExternalUser: Handler = (req, res) => {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResultCall(res, async () => {
+    sendResult(res, (async () => {
         const listManager = factory(Number(externalUser.type));
         const valid = await listManager.test({ identifier: externalUser.identifier, password: externalUser.pwd });
 
@@ -634,7 +635,7 @@ export const postExternalUser: Handler = (req, res) => {
         externalUser.cookies = listManager.stringifyCookies();
 
         return externalUserStorage.addExternalUser(uuid, externalUser);
-    });
+    })());
 };
 export const deleteExternalUser: Handler = (req, res) => {
     const { externalUuid, uuid } = req.body;

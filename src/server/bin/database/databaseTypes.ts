@@ -57,12 +57,6 @@ export enum InvalidationType {
     ANY = INSERT | UPDATE | DELETE
 }
 
-export interface MediumInWait {
-    title: string;
-    medium: MediaType;
-    link: string;
-}
-
 export interface ConnectionContext {
     startTransaction(): EmptyPromise;
 

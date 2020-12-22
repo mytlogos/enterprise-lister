@@ -1,13 +1,12 @@
 import { SubContext } from "./subContext";
-import { ExternalUser, Uuid, MultiSingleValue, PromiseMultiSingle } from "../../types";
+import { ExternalUser, Uuid, MultiSingleValue, PromiseMultiSingle, DisplayExternalUser, TypedQuery } from "../../types";
 import { Errors, promiseMultiSingle } from "../../tools";
 import { v1 as uuidGenerator } from "uuid";
-import { Query } from "mysql";
 import { storeModifications } from "../sqlTools";
 import { ExternalStorageUser } from "../../externals/types";
 
 export class ExternalUserContext extends SubContext {
-    public async getAll(uuid: Uuid): Promise<Query> {
+    public async getAll(uuid: Uuid): Promise<TypedQuery<DisplayExternalUser>> {
         const lists = await this.parentContext.externalListContext.getAll(uuid);
         return this
             .queryStream(

@@ -11,7 +11,9 @@ import {
     PromiseMultiSingle,
     Optional,
     PageInfo,
-    Primitive
+    Primitive,
+    DataStats,
+    NewData,
 } from "../../types";
 import { Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
 import logger from "../../logger";
@@ -556,7 +558,7 @@ export class QueryContext implements ConnectionContext {
         return this.con.queryStream(query, parameter);
     }
 
-    public async getNew(uuid: Uuid, date = new Date(0)): Promise<any> {
+    public async getNew(uuid: Uuid, date = new Date(0)): Promise<NewData> {
         const episodeReleasePromise = this.query(
             "SELECT episode_id as episodeId, title, url, releaseDate, locked " +
             "FROM episode_release WHERE updated_at > ?",
@@ -629,7 +631,7 @@ export class QueryContext implements ConnectionContext {
         };
     }
 
-    public async getStat(uuid: Uuid): Promise<any> {
+    public async getStat(uuid: Uuid): Promise<DataStats> {
         const episodePromise = this.query(
             "SELECT part_id, count(distinct episode.id) as episodeCount, sum(distinct episode.id) as episodeSum, count(url) as releaseCount " +
             "FROM episode LEFT JOIN episode_release ON episode.id=episode_release.episode_id " +
@@ -671,12 +673,12 @@ export class QueryContext implements ConnectionContext {
         const extUser = {};
 
         for (const toc of tocs) {
-            const mediumParts = getElseSetObj(mediaStats, toc.medium_id, () => {
+            const medium = getElseSetObj(mediaStats, toc.medium_id, () => {
                 return {
                     tocs: 0
                 };
             });
-            mediumParts.tocs = toc.count;
+            medium.tocs = toc.count;
         }
 
         for (const part of parts) {
