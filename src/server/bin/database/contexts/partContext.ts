@@ -223,6 +223,7 @@ export class PartContext extends SubContext {
 
         episodesResult.forEach((value) => {
             const items = getElseSetObj(result, value.part_id, () => []) as any[];
+            // @ts-expect-error
             delete value.part_id;
             items.push(value);
         });

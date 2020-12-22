@@ -1,8 +1,7 @@
 {
   "release": {
     "branches": [
-      "master",
-      "develop"
+      "master"
     ]
   },
   "plugins": [

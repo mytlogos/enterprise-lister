@@ -58,13 +58,10 @@ export async function storageInContext<T, C extends ConnectionContext>(
     }
     finally {
         if (isQuery(result)) {
-            const query: Query = result;
-            query.on("end", () => {
-                pool.releaseConnection(con);
-            });
+            result.on("end", () => con.release());
         } else {
             // release connection into the pool
-            pool.releaseConnection(con);
+            con.release();
         }
     }
     return result;

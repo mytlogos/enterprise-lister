@@ -151,6 +151,7 @@ export class JobContext extends SubContext {
 
                 if (!group) {
                     const copy = { ...value };
+                    // @ts-expect-error
                     delete copy.name;
 
                     group = {
@@ -185,7 +186,9 @@ export class JobContext extends SubContext {
                     const domainValue = group.domain[domain];
                     if (!domainValue) {
                         const copy = { ...value };
+                        // @ts-expect-error
                         delete copy.name;
+                        // @ts-expect-error
                         delete copy.timepoint;
 
                         group.domain[domain] = {
@@ -355,6 +358,7 @@ export class JobContext extends SubContext {
                 }
                 storeModifications("job", "insert", result);
             }
+            // @ts-expect-error
             delete value.runImmediately;
             return value as unknown as JobItem;
         });

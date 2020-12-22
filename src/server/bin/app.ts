@@ -24,7 +24,7 @@ app.use(logger(":method :url :status :response-time ms - :res[content-length]", 
         }
     }
 }));
-// @ts-expect-error
+
 app.use(helmet());
 // @ts-expect-error
 app.use(compression());

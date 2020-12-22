@@ -65,6 +65,7 @@ const logger = winston.createLogger({
                         const timestamp = info.timestamp;
                         const label = info.label;
                         const level = info.level;
+                        // @ts-expect-error
                         delete info.level;
                         delete info.label;
                         delete info.timestamp;

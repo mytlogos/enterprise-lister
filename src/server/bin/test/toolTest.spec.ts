@@ -124,7 +124,7 @@ describe("testing tool.js", () => {
         it("should fire online event within time limit", function () {
             this.timeout(3000);
             return tools.delay(500).then(() => {
-                return new Promise((resolve, reject) => {
+                return new Promise<void>((resolve, reject) => {
                     try {
                         tools.internetTester.isOnline().should.be.false;
                         tools.internetTester.on("online", () => {
@@ -141,7 +141,7 @@ describe("testing tool.js", () => {
         it("should fire offline event within time limit", function () {
             this.timeout(3000);
             return tools.delay(500).then(() => {
-                return new Promise((resolve, reject) => {
+                return new Promise<void>((resolve, reject) => {
                     try {
                         tools.internetTester.isOnline().should.be.true;
                         tools.internetTester.on("offline", () => {
