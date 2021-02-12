@@ -30,6 +30,13 @@ import listComp from "../components/list-comp.vue";
 import externalUser from "../components/external-user.vue";
 import { ExternalUser } from "../siteTypes";
 
+interface Data {
+    lists: Array<{ name: string; id: number; show: boolean }>;
+    filter: string;
+    listFocused: boolean;
+    show: null | number;
+}
+
 export default defineComponent({
     name: "SettingsPage",
     components: {
@@ -40,7 +47,7 @@ export default defineComponent({
         externalUser: { type: Array as PropType<ExternalUser[]>, required: true },
         showSettings: { type: Boolean, required: true }
     },
-    data(): { lists: Array<{ name: string; id: number; show: boolean }>; filter: string; listFocused: boolean; show: null | number } {
+    data(): Data {
         return {
             lists: [
                 // TODO get options from server

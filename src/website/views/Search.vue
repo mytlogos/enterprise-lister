@@ -196,12 +196,13 @@ export default defineComponent({
                 url: "",
                 medium: 0,
             },
-            selectedList: 0,
-            lists: []
+            selectedList: 0
         };
     },
-    mounted() {
-        HttpClient.getLists().then(lists => this.lists = lists);
+    computed: {
+        lists() {
+            return this.$store.state.user.lists;
+        },
     },
     methods: {
         search() {

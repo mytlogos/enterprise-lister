@@ -217,6 +217,7 @@ import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
 import $ from "jquery";
+import { mapState } from "vuex";
 
 // initialize all toasts
 $(".toast").toast();
@@ -236,7 +237,6 @@ export default defineComponent({
     },
     props: {
         show: Boolean,
-        lists: { type: Array as PropType<List[]>, required: true },
     },
 
     data(): Data {
@@ -258,6 +258,12 @@ export default defineComponent({
             toastMessage: "",
             toastTitle: ""
         };
+    },
+
+    computed: {
+        lists() {
+            return this.$store.state.user.lists;
+        }
     },
 
     methods: {

@@ -349,7 +349,7 @@ export interface StoreUser {
     news: News[];
     name: string;
     externalUser: ExternalUser[];
-    media: Medium[];
+    media: Record<number, SimpleMedium>;
     settings: any;
     columns: Column[];
 }

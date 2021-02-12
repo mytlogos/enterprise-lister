@@ -98,13 +98,12 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
-import { Job, JobHistoryItem, JobTrack, SimpleMedium } from "../siteTypes";
+import { Job, JobHistoryItem, JobTrack } from "../siteTypes";
 import { formatDate, absoluteToRelative, isString } from "../init";
 
 interface Data {
     job?: Job;
     history: JobHistoryItem[];
-    media: Map<number, SimpleMedium>;
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
@@ -122,19 +121,9 @@ export default defineComponent({
         return {
             job: undefined,
             history: [],
-            media: new Map(),
         }
     },
     mounted() {
-        HttpClient.getAllMedia().then(data => {
-            const media = new Map();
-
-            for (const datum of data) {
-                media.set(datum.id, datum);
-            }
-
-            this.media = media
-        }).catch(console.error);
         HttpClient.getJobDetails(this.id).then(value => {
             this.job = value.job;
             for (const history of value.history) {
@@ -157,7 +146,7 @@ export default defineComponent({
                 return name;
             }
             const id = Number.parseInt(match[1]);
-            const medium = this.media.get(id);
+            const medium = this.$store.getters.getMedium(id);
             const link = match[2];
             const domainName = domainRegex.exec(link);
             return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName[2]}`;

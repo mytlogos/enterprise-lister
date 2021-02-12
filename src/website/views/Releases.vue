@@ -80,7 +80,7 @@
                 params: { id: entry.mediumId },
               }"
             >
-              {{ media[entry.mediumId]?.title }}
+              {{ getMedium(entry.mediumId)?.title }}
             </router-link>
           </td>
           <td>
@@ -136,7 +136,7 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, MediaType, MinMedium } from "../siteTypes";
+import { DisplayRelease, MediaType, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
@@ -146,7 +146,6 @@ import $ from "jquery";
 
 interface Data {
     releases: DisplayRelease[];
-    media: Record<number, MinMedium>;
     currentDate: Date;
     fetching: boolean;
     unmounted: boolean;
@@ -178,7 +177,6 @@ export default defineComponent({
     data(): Data {
         return {
             releases: [],
-            media: {},
             currentDate: new Date(),
             fetching: false,
             unmounted: false,
@@ -192,8 +190,7 @@ export default defineComponent({
             let copy = [...this.releases] as DisplayRelease[];
 
             if (this.typeFilter) {
-                console.log("Filtering by medium type: "  + this.typeFilter);
-                copy = copy.filter(value => this.media[value.mediumId].medium & this.typeFilter);
+                copy = copy.filter(value => this.$store.state.user.media[value.mediumId].medium & this.typeFilter);
             }
             return copy.sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
         }
@@ -219,6 +216,9 @@ export default defineComponent({
         this.unmounted = true;
     },
     methods: {
+        getMedium(id: number): SimpleMedium {
+            return this.$store.getters.getMedium(id);
+        },
         timeDifference(date: Date): string {
             return timeDifference(this.currentDate, date);
         },
@@ -245,9 +245,7 @@ export default defineComponent({
                 const latest = new Date();
                 latest.setFullYear(latest.getFullYear() + 1);
                 const response = await HttpClient.getDisplayReleases(latest, until, this.read);
-                for (const medium of response.media) {
-                    this.media[medium.id] = medium;
-                }
+
                 response.releases.forEach((value) => {
                     if (!(value.date instanceof Date)) {
                         value.date = new Date(value.date);

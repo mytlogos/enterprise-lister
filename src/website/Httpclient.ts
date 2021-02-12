@@ -123,6 +123,14 @@ const restApi = {
                 get: true,
                 post: true,
                 delete: true,
+
+                refresh: {
+                    get: true,
+                },
+
+                all: {
+                    get: true
+                }
             },
             list: {
                 get: true,
@@ -260,6 +268,9 @@ interface ExternalUserPath {
     readonly get: MethodObject;
     readonly post: MethodObject;
     readonly delete: MethodObject;
+
+    readonly all: GetPath;
+    readonly refresh: GetPath;
 }
 
 interface TocPath {
@@ -421,11 +432,18 @@ export const HttpClient = {
         return store.getters.loggedIn;
     },
 
+    _checkLogin: null,
+
     /**
      * Checks whether a user is currently logged in on this device.
      */
     isLoggedIn(): Promise<User> {
-        return this.queryServer(api.api.get);
+        if (this._checkLogin) {
+            return this._checkLogin;
+        } else {
+            const checkPromise = this.queryServer(api.api.get).finally(() => this._checkLogin = null);
+            return this._checkLogin = checkPromise;
+        }
     },
 
     login(userName: string, psw: string): Promise<User> {
@@ -462,6 +480,10 @@ export const HttpClient = {
 
     logout(): Promise<boolean> {
         return this.queryServer(api.logout.post).then((result) => result.loggedOut);
+    },
+
+    getExternalUser(): Promise<ExternalUser[]> {
+        return this.queryServer(api.externalUser.all.get);
     },
 
     addExternalUser(externalUser: { identifier: string; pwd: string }): Promise<ExternalUser> {
@@ -621,6 +643,9 @@ export const HttpClient = {
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
         // if path includes user, it needs to be authenticated
         if (path.includes("user")) {
+            if (this._checkLogin) {
+                await this._checkLogin;
+            }
             const uuid = store.state.uuid;
 
             if (!uuid) {

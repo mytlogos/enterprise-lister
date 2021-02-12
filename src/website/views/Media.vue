@@ -139,7 +139,6 @@ interface Medium extends SimpleMedium {
 }
 
 interface Data {
-    media: Medium[];
     titleSearch: string;
     showStatesTL: ReleaseState[];
 }
@@ -153,7 +152,6 @@ export default defineComponent({
 
     data(): Data {
         return {
-            media: [],
             titleSearch: "",
             showStatesTL: [
                 ReleaseState.Unknown,
@@ -172,7 +170,7 @@ export default defineComponent({
          */
         filteredMedia(): Medium[] {
             const lowerTitleSearch = this.titleSearch.toLowerCase();
-            return this.media
+            return this.$store.getters.media
                 .filter(medium => {
                     if (!medium.title.toLowerCase().includes(lowerTitleSearch)) {
                         return false;
@@ -193,13 +191,11 @@ export default defineComponent({
      */
     mounted() {
         console.log("Media: Mounted");
-        HttpClient.getAllMedia().then(media => {
-            for (const medium of media) {
-                medium.readEpisodes = 0;
-                medium.totalEpisode = 0;
-            }
-            this.media = media as Medium[];
-        }).catch(console.error);
+        // TODO: set properties:
+        //     for (const medium of media) {
+        //         medium.readEpisodes = 0;
+        //         medium.totalEpisode = 0;
+        //     }
         HttpClient.getAllSecondaryMedia().then(result => {
             const idMap = new Map();
             for (const medium of result) {

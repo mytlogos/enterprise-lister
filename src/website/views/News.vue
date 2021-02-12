@@ -7,15 +7,15 @@
       </h1>
       <div class="d-flex container-fluid">
         <span>From:</span>
-        <VueCtkDateTimePicker
+        <!-- <VueCtkDateTimePicker
           v-model="from"
           class="picker"
-        />
+        /> -->
         <span>To:</span>
-        <VueCtkDateTimePicker
+        <!-- <VueCtkDateTimePicker
           v-model="to"
           class="picker"
-        />
+        /> -->
       </div>
       <table
         class="table"
@@ -60,24 +60,27 @@
 // TODO replace vue picker with date and time input
 import { emitBusEvent, onBusEvent } from "../bus";
 import readingList from "../components/reading-list.vue";
-// noinspection NpmUsedModulesInstalled
-import VueCtkDateTimePicker from "vue-ctk-date-time-picker";
-import "vue-ctk-date-time-picker/dist/vue-ctk-date-time-picker.css";
 
-import { defineComponent, PropType } from "vue";
-import { List, News } from "../siteTypes";
+import { defineComponent } from "vue";
+import { News } from "../siteTypes";
+
+interface Data {
+    listFocused: boolean;
+    filter: string;
+    show: boolean | null;
+    from: string | null;
+    to: string | null;
+    currentLength: number;
+    emptySpaceDirty: boolean;
+    emptySpaceSpare: number;
+}
 
 export default defineComponent({
     name: "NewsPage",
     components: {
         readingList,
-        VueCtkDateTimePicker,
     },
-    props: {
-        lists: { type: Array as PropType<List[]>, required: true },
-        news: { type: Array as PropType<News[]>, required: true },
-    },
-    data(): { listFocused: boolean; filter: string; show: boolean | null; from: string | null; to: string | null; currentLength: number; emptySpaceDirty: boolean; emptySpaceSpare: number } {
+    data(): Data {
         return {
             listFocused: false,
             filter: "",
@@ -100,7 +103,7 @@ export default defineComponent({
         },
 
         displayLists(): any[] {
-            const toDisplayLists = this.lists
+            const toDisplayLists = this.$store.getters.allLists
                 .filter((value?: any) => value)
                 .map((value: any) => {
                     return { ...value, show: false };

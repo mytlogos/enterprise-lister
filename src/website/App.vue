@@ -2,10 +2,7 @@
   <div>
     <app-header />
     <main>
-      <router-view
-        :lists="allLists"
-        :media="displayMedia"
-      />
+      <router-view />
     </main>
   </div>
 </template>
@@ -43,11 +40,6 @@ export default defineComponent({
     computed: {
         loggedIn(): boolean {
             return this.$store.getters.loggedIn;
-        },
-
-        allLists(): any[] {
-            const externalLists = this.$store.state.user.externalUser.flatMap((value) => value.lists);
-            return [...this.$store.state.user.lists, ...externalLists];
         },
 
         displayMedia(): any[] {
@@ -94,13 +86,9 @@ export default defineComponent({
     watch: {
         loggedIn(newValue) {
             console.log("loggedin changed: ", newValue);
+
             if (!newValue) {
                 this.loginState();
-            } else {
-                HttpClient.getLists().then(lists => {
-                    this.$store.commit("userLists", lists);
-                    console.log("Finished loading Lists", lists);
-                }).catch(console.error);
             }
         },
     },
@@ -145,9 +133,6 @@ export default defineComponent({
 
         optimizedResize.add(() => emitBusEvent("window:resize"));
 
-        console.log("Mounted:", this.$store, this.$router);
-        console.log(this.$data);
-        console.log(this);
         onBusEvent("select:list", (id, external, multi) => this.selectList(id, external, multi));
     },
 

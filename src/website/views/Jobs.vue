@@ -403,7 +403,6 @@ interface JobsSummary {
 interface Data {
     jobs: Job[];
     sortedOn: Partial<Record<keyof Job | keyof JobStats, number>>;
-    media: Map<number, SimpleMedium>;
     now: Date;
     liveJobs: { [key: number]: LiveJob };
     summary: JobsSummary;
@@ -432,7 +431,6 @@ export default defineComponent({
                 "runningSince": 1,
                 "nextRun": 1
             },
-            media: new Map(),
             now: new Date(),
             liveJobs: {},
             totalJobsStats: {
@@ -501,16 +499,6 @@ export default defineComponent({
         }
     },
     mounted() {
-        HttpClient.getAllMedia().then(data => {
-            const media = new Map();
-
-            for (const datum of data) {
-                media.set(datum.id, datum);
-            }
-
-            this.media = media
-        }).catch(console.error);
-
         // fetch storage jobs data
         HttpClient.getJobs().then(data => {
             let running = 0;
@@ -614,7 +602,7 @@ export default defineComponent({
                 return name;
             }
             const id = Number.parseInt(match[1]);
-            const medium = this.media.get(id);
+            const medium = this.$store.getters.getMedium(id);
             const link = match[2];
             const domainName = domainRegex.exec(link);
             return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName[2]}`;

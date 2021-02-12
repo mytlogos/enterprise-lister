@@ -7,11 +7,12 @@ import {
     Medium,
     Modals,
     News,
+    SimpleMedium,
     User,
     VuexStore 
 } from "./siteTypes";
 import router from "./router";
-import { Commit, createStore } from "vuex";
+import { Commit, createStore, createLogger } from "vuex";
 
 
 function userClear(commit: Commit) {
@@ -39,6 +40,7 @@ function createModal(): { show: boolean; error: string } {
 
 export const store = createStore({
     strict: true,
+    plugins: [createLogger()],
     state: (): VuexStore => ({
         modals: {
             addList: createModal(),
@@ -53,7 +55,7 @@ export const store = createStore({
             news: [],
             name: "",
             externalUser: [],
-            media: [],
+            media: {},
             settings: {},
             columns: [
                 { name: "Title", prop: "title", show: true },
@@ -67,7 +69,17 @@ export const store = createStore({
     getters: {
         loggedIn(state): boolean {
             return !!state.uuid;
-        }
+        },
+        getMedium: (state) => (id: number): SimpleMedium => {
+            return state.user.media[id];
+        },
+        media(state): SimpleMedium[] {
+            return Object.values(state.user.media);
+        },
+        allLists(state): any[] {
+            const externalLists = state.user.externalUser.flatMap((value) => value.lists);
+            return [...state.user.lists, ...externalLists];
+        },
     },
     mutations: {
         userName(state, name: string) {
@@ -85,7 +97,7 @@ export const store = createStore({
         userExternalUser(state, externalUser: ExternalUser[]) {
             state.user.externalUser = [...externalUser];
         },
-        userMedia(state, media: Medium[]) {
+        userMedia(state, media: Record<number, SimpleMedium>) {
             state.user.media = media;
         },
         addExternalUser(state, externalUser: ExternalUser) {
@@ -105,14 +117,15 @@ export const store = createStore({
             state.user.externalUser.splice(index, 1);
         },
         addMedium(state, medium: Medium) {
-            state.user.media.push(medium);
+            state.user.media[medium.id] = medium;
         },
         deleteMedium(state, id: number) {
-            const index = state.user.media.findIndex((value) => value.id === id);
-            if (index < 0) {
+            if (!(id in state.user.media)) {
                 throw Error("invalid mediumId");
             }
-            state.user.media.splice(index, 1);
+
+            delete state.user.media[id];
+
             state.user.lists.forEach((value) => {
                 const listIndex = value.items.findIndex(
                     (itemId: number) => itemId === id
@@ -166,6 +179,38 @@ export const store = createStore({
         })()
     },
     actions: {
+        async loadMedia({ commit }) {
+            try {
+                const data = await HttpClient.getAllMedia();
+                const media = {};
+    
+                for (const datum of data) {
+                    media[datum.id] = datum;
+                }
+    
+                commit("userMedia", media);
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        async loadLists({ commit }) {
+            try {
+                const lists = await HttpClient.getLists();
+                commit("userLists", lists);
+                console.log("Finished loading Lists", lists);
+            } catch (error) {
+                console.error(error);
+            }
+        },
+        async loadExternalUser({ commit }) {
+            try {
+                const externalUser = await HttpClient.getExternalUser();
+                commit("userExternalUser", externalUser);
+                console.log("Finished loading ExternalUser", externalUser);
+            } catch (error) {
+                console.error(error);
+            }
+        },
         async addExternalUser({ commit }, data: { identifier: string; pwd: string }) {
             if (!data.identifier) {
                 emitBusEvent("error:add:externalUser", "Identifier is missing!");
@@ -194,15 +239,23 @@ export const store = createStore({
                 throw error
             }
         },
-        async changeUser({ commit, state }, { user, modal }: { user: User; modal: string }) {
+        async changeUser({ commit, dispatch, state }, { user, modal }: { user: User; modal: string }) {
             const userChanged = user && state.uuid !== user.uuid;
             setUser(commit, user);
             commit("resetModal", modal);
 
-            if (userChanged && router.currentRoute.value.path === "/login") {
-                // automatically navigate to view under home if successfully logged in
-                await router.push("/").catch(console.error);
-                console.log("pushed home");
+            if (userChanged) {
+                await Promise.all([
+                    dispatch("loadMedia"),
+                    dispatch("loadLists"),
+                    dispatch("loadExternalUser"),
+                ]);
+
+                if (router.currentRoute.value.path === "/login") {
+                    // automatically navigate to view under home if successfully logged in
+                    await router.push("/").catch(console.error);
+                    console.log("pushed home");
+                }
             }
         },
         async login({ commit, dispatch }, data: { user: string; pw: string }) {
