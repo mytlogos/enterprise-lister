@@ -20,6 +20,11 @@
         v-model:state="readFilter"
         class="ml-1"
       />
+      <media-filter
+        :state="typeFilter"
+        class="ml-1"
+        @update:state="typeFilter = $event"
+      />
     </div>
     <table
       class="table table-striped table-hover table-sm"
@@ -75,7 +80,7 @@
                 params: { id: entry.mediumId },
               }"
             >
-              {{ media[entry.mediumId] }}
+              {{ media[entry.mediumId]?.title }}
             </router-link>
           </td>
           <td>
@@ -131,16 +136,17 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease } from "../siteTypes";
+import { DisplayRelease, MediaType, MinMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
-import { HttpClient as Client, HttpClient } from "../Httpclient";
+import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
-import TripleFilter from "../components/triple-filter.vue"
+import TripleFilter from "../components/triple-filter.vue";
+import MediaFilter from "../components/media-filter.vue";
 import $ from "jquery";
 
 interface Data {
     releases: DisplayRelease[];
-    media: { [key: number]: string };
+    media: Record<number, MinMedium>;
     currentDate: Date;
     fetching: boolean;
     unmounted: boolean;
@@ -149,6 +155,7 @@ interface Data {
      * Signal Variable for fetchReleases to replace all current ones
      */
     replace: boolean;
+    typeFilter: MediaType | number;
 }
 
 // initialize all tooltips on this page
@@ -161,10 +168,11 @@ $(".toast").toast();
 
 export default defineComponent({
     name: "Releases",
-    components: { TripleFilter },
+    components: { TripleFilter, MediaFilter },
 
     props: {
-        read: Boolean
+        read: Boolean,
+        type: Number
     },
 
     data(): Data {
@@ -176,16 +184,26 @@ export default defineComponent({
             unmounted: false,
             readFilter: this.read,
             replace: false,
+            typeFilter: this.type
         };
     },
     computed: {
         computedReleases(): DisplayRelease[] {
-            return [...this.releases].sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
+            let copy = [...this.releases] as DisplayRelease[];
+
+            if (this.typeFilter) {
+                console.log("Filtering by medium type: "  + this.typeFilter);
+                copy = copy.filter(value => this.media[value.mediumId].medium & this.typeFilter);
+            }
+            return copy.sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
         }
     },
     watch: {
         readFilter() {
-            this.$router.push({ query: { read: this.readFilter } });
+            this.$router.push({ query: { read: this.readFilter, type: this.typeFilter } });
+        },
+        typeFilter() {
+            this.$router.push({ query: { read: this.readFilter, type: this.typeFilter } });
         },
         read() {
             // when release filter changed, set replace current items flag and fetch anew
@@ -226,9 +244,9 @@ export default defineComponent({
                 // some releases have dates in the future, so get them at most one year in the future
                 const latest = new Date();
                 latest.setFullYear(latest.getFullYear() + 1);
-                const response = await Client.getDisplayReleases(latest, until, this.read);
-                for (const key in response.media) {
-                    this.media[key] = response.media[key];
+                const response = await HttpClient.getDisplayReleases(latest, until, this.read);
+                for (const medium of response.media) {
+                    this.media[medium.id] = medium;
                 }
                 response.releases.forEach((value) => {
                     if (!(value.date instanceof Date)) {
@@ -237,7 +255,7 @@ export default defineComponent({
                 })
                 this.currentDate = new Date();
                 // replace previous releases if necessary
-                const releases = replace ? reactive([]) : this.releases;
+                const releases: DisplayRelease[] = replace ? reactive([]) : this.releases;
                 this.replace = false;
                 // when filter changed while a previous query is still running, it may lead to wrong results
                 // should not happen because no two fetches should happen at the same time

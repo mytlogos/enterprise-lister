@@ -10,6 +10,12 @@ export interface SearchResult {
     medium: MediaType;
 }
 
+export interface MinMedium {
+    id: Id;
+    title: string;
+    medium: MediaType;
+}
+
 export interface SimpleMedium {
     id?: Id;
     countryOfOrigin?: string;
@@ -140,7 +146,7 @@ export interface DisplayRelease {
 
 export interface DisplayReleasesResponse {
     releases: DisplayRelease[];
-    media: Record<Id, string>;
+    media: MinMedium[];
     latest: Date;
 }
 

@@ -77,6 +77,7 @@ const router = createRouter({
             props: (to) => {
                 return {
                     read: to.query.read ? to.query.read === "true" : undefined,
+                    type: to.query.type ? Number(to.query.type) : 0,
                 };
             },
             // route level code-splitting

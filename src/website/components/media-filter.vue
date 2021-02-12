@@ -55,7 +55,7 @@ export default defineComponent({
             }
         ];
         return {
-            selected: filter[0],
+            selected: 0,
             values: filter,
         };
     },

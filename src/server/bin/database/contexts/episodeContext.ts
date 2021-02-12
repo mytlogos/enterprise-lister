@@ -67,7 +67,7 @@ export class EpisodeContext extends SubContext {
             `WHERE ${progressCondition} ORDER BY releaseDate DESC LIMIT 500;`,
             [latestDate, untilDate, untilDate, uuid, read, read]
         );
-        const mediaPromise: Promise<Array<{ id: number; title: string }>> = this.query("SELECT id, title FROM medium;");
+        const mediaPromise: Promise<Array<{ id: number; title: string; medium: MediaType }>> = this.query("SELECT id, title, medium FROM medium;");
         const latestReleaseResult: Array<{ releaseDate: string }> = await this.query("SELECT releaseDate FROM episode_release ORDER BY releaseDate LIMIT 1;");
         const releases = await releasePromise;
 
@@ -76,13 +76,7 @@ export class EpisodeContext extends SubContext {
         for (const release of releases) {
             mediaIds.add(release.mediumId);
         }
-        const media: { [key: number]: string } = {};
-
-        for (const medium of await mediaPromise) {
-            if (mediaIds.has(medium.id)) {
-                media[medium.id] = medium.title;
-            }
-        }
+        const media = (await mediaPromise).filter(value => mediaIds.has(value.id));
 
         return {
             latest: latestReleaseResult.length ? new Date(latestReleaseResult[0].releaseDate) : new Date(0),

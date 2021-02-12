@@ -182,7 +182,7 @@ export interface DisplayRelease {
 
 export interface DisplayReleasesResponse {
     releases: DisplayRelease[];
-    media: { [key: number]: string };
+    media: MinMedium[];
     latest: Date;
 }
 
@@ -337,5 +337,11 @@ export interface SearchResult {
     link: string;
     title: string;
     author?: string;
+    medium: MediaType;
+}
+
+export interface MinMedium {
+    id: number;
+    title: string;
     medium: MediaType;
 }
