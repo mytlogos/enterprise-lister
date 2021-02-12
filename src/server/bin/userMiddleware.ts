@@ -748,7 +748,7 @@ export const getNews: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
     let from: string | Date | undefined = extractQueryParam(req, "from", true);
     let to: string | Date | undefined = extractQueryParam(req, "to", true);
-    let newsIds: string | number[] = extractQueryParam(req, "newsId");
+    let newsIds: string | number[] | undefined = extractQueryParam(req, "newsId", true);
 
     // if newsIds is specified, send only these news
     if (isString(newsIds)) {
@@ -802,8 +802,8 @@ export const getAllReleases: Handler = (req, res) => {
 
 export const getDisplayReleases: Handler = (req, res) => {
     const latest = extractQueryParam(req, "latest");
-    const until = extractQueryParam(req, "until");
-    const read = extractQueryParam(req, "read") ? extractQueryParam(req, "read").toLowerCase() == "true" : null;
+    const until = extractQueryParam(req, "until", true);
+    const read = extractQueryParam(req, "read", true) ? extractQueryParam(req, "read").toLowerCase() == "true" : null;
     const uuid = extractQueryParam(req, "uuid");
 
     const latestDate = getDate(latest);
@@ -924,6 +924,6 @@ function extractQueryParam<T extends boolean = false>(request: Request, key: str
         // @ts-expect-error
         return value;
     } else  {
-        throw Error("Expected a String but got an object of type: " + typeof value);
+        throw Error(`Expected a String for "${key}" but got an object of type: ${typeof value}`);
     }
 }
