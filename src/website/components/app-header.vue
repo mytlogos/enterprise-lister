@@ -148,22 +148,18 @@
 </template>
 
 <script lang="ts">
-import { emitBusEvent } from "../bus";
-
 import { defineComponent } from "vue";
+import { mapGetters, mapState } from "vuex";
 
 export default defineComponent({
     name: "AppHeader",
-    props: {
-        loggedIn: Boolean,
-        showLists: Boolean,
-        showSettings: Boolean,
-        showReleases: Boolean,
-        name: { type: String, required: true },
+    computed: {
+        ...mapState(["name"]),
+        ...mapGetters(["loggedIn"])
     },
     methods: {
         logout(): void {
-            emitBusEvent("do:logout");
+            this.$store.dispatch("logout");
         }
     }
 });

@@ -112,8 +112,6 @@ export interface User {
     uuid: string;
     name: string;
     session: string;
-    externalUser: ExternalUser[];
-    lists: List[];
 }
 
 export interface ExternalList {
@@ -344,4 +342,38 @@ export interface MinMedium {
     id: number;
     title: string;
     medium: MediaType;
+}
+
+export interface StoreUser {
+    lists: List[];
+    news: News[];
+    name: string;
+    externalUser: ExternalUser[];
+    media: Medium[];
+    settings: any;
+    columns: Column[];
+}
+
+export interface Modal {
+    show: boolean;
+    error: string;
+}
+
+export interface Modals {
+    addList: Modal;
+    addMedium: Modal;
+    login: Modal;
+    register: Modal;
+    settings: Modal;
+    error: Modal;
+}
+
+export interface VuexStore {
+    modals: Modals;
+    user: StoreUser;
+    session: string;
+    uuid: string;
+    // loadingMedia: number[];
+    // readNews: number[];
+    // newReadNews: number[];
 }

@@ -1,3 +1,4 @@
+import { store } from "./store";
 import {
     ExternalUser,
     List,
@@ -415,33 +416,9 @@ const api: Api = (function pathGenerator() {
 })();
 
 export const HttpClient = {
-    _user: null,
-    _init: false,
-
-
-    get userPromise(): Promise<any> {
-        return new Promise((resolve) => {
-            if (this._init) {
-                resolve(this._user);
-                return;
-            }
-            const intervalId = setInterval(() => {
-                if (this._init) {
-                    clearInterval(intervalId);
-                    resolve(this._user);
-                }
-            }, 500);
-        });
-    },
-
-    set user(user: any) {
-        this._user = user;
-        this._init = true;
-    },
 
     get loggedIn(): boolean {
-        // @ts-ignore
-        return this.user && Boolean(this.user.uuid);
+        return store.getters.loggedIn;
     },
 
     /**
@@ -644,18 +621,16 @@ export const HttpClient = {
     async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
         // if path includes user, it needs to be authenticated
         if (path.includes("user")) {
-            const user = await this.userPromise;
-            // @ts-ignore
-            if (!user || !user.uuid) {
+            const uuid = store.state.uuid;
+
+            if (!uuid) {
                 throw Error("cannot send user message if no user is logged in");
             }
             if (!query) {
                 query = {};
             }
-            // @ts-ignore
-            query.uuid = user.uuid;
-            // @ts-ignore
-            query.session = user.session;
+            query.uuid = uuid;
+            query.session = store.state.session;
         }
         const init = {
             method,
