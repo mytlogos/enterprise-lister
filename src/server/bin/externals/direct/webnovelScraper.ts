@@ -1,5 +1,5 @@
 import { EpisodeContent, Hook, Toc, TocEpisode, TocPart } from "../types";
-import { EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Optional } from "../../types";
+import { EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Optional, Link } from "../../types";
 import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString } from "../../tools";
 import logger from "../../logger";
 import * as url from "url";
@@ -22,6 +22,14 @@ const initPromise = queueRequest(
     defaultRequest
 ).then(ignore);
 
+function toReleaseLink(bookId: string, chapterId: string): Link {
+    return `https://www.webnovel.com/book/${bookId}/${chapterId}/`;
+}
+
+function toTocLink(bookId: string): Link {
+    return `https://www.webnovel.com/book/${bookId}/`;
+}
+
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
     const uri = "https://www.webnovel.com/";
     const $ = await queueCheerioRequest(uri);
@@ -43,7 +51,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
             logger.info(`unknown toc link format on webnovel: ${mediumTocTotalLink}`);
             continue;
         }
-        const mediumTocLink = `https://www.webnovel.com/book/${mediumTocLinkGroup[3]}`;
+        const mediumTocLink = toTocLink(mediumTocLinkGroup[3]);
         const mediumTitle = sanitizeString(mediumElement.text());
 
         const titleElement = tableData.eq(2).children("a").first();
@@ -63,7 +71,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
             logger.info(`unknown news url format on webnovel: ${totalLink}`);
             continue;
         }
-        const link = `https://www.webnovel.com/book/${linkGroup[3]}/${linkGroup[5]}`;
+        const link = toReleaseLink(linkGroup[3], linkGroup[5]);
         const groups = titlePattern.exec(episodeTitle);
 
         if (!groups || !groups[1]) {
@@ -152,7 +160,7 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
                 }
 
                 const chapterContent: TocEpisode = {
-                    url: `https://www.webnovel.com/book/${bookId}/${item.id}/`,
+                    url: toReleaseLink(bookId, item.id),
                     title: item.name,
                     combiIndex: item.index,
                     totalIndex: item.index,
@@ -172,7 +180,7 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
             return partContent;
         });
     const toc: Toc = {
-        link: `https://www.webnovel.com/book/${bookId}/`,
+        link: toTocLink(bookId),
         synonyms: [tocJson.data.bookInfo.bookSubName],
         mediumId,
         content,
@@ -373,7 +381,7 @@ async function search(text: string): Promise<SearchResult[]> {
             logger.info(`unknown toc link format on webnovel: ${link}`);
             continue;
         }
-        const mediumTocLink = `https://www.webnovel.com/book/${mediumTocLinkGroup[3]}`;
+        const mediumTocLink = toTocLink(mediumTocLinkGroup[3]);
 
         searchResult.push({ title, link: mediumTocLink, coverUrl, medium: MediaType.TEXT });
     }
