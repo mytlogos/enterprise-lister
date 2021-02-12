@@ -25,8 +25,7 @@ app.use(logger(":method :url :status :response-time ms - :res[content-length]", 
     }
 }));
 
-app.use(helmet());
-// @ts-expect-error
+app.use(helmet({contentSecurityPolicy: false}));
 app.use(compression());
 
 // remove any emoji, dont need it and it can mess up my database
@@ -61,13 +60,10 @@ app.use((req, res, next) => {
 // error handler
 app.use((err: HttpError, req: Request, res: Response) => {
     // set locals, only providing error in development
-    // @ts-expect-error
     res.locals.message = err.message;
-    // @ts-expect-error
     res.locals.error = req.app.get("env") === "development" ? err : {};
 
     // render the error page
-    // @ts-expect-error
     res.sendStatus(err.status || 500);
 });
 

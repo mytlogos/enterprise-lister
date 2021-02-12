@@ -16,7 +16,7 @@ import stringify from "stringify-stream";
 import logger from "./logger";
 import { downloadEpisodes, filterScrapeAble, search as searchMedium, loadToc } from "./externals/scraperTools";
 import { Errors, isError, isQuery, isString, stringToNumberList, getDate } from "./tools";
-import { JobRequest, ScrapeName } from "./types";
+import { JobRequest, ScrapeName, TimeBucket } from "./types";
 import { TocRequest } from "./externals/types";
 import { getTunnelUrls } from "./tunnel";
 import env from "./env";
@@ -36,12 +36,12 @@ function isInvalidSimpleMedium(medium: any): boolean {
 }
 
 export const searchToc: Handler = (req, res) => {
-    const link = decodeURIComponent(extractQueryParam(req, "link"));
+    const link = decodeURIComponent(extractQueryParam(req, "link", false));
     sendResult(res, loadToc(link));
 };
 
 export const getToc: Handler = (req, res) => {
-    let media = extractQueryParam(req, "mediumId");
+    let media: string | number | number[] = extractQueryParam(req, "mediumId");
 
     const listMedia = stringToNumberList(media);
 
@@ -66,7 +66,7 @@ export const getToc: Handler = (req, res) => {
 };
 
 export const deleteToc: Handler = (req, res) => {
-    let mediumId = extractQueryParam(req, "mediumId");
+    let mediumId: string | number = extractQueryParam(req, "mediumId");
     const link = extractQueryParam(req, "link");
 
     mediumId = Number.parseInt(mediumId, 10);
@@ -142,9 +142,8 @@ export const getStats: Handler = (req, res) => {
 
 export const getNew: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
-    let date = extractQueryParam(req, "date");
-    date = date ? new Date(date) : undefined;
-    sendResult(res, storage.getNew(uuid, date));
+    const date = extractQueryParam(req, "date");
+    sendResult(res, storage.getNew(uuid, date ? new Date(date) : undefined));
 };
 
 export const getAllMedia: Handler = (req, res) => {
@@ -350,9 +349,9 @@ export const downloadEpisode: Handler = (req, res) => {
             .then((fullEpisodes) => downloadEpisodes(fullEpisodes.filter((value) => value))));
 };
 export const getList: Handler = (req, res) => {
-    let listId = extractQueryParam(req, "listId");
+    let listId: string | number[] = extractQueryParam(req, "listId");
     const uuid = extractQueryParam(req, "uuid");
-    let media = extractQueryParam(req, "media");
+    let media: string | number[] = extractQueryParam(req, "media");
 
     if (!media) {
         media = "";
@@ -397,9 +396,9 @@ export const deleteList: Handler = (req, res) => {
     sendResult(res, internalListStorage.deleteList(listId, uuid));
 };
 export const getListMedium: Handler = (req, res) => {
-    const listId = extractQueryParam(req, "listId");
+    const listId = Number.parseInt(extractQueryParam(req, "listId"));
     const uuid = extractQueryParam(req, "uuid");
-    let media = extractQueryParam(req, "media");
+    let media: string | number[] = extractQueryParam(req, "media");
 
     if (!media || !isString(media)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
@@ -463,11 +462,11 @@ export const deleteListMedium: Handler = (req, res) => {
     sendResult(res, internalListStorage.removeMedium(listId, mediumId));
 };
 export const getPart: Handler = (req, res) => {
-    const mediumId = extractQueryParam(req, "mediumId");
+    const mediumIdString = extractQueryParam(req, "mediumId", true);
     const uuid = extractQueryParam(req, "uuid");
 
-    if (mediumId == null) {
-        let partId = extractQueryParam(req, "partId");
+    if (mediumIdString == null) {
+        let partId: string | number[] = extractQueryParam(req, "partId");
         // if it is a string, it is likely a list of partIds was send
         if (isString(partId)) {
             partId = stringToNumberList(partId);
@@ -478,6 +477,7 @@ export const getPart: Handler = (req, res) => {
         }
         sendResult(res, partStorage.getParts(partId, uuid));
     } else {
+        const mediumId = Number.parseInt(mediumIdString);
         if (!Number.isInteger(mediumId)) {
             sendResult(res, Promise.reject(Errors.INVALID_INPUT));
             return;
@@ -486,7 +486,7 @@ export const getPart: Handler = (req, res) => {
     }
 };
 export const getPartItems: Handler = (req, res) => {
-    let partId = extractQueryParam(req, "part");
+    let partId: string | number[] = extractQueryParam(req, "part");
 
     // if it is a string, it is likely a list of partIds was send
     if (isString(partId)) {
@@ -499,7 +499,7 @@ export const getPartItems: Handler = (req, res) => {
     sendResult(res, partStorage.getPartItems(partId));
 };
 export const getPartReleases: Handler = (req, res) => {
-    let partId = extractQueryParam(req, "part");
+    let partId: string | number[] = extractQueryParam(req, "part");
 
     // if it is a string, it is likely a list of partIds was send
     if (isString(partId)) {
@@ -537,7 +537,7 @@ export const deletePart: Handler = (req, res) => {
     sendResult(res, partStorage.deletePart(partId));
 };
 export const getEpisode: Handler = (req, res) => {
-    let episodeId = extractQueryParam(req, "episodeId");
+    let episodeId: string | number[] = extractQueryParam(req, "episodeId");
     const uuid = extractQueryParam(req, "uuid");
 
     // if it is a string, it is likely a list of episodeIds was send
@@ -660,7 +660,10 @@ export const deleteUser: Handler = (req, res) => {
 };
 export const getProgress: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
-    const episodeId = extractQueryParam(req, "episodeId");
+    const episodeIdString = extractQueryParam(req, "episodeId");
+
+    const episodeId = Number.parseInt(episodeIdString);
+    
     if (!episodeId || !Number.isInteger(episodeId)) {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
@@ -700,7 +703,7 @@ export const deleteProgress: Handler = (req, res) => {
     sendResult(res, episodeStorage.removeProgress(uuid, episodeId));
 };
 export const getMedium: Handler = (req, res) => {
-    let mediumId = extractQueryParam(req, "mediumId");
+    let mediumId: string | number | number[] = extractQueryParam(req, "mediumId");
     const uuid = extractQueryParam(req, "uuid");
 
     mediumId = Number(mediumId);
@@ -743,9 +746,9 @@ export const getLists: Handler = (req, res) => {
 
 export const getNews: Handler = (req, res) => {
     const uuid = extractQueryParam(req, "uuid");
-    let from = extractQueryParam(req, "from");
-    let to = extractQueryParam(req, "to");
-    let newsIds = extractQueryParam(req, "newsId");
+    let from: string | Date | undefined = extractQueryParam(req, "from", true);
+    let to: string | Date | undefined = extractQueryParam(req, "to", true);
+    let newsIds: string | number[] = extractQueryParam(req, "newsId");
 
     // if newsIds is specified, send only these news
     if (isString(newsIds)) {
@@ -857,7 +860,7 @@ export const getJobStatsTimed: Handler = (req, res) => {
         sendResult(res, Promise.reject(Errors.INVALID_INPUT));
         return;
     }
-    sendResult(res, jobStorage.getJobsStatsTimed(bucket, groupByDomain));
+    sendResult(res, jobStorage.getJobsStatsTimed(bucket as TimeBucket, groupByDomain));
 };
 
 export const authenticate: Handler = (req, res, next) => {
@@ -893,17 +896,14 @@ function sendResult(res: Response, promise: Promise<any>) {
                 result
                     .stream({ objectMode: true, highWaterMark: 10 })
                     .pipe(stringify({ open: "[", close: "]" }))
-                    // @ts-expect-error
                     .pipe(res);
             } else {
-                // @ts-expect-error
                 res.json(result);
             }
         })
         .catch((error) => {
             const errorCode = isError(error);
             res
-                // @ts-expect-error
                 .status(errorCode ? 400 : 500)
                 .json({ error: errorCode ? error : Errors.INVALID_MESSAGE });
 
@@ -911,22 +911,19 @@ function sendResult(res: Response, promise: Promise<any>) {
         });
 }
 
-function sendResultCall(res: Response, callback: () => any) {
-    let result;
-    try {
-        result = callback();
-    } catch (e) {
-        result = Promise.reject(e);
-    }
-
-    if (!result || !(result instanceof Promise)) {
-        result = Promise.resolve(result);
-    }
-    sendResult(res, result);
-}
-
 // FIXME an error showed that req.query.something does not assign on first call, only on second???
-function extractQueryParam(request: Request, key: string) {
-    // @ts-expect-error
-    return request.query[key] || request.query[key];
+function extractQueryParam<T extends boolean = false>(request: Request, key: string, optional?: T): T extends true ? string | undefined : string {
+    const value = request.query[key];
+
+    if (optional && value == null) {
+        // @ts-expect-error
+        return value;
+    }
+
+    if (isString(value)) {
+        // @ts-expect-error
+        return value;
+    } else  {
+        throw Error("Expected a String but got an object of type: " + typeof value);
+    }
 }
