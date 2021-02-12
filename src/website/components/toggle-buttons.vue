@@ -7,7 +7,7 @@
       v-for="item of values"
       :key="item.value"
       class="btn btn-secondary"
-      :class="{ active: state === item }"
+      :class="{ active: Array.isArray(state) ? state.includes(item) : state === item }"
       data-toggle="tooltip"
       data-placement="top"
       :title="item.tooltip"

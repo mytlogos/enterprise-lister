@@ -55,13 +55,13 @@ export default defineComponent({
             }
         ];
         return {
-            selected: 0,
+            selected: filter.find(value => this.state & value.value),
             values: filter,
         };
     },
     watch: {
         state() {
-            const found = this.values.find(value => value.value === this.state);
+            const found = this.values.find(value => value.value & this.state);
             this.selected = found;
         },
         selected() {
