@@ -11,7 +11,7 @@
       <label>
         Username:
         <input
-          v-model="lists"
+          v-model="user"
           class="user"
           placeholder="Your username"
           title="Username"
@@ -45,8 +45,7 @@
   </modal>
 </template>
 <script lang="ts">
-import { emitBusEvent } from "../../bus";
-import modal from "./modal";
+import modal from "./modal.vue";
 
 import { defineComponent } from "vue";
 
@@ -57,9 +56,9 @@ export default defineComponent({
         show: Boolean,
         error: { type: String, required: true },
     },
-    data(): { lists: string; pw: string; pwRepeat: string } {
+    data(): { user: string; pw: string; pwRepeat: string } {
         return {
-            lists: "",
+            user: "",
             pw: "",
             pwRepeat: "",
         };
@@ -74,7 +73,7 @@ export default defineComponent({
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("do:login", { lists: this.lists, pw: this.pw, pwRepeat: this.pwRepeat });
+            this.$store.dispatch("register", { user: this.user, pw: this.pw, pwRepeat: this.pwRepeat });
         },
     },
 });

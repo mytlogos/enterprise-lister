@@ -190,9 +190,25 @@ export default defineComponent({
             let copy = [...this.releases] as DisplayRelease[];
 
             if (this.typeFilter) {
-                copy = copy.filter(value => this.$store.state.user.media[value.mediumId].medium & this.typeFilter);
+                copy = copy.filter(value => this.$store.state.media.media[value.mediumId].medium & this.typeFilter);
             }
             return copy.sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
+        },
+        readFilter: {
+            get(): boolean | undefined {
+                return this.$store.state.releases.readFilter;
+            },
+            set(read?: boolean) {
+                this.$store.commit("releases/readFilter", read);
+            }
+        },
+        typeFilter: {
+            get(): number {
+                return this.$store.state.releases.typeFilter;
+            },
+            set(type: number) {
+                this.$store.commit("releases/typeFilter", type);
+            }
         }
     },
     watch: {
@@ -208,9 +224,10 @@ export default defineComponent({
             this.fetchReleases();
         }
     },
-    mounted() {
+    async mounted() {
+        await this.$router.push({ query: { read: this.readFilter, type: this.typeFilter } });
         this.unmounted = false;
-        this.fetchReleases();
+        return this.fetchReleases();
     },
     unmounted() {
         this.unmounted = true;

@@ -211,13 +211,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
-import { List, AddMedium } from "../siteTypes";
+import { defineComponent } from "vue";
+import { AddMedium } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
 import $ from "jquery";
-import { mapState } from "vuex";
 
 // initialize all toasts
 $(".toast").toast();
@@ -262,7 +261,7 @@ export default defineComponent({
 
     computed: {
         lists() {
-            return this.$store.state.user.lists;
+            return this.$store.state.lists.lists;
         }
     },
 

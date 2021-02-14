@@ -44,7 +44,6 @@
 </template>
 
 <script lang="ts">
-import { emitBusEvent } from "../bus";
 import modal from "../components/modal/modal.vue";
 
 interface GuiMediaType {
@@ -98,7 +97,7 @@ export default defineComponent({
                     mediumType |= value.value;
                 }
             });
-            emitBusEvent("do:add-list", { name: this.name, type: mediumType });
+            this.$store.dispatch("addList", { name: this.name, type: mediumType });
         }
     }
 });

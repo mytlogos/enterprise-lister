@@ -4,6 +4,9 @@
     <app-table
       id="content"
       class="container-fluid"
+      :data="data"
+      :columns="columns"
+      filter-key=""
     />
   </div>
 </template>
@@ -11,8 +14,13 @@
 <script lang="ts">
 import readingList from "../components/reading-list.vue";
 import appTable from "../components/app-table.vue";
-
+import { HttpClient } from "../Httpclient";
+import { SimpleMedium } from "../siteTypes";
 import { defineComponent } from "vue";
+
+interface Data { 
+    loadingMedia: number[][];
+}
 
 export default defineComponent({
     name: "Lists",
@@ -20,9 +28,67 @@ export default defineComponent({
         readingList,
         appTable,
     },
+    data(): Data {
+        return {
+            loadingMedia: []
+        };
+    },
+    computed: {
+        lists() {
+            return this.$store.getters.allLists;
+        },
+        data() {
+            const multiKeys: number[] = this.lists.filter((value) => value.show).flatMap((value) => value.items);
+            let uniqueMedia: number[] = [...new Set(multiKeys)];
+            let missingMedia: number[] = [];
+            uniqueMedia = uniqueMedia
+                .map(id => {
+                    const medium = this.$store.getters.getMedium(id);
+
+                    if (!medium) {
+                        missingMedia.push(id);
+                    }
+                    return medium;
+                })
+                .filter((value) => value != null);
+            // filter any missing media which are already being queried
+            missingMedia = missingMedia.filter((value) => !this.loadingMedia.some((batch: number[]) => batch.includes(value)));
+
+            if (missingMedia.length) {
+                // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+                this.loadingMedia.push(missingMedia);
+            }
+            return uniqueMedia;
+        },
+        columns() {
+            return this.$store.state.user.columns;
+        },
+    },
+    watch: {
+        loadingMedia(newValue: number[][], oldValue: number[][]) {
+            console.log("New:", newValue, "Old", oldValue);
+            const missingBatches = newValue.filter(batch => !oldValue.includes(batch));
+
+            for (const missingBatch of missingBatches) {
+                // load missing media
+                HttpClient
+                    .getMedia(missingBatch)
+                    .then((media: SimpleMedium | SimpleMedium[]) => this.$store.commit("addMedium", media))
+                    .catch((error) => (this.errorModal.error = String(error)) && console.log(error))
+                    .finally(() => {
+                        // remove batch so it will be regarded as loaded, regardless whether it failed or not
+                        const index = this.loadingMedia.indexOf(missingBatch);
+
+                        if (index > 0) {
+                            this.loadingMedia.splice(index, 1);
+                        }
+                    });
+            }
+        }
+    },
     mounted(): void {
         console.log("Lists: hey");
-    },
+    }
 });
 </script>
 <style scoped>

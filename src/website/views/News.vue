@@ -58,11 +58,11 @@
 // TODO unread news should fade out slowly (more like that a marker slowly disappears)
 // TODO user should be able to mark all news as read
 // TODO replace vue picker with date and time input
-import { emitBusEvent, onBusEvent } from "../bus";
 import readingList from "../components/reading-list.vue";
 
 import { defineComponent } from "vue";
 import { News } from "../siteTypes";
+import { onBusEvent } from "../bus";
 
 interface Data {
     listFocused: boolean;
@@ -138,11 +138,11 @@ export default defineComponent({
         },
 
         fromDate(newDate: Date): void {
-            emitBusEvent("get:news", { from: newDate, to: this.toDate });
+            this.$store.dispatch("loadNews", { from: newDate, to: this.toDate });
         },
 
         toDate(newDate: Date): void {
-            emitBusEvent("get:news", { from: this.fromDate, to: newDate });
+            this.$store.dispatch("loadNews", { from: this.fromDate, to: newDate });
         },
 
         currentLength(): void {
@@ -154,12 +154,12 @@ export default defineComponent({
         document.addEventListener("click", (evt) => this.listFocused = list.contains(evt.target as Node), { capture: true });
         onBusEvent("select:list", (id, external) => this.selectList(id, external));
         onBusEvent("window:resize", () => this.emptySpaceDirty = true);
-        emitBusEvent("get:news", { from: this.from, to: this.to });
+        this.$store.dispatch("loadNews", { from: this.from, to: this.to });
     },
     methods: {
         markNewsRead(visible: boolean, news: News, index: number): void {
             if (visible) {
-                emitBusEvent("read:news", news.id);
+                this.$store.dispatch("markReadNews", news.id);
 
                 if (index === this.displayNews.length - 1) {
                     // if last item is visible, try to load more
@@ -167,10 +167,10 @@ export default defineComponent({
                         .map((value) => value.date)
                         .reduce((previous, next) => previous < next ? previous : next);
 
-                    emitBusEvent("get:news", { from: this.from, to: toDate });
+                    this.$store.dispatch("loadNews", { from: this.from, to: toDate });
                 } else if (!index) {
                     // if index is zero
-                    emitBusEvent("get:news", { from: news.date, to: this.to });
+                    this.$store.dispatch("loadNews", { from: news.date, to: this.to });
                 }
             }
         },

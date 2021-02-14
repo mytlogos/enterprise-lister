@@ -38,8 +38,6 @@
 </template>
 
 <script lang="ts">
-import { emitBusEvent } from "../bus";
-
 import { defineComponent } from "vue";
 
 export default defineComponent({
@@ -62,7 +60,7 @@ export default defineComponent({
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("do:login", { user: this.user, pw: this.pw });
+            this.$store.dispatch("login", { user: this.user, pw: this.pw });
         },
     }
 });

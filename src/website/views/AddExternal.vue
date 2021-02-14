@@ -53,8 +53,7 @@
 </template>
 
 <script lang="ts">
-import { emitBusEvent } from "../bus";
-import modal from "../components/modal/modal";
+import modal from "../components/modal/modal.vue";
 import { defineComponent, PropType } from "vue";
 
 interface Option {
@@ -91,7 +90,7 @@ export default defineComponent({
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("add:externalUser", { identifier: this.user, pwd: this.pw, type: this.selected });
+            this.$store.dispatch("addExternalUser", { identifier: this.user, pwd: this.pw, type: this.selected });
         },
     }
 });

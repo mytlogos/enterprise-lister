@@ -54,7 +54,6 @@
 </template>
 
 <script lang="ts">
-import { emitBusEvent } from "../../bus";
 import modal from "./modal.vue";
 import { defineComponent, PropType } from "vue";
 
@@ -95,7 +94,7 @@ export default defineComponent({
     },
     methods: {
         sendForm(): void {
-            emitBusEvent("add:externalUser", { identifier: this.user, pwd: this.pw, type: this.selected });
+            this.$store.dispatch("addExternalUser", { identifier: this.user, pwd: this.pw, type: this.selected });
         },
     }
 });

@@ -5,7 +5,7 @@ import "@fortawesome/fontawesome-free/css/all.css";
 import Router from "./router";
 import AppComponent from "./App.vue";
 import VueObserveVisibility from "vue-observe-visibility";
-import { store } from "./store";
+import { store } from "./store/store";
 
 const app = createApp(AppComponent);
 // @ts-ignore

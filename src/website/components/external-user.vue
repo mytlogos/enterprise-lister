@@ -252,7 +252,7 @@ export default defineComponent({
             if (!this.markDelete) {
                 return;
             }
-            emitBusEvent("delete:externalUser", this.markDelete);
+            this.$store.dispatch("deleteExternalUser", this.markDelete);
         },
 
         refreshItem(item: ExternalUser): void {

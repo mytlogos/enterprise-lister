@@ -156,8 +156,7 @@
 </template>
 
 <script lang="ts">
-import { emitBusEvent } from "../../bus";
-import modal from "./modal";
+import modal from "./modal.vue";
 
 interface GuiMediaType {
     value: number;
@@ -246,7 +245,7 @@ export default defineComponent({
             const result = { type: mediumType };
             Object.assign(result, this.medium);
             console.log(result);
-            emitBusEvent("do:add-medium", result);
+            this.$store.dispatch("addMedium", result);
         }
     }
 });

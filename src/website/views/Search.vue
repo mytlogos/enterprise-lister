@@ -201,7 +201,7 @@ export default defineComponent({
     },
     computed: {
         lists() {
-            return this.$store.state.user.lists;
+            return this.$store.state.lists.lists;
         },
     },
     methods: {

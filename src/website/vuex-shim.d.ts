@@ -1,4 +1,4 @@
-import type { Store } from "vuex"
+import type { Store } from "vuex";
 import { VuexStore } from "./siteTypes";
 
 declare module "@vue/runtime-core" {

@@ -8,8 +8,6 @@
 </template>
 
 <script lang="ts">
-import { emitBusEvent } from "../bus";
-
 import { defineComponent } from "vue";
 
 export default defineComponent({
@@ -18,11 +16,5 @@ export default defineComponent({
         event: { type: String, required: true },
         name: { type: String, required: true }
     },
-    methods: {
-        logout(value: unknown): void {
-            console.log("emitting");
-            emitBusEvent(value);
-        }
-    }
 });
 </script>
