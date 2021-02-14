@@ -413,7 +413,7 @@ export default defineComponent({
         },
     },
     mounted() {
-        this.chart = new Chart(this.$refs.chart, {
+        this.chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
             type: "line",
             data: {},
             options: {
@@ -497,11 +497,13 @@ export default defineComponent({
                 result.forEach(value => {
                     const datum = value as ChartJobDatum;
                     if (datum.domain) {
+                        // @ts-expect-error
                         Object.values(datum.domain).forEach(this.conformJobStat);
                     }
                     this.conformJobStat(datum);
                     datum.timepoint = new Date(datum.timepoint);
                 })
+                // @ts-expect-error
                 this.data = result;
             });
         },
@@ -558,11 +560,14 @@ export default defineComponent({
             const newDataSet = [];
 
             // hide axis when unused
+            // @ts-expect-error
             (this.chart as Chart).options.scales.yAxes[0].display = leftFilter;
+            // @ts-expect-error
             (this.chart as Chart).options.scales.yAxes[1].display = rightFilter;
 
             if (leftFilter) {
                 const yValues = this.data.map(value => value[leftFilter.key]);
+                // @ts-expect-error
                 (this.chart as Chart).options.scales.yAxes[0].scaleLabel.labelString = leftFilter.name + " - " + leftFilter.unit;
 
                 newDataSet.push({
@@ -580,6 +585,7 @@ export default defineComponent({
             }
             if (rightFilter) {
                 const yValues = this.data.map(value => value[rightFilter.key]);
+                // @ts-expect-error
                 (this.chart as Chart).options.scales.yAxes[1].scaleLabel.labelString = rightFilter.name + " - " + rightFilter.unit;
 
                 newDataSet.push({
@@ -596,6 +602,7 @@ export default defineComponent({
                 }
             } else {
                 // hide axis when unused
+                // @ts-expect-error
                 (this.chart as Chart).options.scales.yAxes[1].display = false;
             }
 
@@ -609,8 +616,11 @@ export default defineComponent({
                     index--;
                 }
             }
+            // @ts-expect-error
             this.chart.data.labels = points;
+            // @ts-expect-error
             this.chart.data.datasets = newDataSet;
+            // @ts-expect-error
             this.chart.update();
 
             // no longer dirty as it is "tidied up" now
@@ -627,6 +637,7 @@ export default defineComponent({
                             yValues = [];
                             domainData.set(domain, yValues);
                         }
+                        // @ts-expect-error
                         yValues.push({ index, value: domainValue[filter.key] });
                     }
                 }

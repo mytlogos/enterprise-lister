@@ -4,7 +4,7 @@ import { Module } from "vuex";
 const module: Module<ReleaseStore, VuexStore> = {
     namespaced: true,
     state: () => ({
-        readFilter: null,
+        readFilter: undefined,
         typeFilter: 0,
     }),
     mutations: {

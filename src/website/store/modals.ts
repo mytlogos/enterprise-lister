@@ -26,7 +26,7 @@ const module: Module<Modals, VuexStore> = {
                 "addList", "addMedium", "settings",
                 "addExternalUser"
             ];
-            const modalSetter = {};
+            const modalSetter: Record<string, any> = {};
 
             for (const modalKey of modals) {
                 modalSetter[`${modalKey}ModalError`] = (state: any, value: string) => state.modals[modalKey].error = value;

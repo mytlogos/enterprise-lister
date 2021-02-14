@@ -41,7 +41,7 @@ export function get(key: string): any {
     if (!storageAvailable("localStorage")) {
         return;
     }
-    return JSON.parse(localStorage.getItem(key));
+    return JSON.parse(localStorage.getItem(key) || "null");
 }
 
 export function remove(key: string): void {

@@ -33,11 +33,17 @@ import { emitBusEvent, onBusEvent } from "../../bus";
 
 import { defineComponent, PropType } from "vue";
 
+interface ToDeleteObject {
+    name: string;
+    id: number;
+    type: any;
+}
+
 export default defineComponent({
     name: "DeleteModal",
     props: {
         show: Boolean,
-        object: { type: Object as PropType<any>, required: true },
+        object: { type: Object as PropType<ToDeleteObject>, required: true },
     },
     emits: ["hide"],
     data(): { failure: boolean } {

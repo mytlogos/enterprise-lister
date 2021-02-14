@@ -1,8 +1,8 @@
-import { News, VuexStore } from "../siteTypes";
+import { News, NewsStore, VuexStore } from "../siteTypes";
 import { Module } from "vuex";
 import { HttpClient } from "../Httpclient";
 
-const module: Module<any, VuexStore> = {
+const module: Module<NewsStore, VuexStore> = {
     state: () => ({
         news: []
     }),

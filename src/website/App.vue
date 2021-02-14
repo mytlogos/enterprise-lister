@@ -13,6 +13,7 @@ import { emitBusEvent, onBusEvent } from "./bus";
 import { HttpClient } from "./Httpclient";
 import { defineComponent } from "vue";
 import { optimizedResize } from "./init";
+import { List } from "siteTypes";
 
 export default defineComponent({
     components: {
@@ -57,8 +58,6 @@ export default defineComponent({
         },
 
         async loginState() {
-            console.log("loginState:", this.user);
-
             if (this.loggedIn) {
                 return;
             }
@@ -84,14 +83,11 @@ export default defineComponent({
         },
 
         selectList(id: number, external: boolean, multiSelect: boolean): void {
-            if (!this.showLists) {
-                return;
-            }
             if (multiSelect) {
-                const list = this.allLists.find((value) => value.id === id && value.external === external);
+                const list = this.$store.getters.allLists.find((value: List) => value.id === id && value.external === external);
                 list.show = !list.show;
             } else {
-                for (const list of this.allLists) {
+                for (const list of this.$store.getters.allLists) {
                     list.show = list.id === id && list.external === external && !list.show;
                 }
             }

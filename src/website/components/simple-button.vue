@@ -1,7 +1,7 @@
 <template>
   <button
     class="btn"
-    @click="emit(event)"
+    @click="$emit(event)"
   >
     {{ name }}
   </button>

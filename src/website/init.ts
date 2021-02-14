@@ -64,7 +64,7 @@ export function batch<T>(array: T[], batchSize: number): T[][] {
  */
 export function mergeMediaToc(medium: SimpleMedium, tocs: FullMediumToc[]): SimpleMedium {
     for (const toc of tocs) {
-        medium.title = medium.title || toc.title;
+        medium.title = medium.title || toc.title || "N/A";
         medium.author = medium.author || toc.author;
         medium.artist = medium.artist || toc.artist;
         medium.countryOfOrigin = medium.countryOfOrigin || toc.countryOfOrigin;
@@ -76,10 +76,10 @@ export function mergeMediaToc(medium: SimpleMedium, tocs: FullMediumToc[]): Simp
         if (medium.medium !== toc.medium) {
             console.warn("toc of different media types, expected: " + medium.medium + ", got: " + toc.medium + " for medium: " + medium.id + ": " + medium.title);
         }
-        if (medium.stateTL < toc.stateTL) {
+        if ((medium.stateTL || Number.NEGATIVE_INFINITY) < (toc.stateTL || Number.NEGATIVE_INFINITY)) {
             medium.stateTL = toc.stateTL;
         }
-        if (medium.stateOrigin < toc.stateOrigin) {
+        if ((medium.stateOrigin || Number.NEGATIVE_INFINITY) < (toc.stateOrigin || Number.NEGATIVE_INFINITY)) {
             medium.stateOrigin = toc.stateOrigin;
         }
     }

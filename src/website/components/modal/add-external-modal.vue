@@ -33,7 +33,7 @@
           <option
             v-for="option in options"
             :key="option"
-            :value="option.values"
+            :value="option.value"
           >
             {{ option.name }}
           </option>
@@ -80,7 +80,7 @@ export default defineComponent({
     },
     computed: {
         currentLink(): string {
-            const option = this.options.find((value) => value.values === this.selected);
+            const option = this.options.find((value) => value.value === this.selected);
             return option ? option.link : "#";
         }
     },

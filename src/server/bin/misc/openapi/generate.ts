@@ -4,6 +4,7 @@ import { generateOpenApiSpec, generateWebClient, generateValidator } from "./tra
 import { OperationObject, ParameterObject, SchemaObject, RequestBodyObject, OpenApiObject } from "./types";
 import yaml from "js-yaml";
 import fs from "fs/promises";
+import { isNumber, isString } from "validate.js";
 
 async function GenerateOpenApi(file: string) {
     const openApiObject = generateExpressApiObject([file], {
@@ -19,7 +20,12 @@ async function GenerateOpenApi(file: string) {
 }
 
 async function readHook(openApiObject: OpenApiObject) {
-    const hook = yaml.load(await fs.readFile("openApiTypeHook.yaml", { encoding: "utf8" }));
+    const hook = yaml.load(await fs.readFile("openApiTypeHook.yaml", { encoding: "utf8" })) as any;
+
+    if (!hook || isString(hook) || isNumber(hook)) {
+        throw Error("expected an object, but got: " + typeof hook);
+    }
+
     const methods = ["get", "delete", "post", "put"];
 
     for (const [path, value] of Object.entries(openApiObject.paths)) {

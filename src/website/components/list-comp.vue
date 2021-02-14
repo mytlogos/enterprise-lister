@@ -86,29 +86,32 @@ export default defineComponent({
                 this.moveList(true);
 
             } else if (evt.key === "Enter") {
-                this.select(this.marked.id, this.marked.external, this.marked.index, evt);
+                if (this.marked.id && this.marked.index) {
+                    this.select(this.marked.id, this.marked.external, this.marked.index, evt);
+                }
             }
         });
     },
     methods: {
-        select(id: number, external: boolean, index: number, evt): void {
+        select(id: number, external: boolean, index: number, evt: KeyboardEvent): void {
             emitBusEvent("select:list", id, external, this.multi && evt.ctrlKey);
             this.markClassId = this.markClassId === id ? null : id;
-            this.markClassExternal = this.markClassExternal === id ? null : id;
+            // TODO: check if this is correct
+            this.markClassExternal = external;
             this.marked.id = id;
-            this.marked.totalIndex = index;
+            this.marked.index = index;
             this.marked.external = external;
         },
 
         moveList(up: boolean): void {
-            if (this.marked.id == null) {
+            if (this.marked.id == null || this.marked.index == null) {
                 if (!this.displayedData.length) {
                     return;
                 }
                 // noinspection JSPotentiallyInvalidTargetOfIndexedPropertyAccess
                 const currentDisplayedDatum = this.displayedData[0];
                 this.marked.id = currentDisplayedDatum.id;
-                this.marked.totalIndex = 0;
+                this.marked.index = 0;
                 this.marked.external = currentDisplayedDatum.external;
                 this.markClassId = this.marked.id;
                 this.markClassExternal = this.marked.external;

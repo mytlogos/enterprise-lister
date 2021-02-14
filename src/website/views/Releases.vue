@@ -136,7 +136,7 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, MediaType, SimpleMedium } from "../siteTypes";
+import { DisplayRelease, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
@@ -149,12 +149,10 @@ interface Data {
     currentDate: Date;
     fetching: boolean;
     unmounted: boolean;
-    readFilter: boolean | undefined;
     /**
      * Signal Variable for fetchReleases to replace all current ones
      */
     replace: boolean;
-    typeFilter: MediaType | number;
 }
 
 // initialize all tooltips on this page
@@ -171,7 +169,10 @@ export default defineComponent({
 
     props: {
         read: Boolean,
-        type: Number
+        type: {
+            type: Number,
+            default: 0
+        }
     },
 
     data(): Data {
@@ -180,9 +181,7 @@ export default defineComponent({
             currentDate: new Date(),
             fetching: false,
             unmounted: false,
-            readFilter: this.read,
             replace: false,
-            typeFilter: this.type
         };
     },
     computed: {
@@ -213,10 +212,10 @@ export default defineComponent({
     },
     watch: {
         readFilter() {
-            this.$router.push({ query: { read: this.readFilter, type: this.typeFilter } });
+            this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
         },
         typeFilter() {
-            this.$router.push({ query: { read: this.readFilter, type: this.typeFilter } });
+            this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
         },
         read() {
             // when release filter changed, set replace current items flag and fetch anew
@@ -225,8 +224,10 @@ export default defineComponent({
         }
     },
     async mounted() {
-        await this.$router.push({ query: { read: this.readFilter, type: this.typeFilter } });
+        await this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
         this.unmounted = false;
+        // FIXME: why does this property not exist?:
+        // @ts-expect-error
         return this.fetchReleases();
     },
     unmounted() {

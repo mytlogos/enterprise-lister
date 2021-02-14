@@ -8,13 +8,16 @@ import VueObserveVisibility from "vue-observe-visibility";
 import { store } from "./store/store";
 
 const app = createApp(AppComponent);
-// @ts-ignore
+// @ts-expect-error
 app.config.devtools = true;
 app.use(VueObserveVisibility);
 app.use(Router);
 app.use(store);
 Router.isReady().then(() => app.mount("#app"));
+// For debugging purposes?
+// @ts-expect-error
 globalThis.app = app;
+// @ts-expect-error
 globalThis.router = Router;
 
 

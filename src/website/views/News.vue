@@ -120,7 +120,7 @@ export default defineComponent({
         },
 
         displayNews(): News[] {
-            const news = this.news.filter((value: News) => {
+            const news = this.$store.state.news.news.filter((value: News) => {
                 const timeFilter = (!this.toDate || value.date <= this.toDate) && (!this.fromDate || value.date >= this.fromDate);
 
                 if (!timeFilter) {

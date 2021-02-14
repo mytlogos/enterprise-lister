@@ -280,7 +280,12 @@ export default defineComponent({
     },
 
     mounted() {
-        HttpClient.getMedia(this.id).then((medium: Medium) => {
+        HttpClient.getMedia(this.id).then((medium) => {
+            if (Array.isArray(medium)) {
+                this.$store.commit("errorModalError", "Error while loading Details");
+                console.error("Expected a single Medium Item but got an Array");
+                return;
+            }
             this.details = reactive(medium);
             return HttpClient.getTocs(medium.id).then(tocs => this.tocs = tocs).catch(console.error);
         }).catch(console.error);
@@ -334,7 +339,7 @@ export default defineComponent({
          * 
          * @param medium medium to represent
          */
-        mediumToString(medium: number): string {
+        mediumToString(medium?: number): string {
             switch (medium) {
             case MediaType.TEXT:
                 return "Text";

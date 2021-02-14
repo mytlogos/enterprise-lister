@@ -2,7 +2,7 @@
   <modal
     :error="error"
     :show="show"
-    @finish="send()"
+    @finish="sendForm()"
   >
     <template #title>
       Register

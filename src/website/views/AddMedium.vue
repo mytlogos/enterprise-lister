@@ -94,7 +94,7 @@
       <div class="form-group col-md-3 mx-3 px-1">
         <label>Language</label>
         <input
-          v-model="medium.language"
+          v-model="medium.lang"
           class="form-control"
           name="language"
           title="Language"
@@ -117,7 +117,7 @@
         <div class="form-group col-md-3">
           <label>Language Of Origin</label>
           <input
-            v-model="medium.langOfOrigin"
+            v-model="medium.languageOfOrigin"
             class="form-control"
             name="langOfOrigin"
             title="Language Of Origin"
@@ -130,7 +130,7 @@
         <div class="form-group col-md-3">
           <label>Status of Translator</label>
           <release-state
-            :state="medium.stateTl"
+            :state="medium.stateTL"
             class="ml-1"
             name="stateTl"
             title="Status of Translator"
@@ -140,7 +140,7 @@
         <div class="form-group col-md-3">
           <label>Status in COO</label>
           <release-state
-            :state="medium.stateCOO"
+            :state="medium.stateOrigin"
             class="ml-1"
             name="stateCOO"
             title="Status in COO"
@@ -212,7 +212,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { AddMedium } from "../siteTypes";
+import { AddMedium, List } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
@@ -260,12 +260,15 @@ export default defineComponent({
     },
 
     computed: {
-        lists() {
+        lists(): List[] {
             return this.$store.state.lists.lists;
         }
     },
 
     methods: {
+        closeProgressToast(){
+            // TODO: implement?
+        },
         send(): void {
             const result: AddMedium = { ...this.medium };
             if (!result.medium || !result.title) {
@@ -306,7 +309,7 @@ export default defineComponent({
                     this.medium.lang = toc.langTL || "";
                     this.medium.languageOfOrigin = toc.langCOO || "";
                     this.medium.author = toc.authors ? toc.authors.join(", ") : "";
-                    this.medium.artist = toc.authors ? toc.artists.join(", ") : "";
+                    this.medium.artist = toc.artists ? toc.artists.join(", ") : "";
                 }
             }).catch(console.error);
         }

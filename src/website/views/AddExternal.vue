@@ -32,7 +32,7 @@
           <option
             v-for="option in options"
             :key="option"
-            :value="option.values"
+            :value="option.value"
           >
             {{ option.name }}
           </option>
@@ -58,7 +58,15 @@ import { defineComponent, PropType } from "vue";
 
 interface Option {
     name: string;
-    values: any[];
+    value: number;
+    link: string;
+}
+
+interface Data {
+    user: string;
+    pw: string;
+    selected: number;
+    error: string;
 }
 
 export default defineComponent({
@@ -67,16 +75,17 @@ export default defineComponent({
     props: {
         options: { type: Array as PropType<Option[]>, required: true },
     },
-    data(): { user: string; pw: string; selected: number } {
+    data(): Data {
         return {
             user: "",
             pw: "",
-            selected: 0
+            selected: 0,
+            error: ""
         };
     },
     computed: {
         currentLink(): string {
-            const option = this.options.find((value) => value.values === this.selected);
+            const option = this.options.find((value) => value.value === this.selected);
             return option ? option.link : "#";
         }
     },

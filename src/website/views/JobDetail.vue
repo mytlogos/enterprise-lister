@@ -66,7 +66,7 @@
               {{
                 trackingStat(
                   item,
-                  (value) => value.network.count || 0
+                  (value) => String(value.network.count || 0)
                 )
               }}
             </td>
@@ -74,7 +74,7 @@
               {{
                 trackingStat(
                   item,
-                  (value) => value.network.received || 0
+                  (value) => String(value.network.received || 0)
                 )
               }}
             </td>
@@ -82,7 +82,7 @@
               {{
                 trackingStat(
                   item,
-                  (value) => value.queryCount || 0
+                  (value) => String(value.queryCount || 0)
                 )
               }}
             </td>
@@ -149,7 +149,7 @@ export default defineComponent({
             const medium = this.$store.getters.getMedium(id);
             const link = match[2];
             const domainName = domainRegex.exec(link);
-            return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName[2]}`;
+            return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName && domainName[2]}`;
         },
         dateToString(date?: Date | null): string {
             if (!date) {

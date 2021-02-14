@@ -57,7 +57,7 @@ interface Data {
     selectOpen: boolean;
     showSearch: boolean;
     filter: string;
-    sorter: Array<{ name: string; value: number; sort: (a, b) => number }>;
+    sorter: Array<{ name: string; value: number; sort: (a: any, b: any) => number }>;
     selectedSorter: number;
     listFocused: boolean;
 }
@@ -93,13 +93,17 @@ export default defineComponent({
         };
     },
     computed: {
-        displayedData() {
+        displayedData(): List[] {
             const lists = [...this.lists];
             const sorter = this.selectedSorter;
 
             if (sorter) {
-                const sortFunction = this.sorter.find((value) => value.value === sorter).sort;
-                lists.sort((a, b) => sortFunction(a.name, b.name));
+                const sortFunction = this.sorter.find((value) => value.value === sorter)?.sort;
+                if (sortFunction) {
+                    lists.sort((a, b) => sortFunction(a.name, b.name));
+                } else {
+                    console.error("Expected a Sortfunction, but did not find any for value: " + sorter);
+                }
             }
             return lists;
         }

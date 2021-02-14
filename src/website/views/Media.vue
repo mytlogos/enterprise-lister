@@ -141,6 +141,7 @@ interface Medium extends SimpleMedium {
 interface Data {
     titleSearch: string;
     showStatesTL: ReleaseState[];
+    media: SimpleMedium[];
 }
 
 export default defineComponent({
@@ -160,29 +161,32 @@ export default defineComponent({
                 ReleaseState.Discontinued,
                 ReleaseState.Dropped,
                 ReleaseState.Complete,
-            ]
+            ],
+            // create a one time copy of the elements of media
+            media: this.$store.getters.media.map((value: SimpleMedium) => ({...value}))
         };
     },
 
     computed: {
+        sortedMedia(): Medium[] {
+            // sort alphabetically from A-Za-z case sensitive
+            return ([...this.media] as Medium[]).sort((first, second) => first.title.localeCompare(second.title));
+        },
         /**
          * Filter simplistic by title at first.
          */
         filteredMedia(): Medium[] {
             const lowerTitleSearch = this.titleSearch.toLowerCase();
-            return this.$store.getters.media
-                .filter(medium => {
-                    if (!medium.title.toLowerCase().includes(lowerTitleSearch)) {
-                        return false;
-                    }
-                    if (medium.stateTL == null) {
-                        return this.showStatesTL.includes(ReleaseState.Unknown);
-                    } else {
-                        return this.showStatesTL.includes(medium.stateTL);
-                    }
-                })
-                // sort alphabetically from A-Za-z case sensitive
-                .sort((first, second) => first.title > second.title);
+            return this.sortedMedia.filter(medium => {
+                if (lowerTitleSearch && !medium.title.toLowerCase().includes(lowerTitleSearch)) {
+                    return false;
+                }
+                if (medium.stateTL == null) {
+                    return this.showStatesTL.includes(ReleaseState.Unknown);
+                } else {
+                    return this.showStatesTL.includes(medium.stateTL);
+                }
+            });
         }
     },
 

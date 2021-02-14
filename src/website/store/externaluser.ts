@@ -1,8 +1,8 @@
-import { ExternalList, ExternalUser, VuexStore } from "../siteTypes";
+import { ExternalList, ExternalUser, ExternalUserStore, VuexStore } from "../siteTypes";
 import { Module } from "vuex";
 import { HttpClient } from "../Httpclient";
 
-const module: Module<any, VuexStore> = {
+const module: Module<ExternalUserStore, VuexStore> = {
     state: () => ({
         externalUser: []
     }),
@@ -19,7 +19,7 @@ const module: Module<any, VuexStore> = {
         },
         deleteExternalUser(state, uuid: string) {
             const index = state.externalUser.findIndex(
-                (value) => value.uuid === uuid
+                value => value.uuid === uuid
             );
             if (index < 0) {
                 return;

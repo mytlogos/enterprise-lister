@@ -1,8 +1,8 @@
-import { List, VuexStore } from "../siteTypes";
+import { List, ListsStore, VuexStore } from "../siteTypes";
 import { Module } from "vuex";
 import { HttpClient } from "../Httpclient";
 
-const module: Module<any, VuexStore> = {
+const module: Module<ListsStore, VuexStore> = {
     state: () => ({
         lists: []
     }),

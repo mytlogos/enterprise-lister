@@ -172,7 +172,7 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import { MediaType, SearchResult } from "../siteTypes";
-import $ from "jquery"
+import $ from "jquery";
 import TypeIcon from "../components/type-icon.vue";
 import mediaFilter from "../components/media-filter.vue";
 
@@ -180,13 +180,25 @@ $(function () {
     $("[data-toggle=\"tooltip\"]").tooltip()
 })
 
+interface Data {
+    title: string;
+    type: MediaType;
+    result: SearchResult[];
+    medium: {
+        title: string;
+        url: string;
+        medium: MediaType;
+    };
+    selectedList: number;
+}
+
 export default defineComponent({
     name: "Search",
     components: {
         mediaFilter: mediaFilter,
         typeIcon: TypeIcon,
     },
-    data() {
+    data(): Data {
         return {
             title: "",
             type: MediaType.TEXT,
@@ -223,7 +235,7 @@ export default defineComponent({
                     HttpClient.addListItem(this.selectedList, result.id),
                 ]);
             }).then(() => {
-                const index = this.result.findIndex(value => value.url === this.medium.url);
+                const index = this.result.findIndex(value => value.link === this.medium.url);
 
                 if (index >= 0) {
                     this.result.splice(index, 1);

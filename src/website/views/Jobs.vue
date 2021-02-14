@@ -467,6 +467,7 @@ export default defineComponent({
     computed: {
         computedJobs(): Job[] {
             const jobs = [...this.jobs];
+            // @ts-expect-error
             const sortEntries: Array<[string, number]> = Object.entries(this.sortedOn);
             console.log("Sorting Jobs on Fields: " + JSON.stringify(this.sortedOn))
 
@@ -485,10 +486,12 @@ export default defineComponent({
                         continue;
                     }
 
+                    // @ts-expect-error
                     if (compareA[key] > compareB[key]) {
                         return 1 * order;
                     }
 
+                    // @ts-expect-error
                     if (compareA[key] < compareB[key]) {
                         return -1 * order;
                     }
@@ -517,7 +520,7 @@ export default defineComponent({
                     running++;
                 } else {
                     waiting++;
-                    if (datum.nextRun < now) {
+                    if (datum.nextRun && datum.nextRun < now) {
                         lagging++;
                     }
                     // waiting jobs should not have this value set
@@ -552,13 +555,16 @@ export default defineComponent({
                 for (const datum of Object.values(data)) {
                     for (const key of [...Object.keys(datum)]) {
                         const newKey = key.replaceAll("\"", "");
+                        // remap key if it contained quotes
                         if (newKey !== key) {
+                            // @ts-expect-error
                             datum[newKey] = datum[key];
+                            // @ts-expect-error
                             delete datum[key];
                         }
                     }
                     // maintain rough stack like order
-                    const contexts = [];
+                    const contexts: string[] = [];
                     for (const item of datum.history) {
                         const itemContexts = item.context.split("--");
                         item.contexts = itemContexts;
@@ -577,15 +583,20 @@ export default defineComponent({
             .catch(console.error);
     },
     methods: {
-        sortedClass(key: keyof Job) {
-            return this.sortedOn[key] > 0 ? "fa-sort-up" : this.sortedOn[key] < 0 ? "fa-sort-down" : "fa-sort";
+        sortedClass(key: keyof Job | keyof JobStats) {
+            const value = this.sortedOn[key];
+            if (!value) {
+                return "fa-sort";
+            }
+            return value > 0 ? "fa-sort-up" : value < 0 ? "fa-sort-down" : "fa-sort";
         },
-        toggleOrder(key: keyof Job): void {
+        toggleOrder(key: keyof Job | keyof JobStats): void {
             const order = this.sortedOn[key];
 
             if (order === 1 || order == null) {
                 this.sortedOn[key] = -1;
             } else {
+                // @ts-expect-error
                 this.sortedOn[key] += 1;
             }
         },
@@ -605,7 +616,7 @@ export default defineComponent({
             const medium = this.$store.getters.getMedium(id);
             const link = match[2];
             const domainName = domainRegex.exec(link);
-            return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName[2]}`;
+            return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName && domainName[2]}`;
         },
         absoluteToRelative(date?: Date | null): string {
             if (!date) {

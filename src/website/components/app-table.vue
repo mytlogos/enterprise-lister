@@ -156,15 +156,16 @@ interface Data {
     showSearch: boolean;
     filter: string;
     currentLength: number;
+    focused: boolean;
 }
 import { defineComponent, PropType } from "vue";
-import { Column, Medium } from "../siteTypes";
+import { Column, EmptyObject, Medium } from "../siteTypes";
 
 export default defineComponent({
     name: "AppTable",
     components: { deleteModal },
     props: {
-        data: { type: Array as PropType<Medium[]>, required: true },
+        items: { type: Array as PropType<Medium[]>, required: true },
         columns: { type: Array as PropType<Column[]>, required: true },
         filterKey: { type: String, required: true }
     },
@@ -194,23 +195,28 @@ export default defineComponent({
             showSearch: false,
             filter: "",
             currentLength: 0,
+            focused: false,
         };
     },
 
     computed: {
-        filteredData() {
+        filteredData(): Array<Medium | EmptyObject> {
             const sortKey = this.sortProp;
             let filterKey = this.filter;
             const order = this.sortOrders[sortKey] || 1;
             // removing an item in the array with splice from within the vue instance
             // leads magically to undefined here, so filter it anything wrong out
-            let data = this.data.filter((value) => value);
+            let data: Array<Medium | EmptyObject> = this.items.filter(value => value);
 
+            // filter data by searching all stringified properties by the value of filterKey
             if (filterKey) {
                 filterKey = filterKey.toLowerCase();
                 data = data
-                    .filter((row) => Object.keys(row)
-                        .some((key) => String(row[key]).toLowerCase().indexOf(filterKey) > -1));
+                    .filter(
+                        row => Object.keys(row).some(
+                            key => String(row[key]).toLowerCase().indexOf(filterKey) > -1
+                        )
+                    );
             }
             if (sortKey) {
                 data.sort((a, b) => {
@@ -236,7 +242,7 @@ export default defineComponent({
             return data;
         },
 
-        emptySpace() {
+        emptySpace(): number {
             // $el is needed  to calculate the free space,
             // but computed property is called before being mounted
             if (!this.emptySpaceDirty) {
@@ -297,7 +303,7 @@ export default defineComponent({
 
     mounted() {
         this.emptySpaceDirty = true;
-        this.columns.forEach((value) => this.sortOrders[value.prop] = 1);
+        this.columns.forEach(value => this.sortOrders[value.prop] = 1);
 
         onBusEvent("window:resize", () => this.emptySpaceDirty = true);
 
@@ -323,15 +329,17 @@ export default defineComponent({
                 if (this.editCell.id != null) {
                     this.stopEdit();
                 } else {
-                    const entry = this.filteredData[this.marked.index];
-                    this.startEdit(entry, this.marked.prop);
-                }
+                    const entry = this.filteredData[this.marked.index as number];
 
+                    if (entry.id) {
+                        this.startEdit(entry as Medium, this.marked.prop as string);
+                    }
+                }
             } else if (evt.key === "Delete") {
                 if (this.marked.id == null) {
                     return;
                 }
-                const entry = this.filteredData[this.marked.index];
+                const entry = this.filteredData[this.marked.index as number];
                 this.deleteModal.object = {
                     id: entry.id,
                     name: entry.title,
@@ -344,31 +352,33 @@ export default defineComponent({
                 }
                 this.stopEdit();
                 this.selectCell(Move.RIGHT);
-                const entry = this.filteredData[this.marked.index];
+                const entry = this.filteredData[this.marked.index as number];
                 // FIXME this does not go as intended
-                this.startEdit(entry, this.marked.prop);
+                if (entry.id) {
+                    this.startEdit(entry as Medium, this.marked.prop as string);
+                }
             }
         });
     },
     methods: {
-        openMedium(mediumId?: number): void {
+        openMedium(mediumId?: number | null): void {
             if (mediumId == null) {
                 return;
             }
             emitBusEvent("open:medium", mediumId);
         },
 
-        deleteData(id): void {
-            emitBusEvent("delete:medium", id);
+        deleteData(id: number): void {
+            this.$store.dispatch("deleteMedium", id)
         },
 
-        mark(entry, index, prop): void {
+        mark(entry: Medium | EmptyObject, index: number, prop: string): void {
             this.marked.id = entry.id;
-            this.marked.totalIndex = index;
+            this.marked.index = index;
             this.marked.prop = prop;
         },
 
-        startEdit(entry, prop): void {
+        startEdit(entry: Medium | EmptyObject, prop: string): void {
             this.editCell.id = entry.id;
             this.editCell.prop = prop;
             this.editCell.value = entry[prop];
@@ -380,7 +390,7 @@ export default defineComponent({
             if (this.editCell.id == null) {
                 return;
             }
-            emitBusEvent("edit:medium", {
+            this.$store.dispatch("editMedium", {
                 id: this.editCell.id,
                 prop: this.editCell.prop,
                 value: this.editCell.value
@@ -390,17 +400,17 @@ export default defineComponent({
             this.editCell.value = null;
         },
 
-        sortBy(key): void {
+        sortBy(key: string): void {
             this.sortProp = key;
             this.sortOrders[key] = this.sortOrders[key] * -1;
         },
 
         showAll(): void {
-            this.columns.forEach((value) => value.show = true);
+            this.columns.forEach((value: Column) => value.show = true);
         },
 
         selectCell(direction: number): void {
-            if (this.marked.id == null) {
+            if (this.marked.id == null || this.marked.index == null) {
                 if (!this.filteredData.length) {
                     return;
                 }
@@ -421,13 +431,13 @@ export default defineComponent({
                 }
                 this.marked.index--;
             } else if (direction === Move.RIGHT) {
-                const index = this.columns.findIndex((value) => value.prop === this.marked.prop);
+                const index = this.columns.findIndex(value => value.prop === this.marked.prop);
                 if (index === this.columns.length - 1) {
                     return;
                 }
                 this.marked.prop = this.columns[index + 1].prop;
             } else if (direction === Move.LEFT) {
-                const index = this.columns.findIndex((value) => value.prop === this.marked.prop);
+                const index = this.columns.findIndex(value => value.prop === this.marked.prop);
                 if (index === 0) {
                     return;
                 }

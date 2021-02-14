@@ -432,7 +432,7 @@ export const HttpClient = {
         return store.getters.loggedIn;
     },
 
-    _checkLogin: null,
+    _checkLogin: null as null | Promise<User>,
 
     /**
      * Checks whether a user is currently logged in on this device.

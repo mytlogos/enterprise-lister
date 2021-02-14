@@ -15,7 +15,7 @@
 import readingList from "../components/reading-list.vue";
 import appTable from "../components/app-table.vue";
 import { HttpClient } from "../Httpclient";
-import { SimpleMedium } from "../siteTypes";
+import { List, SimpleMedium } from "../siteTypes";
 import { defineComponent } from "vue";
 
 interface Data { 
@@ -34,7 +34,7 @@ export default defineComponent({
         };
     },
     computed: {
-        lists() {
+        lists(): List[] {
             return this.$store.getters.allLists;
         },
         data() {
@@ -74,7 +74,10 @@ export default defineComponent({
                 HttpClient
                     .getMedia(missingBatch)
                     .then((media: SimpleMedium | SimpleMedium[]) => this.$store.commit("addMedium", media))
-                    .catch((error) => (this.errorModal.error = String(error)) && console.log(error))
+                    .catch((error) => {
+                        this.$store.commit("errorModalError", String(error));
+                        console.log(error);
+                    })
                     .finally(() => {
                         // remove batch so it will be regarded as loaded, regardless whether it failed or not
                         const index = this.loadingMedia.indexOf(missingBatch);

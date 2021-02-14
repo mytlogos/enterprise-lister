@@ -1,3 +1,9 @@
+export type EmptyObject = Record<string, never>;
+
+export type Indexable<T> = T & {
+    [key in keyof T]: T[key];
+};
+
 export enum MediaType {
     TEXT = 0x1,
     AUDIO = 0x2,
@@ -371,12 +377,29 @@ export interface VuexStore {
     uuid: string;
     modals: Modals;
     releases: ReleaseStore;
-    externalUser: any;
-    media: any;
-    lists: any;
+    externalUser: ExternalUserStore;
+    media: MediaStore;
+    lists: ListsStore;
+    news: NewsStore;
 }
 
 export interface ReleaseStore {
     readFilter: boolean | undefined;
     typeFilter: number;
+}
+
+export interface ExternalUserStore {
+    externalUser: ExternalUser[];
+}
+
+export interface ListsStore {
+    lists: List[];
+}
+
+export interface MediaStore {
+    media: Record<number, SimpleMedium>;
+}
+
+export interface NewsStore {
+    news: News[];
 }

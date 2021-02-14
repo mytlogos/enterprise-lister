@@ -1,8 +1,8 @@
-import { AddMedium, Medium, SimpleMedium, VuexStore } from "../siteTypes";
-import { Module } from "vuex";
+import { AddMedium, List, MediaStore, Medium, SimpleMedium, VuexStore } from "../siteTypes";
+import { Module, useStore } from "vuex";
 import { HttpClient } from "../Httpclient";
 
-const module: Module<any, VuexStore> = {
+const module: Module<MediaStore, VuexStore> = {
     state: () => ({
         media: {}
     }),
@@ -32,7 +32,7 @@ const module: Module<any, VuexStore> = {
 
             delete state.media[id];
 
-            state.lists.forEach((value) => {
+            useStore().state.lists.forEach((value: List) => {
                 const listIndex = value.items.findIndex(
                     (itemId: number) => itemId === id
                 );
@@ -47,10 +47,12 @@ const module: Module<any, VuexStore> = {
         async loadMedia({ commit }) {
             try {
                 const data = await HttpClient.getAllMedia();
-                const media = {};
+                const media: Record<number, SimpleMedium> = {};
     
                 for (const datum of data) {
-                    media[datum.id] = datum;
+                    if (datum.id) {
+                        media[datum.id] = datum;
+                    }
                 }
     
                 commit("userMedia", media);

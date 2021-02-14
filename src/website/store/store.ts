@@ -11,6 +11,7 @@ import modalStore from "./modals";
 import listStore from "./lists";
 import mediumStore from "./media";
 import externalUserStore from "./externaluser";
+import newsStore from "./news";
 
 
 function userClear(commit: Commit) {
@@ -41,6 +42,7 @@ export const store = createStore({
         lists: listStore,
         externalUser: externalUserStore,
         media: mediumStore,
+        news: newsStore,
     },
     // @ts-expect-error
     state: (): VuexStore => ({

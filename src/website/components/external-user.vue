@@ -93,7 +93,7 @@ import addExternalModal from "./modal/add-external-modal.vue";
 import confirmModal from "./modal/confirm-modal.vue";
 
 import { defineComponent, PropType } from "vue";
-import { ExternalUser } from "../siteTypes";
+import { EmptyObject, ExternalUser } from "../siteTypes";
 
 interface ExternalListHost {
     link: string;
@@ -105,13 +105,34 @@ interface ExternalUserItem extends ExternalUser {
     host: ExternalListHost;
 }
 
+interface Data {
+    add: {
+        show: boolean;
+        error: string;
+    };
+    confirm: {
+        show: boolean;
+        error: string;
+        text: string;
+    };
+    markDelete: string | null;
+    hosts: Array<{
+        name: string;
+        link: string;
+        value: number;
+    }>;
+    currentLength: number;
+    emptySpaceDirty: boolean;
+    emptySpaceSpare: number;
+}
+
 export default defineComponent({
     name: "ExternalUser",
     components: { addExternalModal, confirmModal },
     props: {
         user: { type: Array as PropType<ExternalUser[]>, required: true },
     },
-    data(): any {
+    data(): Data {
         return {
             add: {
                 show: false,
@@ -137,12 +158,13 @@ export default defineComponent({
         };
     },
     computed: {
-        filteredData(): ExternalUserItem[] {
-            const data = this.user
+        filteredData(): Array<ExternalUserItem | EmptyObject> {
+            // @ts-expect-error
+            const data: Array<ExternalUserItem | EmptyObject> = this.user
                 .filter((value) => value)
                 .map((value) => {
                     const host = this.hosts.find(
-                        (hostValue) => hostValue.values === value.type
+                        (hostValue) => hostValue.value === value.type
                     );
                     return { ...value, host };
                 });
@@ -225,8 +247,8 @@ export default defineComponent({
 
     mounted() {
         onBusEvent("reset:modal", () => {
-            this.show = false;
-            this.show = false;
+            this.add.show = false;
+            this.confirm.show = false;
             this.confirm.text = "";
             this.markDelete = null;
         });
@@ -237,7 +259,7 @@ export default defineComponent({
         onBusEvent("window:resize", () => (this.emptySpaceDirty = true));
     },
     methods: {
-        markDeleteItem(item: ExternalUserItem): void {
+        markDeleteItem(item: ExternalUserItem | EmptyObject): void {
             this.markDelete = item.uuid;
             this.confirm.text =
                 "Are you sure you want to delete" +
@@ -255,7 +277,7 @@ export default defineComponent({
             this.$store.dispatch("deleteExternalUser", this.markDelete);
         },
 
-        refreshItem(item: ExternalUser): void {
+        refreshItem(item: ExternalUser | EmptyObject): void {
             emitBusEvent("refresh:externalUser", item.uuid);
         },
     },
