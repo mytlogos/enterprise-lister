@@ -1,3 +1,22 @@
+# [1.16.0](https://github.com/mytlogos/enterprise-lister/compare/v1.15.0...v1.16.0) (2021-02-14)
+
+
+### Bug Fixes
+
+* **server:** fix optional parameter not supplied ([2c6010f](https://github.com/mytlogos/enterprise-lister/commit/2c6010f4c739b3bef2d1b8a4c8545ffc30bf9575))
+* **server:** fix top level domain ([7084301](https://github.com/mytlogos/enterprise-lister/commit/70843018302ed7c0c46f77fbf04bd0f6b26d7db8))
+* **website:** fix toggle-buttons usage ([b4f9ede](https://github.com/mytlogos/enterprise-lister/commit/b4f9ede21775c9ac0b68e8f457b92d6191f7a379))
+
+
+### Features
+
+* **scraper:** uniform links ([953255f](https://github.com/mytlogos/enterprise-lister/commit/953255fca15f24ca39712baefc57b3a8ae78e3a8))
+* **website:** expand usage of store ([3595301](https://github.com/mytlogos/enterprise-lister/commit/3595301c1d39321d17a72b2addb2058a08447f93))
+* **website:** expand usage of vuex store ([7c0355c](https://github.com/mytlogos/enterprise-lister/commit/7c0355c8f894a5c970ede72ffac540ae0e4d516b))
+* **website:** filter releases by media type ([f0fdce0](https://github.com/mytlogos/enterprise-lister/commit/f0fdce05d849f43dbd5a26807e8350ccf07d824f))
+* **website:** use strict typescript ([038037c](https://github.com/mytlogos/enterprise-lister/commit/038037cb6c3baa12de392cee2a50606e9e5e5e00))
+* **website:** use vuex store for state managment ([471a377](https://github.com/mytlogos/enterprise-lister/commit/471a3778749eba5dd1eaf37a329fc960fc2eca40))
+
 # [1.15.0](https://github.com/mytlogos/enterprise-lister/compare/v1.14.0...v1.15.0) (2020-12-06)
 
 
