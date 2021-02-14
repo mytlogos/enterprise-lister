@@ -6,6 +6,8 @@ import { queueRequest } from "../queueManager";
 import { UrlError } from "../errors";
 import { SearchResult } from "../../types";
 
+const BASE_URI = "https://openlibrary.org/";
+
 type OpenLibraryBookResponse = Record<string, OpenLibraryBookData>;
 
 interface OpenLibraryBookData {
@@ -127,12 +129,12 @@ async function search(text: string, medium: number): Promise<SearchResult[]> {
     if (medium !== MediaType.TEXT) {
         return [];
     }
-    const response = await queueRequest(`http://openlibrary.org/search.json?q=${encodeURIComponent(text)}`);
+    const response = await queueRequest(`${BASE_URI}search.json?q=${encodeURIComponent(text)}`);
     const result: OpenLibrarySearchResult = JSON.parse(response);
     // not all have cover_edition_key, ignore those, that dont have it for now
     return result.docs.filter(v => v.cover_edition_key).map(value => {
         return {
-            link: `https://openlibrary.org/api/books?bibkeys=OLID:${value.cover_edition_key}&jscmd=data&format=json`,
+            link: `${BASE_URI}api/books?bibkeys=OLID:${value.cover_edition_key}&jscmd=data&format=json`,
             title: value.title,
             author: value.author_name && value.author_name[0],
             coverUrl: `https://covers.openlibrary.org/b/id/${value.cover_i}-M.jpg`,

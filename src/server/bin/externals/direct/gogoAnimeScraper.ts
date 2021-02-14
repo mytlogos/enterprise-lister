@@ -9,8 +9,10 @@ import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc } from "./directTools";
 import { UrlError } from "../errors";
 
+const BASE_URI = "https://www.gogoanime.so/";
+
 async function scrapeNews(): Promise<NewsScrapeResult> {
-    const uri = "https://www.gogoanime.so/";
+    const uri = BASE_URI;
     const $ = await queueCheerioRequest(uri);
 
     const newsRows = $(".items li");
@@ -171,7 +173,7 @@ async function searchForToc(searchMedium: TocSearchMedium): VoidablePromise<Toc>
     return searchToc(
         searchMedium,
         scrapeToc,
-        "https://www.gogoanime.so/",
+        BASE_URI,
         (searchString) => scrapeSearch(searchString, searchMedium)
     );
 }
@@ -205,8 +207,8 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     return searchResults;
 }
 
-scrapeNews.link = "https://www.gogoanime.so/";
-searchForToc.link = "https://www.gogoanime.so/";
+scrapeNews.link = BASE_URI;
+searchForToc.link = BASE_URI;
 searchForToc.medium = MediaType.VIDEO;
 searchForToc.blindSearch = true;
 search.medium = MediaType.VIDEO;

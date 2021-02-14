@@ -7,8 +7,10 @@ import { countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeStrin
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
 
+const BASE_URI = "https://www.wuxiaworld.com/";
+
 async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
-    const uri = "https://www.wuxiaworld.com/";
+    const uri = BASE_URI;
 
     const $ = await queueCheerioRequest(uri);
     const newsRows = $(".table-novels tbody tr");
@@ -132,7 +134,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         logger.warn("toc link with no novel title: " + urlString);
         return [];
     }
-    const uri = "https://www.wuxiaworld.com/";
+    const uri = BASE_URI;
 
     const content: TocPart[] = [];
 
@@ -296,7 +298,7 @@ async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
             continue;
         }
         searchWord += " " + word;
-        const responseJson = await queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + searchWord);
+        const responseJson = await queueRequest(BASE_URI + "api/novels/search?query=" + searchWord);
         const parsed: NovelSearchResponse = JSON.parse(responseJson);
 
         if (parsed.result && parsed.items && parsed.items.length) {
@@ -305,7 +307,7 @@ async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
                 || medium.synonyms.some((s) => equalsIgnore(value.name, s))
             );
             if (foundItem) {
-                tocLink = "https://www.wuxiaworld.com/novel/" + foundItem.slug;
+                tocLink = BASE_URI + "novel/" + foundItem.slug;
                 break;
             }
         } else {
@@ -323,7 +325,7 @@ async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
 
 async function search(text: string): Promise<SearchResult[]> {
     const word = encodeURIComponent(text);
-    const responseJson = await queueRequest("https://www.wuxiaworld.com/api/novels/search?query=" + word);
+    const responseJson = await queueRequest(BASE_URI + "api/novels/search?query=" + word);
     const parsed: NovelSearchResponse = JSON.parse(responseJson);
 
     const searchResult: SearchResult[] = [];
@@ -332,7 +334,7 @@ async function search(text: string): Promise<SearchResult[]> {
         return searchResult;
     }
     for (const item of parsed.items) {
-        const tocLink = "https://www.wuxiaworld.com/novel/" + item.slug;
+        const tocLink = BASE_URI + "novel/" + item.slug;
         searchResult.push({ coverUrl: item.coverUrl, link: tocLink, title: item.name, medium: MediaType.TEXT });
     }
     return searchResult;
@@ -357,8 +359,8 @@ interface NovelSearchItem {
     tags: string[];
 }
 
-scrapeNews.link = "https://www.wuxiaworld.com/";
-tocSearcher.link = "https://www.wuxiaworld.com/";
+scrapeNews.link = BASE_URI;
+tocSearcher.link = BASE_URI;
 tocSearcher.medium = MediaType.TEXT;
 search.medium = MediaType.TEXT;
 

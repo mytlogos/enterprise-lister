@@ -23,8 +23,10 @@ function loadBody(urlString: string, options?: CloudscraperOptions): Promise<che
     return queueCheerioRequest(urlString, options, defaultRequest);
 }
 
+const BASE_URI = "https://kissanime.ru/";
+
 async function scrapeNews(): Promise<NewsScrapeResult> {
-    const uri = "https://kissanime.ru/";
+    const uri = BASE_URI;
     // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
     const $ = await loadBody(uri);
 
@@ -165,7 +167,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         logger.warn("toc link with no title: " + urlString);
         return [];
     }
-    const uri = "https://kissanime.ru/";
+    const uri = BASE_URI;
 
     const content: TocEpisode[] = [];
 
@@ -275,7 +277,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function search(searchWords: string): Promise<SearchResult[]> {
-    const urlString = "https://kissanime.ru/Search/SearchSuggestx";
+    const urlString = BASE_URI + "Search/SearchSuggestx";
 
     const body = "type=Anime&keyword=" + searchWords;
     const $ = await queueCheerioRequest(urlString, {
@@ -297,12 +299,12 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const linkElement = links.eq(i);
 
         const text = sanitizeString(linkElement.text());
-        const link = url.resolve("https://kissanime.ru/", linkElement.attr("href") as string);
+        const link = url.resolve(BASE_URI, linkElement.attr("href") as string);
 
         searchResults.push({ link, title: text, medium: MediaType.IMAGE });
 
     }
-    if (searchResults.length === 1 && searchResults[0].link === "https://kissanime.ru/Search/SearchSuggestx") {
+    if (searchResults.length === 1 && searchResults[0].link === (BASE_URI + "Search/SearchSuggestx")) {
         // could lead to an unending loop, if the server returns always the same answer, which it should do only once
         return search(searchWords);
     }
@@ -310,7 +312,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     return searchResults;
 }
 
-scrapeNews.link = "https://kissanime.ru/";
+scrapeNews.link = BASE_URI;
 search.medium = MediaType.VIDEO;
 
 export function getHook(): Hook {

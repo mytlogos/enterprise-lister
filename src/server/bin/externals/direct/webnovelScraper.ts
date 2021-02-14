@@ -13,25 +13,27 @@ const defaultRequest = request.defaults({
     jar
 });
 
+const BASE_URI = "https://www.webnovel.com/";
+
 const initPromise = queueRequest(
-    "https://www.webnovel.com/",
+    BASE_URI,
     {
         method: "HEAD",
-        uri: "https://www.webnovel.com/"
+        uri: BASE_URI
     },
     defaultRequest
 ).then(ignore);
 
 function toReleaseLink(bookId: string, chapterId: string): Link {
-    return `https://www.webnovel.com/book/${bookId}/${chapterId}/`;
+    return `${BASE_URI}book/${bookId}/${chapterId}/`;
 }
 
 function toTocLink(bookId: string): Link {
-    return `https://www.webnovel.com/book/${bookId}/`;
+    return `${BASE_URI}book/${bookId}/`;
 }
 
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
-    const uri = "https://www.webnovel.com/";
+    const uri = BASE_URI;
     const $ = await queueCheerioRequest(uri);
     const newsRows = $("#LatUpdate tbody > tr");
 
@@ -110,14 +112,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> {
-    const csrfCookie = jar.getCookies("https://www.webnovel.com").find((value) => value.key === "_csrfToken");
+    const csrfCookie = jar.getCookies(BASE_URI).find((value) => value.key === "_csrfToken");
 
     if (!csrfCookie) {
         logger.warn("csrf cookie not found for webnovel");
         return [];
     }
     const csrfValue = csrfCookie.value;
-    const tocLink = `https://www.webnovel.com/apiajax/chapter/GetChapterList?bookId=${bookId}&_csrfToken=${csrfValue}`;
+    const tocLink = `${BASE_URI}apiajax/chapter/GetChapterList?bookId=${bookId}&_csrfToken=${csrfValue}`;
     const tocJson: TocResponse = await loadJson(tocLink);
 
     if (tocJson.code !== 0) {
@@ -325,7 +327,7 @@ interface TocResponse {
 
 async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
     logger.info("start searching webnovel " + searchMedium.mediumId);
-    const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(searchMedium.title);
+    const urlString = BASE_URI + "/search?keywords=" + encodeURIComponent(searchMedium.title);
     const body = await loadBody(urlString);
     const titles = body("body > div.page  ul[class*=result] > li > h3 > a");
 
@@ -355,8 +357,8 @@ async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
 }
 
 async function search(text: string): Promise<SearchResult[]> {
-    const uri = "https://www.webnovel.com";
-    const urlString = "https://www.webnovel.com/search?keywords=" + encodeURIComponent(text);
+    const uri = BASE_URI;
+    const urlString = BASE_URI + "/search?keywords=" + encodeURIComponent(text);
     const body = await loadBody(urlString);
     const results = body("body > div.page  ul[class*=result] > li");
 
@@ -388,8 +390,8 @@ async function search(text: string): Promise<SearchResult[]> {
     return searchResult;
 }
 
-scrapeNews.link = "https://www.webnovel.com/";
-searchToc.link = "https://www.webnovel.com/";
+scrapeNews.link = BASE_URI;
+searchToc.link = BASE_URI;
 searchToc.medium = MediaType.TEXT;
 search.medium = MediaType.TEXT;
 

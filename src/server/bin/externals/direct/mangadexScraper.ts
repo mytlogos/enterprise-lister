@@ -10,10 +10,11 @@ import { episodeStorage } from "../../database/storages/storage";
 import { MissingResourceError, UrlError } from "../errors";
 import { extractLinkable } from "./directTools";
 
+const BASE_URI = "https://mangadex.org/";
 const jar = request.jar();
 jar.setCookie(
     "mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;",
-    "https://mangadex.org/",
+    BASE_URI,
     { secure: false }
 );
 
@@ -117,9 +118,9 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     }
     const imageUrls = [];
     for (const imageKey of jsonResponse.page_array) {
-        let server = jsonResponse.server;
+        let server: string = jsonResponse.server;
         if (!server.startsWith("http")) {
-            server = "https://mangadex.org" + server;
+            server = BASE_URI + server.substr(1);
         }
         imageUrls.push(`${server}${jsonResponse.hash}/${imageKey}`);
     }
@@ -137,7 +138,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
     //  with expiration date somewhere in 100 years to lessen load
 
-    const uri = "https://mangadex.org/";
+    const uri = BASE_URI;
     const requestLink = uri + "updates";
     const $ = await queueCheerioRequest(requestLink, { jar, uri: requestLink });
     const newsRows = $(".table tbody tr");
@@ -248,7 +249,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     if (!urlRegex.test(urlString)) {
         throw new UrlError("invalid toc url for MangaDex: " + urlString, urlString);
     }
-    const uri = "https://mangadex.org/";
+    const uri = BASE_URI;
 
     const indexPartMap: Map<number, TocPart> = new Map();
 
@@ -427,7 +428,7 @@ async function scrapeTocPage(toc: Toc, endReg: RegExp, volChapReg: RegExp, chapR
     return false;
 }
 
-scrapeNews.link = "https://mangadex.org/";
+scrapeNews.link = BASE_URI;
 
 export function getHook(): Hook {
     return {

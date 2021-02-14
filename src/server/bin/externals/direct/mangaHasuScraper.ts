@@ -28,9 +28,11 @@ async function tryRequest(link: string, retry = 0): Promise<cheerio.Root> {
     }
 }
 
+const BASE_URI = "http://mangahasu.se/";
+
 async function scrapeNews(): Promise<NewsScrapeResult> {
     // TODO scrape more than just the first page if there is an open end
-    const baseUri = "http://mangahasu.se/";
+    const baseUri = BASE_URI;
     const $ = await tryRequest(baseUri + "latest-releases.html");
     const newsRows = $("ul.list_manga  .info-manga");
 
@@ -194,7 +196,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         logger.warn("toc link with no novel title: " + urlString);
         return [];
     }
-    const uri = "http://mangahasu.se/";
+    const uri = BASE_URI;
 
     const partContents: TocPart[] = [];
     const indexPartMap: Map<number, TocPart> = new Map();
@@ -332,13 +334,13 @@ async function tocSearchAdapter(searchMedium: TocSearchMedium): VoidablePromise<
     return searchToc(
         searchMedium,
         scrapeToc,
-        "https://mangahasu.se/",
+        BASE_URI,
         (searchString) => scrapeSearch(searchString, searchMedium)
     );
 }
 
 async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promise<TocSearchResult> {
-    const urlString = "http://mangahasu.se/search/autosearch";
+    const urlString = BASE_URI + "search/autosearch";
 
     const body = "key=" + searchWords;
     // TODO: 26.08.2019 this does not work for any reason
@@ -373,7 +375,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
 }
 
 async function search(searchWords: string): Promise<SearchResult[]> {
-    const urlString = "http://mangahasu.se/search/autosearch";
+    const urlString = BASE_URI + "search/autosearch";
 
     const body = "key=" + searchWords;
     // TODO: 26.08.2019 this does not work for any reason
@@ -400,7 +402,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
         const coverElement = linkElement.find("img");
 
         const text = sanitizeString(titleElement.text());
-        const link = url.resolve("http://mangahasu.se/", linkElement.attr("href") as string);
+        const link = url.resolve(BASE_URI, linkElement.attr("href") as string);
         const author = sanitizeString(authorElement.text());
         const coverLink = coverElement.attr("src");
 
@@ -410,8 +412,8 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     return searchResults;
 }
 
-scrapeNews.link = "http://mangahasu.se/";
-tocSearchAdapter.link = "http://mangahasu.se/";
+scrapeNews.link = BASE_URI;
+tocSearchAdapter.link = BASE_URI;
 tocSearchAdapter.medium = MediaType.IMAGE;
 tocSearchAdapter.blindSearch = true;
 search.medium = MediaType.IMAGE;

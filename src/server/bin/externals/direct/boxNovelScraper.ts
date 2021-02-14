@@ -20,17 +20,19 @@ interface NovelSearchData {
     url: string;
 }
 
+const BASE_URI = "https://boxnovel.com/";
+
 async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
     return searchToc(
         medium,
         tocAdapter,
-        "https://boxnovel.com/",
+        BASE_URI,
         (searchString) => searchAjax(searchString, medium)
     );
 }
 
 async function search(text: string): Promise<SearchResult[]> {
-    const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
+    const urlString = BASE_URI + "wp-admin/admin-ajax.php";
     let response: string;
     const searchResults: SearchResult[] = [];
     try {
@@ -57,7 +59,7 @@ async function search(text: string): Promise<SearchResult[]> {
 }
 
 export async function searchAjax(searchWords: string, medium: TocSearchMedium): Promise<TocSearchResult> {
-    const urlString = "https://boxnovel.com/wp-admin/admin-ajax.php";
+    const urlString = BASE_URI + "wp-admin/admin-ajax.php";
     let response: string;
     try {
         response = await queueRequest(urlString, {
@@ -138,9 +140,9 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 }
 
 async function tocAdapter(tocLink: string): Promise<Toc[]> {
-    const uri = "https://boxnovel.com";
+    const uri = BASE_URI;
 
-    if (!tocLink.startsWith("https://boxnovel.com/novel/")) {
+    if (!tocLink.startsWith(BASE_URI + "novel/")) {
         throw new UrlError("not a valid toc url for BoxNovel: " + tocLink, tocLink);
     }
     let $: cheerio.Root;
@@ -276,7 +278,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 }
 
 async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: EpisodeNews[] }> {
-    const uri = "https://boxnovel.com";
+    const uri = BASE_URI;
     const $ = await queueCheerioRequest(uri);
     const items = $(".page-item-detail");
 
@@ -363,8 +365,8 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
     return { episodes: episodeNews };
 }
 
-newsAdapter.link = "https://boxnovel.com";
-tocSearch.link = "https://boxnovel.com";
+newsAdapter.link = BASE_URI;
+tocSearch.link = BASE_URI;
 tocSearch.medium = MediaType.TEXT;
 tocSearch.blindSearch = true;
 search.medium = MediaType.TEXT;

@@ -7,8 +7,11 @@ import { episodeStorage, mediumStorage, partStorage } from "../../database/stora
 
 export const sourceType = "qidian_underground";
 
+
+const BASE_URI = "https://toc.qidianunderground.org/";
+
 async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
-    const uri = "https://toc.qidianunderground.org/";
+    const uri = BASE_URI;
 
     const $ = await queueCheerioRequest(uri);
     const tocRows = $(".content p + ul");
@@ -227,7 +230,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
     return episodes;
 }
 
-scrapeNews.link = "https://toc.qidianunderground.org/";
+scrapeNews.link = BASE_URI;
 
 export function getHook(): Hook {
     return {
