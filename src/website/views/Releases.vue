@@ -189,7 +189,7 @@ export default defineComponent({
             let copy = [...this.releases] as DisplayRelease[];
 
             if (this.typeFilter) {
-                copy = copy.filter(value => this.$store.state.media.media[value.mediumId].medium & this.typeFilter);
+                copy = copy.filter(value => (this.$store.state.media.media[value.mediumId]?.medium || 0) & this.typeFilter);
             }
             return copy.sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
         },
