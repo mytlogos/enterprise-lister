@@ -1,10 +1,11 @@
 <template>
   <div class="settings">
-    <div class="settings-list left-content">
-      <label>
+    <div class="settings-list left-content p-2">
+      <label class="input-group">
         <input
           v-model="filter"
           type="text"
+          class="form-control"
         >
       </label>
       <list-comp
@@ -15,20 +16,16 @@
       />
     </div>
     <div class="page">
-      <external-user
-        v-if="show === 0"
-        :user="externalUser"
-      />
+      <external-user v-if="show === 0" />
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { defineComponent } from "vue";
 import { onBusEvent } from "../bus";
 import listComp from "../components/list-comp.vue";
 import externalUser from "../components/external-user.vue";
-import { ExternalUser } from "../siteTypes";
 
 interface Data {
     lists: Array<{ name: string; id: number; show: boolean }>;
@@ -44,7 +41,6 @@ export default defineComponent({
         externalUser,
     },
     props: {
-        externalUser: { type: Array as PropType<ExternalUser[]>, required: true },
         showSettings: { type: Boolean, required: true }
     },
     data(): Data {
@@ -82,22 +78,6 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.settings input {
-    height: 20px;
-    font-size: 14px;
-    padding-left: 5px;
-}
-
-.settings .settings-list input {
-    border-radius: 10px;
-    padding-left: 10px;
-    margin: 5px 0;
-}
-
-.settings-list {
-    padding: 5px;
-}
-
 .settings {
     display: flex;
 }

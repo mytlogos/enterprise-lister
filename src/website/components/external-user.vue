@@ -1,14 +1,15 @@
 <template>
-  <div class="external">
+  <div
+    ref="root"
+    class="external"
+  >
     <h1 id="external-user">
       ExternalUser
     </h1>
-    <button
-      class="btn add"
+    <i
+      class="btn fa-plus fa btn-primary btn-success"
       @click="add.show = true"
-    >
-      +
-    </button>
+    />
     <table
       class="table"
       aria-describedby="external-user"
@@ -47,27 +48,16 @@
               {{ item.host.name }}
             </a>
           </td>
-          <td>
+          <td class="d-flex">
             <template v-if="item.identifier">
-              <button
-                class="btn delete"
+              <i
+                class="btn delete fas fa-times btn-danger"
                 @click="markDeleteItem(item)"
-              >
-                ×
-              </button>
-              <button
-                class="refresh"
+              />
+              <i
+                class="refresh fas fa-sync-alt btn btn-secondary"
                 @click="refreshItem(item)"
-              >
-                <!--suppress CheckImageSize -->
-                <img
-                  alt="Refresh"
-                  height="20px"
-                  src="../assets/refresh.png"
-                  title="Refresh"
-                  width="20px"
-                >
-              </button>
+              />
             </template>
           </td>
         </tr>
@@ -92,7 +82,7 @@ import { emitBusEvent, onBusEvent } from "../bus";
 import addExternalModal from "./modal/add-external-modal.vue";
 import confirmModal from "./modal/confirm-modal.vue";
 
-import { defineComponent, PropType } from "vue";
+import { defineComponent } from "vue";
 import { EmptyObject, ExternalUser } from "../siteTypes";
 
 interface ExternalListHost {
@@ -129,9 +119,6 @@ interface Data {
 export default defineComponent({
     name: "ExternalUser",
     components: { addExternalModal, confirmModal },
-    props: {
-        user: { type: Array as PropType<ExternalUser[]>, required: true },
-    },
     data(): Data {
         return {
             add: {
@@ -159,14 +146,13 @@ export default defineComponent({
     },
     computed: {
         filteredData(): Array<ExternalUserItem | EmptyObject> {
-            // @ts-expect-error
-            const data: Array<ExternalUserItem | EmptyObject> = this.user
+            const data: Array<ExternalUserItem | EmptyObject> = this.$store.state.externalUser.externalUser
                 .filter((value) => value)
                 .map((value) => {
                     const host = this.hosts.find(
                         (hostValue) => hostValue.value === value.type
                     );
-                    return { ...value, host };
+                    return { ...value, host } as ExternalUserItem;
                 });
 
             // eslint-disable-next-line vue/no-side-effects-in-computed-properties
@@ -184,8 +170,13 @@ export default defineComponent({
             if (!this.emptySpaceDirty) {
                 return this.emptySpaceSpare;
             }
-            const table = this.$el.querySelector("table");
-            const parent = table.parentElement;
+            console.log("Root", this.$refs.root);
+
+            if (!this.$refs.root) {
+                return 0;
+            }
+            const table = (this.$refs.root as HTMLElement).querySelector("table") as HTMLTableElement;
+            const parent = table.parentElement as HTMLElement;
             const parentHeight = parseInt(
                 window.getComputedStyle(parent).height,
                 10
@@ -210,7 +201,7 @@ export default defineComponent({
                 }
             }
             const theadHeight = parseInt(
-                window.getComputedStyle(table.tHead).height,
+                window.getComputedStyle(table.tHead as HTMLElement).height,
                 10
             );
             // calculate the empty space for table
@@ -296,34 +287,5 @@ table {
 
 th.action {
     width: 80px;
-}
-
-.add {
-    background-color: #4189b7;
-    height: 40px;
-    color: white;
-    font-size: 35px;
-    padding: 0 12px;
-}
-
-.refresh {
-    background: none;
-}
-
-.refresh:hover {
-    cursor: pointer;
-}
-
-.delete {
-    background-color: #b73235;
-    height: 20px;
-    width: 20px;
-    color: white;
-    font-size: 20px;
-    padding: 0;
-}
-
-.delete:hover {
-    background-color: #dd3c3f;
 }
 </style>
