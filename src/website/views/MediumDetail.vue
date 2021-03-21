@@ -209,7 +209,7 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent, reactive } from "vue";
-import { SimpleMedium, MediumRelease, Medium, FullMediumToc, MediaType } from "../siteTypes";
+import { SimpleMedium, MediumRelease, FullMediumToc, MediaType } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
