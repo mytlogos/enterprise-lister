@@ -13,7 +13,6 @@ import { emitBusEvent, onBusEvent } from "./bus";
 import { HttpClient } from "./Httpclient";
 import { defineComponent } from "vue";
 import { optimizedResize } from "./init";
-import { List } from "siteTypes";
 
 export default defineComponent({
     components: {
@@ -39,8 +38,6 @@ export default defineComponent({
         onBusEvent("reset:modal", () => this.closeModal());
 
         optimizedResize.add(() => emitBusEvent("window:resize"));
-
-        onBusEvent("select:list", (id, external, multi) => this.selectList(id, external, multi));
     },
 
     async created() {
@@ -79,17 +76,6 @@ export default defineComponent({
             if (!uuid) {
                 console.error("cannot refresh externalUser without data");
                 return;
-            }
-        },
-
-        selectList(id: number, external: boolean, multiSelect: boolean): void {
-            if (multiSelect) {
-                const list = this.$store.getters.allLists.find((value: List) => value.id === id && value.external === external);
-                list.show = !list.show;
-            } else {
-                for (const list of this.$store.getters.allLists) {
-                    list.show = list.id === id && list.external === external && !list.show;
-                }
             }
         },
     },

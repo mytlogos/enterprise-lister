@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="root">
     <delete-modal
       v-bind="deleteModal"
       @hide="deleteModal.show = false"
@@ -53,8 +53,26 @@
     <table class="table">
       <thead>
         <tr>
-          <th scope="col">
+          <th
+            scope="col"
+            class="fit"
+          >
             No.
+          </th>
+          <th
+            scope="col"
+            class="fit"
+          >
+            Type
+          </th>
+          <th
+            scope="col"
+            class="fit"
+          >
+            State from TL
+          </th>
+          <th scope="col">
+            Title
           </th>
           <th
             v-for="column in columns"
@@ -80,12 +98,26 @@
           @keyup.enter.ctrl="openMedium(marked.id)"
         >
           <td
+            class="fit"
             :class="{
               marked: marked.id != null && marked.id === entry.id,
             }"
           >
             {{ entry.id != null ? index + 1 : "" }}
           </td>
+          <td class="fit">
+            <type-icon :type="$store.getters.getMergedProp(entry, 'medium')" />
+          </td>
+          <td class="fit">
+            <release-state :state="$store.getters.getMergedProp(entry, 'stateTL')" />
+          </td>
+          <td>
+            <router-link
+              :to="{ name: 'medium', params: { id: entry.id } }"
+            >
+              {{ entry.title }}
+            </router-link>
+          </td>          
           <td
             v-for="column in columns"
             v-show="column.show"
@@ -109,7 +141,7 @@
               >
             </label>
             <template v-else>
-              {{ entry[column.prop] }}
+              {{ $store.getters.getMergedProp(entry, column.prop) }}
             </template>
           </td>
         </tr>
@@ -121,6 +153,8 @@
 <script lang="ts">
 import { emitBusEvent, onBusEvent } from "../bus";
 import deleteModal from "./modal/delete-modal.vue";
+import typeIcon from "../components/type-icon.vue";
+import releaseState from "../components/release-state.vue";
 
 // FIXME user can edit empty rows
 
@@ -140,11 +174,11 @@ interface Data {
     marked: {
         id: null | number;
         index: null | number;
-        prop: null | string;
+        prop: null | StringKey<Medium>;
     };
     editCell: {
         id: null | number;
-        prop: null | string;
+        prop: null | StringKey<Medium>;
         value: null | any;
     };
     listFocused: boolean;
@@ -159,11 +193,15 @@ interface Data {
     focused: boolean;
 }
 import { defineComponent, PropType } from "vue";
-import { Column, EmptyObject, Medium } from "../siteTypes";
+import { Column, EmptyObject, Medium, StringKey } from "../siteTypes";
 
 export default defineComponent({
     name: "AppTable",
-    components: { deleteModal },
+    components: { 
+        deleteModal,
+        typeIcon,
+        releaseState
+    },
     props: {
         items: { type: Array as PropType<Medium[]>, required: true },
         columns: { type: Array as PropType<Column[]>, required: true },
@@ -236,9 +274,9 @@ export default defineComponent({
             // eslint-disable-next-line vue/no-side-effects-in-computed-properties
             this.currentLength = data.length;
             // iterate for the number of emptySpaces and push an empty object as an empty row
-            for (let i = 0; i < this.emptySpace; i++) {
-                data.push({});
-            }
+            // for (let i = 0; i < this.emptySpace; i++) {
+            //     data.push({});
+            // }
             return data;
         },
 
@@ -248,8 +286,13 @@ export default defineComponent({
             if (!this.emptySpaceDirty) {
                 return this.emptySpaceSpare;
             }
-            const table = this.$el.querySelector("table");
-            const parent = table.parentElement;
+            const root = this.$refs.root as HTMLElement | undefined;
+            if (!root) {
+                console.error("No root ref defined in app-table");
+                return 0;
+            }
+            const table = root.querySelector("table") as HTMLTableElement;
+            const parent = table.parentElement as HTMLElement;
             const parentHeight = parseInt(window.getComputedStyle(parent).height, 10);
             let siblingsHeight = 0;
 
@@ -263,7 +306,7 @@ export default defineComponent({
                     siblingsHeight += height;
                 }
             }
-            const theadHeight = parseInt(window.getComputedStyle(table.tHead).height, 10);
+            const theadHeight = parseInt(window.getComputedStyle(table.tHead as HTMLElement).height, 10);
             // calculate the empty space for table
             let remaining = parentHeight - theadHeight;
             remaining -= siblingsHeight;
@@ -294,7 +337,10 @@ export default defineComponent({
         },
         showSearch(newValue) {
             if (newValue) {
-                setTimeout(() => this.$el.querySelector(".dropdown input").focus(), 200);
+                setTimeout(() => {
+                    const input = this.getRoot().querySelector(".dropdown input") as HTMLInputElement;
+                    input.focus();
+                }, 200);
             } else {
                 this.filter = "";
             }
@@ -307,7 +353,7 @@ export default defineComponent({
 
         onBusEvent("window:resize", () => this.emptySpaceDirty = true);
 
-        document.addEventListener("click", (evt) => this.focused = this.$el.contains(evt.target));
+        document.addEventListener("click", (evt) => this.focused = this.getRoot().contains(evt.target as Node | null));
 
         document.addEventListener("keydown", (evt) => {
             if (!this.listFocused) {
@@ -361,6 +407,9 @@ export default defineComponent({
         });
     },
     methods: {
+        getRoot() {
+            return this.$refs.root as HTMLElement;
+        },
         openMedium(mediumId?: number | null): void {
             if (mediumId == null) {
                 return;
@@ -372,18 +421,21 @@ export default defineComponent({
             this.$store.dispatch("deleteMedium", id)
         },
 
-        mark(entry: Medium | EmptyObject, index: number, prop: string): void {
+        mark(entry: Medium | EmptyObject, index: number, prop: StringKey<Medium>): void {
             this.marked.id = entry.id;
             this.marked.index = index;
             this.marked.prop = prop;
         },
 
-        startEdit(entry: Medium | EmptyObject, prop: string): void {
+        startEdit(entry: Medium | EmptyObject, prop: StringKey<Medium>): void {
             this.editCell.id = entry.id;
             this.editCell.prop = prop;
             this.editCell.value = entry[prop];
             // input is not yet available, only after this method is over, so set a timeout to focus
-            setTimeout(() => this.$el.querySelector("td input").focus(), 200);
+            setTimeout(() => {
+                const input = this.getRoot().querySelector("td input") as HTMLInputElement;
+                input.focus();
+            }, 200);
         },
 
         stopEdit(): void {
@@ -450,6 +502,10 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.table td.fit, .table th.fit {
+    white-space: nowrap;
+    width: 1%;
+}
 /* .narrow {
         width: 20px;
     }

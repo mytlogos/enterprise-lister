@@ -219,8 +219,8 @@ export default defineComponent({
             if (!this.emptySpaceDirty) {
                 return this.emptySpaceSpare;
             }
-            const table = this.$el.querySelector("table");
-            const parent = table.parentElement;
+            const table = (this.$refs.root as HTMLElement).querySelector("table") as HTMLTableElement;
+            const parent = table.parentElement as HTMLElement;
             const parentHeight = parseInt(window.getComputedStyle(parent).height, 10);
             let siblingsHeight = 0;
 
@@ -234,7 +234,7 @@ export default defineComponent({
                     siblingsHeight += height;
                 }
             }
-            const theadHeight = parseInt(window.getComputedStyle(table.tHead).height, 10);
+            const theadHeight = parseInt(window.getComputedStyle(table.tHead as HTMLElement).height, 10);
             // calculate the empty space for table
             let remaining = parentHeight - theadHeight;
             remaining -= siblingsHeight;

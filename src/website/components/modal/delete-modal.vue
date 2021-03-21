@@ -1,6 +1,7 @@
 <template>
   <div
     v-if="show"
+    ref="root"
     class="modal"
   >
     <div class="modal-header">
@@ -60,7 +61,12 @@ export default defineComponent({
     },
     mounted(): void {
         document.addEventListener("click", (evt) => {
-            if (!this.$el.contains(evt.target) && this.show) {
+            const root = this.$refs.root as HTMLElement | undefined;
+            if (!root) {
+                console.error("Root Ref not defined in Delete Modal");
+                return;
+            }
+            if (!root.contains(evt.target as Node | null) && this.show) {
                 evt.stopImmediatePropagation();
                 this.close();
             }

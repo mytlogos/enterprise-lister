@@ -1,10 +1,13 @@
 <template>
-  <div class="container-fluid p-0 d-flex">
+  <div
+    ref="root"
+    class="container-fluid p-0 d-flex"
+  >
     <reading-list :lists="lists" />
     <app-table
       id="content"
       class="container-fluid"
-      :data="data"
+      :items="items"
       :columns="columns"
       filter-key=""
     />
@@ -15,7 +18,7 @@
 import readingList from "../components/reading-list.vue";
 import appTable from "../components/app-table.vue";
 import { HttpClient } from "../Httpclient";
-import { List, SimpleMedium } from "../siteTypes";
+import { List, Medium, SimpleMedium } from "../siteTypes";
 import { defineComponent } from "vue";
 
 interface Data { 
@@ -37,11 +40,10 @@ export default defineComponent({
         lists(): List[] {
             return this.$store.getters.allLists;
         },
-        data() {
+        items(): Medium[] {
             const multiKeys: number[] = this.lists.filter((value) => value.show).flatMap((value) => value.items);
-            let uniqueMedia: number[] = [...new Set(multiKeys)];
             let missingMedia: number[] = [];
-            uniqueMedia = uniqueMedia
+            let uniqueMedia: Medium[] = [...new Set(multiKeys)]
                 .map(id => {
                     const medium = this.$store.getters.getMedium(id);
 

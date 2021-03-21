@@ -1,4 +1,4 @@
-import { SimpleMedium, FullMediumToc } from "./siteTypes";
+import { SimpleMedium, FullMediumToc, StringKey } from "./siteTypes";
 
 /**
  *
@@ -85,6 +85,36 @@ export function mergeMediaToc(medium: SimpleMedium, tocs: FullMediumToc[]): Simp
     }
     return medium;
 }
+
+export function mergeMediaTocProp<T extends StringKey<SimpleMedium>>(medium: SimpleMedium, tocs: FullMediumToc[], prop: T): SimpleMedium[T] {
+    if (prop === "medium") {
+        for (const toc of tocs) {
+            if (medium.medium !== toc.medium) {
+                console.warn("toc of different media types, expected: " + medium.medium + ", got: " + toc.medium + " for medium: " + medium.id + ": " + medium.title);
+            }
+        }
+        return medium.medium;
+    } else if (prop === "stateTL" || prop === "stateOrigin") {
+        let state = medium[prop];
+
+        for (const toc of tocs) {
+            if ((state || Number.NEGATIVE_INFINITY) < (toc[prop] || Number.NEGATIVE_INFINITY)) {
+                state = toc[prop];
+            }
+        }
+        return state;
+    } else if (medium[prop]) {
+        return medium[prop];
+    } else {
+        for (const toc of tocs) {
+            if (toc[prop]) {
+                return toc[prop];
+            }
+        }
+        return "";
+    }
+}
+
 
 /**
  * A 'Resize'-events throttler which calls every added

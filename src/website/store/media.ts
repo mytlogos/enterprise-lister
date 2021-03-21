@@ -1,14 +1,20 @@
-import { AddMedium, List, MediaStore, Medium, SimpleMedium, VuexStore } from "../siteTypes";
+import { AddMedium, List, MediaStore, Medium, SecondaryMedium, SimpleMedium, StringKey, VuexStore } from "../siteTypes";
 import { Module, useStore } from "vuex";
 import { HttpClient } from "../Httpclient";
+import { mergeMediaTocProp } from "../init";
 
 const module: Module<MediaStore, VuexStore> = {
     state: () => ({
-        media: {}
+        media: {},
+        secondaryMedia: {},
     }),
     getters: {
         getMedium: (state) => (id: number): SimpleMedium => {
             return state.media[id];
+        },
+        getMergedProp: (state) => <T extends StringKey<SimpleMedium>>(medium: Medium, prop: T): SimpleMedium[T] => {
+            const secondMedium = state.secondaryMedia[medium.id];
+            return mergeMediaTocProp(medium, secondMedium?.tocs || [], prop);
         },
         media(state): SimpleMedium[] {
             return Object.values(state.media);
@@ -17,6 +23,9 @@ const module: Module<MediaStore, VuexStore> = {
     mutations: {
         userMedia(state, media: Record<number, SimpleMedium>) {
             state.media = media;
+        },
+        userSecondaryMedia(state, media: Record<number, SecondaryMedium>) {
+            state.secondaryMedia = media;
         },
         addMedium(state, medium: Medium | Medium[]) {
             if (Array.isArray(medium)) {
@@ -46,7 +55,10 @@ const module: Module<MediaStore, VuexStore> = {
     actions: {
         async loadMedia({ commit }) {
             try {
-                const data = await HttpClient.getAllMedia();
+                const [data, secondaryData] = await Promise.all([
+                    HttpClient.getAllMedia(),
+                    HttpClient.getAllSecondaryMedia()
+                ]);
                 const media: Record<number, SimpleMedium> = {};
     
                 for (const datum of data) {
@@ -54,8 +66,17 @@ const module: Module<MediaStore, VuexStore> = {
                         media[datum.id] = datum;
                     }
                 }
-    
+
+                const secondaryMedia: Record<number, SecondaryMedium> = {};
+                
+                for (const datum of secondaryData) {
+                    if (datum.id) {
+                        secondaryMedia[datum.id] = datum;
+                    }
+                }
+                
                 commit("userMedia", media);
+                commit("userSecondaryMedia", secondaryMedia);
             } catch (error) {
                 console.error(error);
             }

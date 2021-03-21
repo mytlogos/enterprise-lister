@@ -49,7 +49,6 @@ export const store = createStore({
         user: {
             settings: {},
             columns: [
-                { name: "Title", prop: "title", show: true },
                 { name: "Author", prop: "author", show: true },
                 { name: "Artist", prop: "artist", show: true },
             ]

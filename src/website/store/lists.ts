@@ -28,6 +28,15 @@ const module: Module<ListsStore, VuexStore> = {
             }
             state.lists.splice(index, 1);
         },
+        updateList(state, updateList: List) {
+            const list = state.lists.find((value: List) => value.id === updateList.id);
+
+            if (list) {
+                Object.assign(list, updateList);
+            } else {
+                console.error("Cannot find list to update for id:", updateList.id);
+            }
+        }
     },
     actions: {
         async loadLists({ commit }) {

@@ -1,5 +1,8 @@
 <template>
-  <div class="modal">
+  <div
+    ref="root"
+    class="modal"
+  >
     <div class="modal-header">
       <span>
         <slot name="title" />
@@ -39,7 +42,7 @@ export default defineComponent({
     mounted(): void {
         document.addEventListener("click", (evt) => {
             // noinspection JSCheckFunctionSignatures
-            if (!this.$el.contains(evt.target) && this.show) {
+            if (!(this.$refs.root as HTMLElement).contains(evt.target as Node | null) && this.show) {
                 evt.stopImmediatePropagation();
                 evt.preventDefault();
                 this.close();

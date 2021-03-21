@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div ref="root">
     <div class="d-flex flex-column dropdown-container">
       <div
         class="select-container"
@@ -46,12 +46,13 @@
       :filter="filter"
       :focused="listFocused"
       :multi="true"
+      @select="selectList"
     />
   </div>
 </template>
 
 <script lang="ts">
-import listComp from "./list-comp.vue";
+import listComp, { SelectItemEvent } from "./list-comp.vue";
 
 interface Data {
     selectOpen: boolean;
@@ -111,7 +112,10 @@ export default defineComponent({
     watch: {
         showSearch(newValue: boolean): void {
             if (newValue) {
-                setTimeout(() => this.$el.querySelector(".dropdown input").focus(), 200);
+                setTimeout(() => {
+                    const input = (this.$refs.root as HTMLElement).querySelector(".dropdown input") as HTMLInputElement;
+                    input.focus();
+                }, 200);
             } else {
                 this.filter = "";
             }
@@ -119,14 +123,41 @@ export default defineComponent({
     },
     mounted(): void {
         console.log("read", this);
-        const element = this.$el.querySelector(".select-container");
-        document.addEventListener("click", (evt) => this.listFocused = this.$el.contains(evt.target), { capture: true });
+        const element = (this.$refs.root as HTMLElement).querySelector(".select-container") as HTMLElement;
+        document.addEventListener("click", (evt) => this.listFocused = (this.$refs.root as HTMLElement).contains(evt.target as Node | null), { capture: true });
 
         window.addEventListener("click", (evt) => {
-            if (!element.contains(evt.target)) {
+            if (!element.contains(evt.target as Node | null)) {
                 this.selectOpen = false;
             }
         });
+    },
+    methods: {
+        selectList({ id, external, multiSelect }: SelectItemEvent): void {
+            if (multiSelect) {
+                const list = this.$store.getters.allLists.find((value: List) => value.id === id && value.external === external);
+
+                if (external) {
+                    this.$store.commit("updateExternalList", {...list, show: !list.show});
+                } else {
+                    this.$store.commit("updateList", {...list, show: !list.show});
+                }
+            } else {
+                for (const list of this.$store.getters.allLists) {
+                    const show = list.id === id && list.external === external && !list.show;
+
+                    if (list.show === show) {
+                        continue;
+                    }
+
+                    if (list.external) {
+                        this.$store.commit("updateExternalList", {...list, show: show});
+                    } else {
+                        this.$store.commit("updateList", {...list, show: show});
+                    }
+                }
+            }
+        },
     }
 });
 </script>

@@ -4,6 +4,8 @@ export type Indexable<T> = T & {
     [key in keyof T]: T[key];
 };
 
+export type StringKey<T> = Extract<keyof T, string>;
+
 export enum MediaType {
     TEXT = 0x1,
     AUDIO = 0x2,
@@ -170,7 +172,7 @@ export interface Synonyms {
 
 export interface Column {
     name: string;
-    prop: string;
+    prop: StringKey<Medium>;
     show: boolean;
 }
 
@@ -398,6 +400,7 @@ export interface ListsStore {
 
 export interface MediaStore {
     media: Record<number, SimpleMedium>;
+    secondaryMedia: Record<number, SecondaryMedium>;
 }
 
 export interface NewsStore {

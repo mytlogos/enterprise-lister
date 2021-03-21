@@ -1,6 +1,6 @@
 <template>
   <template v-if="displayedData.length">
-    <ul class="list">
+    <ul class="list-group list">
       <li
         v-for="(item, i) in displayedData"
         :key="item"
@@ -11,6 +11,7 @@
             (item.external == null ||
               markClassExternal === item.external),
         }"
+        class="list-group-item list-group-item-action btn"
         @click="select(item.id, item.external, i, $event)"
       >
         {{ item.name }}
@@ -25,7 +26,6 @@
 <script lang="ts">
 // FIXME do it better with marked list
 // FIXME still is focused after being not shown
-import { emitBusEvent } from "../bus";
 import { List } from "../siteTypes"
 
 interface Data {
@@ -36,6 +36,12 @@ interface Data {
 
 import { defineComponent, PropType } from "vue";
 
+export interface SelectItemEvent {
+    id: number;
+    external: boolean;
+    multiSelect: boolean;
+}
+
 export default defineComponent({
     name: "ListUl",
     props: {
@@ -44,6 +50,9 @@ export default defineComponent({
         focused: { type: Boolean, required: true },
         multi: { type: Boolean, required: true },
     },
+    emits: [
+        "select"
+    ],
     data(): Data {
         return {
             marked: {
@@ -94,7 +103,12 @@ export default defineComponent({
     },
     methods: {
         select(id: number, external: boolean, index: number, evt: KeyboardEvent): void {
-            emitBusEvent("select:list", id, external, this.multi && evt.ctrlKey);
+            this.$emit("select", {
+                id,
+                external,
+                multiSelect: this.multi && evt.ctrlKey
+            } as SelectItemEvent);
+
             this.markClassId = this.markClassId === id ? null : id;
             // TODO: check if this is correct
             this.markClassExternal = external;

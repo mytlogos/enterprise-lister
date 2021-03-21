@@ -26,11 +26,29 @@ const module: Module<ExternalUserStore, VuexStore> = {
             }
             state.externalUser.splice(index, 1);
         },
+        updateExternalList(state, updateList: ExternalList) {
+            let found = false;
+            for (const user of state.externalUser) {
+                for (const list of user.lists) {
+                    if (list.id === updateList.id) {
+                        found = true;
+                        Object.assign(list, updateList);
+                    }
+                }
+            }
+
+            if (!found) {
+                console.error("Cannot find list to update for id:", updateList.id);
+            }
+        }
     },
     actions: {
         async loadExternalUser({ commit }) {
             try {
                 const externalUser = await HttpClient.getExternalUser();
+                externalUser.forEach(user => {
+                    user.lists.forEach(list => list.external = true);
+                });
                 commit("userExternalUser", externalUser);
                 console.log("Finished loading ExternalUser", externalUser);
             } catch (error) {

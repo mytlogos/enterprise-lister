@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="root"
     class="toast"
     role="alert"
     aria-live="assertive"
@@ -78,8 +79,8 @@ export default defineComponent({
         }
     },
     mounted() {
-        $(this.$el).on("hidden.bs.toast", () => this.showing = false);
-        $(this.$el).on("show.bs.toast", () => this.showing = true);
+        $(this.$refs.root as HTMLElement).on("hidden.bs.toast", () => this.showing = false);
+        $(this.$refs.root as HTMLElement).on("show.bs.toast", () => this.showing = true);
     }
 });
 </script>
