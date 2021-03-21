@@ -787,7 +787,10 @@ export function ignore(): void {
  * Relativize the path of file to project dir.
  */
 export function findProjectDirPath(file: string): string {
-    let dir = process.cwd();
+    return findRelativeProjectDirPath(process.cwd(), file);
+}
+
+export function findRelativeProjectDirPath(dir: string, file: string): string {
     let filePath = file;
     let currentDirFiles: string[] = fs.readdirSync(dir);
 
@@ -797,6 +800,16 @@ export function findProjectDirPath(file: string): string {
         currentDirFiles = fs.readdirSync(dir);
     }
     return filePath;
+}
+
+export function findAbsoluteProjectDirPath(dir = process.cwd()): string {
+    let currentDirFiles: string[] = fs.readdirSync(dir);
+
+    while (!currentDirFiles.includes("package.json")) {
+        dir = path.dirname(dir);
+        currentDirFiles = fs.readdirSync(dir);
+    }
+    return dir;
 }
 
 export function isQuery(value: any): value is Query {

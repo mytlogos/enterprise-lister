@@ -1,5 +1,7 @@
 import handlebars from "handlebars";
 import fs from "fs/promises";
+import { findAbsoluteProjectDirPath } from "../../tools";
+import { join } from "path";
 import {
     OpenApiObject,
     OperationObject,
@@ -54,8 +56,15 @@ export function resolveReference(root: OpenApiObject, reference: ReferenceObject
     throw Error("Unable to Resolve Reference: " + reference.$ref);
 }
 
-export async function generateWebClient(data: Readonly<OpenApiObject>): Promise<void> {
-    return new TSWebClientGenerator(data).generate();
+export async function generateWebClient(data: Readonly<OpenApiObject>, target?: string): Promise<void> {
+    const rootDir = findAbsoluteProjectDirPath(__dirname);
+    const templateDir = join(rootDir, "src", "server", "bin", "misc", "openapi")
+
+    if (!target) {
+        target = join(templateDir, "webclient.ts");
+    }
+    const source = join(templateDir, "webclient.ts.handlebars");
+    return new TSWebClientGenerator(data, source, target).generate();
 }
 
 export async function generateValidator(data: Readonly<OpenApiObject>): Promise<void> {
@@ -340,8 +349,8 @@ class TSTemplateGenerator extends TemplateGenerator {
 }
 
 class TSWebClientGenerator extends TSTemplateGenerator {
-    public constructor(data: Readonly<OpenApiObject>) {
-        super(data, "./src/server/bin/misc/openapi/webclient.ts.handlebars", "./src/server/bin/misc/openapi/webclient.ts");
+    public constructor(data: Readonly<OpenApiObject>, source: string, target: string) {
+        super(data, source, target);
     }
 }
 

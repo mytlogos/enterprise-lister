@@ -5,6 +5,7 @@ import { OperationObject, ParameterObject, SchemaObject, RequestBodyObject, Open
 import yaml from "js-yaml";
 import fs from "fs/promises";
 import { isNumber, isString } from "validate.js";
+import yargs from "yargs";
 
 async function GenerateOpenApi(file: string) {
     const openApiObject = generateExpressApiObject([file], {
@@ -133,4 +134,48 @@ async function writeHook(openApiObject: OpenApiObject) {
     await fs.writeFile("openApiTypeHook.yaml", yaml.dump(hookOutput), { encoding: "utf8" });
 }
 
-GenerateOpenApi("./src/server/bin/api.ts");
+async function generateClientOnly(openapi: string, target?: string) {
+    const content = await fs.readFile(openapi, { encoding: "utf-8" })
+    const openApiObject: any = yaml.load(content);
+
+    if (!openApiObject) {
+        console.log("No Open Api Object available")
+        return;
+    }
+
+    console.log(typeof openApiObject);
+
+    await generateWebClient(openApiObject, target)
+}
+
+function main() {
+    const argv = yargs
+        .option("openapi", {
+            type: "string",
+        })
+        .option("target", {
+            type: "string",
+        })
+        .option("middleware", {
+            type: "string"
+        })
+        .help()
+        .alias("help", "h")
+        .argv;
+
+    if (argv.openapi) {
+        generateClientOnly(argv.openapi, argv.target)
+            .then(() => console.log("Created the Client at " + argv.target))
+            .catch(error => {
+                console.error(error);
+            });
+    } else if (argv.middleware) {
+        GenerateOpenApi(argv.middleware);
+    } else {
+        GenerateOpenApi("./src/server/bin/api.ts");
+    }
+}
+
+if (typeof require !== "undefined" && require.main) {
+    main()
+}
