@@ -128,9 +128,9 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { SimpleMedium, ReleaseState, SecondaryMedium } from "../siteTypes";
-import releaseState from "../components/release-state.vue"
-import typeIcon from "../components/type-icon.vue"
-import { defineComponent } from "vue"
+import releaseState from "../components/release-state.vue";
+import typeIcon from "../components/type-icon.vue";
+import { defineComponent } from "vue";
 import { mergeMediaToc } from "../init";
 
 interface Medium extends SimpleMedium {
