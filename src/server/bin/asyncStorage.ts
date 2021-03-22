@@ -158,10 +158,12 @@ export function removeContext(name: string): void {
   }
 }
 
+type TakeManyFunction<T = any> = (...args: any[]) => T;
+
 export function runAsync(
   id: number,
   store: Map<string, any>,
-  callback: (...args: any[]) => void | EmptyPromise,
+  callback: TakeManyFunction<void | EmptyPromise>,
   ...args: any[]
 ): void {
   localStorage.run(
@@ -189,7 +191,7 @@ export function runAsync(
  *
  * @param func function to bind to current async execution context
  */
-export function bindContext<Func extends (...args: any[]) => any>(func: Func): Func & { asyncResource: AsyncResource } {
+export function bindContext<Func extends TakeManyFunction>(func: Func): Func & { asyncResource: AsyncResource } {
   // @ts-expect-error
   return AsyncResource.bind(function (...args: any[]) {
     // @ts-expect-error
