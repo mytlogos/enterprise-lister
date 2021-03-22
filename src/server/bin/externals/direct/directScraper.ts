@@ -9,18 +9,18 @@ import { getHook as getBoxnovelHook } from "./boxNovelScraper";
 import { getHook as getOpenLibraryHook } from "./openLibraryScraper";
 
 export function getHooks(): Hook[] {
-    return [
-        getWWHook(),
-        // site was shutdown
-        // getKissAnimeHook(),
-        getGogoAnimeHook(),
-        getMangaDexHook(),
-        getMangaHasuHook(),
-        // qidian underground seems to be closed down
-        // getQUndergroundHook(),
-        getWebnovelHook(),
-        getBoxnovelHook(),
-        getNovelFullHook(),
-        getOpenLibraryHook(),
-    ];
+  return [
+    getWWHook(),
+    // site was shutdown
+    // getKissAnimeHook(),
+    getGogoAnimeHook(),
+    getMangaDexHook(),
+    getMangaHasuHook(),
+    // qidian underground seems to be closed down
+    // getQUndergroundHook(),
+    getWebnovelHook(),
+    getBoxnovelHook(),
+    getNovelFullHook(),
+    getOpenLibraryHook(),
+  ];
 }

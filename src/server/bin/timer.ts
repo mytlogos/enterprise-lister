@@ -7,5 +7,5 @@ const workTo = 11;
  * Block requests in a given time frame.
  */
 export const blockRequests: Handler = (req, resp, next) => {
-    next();
+  next();
 };

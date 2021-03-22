@@ -4,13 +4,7 @@
     <form>
       <div class="form-group row">
         <label class="col-sm-2 col-form-label">Username:</label>
-        <input
-          v-model="user"
-          class="col-sm-4 form-control"
-          placeholder="Your username"
-          title="Username"
-          type="text"
-        >
+        <input v-model="user" class="col-sm-4 form-control" placeholder="Your username" title="Username" type="text" />
       </div>
       <div class="form-group row">
         <label class="col-sm-2 col-form-label">Password:</label>
@@ -20,7 +14,7 @@
           placeholder="Your password"
           title="Password"
           type="password"
-        >
+        />
       </div>
       <div class="form-group row">
         <label class="col-sm-2 col-form-label">Repeat Password:</label>
@@ -30,18 +24,10 @@
           placeholder="Repeat your password"
           title="Repeat your Password"
           type="password"
-        >
+        />
       </div>
-      <button
-        class="btn btn-primary"
-        type="button"
-        @click="sendForm()"
-      >
-        Register
-      </button>
-      <div class="lost">
-        Forgot your password?
-      </div>
+      <button class="btn btn-primary" type="button" @click="sendForm()">Register</button>
+      <div class="lost">Forgot your password?</div>
       <div class="error" />
     </form>
   </div>
@@ -50,30 +36,30 @@
 import { defineComponent } from "vue";
 
 export default defineComponent({
-    name: "Register",
-    props: {
-        show: { type: Boolean, required: true },
-        error: { type: String, required: true },
+  name: "Register",
+  props: {
+    show: { type: Boolean, required: true },
+    error: { type: String, required: true },
+  },
+  data(): { user: string; pw: string; pwRepeat: string } {
+    return {
+      user: "",
+      pw: "",
+      pwRepeat: "",
+    };
+  },
+  watch: {
+    show(newValue: boolean): void {
+      if (!newValue) {
+        this.user = "";
+        this.pw = "";
+      }
     },
-    data(): { user: string; pw: string; pwRepeat: string } {
-        return {
-            user: "",
-            pw: "",
-            pwRepeat: "",
-        };
+  },
+  methods: {
+    sendForm(): void {
+      this.$store.dispatch("register", { user: this.user, pw: this.pw, pwRepeat: this.pwRepeat });
     },
-    watch: {
-        show(newValue: boolean): void {
-            if (!newValue) {
-                this.user = "";
-                this.pw = "";
-            }
-        },
-    },
-    methods: {
-        sendForm(): void {
-            this.$store.dispatch("register", { user: this.user, pw: this.pw, pwRepeat: this.pwRepeat });
-        },
-    },
+  },
 });
 </script>

@@ -13,28 +13,28 @@ const suites = $(".level.suite");
 const hookMap = new Map();
 
 for (let i = 0; i < suites.length; i++) {
-    const suite = suites.eq(i);
-    const title = suite.children().first();
-    const text = title.text();
+  const suite = suites.eq(i);
+  const title = suite.children().first();
+  const text = title.text();
 
-    if (!text.includes("download")) {
-        continue;
-    }
+  if (!text.includes("download")) {
+    continue;
+  }
 
-    const hook = hooks.find((value) => text.includes(value.name));
+  const hook = hooks.find((value) => text.includes(value.name));
 
-    if (!hook) {
-        console.log("no hook found for " + text);
-        continue;
-    }
-    const failedLinks = getElseSet(hookMap, hook, () => []);
-    const failedTests = suite.find(".level.test.failed");
+  if (!hook) {
+    console.log("no hook found for " + text);
+    continue;
+  }
+  const failedLinks = getElseSet(hookMap, hook, () => []);
+  const failedTests = suite.find(".level.test.failed");
 
-    for (let j = 0; j < failedTests.length; j++) {
-        const failedTest = failedTests.eq(j);
-        const testTitleElement = failedTest.children().first();
-        testTitleElement.find(".status, .time").remove();
-        const url = testTitleElement.text();
-        failedLinks.push(url);
-    }
+  for (let j = 0; j < failedTests.length; j++) {
+    const failedTest = failedTests.eq(j);
+    const testTitleElement = failedTest.children().first();
+    testTitleElement.find(".status, .time").remove();
+    const url = testTitleElement.text();
+    failedLinks.push(url);
+  }
 }

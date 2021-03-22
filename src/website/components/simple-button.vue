@@ -1,8 +1,5 @@
 <template>
-  <button
-    class="btn"
-    @click="$emit(event)"
-  >
+  <button class="btn" @click="$emit(event)">
     {{ name }}
   </button>
 </template>
@@ -11,10 +8,10 @@
 import { defineComponent } from "vue";
 
 export default defineComponent({
-    name: "AppHeader",
-    props: {
-        event: { type: String, required: true },
-        name: { type: String, required: true }
-    },
+  name: "AppHeader",
+  props: {
+    event: { type: String, required: true },
+    name: { type: String, required: true },
+  },
 });
 </script>

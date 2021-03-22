@@ -4,14 +4,14 @@ import { Request } from "express-serve-static-core";
 {{#if (isType . "object")}}
 export interface {{@key}} {
 {{#each properties}}
-    {{toProperty @key . ../required}}
+{{toProperty @key . ../required}}
 {{/each}}
 }
 {{/if}}
 {{#if (isType . "Enum")}}
 export enum {{@key}} {
 {{#each enum}}
-    {{toEnumMember . @index ../enum}}
+{{toEnumMember . @index ../enum}}
 {{/each}}
 }
 {{/if}}
@@ -21,130 +21,130 @@ export enum {{@key}} {
 
 function to{{camelCase @key}}(value: any): {{@key}} | null {
 {{#if (isType . "object")}}
-    {{> toObject type=. variable="value"}}
-    return value;
+{{> toObject type=. variable="value"}}
+return value;
 {{else if (isType . "Enum")}}
 {{#each enum}}
-    if (value === {{toTSValue .}}) {
-        return {{@../key}}.{{findEnumMember . ../enum}};
-    }
+if (value === {{toTSValue .}}) {
+return {{@../key}}.{{findEnumMember . ../enum}};
+}
 {{/each}}
-    return null;
+return null;
 {{else}}
-    console.log("No validation for Schema '{{@key}}' implemented, always invalid.");
-    return null;
+console.log("No validation for Schema '{{@key}}' implemented, always invalid.");
+return null;
 {{/if}}
 }
 {{/each}}
 
 function isString(value: any): value is string {
-    return Object.prototype.toString.call(value) === "[object String]";
+return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function toString(value: unknown): string | null {
-    if (isString(value)) {
-        return value;
-    }
-    return null;
+if (isString(value)) {
+return value;
+}
+return null;
 }
 
 function toNumber(value: any): number | null {
-    if (isString(value)) {
-        value = Number(value);
+if (isString(value)) {
+value = Number(value);
 
-        if (!Number.isNaN(value)) {
-            return value;
-        }
-    } else if (typeof value === "number") {
-        return value;
-    }
-    return null;
+if (!Number.isNaN(value)) {
+return value;
+}
+} else if (typeof value === "number") {
+return value;
+}
+return null;
 }
 
 function toBoolean(value: any): boolean | null {
-    if (isString(value)) {
-        return value === "true";
-    } else if (typeof value === "boolean") {
-        return value;
-    }
-    return null;
+if (isString(value)) {
+return value === "true";
+} else if (typeof value === "boolean") {
+return value;
+}
+return null;
 }
 
 function toDate(value: any): Date | null {
-    if (isString(value)) {
-        value = new Date(value);
+if (isString(value)) {
+value = new Date(value);
 
-        if (!Number.isNaN(value.getTime())) {
-            return value;
-        }
-    }
-    return null;
+if (!Number.isNaN(value.getTime())) {
+return value;
+}
+}
+return null;
 }
 
 function toArray(value: any): any[] | null {
-    if (isString(value)) {
-        const s = value.trim();
-        if (!s.startsWith("[") || !s.endsWith("]")) {
-            return [];
-        }
-        return s
-            .split(/[[\],]/)
-            .map(split => Number(split))
-            .filter((n: number) => !Number.isNaN(n) && n);
-    } else if (Array.isArray(value)) {
-        return value;
-    } else {
-        return null;
-    }
+if (isString(value)) {
+const s = value.trim();
+if (!s.startsWith("[") || !s.endsWith("]")) {
+return [];
+}
+return s
+.split(/[[\],]/)
+.map(split => Number(split))
+.filter((n: number) => !Number.isNaN(n) && n);
+} else if (Array.isArray(value)) {
+return value;
+} else {
+return null;
+}
 }
 
 {{#each paths}}
 {{#each methods}}
 {{#if parameter.length}}
 export function to{{camelCase name}}(req: Request): {{paramToReturnType parameter}} | null {
-    const result: any = {};
+const result: any = {};
 {{#each parameter}}
 {{#if (is type.type "Union")}}
 {{#each type.oneOf}}
-    if (result.{{../name}} == null) {
-    {{#if (is ../../method "get")}}
-        result.{{../name}} = {{toConvertName .}}(req.query.{{../name}});
-    {{else}}
-        result.{{../name}} = {{toConvertName .}}(req.body.{{../name}});
-    {{/if}}
-{{#if (is type "Array")}}
-        if (result.{{../name}}) {
-            result.{{../name}} = result.{{../name}}.map({{toConvertName items}});
-
-            if (result.some((v: any | null) => v == null)) {
-                return null;
-            }
-        }
+if (result.{{../name}} == null) {
+{{#if (is ../../method "get")}}
+result.{{../name}} = {{toConvertName .}}(req.query.{{../name}});
+{{else}}
+result.{{../name}} = {{toConvertName .}}(req.body.{{../name}});
 {{/if}}
-    }
+{{#if (is type "Array")}}
+if (result.{{../name}}) {
+result.{{../name}} = result.{{../name}}.map({{toConvertName items}});
+
+if (result.some((v: any | null) => v == null)) {
+return null;
+}
+}
+{{/if}}
+}
 {{/each}}
-    if (result.{{name}} == null) {
-        return null;
-    }
+if (result.{{name}} == null) {
+return null;
+}
 {{else}}
 {{#if (is ../method "get")}}
-    result.{{name}} = {{toConvertName type}}(req.query.{{name}});
+result.{{name}} = {{toConvertName type}}(req.query.{{name}});
 {{else}}
-    result.{{name}} = {{toConvertName type}}(req.body.{{name}});
+result.{{name}} = {{toConvertName type}}(req.body.{{name}});
 {{/if}}
-    if (result.{{name}} == null) {
-        return null;
-    }
+if (result.{{name}} == null) {
+return null;
+}
 {{#if (is type.type "Array")}}
-    result.{{name}} = result.{{name}}.map({{toConvertName type.items}});
+result.{{name}} = result.{{name}}.map({{toConvertName type.items}});
 
-    if (result.some((v: any | null) => v == null)) {
-        return null;
-    }
+if (result.some((v: any | null) => v == null)) {
+return null;
+}
 {{/if}}
 {{/if}}
 {{/each}}
-    return result;
+return result;
 }
 {{/if}}
 {{/each}}

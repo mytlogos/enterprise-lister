@@ -21,7 +21,8 @@
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
     "migrate": "node dist/server/misc/migrate.js",
     "commit": "npx git-cz",
-    "generate:api": "node dist/server/misc/openapi/generate.js"
+    "generate:api": "node dist/server/misc/openapi/generate.js",
+    "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "husky": {
     "hooks": {
@@ -130,7 +131,7 @@
     "commitizen": "^4.2.3",
     "cz-conventional-changelog": "^3.3.0",
     "eslint": "^7.22.0",
-    "eslint-config-prettier": "^7.2.0",
+    "eslint-config-prettier": "^8.1.0",
     "eslint-config-standard": "^16.0.2",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-jsdoc": "^32.3.0",

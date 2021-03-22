@@ -1,16 +1,13 @@
 <template>
-  <span
-    class="badge"
-    :class="stateClass"
-  >
+  <span class="badge" :class="stateClass">
     {{ stateText }}
   </span>
 </template>
 
 <script lang="ts">
-import { defineComponent } from "vue"
+import { defineComponent } from "vue";
 
 export default defineComponent({
-    name: "JobModal"
+  name: "JobModal",
 });
 </script>

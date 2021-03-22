@@ -10,34 +10,33 @@ export const queryContextProvider: ContextProvider<QueryContext> = (con) => new 
  * Escapes the Characters for an Like with the '|' char.
  */
 export function escapeLike(
-    s: string,
-    {
-        singleQuotes = false,
-        noBoundaries = false,
-        noRightBoundary = false,
-        noLeftBoundary = false
-    }: {
-        singleQuotes?: boolean;
-        noBoundaries?: boolean;
-        noRightBoundary?: boolean;
-        noLeftBoundary?: boolean;
-    } = {}
+  s: string,
+  {
+    singleQuotes = false,
+    noBoundaries = false,
+    noRightBoundary = false,
+    noLeftBoundary = false,
+  }: {
+    singleQuotes?: boolean;
+    noBoundaries?: boolean;
+    noRightBoundary?: boolean;
+    noLeftBoundary?: boolean;
+  } = {},
 ): string {
+  if (!s) {
+    return "";
+  }
+  s = s.replace(/([%_])/g, "|$1");
 
-    if (!s) {
-        return "";
-    }
-    s = s.replace(/([%_])/g, "|$1");
-
-    if (singleQuotes) {
-        s = s.replace(/[`´'‘]/g, "_");
-    }
-    if (noBoundaries) {
-        s = "%" + s + "%";
-    } else if (noLeftBoundary) {
-        s = "%" + s;
-    } else if (noRightBoundary) {
-        s = s + "%";
-    }
-    return s;
+  if (singleQuotes) {
+    s = s.replace(/[`´'‘]/g, "_");
+  }
+  if (noBoundaries) {
+    s = "%" + s + "%";
+  } else if (noLeftBoundary) {
+    s = "%" + s;
+  } else if (noRightBoundary) {
+    s = s + "%";
+  }
+  return s;
 }

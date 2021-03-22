@@ -17,23 +17,25 @@ export const app = express();
 const parentDirName = path.dirname(path.dirname(__dirname));
 
 app.use(blockRequests);
-app.use(logger(":method :url :status :response-time ms - :res[content-length]", {
+app.use(
+  logger(":method :url :status :response-time ms - :res[content-length]", {
     stream: {
-        write(str: string): void {
-            log.info(str.trim());
-        }
-    }
-}));
+      write(str: string): void {
+        log.info(str.trim());
+      },
+    },
+  }),
+);
 
-app.use(helmet({contentSecurityPolicy: false}));
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
 
 // remove any emoji, dont need it and it can mess up my database
 app.use((req, res, next) => {
-    if (req.body && isString(req.body)) {
-        req.body = emojiStrip(req.body);
-    }
-    next();
+  if (req.body && isString(req.body)) {
+    req.body = emojiStrip(req.body);
+  }
+  next();
 });
 // only accept json as req body
 app.use(express.json());
@@ -45,28 +47,26 @@ app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("dist
 
 app.use(express.static(path.join(parentDirName, "dist", "website")));
 
-
 app.use((req, res) => {
-    if (!req.path.startsWith("/api") && req.method === "GET") {
-        res.sendFile(path.join(parentDirName, path.join("dist", "website", "app.html")));
-    }
+  if (!req.path.startsWith("/api") && req.method === "GET") {
+    res.sendFile(path.join(parentDirName, path.join("dist", "website", "app.html")));
+  }
 });
 
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
-    next(createError(404));
+  next(createError(404));
 });
 
 // error handler
 app.use((err: HttpError, req: Request, res: Response) => {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get("env") === "development" ? err : {};
+  // set locals, only providing error in development
+  res.locals.message = err.message;
+  res.locals.error = req.app.get("env") === "development" ? err : {};
 
-    // render the error page
-    res.sendStatus(err.status || 500);
+  // render the error page
+  res.sendStatus(err.status || 500);
 });
-
 
 // TODO what is with tls (https), cloudflare?
 // TODO does it redirect automatically to https when http was typed?
