@@ -1,149 +1,86 @@
 <template>
   <div>
-    <app-header
-      :logged-in="loggedIn"
-      :name="name"
-      :show-lists="showLists"
-      :show-releases="showReleases"
-      :show-settings="showSettings"
-    />
+    <app-header />
     <main>
-      <router-view
-        :lists="allLists"
-        :news="news"
-        :columns="columns"
-        :media="displayMedia"
-        :external-user="externalUser"
-      />
+      <router-view />
     </main>
   </div>
 </template>
 
 <script lang="ts">
 import appHeader from "./components/app-header.vue";
-import {emitBusEvent, onBusEvent} from "./bus";
-import {HttpClient} from "./Httpclient";
-import { defineComponent, PropType } from "vue";
-import { List, News, Column, Medium, ExternalUser } from "./siteTypes";
-
-let loadingMedia: number[] = [];
-
+import { emitBusEvent, onBusEvent } from "./bus";
+import { HttpClient } from "./Httpclient";
+import { defineComponent } from "vue";
+import { optimizedResize } from "./init";
 
 export default defineComponent({
-    components: {
-        appHeader
+  components: {
+    appHeader,
+  },
+  computed: {
+    loggedIn(): boolean {
+      return this.$store.getters.loggedIn;
     },
-    props: {
-        name: { type: String, required: true },
-        lists: { type: Array as PropType<List[]>, required: true },
-        news: { type: Array as PropType<News[]>, required: true },
-        columns: { type: Array as PropType<Column[]>, required: true },
-        media: { type: Array as PropType<Medium[]>, required: true },
-        externalUser: { type: Array as PropType<ExternalUser[]>, required: true }
+  },
+  watch: {
+    loggedIn(newValue) {
+      console.log("loggedin changed: ", newValue);
+
+      if (!newValue) {
+        this.loginState();
+      }
     },
-    data() {
-        return {
-            addListModal: {
-                show: false,
-                error: "",
-            },
-            addMediumModal: {
-                show: false,
-                error: "",
-            },
-            loginModal: {
-                show: false,
-                error: "",
-            },
-            registerModal: {
-                show: false,
-                error: "",
-            },
-            settingsModal: {
-                show: false,
-                error: "",
-            },
-            errorModal: {
-                error: "",
-            },
-            showLists: true,
-            showSettings: false,
-            showReleases: false,
-            settings: {},
-        };
+  },
+  mounted() {
+    onBusEvent("refresh:externalUser", (data: string) => this.refreshExternalUser(data));
+
+    onBusEvent("reset:modal", () => this.closeModal());
+
+    optimizedResize.add(() => emitBusEvent("window:resize"));
+  },
+
+  async created() {
+    await this.loginState();
+  },
+
+  methods: {
+    closeModal() {
+      this.$store.commit("resetModal", "login");
+      this.$store.commit("resetModal", "register");
+      this.$store.commit("resetModal", "addList");
+      this.$store.commit("resetModal", "addMedium");
+      this.$store.commit("resetModal", "error");
+      this.$store.commit("resetModal", "settings");
     },
 
-    computed: {
-        loggedIn(): boolean {
-            return !!this.name;
-        },
+    async loginState() {
+      if (this.loggedIn) {
+        return;
+      }
+      try {
+        const newUser = await HttpClient.isLoggedIn();
+        console.log(`Logged In: ${this.loggedIn} New User: `, newUser);
 
-        allLists(): any[] {
-            const externalLists = this.externalUser.flatMap((value) => value.lists);
-            return [...this.lists, ...externalLists];
-        },
-
-        displayMedia(): any[] {
-            const multiKeys: number[] = this.allLists.filter((value) => value.show).flatMap((value) => value.items);
-
-            let uniqueMedia: number[] = [...new Set(multiKeys)];
-            let missingMedia: number[] = [];
-
-            uniqueMedia = uniqueMedia
-                .map((id) => {
-                    const medium = this.media.find((value) => value.id === id);
-                    if (!medium) {
-                        missingMedia.push(id);
-                    }
-                    return medium;
-                })
-                .filter((value) => value != null);
-
-            // filter any missing media which are already being queried
-            missingMedia = missingMedia.filter((value) => !loadingMedia.some((id) => id === value));
-
-            if (missingMedia.length) {
-                loadingMedia.push(...missingMedia);
-
-                // load missing media
-                // eslint-disable-next-line vue/no-async-in-computed-properties
-                HttpClient.getMedia(missingMedia)
-                    .then((media: Medium | Medium[]) => {
-                        emitBusEvent("append:media", media);
-
-                        // filter out the now loaded media
-                        loadingMedia = loadingMedia.filter((value) => {
-                            return Array.isArray(media) ?
-                                !media.some((medium) => medium.id === value) :
-                                media.id !== value;
-                        });
-                    })
-                    .catch((error) => (this.errorModal.error = String(error)) && console.log(error));
-            }
-            return uniqueMedia;
+        if (!this.loggedIn && newUser) {
+          await this.$store.dispatch("changeUser", {
+            user: newUser,
+            modal: "login",
+          });
+        } else {
+          throw Error();
         }
+      } catch (error) {
+        setTimeout(() => this.loginState(), 5000);
+      }
     },
 
-    mounted(): void {
-        console.log(this.$data);
-        console.log(this);
-        onBusEvent("select:list", (id, external, multi) => this.selectList(id, external, multi));
+    refreshExternalUser(uuid: string) {
+      if (!uuid) {
+        console.error("cannot refresh externalUser without data");
+        return;
+      }
     },
-
-    methods: {
-        selectList(id: number, external: boolean, multiSelect: boolean): void {
-            if (!this.showLists) {
-                return;
-            }
-            if (multiSelect) {
-                const list = this.allLists.find((value) => value.id === id && value.external === external);
-                list.show = !list.show;
-            } else {
-                for (const list of this.allLists) {
-                    list.show = list.id === id && list.external === external && !list.show;
-                }
-            }
-        },
-    },
+  },
 });
 </script>

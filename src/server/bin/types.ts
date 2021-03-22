@@ -1,296 +1,319 @@
 import { MediaType } from "./tools";
 import { ScrapeType } from "./externals/types";
+import { Query } from "mysql";
 
 export interface SearchResult {
-    coverUrl?: string;
-    link: string;
-    title: string;
-    author?: string;
+  coverUrl?: Link;
+  link: Link;
+  title: string;
+  author?: string;
+  medium: MediaType;
+}
+
+export interface MinMedium {
+  id: Id;
+  title: string;
+  medium: MediaType;
 }
 
 export interface SimpleMedium {
-    id?: number;
-    countryOfOrigin?: string;
-    languageOfOrigin?: string;
-    author?: string;
-    title: string;
-    medium: number;
-    artist?: string;
-    lang?: string;
-    stateOrigin?: number;
-    stateTL?: number;
-    series?: string;
-    universe?: string;
+  id?: Id;
+  countryOfOrigin?: string;
+  languageOfOrigin?: string;
+  author?: string;
+  title: string;
+  medium: MediaType;
+  artist?: string;
+  lang?: string;
+  stateOrigin?: ReleaseState;
+  stateTL?: ReleaseState;
+  series?: string;
+  universe?: string;
 
-    [key: string]: any;
+  [key: string]: any;
 }
 
 export interface SecondaryMedium {
-    id: number;
-    totalEpisodes: number;
-    readEpisodes: number;
-    tocs: FullMediumToc[];
+  id: Id;
+  totalEpisodes: number;
+  readEpisodes: number;
+  tocs: FullMediumToc[];
 }
 
 export type UpdateMedium = Partial<SimpleMedium> & {
-    id: number;
-}
+  id: Id;
+};
 
 export interface Medium extends SimpleMedium {
-    parts?: number[];
-    latestReleased: number[];
-    currentRead: number;
-    unreadEpisodes: number[];
+  parts?: Id[];
+  latestReleased: number[];
+  currentRead: Id;
+  unreadEpisodes: Id[];
 }
 
 export interface TocSearchMedium {
-    mediumId: number;
-    hosts?: string[];
-    title: string;
-    medium: MediaType;
-    synonyms: string[];
+  mediumId: Id;
+  hosts?: string[];
+  title: string;
+  medium: MediaType;
+  synonyms: string[];
 }
 
 export interface MediumToc {
-    mediumId: number;
-    link: string;
+  mediumId: Id;
+  link: Link;
 }
 
 export type FullMediumToc = MediumToc & UpdateMedium;
 
 export interface ExtractedIndex {
-    combi: number;
-    total: number;
-    fraction?: number;
+  combi: number;
+  total: number;
+  fraction?: number;
 }
 
 export interface Indexable {
-    totalIndex: number;
-    partialIndex?: number;
+  totalIndex: number;
+  partialIndex?: number;
 }
 
 export interface MinPart extends Indexable {
-    id: number;
-    title?: string;
-    mediumId: number;
+  id: Id;
+  title?: string;
+  mediumId: number;
 }
 
 export interface Part extends MinPart {
-    episodes: Episode[] | number[];
+  episodes: Episode[] | Id[];
 }
 
 export interface FullPart extends Part {
-    episodes: Episode[];
+  episodes: Episode[];
 }
 
 export interface ShallowPart extends Part {
-    episodes: number[];
+  episodes: Id[];
 }
 
 export interface SimpleEpisode extends Indexable {
-    id: number;
-    partId: number;
-    combiIndex?: number;
-    releases: EpisodeRelease[];
+  id: Id;
+  partId: Id;
+  combiIndex?: number;
+  releases: EpisodeRelease[];
 }
 
 export type CombinedEpisode = SimpleEpisode & {
-    combiIndex: number;
-}
+  combiIndex: number;
+};
 
 export interface Episode extends SimpleEpisode {
-    progress: number;
-    readDate: Nullable<Date>;
+  progress: number;
+  readDate: Nullable<Date>;
 }
 
+export type PureEpisode = Omit<Episode, "releases">;
+
 export interface ReadEpisode {
-    episodeId: number;
-    readDate: Date;
-    progress: number;
+  episodeId: Id;
+  readDate: Date;
+  progress: number;
 }
 
 export interface SimpleRelease {
-    episodeId: number;
-    url: string;
+  episodeId: Id;
+  url: Link;
 }
 
 export interface EpisodeRelease extends SimpleRelease {
-    title: string;
-    releaseDate: Date;
-    locked?: boolean;
-    sourceType?: string;
-    tocId?: number;
+  title: string;
+  releaseDate: Date;
+  locked?: boolean;
+  sourceType?: string;
+  tocId?: Id;
 }
 
+export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">;
+
 export interface DisplayRelease {
-    episodeId: number;
-    title: string;
-    link: string;
-    mediumId: number;
-    locked?: boolean;
-    date: Date;
-    progress: number;
+  episodeId: Id;
+  title: string;
+  link: Link;
+  mediumId: Id;
+  locked?: boolean;
+  date: Date;
+  progress: number;
 }
 
 export interface DisplayReleasesResponse {
-    releases: DisplayRelease[];
-    media: Record<number, string>;
-    latest: Date;
+  releases: DisplayRelease[];
+  media: MinMedium[];
+  latest: Date;
 }
 
 export interface MediumRelease {
-    episodeId: number;
-    title: string;
-    link: string;
-    combiIndex: number;
-    locked?: boolean;
-    date: Date;
+  episodeId: Id;
+  title: string;
+  link: Link;
+  combiIndex: number;
+  locked?: boolean;
+  date: Date;
 }
 
 export interface MinList {
-    name: string;
-    medium: number;
+  name: string;
+  medium: number;
 }
 
+export type UserList = MinList & {
+  id: Id;
+};
+
 export interface StorageList extends MinList {
-    id: number;
-    user_uuid: Uuid;
+  id: Id;
+  user_uuid: Uuid;
 }
 
 export interface List extends MinList {
-    id: number;
-    userUuid: Uuid;
-    items: number[];
+  id: Id;
+  userUuid: Uuid;
+  items: Id[];
 }
 
 export interface UpdateUser {
-    name?: string;
-    newPassword?: string;
-    password?: string;
+  name?: string;
+  newPassword?: string;
+  password?: string;
 }
 
 export interface SimpleUser {
-    uuid: Uuid;
-    name: string;
-    session: string;
+  uuid: Uuid;
+  name: string;
+  session: string;
 }
 
 export interface User extends SimpleUser {
-    unreadNews: number[];
-    unreadChapter: number[];
-    readToday: ReadEpisode[];
-    externalUser: ExternalUser[];
-    lists: List[];
+  unreadNews: Id[];
+  unreadChapter: Id[];
+  readToday: ReadEpisode[];
+  externalUser: ExternalUser[];
+  lists: List[];
 }
 
 export interface ExternalList {
-    uuid?: Uuid;
-    id: number;
-    name: string;
-    medium: number;
-    url: string;
-    items: number[];
+  uuid?: Uuid;
+  id: Id;
+  name: string;
+  medium: number;
+  url: Link;
+  items: number[];
 }
+
+export type PureExternalList = Omit<ExternalList, "items">;
 
 export interface ExternalUser {
-    localUuid: Uuid;
-    uuid: Uuid;
-    identifier: string;
-    type: number;
-    lists: ExternalList[];
-    lastScrape?: Date;
-    cookies?: Nullable<string>;
+  localUuid: Uuid;
+  uuid: Uuid;
+  identifier: string;
+  type: number;
+  lists: ExternalList[];
+  lastScrape?: Date;
+  cookies?: Nullable<string>;
 }
+
+export type DisplayExternalUser = Omit<ExternalUser, "lastScrape" | "cookies">;
+export type PureExternalUser = Omit<DisplayExternalUser, "lists">;
 
 export interface News {
-    title: string;
-    link: string;
-    date: Date;
-    id?: number;
-    read?: boolean;
-    mediumId?: number;
-    mediumTitle?: number;
+  title: string;
+  link: Link;
+  date: Date;
+  id?: Id;
+  read?: boolean;
+  mediumId?: Id;
+  mediumTitle?: number;
 }
 
+export type PureNews = Omit<News, "mediumId" | "mediumTitle">;
+
 export interface NewsResult {
-    link: string;
-    rawNews: News[] ;
+  link: Link;
+  rawNews: News[];
 }
 
 export interface EpisodeNews {
-    mediumType: MediaType;
-    mediumTocLink?: string;
-    mediumTitle: string;
-    partIndex?: number;
-    partTotalIndex?: number;
-    partPartialIndex?: number;
-    episodeTitle: string;
-    episodeIndex: number;
-    episodeTotalIndex: number;
-    episodePartialIndex?: number;
-    locked?: boolean;
-    link: string;
-    date: Date;
+  mediumType: MediaType;
+  mediumTocLink?: Link;
+  mediumTitle: string;
+  partIndex?: number;
+  partTotalIndex?: number;
+  partPartialIndex?: number;
+  episodeTitle: string;
+  episodeIndex: number;
+  episodeTotalIndex: number;
+  episodePartialIndex?: number;
+  locked?: boolean;
+  link: Link;
+  date: Date;
 }
 
 export interface Synonyms {
-    mediumId: number;
-    synonym: string[];
+  mediumId: Id;
+  synonym: string[];
 }
 
 export interface ScrapeItem {
-    link: string;
-    type: ScrapeType;
-    nextScrape?: Date;
-    userId?: string;
-    externalUserId?: string;
-    mediumId?: number;
-    info?: string;
+  link: Link;
+  type: ScrapeType;
+  nextScrape?: Date;
+  userId?: Uuid;
+  externalUserId?: Uuid;
+  mediumId?: Id;
+  info?: string;
 }
 
 export interface LikeMedium {
-    medium?: SimpleMedium;
-    title: string;
-    link: string;
+  medium?: SimpleMedium;
+  title: string;
+  link: Link;
 }
 
 export interface LikeMediumQuery {
-    title: string;
-    link?: string;
-    type?: number;
+  title: string;
+  link?: Link;
+  type?: MediaType;
 }
 
 export interface MetaResult {
-    novel: string;
-    volume?: string;
-    volIndex?: string;
-    chapter?: string;
-    chapIndex?: string;
-    type: string;
-    seeAble: boolean;
+  novel: string;
+  volume?: string;
+  volIndex?: string;
+  chapter?: string;
+  chapIndex?: string;
+  type: MediaType;
+  seeAble: boolean;
 }
 
 export interface Result {
-    result: MetaResult | MetaResult[];
-    preliminary?: boolean;
-    accept?: boolean;
-    url: string;
+  result: MetaResult | MetaResult[];
+  preliminary?: boolean;
+  accept?: boolean;
+  url: Link;
 }
 
 export interface ProgressResult extends MetaResult {
-    progress: number;
-    readDate: Date;
+  progress: number;
+  readDate: Date;
 }
 
 export interface PageInfo {
-    link: string;
-    key: string;
-    values: string[];
+  link: Link;
+  key: string;
+  values: string[];
 }
 
 /**
  * Conditional Type when being an Array or not of U is related to T.
- * 
+ *
  * T extends R   -> U
  * T extends R[] -> U[]
  */
@@ -303,7 +326,7 @@ export type MultiSingleValue<T> = T[] | T;
 
 /**
  * Conditional Type when being an Array or not of U in a Promise is related to T.
- * 
+ *
  * T extends R   -> U
  * T extends R[] -> U[]
  */
@@ -316,11 +339,11 @@ export type MultiSingleNumber = MultiSingleValue<number>;
 
 /**
  * Conditional Type with optional values when being an Array or not of U in is related to T.
- * 
+ *
  * T extends R   -> Optional<U>   // may be undefined
  * T extends R[] -> U[] | never[] // an array of U or an empty array
  */
-export type OptionalMultiSingle<T, U> = T extends Array<infer R> ? (U[] | never[]) : Optional<U>;
+export type OptionalMultiSingle<T, U> = T extends Array<infer R> ? U[] | never[] : Optional<U>;
 
 /**
  * A Promise with an Optional Value.
@@ -344,7 +367,7 @@ export type Optional<T> = T | undefined;
 
 /**
  * Unpack the type of a possible nested generic Array or Promise type.
- * 
+ *
  * T extends U[]        -> U
  * T extends Promise<U> -> U
  * sonst T
@@ -353,7 +376,7 @@ export type Unpack<T> = T extends Promise<infer U> ? U : UnpackArray<T>;
 
 /**
  * Unpack the type of a possible nested generic Array.
- * 
+ *
  * T extends U[]        -> U
  * sonst T
  */
@@ -365,7 +388,7 @@ export type StringKeys<T> = keyof T & string;
  * Type consisting of Property names of T whose type extends from U.
  */
 export type PropertyNames<T, U> = {
-    [K in keyof T]: T[K] extends U ? K : never;
+  [K in keyof T]: T[K] extends U ? K : never;
 }[keyof T];
 
 /**
@@ -380,33 +403,41 @@ export type PromiseFunction = (...args: any[]) => Promise<any>;
  */
 export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>, PromiseFunction>;
 
+/**
+ * Set specific properties with string keys as required.
+ */
+export type NonNull<T, K extends StringKeys<T>> = T &
+  {
+    [S in K]-?: T[K];
+  };
+
 export type Primitive = string | number | boolean;
 
 export interface Invalidation {
-    mediumId?: number;
-    partId?: number;
-    episodeId?: number;
-    uuid: Nullable<Uuid>;
-    userUuid?: boolean;
-    externalUuid?: Uuid;
-    externalListId?: number;
-    listId?: number;
-    newsId?: number;
+  mediumId?: Id;
+  partId?: Id;
+  episodeId?: Id;
+  uuid: Nullable<Uuid>;
+  userUuid?: boolean;
+  externalUuid?: Uuid;
+  externalListId?: Id;
+  listId?: Id;
+  newsId?: Id;
 }
 
 export interface EpisodeContentData {
-    episodeTitle: string;
-    index: number;
-    mediumTitle: string;
+  episodeTitle: string;
+  index: number;
+  mediumTitle: string;
 }
 
 export enum ReleaseState {
-    Unknown = 0,
-    Ongoing = 1,
-    Hiatus = 2,
-    Discontinued = 3,
-    Dropped = 4,
-    Complete = 5,
+  Unknown = 0,
+  Ongoing = 1,
+  Hiatus = 2,
+  Discontinued = 3,
+  Dropped = 4,
+  Complete = 5,
 }
 
 /**
@@ -414,114 +445,161 @@ export enum ReleaseState {
  */
 export type Uuid = string;
 
+/**
+ * A String in a HTTP Url Format.
+ */
+export type Link = string;
+
+/**
+ * An Integer between 1 (inclusive) and 2^64 (inclusive?)
+ */
+export type Id = number;
+
 export enum ScrapeName {
-    searchForToc = "searchForToc",
-    toc = "toc",
-    oneTimeToc = "oneTimeToc",
-    feed = "feed",
-    news = "news",
-    newsAdapter = "newsAdapter",
-    oneTimeUser = "oneTimeUser",
-    checkTocs = "checkTocs",
-    queueTocs = "queueTocs",
-    remapMediaParts = "remapMediaParts",
-    queueExternalUser = "queueExternalUser",
+  searchForToc = "searchForToc",
+  toc = "toc",
+  oneTimeToc = "oneTimeToc",
+  feed = "feed",
+  news = "news",
+  newsAdapter = "newsAdapter",
+  oneTimeUser = "oneTimeUser",
+  checkTocs = "checkTocs",
+  queueTocs = "queueTocs",
+  remapMediaParts = "remapMediaParts",
+  queueExternalUser = "queueExternalUser",
 }
 
 export enum JobState {
-    RUNNING = "running",
-    WAITING = "waiting",
+  RUNNING = "running",
+  WAITING = "waiting",
 }
 
 export interface JobItem {
-    type: ScrapeName;
-    state: JobState;
-    interval: number;
-    deleteAfterRun: boolean;
-    id: number;
-    name: string;
-    runAfter?: number;
-    runningSince?: Date;
-    nextRun?: Date;
-    lastRun?: Date;
-    arguments?: string;
+  type: ScrapeName;
+  state: JobState;
+  interval: number;
+  deleteAfterRun: boolean;
+  id: Id;
+  name: string;
+  runAfter?: Id;
+  runningSince?: Date;
+  nextRun?: Date;
+  lastRun?: Date;
+  arguments?: string;
 }
 
 export interface JobRequest {
-    type: ScrapeName;
-    interval: number;
-    deleteAfterRun: boolean;
-    runImmediately: boolean;
-    name?: string;
-    runAfter?: JobRequest | JobItem;
-    arguments?: string;
+  type: ScrapeName;
+  interval: number;
+  deleteAfterRun: boolean;
+  runImmediately: boolean;
+  name?: string;
+  runAfter?: JobRequest | JobItem;
+  arguments?: string;
 }
 
 export interface BasicJobStats {
-    count: number;
-    avgnetwork: number;
-    avgreceived: number;
-    avgsend: number;
-    avgduration: number;
-    allupdate: number;
-    allcreate: number;
-    alldelete: number;
-    failed: number;
-    succeeded: number;
-    queries: number;
+  count: number;
+  avgnetwork: number;
+  avgreceived: number;
+  avgsend: number;
+  avgduration: number;
+  allupdate: number;
+  allcreate: number;
+  alldelete: number;
+  failed: number;
+  succeeded: number;
+  queries: number;
 }
 
 export interface TimeJobStats extends BasicJobStats {
-    timepoint: Date;
-    domain?: Record<string, BasicJobStats>;
+  timepoint: Date;
+  domain?: Record<string, BasicJobStats>;
 }
 
 export interface AllJobStats extends BasicJobStats {
-    minnetwork: number;
-    maxnetwork: number;
-    minreceived: number;
-    maxreceived: number;
-    minsend: number;
-    maxsend: number;
-    maxD: number;
-    minD: number;
-    maxQ: number;
-    minQ: number;
+  minnetwork: number;
+  maxnetwork: number;
+  minreceived: number;
+  maxreceived: number;
+  minsend: number;
+  maxsend: number;
+  maxD: number;
+  minD: number;
+  maxQ: number;
+  minQ: number;
 }
 
 export interface JobStats extends AllJobStats {
-    name: string;
+  name: string;
 }
 
 export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfterRun" | "runAfter" | "arguments"> & {
-    start: Date;
-    end: Date;
-    result: string;
-    message: string;
-    context: string;
-}
+  start: Date;
+  end: Date;
+  result: string;
+  message: string;
+  context: string;
+};
 
 export interface JobDetails {
-    job?: JobItem;
-    history: JobHistoryItem[];
+  job?: JobItem;
+  history: JobHistoryItem[];
 }
 export type JobStatFilter = NamedJobStatFilter | TimeJobStatFilter;
 
 export interface NamedJobStatFilter {
-    type: "named";
+  type: "named";
 }
 
 export type TimeBucket = "day" | "hour" | "minute";
 
 export interface TimeJobStatFilter {
-    type: "timed";
-    unit: TimeBucket;
-    groupByDomain: boolean;
+  type: "timed";
+  unit: TimeBucket;
+  groupByDomain: boolean;
 }
 
 export enum MilliTime {
-    SECOND = 1000,
-    MINUTE = 60000,
-    HOUR = 3600000,
-    DAY = 86400000
+  SECOND = 1000,
+  MINUTE = 60000,
+  HOUR = 3600000,
+  DAY = 86400000,
+}
+
+// @ts-expect-error
+export interface TypedQuery<Packet> extends Query {
+  on(ev: "packet", callback: (packet: Packet) => void): Query;
+}
+
+export interface ListMedia {
+  list: List[] | List;
+  media: Medium[];
+}
+
+export interface DataStats {
+  media: Record<Id, Record<Id, { episodeCount: number; episodeSum: number; releaseCount: number }>>;
+  mediaStats: Record<Id, { tocs: number }>;
+  lists: Record<Id, Id[]>;
+  extLists: Record<Id, Id[]>;
+  extUser: Record<Uuid, Id[]>;
+}
+
+export interface NewData {
+  tocs: FullMediumToc[];
+  media: SimpleMedium[];
+  releases: PureDisplayRelease[];
+  episodes: PureEpisode[];
+  parts: MinPart[];
+  lists: UserList[];
+  extLists: PureExternalList[];
+  extUser: PureExternalUser[];
+  mediaInWait: MediumInWait[];
+  news: PureNews[];
+}
+
+export interface MediumInWait {
+  title: string;
+  medium: MediaType;
+  link: string;
 }

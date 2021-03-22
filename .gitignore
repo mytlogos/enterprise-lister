@@ -3,6 +3,7 @@
 # Logs
 logs
 *.log
+*.log-*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -96,3 +97,18 @@ dist/
 # vscode project files
 .vscode
 .editorconfig
+
+# misc files
+checkReleases.*
+*.sh
+*.py
+*.yaml
+*.js
+*.key
+*.pem
+
+src/server/bin/misc/fixJobs.ts
+src/server/bin/validateMiddleware.ts
+src/server/bin/database/schema.ts
+src/server/bin/misc/openapi/validateMiddleware.ts
+src/server/bin/misc/openapi/webclient.ts

@@ -18,3 +18,11 @@
     - reduced time for query example from above to < 200 ms
 - [ ] when setting up from clean database, do not forget to add all indices from migrations (integrate in databaseSchema.ts?)
     - currently migrations are all skipped when setting up from clean database
+
+
+## OpenApi
+
+- [ ] API Endpoint parameter typing
+    - add a hook to temporarily set them manually
+- [ ] Object schemata to reference
+- [ ] Add error responses

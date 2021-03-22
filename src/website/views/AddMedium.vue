@@ -1,8 +1,6 @@
 <template>
   <div>
-    <h1>
-      Add Medium
-    </h1>
+    <h1>Add Medium</h1>
     <form class="form-inline mx-3 px-2">
       <label>
         Load from Toc Link:
@@ -13,22 +11,14 @@
           title="ToC Link"
           type="url"
           placeholder="URL of the ToC"
-        >
+        />
       </label>
-      <button 
-        class="btn btn-dark ml-1"
-        type="button"
-        @click.left="loadToc()"
-      >
-        Load
-      </button>
+      <button class="btn btn-dark ml-1" type="button" @click.left="loadToc()">Load</button>
     </form>
     <form>
       <div class="form-row mx-3">
         <div class="form-group col-md-3">
-          <label>
-            Title
-          </label>
+          <label> Title </label>
           <input
             v-model="medium.title"
             class="form-control"
@@ -37,21 +27,16 @@
             title="Title"
             type="text"
             placeholder="Title of the Medium"
-          >
+          />
         </div>
         <div class="form-group col-md-3">
           <label>Medium</label>
-          <type-icon 
-            :type="medium.medium"
-            class="form-control-plaintext"
-          />
+          <type-icon :type="medium.medium" class="form-control-plaintext" />
         </div>
       </div>
       <div class="form-row mx-3">
         <div class="form-group col-md-3">
-          <label>
-            Author
-          </label>
+          <label> Author </label>
           <input
             v-model="medium.author"
             name="author"
@@ -59,7 +44,7 @@
             title="Author"
             type="text"
             placeholder="One or multiple Authors of the Medium"
-          >
+          />
         </div>
         <div class="form-group col-md-3">
           <label>Artist</label>
@@ -70,7 +55,7 @@
             title="Artist"
             type="text"
             placeholder="One or multiple Artists of the Medium"
-          > 
+          />
         </div>
       </div>
       <div class="form-row mx-3">
@@ -83,7 +68,7 @@
             title="Series"
             type="text"
             placeholder="Series of the Medium"
-          > 
+          />
         </div>
         <div class="form-group col-md-3">
           <label>Universe</label>
@@ -94,19 +79,19 @@
             title="Universe"
             type="text"
             placeholder="Universe of the Medium"
-          > 
+          />
         </div>
       </div>
       <div class="form-group col-md-3 mx-3 px-1">
         <label>Language</label>
         <input
-          v-model="medium.language"
+          v-model="medium.lang"
           class="form-control"
           name="language"
           title="Language"
           type="text"
           placeholder="Translated Language"
-        > 
+        />
       </div>
       <div class="form-row mx-3">
         <div class="form-group col-md-3">
@@ -118,25 +103,25 @@
             title="Country Of Origin"
             type="text"
             placeholder="Country of Origin"
-          > 
+          />
         </div>
         <div class="form-group col-md-3">
           <label>Language Of Origin</label>
           <input
-            v-model="medium.langOfOrigin"
+            v-model="medium.languageOfOrigin"
             class="form-control"
             name="langOfOrigin"
             title="Language Of Origin"
             type="text"
             placeholder="Original Language"
-          > 
+          />
         </div>
       </div>
       <div class="form-row mx-3">
         <div class="form-group col-md-3">
           <label>Status of Translator</label>
           <release-state
-            :state="medium.stateTl"
+            :state="medium.stateTL"
             class="ml-1"
             name="stateTl"
             title="Status of Translator"
@@ -146,7 +131,7 @@
         <div class="form-group col-md-3">
           <label>Status in COO</label>
           <release-state
-            :state="medium.stateCOO"
+            :state="medium.stateOrigin"
             class="ml-1"
             name="stateCOO"
             title="Status in COO"
@@ -155,33 +140,14 @@
         </div>
       </div>
       <div class="form-group mx-3 px-1">
-        <select
-          class="form-control col-md-3"
-          title="Select list to add medium to:"
-        >
-          <option
-            disabled
-            selected
-            value=""
-          >
-            Select list to add medium to
-          </option>
-          <option
-            v-for="list in lists"
-            :key="list.id"
-            :value="list.id"
-          >
+        <select class="form-control col-md-3" title="Select list to add medium to:">
+          <option disabled selected value="">Select list to add medium to</option>
+          <option v-for="list in lists" :key="list.id" :value="list.id">
             {{ list.name }}
           </option>
         </select>
       </div>
-      <button
-        class="btn btn-dark mx-3 px-1"
-        type="button"
-        @click="send()"
-      >
-        Add Medium
-      </button>
+      <button class="btn btn-dark mx-3 px-1" type="button" @click="send()">Add Medium</button>
       <div class="error" />
     </form>
     <div
@@ -194,10 +160,7 @@
       style="position: relative; top: -10em; left: 1em"
     >
       <div class="toast-header">
-        <i
-          class="fas fa-exclamation-circle rounded mr-2 text-danger"
-          aria-hidden="true"
-        />
+        <i class="fas fa-exclamation-circle rounded mr-2 text-danger" aria-hidden="true" />
         <strong class="mr-auto">{{ toastTitle }}</strong>
         <button
           type="button"
@@ -217,8 +180,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
-import { List, AddMedium } from "../siteTypes";
+import { defineComponent } from "vue";
+import { AddMedium, List } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
@@ -235,82 +198,91 @@ interface Data {
 }
 
 export default defineComponent({
-    name: "AddMedium",
-    components: {
-        TypeIcon,
-        ReleaseState
-    },
-    props: {
-        show: Boolean,
-        lists: { type: Array as PropType<List[]>, required: true },
-    },
+  name: "AddMedium",
+  components: {
+    TypeIcon,
+    ReleaseState,
+  },
+  props: {
+    show: Boolean,
+  },
 
-    data(): Data {
-        return {
-            medium: {
-                title: "",
-                medium: 0,
-                author: "",
-                artist: "",
-                series: "",
-                universe: "",
-                lang: "",
-                countryOfOrigin: "",
-                languageOfOrigin: "",
-                stateTL: 0,
-                stateOrigin: 0,
-            },
-            toc: "",
-            toastMessage: "",
-            toastTitle: ""
-        };
+  data(): Data {
+    return {
+      medium: {
+        title: "",
+        medium: 0,
+        author: "",
+        artist: "",
+        series: "",
+        universe: "",
+        lang: "",
+        countryOfOrigin: "",
+        languageOfOrigin: "",
+        stateTL: 0,
+        stateOrigin: 0,
+      },
+      toc: "",
+      toastMessage: "",
+      toastTitle: "",
+    };
+  },
+
+  computed: {
+    lists(): List[] {
+      return this.$store.state.lists.lists;
     },
+  },
 
-    methods: {
-        send(): void {
-            const result: AddMedium = {...this.medium};
-            if (!result.medium || !result.title) {
-                this.showMessage("Invalid Medium, either title or medium type missing", "Invalid");
-                return;
-            }
-            HttpClient
-                .createMedium(result)
-                .then(medium => HttpClient.addToc(this.toc, medium.id))
-                .then(success => {
-                    if (success) {
-                        this.showMessage("Successfully created Medium", "Success");
-                    } else {
-                        // should never happen, success is always true if there is no error
-                        this.showMessage("Failed in creating Medium", "Failure");
-                    }
-                })
-                .catch(() => {
-                    this.showMessage("Failed in creating Medium", "Failure");
-                });
-        },
-        showMessage(message: string, title: string) {
-            this.toastMessage = message;
-            this.toastTitle = title;
-            $("#alert-toast").toast("show");
-            console.log(`Showing Message: ${title}: ${message}`)
-        },
-        loadToc(): void {
-            HttpClient.getToc(this.toc).then(value => {
-                // look only at first value for now
-                const toc = value[0];
+  methods: {
+    closeProgressToast() {
+      // TODO: implement?
+    },
+    send(): void {
+      const result: AddMedium = { ...this.medium };
+      if (!result.medium || !result.title) {
+        this.showMessage("Invalid Medium, either title or medium type missing", "Invalid");
+        return;
+      }
+      HttpClient.createMedium(result)
+        .then((medium) => HttpClient.addToc(this.toc, medium.id))
+        .then((success) => {
+          if (success) {
+            this.showMessage("Successfully created Medium", "Success");
+          } else {
+            // should never happen, success is always true if there is no error
+            this.showMessage("Failed in creating Medium", "Failure");
+          }
+        })
+        .catch(() => {
+          this.showMessage("Failed in creating Medium", "Failure");
+        });
+    },
+    showMessage(message: string, title: string) {
+      this.toastMessage = message;
+      this.toastTitle = title;
+      $("#alert-toast").toast("show");
+      console.log(`Showing Message: ${title}: ${message}`);
+    },
+    loadToc(): void {
+      HttpClient.getToc(this.toc)
+        .then((value) => {
+          // look only at first value for now
+          const toc = value[0];
 
-                if (toc) {
-                    this.medium.stateOrigin = toc.statusCOO || 0;
-                    this.medium.stateTL = toc.statusTl || 0;
-                    this.medium.medium = toc.mediumType;
-                    this.medium.title = toc.title;
-                    this.medium.lang = toc.langTL || "";
-                    this.medium.languageOfOrigin = toc.langCOO || "";
-                    this.medium.author = toc.authors ? toc.authors.join(", ") : "";
-                    this.medium.artist = toc.authors ? toc.artists.join(", ") : "";
-                }
-            }).catch(console.error);
-        }
-    }
+          if (toc) {
+            this.medium.stateOrigin = toc.statusCOO || 0;
+            this.medium.stateTL = toc.statusTl || 0;
+            this.medium.medium = toc.mediumType;
+            this.medium.title = toc.title;
+            this.medium.lang = toc.langTL || "";
+            this.medium.languageOfOrigin = toc.langCOO || "";
+            this.medium.author = toc.authors ? toc.authors.join(", ") : "";
+            this.medium.artist = toc.artists ? toc.artists.join(", ") : "";
+          }
+        })
+        .catch(console.error);
+    },
+  },
 });
 </script>

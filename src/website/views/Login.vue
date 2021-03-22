@@ -4,13 +4,7 @@
     <form>
       <div class="form-group row">
         <label class="col-sm-2 col-form-label">Username:</label>
-        <input
-          v-model="user"
-          class="col-sm-4 form-control"
-          placeholder="Your username"
-          title="Username"
-          type="text"
-        >
+        <input v-model="user" class="col-sm-4 form-control" placeholder="Your username" title="Username" type="text" />
       </div>
       <div class="form-group row">
         <label class="col-sm-2 col-form-label">Password:</label>
@@ -20,50 +14,40 @@
           placeholder="Your password"
           title="Password"
           type="password"
-        >
+        />
       </div>
-      <button
-        class="btn btn-primary"
-        type="button"
-        @click="sendForm()"
-      >
-        Login
-      </button>
-      <div class="lost">
-        Forgot your password?
-      </div>
+      <button class="btn btn-primary" type="button" @click="sendForm()">Login</button>
+      <div class="lost">Forgot your password?</div>
       <div class="error" />
     </form>
   </div>
 </template>
 
 <script lang="ts">
-import {emitBusEvent} from "../bus";
-
 import { defineComponent } from "vue";
 
 export default defineComponent({
-    name: "Login",
-    data(): { user: string; pw: string; error: string; show: boolean } {
-        return {
-            error: "",
-            show: true,
-            user: "",
-            pw: "",
-        };
+  name: "Login",
+  data(): { user: string; pw: string; error: string; show: boolean } {
+    return {
+      error: "",
+      show: true,
+      user: "",
+      pw: "",
+    };
+  },
+  watch: {
+    show(newValue: boolean): void {
+      if (!newValue) {
+        this.user = "";
+        this.pw = "";
+      }
     },
-    watch: {
-        show(newValue: boolean): void {
-            if (!newValue) {
-                this.user = "";
-                this.pw = "";
-            }
-        },
+  },
+  methods: {
+    sendForm(): void {
+      this.$store.dispatch("login", { user: this.user, pw: this.pw });
     },
-    methods: {
-        sendForm(): void {
-            emitBusEvent("do:login", {user: this.user, pw: this.pw});
-        },
-    }
+  },
 });
 </script>

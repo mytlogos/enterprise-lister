@@ -1,3 +1,57 @@
+# [1.16.0](https://github.com/mytlogos/enterprise-lister/compare/v1.15.0...v1.16.0) (2021-02-14)
+
+
+### Bug Fixes
+
+* **server:** fix optional parameter not supplied ([2c6010f](https://github.com/mytlogos/enterprise-lister/commit/2c6010f4c739b3bef2d1b8a4c8545ffc30bf9575))
+* **server:** fix top level domain ([7084301](https://github.com/mytlogos/enterprise-lister/commit/70843018302ed7c0c46f77fbf04bd0f6b26d7db8))
+* **website:** fix toggle-buttons usage ([b4f9ede](https://github.com/mytlogos/enterprise-lister/commit/b4f9ede21775c9ac0b68e8f457b92d6191f7a379))
+
+
+### Features
+
+* **scraper:** uniform links ([953255f](https://github.com/mytlogos/enterprise-lister/commit/953255fca15f24ca39712baefc57b3a8ae78e3a8))
+* **website:** expand usage of store ([3595301](https://github.com/mytlogos/enterprise-lister/commit/3595301c1d39321d17a72b2addb2058a08447f93))
+* **website:** expand usage of vuex store ([7c0355c](https://github.com/mytlogos/enterprise-lister/commit/7c0355c8f894a5c970ede72ffac540ae0e4d516b))
+* **website:** filter releases by media type ([f0fdce0](https://github.com/mytlogos/enterprise-lister/commit/f0fdce05d849f43dbd5a26807e8350ccf07d824f))
+* **website:** use strict typescript ([038037c](https://github.com/mytlogos/enterprise-lister/commit/038037cb6c3baa12de392cee2a50606e9e5e5e00))
+* **website:** use vuex store for state managment ([471a377](https://github.com/mytlogos/enterprise-lister/commit/471a3778749eba5dd1eaf37a329fc960fc2eca40))
+
+# [1.15.0](https://github.com/mytlogos/enterprise-lister/compare/v1.14.0...v1.15.0) (2020-12-06)
+
+
+### Bug Fixes
+
+* **scraper:** fix openlibrary search ([036e71c](https://github.com/mytlogos/enterprise-lister/commit/036e71c18933264aee927bf165bac3d08e9d2750))
+* **scraper:** ignore empty search item ([67e619a](https://github.com/mytlogos/enterprise-lister/commit/67e619a5c78572eff93bd2ca8aad9b1464c83b29))
+* **searchview:** replace static mediatype with selected ([11f7ff7](https://github.com/mytlogos/enterprise-lister/commit/11f7ff7636452cbf9e27c606ae56eaf668585eb3))
+* ignore failed searches ([70385ef](https://github.com/mytlogos/enterprise-lister/commit/70385ef29a20ed189436b1ff492ef068e9928532))
+
+
+### Features
+
+* **searchview:** add search view for adding new media ([a6b5830](https://github.com/mytlogos/enterprise-lister/commit/a6b58303985425843ba568cf68e02a0719fd5aea))
+* **searchview:** allow user to specify the media type to search for ([644acc6](https://github.com/mytlogos/enterprise-lister/commit/644acc67d688735f5e1ee3ea7a0c4eed4208a3fc))
+
+# [1.14.0](https://github.com/mytlogos/enterprise-lister/compare/v1.13.0...v1.14.0) (2020-12-02)
+
+
+### Features
+
+* **scraper:** add open library hook ([2be467f](https://github.com/mytlogos/enterprise-lister/commit/2be467f01fc951220910351a57da51ed2d622a47))
+
+# [1.13.0](https://github.com/mytlogos/enterprise-lister/compare/v1.12.0...v1.13.0) (2020-12-02)
+
+
+### Bug Fixes
+
+* fix linter (indent) errors ([6f0563d](https://github.com/mytlogos/enterprise-lister/commit/6f0563d3586df440e7ce942a4e63f708f23cc88a))
+
+
+### Features
+
+* **logger:** use daily log rotate for combined level transport ([a6b6ecc](https://github.com/mytlogos/enterprise-lister/commit/a6b6ecc87216dba8c4aff821d6eb7f9be9fc5abd))
+
 # [1.12.0](https://github.com/mytlogos/enterprise-lister/compare/v1.11.0...v1.12.0) (2020-11-30)
 
 
