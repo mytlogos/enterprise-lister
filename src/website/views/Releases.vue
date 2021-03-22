@@ -5,7 +5,17 @@
       <button class="btn btn-dark" @click.left="fetchReleases(true)">Refresh</button>
       <button class="btn btn-dark ml-1" @click.left="fetchReleases">Fetch new Releases</button>
       <triple-filter v-model:state="readFilter" class="ml-1" />
-      <media-filter :state="typeFilter" class="ml-1" @update:state="typeFilter = $event" />
+      <media-filter :state="typeFilter" class="ml-1" @update:state="typeFilter = $event">
+        <template #additional="{ value }">
+          <span
+            class="badge badge-primary badge-pill"
+            aria-hidden="true"
+            style="bottom: 26px; position: absolute; top: -10px; right: -10px; z-index: 10"
+          >
+            {{ typeReleases[value] }}
+          </span>
+        </template>
+      </media-filter>
     </div>
     <table class="table table-striped table-hover table-sm" aria-describedby="releases-title">
       <thead class="thead-dark">
@@ -81,7 +91,7 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, SimpleMedium } from "../siteTypes";
+import { DisplayRelease, MediaType, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
@@ -98,6 +108,7 @@ interface Data {
    * Signal Variable for fetchReleases to replace all current ones
    */
   replace: boolean;
+  typeReleases: Record<MediaType | number, number>;
 }
 
 // initialize all tooltips on this page
@@ -127,6 +138,12 @@ export default defineComponent({
       fetching: false,
       unmounted: false,
       replace: false,
+      typeReleases: {
+        [MediaType.TEXT]: 0,
+        [MediaType.IMAGE]: 0,
+        [MediaType.VIDEO]: 0,
+        [MediaType.AUDIO]: 0,
+      },
     };
   },
   computed: {
@@ -166,6 +183,25 @@ export default defineComponent({
       // when release filter changed, set replace current items flag and fetch anew
       this.replace = true;
       this.fetchReleases();
+    },
+    computedReleases() {
+      console.log("i am triggerin");
+      const newCount = {
+        [MediaType.TEXT]: 0,
+        [MediaType.IMAGE]: 0,
+        [MediaType.VIDEO]: 0,
+        [MediaType.AUDIO]: 0,
+      } as Record<number, number>;
+
+      this.releases.forEach((value) => {
+        const medium = this.$store.getters.getMedium(value.mediumId) as SimpleMedium;
+
+        if (medium) {
+          newCount[medium.medium]++;
+        }
+      });
+
+      Object.assign(this.typeReleases, newCount);
     },
   },
   async mounted() {

@@ -12,6 +12,7 @@
     >
       <input type="radio" :checked="state === item" />
       <i class="fas" :class="item.class" aria-hidden="true" />
+      <slot name="additional" :value="item.value"></slot>
     </label>
   </div>
 </template>
@@ -46,11 +47,11 @@ export default defineComponent({
   name: "ToggleButtons",
   props: {
     state: {
-      type: [Object, Array] as PropType<[ToggleButton, ToggleButton[]]>,
+      type: [Object, Array] as PropType<ToggleButton | ToggleButton[]>,
       required: true,
     },
     values: {
-      type: Array,
+      type: Array as PropType<ToggleButton[]>,
       required: true,
     },
   },

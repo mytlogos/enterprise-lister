@@ -1,5 +1,9 @@
 <template>
-  <toggle-buttons :values="values" :state="selected" @update:state="selected = $event" />
+  <toggle-buttons :values="values" :state="selected" @update:state="selected = $event">
+    <template #additional="{ value }">
+      <slot name="additional" :value="value"></slot>
+    </template>
+  </toggle-buttons>
 </template>
 
 <script lang="ts">
