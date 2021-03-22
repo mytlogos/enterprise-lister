@@ -1,7 +1,7 @@
 <template>
   <div ref="root" class="external">
     <h1 id="external-user">ExternalUser</h1>
-    <i class="btn fa-plus fa btn-primary btn-success" @click="add.show = true" />
+    <i class="btn fa-plus fa btn-primary btn-success" aria-hidden="true" @click="add.show = true" />
     <table class="table" aria-describedby="external-user">
       <thead>
         <tr>
@@ -22,8 +22,8 @@
           </td>
           <td class="d-flex">
             <template v-if="item.identifier">
-              <i class="btn delete fas fa-times btn-danger" @click="markDeleteItem(item)" />
-              <i class="refresh fas fa-sync-alt btn btn-secondary" @click="refreshItem(item)" />
+              <i class="btn delete fas fa-times btn-danger" aria-hidden="true" @click="markDeleteItem(item)" />
+              <i class="refresh fas fa-sync-alt btn btn-secondary" aria-hidden="true" @click="refreshItem(item)" />
             </template>
           </td>
         </tr>
