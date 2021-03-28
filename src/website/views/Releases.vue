@@ -109,10 +109,12 @@ interface Data {
    */
   replace: boolean;
   typeReleases: Record<MediaType | number, number>;
+  currentReleases: Set<string>;
 }
 
 // initialize all tooltips on this page
 $(function () {
+  // eslint-disable-next-line @typescript-eslint/quotes
   $('[data-toggle="tooltip"]').tooltip();
 });
 
@@ -144,6 +146,7 @@ export default defineComponent({
         [MediaType.VIDEO]: 0,
         [MediaType.AUDIO]: 0,
       },
+      currentReleases: new Set(),
     };
   },
   computed: {
@@ -245,10 +248,18 @@ export default defineComponent({
         latest.setFullYear(latest.getFullYear() + 1);
         const response = await HttpClient.getDisplayReleases(latest, until, this.read);
 
+        if (replace) {
+          this.currentReleases.clear();
+        } else {
+          response.releases = response.releases.filter((value) => {
+            return !this.currentReleases.has(value.episodeId + value.link);
+          });
+        }
         response.releases.forEach((value) => {
           if (!(value.date instanceof Date)) {
             value.date = new Date(value.date);
           }
+          this.currentReleases.add(value.episodeId + value.link);
         });
         this.currentDate = new Date();
         // replace previous releases if necessary
