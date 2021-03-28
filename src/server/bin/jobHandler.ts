@@ -562,33 +562,39 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: U
 
   // filter out the media which were found in the storage, leaving only the new ones
   const newMedia = media.filter((value) => {
-    const likeMedium = Array.isArray(currentLikeMedia)
-      ? currentLikeMedia.find(
+    let likeMedium: LikeMedium | undefined;
+
+    if (Array.isArray(currentLikeMedia)) {
+      currentLikeMedia.find(
         (likedMedium) =>
           likedMedium.title === value.title.text && likedMedium.link === value.title.link && likedMedium.medium,
-      )
-      : currentLikeMedia;
-
-    if (likeMedium) {
-      foundLikeMedia.push(likeMedium);
-      if (likeMedium.medium && likeMedium.medium.id) {
-        if (value.title.link) {
-          updateMediaPromises.push(mediumStorage.addToc(likeMedium.medium.id, value.title.link).then(ignore));
-        }
-        // TODO: 09.03.2020 episode Indices are not relative to the medium, which makes it unusable atm
-        // if (value.current && ("partIndex" in value.current || "episodeIndex" in value.current)) {
-        //     updateMediaPromises.push(episodeStorage.markLowerIndicesRead(
-        //         userUuid,
-        //         likeMedium.medium.id,
-        //         value.current.partIndex,
-        //         value.current.episodeIndex
-        //     ));
-        // }
-      }
-      // TODO update the progress of each user via value.latest, value.current
-      return false;
+      );
+    } else {
+      likeMedium = currentLikeMedia;
     }
-    return true;
+
+    if (!likeMedium) {
+      return true;
+    }
+
+    foundLikeMedia.push(likeMedium);
+
+    if (likeMedium.medium && likeMedium.medium.id) {
+      if (value.title.link) {
+        updateMediaPromises.push(mediumStorage.addToc(likeMedium.medium.id, value.title.link).then(ignore));
+      }
+      // TODO: 09.03.2020 episode Indices are not relative to the medium, which makes it unusable atm
+      // if (value.current && ("partIndex" in value.current || "episodeIndex" in value.current)) {
+      //     updateMediaPromises.push(episodeStorage.markLowerIndicesRead(
+      //         userUuid,
+      //         likeMedium.medium.id,
+      //         value.current.partIndex,
+      //         value.current.episodeIndex
+      //     ));
+      // }
+    }
+    // TODO update the progress of each user via value.latest, value.current
+    return false;
   });
   // if there are new media, queue it for scraping,
   // after adding it to the storage and pushing it to foundLikeMedia
