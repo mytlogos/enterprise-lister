@@ -1,6 +1,7 @@
 import {
   episodeStorage,
   externalUserStorage,
+  hookStorage,
   internalListStorage,
   jobStorage,
   mediumInWaitStorage,
@@ -16,10 +17,12 @@ import stringify from "stringify-stream";
 import logger from "./logger";
 import { downloadEpisodes, filterScrapeAble, search as searchMedium, loadToc } from "./externals/scraperTools";
 import { Errors, isError, isQuery, isString, stringToNumberList, getDate } from "./tools";
-import { JobRequest, ScrapeName, TimeBucket } from "./types";
+import { JobRequest, ScrapeName, ScraperHook, TimeBucket } from "./types";
 import { TocRequest } from "./externals/types";
 import { getTunnelUrls } from "./tunnel";
 import env from "./env";
+import { Hook } from "mocha";
+import { load } from "./externals/hookManager";
 
 function isNumberOrArray(value: number | any[]) {
   return Array.isArray(value) ? value.length : Number.isInteger(value);
@@ -883,6 +886,24 @@ export const getJobStatsTimed: Handler = (req, res) => {
     return;
   }
   sendResult(res, jobStorage.getJobsStatsTimed(bucket as TimeBucket, groupByDomain));
+};
+
+export const getAllHooks: Handler = (_req, res) => {
+  sendResult(
+    res,
+    load(true).then(() => hookStorage.getAllStream()),
+  );
+};
+
+export const putHook: Handler = (req, res) => {
+  const { hook }: { hook: ScraperHook } = req.body;
+
+  if (!hook || isInvalidId(hook.id)) {
+    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    return;
+  }
+
+  sendResult(res, hookStorage.updateScraperHook(hook));
 };
 
 export const authenticate: Handler = (req, res, next) => {

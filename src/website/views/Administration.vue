@@ -8,6 +8,9 @@
         <li class="nav-item m-auto">
           <router-link :to="{ name: 'job-stats' }" tag="a" class="nav-link text-nowrap"> Job Statistics </router-link>
         </li>
+        <li class="nav-item m-auto">
+          <router-link :to="{ name: 'hooks' }" tag="a" class="nav-link text-nowrap">Hooks</router-link>
+        </li>
       </ul>
     </div>
     <router-view />

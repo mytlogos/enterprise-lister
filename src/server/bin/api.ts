@@ -54,6 +54,7 @@ function userRouter(): Router {
   router.get("/download", UserApi.downloadEpisode);
   router.use("/medium", mediumRouter());
   router.use("/jobs", jobsRouter());
+  router.use("/hook", hooksRouter());
 
   router.use("/news", newsRouter());
   router.use("/list", listRouter());
@@ -154,7 +155,7 @@ function mediumRouter(): Router {
 /**
  * Creates the Jobs API Router.
  */
-function jobsRouter(): Router {
+ function jobsRouter(): Router {
   const router = Router();
 
   const jobRoute = router.route("");
@@ -167,6 +168,19 @@ function jobsRouter(): Router {
   statsRouter.get("/timed", UserApi.getJobStatsTimed);
 
   router.use("/stats", statsRouter);
+  return router;
+}
+
+/**
+ * Creates the Hook API Router.
+ */
+function hooksRouter(): Router {
+  const router = Router();
+
+  const hookRoute = router.route("");
+  hookRoute.get(UserApi.getAllHooks);
+  hookRoute.put(UserApi.putHook);
+
   return router;
 }
 

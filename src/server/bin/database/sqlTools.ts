@@ -26,7 +26,8 @@ export type ModificationKey =
   | "synonym"
   | "toc"
   | "news"
-  | "medium_in_wait";
+  | "medium_in_wait"
+  | "scraper_hook";
 
 /**
  * Store the type of modification in the Async Storage associated with this context.

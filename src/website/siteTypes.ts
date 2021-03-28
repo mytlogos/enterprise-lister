@@ -407,3 +407,10 @@ export interface MediaStore {
 export interface NewsStore {
   news: News[];
 }
+
+export interface ScraperHook {
+  id: number;
+  name: string;
+  state: string;
+  message: string;
+}

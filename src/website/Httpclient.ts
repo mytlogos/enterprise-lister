@@ -20,6 +20,7 @@ import {
   TimeBucket,
   MediaType,
   SearchResult,
+  ScraperHook,
 } from "./siteTypes";
 
 /**
@@ -66,6 +67,10 @@ const restApi = {
             get: true,
           },
         },
+      },
+      hook: {
+        get: true,
+        put: true,
       },
       searchtoc: {
         get: true,
@@ -198,6 +203,10 @@ interface GetPath {
   readonly get: MethodObject;
 }
 
+interface PutPath {
+  readonly put: MethodObject;
+}
+
 interface MediumPath {
   readonly get: MethodObject;
   readonly post: MethodObject;
@@ -308,6 +317,7 @@ interface Api {
   readonly register: RegisterPath;
   readonly user: UserPath;
   readonly search: GetPath;
+  readonly hook: GetPath & PutPath;
 }
 
 const api: Api = (function pathGenerator() {
@@ -631,6 +641,14 @@ export const HttpClient = {
 
   addListItem(listId: number, mediumId: number): Promise<void> {
     return this.queryServer(api.list.medium.post, { listId, mediumId });
+  },
+
+  getHooks(): Promise<ScraperHook[]> {
+    return this.queryServer(api.hook.get);
+  },
+
+  updateHook(hook: ScraperHook): Promise<void> {
+    return this.queryServer(api.hook.put, { hook });
   },
 
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {

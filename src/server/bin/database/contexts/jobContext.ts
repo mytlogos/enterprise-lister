@@ -245,18 +245,13 @@ export class JobContext extends SubContext {
   }
 
   public async getJobDetails(id: number): Promise<JobDetails> {
-    const jobPromise: Promise<JobItem[]> = this.query(
-      `
-            SELECT * FROM jobs WHERE id = ?
-            `,
-      id,
-    );
+    const jobPromise: Promise<JobItem[]> = this.query("SELECT * FROM jobs WHERE id = ?", id);
     const historyPromise: Promise<JobHistoryItem[]> = this.query(
       `
-            SELECT * FROM job_history
-            WHERE name = (SELECT name FROM job_history WHERE id = ? LIMIT 1)
-            ORDER BY start DESC;
-            `,
+      SELECT * FROM job_history
+      WHERE name = (SELECT name FROM job_history WHERE id = ? LIMIT 1)
+      ORDER BY start DESC;
+      `,
       id,
     );
 
@@ -291,7 +286,7 @@ export class JobContext extends SubContext {
       limit = 50;
     }
     return this.query(
-      "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' order by nextRun LIMIT ?",
+      "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND job_state != 'disabled' order by nextRun LIMIT ?",
       limit,
     );
   }

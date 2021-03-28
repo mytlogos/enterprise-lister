@@ -22,6 +22,7 @@ import * as dns from "dns";
 import { getStore } from "../asyncStorage";
 import Timeout = NodeJS.Timeout;
 import { TocRequest } from "./types";
+import { getNewsAdapter, load } from "./hookManager";
 
 class ScrapeJob {
   public static readonly toc = new ScrapeJob(ScrapeName.toc, toc, ScrapeEvent.TOC);
@@ -68,10 +69,6 @@ export class JobScraperManager {
   private nameIdList: Array<[number, string]> = [];
   private intervalId: Optional<Timeout>;
 
-  public constructor() {
-    this.helper.init();
-  }
-
   public on(event: string, callback: (value: any) => void | EmptyPromise): void {
     this.helper.on(event, callback);
   }
@@ -106,9 +103,13 @@ export class JobScraperManager {
   }
 
   public async setup(): EmptyPromise {
+    // load (scraper) hooks on setup
+    await load();
+
     // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
     await jobStorage.stopJobs().catch(logger.error);
-    const jobs = this.helper.newsAdapter.map(
+
+    const jobs = getNewsAdapter().map(
       (value): JobRequest => {
         return {
           deleteAfterRun: false,

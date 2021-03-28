@@ -36,7 +36,6 @@ import {
   EpisodeContent,
   Hook,
   NewsScraper,
-  SearchScraper,
   Toc,
   TocContent,
   TocEpisode,
@@ -46,7 +45,6 @@ import {
   TocSearchScraper,
   ExternalListResult,
 } from "./types";
-import * as directScraper from "./direct/directScraper";
 import * as url from "url";
 import { Cache } from "../cache";
 import * as validate from "validate.js";
@@ -64,14 +62,16 @@ import {
   storage,
 } from "../database/storages/storage";
 import { MissingResourceError, UrlError } from "./errors";
-
-const redirects: RegExp[] = [];
-const tocScraper: Map<RegExp, TocScraper> = new Map();
-const episodeDownloader: Map<RegExp, ContentDownloader> = new Map();
-const tocDiscovery: Map<RegExp, TocSearchScraper> = new Map();
-const newsAdapter: NewsScraper[] = [];
-const searchAdapter: SearchScraper[] = [];
-const nameHookMap = new Map<string, Hook>();
+import {
+  episodeDownloaderEntries,
+  getHook,
+  getHooks,
+  getSearcher,
+  load,
+  noRedirect,
+  tocDiscoveryEntries,
+  tocScraperEntries,
+} from "./hookManager";
 
 interface ScrapeableFilterResult {
   available: string[];
@@ -82,9 +82,9 @@ export const filterScrapeAble = (urls: string): ScrapeableFilterResult => {
   checkHooks();
 
   const regs: RegExp[] = [];
-  for (const entry of nameHookMap.entries()) {
-    if (entry[1].domainReg) {
-      regs.push(entry[1].domainReg);
+  for (const hook of getHooks()) {
+    if (hook.domainReg) {
+      regs.push(hook.domainReg);
     }
   }
   const result: ScrapeableFilterResult = { available: [], unavailable: [] };
@@ -107,10 +107,7 @@ export const filterScrapeAble = (urls: string): ScrapeableFilterResult => {
 };
 
 export const scrapeNewsJob = async (name: string): Promise<NewsResult> => {
-  const hook = nameHookMap.get(name);
-  if (!hook) {
-    throw Error("no hook found for name: " + name);
-  }
+  const hook = getHook(name);
 
   if (!hook.newsAdapter) {
     throw Error(`expected hook '${name}' to have newsAdapter`);
@@ -307,7 +304,7 @@ async function processMediumNews(
 export async function loadToc(link: string): Promise<Toc[]> {
   checkHooks();
   const results = await Promise.allSettled(
-    [...tocScraper.entries()]
+    tocScraperEntries()
       .filter((value) => value[0].test(link))
       .map((value) => {
         const scraper = value[1];
@@ -321,10 +318,9 @@ export async function loadToc(link: string): Promise<Toc[]> {
 
 export async function searchForTocJob(name: string, item: TocSearchMedium): Promise<TocResult> {
   logger.info(`searching for toc on ${name} with ${JSON.stringify(item)}`);
-  const hook = nameHookMap.get(name);
-  if (!hook) {
-    throw Error("no hook found for name: " + name);
-  }
+
+  const hook = getHook(name);
+
   if (!hook.tocSearchAdapter) {
     throw Error("expected hook with tocSearchAdapter");
   }
@@ -366,7 +362,7 @@ function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: s
 
   if (availableTocs) {
     for (const availableToc of availableTocs) {
-      for (const entry of tocScraper.entries()) {
+      for (const entry of tocScraperEntries()) {
         const [reg] = entry;
 
         if (!consumed.includes(reg) && reg.test(availableToc)) {
@@ -379,7 +375,7 @@ function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: s
 
   const searchJobs: JobRequest[] = [];
   if (tocSearch) {
-    for (const entry of tocDiscovery.entries()) {
+    for (const entry of tocDiscoveryEntries()) {
       const [reg, searcher] = entry;
       let searchFound = false;
 
@@ -450,7 +446,7 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
     })
     .flat(2);
 
-  const hooks = [...nameHookMap.values()];
+  const hooks = getHooks();
   const promises = [...mediaWithTocs.entries()]
     .map(async (value) => {
       const mediumId = value[0];
@@ -526,7 +522,7 @@ export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: Toc
   }
   let allTocPromise: Optional<Promise<Toc[]>>;
 
-  for (const entry of tocScraper.entries()) {
+  for (const entry of tocScraperEntries()) {
     const regExp = entry[0];
 
     if (regExp.test(link)) {
@@ -736,26 +732,6 @@ export enum ScrapeEvent {
 export class ScraperHelper {
   private readonly eventMap: Map<string, Array<(value: any) => void | EmptyPromise>> = new Map();
 
-  public get redirects(): RegExp[] {
-    return redirects;
-  }
-
-  public get tocScraper(): Map<RegExp, TocScraper> {
-    return tocScraper;
-  }
-
-  public get episodeDownloader(): Map<RegExp, ContentDownloader> {
-    return episodeDownloader;
-  }
-
-  public get tocDiscovery(): Map<RegExp, TocSearchScraper> {
-    return tocDiscovery;
-  }
-
-  public get newsAdapter(): NewsScraper[] {
-    return newsAdapter;
-  }
-
   public on(event: string, callback: (value: any) => void | EmptyPromise): void {
     const callbacks = getElseSet(this.eventMap, event, () => []);
     callbacks.push(callback);
@@ -772,82 +748,23 @@ export class ScraperHelper {
   }
 
   public init(): void {
-    this.registerHooks(getListManagerHooks());
-    this.registerHooks(directScraper.getHooks());
+    load().catch();
+    return;
   }
 
   public getHook(name: string): Hook {
-    const hook = nameHookMap.get(name);
-    if (!hook) {
-      throw Error(`there is no hook with name: '${name}'`);
-    }
-    return hook;
-  }
-
-  private registerHooks(hook: Hook[] | Hook): void {
-    multiSingle(hook, (value: Hook) => {
-      if (!value.name) {
-        throw Error("hook without name!");
-      }
-      if (nameHookMap.has(value.name)) {
-        throw Error(`encountered hook with name '${value.name}' twice`);
-      }
-      nameHookMap.set(value.name, value);
-
-      if (value.redirectReg) {
-        redirects.push(value.redirectReg);
-      }
-      // TODO: 20.07.2019 check why it should be added to the public ones,
-      //  or make the getter for these access the public ones?
-      if (value.newsAdapter) {
-        value.newsAdapter.hookName = value.name;
-        newsAdapter.push(value.newsAdapter);
-      }
-      if (value.searchAdapter) {
-        searchAdapter.push(value.searchAdapter);
-      }
-      if (value.domainReg) {
-        if (value.tocAdapter) {
-          value.tocAdapter.hookName = value.name;
-          tocScraper.set(value.domainReg, value.tocAdapter);
-        }
-
-        if (value.contentDownloadAdapter) {
-          value.contentDownloadAdapter.hookName = value.name;
-          episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
-        }
-
-        if (value.tocSearchAdapter) {
-          value.tocSearchAdapter.hookName = value.name;
-          tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
-        }
-      }
-      if (value.tocPattern && value.tocSearchAdapter) {
-        value.tocSearchAdapter.hookName = value.name;
-        tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
-      }
-    });
+    return getHook(name);
   }
 }
 
-let hookRegistered = false;
-
-export function checkHooks(): void {
-  if (!hookRegistered) {
-    registerHooks(directScraper.getHooks());
-    hookRegistered = true;
-  }
+export function checkHooks(): EmptyPromise {
+  return load(true);
 }
 
 export async function search(title: string, medium: number): Promise<SearchResult[]> {
-  checkHooks();
-  const promises: Array<Promise<SearchResult[]>> = [];
-  for (const searcher of searchAdapter) {
-    // check if wanted medium and defined medium overlap
-    if (searcher.medium & medium) {
-      promises.push(searcher(title, medium));
-    }
-  }
+  await checkHooks();
+  const promises: Array<Promise<SearchResult[]>> = getSearcher(medium).map((searcher) => searcher(title, medium));
+
   const results = await Promise.allSettled(promises);
   return (results
     .flat(1)
@@ -862,8 +779,8 @@ export async function search(title: string, medium: number): Promise<SearchResul
 }
 
 export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]> {
-  checkHooks();
-  const entries = [...episodeDownloader.entries()];
+  await checkHooks();
+  const entries = episodeDownloaderEntries();
 
   const downloadContents: Map<number, DownloadContent> = new Map();
 
@@ -1001,7 +918,7 @@ function checkLinkWithInternet(link: string): Promise<FullResponse> {
 
 function checkLink(link: string, linkKey?: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (!redirects.some((value) => value.test(link))) {
+    if (noRedirect(link)) {
       resolve(link);
       return;
     }
@@ -1059,49 +976,6 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
         }
         resolve("");
       });
-  });
-}
-
-function registerHooks(hook: Hook[] | Hook) {
-  multiSingle(hook, (value: Hook) => {
-    if (!value.name) {
-      throw Error("hook without name!");
-    }
-    if (nameHookMap.has(value.name)) {
-      throw Error(`encountered hook with name '${value.name}' twice`);
-    }
-    nameHookMap.set(value.name, value);
-
-    if (value.redirectReg) {
-      redirects.push(value.redirectReg);
-    }
-    if (value.newsAdapter) {
-      value.newsAdapter.hookName = value.name;
-      newsAdapter.push(value.newsAdapter);
-    }
-    if (value.searchAdapter) {
-      searchAdapter.push(value.searchAdapter);
-    }
-    if (value.domainReg) {
-      if (value.tocAdapter) {
-        value.tocAdapter.hookName = value.name;
-        tocScraper.set(value.domainReg, value.tocAdapter);
-      }
-
-      if (value.contentDownloadAdapter) {
-        value.contentDownloadAdapter.hookName = value.name;
-        episodeDownloader.set(value.domainReg, value.contentDownloadAdapter);
-      }
-
-      if (value.tocSearchAdapter) {
-        value.tocSearchAdapter.hookName = value.name;
-        tocDiscovery.set(value.domainReg, value.tocSearchAdapter);
-      }
-    }
-    if (value.tocPattern && value.tocSearchAdapter) {
-      value.tocSearchAdapter.hookName = value.name;
-      tocDiscovery.set(value.tocPattern, value.tocSearchAdapter);
-    }
   });
 }
 
