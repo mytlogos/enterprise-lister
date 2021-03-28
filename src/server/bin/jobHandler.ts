@@ -565,7 +565,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: U
     let likeMedium: LikeMedium | undefined;
 
     if (Array.isArray(currentLikeMedia)) {
-      currentLikeMedia.find(
+      likeMedium = currentLikeMedia.find(
         (likedMedium) =>
           likedMedium.title === value.title.text && likedMedium.link === value.title.link && likedMedium.medium,
       );
