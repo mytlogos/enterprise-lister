@@ -44,10 +44,11 @@ export default defineComponent({
   methods: {
     async fetch() {
       const hooks = await HttpClient.getHooks();
-      this.hooks = hooks.sort((a, b) => {
+      hooks.sort((a, b) => {
         let compare = a.state.localeCompare(b.state);
         return compare ? compare : a.name.localeCompare(b.name);
       });
+      this.hooks = hooks;
     },
     async toggleHook(item: ScraperHook) {
       const newState = item.state === HookState.DISABLED ? HookState.ENABLED : HookState.DISABLED;

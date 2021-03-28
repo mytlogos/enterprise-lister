@@ -58,7 +58,7 @@ export async function load(unloadedOnly = false): EmptyPromise {
   const hooks = getRawHooks();
   const storageHooks = await hookStorage.getAll();
 
-  for (let hook of hooks) {
+  for (const hook of hooks) {
     const index = storageHooks.findIndex((value) => hook.name === value.name);
 
     if (index < 0) {
@@ -70,7 +70,7 @@ export async function load(unloadedOnly = false): EmptyPromise {
       });
     } else {
       if (storageHooks[index].state === HookState.DISABLED) {
-        hook = disableHook(hook);
+        disableHook(hook);
       }
       // remove all found storage hooks, so we can remove the superflous ones
       storageHooks.splice(index, 1);
@@ -135,8 +135,6 @@ function registerHooks(hook: Hook[] | Hook): void {
     if (value.redirectReg) {
       redirects.push(value.redirectReg);
     }
-    // TODO: 20.07.2019 check why it should be added to the public ones,
-    //  or make the getter for these access the public ones?
     if (value.newsAdapter) {
       value.newsAdapter.hookName = value.name;
       newsAdapter.push(value.newsAdapter);

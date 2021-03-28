@@ -1,16 +1,6 @@
-import { factory, getListManagerHooks, ListScrapeResult, ListType } from "./listManager";
+import { factory, ListScrapeResult, ListType } from "./listManager";
 import feedParserPromised from "feedparser-promised";
-import {
-  combiIndex,
-  getElseSet,
-  hasMediaType,
-  ignore,
-  isTocPart,
-  max,
-  maxValue,
-  MediaType,
-  multiSingle,
-} from "../tools";
+import { combiIndex, getElseSet, hasMediaType, ignore, isTocPart, max, maxValue, MediaType } from "../tools";
 import {
   Episode,
   EpisodeNews,
@@ -749,7 +739,6 @@ export class ScraperHelper {
 
   public init(): void {
     load().catch();
-    return;
   }
 
   public getHook(name: string): Hook {

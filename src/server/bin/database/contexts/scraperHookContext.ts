@@ -1,7 +1,6 @@
 import { SubContext } from "./subContext";
 import { ScraperHook, TypedQuery } from "../../types";
 import { storeModifications } from "../sqlTools";
-import { HookState } from "bin/externals/hookManager";
 import { escapeLike } from "../storages/storageTools";
 
 export class ScraperHookContext extends SubContext {
