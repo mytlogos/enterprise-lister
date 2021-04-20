@@ -155,7 +155,7 @@ function mediumRouter(): Router {
 /**
  * Creates the Jobs API Router.
  */
- function jobsRouter(): Router {
+function jobsRouter(): Router {
   const router = Router();
 
   const jobRoute = router.route("");

@@ -21,7 +21,6 @@ import { JobRequest, ScrapeName, ScraperHook, TimeBucket } from "./types";
 import { TocRequest } from "./externals/types";
 import { getTunnelUrls } from "./tunnel";
 import env from "./env";
-import { Hook } from "mocha";
 import { load } from "./externals/hookManager";
 
 function isNumberOrArray(value: number | any[]) {
@@ -154,7 +153,7 @@ export const getNew: Handler = (req, res) => {
   sendResult(res, storage.getNew(uuid, date ? new Date(date) : undefined));
 };
 
-export const getAllMedia: Handler = (req, res) => {
+export const getAllMedia: Handler = (_req, res) => {
   sendResult(res, mediumStorage.getAllMedia());
 };
 
@@ -177,6 +176,7 @@ export const postCreateFromUnusedMedia: Handler = (req, res) => {
   }
   sendResult(res, mediumInWaitStorage.createFromMediaInWait(createMedium, tocsMedia, listId));
 };
+
 export const getUnusedMedia: Handler = (req, res) => {
   sendResult(res, mediumInWaitStorage.getMediaInWait());
 };
@@ -244,11 +244,11 @@ export const processResult: Handler = (req, res) => {
   sendResult(res, storage.processResult(req.body));
 };
 
-export const getTunnel: Handler = (req, res) => {
+export const getTunnel: Handler = (_req, res) => {
   sendResult(res, Promise.resolve(getTunnelUrls()));
 };
 
-export const getDev: Handler = (req, res) => {
+export const getDev: Handler = (_req, res) => {
   sendResult(res, Promise.resolve(Boolean(env.development)));
 };
 export const checkLogin: Handler = (req, res) => {
@@ -796,11 +796,11 @@ export const getAllNews: Handler = (req, res) => {
   sendResult(res, newsStorage.getAll(uuid));
 };
 
-export const getAllParts: Handler = (req, res) => {
+export const getAllParts: Handler = (_req, res) => {
   sendResult(res, partStorage.getAll());
 };
 
-export const getAllMediaFull: Handler = (req, res) => {
+export const getAllMediaFull: Handler = (_req, res) => {
   sendResult(res, mediumStorage.getAllMediaFull());
 };
 
@@ -821,7 +821,7 @@ export const getAllEpisodes: Handler = (req, res) => {
   sendResult(res, episodeStorage.getAll(uuid));
 };
 
-export const getAllReleases: Handler = (req, res) => {
+export const getAllReleases: Handler = (_req, res) => {
   sendResult(res, episodeStorage.getAllReleases());
 };
 
