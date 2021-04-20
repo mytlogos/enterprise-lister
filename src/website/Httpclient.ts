@@ -563,13 +563,33 @@ export const HttpClient = {
    *
    * @param latest the date to get all releases after (including)
    */
-  getDisplayReleases(latest: Date, until?: Date, readFilter?: boolean): Promise<DisplayReleasesResponse> {
-    const parameter: { latest: Date; until?: Date; read?: boolean } = { latest };
+  getDisplayReleases(
+    latest: Date,
+    until?: Date,
+    readFilter?: boolean,
+    onlyLists?: number[],
+    onlyMedia?: number[],
+    ignoreLists?: number[],
+    ignoreMedia?: number[],
+  ): Promise<DisplayReleasesResponse> {
+    const parameter: any = { latest };
     if (until) {
       parameter.until = until;
     }
     if (readFilter != null) {
       parameter.read = readFilter;
+    }
+    if (onlyLists != null) {
+      parameter.only_lists = onlyLists;
+    }
+    if (onlyMedia != null) {
+      parameter.only_media = onlyMedia;
+    }
+    if (ignoreLists != null) {
+      parameter.ignore_lists = ignoreLists;
+    }
+    if (ignoreMedia != null) {
+      parameter.ignore_media = ignoreMedia;
     }
     return this.queryServer({ path: "api/user/medium/part/episode/releases/display", method: "GET" }, parameter);
   },
@@ -677,7 +697,14 @@ export const HttpClient = {
     const url = new URL(`${window.location.origin}/${path}`);
     if (query) {
       if (method === Methods.get) {
-        Object.keys(query).forEach((key) => url.searchParams.append(key, query[key]));
+        Object.keys(query).forEach((key) => {
+          const value = query[key];
+          if (Array.isArray(value)) {
+            url.searchParams.append(key, `[${value.join(",")}]`);
+          } else {
+            url.searchParams.append(key, value);
+          }
+        });
       } else {
         // @ts-ignore
         init.body = JSON.stringify(query);

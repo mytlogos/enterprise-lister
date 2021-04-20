@@ -16,6 +16,66 @@
           </span>
         </template>
       </media-filter>
+      <div class="d-inline ml-1">
+        <auto-complete
+          key="id"
+          class="d-inline"
+          :items="media"
+          title-key="title"
+          placeholder="Ignore Medium"
+          @input="ignoreMedium"
+        />
+      </div>
+      <div class="d-inline ml-1">
+        <auto-complete
+          key="id"
+          class="d-inline"
+          :items="media"
+          title-key="title"
+          placeholder="Ignore List"
+          @input="ignoreList"
+        />
+      </div>
+    </div>
+    <div v-if="onlyMedia.length">
+      <div class="px-1">Required Media:</div>
+      <app-label
+        v-for="medium in onlyMedia"
+        :key="medium.id"
+        :value="medium.title"
+        class="m-1 badge-success"
+        @delete="unrequireMedium(medium)"
+      />
+    </div>
+    <div v-if="ignoreMedia.length">
+      <div class="px-1">Ignored Media:</div>
+      <app-label
+        v-for="medium in ignoreMedia"
+        :key="medium.id"
+        :value="medium.title"
+        class="m-1 badge-danger"
+        @delete="unignoreMedium(medium)"
+      />
+    </div>
+    <div v-if="onlyLists.length">
+      <div class="px-1">Required Lists:</div>
+      <app-label
+        v-for="list in onlyLists"
+        :key="list.id"
+        :value="list.name"
+        class="m-1 badge-success"
+        @delete="unrequireList(list)"
+      />
+    </div>
+    <div v-if="ignoreLists.length">
+      <div class="px-1">Ignored Lists:</div>
+      <app-label
+        v-for="list in ignoreLists"
+        :key="list.id"
+        :value="list.name"
+        class="m-1 badge-danger"
+        @delete="unignoreList(list)"
+      />
     </div>
     <table class="table table-striped table-hover table-sm" aria-describedby="releases-title">
       <thead class="thead-dark">
@@ -91,13 +151,15 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, MediaType, SimpleMedium } from "../siteTypes";
+import { DisplayRelease, List, MediaType, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
 import TripleFilter from "../components/triple-filter.vue";
 import MediaFilter from "../components/media-filter.vue";
 import $ from "jquery";
+import AutoComplete from "../components/auto-complete.vue";
+import AppLabel from "../components/label.vue";
 
 interface Data {
   releases: DisplayRelease[];
@@ -123,7 +185,7 @@ $(".toast").toast();
 
 export default defineComponent({
   name: "Releases",
-  components: { TripleFilter, MediaFilter },
+  components: { TripleFilter, MediaFilter, AutoComplete, AppLabel },
 
   props: {
     read: Boolean,
@@ -150,6 +212,33 @@ export default defineComponent({
     };
   },
   computed: {
+    onlyMedia(): SimpleMedium[] {
+      return [];
+    },
+    onlyLists(): List[] {
+      return [];
+    },
+    ignoreMedia(): SimpleMedium[] {
+      return this.$store.state.releases.ignoreMedia.map((id) => {
+        return this.$store.state.media.media[id] || { id, title: "Unknown" };
+      });
+    },
+    ignoreLists(): List[] {
+      return this.$store.state.releases.ignoreLists.map((id) => {
+        return (
+          this.$store.state.lists.lists.find((list) => list.id === id) || {
+            id,
+            name: "Unknown",
+            external: false,
+            show: false,
+            items: [],
+          }
+        );
+      });
+    },
+    media(): SimpleMedium[] {
+      return Object.values(this.$store.state.media.media);
+    },
     computedReleases(): DisplayRelease[] {
       let copy = [...this.releases] as DisplayRelease[];
 
@@ -187,6 +276,30 @@ export default defineComponent({
       this.replace = true;
       this.fetchReleases();
     },
+    onlyMedia: {
+      handler() {
+        this.fetchReleases(true);
+      },
+      deep: true,
+    },
+    onlyLists: {
+      handler() {
+        this.fetchReleases(true);
+      },
+      deep: true,
+    },
+    ignoreMedia: {
+      handler() {
+        this.fetchReleases(true);
+      },
+      deep: true,
+    },
+    ignoreLists: {
+      handler() {
+        this.fetchReleases(true);
+      },
+      deep: true,
+    },
     computedReleases() {
       console.log("i am triggerin");
       const newCount = {
@@ -218,13 +331,68 @@ export default defineComponent({
     this.unmounted = true;
   },
   methods: {
+    requireMedium(item: SimpleMedium): void {
+      if (item) {
+        this.$store.commit("releases/requireMedium", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
+    requireList(item: List): void {
+      if (item) {
+        this.$store.commit("releases/requireList", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
+    ignoreMedium(item: SimpleMedium): void {
+      if (item) {
+        this.$store.commit("releases/ignoreMedium", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
+    ignoreList(item: List): void {
+      if (item) {
+        this.$store.commit("releases/ignoreList", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
+    unrequireMedium(item: SimpleMedium): void {
+      if (item) {
+        this.$store.commit("releases/unrequireMedium", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
+    unrequireList(item: List): void {
+      if (item) {
+        this.$store.commit("releases/unrequireList", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
+    unignoreMedium(item: SimpleMedium): void {
+      if (item) {
+        this.$store.commit("releases/unignoreMedium", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
+    unignoreList(item: List): void {
+      if (item) {
+        this.$store.commit("releases/unignoreList", item.id);
+      } else {
+        console.trace("Got event without value!");
+      }
+    },
     getMedium(id: number): SimpleMedium {
       return this.$store.getters.getMedium(id);
     },
     timeDifference(date: Date): string {
       return timeDifference(this.currentDate, date);
     },
-
     async fetchReleases(replace = false) {
       // do not fetch if already fetching or this component is already unmounted
       if (this.fetching || this.unmounted) {
@@ -246,7 +414,15 @@ export default defineComponent({
         // some releases have dates in the future, so get them at most one year in the future
         const latest = new Date();
         latest.setFullYear(latest.getFullYear() + 1);
-        const response = await HttpClient.getDisplayReleases(latest, until, this.read);
+        const response = await HttpClient.getDisplayReleases(
+          latest,
+          until,
+          this.read,
+          this.onlyLists.map((item) => item.id),
+          this.onlyMedia.map((item) => item.id) as number[],
+          this.ignoreLists.map((item) => item.id),
+          this.ignoreMedia.map((item) => item.id) as number[],
+        );
 
         if (replace) {
           this.currentReleases.clear();

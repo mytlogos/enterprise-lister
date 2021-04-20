@@ -37,7 +37,7 @@ import logger from "../../logger";
 import { MysqlServerError } from "../mysqlError";
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
-import { storeModifications } from "../sqlTools";
+import { storeModifications, toSqlList } from "../sqlTools";
 
 export class EpisodeContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<TypedQuery<PureEpisode>> {
@@ -61,15 +61,43 @@ export class EpisodeContext extends SubContext {
     untilDate: Nullable<Date>,
     read: Nullable<boolean>,
     uuid: Uuid,
+    ignoredLists: number[],
+    requiredLists: number[],
+    ignoredMedia: number[],
+    requiredMedia: number[],
   ): Promise<DisplayReleasesResponse> {
     const progressCondition = read == null ? "1" : read ? "progress = 1" : "(progress IS NULL OR progress < 1)";
+
+    let additionalMainQuery = "";
+
+    if (requiredMedia.length) {
+      additionalMainQuery += ` AND part.medium_id IN (${toSqlList(requiredMedia)}) `;
+    }
+
+    if (ignoredMedia.length) {
+      additionalMainQuery += ` AND part.medium_id NOT IN (${toSqlList(ignoredMedia)}) `;
+    }
+
+    let filterQuery = "";
+
+    if (requiredLists.length) {
+      filterQuery += ` AND part.medium_id IN (SELECT medium_id FROM list_medium WHERE list_id IN (${toSqlList(
+        requiredLists,
+      )})) `;
+    } else if (ignoredLists.length) {
+      filterQuery += ` AND part.medium_id NOT IN (SELECT medium_id FROM list_medium WHERE list_id IN (${toSqlList(
+        ignoredLists,
+      )})) `;
+    }
+
     const releasePromise = this.query(
       "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId, progress " +
         "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?)) as er " +
         "INNER JOIN episode ON episode.id=er.episode_id " +
         "LEFT JOIN (SELECT * FROM user_episode WHERE user_uuid = ?) as ue ON episode.id=ue.episode_id " +
         "INNER JOIN part ON part.id=part_id " +
-        `WHERE ${progressCondition} ORDER BY releaseDate DESC LIMIT 500;`,
+        additionalMainQuery +
+        `WHERE ${progressCondition}${filterQuery} ORDER BY releaseDate DESC LIMIT 500;`,
       [latestDate, untilDate, untilDate, uuid, read, read],
     );
     const mediaPromise: Promise<Array<{ id: number; title: string; medium: MediaType }>> = this.query(

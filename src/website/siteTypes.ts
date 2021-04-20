@@ -389,6 +389,10 @@ export interface VuexStore {
 export interface ReleaseStore {
   readFilter: boolean | undefined;
   typeFilter: number;
+  onlyMedia: number[];
+  onlyLists: number[];
+  ignoreMedia: number[];
+  ignoreLists: number[];
 }
 
 export interface ExternalUserStore {

@@ -31,6 +31,20 @@ export function round(value: number, decimalPlace: number): number {
 }
 
 /**
+ * Remove the first occurrence of value from the array
+ *
+ * @param value value to round
+ * @param decimalPlace place to round to
+ */
+export function remove<T>(array: T[], value: T): void {
+  const index = array.indexOf(value);
+
+  if (index >= 0) {
+    array.splice(index, 1);
+  }
+}
+
+/**
  * Splits an array into multiple batches with each a length of batchSize.
  * The last batch may have less than batchSize, but is never empty.
  * A negative batchSize always yields an array with a single batch with all values.

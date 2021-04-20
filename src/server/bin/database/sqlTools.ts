@@ -75,3 +75,11 @@ export function storeCount(key: CountKey): void {
   const count = store.get(key) || 0;
   store.set(key, count + 1);
 }
+
+/**
+ * Returns a comma separated list of only integers.
+ * @param numbers ids
+ */
+export function toSqlList(numbers: number[]): string {
+  return numbers.filter(Number.isSafeInteger).join(",");
+}

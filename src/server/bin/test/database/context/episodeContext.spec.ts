@@ -38,10 +38,10 @@ function inContext<T>(callback: storageTools.ContextCallback<T, EpisodeContext>,
 describe("episodeContext", () => {
   describe("getDisplayReleases", function () {
     it("should not throw, when using valid parameters", async function () {
-      await inContext((context) => context.getDisplayReleases(new Date(), new Date(), true, "12")).should.eventually.not
-        .be.rejected;
-      await inContext((context) => context.getDisplayReleases(new Date(), null, null, "12")).should.eventually.not
-        .rejected;
+      await inContext((context) => context.getDisplayReleases(new Date(), new Date(), true, "12", [], [], [], []))
+        .should.eventually.not.be.rejected;
+      await inContext((context) => context.getDisplayReleases(new Date(), null, null, "12", [], [], [], [])).should
+        .eventually.not.rejected;
     });
   });
 
