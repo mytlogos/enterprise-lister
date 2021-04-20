@@ -67,13 +67,16 @@ export const store = createStore({
     },
   },
   actions: {
+    async load({ dispatch }) {
+      await Promise.all([dispatch("loadMedia"), dispatch("loadLists"), dispatch("loadExternalUser")]);
+    },
     async changeUser({ commit, dispatch, state }, { user, modal }: { user: User; modal: string }) {
       const userChanged = user && state.uuid !== user.uuid;
       setUser(commit, user);
       commit("resetModal", modal);
 
       if (userChanged) {
-        await Promise.all([dispatch("loadMedia"), dispatch("loadLists"), dispatch("loadExternalUser")]);
+        await dispatch("load");
 
         if (router.currentRoute.value.path === "/login") {
           // automatically navigate to view under home if successfully logged in
