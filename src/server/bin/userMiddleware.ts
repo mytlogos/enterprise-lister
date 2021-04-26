@@ -1,6 +1,7 @@
 import {
   episodeStorage,
   externalUserStorage,
+  hookStorage,
   internalListStorage,
   jobStorage,
   mediumInWaitStorage,
@@ -16,10 +17,11 @@ import stringify from "stringify-stream";
 import logger from "./logger";
 import { downloadEpisodes, filterScrapeAble, search as searchMedium, loadToc } from "./externals/scraperTools";
 import { Errors, isError, isQuery, isString, stringToNumberList, getDate } from "./tools";
-import { JobRequest, ScrapeName, TimeBucket } from "./types";
+import { JobRequest, ScrapeName, ScraperHook, TimeBucket } from "./types";
 import { TocRequest } from "./externals/types";
 import { getTunnelUrls } from "./tunnel";
 import env from "./env";
+import { load } from "./externals/hookManager";
 
 function isNumberOrArray(value: number | any[]) {
   return Array.isArray(value) ? value.length : Number.isInteger(value);
@@ -151,7 +153,7 @@ export const getNew: Handler = (req, res) => {
   sendResult(res, storage.getNew(uuid, date ? new Date(date) : undefined));
 };
 
-export const getAllMedia: Handler = (req, res) => {
+export const getAllMedia: Handler = (_req, res) => {
   sendResult(res, mediumStorage.getAllMedia());
 };
 
@@ -174,6 +176,7 @@ export const postCreateFromUnusedMedia: Handler = (req, res) => {
   }
   sendResult(res, mediumInWaitStorage.createFromMediaInWait(createMedium, tocsMedia, listId));
 };
+
 export const getUnusedMedia: Handler = (req, res) => {
   sendResult(res, mediumInWaitStorage.getMediaInWait());
 };
@@ -241,11 +244,11 @@ export const processResult: Handler = (req, res) => {
   sendResult(res, storage.processResult(req.body));
 };
 
-export const getTunnel: Handler = (req, res) => {
+export const getTunnel: Handler = (_req, res) => {
   sendResult(res, Promise.resolve(getTunnelUrls()));
 };
 
-export const getDev: Handler = (req, res) => {
+export const getDev: Handler = (_req, res) => {
   sendResult(res, Promise.resolve(Boolean(env.development)));
 };
 export const checkLogin: Handler = (req, res) => {
@@ -793,11 +796,11 @@ export const getAllNews: Handler = (req, res) => {
   sendResult(res, newsStorage.getAll(uuid));
 };
 
-export const getAllParts: Handler = (req, res) => {
+export const getAllParts: Handler = (_req, res) => {
   sendResult(res, partStorage.getAll());
 };
 
-export const getAllMediaFull: Handler = (req, res) => {
+export const getAllMediaFull: Handler = (_req, res) => {
   sendResult(res, mediumStorage.getAllMediaFull());
 };
 
@@ -818,7 +821,7 @@ export const getAllEpisodes: Handler = (req, res) => {
   sendResult(res, episodeStorage.getAll(uuid));
 };
 
-export const getAllReleases: Handler = (req, res) => {
+export const getAllReleases: Handler = (_req, res) => {
   sendResult(res, episodeStorage.getAllReleases());
 };
 
@@ -827,6 +830,10 @@ export const getDisplayReleases: Handler = (req, res) => {
   const until = extractQueryParam(req, "until", true);
   const read = extractQueryParam(req, "read", true) ? extractQueryParam(req, "read").toLowerCase() == "true" : null;
   const uuid = extractQueryParam(req, "uuid");
+  const ignoredLists = stringToNumberList(extractQueryParam(req, "ignore_lists", true) || "");
+  const requiredLists = stringToNumberList(extractQueryParam(req, "only_lists", true) || "");
+  const ignoredMedia = stringToNumberList(extractQueryParam(req, "ignore_media", true) || "");
+  const requiredMedia = stringToNumberList(extractQueryParam(req, "only_media", true) || "");
 
   const latestDate = getDate(latest);
   const untilDate = until ? getDate(until) : null;
@@ -836,7 +843,19 @@ export const getDisplayReleases: Handler = (req, res) => {
     return;
   }
 
-  sendResult(res, episodeStorage.getDisplayReleases(latestDate, untilDate, read, uuid));
+  sendResult(
+    res,
+    episodeStorage.getDisplayReleases(
+      latestDate,
+      untilDate,
+      read,
+      uuid,
+      ignoredLists,
+      requiredLists,
+      ignoredMedia,
+      requiredMedia,
+    ),
+  );
 };
 
 export const getMediumReleases: Handler = (req, res) => {
@@ -883,6 +902,24 @@ export const getJobStatsTimed: Handler = (req, res) => {
     return;
   }
   sendResult(res, jobStorage.getJobsStatsTimed(bucket as TimeBucket, groupByDomain));
+};
+
+export const getAllHooks: Handler = (_req, res) => {
+  sendResult(
+    res,
+    load(true).then(() => hookStorage.getAllStream()),
+  );
+};
+
+export const putHook: Handler = (req, res) => {
+  const { hook }: { hook: ScraperHook } = req.body;
+
+  if (!hook || isInvalidId(hook.id)) {
+    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    return;
+  }
+
+  sendResult(res, hookStorage.updateScraperHook(hook));
 };
 
 export const authenticate: Handler = (req, res, next) => {

@@ -1,5 +1,4 @@
 import { TableSchema } from "./tableSchema";
-import { MediaType } from "../tools";
 import { Trigger } from "./trigger";
 import { DatabaseContext } from "./contexts/databaseContext";
 import { Uuid, EmptyPromise } from "../types";

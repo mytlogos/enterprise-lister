@@ -41,7 +41,11 @@ export default defineComponent({
   },
 
   async created() {
-    await this.loginState();
+    if (this.loggedIn) {
+      await this.$store.dispatch("load");
+    } else {
+      await this.loginState();
+    }
   },
 
   methods: {

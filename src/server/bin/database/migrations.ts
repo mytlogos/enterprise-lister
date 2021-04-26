@@ -221,4 +221,18 @@ export const Migrations: Migration[] = [
       await context.alterColumn("job_history", "end DATETIME NOT NULL");
     },
   },
+  {
+    fromVersion: 11,
+    toVersion: 12,
+    async migrate(context: DatabaseContext): EmptyPromise {
+      // Table 'scraper_hook is automatically added'
+
+      // add columns and ignore duplicate column error
+      await Promise.all(
+        ["job_state VARCHAR(200) NOT NULL"].map((value) =>
+          ignoreError(() => context.addColumn("jobs", value), [MysqlServerError.ER_DUP_FIELDNAME]),
+        ),
+      );
+    },
+  },
 ];

@@ -1,6 +1,6 @@
 import { readFileSync } from "fs";
 import { join as joinPath } from "path";
-import { getHooks } from "../externals/direct/directScraper";
+import { getHooks } from "../externals/hookManager";
 import { getElseSet } from "../tools";
 import cheerio from "cheerio";
 

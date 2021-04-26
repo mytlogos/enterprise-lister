@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(11);
+const dataBaseBuilder = new DataBaseBuilder(12);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -300,6 +300,7 @@ dataBaseBuilder
   .parseColumn("type VARCHAR(200) NOT NULL")
   .parseColumn("name VARCHAR(200) UNIQUE")
   .parseColumn("state VARCHAR(200) NOT NULL")
+  .parseColumn("job_state VARCHAR(200) NOT NULL")
   .parseColumn("interval INT NOT NULL")
   .parseColumn("deleteAfterRun INT NOT NULL")
   .parseColumn("runAfter INT")
@@ -325,6 +326,16 @@ dataBaseBuilder
   .parseColumn("context TEXT NOT NULL")
   .parseColumn("arguments TEXT")
   .parseMeta("PRIMARY KEY(id, start)")
+  .build();
+
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("scraper_hook")
+  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
+  .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
+  .parseColumn("state VARCHAR(200) NOT NULL")
+  .parseColumn("message VARCHAR(200) NOT NULL")
+  .parseMeta("PRIMARY KEY(id)")
   .build();
 
 dataBaseBuilder.addMigrations(...Migrations);

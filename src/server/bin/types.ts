@@ -1,6 +1,7 @@
 import { MediaType } from "./tools";
 import { ScrapeType } from "./externals/types";
 import { Query } from "mysql";
+import { HookState } from "./externals/hookManager";
 
 export interface SearchResult {
   coverUrl?: Link;
@@ -602,4 +603,11 @@ export interface MediumInWait {
   title: string;
   medium: MediaType;
   link: string;
+}
+
+export interface ScraperHook {
+  id: number;
+  name: string;
+  state: string;
+  message: string;
 }

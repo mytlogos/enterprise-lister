@@ -20,6 +20,7 @@ import {
   TimeBucket,
   MediaType,
   SearchResult,
+  ScraperHook,
 } from "./siteTypes";
 
 /**
@@ -66,6 +67,10 @@ const restApi = {
             get: true,
           },
         },
+      },
+      hook: {
+        get: true,
+        put: true,
       },
       searchtoc: {
         get: true,
@@ -198,6 +203,10 @@ interface GetPath {
   readonly get: MethodObject;
 }
 
+interface PutPath {
+  readonly put: MethodObject;
+}
+
 interface MediumPath {
   readonly get: MethodObject;
   readonly post: MethodObject;
@@ -308,6 +317,7 @@ interface Api {
   readonly register: RegisterPath;
   readonly user: UserPath;
   readonly search: GetPath;
+  readonly hook: GetPath & PutPath;
 }
 
 const api: Api = (function pathGenerator() {
@@ -553,13 +563,33 @@ export const HttpClient = {
    *
    * @param latest the date to get all releases after (including)
    */
-  getDisplayReleases(latest: Date, until?: Date, readFilter?: boolean): Promise<DisplayReleasesResponse> {
-    const parameter: { latest: Date; until?: Date; read?: boolean } = { latest };
+  getDisplayReleases(
+    latest: Date,
+    until?: Date,
+    readFilter?: boolean,
+    onlyLists?: number[],
+    onlyMedia?: number[],
+    ignoreLists?: number[],
+    ignoreMedia?: number[],
+  ): Promise<DisplayReleasesResponse> {
+    const parameter: any = { latest };
     if (until) {
       parameter.until = until;
     }
     if (readFilter != null) {
       parameter.read = readFilter;
+    }
+    if (onlyLists != null) {
+      parameter.only_lists = onlyLists;
+    }
+    if (onlyMedia != null) {
+      parameter.only_media = onlyMedia;
+    }
+    if (ignoreLists != null) {
+      parameter.ignore_lists = ignoreLists;
+    }
+    if (ignoreMedia != null) {
+      parameter.ignore_media = ignoreMedia;
     }
     return this.queryServer({ path: "api/user/medium/part/episode/releases/display", method: "GET" }, parameter);
   },
@@ -633,6 +663,14 @@ export const HttpClient = {
     return this.queryServer(api.list.medium.post, { listId, mediumId });
   },
 
+  getHooks(): Promise<ScraperHook[]> {
+    return this.queryServer(api.hook.get);
+  },
+
+  updateHook(hook: ScraperHook): Promise<void> {
+    return this.queryServer(api.hook.put, { hook });
+  },
+
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
     // if path includes user, it needs to be authenticated
     if (path.includes("user")) {
@@ -659,7 +697,14 @@ export const HttpClient = {
     const url = new URL(`${window.location.origin}/${path}`);
     if (query) {
       if (method === Methods.get) {
-        Object.keys(query).forEach((key) => url.searchParams.append(key, query[key]));
+        Object.keys(query).forEach((key) => {
+          const value = query[key];
+          if (Array.isArray(value)) {
+            url.searchParams.append(key, `[${value.join(",")}]`);
+          } else {
+            url.searchParams.append(key, value);
+          }
+        });
       } else {
         // @ts-ignore
         init.body = JSON.stringify(query);

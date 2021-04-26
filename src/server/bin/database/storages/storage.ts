@@ -33,6 +33,7 @@ import { JobContext } from "../contexts/jobContext";
 import { InternalListContext } from "../contexts/internalListContext";
 import { ExternalUserContext } from "../contexts/externalUserContext";
 import { ExternalListContext } from "../contexts/externalListContext";
+import { ScraperHookContext } from "../contexts/scraperHookContext";
 import { SubContext } from "../contexts/subContext";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
@@ -425,6 +426,7 @@ export const jobStorage = createStorage<JobContext>("jobContext");
 export const internalListStorage = createStorage<InternalListContext>("internalListContext");
 export const externalUserStorage = createStorage<ExternalUserContext>("externalUserContext");
 export const externalListStorage = createStorage<ExternalListContext>("externalListContext");
+export const hookStorage = createStorage<ScraperHookContext>("scraperHookContext");
 
 /**
  *

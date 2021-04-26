@@ -76,6 +76,23 @@
         </tr>
       </tbody>
     </table>
+    <p>
+      <button
+        class="btn btn-primary"
+        type="button"
+        data-toggle="collapse"
+        data-target="#collapseChart"
+        aria-expanded="false"
+        aria-controls="collapseChart"
+      >
+        Show Release Chart
+      </button>
+    </p>
+    <div id="collapseChart" class="collapse">
+      <div class="chart-container w-75">
+        <canvas ref="chart" />
+      </div>
+    </div>
     <h1 id="medium-releases-title">Releases</h1>
     <toast
       id="mark-toast"
@@ -144,20 +161,43 @@ import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
 import $ from "jquery";
 import { batch, formatDate, mergeMediaToc } from "../init";
+import Chart from "chart.js";
 
 interface Data {
-  releases: any[];
+  releases: MediumRelease[];
   details: SimpleMedium;
   tocs: FullMediumToc[];
   markToast: { message: string; success: boolean };
+  dirty: boolean;
 }
 
 // initialize all tooltips on this page
 $(function () {
+  // eslint-disable-next-line @typescript-eslint/quotes
   $('[data-toggle="tooltip"]').tooltip();
 });
 
 const domainReg = /(https?:\/\/([^/]+))/;
+
+/**
+ * Slightly modified from: https://stackoverflow.com/a/21648508
+ */
+function hexToRgbA(hex: string, opacity = 1) {
+  if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex) && (opacity < 1 || opacity > 0)) {
+    let c = hex.substring(1).split("");
+    if (c.length == 3) {
+      c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+    }
+    const fullHex = Number("0x" + c.join(""));
+    return `rgba(${[(fullHex >> 16) & 255, (fullHex >> 8) & 255, fullHex & 255].join(",")},${opacity})`;
+  }
+  throw new Error("Bad Hex");
+}
+
+const colorPalette = ["#003f5c", "#2f4b7c", "#665191", "#a05195", "#d45087", "#f95d6a", "#ff7c43", "#ffa600"];
+
+const bgColorPalette = colorPalette.map((color) => hexToRgbA(color, 0.5));
+let chart: Chart;
 
 export default defineComponent({
   name: "MediumDetail",
@@ -195,6 +235,7 @@ export default defineComponent({
         message: "",
         success: false,
       },
+      dirty: false,
     };
   },
 
@@ -208,7 +249,52 @@ export default defineComponent({
     },
   },
 
+  watch: {
+    releases: {
+      handler() {
+        this.startUpdate();
+      },
+      deep: true,
+    },
+  },
+
   mounted() {
+    chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
+      type: "line",
+      data: {},
+      options: {
+        scales: {
+          xAxes: [
+            {
+              type: "time",
+              distribution: "linear",
+              time: {
+                unit: "hour",
+                displayFormats: {
+                  hour: "DD.MM.YYYY",
+                },
+              },
+            },
+          ],
+          yAxes: [
+            {
+              display: true,
+              id: "left-y-axis",
+              type: "linear",
+              position: "left",
+              ticks: {
+                // beginAtZero: true,
+                // max: 20,
+              },
+              scaleLabel: {
+                display: true,
+                labelString: "Unused",
+              },
+            },
+          ],
+        },
+      },
+    });
     HttpClient.getMedia(this.id)
       .then((medium) => {
         if (Array.isArray(medium)) {
@@ -234,6 +320,63 @@ export default defineComponent({
   },
 
   methods: {
+    startUpdate() {
+      if (this.dirty) {
+        return;
+      }
+      this.dirty = true;
+      // update next event tick
+      setTimeout(() => this.update());
+    },
+    update() {
+      const to = new Date().getTime();
+      const from = to - 1000 * 60 * 60 * 24 * 30;
+
+      const count = new Map<number, number>();
+
+      const timePoints = this.releases.map((value) => {
+        const key = value.date.getTime();
+        count.set(key, (count.get(key) || 0) + 1);
+        return key;
+      }) as number[];
+
+      const points = [...new Set(timePoints)].sort();
+
+      // remove the points which are not in datetime range
+      for (let index = 0; index < points.length; index++) {
+        const point = points[index];
+
+        if (point < from || point > to) {
+          points.splice(index, 1);
+          index--;
+        }
+      }
+
+      const yValues = points.map((value) => count.get(value));
+      const xValues = points.map((value) => new Date(value));
+
+      const newDataSet = [];
+
+      // @ts-expect-error
+      chart.options.scales.yAxes[0].scaleLabel.labelString = "Release Count";
+
+      newDataSet.push({
+        label: "All",
+        data: yValues,
+        backgroundColor: bgColorPalette[newDataSet.length],
+        borderWidth: 1,
+        borderColor: colorPalette[newDataSet.length],
+        // This binds the dataset to the left y axis
+        yAxisID: "left-y-axis",
+      });
+
+      chart.data.labels = xValues;
+      chart.data.datasets = newDataSet;
+      chart.update();
+
+      // no longer dirty as it is "tidied up" now
+      this.dirty = false;
+    },
     /**
      * Format a given Date to a german locale string.
      */

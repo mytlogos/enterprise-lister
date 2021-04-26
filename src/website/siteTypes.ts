@@ -389,6 +389,10 @@ export interface VuexStore {
 export interface ReleaseStore {
   readFilter: boolean | undefined;
   typeFilter: number;
+  onlyMedia: number[];
+  onlyLists: number[];
+  ignoreMedia: number[];
+  ignoreLists: number[];
 }
 
 export interface ExternalUserStore {
@@ -406,4 +410,11 @@ export interface MediaStore {
 
 export interface NewsStore {
   news: News[];
+}
+
+export interface ScraperHook {
+  id: number;
+  name: string;
+  state: string;
+  message: string;
 }

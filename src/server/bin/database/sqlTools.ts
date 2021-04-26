@@ -26,7 +26,8 @@ export type ModificationKey =
   | "synonym"
   | "toc"
   | "news"
-  | "medium_in_wait";
+  | "medium_in_wait"
+  | "scraper_hook";
 
 /**
  * Store the type of modification in the Async Storage associated with this context.
@@ -73,4 +74,12 @@ export function storeCount(key: CountKey): void {
   }
   const count = store.get(key) || 0;
   store.set(key, count + 1);
+}
+
+/**
+ * Returns a comma separated list of only integers.
+ * @param numbers ids
+ */
+export function toSqlList(numbers: number[]): string {
+  return numbers.filter(Number.isSafeInteger).join(",");
 }

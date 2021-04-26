@@ -43,6 +43,7 @@ export interface PeriodicJob extends ScraperJob {
 export interface Hook {
   name: string;
   medium: MediaType;
+  disabled?: boolean;
   domainReg?: RegExp;
   tocPattern?: RegExp;
   redirectReg?: RegExp;
