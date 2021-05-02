@@ -1,18 +1,4 @@
-import {
-  checkTocsJob,
-  feed,
-  list,
-  news,
-  oneTimeToc,
-  queueExternalUser,
-  queueTocsJob,
-  remapMediaParts,
-  ScrapeEvent,
-  scrapeNewsJob,
-  ScraperHelper,
-  searchForTocJob,
-  toc,
-} from "./scraperTools";
+import { ScrapeEvent, ScraperHelper } from "./scraperTools";
 import { Job, JobQueue, OutsideJob } from "../jobManager";
 import { getElseSet, isString, maxValue, stringify } from "../tools";
 import logger from "../logger";
@@ -23,30 +9,7 @@ import { getStore } from "../asyncStorage";
 import Timeout = NodeJS.Timeout;
 import { TocRequest } from "./types";
 import { getNewsAdapter, load } from "./hookManager";
-
-class ScrapeJob {
-  public static readonly toc = new ScrapeJob(ScrapeName.toc, toc, ScrapeEvent.TOC);
-  public static readonly oneTimeToc = new ScrapeJob(ScrapeName.oneTimeToc, oneTimeToc, ScrapeEvent.TOC);
-  public static readonly searchForToc = new ScrapeJob(ScrapeName.searchForToc, searchForTocJob, ScrapeEvent.TOC);
-  public static readonly feed = new ScrapeJob(ScrapeName.feed, feed, ScrapeEvent.FEED);
-  public static readonly news = new ScrapeJob(ScrapeName.news, news, ScrapeEvent.NEWS);
-  public static readonly newsAdapter = new ScrapeJob(ScrapeName.newsAdapter, scrapeNewsJob, ScrapeEvent.NEWS);
-  public static readonly oneTimeUser = new ScrapeJob(ScrapeName.oneTimeUser, list, ScrapeEvent.LIST);
-  public static readonly checkTocs = new ScrapeJob(ScrapeName.checkTocs, checkTocsJob);
-  public static readonly queueTocs = new ScrapeJob(ScrapeName.queueTocs, queueTocsJob);
-  public static readonly remapMediaParts = new ScrapeJob(ScrapeName.remapMediaParts, remapMediaParts);
-  public static readonly queueExternalUser = new ScrapeJob(ScrapeName.queueExternalUser, queueExternalUser);
-
-  private constructor(
-    public readonly name: ScrapeName,
-    public readonly func: (...args: any[]) => any,
-    public readonly event?: ScrapeEvent,
-  ) {}
-
-  public toString() {
-    return this.name;
-  }
-}
+import { ScrapeJob } from "./scrapeJobs";
 
 const missingConnections = new Set<Date>();
 
