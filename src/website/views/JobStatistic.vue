@@ -74,8 +74,8 @@
           <td>{{ item.avgnetwork }}</td>
           <td>{{ item.avgreceived }}</td>
           <td>{{ item.avgsend }}</td>
-          <td>{{ item.queries }}</td>
           <td>{{ item.count }}</td>
+          <td>{{ item.queries }}</td>
           <td>{{ item.allupdate }}</td>
           <td>{{ item.allcreate }}</td>
           <td>{{ item.alldelete }}</td>
