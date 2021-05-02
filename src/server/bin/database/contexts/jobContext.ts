@@ -16,6 +16,7 @@ import {
   TimeBucket,
   TimeJobStats,
   PropertyNames,
+  TypedQuery,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
@@ -429,6 +430,14 @@ export class JobContext extends SubContext {
 
   public getJobsInState(state: JobState): Promise<JobItem[]> {
     return this.query("SELECT * FROM jobs WHERE state = ? order by nextRun", state);
+  }
+
+  public async getJobHistoryStream(): Promise<TypedQuery<JobHistoryItem>> {
+    return this.queryStream("SELECT * FROM job_history ORDER BY start;");
+  }
+
+  public async getJobHistory(): Promise<JobHistoryItem[]> {
+    return this.query("SELECT * FROM job_history ORDER BY start;");
   }
 
   private async addJobHistory(jobs: JobItem | JobItem[], finished: Date): EmptyPromise {

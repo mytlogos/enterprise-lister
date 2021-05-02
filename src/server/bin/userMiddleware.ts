@@ -1,4 +1,5 @@
 import {
+  appEventStorage,
   episodeStorage,
   externalUserStorage,
   hookStorage,
@@ -17,7 +18,17 @@ import stringify from "stringify-stream";
 import logger from "./logger";
 import { downloadEpisodes, filterScrapeAble, search as searchMedium, loadToc } from "./externals/scraperTools";
 import { Errors, isError, isQuery, isString, stringToNumberList, getDate } from "./tools";
-import { JobRequest, ScrapeName, ScraperHook, TimeBucket } from "./types";
+import {
+  AppEvent,
+  AppEventFilter,
+  AppEventProgram,
+  AppEventType,
+  JobRequest,
+  Nullable,
+  ScrapeName,
+  ScraperHook,
+  TimeBucket,
+} from "./types";
 import { TocRequest } from "./externals/types";
 import { getTunnelUrls } from "./tunnel";
 import env from "./env";
@@ -29,6 +40,14 @@ function isNumberOrArray(value: number | any[]) {
 
 function isInvalidId(id: any): boolean {
   return !Number.isInteger(id) || id < 1;
+}
+
+function toArray(value: string): Nullable<any[]> {
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return null;
+  }
 }
 
 function isInvalidSimpleMedium(medium: any): boolean {
@@ -933,6 +952,55 @@ export const putHook: Handler = (req, res) => {
   }
 
   sendResult(res, hookStorage.updateScraperHook(hook));
+};
+
+export const getAllAppEvents: Handler = (req, res) => {
+  const filter = {} as AppEventFilter;
+  const from = extractQueryParam(req, "from", true);
+
+  if (from) {
+    filter.fromDate = getDate(from) || undefined;
+  }
+  const to = extractQueryParam(req, "to", true);
+  if (to) {
+    filter.toDate = getDate(to) || undefined;
+  }
+
+  const program = extractQueryParam(req, "program", true);
+
+  if (program) {
+    const programs = toArray(program);
+
+    if (programs) {
+      filter.program = programs as AppEventProgram[];
+    } else {
+      filter.program = program as AppEventProgram;
+    }
+  }
+
+  const type = extractQueryParam(req, "type", true);
+
+  if (type) {
+    const types = toArray(type);
+
+    if (types) {
+      filter.type = types as AppEventType[];
+    } else {
+      filter.type = type as AppEventType;
+    }
+  }
+  const sortOrder = extractQueryParam(req, "sortOrder", true);
+
+  if (sortOrder) {
+    const sortOrders = toArray(sortOrder);
+
+    if (sortOrders) {
+      filter.sortOrder = sortOrders as Array<keyof AppEvent>;
+    } else {
+      filter.sortOrder = sortOrder as keyof AppEvent;
+    }
+  }
+  sendResult(res, appEventStorage.getAppEvents(filter));
 };
 
 export const authenticate: Handler = (req, res, next) => {

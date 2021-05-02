@@ -55,6 +55,7 @@ function userRouter(): Router {
   router.use("/medium", mediumRouter());
   router.use("/jobs", jobsRouter());
   router.use("/hook", hooksRouter());
+  router.use("/events", UserApi.getAllAppEvents);
 
   router.use("/news", newsRouter());
   router.use("/list", listRouter());

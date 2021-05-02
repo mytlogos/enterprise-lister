@@ -338,6 +338,16 @@ dataBaseBuilder
   .parseMeta("PRIMARY KEY(id)")
   .build();
 
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("app_events")
+  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
+  .parseColumn("program VARCHAR(200) NOT NULL")
+  .parseColumn("date DATETIME NOT NULL")
+  .parseColumn("type VARCHAR(200) NOT NULL")
+  .parseMeta("PRIMARY KEY(id)")
+  .build();
+
 dataBaseBuilder.addMigrations(...Migrations);
 
 /*

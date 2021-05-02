@@ -605,9 +605,34 @@ export interface MediumInWait {
   link: string;
 }
 
+export interface MediumInWaitSearch {
+  title?: string;
+  medium?: MediaType;
+  link?: string;
+  limit?: number;
+}
+
 export interface ScraperHook {
   id: number;
   name: string;
   state: string;
   message: string;
+}
+
+export type AppEventType = "start" | "end";
+export type AppEventProgram = "server" | "crawler";
+
+export interface AppEvent {
+  id: number;
+  program: "server" | "crawler";
+  date: Date;
+  type: AppEventType;
+}
+
+export interface AppEventFilter {
+  program?: AppEventProgram | AppEventProgram[];
+  fromDate?: Date;
+  toDate?: Date;
+  type?: AppEventType | AppEventType[];
+  sortOrder?: keyof AppEvent | Array<keyof AppEvent>;
 }

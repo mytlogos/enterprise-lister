@@ -24,6 +24,7 @@ import {
   MediumInWait,
   MediumInWaitSearch,
 } from "./siteTypes";
+import { AppEvent, AppEventFilter } from "../server/bin/types";
 
 /**
  * Allowed Methods for the API.
@@ -51,6 +52,9 @@ const restApi = {
         post: true,
       },
       lists: {
+        get: true,
+      },
+      events: {
         get: true,
       },
       jobs: {
@@ -193,6 +197,7 @@ interface RegisterPath {
 
 interface UserPath {
   readonly post: MethodObject;
+  readonly events: GetPath;
 }
 
 interface LogoutPath {
@@ -639,6 +644,10 @@ export const HttpClient = {
     return this.queryServer(api.jobs.stats.timed.get, { bucket, groupByDomain });
   },
 
+  getAppEvents(filter: AppEventFilter): Promise<AppEvent[]> {
+    return this.queryServer(api.user.events.get, filter);
+  },
+
   /**
    * Get the Job Details of a single Job.
    * @param id id of the Job
@@ -713,7 +722,7 @@ export const HttpClient = {
         Object.keys(query).forEach((key) => {
           const value = query[key];
           if (Array.isArray(value)) {
-            url.searchParams.append(key, `[${value.join(",")}]`);
+            url.searchParams.append(key, `[${value.map((v) => (typeof v === "string" ? `"${v}"` : v)).join(",")}]`);
           } else {
             url.searchParams.append(key, value);
           }

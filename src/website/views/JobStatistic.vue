@@ -90,16 +90,17 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import Chart from "chart.js";
-import { BasicJobStats, TimeBucket, TimeJobStats } from "../siteTypes";
+import { TimeBucket, TimeJobStats } from "../siteTypes";
 import { formatDate, round } from "../init";
 import * as storage from "../storage";
 
 interface ChartJobDatum extends TimeJobStats {
   modifications: number;
   succeeded: number;
+  countPerMinute?: number;
 }
 
-type Unit = "Milliseconds" | "Bytes" | "Count" | "Percent";
+type Unit = "Milliseconds" | "Bytes" | "Count" | "Percent" | "Count per Minute";
 
 interface Filter {
   name: string;
@@ -220,6 +221,13 @@ export default defineComponent({
         left: false,
         right: false,
         unit: "Count",
+      },
+      {
+        name: "Count per Minute",
+        key: "countPerMinute",
+        left: false,
+        right: false,
+        unit: "Count per Minute",
       },
       {
         name: "Failure Rate",
@@ -393,7 +401,52 @@ export default defineComponent({
     },
     loadData() {
       const groupByDomain = this.groupByDomain.left || this.groupByDomain.right;
-      HttpClient.getJobsStatsTimed(this.selectedTime, groupByDomain).then((result) => {
+
+      const eventsPromise = HttpClient.getAppEvents({
+        program: "crawler",
+        type: ["start", "end"],
+        sortOrder: "date",
+      }).then((values) => {
+        // ensure value are dates and no strings
+        values.forEach((value) => (value.date = new Date(value.date)));
+        return values;
+      });
+
+      HttpClient.getJobsStatsTimed(this.selectedTime, groupByDomain).then(async (result) => {
+        const events = await eventsPromise;
+        const bucketsFilled = {} as Record<number, number>;
+        const step =
+          this.selectedTime === "minute" ? 1000 * 60 : this.selectedTime === "hour" ? 1000 * 3600 : 1000 * 3600 * 24;
+
+        for (let i = 0; i < events.length; i++) {
+          const element = events[i];
+
+          if (element.type !== "start") {
+            continue;
+          }
+
+          const next = events[++i];
+
+          if (!next || next.type !== "end") {
+            break;
+          }
+          // now create buckets
+          const start = element.date.getTime();
+          const end = next.date.getTime();
+
+          // TODO what needs to be done if start and have different offsets?
+          const timezoneOffset = element.date.getTimezoneOffset() * 60 * 1000;
+
+          for (let bucket = start; bucket < end; bucket += step) {
+            const bucketIndex = bucket - (bucket % step) + timezoneOffset;
+            const bucketSize = bucket + step < end ? 1 : Math.abs(end - bucket) / step;
+            // accumulate bucket size
+            bucketsFilled[bucketIndex] = (bucketsFilled[bucketIndex] || 0) + bucketSize;
+          }
+        }
+
+        const minuteDivisor = this.selectedTime === "minute" ? 1 : this.selectedTime === "hour" ? 60 : 60 * 24;
+
         result.forEach((value) => {
           const datum = value as ChartJobDatum;
           if (datum.domain) {
@@ -402,6 +455,9 @@ export default defineComponent({
           }
           this.conformJobStat(datum);
           datum.timepoint = new Date(datum.timepoint);
+
+          const bucketFill = bucketsFilled[datum.timepoint.getTime()];
+          datum.countPerMinute = bucketFill ? datum.count / (minuteDivisor * bucketFill) : 0;
         });
         // @ts-expect-error
         this.data = result;

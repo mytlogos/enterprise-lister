@@ -35,6 +35,7 @@ import { ExternalUserContext } from "../contexts/externalUserContext";
 import { ExternalListContext } from "../contexts/externalListContext";
 import { ScraperHookContext } from "../contexts/scraperHookContext";
 import { SubContext } from "../contexts/subContext";
+import { AppEventContext } from "../contexts/appEventContext";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -427,6 +428,7 @@ export const internalListStorage = createStorage<InternalListContext>("internalL
 export const externalUserStorage = createStorage<ExternalUserContext>("externalUserContext");
 export const externalListStorage = createStorage<ExternalListContext>("externalListContext");
 export const hookStorage = createStorage<ScraperHookContext>("scraperHookContext");
+export const appEventStorage = createStorage<AppEventContext>("appEventContext");
 
 /**
  *
