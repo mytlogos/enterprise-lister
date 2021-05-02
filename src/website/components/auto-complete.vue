@@ -3,6 +3,7 @@
     <input
       v-model="search"
       type="text"
+      :class="inputClass"
       :placeholder="placeholder"
       @input="onChange"
       @keydown.down="onArrowDown"
@@ -47,6 +48,11 @@ export default defineComponent({
       type: Array as PropType<any[]>,
       required: true,
     },
+    inputClass: {
+      type: String,
+      required: false,
+      default: "",
+    },
     titleKey: {
       type: String,
       required: false,
@@ -68,7 +74,7 @@ export default defineComponent({
       default: "",
     },
   },
-  emits: ["input"],
+  emits: ["input", "text"],
   data(): Data {
     return {
       isOpen: false,
@@ -109,6 +115,7 @@ export default defineComponent({
       if (this.isAsync) {
         this.isLoading = true;
       } else {
+        this.$emit("text", this.search);
         this.filterResults();
         this.isOpen = true;
       }

@@ -419,3 +419,16 @@ export interface ScraperHook {
   state: string;
   message: string;
 }
+
+export interface MediumInWait {
+  title: string;
+  medium: MediaType;
+  link: string;
+}
+
+export interface MediumInWaitSearch {
+  title?: string;
+  medium?: MediaType;
+  link?: string;
+  limit?: number;
+}

@@ -44,6 +44,28 @@ export function remove<T>(array: T[], value: T): void {
   }
 }
 
+export type AnyFunction = (...args: any[]) => any;
+
+/**
+ * Debounces a given Function.
+ *
+ * @param func function to debounce
+ * @param timeout time to execute function after last call in ms
+ * @returns nothing
+ */
+export function debounce<Func extends AnyFunction, thisValue = void>(
+  this: thisValue,
+  func: Func,
+  timeout = 500,
+): (...args: Parameters<Func>) => void {
+  let timer: number;
+  return (...args) => {
+    clearTimeout(timer);
+    // @ts-expect-error
+    timer = setTimeout(() => func.apply(this, args), timeout);
+  };
+}
+
 /**
  * Splits an array into multiple batches with each a length of batchSize.
  * The last batch may have less than batchSize, but is never empty.

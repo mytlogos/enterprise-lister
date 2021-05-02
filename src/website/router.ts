@@ -94,6 +94,14 @@ const router = createRouter({
       component: () => import(/* webpackChunkName: "read" */ "./views/Media.vue"),
     },
     {
+      path: "/unusedMedia",
+      name: "media-in-wait",
+      // route level code-splitting
+      // this generates a separate chunk (login.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import(/* webpackChunkName: "read" */ "./views/MediaInWait.vue"),
+    },
+    {
       path: "/medium/:id",
       name: "medium",
       props: (to) => {

@@ -178,7 +178,20 @@ export const postCreateFromUnusedMedia: Handler = (req, res) => {
 };
 
 export const getUnusedMedia: Handler = (req, res) => {
-  sendResult(res, mediumInWaitStorage.getMediaInWait());
+  const limit = Number(extractQueryParam(req, "limit", true));
+  const medium = Number(extractQueryParam(req, "medium", true));
+  const title = extractQueryParam(req, "title", true);
+  const link = extractQueryParam(req, "link", true);
+
+  sendResult(
+    res,
+    mediumInWaitStorage.getMediaInWait({
+      limit,
+      medium,
+      title,
+      link,
+    }),
+  );
 };
 
 export const readNews: Handler = (req, res) => {

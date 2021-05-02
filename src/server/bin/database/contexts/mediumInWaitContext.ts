@@ -1,7 +1,16 @@
 import { SubContext } from "./subContext";
-import { Medium, SimpleMedium, MultiSingleValue, EmptyPromise, MediumInWait } from "../../types";
+import {
+  Medium,
+  SimpleMedium,
+  MultiSingleValue,
+  EmptyPromise,
+  MediumInWait,
+  TypedQuery,
+  MediumInWaitSearch,
+} from "../../types";
 import { equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
+import { escapeLike } from "../storages/storageTools";
 
 export class MediumInWaitContext extends SubContext {
   public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {
@@ -64,8 +73,30 @@ export class MediumInWaitContext extends SubContext {
     return true;
   }
 
-  public getMediaInWait(): Promise<MediumInWait[]> {
-    return this.query("SELECT * FROM medium_in_wait");
+  public async getMediaInWait(search?: MediumInWaitSearch): Promise<TypedQuery<MediumInWait>> {
+    const limit = search?.limit && search.limit > 0 ? ` LIMIT ${search.limit}` : "";
+    const whereFilter = [];
+    const values = [];
+
+    if (search?.medium) {
+      whereFilter.push("medium = ?");
+      values.push(search.medium);
+    }
+
+    if (search?.link && search.link !== "undefined") {
+      whereFilter.push(`link like '%${escapeLike(search.link)}%'`);
+      values.push(search.link);
+    }
+
+    if (search?.title && search.title !== "undefined") {
+      whereFilter.push(`link like '%${escapeLike(search.title)}%'`);
+      values.push(search.title);
+    }
+    return this.queryStream(
+      `SELECT * FROM medium_in_wait${
+        whereFilter.length ? " WHERE " + whereFilter.join(" AND ") : ""
+      } ORDER BY title${limit}`,
+    );
   }
 
   public async deleteMediaInWait(mediaInWait: MultiSingleValue<MediumInWait>): EmptyPromise {

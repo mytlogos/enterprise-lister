@@ -21,6 +21,8 @@ import {
   MediaType,
   SearchResult,
   ScraperHook,
+  MediumInWait,
+  MediumInWaitSearch,
 } from "./siteTypes";
 
 /**
@@ -96,7 +98,9 @@ const restApi = {
         releases: {
           get: true,
         },
-
+        unused: {
+          get: true,
+        },
         progress: {
           get: true,
           post: true,
@@ -210,11 +214,13 @@ interface PutPath {
 interface MediumPath {
   readonly get: MethodObject;
   readonly post: MethodObject;
+  readonly put: MethodObject;
   readonly delete: MethodObject;
   readonly all: AllMediumPath;
   readonly allFull: AllFullMediumPath;
   readonly allSecondary: GetPath;
   readonly releases: MediumReleasesPath;
+  readonly unused: GetPath;
 }
 
 interface MediumReleasesPath {
@@ -543,9 +549,8 @@ export const HttpClient = {
     return this.queryServer(api.medium.get, { mediumId: media });
   },
 
-  updateMedium(data: { id: number; prop: string }): Promise<void> {
-    // TODO
-    return Promise.resolve();
+  updateMedium(data: SimpleMedium): Promise<boolean> {
+    return this.queryServer(api.medium.post, { medium: data });
   },
 
   deleteMedium(id: number): Promise<void> {
@@ -669,6 +674,14 @@ export const HttpClient = {
 
   updateHook(hook: ScraperHook): Promise<void> {
     return this.queryServer(api.hook.put, { hook });
+  },
+
+  getAllMediaInWaits(search?: MediumInWaitSearch): Promise<MediumInWait[]> {
+    return this.queryServer(api.medium.unused.get, search);
+  },
+
+  postCreateMediumFromMediaInWaits(source: MediumInWait, others: MediumInWait[], listId: number): Promise<Medium> {
+    return this.queryServer(api.medium.unused.get, { createMedium: source, tocsMedia: others, listId });
   },
 
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
