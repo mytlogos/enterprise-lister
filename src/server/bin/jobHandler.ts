@@ -47,6 +47,7 @@ import {
 } from "./database/storages/storage";
 import { MissingResourceError, UrlError } from "./externals/errors";
 import { getStore } from "./asyncStorage";
+import { DisabledHookError } from "./externals/hookManager";
 
 const scraper = DefaultJobScraper;
 
@@ -799,7 +800,11 @@ async function newsHandler(result: NewsResult) {
 async function tocErrorHandler(error: Error) {
   const store = getStore();
   if (store) {
-    store.set("result", "failed");
+    if (error instanceof DisabledHookError) {
+      store.set("result", "warning");
+    } else {
+      store.set("result", "failed");
+    }
     store.set("message", error.message);
   }
   // TODO: 10.03.2020 remove any releases associated? with this toc
@@ -815,6 +820,8 @@ async function tocErrorHandler(error: Error) {
       logger.warn("toc will be removed, url is not what the scraper expected: " + error.url);
       await mediumStorage.removeToc(error.url);
       await jobStorage.removeJobLike("name", error.url);
+    } else if (error instanceof DisabledHookError) {
+      logger.warn(error.message);
     } else {
       logger.error(error);
     }
@@ -823,36 +830,32 @@ async function tocErrorHandler(error: Error) {
   }
 }
 
-scraper.on("feed:error", (errorValue: any) => {
+function defaultErrorHandler(errorValue: any): void {
   const store = getStore();
   if (store) {
-    store.set("result", "failed");
+    if (errorValue instanceof DisabledHookError) {
+      store.set("result", "warning");
+    } else {
+      store.set("result", "failed");
+    }
     store.set("message", errorValue.message);
   }
-  logger.error(errorValue);
-});
-scraper.on("toc:error", (errorValue: any) => tocErrorHandler(errorValue));
-scraper.on("list:error", (errorValue: any) => {
-  const store = getStore();
-  if (store) {
-    store.set("result", "failed");
-    store.set("message", errorValue.message);
+  if (errorValue instanceof DisabledHookError) {
+    logger.warn(errorValue.message);
+  } else {
+    logger.error(errorValue);
   }
-  logger.error(errorValue);
-});
+}
 
-scraper.on("news:error", (errorValue: any) => {
-  const store = getStore();
-  if (store) {
-    store.set("result", "failed");
-    store.set("message", errorValue.message);
-  }
-  logger.error(errorValue);
-});
-scraper.on("news", (result) => newsHandler(result));
-scraper.on("toc", (result) => tocHandler(result));
-scraper.on("feed", (result) => feedHandler(result));
-scraper.on("list", (result) => listHandler(result));
+scraper.on("feed:error", defaultErrorHandler);
+scraper.on("toc:error", tocErrorHandler);
+scraper.on("list:error", defaultErrorHandler);
+scraper.on("news:error", defaultErrorHandler);
+
+scraper.on("news", newsHandler);
+scraper.on("toc", tocHandler);
+scraper.on("feed", feedHandler);
+scraper.on("list", listHandler);
 
 export const startCrawler = (): void => {
   scraper

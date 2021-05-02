@@ -100,7 +100,7 @@ export async function load(unloadedOnly = false): EmptyPromise {
   }
 }
 
-class DisabledHookError extends Error {
+export class DisabledHookError extends Error {
   public constructor(name: string) {
     super("Called a function on the disabled Hook '" + name + "'");
     this.name = "DisabledHookError";
@@ -113,10 +113,16 @@ function disableHook(hook: Hook): Hook {
   // let every function property throw an error when called
   for (const [key, value] of Object.entries(hook)) {
     if (typeof value === "function") {
-      // @ts-expect-error
-      hook[key] = () => {
+      const func = () => {
         throw new DisabledHookError(hook.name);
       };
+      // some functions may have properties defined, so copy them
+      for (const [funcKey, funcValue] of Object.entries(value)) {
+        // @ts-expect-error
+        func[funcKey] = funcValue;
+      }
+      // @ts-expect-error
+      hook[key] = func;
     }
   }
   return hook;

@@ -31,6 +31,8 @@
                     ? 'badge-success'
                     : item.result === 'failed'
                     ? 'badge-danger'
+                    : item.result === 'warning'
+                    ? 'badge-warning'
                     : 'badge-light'
                 "
               >
