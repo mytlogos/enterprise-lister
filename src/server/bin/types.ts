@@ -1,7 +1,6 @@
 import { MediaType } from "./tools";
 import { ScrapeType } from "./externals/types";
-import { Query } from "mysql";
-import { HookState } from "./externals/hookManager";
+import { FieldInfo, MysqlError, Query } from "mysql";
 
 export interface SearchResult {
   coverUrl?: Link;
@@ -568,9 +567,16 @@ export enum MilliTime {
   DAY = 86400000,
 }
 
-// @ts-expect-error
-export interface TypedQuery<Packet> extends Query {
-  on(ev: "packet", callback: (packet: Packet) => void): Query;
+export interface TypedQuery<Packet = any> extends Query {
+  on(ev: "packet", callback: (packet: any) => void): Query;
+
+  on(ev: "result", callback: (row: Packet, index: number) => void): Query;
+
+  on(ev: "error", callback: (err: MysqlError) => void): Query;
+
+  on(ev: "fields", callback: (fields: FieldInfo[], index: number) => void): Query;
+
+  on(ev: "end", callback: () => void): Query;
 }
 
 export interface ListMedia {
