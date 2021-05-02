@@ -203,7 +203,7 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
-import { AllJobStats, Job, JobStats, SimpleMedium } from "../siteTypes";
+import { AllJobStats, Job, JobStats } from "../siteTypes";
 import { absoluteToRelative, formatDate, round } from "../init";
 
 interface LiveJob {
