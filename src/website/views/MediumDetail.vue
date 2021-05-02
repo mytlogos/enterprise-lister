@@ -103,7 +103,13 @@
       data-autohide="false"
       style="position: absolute; margin-top: -7em"
     />
-    <button class="btn btn-dark" @click.left="markAll(true)">Mark all read</button>
+    <div class="d-flex">
+      <button class="btn btn-dark" @click.left="markAll(true)">Mark all read</button>
+      <div class="custom-control custom-switch">
+        <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="custom-control-input" />
+        <label class="custom-control-label" for="collapseToEpisode">Display Episodes only</label>
+      </div>
+    </div>
     <table class="table table-striped table-hover table-sm" aria-describedby="medium-releases-title">
       <thead class="thead-dark">
         <th scope="col">#</th>
@@ -112,7 +118,7 @@
         <th scope="col">Actions</th>
       </thead>
       <tbody>
-        <tr v-for="entry of computedReleases" :key="entry.episodeId">
+        <tr v-for="entry of computedReleases" :key="episodesOnly ? entry.episodeId : entry.episodeId + entry.link">
           <td class="">
             {{ entry.combiIndex }}
           </td>
@@ -126,6 +132,9 @@
             <a :href="entry.link" target="_blank" rel="noopener noreferrer">
               {{ entry.title }}
             </a>
+            <template v-if="entry.others && entry.others.length">
+              <span :title="entry.others.length + ' other Releases available'"> + {{ entry.others.length }} </span>
+            </template>
           </td>
           <td>
             <button
@@ -163,8 +172,12 @@ import $ from "jquery";
 import { batch, formatDate, mergeMediaToc } from "../init";
 import Chart from "chart.js";
 
+interface EpisodeRelease extends MediumRelease {
+  others: MediumRelease[];
+}
+
 interface Data {
-  releases: MediumRelease[];
+  releases: MediumRelease[] | EpisodeRelease[];
   details: SimpleMedium;
   tocs: FullMediumToc[];
   markToast: { message: string; success: boolean };
@@ -240,12 +253,50 @@ export default defineComponent({
   },
 
   computed: {
-    computedReleases(): MediumRelease[] {
-      return [...this.releases].sort((first, second) => second.combiIndex - first.combiIndex);
+    computedReleases(): MediumRelease[] | EpisodeRelease[] {
+      const sorted = [...this.releases].sort((first, second) => second.combiIndex - first.combiIndex);
+
+      if (this.episodesOnly) {
+        const episodes = [] as EpisodeRelease[];
+
+        for (let i = 1; i < sorted.length; i++) {
+          const previous = sorted[i - 1];
+
+          const others = [] as MediumRelease[];
+          const episode: EpisodeRelease = {
+            others,
+            ...previous,
+          };
+
+          for (; i < sorted.length && sorted[i].episodeId === previous.episodeId; i++) {
+            const element = sorted[i];
+
+            if (!element.locked) {
+              episode.locked = false;
+            }
+            if (element.date < episode.date) {
+              episode.date = element.date;
+              episode.link = element.link;
+            }
+            others.push(element);
+          }
+          episodes.push(episode);
+        }
+        return episodes;
+      }
+      return sorted;
     },
     computedMedium(): SimpleMedium {
       // merge tocs to a single display result
       return mergeMediaToc({ ...this.details }, this.tocs);
+    },
+    episodesOnly: {
+      get(): boolean {
+        return this.$store.state.media.episodesOnly;
+      },
+      set(value: boolean) {
+        this.$store.commit("episodesOnly", value);
+      },
     },
   },
 
@@ -334,7 +385,7 @@ export default defineComponent({
 
       const count = new Map<number, number>();
 
-      const timePoints = this.releases.map((value) => {
+      const timePoints = this.releases.map((value: MediumRelease) => {
         const key = value.date.getTime();
         count.set(key, (count.get(key) || 0) + 1);
         return key;

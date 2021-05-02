@@ -7,6 +7,7 @@ const module: Module<MediaStore, VuexStore> = {
   state: () => ({
     media: {},
     secondaryMedia: {},
+    episodesOnly: false,
   }),
   getters: {
     getMedium: (state) => (id: number): SimpleMedium => {
@@ -48,6 +49,9 @@ const module: Module<MediaStore, VuexStore> = {
           value.items.splice(listIndex, 1);
         }
       });
+    },
+    episodesOnly(state, value: boolean) {
+      state.episodesOnly = value;
     },
   },
   actions: {
@@ -97,7 +101,7 @@ const module: Module<MediaStore, VuexStore> = {
         // TODO handle this better
         throw Error();
       } else {
-        HttpClient.updateMedium(data).catch(console.log);
+        // HttpClient.updateMedium(data).catch(console.log);
       }
       // TODO implement editMedium
     },

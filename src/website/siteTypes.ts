@@ -406,6 +406,7 @@ export interface ListsStore {
 export interface MediaStore {
   media: Record<number, SimpleMedium>;
   secondaryMedia: Record<number, SecondaryMedium>;
+  episodesOnly: boolean;
 }
 
 export interface NewsStore {
