@@ -1,19 +1,19 @@
-.modal {
+.modal-own {
     display: block;
     padding: 10px;
     margin: 0 auto;
 }
 
-.modal .modal-header {
+.modal-own .modal-own-header {
     margin: 10px;
     font-size: 25px;
 }
 
-.modal form > * {
+.modal-own form > * {
     margin: 10px 0;
 }
 
-.modal form {
+.modal-own form {
     /* Just to center the form on the page */
     margin: 0 auto;
     /*width: 400px;*/
@@ -23,11 +23,11 @@
     border-radius: 1em;
 }
 
-.modal label {
+.modal-own label {
     display: block;
 }
 
-.modal input {
+.modal-own input {
     /* To make sure that all text fields have the same font settings */
     font: 1em sans-serif;
 
@@ -42,21 +42,21 @@
     border-bottom: 1px solid #b3b3b3;
 }
 
-.modal input[type=checkbox] {
+.modal-own input[type=checkbox] {
     width: 20px;
 }
 
-.modal span label {
+.modal-own span label {
     width: 75px;
     padding: 0 5px;
 }
 
-.modal input:focus {
+.modal-own input:focus {
     /* To give a little highlight on active elements */
     border-color: #000;
 }
 
-.modal .finish {
+.modal-own .finish {
     /* This extra margin represent roughly the same space as the space
        between the labels and their text fields */
     /*margin-left: .5em;*/
@@ -82,14 +82,14 @@
     display: block;
 }
 
-.modal .finish:hover {
+.modal-own .finish:hover {
     text-decoration: none;
     opacity: .8;
     -webkit-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.modal .close {
+.modal-own .close {
     cursor: pointer;
     float: right;
     font-size: 21px;
@@ -103,6 +103,6 @@
     margin: auto;
 }
 
-.modal form div + div {
+.modal-own form div + div {
     margin-top: 1em;
 }
