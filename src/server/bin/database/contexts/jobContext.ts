@@ -17,6 +17,7 @@ import {
   TimeJobStats,
   PropertyNames,
   TypedQuery,
+  Id,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
@@ -348,8 +349,8 @@ export class JobContext extends SubContext {
         } else {
           const result = await this.query(
             "INSERT IGNORE INTO jobs " +
-              "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`) " +
-              "VALUES (?,?,?,?,?,?,?,?)",
+              "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`, `job_state`) " +
+              "VALUES (?,?,?,?,?,?,?,?, 'enabled')",
             [value.type, value.name, JobState.WAITING, value.interval, value.deleteAfterRun, runAfter, args, nextRun],
           );
           // the only reason it should fail to insert is when its name constraint is violated
@@ -386,6 +387,10 @@ export class JobContext extends SubContext {
       result = await this.query("DELETE FROM jobs WHERE id = ?", key);
     }
     storeModifications("job", "delete", result);
+  }
+
+  public async updateJobsEnable(id: Id, enabled: boolean): EmptyPromise {
+    await this.query("UPDATE jobs SET job_state = ? WHERE id = ?", [enabled ? "enabled" : "disabled", id]);
   }
 
   public async updateJobs(jobs: JobItem | JobItem[], finished?: Date): EmptyPromise {

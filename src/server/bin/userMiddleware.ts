@@ -38,7 +38,7 @@ function isNumberOrArray(value: number | any[]) {
   return Array.isArray(value) ? value.length : Number.isInteger(value);
 }
 
-function isInvalidId(id: any): boolean {
+function isInvalidId(id: any): id is number {
   return !Number.isInteger(id) || id < 1;
 }
 
@@ -904,6 +904,17 @@ export const getMediumReleases: Handler = (req, res) => {
 
 export const getJobs: Handler = (_req, res) => {
   sendResult(res, jobStorage.getAllJobs());
+};
+
+export const postJobEnable: Handler = (req, res) => {
+  const jobId = req.body.id;
+  const enabled = req.body.enabled;
+
+  if (isInvalidId(jobId)) {
+    sendResult(res, Promise.reject(Errors.INVALID_DATA));
+    return;
+  }
+  sendResult(res, jobStorage.updateJobsEnable(jobId, enabled));
 };
 
 export const getJobsStats: Handler = (_req, res) => {

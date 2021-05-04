@@ -161,6 +161,7 @@ function jobsRouter(): Router {
 
   const jobRoute = router.route("");
   jobRoute.get(UserApi.getJobs);
+  router.post("/enable", UserApi.postJobEnable);
 
   const statsRouter = Router();
   statsRouter.get("/all", UserApi.getJobsStats);

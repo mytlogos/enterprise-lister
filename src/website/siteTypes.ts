@@ -206,6 +206,7 @@ export interface Job {
   id: number;
   name: string;
   state: "running" | "waiting";
+  job_state?: "enabled" | "disabled";
   runningSince?: Date | null;
   nextRun?: Date | null;
 }

@@ -1,6 +1,10 @@
 <template>
   <div>
     <h1>Name: {{ job ? nameToString(job.name) : "Unknown" }}</h1>
+    <div class="custom-control custom-switch">
+      <input id="enabledSwitch" v-model="enabled" type="checkbox" class="custom-control-input" />
+      <label class="custom-control-label" for="enabledSwitch">Job enabled</label>
+    </div>
     <table class="table table-hover">
       <caption class="sr-only">
         Job History
@@ -66,6 +70,7 @@ import { formatDate, absoluteToRelative, isString } from "../init";
 
 interface Data {
   job?: Job;
+  enabled: boolean;
   history: JobHistoryItem[];
 }
 
@@ -83,12 +88,39 @@ export default defineComponent({
   data(): Data {
     return {
       job: undefined,
+      enabled: true,
       history: [],
     };
+  },
+  watch: {
+    enabled() {
+      const job = this.job;
+
+      if (!job) {
+        this.enabled = false;
+        return;
+      }
+
+      const jobEnabled = this.job?.job_state === "enabled";
+
+      if (this.enabled !== jobEnabled) {
+        HttpClient.postJobEnabled(job.id, this.enabled)
+          .then(() => {
+            // commit ui change to job object
+            job.job_state = this.enabled ? "enabled" : "disabled";
+          })
+          .catch(() => {
+            // revert ui change on error
+            this.enabled = jobEnabled;
+          });
+      }
+    },
   },
   mounted() {
     HttpClient.getJobDetails(this.id).then((value) => {
       this.job = value.job;
+      this.enabled = value.job?.job_state === "enabled";
+
       for (const history of value.history) {
         try {
           history.message = JSON.parse(history.message as string);

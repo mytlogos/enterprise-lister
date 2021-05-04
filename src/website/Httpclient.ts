@@ -59,6 +59,9 @@ const restApi = {
       },
       jobs: {
         get: true,
+        enable: {
+          post: true,
+        },
         stats: {
           all: {
             get: true,
@@ -212,6 +215,10 @@ interface GetPath {
   readonly get: MethodObject;
 }
 
+interface PostPath {
+  readonly post: MethodObject;
+}
+
 interface PutPath {
   readonly put: MethodObject;
 }
@@ -301,6 +308,7 @@ interface TocPath {
 
 interface JobPath {
   readonly get: MethodObject;
+  readonly enable: PostPath;
   readonly stats: {
     all: GetPath;
     grouped: GetPath;
@@ -630,6 +638,10 @@ export const HttpClient = {
 
   getJobs(): Promise<Job[]> {
     return this.queryServer(api.jobs.get);
+  },
+
+  postJobEnabled(id: number, enabled: boolean): Promise<Job[]> {
+    return this.queryServer(api.jobs.enable.post, { id, enabled });
   },
 
   getJobsStats(): Promise<AllJobStats> {
