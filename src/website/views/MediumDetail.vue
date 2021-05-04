@@ -76,6 +76,10 @@
         </tr>
       </tbody>
     </table>
+    <div>
+      <input v-model="addTocUrl" type="url" @keyup.enter="addToc" />
+      <button class="btn btn-primary" type="button" @click="addToc">Add Toc</button>
+    </div>
     <p>
       <button
         class="btn btn-primary"
@@ -182,6 +186,7 @@ interface Data {
   tocs: FullMediumToc[];
   markToast: { message: string; success: boolean };
   dirty: boolean;
+  addTocUrl: string;
 }
 
 // initialize all tooltips on this page
@@ -249,6 +254,7 @@ export default defineComponent({
         success: false,
       },
       dirty: false,
+      addTocUrl: "",
     };
   },
 
@@ -371,6 +377,10 @@ export default defineComponent({
   },
 
   methods: {
+    addToc() {
+      HttpClient.addToc(this.addTocUrl, this.id);
+      this.addTocUrl = "";
+    },
     startUpdate() {
       if (this.dirty) {
         return;
