@@ -61,6 +61,7 @@
           <th scope="col">Send</th>
           <th scope="col">Jobscount</th>
           <th scope="col">SQL Queries</th>
+          <th scope="col">Average Job Lag</th>
           <th scope="col">Data updated</th>
           <th scope="col">Data created</th>
           <th scope="col">Data deleted</th>
@@ -76,6 +77,7 @@
           <td>{{ item.avgsend }}</td>
           <td>{{ item.count }}</td>
           <td>{{ item.queries }}</td>
+          <td>{{ item.avglagging }}</td>
           <td>{{ item.allupdate }}</td>
           <td>{{ item.allcreate }}</td>
           <td>{{ item.alldelete }}</td>
@@ -228,6 +230,13 @@ export default defineComponent({
         left: false,
         right: false,
         unit: "Count per Minute",
+      },
+      {
+        name: "Average Lag per Job",
+        key: "avglagging",
+        left: false,
+        right: false,
+        unit: "Milliseconds",
       },
       {
         name: "Failure Rate",
@@ -397,6 +406,7 @@ export default defineComponent({
       datum.avgreceived = round(datum.avgreceived, 2);
       datum.avgsend = round(datum.avgsend, 2);
       datum.avgduration = round(datum.avgduration, 2);
+      datum.avglagging = round(datum.avglagging, 2);
       datum.queries = round(datum.queries, 2);
     },
     loadData() {

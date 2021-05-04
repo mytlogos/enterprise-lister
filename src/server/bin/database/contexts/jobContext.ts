@@ -96,6 +96,7 @@ export class JobContext extends SubContext {
             ${minMax ? "MAX(duration) maxD, " : ""} 
             ${minMax ? "MIN(duration) minD," : ""} 
             Count(*) as count,
+            AVG(lagging) as avglagging,
             GROUP_CONCAT(\`update\`) as allupdate,
             GROUP_CONCAT(\`create\`) as allcreate,
             GROUP_CONCAT(\`delete\`) as alldelete,
@@ -109,6 +110,7 @@ export class JobContext extends SubContext {
                 name, 
                 start,
                 result,
+                start - scheduled_at as lagging,
                 JSON_EXTRACT(message, "$.modifications.*.updated") as \`update\`,
                 JSON_EXTRACT(message, "$.modifications.*.deleted") as \`delete\`,
                 JSON_EXTRACT(message, "$.modifications.*.created") as \`create\`,
@@ -152,6 +154,7 @@ export class JobContext extends SubContext {
         "avgnetwork",
         "avgreceived",
         "avgsend",
+        "avglagging",
         "count",
         "failed",
         "queries",
@@ -460,14 +463,15 @@ export class JobContext extends SubContext {
       const message = store.get("message") || "Missing Message";
 
       return this.query(
-        "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, start, end, result, message, context, arguments)" +
-          " VALUES (?,?,?,?,?,?,?,?,?,?,?);",
+        "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments)" +
+          " VALUES (?,?,?,?,?,?,?,?,?,?,?,?);",
         [
           value.id,
           value.type,
           value.name,
           value.deleteAfterRun,
           value.runAfter,
+          value.previousScheduledAt || value.runningSince,
           value.runningSince,
           finished,
           result,

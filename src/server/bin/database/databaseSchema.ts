@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(12);
+const dataBaseBuilder = new DataBaseBuilder(13);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -319,6 +319,7 @@ dataBaseBuilder
   .parseColumn("name VARCHAR(200) NOT NULL")
   .parseColumn("deleteAfterRun BOOLEAN NOT NULL")
   .parseColumn("runAfter INT")
+  .parseColumn("scheduled_at DATETIME NOT NULL DEFAULT start")
   .parseColumn("start DATETIME NOT NULL")
   .parseColumn("end DATETIME NOT NULL")
   .parseColumn("result VARCHAR(100) NOT NULL")

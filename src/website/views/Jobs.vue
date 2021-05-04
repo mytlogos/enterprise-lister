@@ -126,6 +126,9 @@
             <td>
               {{ round(jobStats[job.name]?.avgreceived || 0) }}
             </td>
+            <td>
+              {{ round(jobStats[job.name]?.avglagging || 0) }}
+            </td>
             <td>{{ round(jobStats[job.name]?.queries || 0) }}</td>
             <td>{{ jobStats[job.name]?.count }}</td>
           </tr>
@@ -305,6 +308,7 @@ export default defineComponent({
         queries: 0,
         maxQ: 0,
         minQ: 0,
+        avglagging: 0,
       },
       jobStats: {},
       summary: {

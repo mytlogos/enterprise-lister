@@ -265,6 +265,7 @@ export interface BasicJobStats {
   failed: number;
   succeeded: number;
   queries: number;
+  avglagging: number;
 }
 
 export interface TimeJobStats extends BasicJobStats {

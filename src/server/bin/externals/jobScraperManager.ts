@@ -489,6 +489,7 @@ export class JobScraperManager {
         await jobStorage.removeJobs(item, end);
       } else {
         item.lastRun = new Date();
+        item.previousScheduledAt = item.nextRun;
 
         if (item.interval > 0) {
           if (item.interval < 60000) {

@@ -486,6 +486,7 @@ export interface JobItem {
   nextRun?: Date;
   lastRun?: Date;
   arguments?: string;
+  previousScheduledAt?: Date;
 }
 
 export interface JobRequest {
@@ -510,6 +511,7 @@ export interface BasicJobStats {
   failed: number;
   succeeded: number;
   queries: number;
+  avglagging: number;
 }
 
 export interface TimeJobStats extends BasicJobStats {
@@ -535,6 +537,7 @@ export interface JobStats extends AllJobStats {
 }
 
 export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfterRun" | "runAfter" | "arguments"> & {
+  scheduled_at: Date;
   start: Date;
   end: Date;
   result: string;

@@ -235,4 +235,16 @@ export const Migrations: Migration[] = [
       );
     },
   },
+  {
+    fromVersion: 12,
+    toVersion: 13,
+    async migrate(context: DatabaseContext): EmptyPromise {
+      // add columns and ignore duplicate column error
+      await Promise.all(
+        ["scheduled_at DATETIME NOT NULL DEFAULT start"].map((value) =>
+          ignoreError(() => context.addColumn("job_history", value), [MysqlServerError.ER_DUP_FIELDNAME]),
+        ),
+      );
+    },
+  },
 ];
