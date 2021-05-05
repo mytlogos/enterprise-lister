@@ -62,6 +62,10 @@
             Dropped
           </button>
         </div>
+        <div class="custom-control custom-switch">
+          <input id="hideCompleted" v-model="hideCompleted" type="checkbox" class="custom-control-input" />
+          <label class="custom-control-label" for="hideCompleted">Hide Completed Media</label>
+        </div>
       </form>
     </div>
     <table class="table table-striped table-hover" aria-describedby="media-title">
@@ -108,6 +112,7 @@ interface Data {
   titleSearch: string;
   showStatesTL: ReleaseState[];
   media: SimpleMedium[];
+  hideCompleted: boolean;
 }
 
 export default defineComponent({
@@ -132,6 +137,7 @@ export default defineComponent({
       media: this.$store.getters.media.map((value: SimpleMedium) => ({
         ...value,
       })),
+      hideCompleted: false,
     };
   },
 
@@ -151,9 +157,13 @@ export default defineComponent({
         }
         if (medium.stateTL == null) {
           return this.showStatesTL.includes(ReleaseState.Unknown);
-        } else {
-          return this.showStatesTL.includes(medium.stateTL);
         }
+        if (!this.showStatesTL.includes(medium.stateTL)) {
+          return false;
+        }
+        return this.hideCompleted
+          ? medium.stateTL === ReleaseState.Complete && medium.readEpisodes !== medium.totalEpisodes
+          : true;
       });
     },
   },
