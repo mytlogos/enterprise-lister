@@ -96,6 +96,7 @@ export class MediumInWaitContext extends SubContext {
       `SELECT * FROM medium_in_wait${
         whereFilter.length ? " WHERE " + whereFilter.join(" AND ") : ""
       } ORDER BY title${limit}`,
+      values,
     );
   }
 
