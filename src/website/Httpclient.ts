@@ -24,7 +24,7 @@ import {
   MediumInWait,
   MediumInWaitSearch,
 } from "./siteTypes";
-import { AppEvent, AppEventFilter } from "../server/bin/types";
+import { AppEvent, AppEventFilter, JobStatSummary } from "../server/bin/types";
 
 /**
  * Allowed Methods for the API.
@@ -63,6 +63,9 @@ const restApi = {
           post: true,
         },
         stats: {
+          summary: {
+            get: true,
+          },
           all: {
             get: true,
           },
@@ -310,6 +313,7 @@ interface JobPath {
   readonly get: MethodObject;
   readonly enable: PostPath;
   readonly stats: {
+    summary: GetPath;
     all: GetPath;
     grouped: GetPath;
     detail: GetPath;
@@ -642,6 +646,10 @@ export const HttpClient = {
 
   postJobEnabled(id: number, enabled: boolean): Promise<Job[]> {
     return this.queryServer(api.jobs.enable.post, { id, enabled });
+  },
+
+  getJobsStatsSummary(): Promise<JobStatSummary[]> {
+    return this.queryServer(api.jobs.stats.summary.get);
   },
 
   getJobsStats(): Promise<AllJobStats> {

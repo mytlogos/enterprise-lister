@@ -247,4 +247,11 @@ export const Migrations: Migration[] = [
       );
     },
   },
+  {
+    fromVersion: 13,
+    toVersion: 14,
+    async migrate(): EmptyPromise {
+      // empty migration as it adds trigger only
+    },
+  },
 ];

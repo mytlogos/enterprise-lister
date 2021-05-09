@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(13);
+const dataBaseBuilder = new DataBaseBuilder(14);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -347,6 +347,44 @@ dataBaseBuilder
   .parseColumn("date DATETIME NOT NULL")
   .parseColumn("type VARCHAR(200) NOT NULL")
   .parseMeta("PRIMARY KEY(id)")
+  .build();
+
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("job_stat_summary")
+  .parseColumn("name VARCHAR(200) NOT NULL")
+  .parseColumn("type VARCHAR(200) NOT NULL")
+  .parseColumn("count INT NOT NULL")
+  .parseColumn("failed INT NOT NULL")
+  .parseColumn("succeeded INT NOT NULL")
+  .parseColumn("network_requests INT NOT NULL")
+  .parseColumn("min_network_requests INT NOT NULL")
+  .parseColumn("max_network_requests INT NOT NULL")
+  .parseColumn("network_send INT NOT NULL")
+  .parseColumn("min_network_send INT NOT NULL")
+  .parseColumn("max_network_send INT NOT NULL")
+  .parseColumn("network_received INT NOT NULL")
+  .parseColumn("min_network_received INT NOT NULL")
+  .parseColumn("max_network_received INT NOT NULL")
+  .parseColumn("duration INT NOT NULL")
+  .parseColumn("min_duration INT NOT NULL")
+  .parseColumn("max_duration INT NOT NULL")
+  .parseColumn("lagging INT NOT NULL")
+  .parseColumn("min_lagging INT NOT NULL")
+  .parseColumn("max_lagging INT NOT NULL")
+  .parseColumn("updated INT NOT NULL")
+  .parseColumn("min_updated INT NOT NULL")
+  .parseColumn("max_updated INT NOT NULL")
+  .parseColumn("created INT NOT NULL")
+  .parseColumn("min_created INT NOT NULL")
+  .parseColumn("max_created INT NOT NULL")
+  .parseColumn("deleted INT NOT NULL")
+  .parseColumn("min_deleted INT NOT NULL")
+  .parseColumn("max_deleted INT NOT NULL")
+  .parseColumn("sql_queries INT NOT NULL")
+  .parseColumn("min_sql_queries INT NOT NULL")
+  .parseColumn("max_sql_queries INT NOT NULL")
+  .parseMeta("PRIMARY KEY(name)")
   .build();
 
 dataBaseBuilder.addMigrations(...Migrations);

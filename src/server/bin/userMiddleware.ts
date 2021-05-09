@@ -921,6 +921,10 @@ export const getJobsStats: Handler = (_req, res) => {
   sendResult(res, jobStorage.getJobsStats());
 };
 
+export const getJobsStatsSummary: Handler = (_req, res) => {
+  sendResult(res, jobStorage.getJobsStatsSummary());
+};
+
 export const getJobsStatsGrouped: Handler = (_req, res) => {
   sendResult(res, jobStorage.getJobsStatsGrouped());
 };

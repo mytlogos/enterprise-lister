@@ -85,21 +85,21 @@
             Failure Rate
             <i class="fas" :class="sortedClass('failed')" aria-hidden="true" />
           </th>
-          <th scope="col" @click.left="toggleOrder('avgduration')">
+          <th scope="col" @click.left="toggleOrder('duration')">
             Avg Duration
-            <i class="fas" :class="sortedClass('avgduration')" aria-hidden="true" />
+            <i class="fas" :class="sortedClass('duration')" aria-hidden="true" />
           </th>
-          <th scope="col" @click.left="toggleOrder('avgnetwork')">
+          <th scope="col" @click.left="toggleOrder('network_requests')">
             Avg Network
-            <i class="fas" :class="sortedClass('avgnetwork')" aria-hidden="true" />
+            <i class="fas" :class="sortedClass('network_requests')" aria-hidden="true" />
           </th>
-          <th scope="col" @click.left="toggleOrder('avgreceived')">
+          <th scope="col" @click.left="toggleOrder('network_received')">
             Avg Received
-            <i class="fas" :class="sortedClass('avgreceived')" aria-hidden="true" />
+            <i class="fas" :class="sortedClass('network_received')" aria-hidden="true" />
           </th>
-          <th scope="col" @click.left="toggleOrder('queries')">
+          <th scope="col" @click.left="toggleOrder('sql_queries')">
             Avg Queries
-            <i class="fas" :class="sortedClass('queries')" aria-hidden="true" />
+            <i class="fas" :class="sortedClass('sql_queries')" aria-hidden="true" />
           </th>
           <th scope="col" @click.left="toggleOrder('count')">
             Total Times Run
@@ -108,7 +108,7 @@
         </tr>
       </thead>
       <tbody>
-        <template v-for="(job, index) in computedJobs" :key="job.id">
+        <template v-for="(job, index) in computedJobs" :key="job.name">
           <tr data-toggle="collapse" :data-target="'.collapse-' + index">
             <td>{{ index + 1 }}</td>
             <td>{{ nameToString(job.name) }}</td>
@@ -116,21 +116,21 @@
             <td>{{ absoluteToRelative(job.runningSince) }}</td>
             <td>{{ dateToString(job.runningSince) }}</td>
             <td>{{ dateToString(job.nextRun) }}</td>
-            <td>{{ round(jobStats[job.name]?.failed || 0) }}</td>
+            <td>{{ round(job.failed) }}</td>
             <td>
-              {{ round(jobStats[job.name]?.avgduration || 0) }}
+              {{ round(job.duration) }}
             </td>
             <td>
-              {{ round(jobStats[job.name]?.avgnetwork || 0) }}
+              {{ round(job.network_requests) }}
             </td>
             <td>
-              {{ round(jobStats[job.name]?.avgreceived || 0) }}
+              {{ round(job.network_received) }}
             </td>
             <td>
-              {{ round(jobStats[job.name]?.avglagging || 0) }}
+              {{ round(job.lagging) }}
             </td>
-            <td>{{ round(jobStats[job.name]?.queries || 0) }}</td>
-            <td>{{ jobStats[job.name]?.count }}</td>
+            <td>{{ round(job.sql_queries) }}</td>
+            <td>{{ job.count }}</td>
           </tr>
           <tr class="collapse" :class="'collapse-' + index">
             <!-- empty td as a natural margin left for index column -->
@@ -139,7 +139,7 @@
               <router-link :to="{ name: 'job', params: { jobId: job.id } }" tag="a" class="btn btn-dark mb-2">
                 View Job
               </router-link>
-              <template v-if="liveJobs[job.id]">
+              <template v-if="job.id && liveJobs[job.id]">
                 <table class="table table-sm table-hover">
                   <caption class="sr-only">
                     Time spent in Running or Waiting depending on contexts
@@ -206,8 +206,9 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
-import { AllJobStats, Job, JobStats } from "../siteTypes";
+import { AllJobStats, Job } from "../siteTypes";
 import { absoluteToRelative, formatDate, round } from "../init";
+import { JobStatSummary } from "../../server/bin/types";
 
 interface LiveJob {
   /**
@@ -253,14 +254,16 @@ interface JobsSummary {
   lagging: number;
 }
 
+type JobItem = Partial<Job> & JobStatSummary;
+
 interface Data {
   jobs: Job[];
-  sortedOn: Partial<Record<keyof Job | keyof JobStats, number>>;
+  sortedOn: Partial<Record<keyof JobItem, number>>;
   now: Date;
   liveJobs: { [key: number]: LiveJob };
   summary: JobsSummary;
   totalJobsStats: AllJobStats;
-  jobStats: { [key: string]: JobStats };
+  jobStats: JobItem[];
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
@@ -310,7 +313,7 @@ export default defineComponent({
         minQ: 0,
         avglagging: 0,
       },
-      jobStats: {},
+      jobStats: [],
       summary: {
         waiting: 0,
         running: 0,
@@ -319,35 +322,35 @@ export default defineComponent({
     };
   },
   computed: {
-    computedJobs(): Job[] {
-      const jobs = [...this.jobs];
-      // @ts-expect-error
-      const sortEntries: Array<[string, number]> = Object.entries(this.sortedOn);
+    computedJobs(): JobItem[] {
+      const jobs = [...this.jobStats];
+      const sortEntries = Object.entries(this.sortedOn) as Array<[keyof JobItem, number]>;
       console.log("Sorting Jobs on Fields: " + JSON.stringify(this.sortedOn));
 
       jobs.sort((a, b) => {
-        const statsA = this.jobStats[a.name];
-        const statsB = this.jobStats[b.name];
-
         for (const [key, order] of sortEntries) {
           if (!order) {
             continue;
           }
-          const compareA = key in a ? a : statsA;
-          const compareB = key in b ? b : statsB;
 
-          if (!compareA || !compareB) {
-            continue;
+          const aValue = a[key];
+          const bValue = b[key];
+
+          if (aValue && !bValue) {
+            return 1;
+          }
+          if (!aValue && bValue) {
+            return -1;
           }
 
-          // @ts-expect-error
-          if (compareA[key] > compareB[key]) {
-            return 1 * order;
-          }
+          if (aValue && bValue) {
+            if (aValue > bValue) {
+              return 1 * order;
+            }
 
-          // @ts-expect-error
-          if (compareA[key] < compareB[key]) {
-            return -1 * order;
+            if (aValue < bValue) {
+              return -1 * order;
+            }
           }
         }
         return 0;
@@ -355,55 +358,78 @@ export default defineComponent({
       return jobs;
     },
   },
-  mounted() {
+  async mounted() {
     // fetch storage jobs data
-    HttpClient.getJobs().then((data) => {
-      let running = 0;
-      let waiting = 0;
-      let lagging = 0;
-      const now = new Date();
+    const [data, stats] = await Promise.all([HttpClient.getJobs(), HttpClient.getJobsStatsSummary()]);
 
-      for (const datum of data) {
-        if (datum.runningSince) {
-          datum.runningSince = new Date(datum.runningSince);
-        }
-        if (datum.nextRun) {
-          datum.nextRun = new Date(datum.nextRun);
-        }
-        if (datum.state === "running") {
-          running++;
-        } else {
-          waiting++;
-          if (datum.nextRun && datum.nextRun < now) {
-            lagging++;
-          }
-          // waiting jobs should not have this value set
-          datum.runningSince = null;
-        }
+    let running = 0;
+    let waiting = 0;
+    let lagging = 0;
+    const now = new Date();
+    const nameMap = {} as Record<string, JobItem>;
+    const defaultJobStatSummmary = {
+      name: "",
+      type: "",
+      count: 0,
+      failed: 0,
+      succeeded: 0,
+      network_requests: 0,
+      network_send: 0,
+      network_received: 0,
+      duration: 0,
+      updated: 0,
+      created: 0,
+      deleted: 0,
+      sql_queries: 0,
+      lagging: 0,
+      min_network_requests: 0,
+      min_network_send: 0,
+      min_network_received: 0,
+      min_duration: 0,
+      min_updated: 0,
+      min_created: 0,
+      min_deleted: 0,
+      min_sql_queries: 0,
+      min_lagging: 0,
+      max_network_requests: 0,
+      max_network_send: 0,
+      max_network_received: 0,
+      max_duration: 0,
+      max_updated: 0,
+      max_created: 0,
+      max_deleted: 0,
+      max_sql_queries: 0,
+      max_lagging: 0,
+    } as JobStatSummary;
+
+    for (const datum of data) {
+      if (datum.runningSince) {
+        datum.runningSince = new Date(datum.runningSince);
       }
-      this.summary.running = running;
-      this.summary.waiting = waiting;
-      this.summary.lagging = lagging;
-      this.jobs = data;
-    });
-
-    HttpClient.getJobsStats().then((stats) => (this.totalJobsStats = stats));
-    HttpClient.getJobsStatsGrouped().then((stats) => {
-      const currentNames = new Set(Object.keys(this.jobStats));
-
-      for (const stat of stats) {
-        this.jobStats[stat.name] = stat;
-        currentNames.delete(stat.name);
+      if (datum.nextRun) {
+        datum.nextRun = new Date(datum.nextRun);
       }
-
-      // remove the mapping of names which are not in grouped
-      for (const name of currentNames) {
-        delete this.jobStats[name];
+      if (datum.state === "running") {
+        running++;
+      } else {
+        waiting++;
+        if (datum.nextRun && datum.nextRun < now) {
+          lagging++;
+        }
+        // waiting jobs should not have this value set
+        datum.runningSince = null;
       }
-    });
+      nameMap[datum.name] = Object.assign(datum, defaultJobStatSummmary);
+    }
+    this.summary.running = running;
+    this.summary.waiting = waiting;
+    this.summary.lagging = lagging;
+    this.jobStats = stats
+      .filter((value) => value.name in nameMap)
+      .map((value) => Object.assign(nameMap[value.name], value));
 
     // fetch live jobs data
-    fetch("http://localhost:3003")
+    await fetch("http://localhost:3003")
       .then((response) => response.json())
       .then((data: { [key: number]: LiveJob }) => {
         for (const datum of Object.values(data)) {
@@ -437,14 +463,14 @@ export default defineComponent({
       .catch(console.error);
   },
   methods: {
-    sortedClass(key: keyof Job | keyof JobStats) {
+    sortedClass(key: keyof JobItem) {
       const value = this.sortedOn[key];
       if (!value) {
         return "fa-sort";
       }
       return value > 0 ? "fa-sort-up" : value < 0 ? "fa-sort-down" : "fa-sort";
     },
-    toggleOrder(key: keyof Job | keyof JobStats): void {
+    toggleOrder(key: keyof JobItem): void {
       const order = this.sortedOn[key];
 
       if (order === 1 || order == null) {

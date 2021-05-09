@@ -18,6 +18,7 @@ import {
   PropertyNames,
   TypedQuery,
   Id,
+  JobStatSummary,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
@@ -249,6 +250,10 @@ export class JobContext extends SubContext {
     return values;
   }
 
+  public async getJobsStatsSummary(): Promise<JobStatSummary[]> {
+    return this.query("SELECT * FROM job_stat_summary;");
+  }
+
   public async getJobDetails(id: number): Promise<JobDetails> {
     const jobPromise: Promise<JobItem[]> = this.query("SELECT * FROM jobs WHERE id = ?", id);
     const historyPromise: Promise<JobHistoryItem[]> = this.query(
@@ -449,7 +454,7 @@ export class JobContext extends SubContext {
   }
 
   private async addJobHistory(jobs: JobItem | JobItem[], finished: Date): EmptyPromise {
-    await promiseMultiSingle(jobs, (value: JobItem) => {
+    await promiseMultiSingle(jobs, async (value: JobItem) => {
       let args = value.arguments;
       if (value.arguments && !isString(value.arguments)) {
         args = JSON.stringify(value.arguments);
@@ -461,6 +466,146 @@ export class JobContext extends SubContext {
       const context = store.get("history");
       const result = store.get("result") || "success";
       const message = store.get("message") || "Missing Message";
+
+      const parsedMessage = {
+        modifications: store.get("modifications") || {},
+        network: store.get("network") || {
+          count: 0,
+          sent: 0,
+          received: 0,
+          history: [],
+        },
+        queryCount: store.get("queryCount") || 0,
+      } as {
+        modifications: Record<string, { created: number; updated: number; deleted: number }>;
+        queryCount: number;
+        network: {
+          count: number;
+          sent: number;
+          received: number;
+          history: Array<{ url: string; method: string; statusCode: number; send: number; received: number }>;
+        };
+      };
+
+      let [item] = (await this.query("SELECT * FROM job_stat_summary WHERE name = ?", [
+        value.name,
+      ])) as JobStatSummary[];
+
+      if (!item) {
+        item = {
+          name: value.name,
+          type: value.type,
+          count: 0,
+          failed: 0,
+          succeeded: 0,
+          network_requests: 0,
+          network_send: 0,
+          network_received: 0,
+          duration: 0,
+          updated: 0,
+          created: 0,
+          deleted: 0,
+          sql_queries: 0,
+          lagging: 0,
+          min_network_requests: 0,
+          min_network_send: 0,
+          min_network_received: 0,
+          min_duration: 0,
+          min_updated: 0,
+          min_created: 0,
+          min_deleted: 0,
+          min_sql_queries: 0,
+          min_lagging: 0,
+          max_network_requests: 0,
+          max_network_send: 0,
+          max_network_received: 0,
+          max_duration: 0,
+          max_updated: 0,
+          max_created: 0,
+          max_deleted: 0,
+          max_sql_queries: 0,
+          max_lagging: 0,
+        };
+      }
+      item.count++;
+      const modifications = Object.values(parsedMessage.modifications);
+      modifications.forEach((value) => {
+        const created = value.created;
+        item.created += created;
+        item.min_created = Math.min(item.min_created, created);
+        item.max_created = Math.max(item.max_created, created);
+
+        item.updated += value.updated;
+        item.min_updated = Math.min(item.min_updated, value.updated);
+        item.max_updated = Math.max(item.max_updated, value.updated);
+
+        item.deleted += value.deleted;
+        item.min_deleted = Math.min(item.min_deleted, value.deleted);
+        item.max_deleted = Math.max(item.max_deleted, value.deleted);
+      });
+      item.sql_queries = parsedMessage.queryCount;
+      item.min_sql_queries = Math.min(parsedMessage.queryCount);
+      item.max_sql_queries = Math.max(parsedMessage.queryCount);
+
+      item.failed += result === "failed" ? 1 : 0;
+      item.succeeded += result === "success" ? 1 : 0;
+
+      const startTime = value.runningSince?.getTime() || 0;
+
+      const lagging = (value.runningSince?.getTime() || 0) - (value.previousScheduledAt?.getTime() || startTime);
+      item.lagging = lagging;
+      item.min_lagging = Math.min(item.min_lagging, lagging);
+      item.max_lagging = Math.max(item.max_lagging, lagging);
+
+      const duration = finished.getTime() - startTime;
+      item.duration = duration;
+      item.min_duration = Math.min(item.min_duration, duration);
+      item.max_duration = Math.max(item.max_duration, duration);
+
+      const keys = [
+        "name",
+        "type",
+        "count",
+        "failed",
+        "succeeded",
+        "network_requests",
+        "min_network_requests",
+        "max_network_requests",
+        "network_send",
+        "min_network_send",
+        "max_network_send",
+        "network_received",
+        "min_network_received",
+        "max_network_received",
+        "duration",
+        "min_duration",
+        "max_duration",
+        "lagging",
+        "min_lagging",
+        "max_lagging",
+        "updated",
+        "min_updated",
+        "max_updated",
+        "created",
+        "min_created",
+        "max_created",
+        "deleted",
+        "min_deleted",
+        "max_deleted",
+        "sql_queries",
+        "min_sql_queries",
+        "max_sql_queries",
+      ] as Array<keyof JobStatSummary>;
+
+      const insertColumns = keys.join(", ");
+      const params = keys.map(() => "?").join(", ");
+      const updates = keys.map((key) => key + " = VALUES(" + key + ")").join(", ");
+      const values = keys.map((key) => item[key]);
+
+      await this.query(
+        `INSERT INTO job_stat_summary (${insertColumns}) VALUES (${params}) ON DUPLICATE KEY UPDATE ${updates}`,
+        values,
+      );
 
       return this.query(
         "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments)" +

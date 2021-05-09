@@ -645,3 +645,23 @@ export interface AppEventFilter {
   type?: AppEventType | AppEventType[];
   sortOrder?: keyof AppEvent | Array<keyof AppEvent>;
 }
+
+type MinMax<T extends string> = Record<T | `min_${T}` | `max_${T}`, number>;
+
+export type JobStatSummary = {
+  name: string;
+  type: string;
+  count: number;
+  failed: number;
+  succeeded: number;
+} & MinMax<
+  | "network_requests"
+  | "network_send"
+  | "network_received"
+  | "duration"
+  | "updated"
+  | "created"
+  | "deleted"
+  | "sql_queries"
+  | "lagging"
+>;
