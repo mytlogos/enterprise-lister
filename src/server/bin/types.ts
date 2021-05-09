@@ -87,6 +87,10 @@ export interface Part extends MinPart {
   episodes: Episode[] | Id[];
 }
 
+export interface AddPart extends MinPart {
+  episodes: SimpleEpisode[];
+}
+
 export interface FullPart extends Part {
   episodes: Episode[];
 }

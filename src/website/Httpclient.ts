@@ -23,8 +23,9 @@ import {
   ScraperHook,
   MediumInWait,
   MediumInWaitSearch,
+  Part,
 } from "./siteTypes";
-import { AppEvent, AppEventFilter, JobStatSummary } from "../server/bin/types";
+import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "../server/bin/types";
 
 /**
  * Allowed Methods for the API.
@@ -577,6 +578,14 @@ export const HttpClient = {
 
   getNews(from: Date | undefined, to: Date | undefined): Promise<News[]> {
     return this.queryServer(api.news.get, { from, to });
+  },
+
+  createPart(part: AddPart, mediumId: number): EmptyPromise {
+    return this.queryServer(api.part.post, { part, mediumId });
+  },
+
+  getMediumParts(mediumId: number): Promise<Part[]> {
+    return this.queryServer(api.part.get, { mediumId });
   },
 
   /**

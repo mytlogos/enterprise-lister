@@ -5,13 +5,13 @@ import {
   MinPart,
   Part,
   ShallowPart,
-  SimpleEpisode,
   Uuid,
   MultiSingleNumber,
   Optional,
   VoidablePromise,
   SimpleRelease,
   TypedQuery,
+  AddPart,
 } from "../../types";
 import { combiIndex, getElseSetObj, multiSingle, separateIndex } from "../../tools";
 import { MysqlServerError } from "../mysqlError";
@@ -268,7 +268,7 @@ export class PartContext extends SubContext {
   /**
    * Adds a part of an medium to the storage.
    */
-  public async addPart(part: Part): Promise<Part> {
+  public async addPart(part: AddPart): Promise<Part> {
     if (part.totalIndex === -1) {
       return this.createStandardPart(part.mediumId);
     }
@@ -301,7 +301,11 @@ export class PartContext extends SubContext {
 
     if (part.episodes && part.episodes.length) {
       if (!Number.isInteger(part.episodes[0])) {
-        episodes = await this.parentContext.episodeContext.addEpisode(part.episodes as SimpleEpisode[]);
+        part.episodes.forEach((episode) => {
+          episode.partId = partId;
+          return episode;
+        });
+        episodes = await this.parentContext.episodeContext.addEpisode(part.episodes);
       } else {
         episodes = [];
       }

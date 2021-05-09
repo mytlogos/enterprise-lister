@@ -31,7 +31,12 @@
         </div>
         <div class="form-group col-md-3">
           <label>Medium</label>
-          <type-icon :type="medium.medium" class="form-control-plaintext" />
+          <select v-model="medium.medium" class="custom-select">
+            <option :value="1"><type-icon :type="1" class="form-control-plaintext" /> Text</option>
+            <option :value="2"><type-icon :type="2" class="form-control-plaintext" /> Audio</option>
+            <option :value="4"><type-icon :type="4" class="form-control-plaintext" /> Video</option>
+            <option :value="8"><type-icon :type="8" class="form-control-plaintext" /> Image</option>
+          </select>
         </div>
       </div>
       <div class="form-row mx-3">
@@ -245,7 +250,13 @@ export default defineComponent({
         return;
       }
       HttpClient.createMedium(result)
-        .then((medium) => HttpClient.addToc(this.toc, medium.id))
+        .then((medium) => {
+          if (this.toc) {
+            return HttpClient.addToc(this.toc, medium.id);
+          } else {
+            return true;
+          }
+        })
         .then((success) => {
           if (success) {
             this.showMessage("Successfully created Medium", "Success");

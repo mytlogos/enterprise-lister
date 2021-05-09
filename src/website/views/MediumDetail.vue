@@ -108,6 +108,7 @@
       style="position: absolute; margin-top: -7em"
     />
     <div class="d-flex">
+      <button class="btn btn-dark" @click.left="addEpisodesModal = details">Add Episodes</button>
       <button class="btn btn-dark" @click.left="markAll(true)">Mark all read</button>
       <div class="custom-control custom-switch">
         <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="custom-control-input" />
@@ -162,6 +163,7 @@
     </table>
     <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
     <toast id="progress-toast" title="Error" :message="'Could not update Progress'" @close="closeProgressToast" />
+    <add-episode-modal :medium="addEpisodesModal" />
   </div>
 </template>
 
@@ -175,6 +177,7 @@ import toast from "../components/toast.vue";
 import $ from "jquery";
 import { batch, formatDate, mergeMediaToc } from "../init";
 import Chart from "chart.js";
+import AddEpisodeModal from "../components/modal/add-episode-modal.vue";
 
 interface EpisodeRelease extends MediumRelease {
   others: MediumRelease[];
@@ -187,6 +190,7 @@ interface Data {
   markToast: { message: string; success: boolean };
   dirty: boolean;
   addTocUrl: string;
+  addEpisodesModal: SimpleMedium | null;
 }
 
 // initialize all tooltips on this page
@@ -223,6 +227,7 @@ export default defineComponent({
     releaseState,
     typeIcon,
     toast,
+    AddEpisodeModal,
   },
   props: {
     id: {
@@ -255,6 +260,7 @@ export default defineComponent({
       },
       dirty: false,
       addTocUrl: "",
+      addEpisodesModal: null,
     };
   },
 
@@ -313,6 +319,11 @@ export default defineComponent({
       },
       deep: true,
     },
+    addEpisodeModal(newValue: SimpleMedium | null) {
+      if (!newValue) {
+        this.loadReleases();
+      }
+    },
   },
 
   mounted() {
@@ -365,18 +376,20 @@ export default defineComponent({
           .catch(console.error);
       })
       .catch(console.error);
-    HttpClient.getReleases(this.id)
-      .then((releases) => {
-        // ensure that date is a 'Date' object
-        for (const release of releases) {
-          release.date = new Date(release.date);
-        }
-        this.releases = reactive(releases);
-      })
-      .catch(console.error);
+    this.loadReleases();
   },
-
   methods: {
+    loadReleases() {
+      HttpClient.getReleases(this.id)
+        .then((releases) => {
+          // ensure that date is a 'Date' object
+          for (const release of releases) {
+            release.date = new Date(release.date);
+          }
+          this.releases = reactive(releases);
+        })
+        .catch(console.error);
+    },
     addToc() {
       HttpClient.addToc(this.addTocUrl, this.id);
       this.addTocUrl = "";
