@@ -91,6 +91,7 @@ packages/**/*.vue.js
 packages/**/*.vue.js.map
 *.bat
 *.gz
+*.json
 packages/server/bin/ignore/
 dist/
 
