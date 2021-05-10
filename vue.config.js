@@ -5,6 +5,9 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 const context = process.cwd();
 const websiteContext = path.join(context, "src", "website");
 
+/**
+ * @type {import('@vue/cli-service').ProjectOptions}
+ */
 module.exports = {
   outputDir: "dist/website",
   pages: {
@@ -16,12 +19,13 @@ module.exports = {
   configureWebpack: {
     plugins: [
       /* config.plugin("copy") */
-      new CopyWebpackPlugin([{
-            from: path.join(context, "src", "public"),
-            to: path.join(context, "dist", "website"),
-            toType: "dir"
-        }
+      new CopyWebpackPlugin([
+        {
+          from: path.join(context, "src", "public"),
+          to: path.join(context, "dist", "website"),
+          toType: "dir",
+        },
       ]),
-    ]
-  }
-}
+    ],
+  },
+};
