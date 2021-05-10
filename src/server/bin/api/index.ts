@@ -2,41 +2,39 @@ import { userStorage } from "bin/database/storages/storage";
 import env from "bin/env";
 import { Errors, isString } from "bin/tools";
 import { getTunnelUrls } from "bin/tunnel";
-import { Handler, Router } from "express";
-import { sendResult } from "./apiTools";
+import { Router } from "express";
+import { createHandler } from "./apiTools";
 import { userRouter } from "./user";
 
-const checkLogin: Handler = (req, res) => {
-  sendResult(res, userStorage.loggedInUser(req.ip));
-};
+const checkLogin = createHandler((req) => {
+  return userStorage.loggedInUser(req.ip);
+});
 
-const login: Handler = (req, res) => {
+const login = createHandler((req) => {
   const { userName, pw } = req.body;
 
   if (!userName || !isString(userName) || !pw || !isString(pw)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, userStorage.loginUser(userName, pw, req.ip));
-};
+  return userStorage.loginUser(userName, pw, req.ip);
+});
 
-const register: Handler = (req, res) => {
+const register = createHandler((req) => {
   const { userName, pw } = req.body;
 
   if (!userName || !isString(userName) || !pw || !isString(pw)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, userStorage.register(userName, pw, req.ip));
-};
+  return userStorage.register(userName, pw, req.ip);
+});
 
-const getTunnel: Handler = (_req, res) => {
-  sendResult(res, Promise.resolve(getTunnelUrls()));
-};
+const getTunnel = createHandler(() => {
+  return Promise.resolve(getTunnelUrls());
+});
 
-const getDev: Handler = (_req, res) => {
-  sendResult(res, Promise.resolve(Boolean(env.development)));
-};
+const getDev = createHandler(() => {
+  return Promise.resolve(Boolean(env.development));
+});
 
 /**
  *  Returns the Router for the User Api.

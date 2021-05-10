@@ -1,10 +1,10 @@
 import { internalListStorage } from "bin/database/storages/storage";
 import { Errors, stringToNumberList, isNumberOrArray, isString } from "bin/tools";
 import { Handler, Router } from "express";
-import { extractQueryParam, sendResult } from "./apiTools";
+import { createHandler, extractQueryParam } from "./apiTools";
 import { getLists } from "./user";
 
-export const getList: Handler = (req, res) => {
+export const getList = createHandler((req) => {
   let listId: string | number[] = extractQueryParam(req, "listId");
   const uuid = extractQueryParam(req, "uuid");
   let media: string | number[] = extractQueryParam(req, "media");
@@ -13,8 +13,7 @@ export const getList: Handler = (req, res) => {
     media = "";
   }
   if (!listId) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
 
   if (isString(listId)) {
@@ -22,63 +21,61 @@ export const getList: Handler = (req, res) => {
   }
   media = stringToNumberList(media);
 
-  sendResult(res, internalListStorage.getList(listId, media, uuid));
-};
+  return internalListStorage.getList(listId, media, uuid);
+});
 
-export const postList: Handler = (req, res) => {
+export const postList = createHandler((req) => {
   const { uuid, list } = req.body;
   if (!list) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, internalListStorage.addList(uuid, list));
-};
+  return internalListStorage.addList(uuid, list);
+});
 
-export const putList: Handler = (req, res) => {
+export const putList = createHandler((req) => {
   const { uuid, list } = req.body;
   if (!list) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   // TODO: 05.09.2019 should this not be update list?
-  sendResult(res, internalListStorage.addList(uuid, list));
-};
-export const deleteList: Handler = (req, res) => {
+  return internalListStorage.addList(uuid, list);
+});
+
+export const deleteList = createHandler((req) => {
   const { listId, uuid } = req.body;
   if (!listId || !Number.isInteger(listId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, internalListStorage.deleteList(listId, uuid));
-};
-export const getListMedium: Handler = (req, res) => {
+  return internalListStorage.deleteList(listId, uuid);
+});
+
+export const getListMedium = createHandler((req) => {
   const listId = Number.parseInt(extractQueryParam(req, "listId"));
   const uuid = extractQueryParam(req, "uuid");
   let media: string | number[] = extractQueryParam(req, "media");
 
   if (!media || !isString(media)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
 
   media = stringToNumberList(media);
 
   if (!listId || (Array.isArray(media) && !media.length)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, internalListStorage.getList(listId, media, uuid));
-};
-export const postListMedium: Handler = (req, res) => {
+  return internalListStorage.getList(listId, media, uuid);
+});
+
+export const postListMedium = createHandler((req) => {
   const { listId, mediumId, uuid } = req.body;
 
   if (!listId || !Number.isInteger(listId) || !mediumId || !isNumberOrArray(mediumId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, internalListStorage.addItemToList({ listId, id: mediumId }, uuid));
-};
-export const putListMedium: Handler = (req, res) => {
+  return internalListStorage.addItemToList({ listId, id: mediumId }, uuid);
+});
+
+export const putListMedium = createHandler((req) => {
   const { oldListId, newListId } = req.body;
   let { mediumId } = req.body;
 
@@ -88,20 +85,19 @@ export const putListMedium: Handler = (req, res) => {
       mediumId = stringToNumberList(mediumId);
 
       if (!mediumId.length) {
-        sendResult(res, Promise.resolve(false));
-        return;
+        return Promise.resolve(false);
       }
     } else {
       mediumId = undefined;
     }
   }
   if (!oldListId || !newListId || !mediumId) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, internalListStorage.moveMedium(oldListId, newListId, mediumId));
-};
-export const deleteListMedium: Handler = (req, res) => {
+  return internalListStorage.moveMedium(oldListId, newListId, mediumId);
+});
+
+export const deleteListMedium = createHandler((req) => {
   const { listId } = req.body;
   let { mediumId } = req.body;
 
@@ -111,11 +107,10 @@ export const deleteListMedium: Handler = (req, res) => {
     mediumId = stringToNumberList(mediumId);
   }
   if (!listId || !mediumId || !isNumberOrArray(mediumId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, internalListStorage.removeMedium(listId, mediumId));
-};
+  return internalListStorage.removeMedium(listId, mediumId);
+});
 
 export const getAllLists: Handler = getLists;
 

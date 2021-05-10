@@ -1,6 +1,6 @@
 import logger from "bin/logger";
 import { isQuery, Errors, isError, isString } from "bin/tools";
-import { NextFunction, Request, Response } from "express";
+import { Handler, NextFunction, Request, Response } from "express";
 import stringify from "stringify-stream";
 
 export function stopper(req: Request, res: Response, next: NextFunction): any {
@@ -27,7 +27,6 @@ export function sendResult(res: Response, promise: Promise<any>): void {
     });
 }
 
-// FIXME an error showed that req.query.something does not assign on first call, only on second???
 export function extractQueryParam<T extends boolean = false>(
   request: Request,
   key: string,
@@ -46,4 +45,30 @@ export function extractQueryParam<T extends boolean = false>(
   } else {
     throw Error(`Expected a String for "${key}" but got an object of type: ${typeof value}`);
   }
+}
+
+export type RestHandler<Return = any> = (request: Request, response: Response, next: NextFunction) => Return;
+
+/**
+ * Wraps a Function handler. The return value is interpreted as the body
+ * of the response. A Promise will be resolved, a Query will be listened on.
+ * Errors are catched and returned as response status code depending on the error.
+ *
+ * @param handler handler function to wrap
+ * @returns an express handler
+ */
+export function createHandler(handler: RestHandler): Handler {
+  return (req, res, next) => {
+    try {
+      const result = handler(req, res, next);
+
+      if (result && result.catch && result.then) {
+        return result;
+      } else {
+        return Promise.resolve(result);
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  };
 }

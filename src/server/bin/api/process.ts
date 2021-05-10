@@ -1,33 +1,30 @@
 import { episodeStorage, storage } from "bin/database/storages/storage";
 import { Errors } from "bin/tools";
-import { Handler, Router } from "express";
-import { sendResult } from "./apiTools";
+import { Router } from "express";
+import { createHandler } from "./apiTools";
 
-export const processReadEpisode: Handler = (req, res) => {
+export const processReadEpisode = createHandler((req) => {
   const { uuid, result } = req.body;
   if (!result) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, episodeStorage.markEpisodeRead(uuid, result));
-};
+  return episodeStorage.markEpisodeRead(uuid, result);
+});
 
-export const processProgress: Handler = (req, res) => {
+export const processProgress = createHandler((req) => {
   const { uuid, progress } = req.body;
   if (!progress) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, episodeStorage.setProgress(uuid, progress));
-};
+  return episodeStorage.setProgress(uuid, progress);
+});
 
-export const processResult: Handler = (req, res) => {
+export const processResult = createHandler((req) => {
   if (!req.body) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, storage.processResult(req.body));
-};
+  return storage.processResult(req.body);
+});
 
 export function processRouter(): Router {
   const router = Router();

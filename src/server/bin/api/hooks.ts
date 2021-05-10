@@ -2,26 +2,22 @@ import { hookStorage } from "bin/database/storages/storage";
 import { load } from "bin/externals/hookManager";
 import { isInvalidId, Errors } from "bin/tools";
 import { ScraperHook } from "bin/types";
-import { Handler, Router } from "express";
-import { sendResult } from "./apiTools";
+import { Router } from "express";
+import { createHandler } from "./apiTools";
 
-export const getAllHooks: Handler = (_req, res) => {
-  sendResult(
-    res,
-    load(true).then(() => hookStorage.getAllStream()),
-  );
-};
+export const getAllHooks = createHandler(() => {
+  return load(true).then(() => hookStorage.getAllStream());
+});
 
-export const putHook: Handler = (req, res) => {
+export const putHook = createHandler((req) => {
   const { hook }: { hook: ScraperHook } = req.body;
 
   if (!hook || isInvalidId(hook.id)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
 
-  sendResult(res, hookStorage.updateScraperHook(hook));
-};
+  return hookStorage.updateScraperHook(hook);
+});
 
 /**
  * Creates the Hook API Router.

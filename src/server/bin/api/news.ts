@@ -1,9 +1,9 @@
 import { newsStorage } from "bin/database/storages/storage";
 import { stringToNumberList, Errors, isString } from "bin/tools";
-import { Handler, Router } from "express";
-import { extractQueryParam, sendResult, stopper } from "./apiTools";
+import { Router } from "express";
+import { createHandler, extractQueryParam, stopper } from "./apiTools";
 
-export const getNews: Handler = (req, res) => {
+export const getNews = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
   let from: string | Date | undefined = extractQueryParam(req, "from", true);
   let to: string | Date | undefined = extractQueryParam(req, "to", true);
@@ -12,32 +12,31 @@ export const getNews: Handler = (req, res) => {
   // if newsIds is specified, send only these news
   if (isString(newsIds)) {
     newsIds = stringToNumberList(newsIds);
-    sendResult(res, newsStorage.getNews(uuid, undefined, undefined, newsIds));
+    return newsStorage.getNews(uuid, undefined, undefined, newsIds);
   } else {
     // else send it based on time
     from = !from || from === "null" ? undefined : new Date(from);
     to = !to || to === "null" ? undefined : new Date(to);
 
-    sendResult(res, newsStorage.getNews(uuid, from, to));
+    return newsStorage.getNews(uuid, from, to);
   }
-};
+});
 
-export const getAllNews: Handler = (req, res) => {
+export const getAllNews = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
-  sendResult(res, newsStorage.getAll(uuid));
-};
+  return newsStorage.getAll(uuid);
+});
 
-export const readNews: Handler = (req, res) => {
+export const readNews = createHandler((req) => {
   const { uuid, read } = req.body;
   // TODO: change this validation, should expect a number[]
   if (!read || !isString(read)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   const currentlyReadNews = stringToNumberList(read);
 
-  sendResult(res, newsStorage.markRead(uuid, currentlyReadNews));
-};
+  return newsStorage.markRead(uuid, currentlyReadNews);
+});
 
 export function newsRouter(): Router {
   const router = Router();

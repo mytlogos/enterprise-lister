@@ -2,16 +2,15 @@ import { externalUserStorage, jobStorage } from "bin/database/storages/storage";
 import { factory } from "bin/externals/listManager";
 import { Errors, isString } from "bin/tools";
 import { ScrapeName } from "bin/types";
-import { Handler, Router } from "express";
-import { extractQueryParam, sendResult } from "./apiTools";
+import { Router } from "express";
+import { createHandler, extractQueryParam } from "./apiTools";
 
-export const getExternalUser: Handler = (req, res) => {
+export const getExternalUser = createHandler((req) => {
   const externalUuidString = extractQueryParam(req, "externalUuid");
 
   if (!externalUuidString || !isString(externalUuidString)) {
     // TODO: 23.07.2019 check if valid uuid
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   try {
     let externalUuid;
@@ -23,54 +22,49 @@ export const getExternalUser: Handler = (req, res) => {
     } else {
       externalUuid = externalUuidString;
     }
-    sendResult(res, externalUserStorage.getExternalUser(externalUuid));
+    return externalUserStorage.getExternalUser(externalUuid);
   } catch (e) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-};
-export const postExternalUser: Handler = (req, res) => {
+});
+
+export const postExternalUser = createHandler((req) => {
   const { uuid, externalUser } = req.body;
 
   if (!externalUser) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(
-    res,
-    (async () => {
-      const listManager = factory(Number(externalUser.type));
-      const valid = await listManager.test({ identifier: externalUser.identifier, password: externalUser.pwd });
+  return (async () => {
+    const listManager = factory(Number(externalUser.type));
+    const valid = await listManager.test({ identifier: externalUser.identifier, password: externalUser.pwd });
 
-      if (!valid) {
-        return Promise.reject(new Error(Errors.INVALID_DATA));
-      }
-      delete externalUser.pwd;
-      externalUser.cookies = listManager.stringifyCookies();
+    if (!valid) {
+      return Promise.reject(new Error(Errors.INVALID_DATA));
+    }
+    delete externalUser.pwd;
+    externalUser.cookies = listManager.stringifyCookies();
 
-      return externalUserStorage.addExternalUser(uuid, externalUser);
-    })(),
-  );
-};
-export const deleteExternalUser: Handler = (req, res) => {
+    return externalUserStorage.addExternalUser(uuid, externalUser);
+  })();
+});
+
+export const deleteExternalUser = createHandler((req) => {
   const { externalUuid, uuid } = req.body;
   if (!externalUuid) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, externalUserStorage.deleteExternalUser(externalUuid, uuid));
-};
+  return externalUserStorage.deleteExternalUser(externalUuid, uuid);
+});
 
-export const getAllExternalUser: Handler = (req, res) => {
+export const getAllExternalUser = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
-  sendResult(res, externalUserStorage.getAll(uuid));
-};
+  return externalUserStorage.getAll(uuid);
+});
 
-export const refreshExternalUser: Handler = (req, res) => {
+export const refreshExternalUser = createHandler((req) => {
   const externalUuid = extractQueryParam(req, "externalUuid");
   if (!externalUuid) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   const externalUserWithCookies = externalUserStorage.getExternalUserWithCookies(externalUuid);
   const storePromise = externalUserWithCookies.then((value) =>
@@ -88,8 +82,8 @@ export const refreshExternalUser: Handler = (req, res) => {
       }),
     }),
   );
-  sendResult(res, storePromise);
-};
+  return storePromise;
+});
 
 export function externalUserRouter(): Router {
   const router = Router();

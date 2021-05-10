@@ -1,14 +1,14 @@
 import { partStorage } from "bin/database/storages/storage";
 import { stringToNumberList, Errors, isString } from "bin/tools";
-import { Handler, Router } from "express";
-import { extractQueryParam, sendResult } from "./apiTools";
+import { Router } from "express";
+import { createHandler, extractQueryParam } from "./apiTools";
 import { episodeRouter } from "./episode";
 
-export const getAllParts: Handler = (_req, res) => {
-  sendResult(res, partStorage.getAll());
-};
+export const getAllParts = createHandler(() => {
+  return partStorage.getAll();
+});
 
-export const getPart: Handler = (req, res) => {
+export const getPart = createHandler((req) => {
   const mediumIdString = extractQueryParam(req, "mediumId", true);
   const uuid = extractQueryParam(req, "uuid");
 
@@ -19,20 +19,18 @@ export const getPart: Handler = (req, res) => {
       partId = stringToNumberList(partId);
     }
     if (!partId || (!Array.isArray(partId) && !Number.isInteger(partId))) {
-      sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-      return;
+      return Promise.reject(Errors.INVALID_INPUT);
     }
-    sendResult(res, partStorage.getParts(partId, uuid));
+    return partStorage.getParts(partId, uuid);
   } else {
     const mediumId = Number.parseInt(mediumIdString);
     if (!Number.isInteger(mediumId)) {
-      sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-      return;
+      return Promise.reject(Errors.INVALID_INPUT);
     }
-    sendResult(res, partStorage.getMediumParts(mediumId, uuid));
+    return partStorage.getMediumParts(mediumId, uuid);
   }
-};
-export const getPartItems: Handler = (req, res) => {
+});
+export const getPartItems = createHandler((req) => {
   let partId: string | number[] = extractQueryParam(req, "part");
 
   // if it is a string, it is likely a list of partIds was send
@@ -40,12 +38,11 @@ export const getPartItems: Handler = (req, res) => {
     partId = stringToNumberList(partId);
   }
   if (!partId || !Array.isArray(partId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, partStorage.getPartItems(partId));
-};
-export const getPartReleases: Handler = (req, res) => {
+  return partStorage.getPartItems(partId);
+});
+export const getPartReleases = createHandler((req) => {
   let partId: string | number[] = extractQueryParam(req, "part");
 
   // if it is a string, it is likely a list of partIds was send
@@ -53,36 +50,32 @@ export const getPartReleases: Handler = (req, res) => {
     partId = stringToNumberList(partId);
   }
   if (!partId || !Array.isArray(partId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, partStorage.getPartReleases(partId));
-};
-export const postPart: Handler = (req, res) => {
+  return partStorage.getPartReleases(partId);
+});
+export const postPart = createHandler((req) => {
   const { part, mediumId } = req.body;
   if (!part || !mediumId || !Number.isInteger(mediumId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   part.mediumId = mediumId;
-  sendResult(res, partStorage.addPart(part));
-};
-export const putPart: Handler = (req, res) => {
+  return partStorage.addPart(part);
+});
+export const putPart = createHandler((req) => {
   const { part } = req.body;
   if (!part) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, partStorage.updatePart(part));
-};
-export const deletePart: Handler = (req, res) => {
+  return partStorage.updatePart(part);
+});
+export const deletePart = createHandler((req) => {
   const { partId } = req.body;
   if (!partId || !Number.isInteger(partId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, partStorage.deletePart(partId));
-};
+  return partStorage.deletePart(partId);
+});
 
 /**
  * Creates the Part Api Router.

@@ -13,7 +13,7 @@ import logger from "bin/logger";
 import { Errors, getDate, isError, isInvalidId, isString, stringToNumberList, toArray } from "bin/tools";
 import { JobRequest, ScrapeName, AppEventFilter, AppEventProgram, AppEventType, AppEvent } from "bin/types";
 import { Handler, Router } from "express";
-import { sendResult, extractQueryParam } from "./apiTools";
+import { extractQueryParam, createHandler } from "./apiTools";
 import { externalUserRouter } from "./externalUser";
 import { hooksRouter } from "./hooks";
 import { jobsRouter } from "./jobs";
@@ -30,8 +30,7 @@ export const authenticate: Handler = (req, res, next) => {
     session = extractQueryParam(req, "session");
   }
   if (!uuid || !isString(uuid) || !session || !isString(session)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   userStorage
     .userLoginStatus(req.ip, uuid, session)
@@ -48,36 +47,34 @@ export const authenticate: Handler = (req, res, next) => {
     });
 };
 
-const getUser: Handler = (req, res) => {
+const getUser = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
-  sendResult(res, userStorage.getUser(uuid, req.ip));
-};
+  return userStorage.getUser(uuid, req.ip);
+});
 
-export const putUser: Handler = (req, res) => {
+export const putUser = createHandler((req) => {
   const { uuid, user } = req.body;
   if (!user) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, userStorage.updateUser(uuid, user));
-};
+  return userStorage.updateUser(uuid, user);
+});
 
-export const deleteUser: Handler = (req, res) => {
+export const deleteUser = createHandler((req) => {
   const { uuid } = req.body;
-  sendResult(res, userStorage.deleteUser(uuid));
-};
+  return userStorage.deleteUser(uuid);
+});
 
-const logout: Handler = (req, res) => {
+const logout = createHandler((req) => {
   const { uuid } = req.body;
   // TODO: should logout only with valid session
   if (!uuid) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, userStorage.logoutUser(uuid, req.ip));
-};
+  return userStorage.logoutUser(uuid, req.ip);
+});
 
-export const addBookmarked: Handler = (req, res) => {
+export const addBookmarked = createHandler((req) => {
   const { uuid, bookmarked } = req.body;
   const protocol = /^https?:\/\//;
 
@@ -103,13 +100,13 @@ export const addBookmarked: Handler = (req, res) => {
         ),
       )
       .then(() => scrapeAble.unavailable);
-    sendResult(res, storePromise);
+    return storePromise;
   } else {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-};
+});
 
-export const addToc: Handler = (req, res) => {
+export const addToc = createHandler((req) => {
   const { uuid, toc, mediumId } = req.body;
   const protocol = /^https?:\/\//;
 
@@ -128,77 +125,70 @@ export const addToc: Handler = (req, res) => {
         } as TocRequest),
       })
       .then(() => true);
-    sendResult(res, storePromise);
+    return storePromise;
   } else {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-};
+});
 
-export const downloadEpisode: Handler = (req, res) => {
+export const downloadEpisode = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
   const stringEpisode = extractQueryParam(req, "episode");
 
   if (!stringEpisode || !isString(stringEpisode)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   const episodes: number[] = stringToNumberList(stringEpisode);
 
   if (!episodes || !episodes.length) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(
-    res,
-    episodeStorage
-      .getEpisode(episodes, uuid)
-      .then((fullEpisodes) => downloadEpisodes(fullEpisodes.filter((value) => value))),
-  );
-};
+  return episodeStorage
+    .getEpisode(episodes, uuid)
+    .then((fullEpisodes) => downloadEpisodes(fullEpisodes.filter((value) => value)));
+});
 
-export const getLists: Handler = (req, res) => {
+export const getLists = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
-  sendResult(res, internalListStorage.getUserLists(uuid));
-};
+  return internalListStorage.getUserLists(uuid);
+});
 
-export const getAssociatedEpisode: Handler = (req, res) => {
+export const getAssociatedEpisode = createHandler((req) => {
   const url = extractQueryParam(req, "url");
 
   if (!url || !isString(url) || !/^https?:\/\//.test(url)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, episodeStorage.getAssociatedEpisode(url));
-};
+  return episodeStorage.getAssociatedEpisode(url);
+});
 
-export const search: Handler = (req, res) => {
+export const search = createHandler((req) => {
   const text = extractQueryParam(req, "text");
   const medium = Number(extractQueryParam(req, "medium"));
 
   if (Number.isNaN(medium) || !text) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, searchMedium(text, medium));
-};
+  return searchMedium(text, medium);
+});
 
-export const getStats: Handler = (req, res) => {
+export const getStats = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
-  sendResult(res, storage.getStats(uuid));
-};
+  return storage.getStats(uuid);
+});
 
-export const getNew: Handler = (req, res) => {
+export const getNew = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
   const date = extractQueryParam(req, "date");
-  sendResult(res, storage.getNew(uuid, date ? new Date(date) : undefined));
-};
+  return storage.getNew(uuid, date ? new Date(date) : undefined);
+});
 
-export const searchToc: Handler = (req, res) => {
+export const searchToc = createHandler((req) => {
   const link = decodeURIComponent(extractQueryParam(req, "link", false));
-  sendResult(res, loadToc(link));
-};
+  return loadToc(link);
+});
 
-export const getToc: Handler = (req, res) => {
+export const getToc = createHandler((req) => {
   let media: string | number | number[] = extractQueryParam(req, "mediumId");
 
   const listMedia = stringToNumberList(media);
@@ -207,8 +197,7 @@ export const getToc: Handler = (req, res) => {
     media = Number.parseInt(media);
 
     if (isInvalidId(media)) {
-      sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-      return;
+      return Promise.reject(Errors.INVALID_INPUT);
     }
     media = [media];
   } else {
@@ -216,28 +205,26 @@ export const getToc: Handler = (req, res) => {
   }
 
   if (!media || !media.length) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
 
-  sendResult(res, mediumStorage.getMediumTocs(media));
-};
+  return mediumStorage.getMediumTocs(media);
+});
 
-export const deleteToc: Handler = (req, res) => {
+export const deleteToc = createHandler((req) => {
   let mediumId: string | number = extractQueryParam(req, "mediumId");
   const link = extractQueryParam(req, "link");
 
   mediumId = Number.parseInt(mediumId, 10);
 
   if (isInvalidId(mediumId) || !link || !isString(link)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
 
-  sendResult(res, mediumStorage.removeMediumToc(mediumId, link));
-};
+  return mediumStorage.removeMediumToc(mediumId, link);
+});
 
-export const getAllAppEvents: Handler = (req, res) => {
+export const getAllAppEvents = createHandler((req) => {
   const filter = {} as AppEventFilter;
   const from = extractQueryParam(req, "from", true);
 
@@ -283,8 +270,8 @@ export const getAllAppEvents: Handler = (req, res) => {
       filter.sortOrder = sortOrder as keyof AppEvent;
     }
   }
-  sendResult(res, appEventStorage.getAppEvents(filter));
-};
+  return appEventStorage.getAppEvents(filter);
+});
 
 /**
  * Creates the User Api Router.

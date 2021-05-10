@@ -1,9 +1,9 @@
 import { episodeStorage } from "bin/database/storages/storage";
 import { stringToNumberList, isNumberOrArray, Errors, getDate, isString } from "bin/tools";
-import { Handler, Router } from "express";
-import { extractQueryParam, sendResult } from "./apiTools";
+import { Router } from "express";
+import { createHandler, extractQueryParam } from "./apiTools";
 
-export const getEpisode: Handler = (req, res) => {
+export const getEpisode = createHandler((req) => {
   let episodeId: string | number[] = extractQueryParam(req, "episodeId");
   const uuid = extractQueryParam(req, "uuid");
 
@@ -12,72 +12,60 @@ export const getEpisode: Handler = (req, res) => {
     episodeId = stringToNumberList(episodeId);
   }
   if (!episodeId || !isNumberOrArray(episodeId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
-  sendResult(res, episodeStorage.getEpisode(episodeId, uuid));
-};
-export const postEpisode: Handler = (req, res) => {
+  return episodeStorage.getEpisode(episodeId, uuid);
+});
+
+export const postEpisode = createHandler((req) => {
   const { episode, partId } = req.body;
   if (!episode || (Array.isArray(episode) && !episode.length) || !partId || !Number.isInteger(partId)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   if (Array.isArray(episode)) {
     episode.forEach((value) => (value.partId = partId));
   } else {
     episode.partId = partId;
   }
-  sendResult(res, episodeStorage.addEpisode(episode));
-};
-export const putEpisode: Handler = (req, res) => {
+  return episodeStorage.addEpisode(episode);
+});
+
+export const putEpisode = createHandler(async (req) => {
   const { episode } = req.body;
   if (!episode || (Array.isArray(episode) && !episode.length)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   if (Array.isArray(episode)) {
-    sendResult(
-      res,
-      Promise.all(episode.map((value) => episodeStorage.updateEpisode(value))).then((values) => {
-        // check if at least one updated
-        return values.findIndex((value) => value) >= 0;
-      }),
-    );
+    const values = await Promise.all(episode.map((value) => episodeStorage.updateEpisode(value)));
+    return values.findIndex((value) => value) >= 0;
   } else {
-    sendResult(res, episodeStorage.updateEpisode(episode));
+    return episodeStorage.updateEpisode(episode);
   }
-};
-export const deleteEpisode: Handler = (req, res) => {
+});
+
+export const deleteEpisode = createHandler(async (req) => {
   const { episodeId } = req.body;
   if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
   if (Array.isArray(episodeId)) {
-    sendResult(
-      res,
-      Promise.all(episodeId.map((value) => episodeStorage.updateEpisode(value))).then((values) => {
-        // check if at least one updated
-        return values.findIndex((value) => value) >= 0;
-      }),
-    );
+    const values = await Promise.all(episodeId.map((value) => episodeStorage.updateEpisode(value)));
+    return values.findIndex((value) => value) >= 0;
   } else {
-    sendResult(res, episodeStorage.updateEpisode(episodeId));
+    return episodeStorage.deleteEpisode(episodeId);
   }
-  sendResult(res, episodeStorage.deleteEpisode(episodeId));
-};
+});
 
-export const getAllEpisodes: Handler = (req, res) => {
+export const getAllEpisodes = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
-  sendResult(res, episodeStorage.getAll(uuid));
-};
+  return episodeStorage.getAll(uuid);
+});
 
-export const getAllReleases: Handler = (_req, res) => {
-  sendResult(res, episodeStorage.getAllReleases());
-};
+export const getAllReleases = createHandler(() => {
+  return episodeStorage.getAllReleases();
+});
 
-export const getDisplayReleases: Handler = (req, res) => {
+export const getDisplayReleases = createHandler((req) => {
   const latest = extractQueryParam(req, "latest");
   const until = extractQueryParam(req, "until", true);
   const read = extractQueryParam(req, "read", true) ? extractQueryParam(req, "read").toLowerCase() == "true" : null;
@@ -91,24 +79,20 @@ export const getDisplayReleases: Handler = (req, res) => {
   const untilDate = until ? getDate(until) : null;
 
   if (!isString(latest) || !latestDate || (until && !untilDate)) {
-    sendResult(res, Promise.reject(Errors.INVALID_INPUT));
-    return;
+    return Promise.reject(Errors.INVALID_INPUT);
   }
 
-  sendResult(
-    res,
-    episodeStorage.getDisplayReleases(
-      latestDate,
-      untilDate,
-      read,
-      uuid,
-      ignoredLists,
-      requiredLists,
-      ignoredMedia,
-      requiredMedia,
-    ),
+  return episodeStorage.getDisplayReleases(
+    latestDate,
+    untilDate,
+    read,
+    uuid,
+    ignoredLists,
+    requiredLists,
+    ignoredMedia,
+    requiredMedia,
   );
-};
+});
 
 export function episodeRouter(): Router {
   const router = Router();
