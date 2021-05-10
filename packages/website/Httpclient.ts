@@ -25,7 +25,7 @@ import {
   MediumInWaitSearch,
   Part,
 } from "./siteTypes";
-import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "../server/bin/types";
+import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-server/bin/types";
 
 /**
  * Allowed Methods for the API.

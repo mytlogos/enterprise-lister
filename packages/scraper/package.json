@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "test:unit": "vue-cli-service test:unit",
-    "build": "tsc -p packages/server/",
-    "lint": "eslint -c packages/server/.eslintrc.js packages/server/bin/",
+    "build": "tsc -p ./",
+    "lint": "eslint -c ./.eslintrc.js packages/server/bin/",
     "start": "node dist/server/startCrawler.js",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
     "migrate": "node dist/server/misc/migrate.js",

@@ -3,14 +3,13 @@
   "version": "1.16.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "npm run build:server && npm run build:website",
+    "build": "tsc -p ./",
     "lint": "eslint -c packages/server/.eslintrc.js packages/server/bin/",
-    "start": "node dist/server/startServer.js",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
-    "migrate": "node dist/server/misc/migrate.js",
+    "start": "node ../../dist/server/startServer.js",
+    "test": " LOG_LEVEL=error node ../../node_modules/mocha/bin/mocha --ui bdd ../../dist/**/test/database/**/*.js ../../dist/**/test/*.js",
+    "migrate": "node ../../dist/server/misc/migrate.js",
     "commit": "npx git-cz",
-    "generate:api": "node dist/server/misc/openapi/generate.js",
+    "generate:api": "node ../../dist/server/misc/openapi/generate.js",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "husky": {

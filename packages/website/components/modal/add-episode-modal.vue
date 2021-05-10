@@ -18,7 +18,7 @@ import { MediaType, SimpleMedium, Part } from "../../siteTypes";
 import { defineComponent, PropType } from "vue";
 import modal from "./modal.vue";
 import { HttpClient } from "../../Httpclient";
-import { AddPart, SimpleEpisode } from "../../../server/bin/types";
+import { AddPart, SimpleEpisode } from "enterprise-server/bin/types";
 
 export default defineComponent({
   name: "AddEpisodeModal",

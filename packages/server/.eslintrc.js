@@ -6,7 +6,7 @@ module.exports = {
     },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
-        "project": "src/server/tsconfig.json",
+        "project": "packages/server/tsconfig.json",
         "sourceType": "module"
     }
 };

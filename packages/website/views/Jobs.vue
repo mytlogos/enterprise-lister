@@ -208,7 +208,7 @@ import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import { AllJobStats, Job } from "../siteTypes";
 import { absoluteToRelative, formatDate, round } from "../init";
-import { JobStatSummary } from "../../server/bin/types";
+import { JobStatSummary } from "enterprise-server/bin/types";
 
 interface LiveJob {
   /**

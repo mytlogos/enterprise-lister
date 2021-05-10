@@ -1,5 +1,4 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "esnext",
     "module": "commonjs",
@@ -16,7 +15,12 @@
     "lib": [
       "esnext"
     ],
-    "outDir": "../../dist/server/"
+    "outDir": "../../dist/server/",
+    "paths": {
+      "@/*": [
+        "./bin/*"
+      ]
+    }
   },
   "exclude": [
     "node_modules"

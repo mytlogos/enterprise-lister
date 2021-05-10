@@ -24,6 +24,7 @@ import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { AsyncResource } from "async_hooks";
+import { parseHTML } from "cheerio";
 
 export function remove<T>(array: T[], item: T): boolean {
   const index = array.indexOf(item);
@@ -816,7 +817,10 @@ export function findRelativeProjectDirPath(dir: string, file: string): string {
     dir = path.dirname(dir);
     currentDirFiles = fs.readdirSync(dir);
   }
-  return filePath;
+  if (currentDirFiles.includes(file)) {
+    return filePath;
+  }
+  return ".." + path.sep + findRelativeProjectDirPath(path.dirname(dir), file);
 }
 
 export function findAbsoluteProjectDirPath(dir = process.cwd()): string {
