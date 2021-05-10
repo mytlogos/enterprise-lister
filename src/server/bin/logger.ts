@@ -46,13 +46,12 @@ const logger = winston.createLogger({
     // - Write to all logs with level `info` and below to `combined.log`
     // - Write all logs error (and below) to `error.log`.
     //
-    new winston.transports.File({
-      filename: filePrefix + "error.log",
-      level: "error",
-      maxsize: 20_000_000,
-    }),
     new DailyRotateFile({
       filename: `${filePrefix}combined.log-%DATE%`,
+    }),
+    new DailyRotateFile({
+      filename: `${filePrefix}error.log-%DATE%`,
+      level: "error",
     }),
     new winston.transports.Console({
       format: format.combine(
