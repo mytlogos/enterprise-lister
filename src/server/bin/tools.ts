@@ -25,6 +25,38 @@ import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { AsyncResource } from "async_hooks";
 
+export function isNumberOrArray(value: number | any[]): boolean {
+  return Array.isArray(value) ? !!value.length : Number.isInteger(value);
+}
+
+export function isInvalidId(id: unknown): boolean {
+  return !Number.isInteger(id) || (id as number) < 1;
+}
+
+export function toArray(value: string): Nullable<any[]> {
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return null;
+  }
+}
+
+export function isInvalidSimpleMedium(value: unknown): boolean {
+  if (typeof value !== "object" || !value) {
+    return true;
+  }
+  const medium = value as any;
+
+  return (
+    medium.title == null ||
+    !isString(medium.title) ||
+    // valid medium types are 1-8
+    !Number.isInteger(medium.medium) ||
+    medium.medium < 1 ||
+    medium.medium > 8
+  );
+}
+
 export function remove<T>(array: T[], item: T): boolean {
   const index = array.indexOf(item);
   if (index < 0) {
@@ -829,12 +861,13 @@ export function findAbsoluteProjectDirPath(dir = process.cwd()): string {
   return dir;
 }
 
-export function isQuery(value: any): value is Query {
-  return value && typeof value.on === "function" && typeof value.stream === "function";
-}
-
-export function invalidId(id: any): boolean {
-  return !Number.isInteger(id) || id <= 0;
+export function isQuery(value: unknown): value is Query {
+  return (
+    typeof value === "object" &&
+    !!value &&
+    typeof (value as any).on === "function" &&
+    typeof (value as any).stream === "function"
+  );
 }
 
 /**

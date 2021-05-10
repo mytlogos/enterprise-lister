@@ -18,7 +18,7 @@ import {
   MediumToc,
   TypedQuery,
 } from "../../types";
-import { count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle } from "../../tools";
+import { count, Errors, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
@@ -313,12 +313,12 @@ export class MediumContext extends SubContext {
       "universe",
     ];
 
-    if (invalidId(mediumToc.mediumId) || !mediumToc.link) {
+    if (isInvalidId(mediumToc.mediumId) || !mediumToc.link) {
       throw Error("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
     }
     const conditions = [];
 
-    if (invalidId(mediumToc.id)) {
+    if (isInvalidId(mediumToc.id)) {
       conditions.push({ column: "medium_id", value: mediumToc.mediumId });
       conditions.push({ column: "link", value: mediumToc.link });
     } else {
