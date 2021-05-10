@@ -372,8 +372,8 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
   public constructor(data: Readonly<OpenApiObject>) {
     super(
       data,
-      "./src/server/bin/misc/openapi/validateMiddleware.ts.handlebars",
-      "./src/server/bin/misc/openapi/validateMiddleware.ts",
+      "./packages/server/bin/misc/openapi/validateMiddleware.ts.handlebars",
+      "./packages/server/bin/misc/openapi/validateMiddleware.ts",
     );
     this.addHandler();
   }

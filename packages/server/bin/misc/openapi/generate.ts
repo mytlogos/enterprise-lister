@@ -172,7 +172,7 @@ function main() {
   } else if (argv.middleware) {
     GenerateOpenApi(argv.middleware);
   } else {
-    GenerateOpenApi("./src/server/bin/api.ts");
+    GenerateOpenApi("./packages/server/bin/api.ts");
   }
 }
 

@@ -1,32 +1,17 @@
 {
-  "name": "enterprise-other",
+  "name": "enterprise-server",
   "version": "1.16.0",
   "private": true,
-  "workspaces": [
-    "./packages/*"
-  ],
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "npm run build --workspaces",
-    "test:unit": "vue-cli-service test:unit",
-    "test:e2e": "vue-cli-service test:e2e",
-    "lint": "npm run lint:server && npm run lint:website",
-    "build:server": "npm run build --workspace=server",
-    "build:scraper": "npm run build --workspace=scraper",
-    "build:website": "npm run build --workspace=website",
-    "build:website:dev": "npm run build:dev --workspace=server",
-    "lint:server": "eslint -c packages/server/.eslintrc.js packages/server/bin/",
-    "lint:website": "eslint packages/website/",
-    "pm2": "pm2 start",
-    "pm2:refresh": "pm2 restart ecosystem.config.js --update-env",
-    "start": "npm run start:server &; npm run start:crawler &",
-    "start:server": "node dist/server/startServer.js",
-    "start:crawler": "node dist/server/startCrawler.js",
+    "build": "npm run build:server && npm run build:website",
+    "lint": "eslint -c packages/server/.eslintrc.js packages/server/bin/",
+    "start": "node dist/server/startServer.js",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
     "migrate": "node dist/server/misc/migrate.js",
     "commit": "npx git-cz",
     "generate:api": "node dist/server/misc/openapi/generate.js",
-    "lintfix": "eslint --fix 'packages/**/*.{js,ts,vue}'"
+    "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "husky": {
     "hooks": {
