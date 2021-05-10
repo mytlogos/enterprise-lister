@@ -31,7 +31,6 @@ module.exports = {
         "sourceType": "module",
         "extraFileExtensions": [ ".vue" ]
     },
-
     "plugins": [
         "eslint-plugin-import",
         "eslint-plugin-jsdoc",
