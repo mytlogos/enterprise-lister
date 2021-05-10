@@ -10,9 +10,10 @@ const appName = process.env.NODE_APP_NAME || process.env.name;
 if (appName) {
   filePrefix = appName.replace(/[^\w-_]/g, "") + "-";
 } else {
-  filePrefix = "";
+  filePrefix = "logs";
 }
 
+// put logs into the logs directory
 filePrefix = joinPath("logs", filePrefix);
 
 let logLevel = process.env.NODE_LOG_LEVEL || process.env.LOG_LEVEL;
