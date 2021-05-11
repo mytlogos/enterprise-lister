@@ -63,12 +63,12 @@ export function createHandler(handler: RestHandler): Handler {
       const result = handler(req, res, next);
 
       if (result && result.catch && result.then) {
-        return result;
+        sendResult(res, result);
       } else {
-        return Promise.resolve(result);
+        sendResult(res, Promise.resolve(result));
       }
     } catch (error) {
-      return Promise.reject(error);
+      sendResult(res, Promise.reject(error));
     }
   };
 }
