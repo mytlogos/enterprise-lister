@@ -11,6 +11,19 @@ import { apiRouter } from "./api";
 import { blockRequests } from "./timer";
 import emojiStrip from "emoji-strip";
 import { isString } from "./tools";
+import swaggerUi from "swagger-ui-express";
+import swaggerJsDoc from "swagger-jsdoc";
+
+const specs = swaggerJsDoc({
+  swaggerDefinition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Enterprise API",
+      version: "1.0",
+    },
+  },
+  apis: ["dist/server/api/*", "dist/server/types.d.ts"],
+});
 
 export const app = express();
 
@@ -37,10 +50,12 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 // only accept json as req body
 app.use(express.json());
 
 app.use("/api", apiRouter());
+app.use("/doc", swaggerUi.serve, swaggerUi.setup(specs));
 
 // map root to app.html first, before the static files, else it will map to index.html by default
 app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("dist", "website", "app.html"))));

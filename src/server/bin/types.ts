@@ -177,6 +177,24 @@ export interface StorageList extends MinList {
   user_uuid: Uuid;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     List:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         userUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         items:
+ *           $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export interface List extends MinList {
   id: Id;
   userUuid: Uuid;
@@ -189,12 +207,67 @@ export interface UpdateUser {
   password?: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SimpleUser:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         userUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         session:
+ *           type: string
+ */
 export interface SimpleUser {
   uuid: Uuid;
   name: string;
   session: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         userUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         session:
+ *           type: string
+ *         unreadNews:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         unreadChapter:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         readToday:
+ *           type: array
+ *           items:
+ *             type:
+ *             properties:
+ *               episodeId:
+ *                 $ref: "#/components/schemas/Id"
+ *               readDate:
+ *                 type: string
+ *               progress:
+ *                 type: number
+ *         externalUser:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/ExternalUser"
+ *         lists:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/List"
+ */
 export interface User extends SimpleUser {
   unreadNews: Id[];
   unreadChapter: Id[];
@@ -203,6 +276,28 @@ export interface User extends SimpleUser {
   lists: List[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ExternalList:
+ *       type: object
+ *       properties:
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         url:
+ *           type: string
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ */
 export interface ExternalList {
   uuid?: Uuid;
   id: Id;
@@ -214,6 +309,24 @@ export interface ExternalList {
 
 export type PureExternalList = Omit<ExternalList, "items">;
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ExternalUser:
+ *       type: object
+ *       properties:
+ *         localUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         identifier:
+ *           type: string
+ *         type:
+ *           type: integer
+ *         lists:
+ *           $ref: "#/components/schemas/ExternalList"
+ */
 export interface ExternalUser {
   localUuid: Uuid;
   uuid: Uuid;
@@ -446,6 +559,12 @@ export enum ReleaseState {
 
 /**
  * A String in RFC UUID Format with a length of 36 characters.
+ *
+ * @openapi
+ * components:
+ *   schemas:
+ *     Uuid:
+ *       type: string
  */
 export type Uuid = string;
 
@@ -456,6 +575,12 @@ export type Link = string;
 
 /**
  * An Integer between 1 (inclusive) and 2^64 (inclusive?)
+ *
+ * @openapi
+ * components:
+ *   schemas:
+ *     Id:
+ *       type: integer
  */
 export type Id = number;
 
