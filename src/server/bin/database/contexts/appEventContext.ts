@@ -1,4 +1,4 @@
-import { AppEvent, AppEventFilter } from "bin/types";
+import { AppEvent, AppEventFilter } from "../../types";
 import { SubContext } from "./subContext";
 
 export class AppEventContext extends SubContext {

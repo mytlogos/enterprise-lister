@@ -1,6 +1,6 @@
-import { mediumStorage, mediumInWaitStorage, episodeStorage } from "bin/database/storages/storage";
-import logger from "bin/logger";
-import { isInvalidId, Errors, isInvalidSimpleMedium, isString, stringToNumberList, isNumberOrArray } from "bin/tools";
+import { mediumStorage, mediumInWaitStorage, episodeStorage } from "../database/storages/storage";
+import logger from "../logger";
+import { isInvalidId, Errors, isInvalidSimpleMedium, isString, stringToNumberList, isNumberOrArray } from "../tools";
 import { Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";
 import { partRouter } from "./part";

@@ -1,7 +1,7 @@
-import { hookStorage } from "bin/database/storages/storage";
-import { load } from "bin/externals/hookManager";
-import { isInvalidId, Errors } from "bin/tools";
-import { ScraperHook } from "bin/types";
+import { hookStorage } from "../database/storages/storage";
+import { load } from "../externals/hookManager";
+import { isInvalidId, Errors } from "../tools";
+import { ScraperHook } from "../types";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
 

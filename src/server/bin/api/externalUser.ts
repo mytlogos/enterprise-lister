@@ -1,7 +1,7 @@
-import { externalUserStorage, jobStorage } from "bin/database/storages/storage";
-import { factory } from "bin/externals/listManager";
-import { Errors, isString } from "bin/tools";
-import { ScrapeName } from "bin/types";
+import { externalUserStorage, jobStorage } from "../database/storages/storage";
+import { factory } from "../externals/listManager";
+import { Errors, isString } from "../tools";
+import { ScrapeName } from "../types";
 import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
 

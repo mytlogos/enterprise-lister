@@ -1,6 +1,6 @@
-import { jobStorage } from "bin/database/storages/storage";
-import { isInvalidId, Errors } from "bin/tools";
-import { TimeBucket } from "bin/types";
+import { jobStorage } from "../database/storages/storage";
+import { isInvalidId, Errors } from "../tools";
+import { TimeBucket } from "../types";
 import { Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";
 

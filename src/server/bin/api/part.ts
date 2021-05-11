@@ -1,5 +1,5 @@
-import { partStorage } from "bin/database/storages/storage";
-import { stringToNumberList, Errors, isString } from "bin/tools";
+import { partStorage } from "../database/storages/storage";
+import { stringToNumberList, Errors, isString } from "../tools";
 import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
 import { episodeRouter } from "./episode";

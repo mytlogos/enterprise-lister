@@ -1,7 +1,7 @@
-import { userStorage } from "bin/database/storages/storage";
-import env from "bin/env";
-import { Errors, isString } from "bin/tools";
-import { getTunnelUrls } from "bin/tunnel";
+import { userStorage } from "../database/storages/storage";
+import env from "../env";
+import { Errors, isString } from "../tools";
+import { getTunnelUrls } from "../tunnel";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
 import { userRouter } from "./user";
@@ -37,20 +37,99 @@ const getDev = createHandler(() => {
 });
 
 /**
+ * @openapi
+ * tags:
+ *  name: Base
+ *  description: API without authentication restriction
+ */
+
+/**
  *  Returns the Router for the User Api.
  *  @return {Router} user api router
  */
 export function apiRouter(): Router {
   const router = Router();
-  // check if an user is logged in for ip
+
+  /**
+   * @openapi
+   * /api:
+   *    get:
+   *      #tags: [Base]
+   *      description: Check if an user is logged in for ip
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/SimpleUser"
+   *          description: true if logged in, else false
+   */
   router.get("", checkLogin);
+
+  /**
+   * @openapi
+   * /api/tunnel:
+   *    get:
+   *      tags: [Base]
+   *      description: Get the current active Tunnels
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  type: string
+   *          description: Tunnel Array
+   */
   router.get("/tunnel", getTunnel);
+
+  /**
+   * @openapi
+   * /api/dev:
+   *    get:
+   *      tags: [Base]
+   *      description: Check if the program mode
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if the server is in development mode
+   */
   router.get("/dev", getDev);
 
-  // login a user
+  /**
+   * @openapi
+   * /api/login:
+   *    post:
+   *      tags: [Base]
+   *      description: login a user
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/User"
+   *          description: the user
+   */
   router.post("/login", login);
 
-  // register a new user
+  /**
+   * @openapi
+   * /api/register:
+   *    post:
+   *      tags: [Base]
+   *      description: register a new user
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/User"
+   *          description: the user
+   */
   router.post("/register", register);
   router.use("/user", userRouter());
 

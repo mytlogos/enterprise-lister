@@ -1,5 +1,5 @@
-import { episodeStorage } from "bin/database/storages/storage";
-import { stringToNumberList, isNumberOrArray, Errors, getDate, isString } from "bin/tools";
+import { episodeStorage } from "../database/storages/storage";
+import { stringToNumberList, isNumberOrArray, Errors, getDate, isString } from "../tools";
 import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
 

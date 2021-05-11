@@ -1,5 +1,5 @@
-import logger from "bin/logger";
-import { isQuery, Errors, isError, isString } from "bin/tools";
+import logger from "../logger";
+import { isQuery, Errors, isError, isString } from "../tools";
 import { Handler, NextFunction, Request, Response } from "express";
 import stringify from "stringify-stream";
 

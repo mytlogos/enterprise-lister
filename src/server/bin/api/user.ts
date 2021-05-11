@@ -1,23 +1,22 @@
 import {
   appEventStorage,
   episodeStorage,
-  internalListStorage,
   jobStorage,
   mediumStorage,
   storage,
   userStorage,
-} from "bin/database/storages/storage";
-import { filterScrapeAble, downloadEpisodes, loadToc, search as searchMedium } from "bin/externals/scraperTools";
-import { TocRequest } from "bin/externals/types";
-import logger from "bin/logger";
-import { Errors, getDate, isError, isInvalidId, isString, stringToNumberList, toArray } from "bin/tools";
-import { JobRequest, ScrapeName, AppEventFilter, AppEventProgram, AppEventType, AppEvent } from "bin/types";
+} from "../database/storages/storage";
+import { filterScrapeAble, downloadEpisodes, loadToc, search as searchMedium } from "../externals/scraperTools";
+import { TocRequest } from "../externals/types";
+import logger from "../logger";
+import { Errors, getDate, isError, isInvalidId, isString, stringToNumberList, toArray } from "../tools";
+import { JobRequest, ScrapeName, AppEventFilter, AppEventProgram, AppEventType, AppEvent } from "../types";
 import { Handler, Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";
 import { externalUserRouter } from "./externalUser";
 import { hooksRouter } from "./hooks";
 import { jobsRouter } from "./jobs";
-import { listRouter } from "./list";
+import { getAllLists, listRouter } from "./list";
 import { mediumRouter } from "./medium";
 import { newsRouter } from "./news";
 import { processRouter } from "./process";
@@ -148,10 +147,7 @@ export const downloadEpisode = createHandler((req) => {
     .then((fullEpisodes) => downloadEpisodes(fullEpisodes.filter((value) => value)));
 });
 
-export const getLists = createHandler((req) => {
-  const uuid = extractQueryParam(req, "uuid");
-  return internalListStorage.getUserLists(uuid);
-});
+export const getLists = getAllLists;
 
 export const getAssociatedEpisode = createHandler((req) => {
   const url = extractQueryParam(req, "url");

@@ -1,5 +1,5 @@
-import { internalListStorage } from "bin/database/storages/storage";
-import { Errors, stringToNumberList, isNumberOrArray, isString } from "bin/tools";
+import { internalListStorage } from "../database/storages/storage";
+import { Errors, stringToNumberList, isNumberOrArray, isString } from "../tools";
 import { Handler, Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
 import { getLists } from "./user";
@@ -112,7 +112,10 @@ export const deleteListMedium = createHandler((req) => {
   return internalListStorage.removeMedium(listId, mediumId);
 });
 
-export const getAllLists: Handler = getLists;
+export const getAllLists = createHandler((req) => {
+  const uuid = extractQueryParam(req, "uuid");
+  return internalListStorage.getUserLists(uuid);
+});
 
 /**
  * Creates the List API Router.
