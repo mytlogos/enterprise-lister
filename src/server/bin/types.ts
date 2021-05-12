@@ -990,6 +990,38 @@ export enum JobState {
   WAITING = "waiting",
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobItem:
+ *        type: object
+ *        properties:
+ *          type:
+ *            type: string
+ *          state:
+ *            type: string
+ *          interval:
+ *            type: integer
+ *          deleteAfterRun:
+ *            type: boolean
+ *          id:
+ *            $ref: "#/components/schemas/Id"
+ *          name:
+ *            type: string
+ *          runAfter:
+ *            $ref: "#/components/schemas/Id"
+ *          runningSince:
+ *            type: string
+ *          nextRun:
+ *            type: string
+ *          lastRun:
+ *            type: string
+ *          arguments:
+ *            type: string
+ *          previousScheduledAt:
+ *            type: string
+ */
 export interface JobItem {
   type: ScrapeName;
   state: JobState;
@@ -1030,11 +1062,101 @@ export interface BasicJobStats {
   avglagging: number;
 }
 
+/**
+ * TODO: domain property need more doc
+ *
+ * @openapi
+ * components:
+ *    schemas:
+ *      TimeJobStats:
+ *        type: object
+ *        properties:
+ *          count:
+ *            type: integer
+ *          avgnetwork:
+ *            type: number
+ *          avgreceived:
+ *            type: number
+ *          avgsend:
+ *            type: number
+ *          avgduration:
+ *            type: number
+ *          allupdate:
+ *            type: integer
+ *          allcreate:
+ *            type: integer
+ *          alldelete:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          queries:
+ *            type: integer
+ *          avglagging:
+ *            type: number
+ *          timepoint:
+ *            type: string
+ *          domain:
+ *            type: object
+ */
 export interface TimeJobStats extends BasicJobStats {
   timepoint: Date;
   domain?: Record<string, BasicJobStats>;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      AllJobStats:
+ *        type: object
+ *        properties:
+ *          count:
+ *            type: integer
+ *          avgnetwork:
+ *            type: number
+ *          avgreceived:
+ *            type: number
+ *          avgsend:
+ *            type: number
+ *          avgduration:
+ *            type: number
+ *          allupdate:
+ *            type: integer
+ *          allcreate:
+ *            type: integer
+ *          alldelete:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          queries:
+ *            type: integer
+ *          avglagging:
+ *            type: number
+ *          minnetwork:
+ *            type: integer
+ *          maxnetwork:
+ *            type: integer
+ *          minreceived:
+ *            type: integer
+ *          maxreceived:
+ *            type: integer
+ *          minsend:
+ *            type: integer
+ *          maxsend:
+ *            type: integer
+ *          maxD:
+ *            type: integer
+ *          minD:
+ *            type: integer
+ *          maxQ:
+ *            type: integer
+ *          minQ:
+ *            type: integer
+ */
 export interface AllJobStats extends BasicJobStats {
   minnetwork: number;
   maxnetwork: number;
@@ -1048,10 +1170,96 @@ export interface AllJobStats extends BasicJobStats {
   minQ: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobStats:
+ *        type: object
+ *        properties:
+ *          name:
+ *            type: string
+ *          count:
+ *            type: integer
+ *          avgnetwork:
+ *            type: number
+ *          avgreceived:
+ *            type: number
+ *          avgsend:
+ *            type: number
+ *          avgduration:
+ *            type: number
+ *          allupdate:
+ *            type: integer
+ *          allcreate:
+ *            type: integer
+ *          alldelete:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          queries:
+ *            type: integer
+ *          avglagging:
+ *            type: number
+ *          minnetwork:
+ *            type: integer
+ *          maxnetwork:
+ *            type: integer
+ *          minreceived:
+ *            type: integer
+ *          maxreceived:
+ *            type: integer
+ *          minsend:
+ *            type: integer
+ *          maxsend:
+ *            type: integer
+ *          maxD:
+ *            type: integer
+ *          minD:
+ *            type: integer
+ *          maxQ:
+ *            type: integer
+ *          minQ:
+ *            type: integer
+ */
 export interface JobStats extends AllJobStats {
   name: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobHistoryItem:
+ *        type: object
+ *        properties:
+ *          scheduled_at:
+ *            type: string
+ *          start:
+ *            type: string
+ *          end:
+ *            type: string
+ *          result:
+ *            type: string
+ *          message:
+ *            type: string
+ *          context:
+ *            type: string
+ *          state:
+ *            type: string
+ *          interval:
+ *            type: integer
+ *          runningSince:
+ *            type: string
+ *          nextRun:
+ *            type: string
+ *          lastRun:
+ *            type: string
+ *          previousScheduledAt:
+ *            type: string
+ */
 export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfterRun" | "runAfter" | "arguments"> & {
   scheduled_at: Date;
   start: Date;
@@ -1061,6 +1269,20 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
   context: string;
 };
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobDetails:
+ *        type: object
+ *        properties:
+ *          job:
+ *            $ref: "#/components/schemas/JobItem"
+ *          history:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/JobHistoryItem"
+ */
 export interface JobDetails {
   job?: JobItem;
   history: JobHistoryItem[];
@@ -1296,6 +1518,78 @@ export interface AppEventFilter {
 
 type MinMax<T extends string> = Record<T | `min_${T}` | `max_${T}`, number>;
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobStatSummary:
+ *        type: object
+ *        properties:
+ *          name:
+ *            type: string
+ *          type:
+ *            type: string
+ *          count:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          network_requests:
+ *            type: integer
+ *          network_send:
+ *            type: integer
+ *          network_received:
+ *            type: integer
+ *          duration:
+ *            type: integer
+ *          updated:
+ *            type: integer
+ *          created:
+ *            type: integer
+ *          deleted:
+ *            type: integer
+ *          sql_queries:
+ *            type: integer
+ *          lagging:
+ *            type: integer
+ *          min_network_requests:
+ *            type: integer
+ *          min_network_send:
+ *            type: integer
+ *          min_network_received:
+ *            type: integer
+ *          min_duration:
+ *            type: integer
+ *          min_updated:
+ *            type: integer
+ *          min_created:
+ *            type: integer
+ *          min_deleted:
+ *            type: integer
+ *          min_sql_queries:
+ *            type: integer
+ *          min_lagging:
+ *            type: integer
+ *          max_network_requests:
+ *            type: integer
+ *          max_network_send:
+ *            type: integer
+ *          max_network_received:
+ *            type: integer
+ *          max_duration:
+ *            type: integer
+ *          max_updated:
+ *            type: integer
+ *          max_created:
+ *            type: integer
+ *          max_deleted:
+ *            type: integer
+ *          max_sql_queries:
+ *            type: integer
+ *          max_lagging:
+ *            type: integer
+ */
 export type JobStatSummary = {
   name: string;
   type: string;
