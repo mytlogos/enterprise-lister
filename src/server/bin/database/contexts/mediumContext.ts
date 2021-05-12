@@ -17,6 +17,7 @@ import {
   MultiSingleNumber,
   MediumToc,
   TypedQuery,
+  Id,
 } from "../../types";
 import { count, Errors, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
@@ -646,7 +647,7 @@ export class MediumContext extends SubContext {
     return true;
   }
 
-  public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<number> {
+  public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<Id> {
     if (!destMedium || !destMedium.medium || !destMedium.title) {
       return Promise.reject(new Error(Errors.INVALID_INPUT));
     }

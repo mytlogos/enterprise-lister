@@ -172,31 +172,527 @@ export const getMediumReleases = createHandler((req) => {
 /**
  * Creates the Medium API Router.
  * Adds the Part Api to the Medium Api.
+ *
+ * @openapi
+ * tags:
+ *  name: Medium
+ *  description: API for Media
  */
 export function mediumRouter(): Router {
   const router = Router();
 
+  /**
+   * @openapi
+   * /api/user/medium/unused:
+   *    get:
+   *      tags: [Medium]
+   *      description: Query for MediumInWaits
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: limit
+   *        in: query
+   *        description: Limit of Results to return
+   *        required: false
+   *        schema:
+   *          type: integer
+   *      - name: medium
+   *        in: query
+   *        description: Medium type to filter
+   *        required: false
+   *        schema:
+   *          type: integer
+   *      - name: title
+   *        in: query
+   *        description: Title to query
+   *        required: false
+   *        schema:
+   *          type: string
+   *      - name: link
+   *        in: query
+   *        description: Link to query for
+   *        required: false
+   *        schema:
+   *          type: string
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/MediumInWait"
+   *          description: query results
+   */
   router.get("/unused", getUnusedMedia);
+
+  /**
+   * @openapi
+   * /api/user/medium/all:
+   *    get:
+   *      tags: [Medium]
+   *      description: Get Ids of all Media.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/Id"
+   *          description: array of ids
+   */
   router.get("/all", getAllMedia);
+
+  /**
+   * @openapi
+   * /api/user/medium/allFull:
+   *    get:
+   *      tags: [Medium]
+   *      description: Get all Media
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/SimpleMedium"
+   *          description: array of media
+   */
   router.get("/allFull", getAllMediaFull);
+
+  /**
+   * @openapi
+   * /api/user/medium/allSecondary:
+   *    get:
+   *      tags: [User]
+   *      description: Get all secondary Data of Media.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/SecondaryMedium"
+   *          description: array of objects
+   */
   router.get("/allSecondary", getAllSecondary);
+
+  /**
+   * @openapi
+   * /api/user/medium/releases:
+   *    get:
+   *      tags: [Medium]
+   *      description: Get Releases of a Medium
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: id
+   *        in: query
+   *        description: Medium id to query releases for
+   *        required: true
+   *        schema:
+   *          $ref: "#/components/schemas/Id"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/MediumRelease"
+   *          description: the user
+   */
   router.get("/releases", getMediumReleases);
+
+  /**
+   * @openapi
+   * /api/user/medium/unused:
+   *    put:
+   *      tags: [Medium]
+   *      description: Add Tocs from MediumInWaits to existing Medium and delete the used MediumInWaits
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                mediumId:
+   *                  $ref: "#/components/schemas/Id"
+   *                tocsMedia:
+   *                  type: array
+   *                  items:
+   *                  $ref: "#/components/schemas/MediumInWait"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if update succeeded
+   */
   router.put("/unused", putConsumeUnusedMedia);
+
+  /**
+   * @openapi
+   * /api/user/medium/create:
+   *    post:
+   *      tags: [Medium]
+   *      description: Create Medium from MediumInWaits and delete the used MediumInWaits
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                createMedium:
+   *                  $ref: "#/components/schemas/MediumInWait"
+   *                tocsMedia:
+   *                  type: array
+   *                  items:
+   *                  $ref: "#/components/schemas/MediumInWait"
+   *                listId:
+   *                  $ref: "#/components/schemas/MediumInWait"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/Medium"
+   *          description: newly created medium
+   */
   router.post("/create", postCreateFromUnusedMedia);
+
+  /**
+   * @openapi
+   * /api/user/medium/split:
+   *    post:
+   *      tags: [Medium]
+   *      description: Split a Toc from one Medium and create a new one based on the given destinationMedium.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                sourceId:
+   *                  $ref: "#/components/schemas/Id"
+   *                destinationMedium:
+   *                  $ref: "#/components/schemas/SimpleMedium"
+   *                toc:
+   *                  type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/Id"
+   *          description: the Id of the new Medium or zero
+   */
   router.post("/split", postSplitMedium);
+
+  /**
+   * @openapi
+   * /api/user/medium/merge:
+   *    post:
+   *      tags: [Medium]
+   *      description: Merge two Media.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                sourceId:
+   *                  $ref: "#/components/schemas/Id"
+   *                destinationId:
+   *                  $ref: "#/components/schemas/Id"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if merge succeeded
+   */
   router.post("/merge", postMergeMedia);
+
+  /**
+   * @openapi
+   * /api/user/medium/transfer:
+   *    put:
+   *      tags: [User]
+   *      description: Transfer a Toc from one Medium to another.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                sourceId:
+   *                  $ref: "#/components/schemas/Id"
+   *                destinationId:
+   *                  $ref: "#/components/schemas/Id"
+   *                toc:
+   *                  type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if transfer succeeded
+   */
   router.post("/transfer", postTransferToc);
   router.use("/part", partRouter());
 
   const mediumRoute = router.route("");
+
+  /**
+   * @openapi
+   * /api/user/medium:
+   *    get:
+   *      tags: [Medium]
+   *      description: Query Media.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: mediumId
+   *        in: query
+   *        description: Ids of the Media to query for
+   *        required: true
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: integer
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/Medium"
+   *          description: array of objects
+   */
   mediumRoute.get(getMedium);
+
+  /**
+   * @openapi
+   * /api/user/medium:
+   *    put:
+   *      tags: [Medium]
+   *      description: Create a Medium.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                medium:
+   *                  $ref: "#/components/schemas/SimpleMedium"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/SimpleMedium"
+   *          description: the newly created medium
+   */
   mediumRoute.post(postMedium);
+
+  /**
+   * @openapi
+   * /api/user/medium:
+   *    put:
+   *      tags: [Medium]
+   *      description: Update Medium.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                user:
+   *                  $ref: "#/components/schemas/UpdateMedium"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if update succeeded
+   */
   mediumRoute.put(putMedium);
 
   const progressRoute = router.route("/progress");
+
+  /**
+   * @openapi
+   * /api/user/medium/progress:
+   *    get:
+   *      tags: [User]
+   *      description: Get the Read Progress of a given Episode Id.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: episodeId
+   *        in: query
+   *        description: Id of Episode to get the progress from
+   *        required: true
+   *        schema:
+   *          $ref: "#/components/schemas/Id"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: number
+   *          description: the progress
+   */
   progressRoute.get(getProgress);
+
+  /**
+   * @openapi
+   * /api/user/medium/progress:
+   *    post:
+   *      tags: [Medium]
+   *      description: Update the Progress for the given Episode.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                episodeId:
+   *                  type: array
+   *                  items:
+   *                    $ref: "#/components/schemas/Id"
+   *                progress:
+   *                  type: number
+   *                readDate:
+   *                  type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if update succeeded
+   */
   progressRoute.post(postProgress);
+
+  /**
+   * @openapi
+   * /api/user/medium/progress:
+   *    put:
+   *      tags: [Medium]
+   *      description: Update the Progress for the given Episode.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                episodeId:
+   *                  type: array
+   *                  items:
+   *                    $ref: "#/components/schemas/Id"
+   *                progress:
+   *                  type: number
+   *                readDate:
+   *                  type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if update succeeded
+   */
   progressRoute.put(putProgress);
+
+  /**
+   * @openapi
+   * /api/user/medium/progress:
+   *    put:
+   *      tags: [Medium]
+   *      description: Remove Progress for the given Episode.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                episodeId:
+   *                  $ref: "#/components/schemas/Id"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if delete succeeded
+   */
   progressRoute.delete(deleteProgress);
 
   return router;

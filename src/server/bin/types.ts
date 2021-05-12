@@ -83,6 +83,24 @@ export interface SimpleMedium {
   [key: string]: any;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SecondaryMedium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         totalEpisodes:
+ *           type: integer
+ *         readEpisodes:
+ *           type: integer
+ *         tocs:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/FullMediumToc"
+ */
 export interface SecondaryMedium {
   id: Id;
   totalEpisodes: number;
@@ -90,6 +108,38 @@ export interface SecondaryMedium {
   tocs: FullMediumToc[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     UpdateMedium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ */
 export type UpdateMedium = Partial<SimpleMedium> & {
   id: Id;
 };
@@ -438,6 +488,26 @@ export interface DisplayReleasesResponse {
   latest: Date;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      MediumRelease:
+ *        type: object
+ *        properties:
+ *          episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *          title:
+ *            type: string
+ *          link:
+ *            type: string
+ *          combiIndex:
+ *            type: number
+ *          locked:
+ *            type: boolean
+ *          date:
+ *            type: string
+ */
 export interface MediumRelease {
   episodeId: Id;
   title: string;
