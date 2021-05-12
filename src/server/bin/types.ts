@@ -283,10 +283,54 @@ export interface MinPart extends Indexable {
   mediumId: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Part:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         episodes:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Episode"
+ */
 export interface Part extends MinPart {
   episodes: Episode[] | Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     AddPart:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         episodes:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/SimpleEpisode"
+ */
 export interface AddPart extends MinPart {
   episodes: SimpleEpisode[];
 }
@@ -879,6 +923,26 @@ export interface LikeMediumQuery {
   type?: MediaType;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      MetaResult:
+ *        type: object
+ *        properties:
+ *          novel:
+ *            type: string
+ *          volume:
+ *            type: string
+ *          volIndex:
+ *            type: string
+ *          chapIndex:
+ *            type: string
+ *          type:
+ *            type: integer
+ *          seeAble:
+ *            type: boolean
+ */
 export interface MetaResult {
   novel: string;
   volume?: string;
@@ -889,6 +953,24 @@ export interface MetaResult {
   seeAble: boolean;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      Result:
+ *        type: object
+ *        properties:
+ *          result:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/MetaResult"
+ *          preliminary:
+ *            type: boolean
+ *          accept:
+ *            type: boolean
+ *          url:
+ *            type: string
+ */
 export interface Result {
   result: MetaResult | MetaResult[];
   preliminary?: boolean;
@@ -896,6 +978,30 @@ export interface Result {
   url: Link;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      ProgressResult:
+ *        type: object
+ *        properties:
+ *          novel:
+ *            type: string
+ *          volume:
+ *            type: string
+ *          volIndex:
+ *            type: string
+ *          chapIndex:
+ *            type: string
+ *          type:
+ *            type: integer
+ *          seeAble:
+ *            type: boolean
+ *          progress:
+ *            type: number
+ *          readDate:
+ *            type: string
+ */
 export interface ProgressResult extends MetaResult {
   progress: number;
   readDate: Date;

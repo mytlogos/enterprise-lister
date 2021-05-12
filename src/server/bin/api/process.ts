@@ -26,10 +26,79 @@ export const processResult = createHandler((req) => {
   return storage.processResult(req.body);
 });
 
+/**
+ * @openapi
+ * tags:
+ *  name: Process
+ *  description: API for Process
+ */
 export function processRouter(): Router {
   const router = Router();
+
+  /**
+   * @openapi
+   * /api/user/process/result:
+   *    post:
+   *      tags: [Process]
+   *      description: Process a Result, TODO
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if update succeeded
+   */
   router.post("/result", processResult);
+
+  /**
+   * @openapi
+   * /api/user/process/read:
+   *    post:
+   *      tags: [Process]
+   *      description: Process Result.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                result:
+   *                  $ref: "#/components/schemas/Result"
+   *        required: true
+   *      responses:
+   *        200:
+   *          description: no body
+   */
   router.post("/read", processReadEpisode);
+
+  /**
+   * @openapi
+   * /api/user/process/progress:
+   *    post:
+   *      tags: [Process]
+   *      description: Process Progress Result.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                progress:
+   *                  $ref: "#/components/schemas/ProgressResult"
+   *        required: true
+   *      responses:
+   *        200:
+   *          description: no body
+   */
   router.post("/progress", processProgress);
   return router;
 }

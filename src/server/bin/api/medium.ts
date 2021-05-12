@@ -498,7 +498,7 @@ export function mediumRouter(): Router {
    *        schema:
    *          type: array
    *          items:
-   *            type: integer
+   *            $ref: "#/components/schemas/Id"
    *      responses:
    *        200:
    *          content:
