@@ -249,6 +249,28 @@ export interface ShallowPart extends Part {
   episodes: Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SimpleEpisode:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         partId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         combiIndex:
+ *           type: number
+ *         releases:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/EpisodeRelease"
+ */
 export interface SimpleEpisode extends Indexable {
   id: Id;
   partId: Id;
@@ -260,6 +282,32 @@ export type CombinedEpisode = SimpleEpisode & {
   combiIndex: number;
 };
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Episode:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         partId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         combiIndex:
+ *           type: number
+ *         releases:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/EpisodeRelease"
+ *         progress:
+ *           type: number
+ *         readDate:
+ *           type: string
+ */
 export interface Episode extends SimpleEpisode {
   progress: number;
   readDate: Nullable<Date>;
@@ -300,6 +348,28 @@ export interface SimpleRelease {
   url: Link;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     EpisodeRelease:
+ *       type: object
+ *       properties:
+ *         episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *         tocId:
+ *           $ref: "#/components/schemas/Id"
+ *         url:
+ *           type: string
+ *         title:
+ *           type: string
+ *         releaseDate:
+ *           type: string
+ *         locked:
+ *           type: boolean
+ *         sourceType:
+ *           type: string
+ */
 export interface EpisodeRelease extends SimpleRelease {
   title: string;
   releaseDate: Date;
@@ -330,6 +400,28 @@ export interface EpisodeRelease extends SimpleRelease {
  */
 export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">;
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     DisplayRelease:
+ *       type: object
+ *       properties:
+ *         episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         link:
+ *           type: string
+ *         title:
+ *           type: string
+ *         date:
+ *           type: string
+ *         locked:
+ *           type: boolean
+ *         progress:
+ *           type: number
+ */
 export interface DisplayRelease {
   episodeId: Id;
   title: string;
