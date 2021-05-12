@@ -1237,6 +1237,22 @@ export interface MediumInWaitSearch {
   limit?: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ScraperHook:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         state:
+ *           type: string
+ *         message:
+ *           type: string
+ */
 export interface ScraperHook {
   id: number;
   name: string;

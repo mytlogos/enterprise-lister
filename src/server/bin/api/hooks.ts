@@ -21,12 +21,63 @@ export const putHook = createHandler((req) => {
 
 /**
  * Creates the Hook API Router.
+ *
+ * @openapi
+ * tags:
+ *  name: Hook
+ *  description: API for Scraper Hooks
  */
 export function hooksRouter(): Router {
   const router = Router();
 
   const hookRoute = router.route("");
+
+  /**
+   * @openapi
+   * /api/user/hook:
+   *    get:
+   *      tags: [Hook]
+   *      description: Get all available Hooks
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/ScraperHook"
+   *          description: true of refresh job successfully requested
+   */
   hookRoute.get(getAllHooks);
+
+  /**
+   * @openapi
+   * /api/user/hook:
+   *    post:
+   *      tags: [Hook]
+   *      description: Update ScraperHook
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                hook:
+   *                  $ref: "#/components/schemas/ScraperHook"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if update succeeded
+   */
   hookRoute.put(putHook);
 
   return router;
