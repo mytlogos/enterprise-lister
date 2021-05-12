@@ -271,6 +271,27 @@ export const getAllAppEvents = createHandler((req) => {
 
 /**
  * Creates the User Api Router.
+ *
+ * @openapi
+ * tags:
+ *  name: User
+ *  description: API for Users
+ * components:
+ *  parameters:
+ *    UserUuid:
+ *      name: uuid
+ *      in: query
+ *      description: UUID of the user
+ *      required: true
+ *      schema:
+ *        type: string
+ *    UserSession:
+ *      name: session
+ *      in: query
+ *      description: session identifier of the user
+ *      required: true
+ *      schema:
+ *        type: string
  */
 export function userRouter(): Router {
   const router = Router();
@@ -281,23 +302,476 @@ export function userRouter(): Router {
 
   const userRoute = router.route("");
 
-  // check if an user is logged in for ip
+  /**
+   * @openapi
+   * /api/user:
+   *    get:
+   *      tags: [User]
+   *      description: get current user
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/User"
+   *          description: the user
+   */
   userRoute.get(getUser);
+
+  /**
+   * @openapi
+   * /api/user:
+   *    put:
+   *      tags: [User]
+   *      description: update current user
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                user:
+   *                  type: object
+   *                  properties:
+   *                    name:
+   *                      type: string
+   *                    newPassword:
+   *                      type: string
+   *                    password:
+   *                      type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if update succeeded
+   */
   userRoute.put(putUser);
+
+  /**
+   * @openapi
+   * /api/user:
+   *    delete:
+   *      tags: [User]
+   *      description: delete current user account
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if delete succeeded
+   */
   userRoute.delete(deleteUser);
 
+  /**
+   * @openapi
+   * /api/user/logout:
+   *    post:
+   *      tags: [User]
+   *      description: logout current user
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if logout succeeded
+   */
   router.post("/logout", logout);
+
+  /**
+   * @openapi
+   * /api/user/lists:
+   *    get:
+   *      tags: [User]
+   *      description: get all Lists of the current User
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/List"
+   *          description: List array
+   */
   router.get("/lists", getLists);
+
+  /**
+   * @openapi
+   * /api/user/bookmarked:
+   *    post:
+   *      tags: [User]
+   *      description: Add Toc Scrape Requests for an Array of Links
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                bookmarked:
+   *                  type: array
+   *                  items:
+   *                    type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  type: string
+   *          description: An array of currently unscrapeable Links
+   */
   router.post("/bookmarked", addBookmarked);
+
+  /**
+   * @openapi
+   * /api/user/associated:
+   *    get:
+   *      tags: [User]
+   *      description: search for a single episode associated with the given link
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: url
+   *        in: query
+   *        description: link to look for
+   *        required: true
+   *        schema:
+   *          type: string
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/Id"
+   *          description: the episode id
+   */
   router.get("/associated", getAssociatedEpisode);
+
+  /**
+   * @openapi
+   * /api/user/searchtoc:
+   *    get:
+   *      tags: [User]
+   *      description: scrape all Tocs for the given Link
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: link
+   *        in: query
+   *        description: link to scrape
+   *        required: true
+   *        schema:
+   *          type: string
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/Toc"
+   *          description: Toc array
+   */
   router.get("/searchtoc", searchToc);
+
+  /**
+   * @openapi
+   * /api/user/toc:
+   *    post:
+   *      tags: [User]
+   *      description: Add Toc Scrape Request for the toc link and specific mediumId.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                toc:
+   *                  type: string
+   *                mediumId:
+   *                  type: integer
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if request successfully added
+   */
   router.post("/toc", addToc);
+
+  /**
+   * @openapi
+   * /api/user/toc:
+   *    get:
+   *      tags: [User]
+   *      description: Get the Tocs for multiple Media.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: media
+   *        in: query
+   *        description: Media to get the Tocs from
+   *        required: true
+   *        schema:
+   *          type: array
+   *          items:
+   *            $ref: "#/components/schemas/Id"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/FullMediumToc"
+   *          description: FullMediumToc array
+   */
   router.get("/toc", getToc);
+
+  /**
+   * @openapi
+   * /api/user/toc:
+   *    delete:
+   *      tags: [User]
+   *      description: Delete a Toc and all associated data.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                link:
+   *                  type: string
+   *                mediumId:
+   *                  type: integer
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if toc was successfully deleted
+   */
   router.delete("/toc", deleteToc);
+
+  /**
+   * @openapi
+   * /api/user/search:
+   *    get:
+   *      tags: [User]
+   *      description: Search for Media with the given Title and Medium Type.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: text
+   *        in: query
+   *        description: Title Text to search for
+   *        required: true
+   *        schema:
+   *          type: string
+   *      - name: medium
+   *        in: query
+   *        description: Medium Type to search for
+   *        required: true
+   *        schema:
+   *          type: integer
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/SearchResult"
+   *          description: Search Result array
+   */
   router.get("/search", search);
+
+  /**
+   * @openapi
+   * /api/user/stats:
+   *    get:
+   *      tags: [User]
+   *      description: get current Stats of Data
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: object
+   *                items:
+   *                  $ref: "#/components/schemas/DataStats"
+   */
   router.get("/stats", getStats);
+
+  /**
+   * @openapi
+   * /api/user/new:
+   *    get:
+   *      tags: [User]
+   *      description: Get all new Data since the given Date.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: date
+   *        in: query
+   *        description: Date since last request in ISO Format
+   *        required: true
+   *        schema:
+   *          type: string
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/NewData"
+   *          description: List array
+   */
   router.get("/new", getNew);
+
+  /**
+   * @openapi
+   * /api/user/download:
+   *    get:
+   *      tags: [User]
+   *      description: Download Content for the given Episodes
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: episode
+   *        in: query
+   *        description: episode ids
+   *        required: true
+   *        schema:
+   *          type: array
+   *          items:
+   *            $ref: "#/components/schemas/Id"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/DownloadContent"
+   *          description: DownloadContent array
+   */
   router.get("/download", downloadEpisode);
+
+  /**
+   * @openapi
+   * /api/user/events:
+   *    get:
+   *      tags: [User]
+   *      description: get all Lists of the current User
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: from
+   *        in: query
+   *        description: Date in ISO Format
+   *        required: false
+   *        schema:
+   *          type: string
+   *      - name: to
+   *        in: query
+   *        description: Date in ISO Format
+   *        required: false
+   *        schema:
+   *          type: string
+   *      - name: program
+   *        in: query
+   *        description: Program to Query for
+   *        required: false
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *      - name: type
+   *        in: query
+   *        description: Event Type
+   *        required: false
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *      - name: sortOrder
+   *        in: query
+   *        description: Sort Order for Events
+   *        required: false
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/AppEvent"
+   *          description: List array
+   */
   router.get("/events", getAllAppEvents);
 
   router.use("/medium", mediumRouter());

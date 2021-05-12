@@ -22,7 +22,7 @@ const specs = swaggerJsDoc({
       version: "1.0",
     },
   },
-  apis: ["dist/server/api/*", "dist/server/types.d.ts"],
+  apis: ["dist/server/api/*", "dist/server/types.d.ts", "dist/server/externals/types.d.ts"],
 });
 
 export const app = express();

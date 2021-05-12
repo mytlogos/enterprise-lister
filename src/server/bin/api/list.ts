@@ -1,8 +1,7 @@
 import { internalListStorage } from "../database/storages/storage";
 import { Errors, stringToNumberList, isNumberOrArray, isString } from "../tools";
-import { Handler, Router } from "express";
+import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
-import { getLists } from "./user";
 
 export const getList = createHandler((req) => {
   let listId: string | number[] = extractQueryParam(req, "listId");
@@ -119,21 +118,292 @@ export const getAllLists = createHandler((req) => {
 
 /**
  * Creates the List API Router.
+ *
+ * @openapi
+ * tags:
+ *  name: List
+ *  description: API for Lists
  */
 export function listRouter(): Router {
   const router = Router();
+
+  /**
+   * @openapi
+   * /api/user/list/all:
+   *    get:
+   *      tags: [List]
+   *      description: get all Lists of the current User
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/List"
+   *          description: List array
+   */
   router.get("/all", getAllLists);
 
   const listMediumRoute = router.route("/medium");
+
+  /**
+   * @openapi
+   * /api/user/list/medium:
+   *    get:
+   *      tags: [List]
+   *      description: get all Lists of the current User
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: listId
+   *        in: query
+   *        description: List Id to query for
+   *        required: true
+   *        schema:
+   *          $ref: "#/components/schemas/Id"
+   *      - name: media
+   *        in: query
+   *        description: Media Ids to query for
+   *        required: true
+   *        schema:
+   *          type: array
+   *          items:
+   *            $ref: "#/components/schemas/Id"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/ListMedia"
+   *          description: List array
+   */
   listMediumRoute.get(getListMedium);
+
+  /**
+   * @openapi
+   * /api/user/list/medium:
+   *    post:
+   *      tags: [List]
+   *      description: Add Medium to List
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                listId:
+   *                  $ref: "#/components/schemas/Id"
+   *                mediumId:
+   *                  $ref: "#/components/schemas/Id"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if adding item to list succeeded
+   */
   listMediumRoute.post(postListMedium);
+
+  /**
+   * @openapi
+   * /api/user/list/medium:
+   *    put:
+   *      tags: [List]
+   *      description: Move Medium from one List to another
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                oldListId:
+   *                  $ref: "#/components/schemas/Id"
+   *                newListId:
+   *                  $ref: "#/components/schemas/Id"
+   *                mediumId:
+   *                  $ref: "#/components/schemas/Id"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if moving succeeded
+   */
   listMediumRoute.put(putListMedium);
+
+  /**
+   * @openapi
+   * /api/user/list/medium:
+   *    delete:
+   *      tags: [List]
+   *      description: logout current user
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                listId:
+   *                  $ref: "#/components/schemas/Id"
+   *                mediumId:
+   *                  $ref: "#/components/schemas/Id"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if delete of item mapping succeeded
+   */
   listMediumRoute.delete(deleteListMedium);
 
   const listRoute = router.route("");
+
+  /**
+   * @openapi
+   * /api/user/list:
+   *    get:
+   *      tags: [List]
+   *      description: Query for Lists and their Items
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: listId
+   *        in: query
+   *        description: List Ids to query for
+   *        required: true
+   *        schema:
+   *          type: array
+   *          items:
+   *            $ref: "#/components/schemas/Id"
+   *      - name: mediaId
+   *        in: query
+   *        description: Media Ids to query for
+   *        required: true
+   *        schema:
+   *          type: array
+   *          items:
+   *            $ref: "#/components/schemas/Id"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/ListMedia"
+   *          description: List media object
+   */
   listRoute.get(getList);
+
+  /**
+   * @openapi
+   * /api/user/list:
+   *    post:
+   *      tags: [List]
+   *      description: Create List for current User
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                list:
+   *                  $ref: "#/components/schemas/MinList"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/List"
+   *          description: the newly created List
+   */
   listRoute.post(postList);
+
+  /**
+   * @openapi
+   * /api/user/list:
+   *    put:
+   *      tags: [List]
+   *      description: Create List for current User
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                list:
+   *                  $ref: "#/components/schemas/MinList"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/List"
+   *          description: the newly created List
+   */
   listRoute.put(putList);
+
+  /**
+   * @openapi
+   * /api/user/list:
+   *    delete:
+   *      tags: [List]
+   *      description: Delete given List and its Item Mappings
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                listId:
+   *                  $ref: "#/components/schemas/Id"
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if delete succeeded
+   */
   listRoute.delete(deleteList);
 
   return router;

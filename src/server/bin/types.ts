@@ -2,6 +2,24 @@ import { MediaType } from "./tools";
 import { ScrapeType } from "./externals/types";
 import { FieldInfo, MysqlError, Query } from "mysql";
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SearchResult:
+ *       type: object
+ *       properties:
+ *         coverUrl:
+ *           type: string
+ *         link:
+ *           type: string
+ *         title:
+ *           type: string
+ *         author:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export interface SearchResult {
   coverUrl?: Link;
   link: Link;
@@ -16,6 +34,38 @@ export interface MinMedium {
   medium: MediaType;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SimpleMedium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ */
 export interface SimpleMedium {
   id?: Id;
   countryOfOrigin?: string;
@@ -44,9 +94,55 @@ export type UpdateMedium = Partial<SimpleMedium> & {
   id: Id;
 };
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Medium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ *         parts:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         latestReleased:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         currentRead:
+ *           $ref: "#/components/schemas/Id"
+ *         unreadEpisodes:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ */
 export interface Medium extends SimpleMedium {
   parts?: Id[];
-  latestReleased: number[];
+  latestReleased: Id[];
   currentRead: Id;
   unreadEpisodes: Id[];
 }
@@ -64,6 +160,42 @@ export interface MediumToc {
   link: Link;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     FullMediumToc:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         link:
+ *           type: string
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ */
 export type FullMediumToc = MediumToc & UpdateMedium;
 
 export interface ExtractedIndex {
@@ -77,6 +209,24 @@ export interface Indexable {
   partialIndex?: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     MinPart:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         title:
+ *           type: string
+ */
 export interface MinPart extends Indexable {
   id: Id;
   title?: string;
@@ -115,6 +265,28 @@ export interface Episode extends SimpleEpisode {
   readDate: Nullable<Date>;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureEpisode:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         partId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         combiIndex:
+ *           type: number
+ *         progress:
+ *           type: number
+ *         readDate:
+ *           type: string
+ */
 export type PureEpisode = Omit<Episode, "releases">;
 
 export interface ReadEpisode {
@@ -136,6 +308,26 @@ export interface EpisodeRelease extends SimpleRelease {
   tocId?: Id;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureDisplayRelease:
+ *       type: object
+ *       properties:
+ *         episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *         tocId:
+ *           $ref: "#/components/schemas/Id"
+ *         url:
+ *           type: string
+ *         title:
+ *           type: string
+ *         releaseDate:
+ *           type: string
+ *         locked:
+ *           type: boolean
+ */
 export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">;
 
 export interface DisplayRelease {
@@ -163,11 +355,37 @@ export interface MediumRelease {
   date: Date;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     MinList:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export interface MinList {
   name: string;
   medium: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     UserList:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export type UserList = MinList & {
   id: Id;
 };
@@ -304,9 +522,27 @@ export interface ExternalList {
   name: string;
   medium: number;
   url: Link;
-  items: number[];
+  items: Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureExternalList:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         url:
+ *           type: string
+ */
 export type PureExternalList = Omit<ExternalList, "items">;
 
 /**
@@ -338,6 +574,23 @@ export interface ExternalUser {
 }
 
 export type DisplayExternalUser = Omit<ExternalUser, "lastScrape" | "cookies">;
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureExternalUser:
+ *       type: object
+ *       properties:
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         localUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         identifier:
+ *           type: string
+ *         type:
+ *           type: integer
+ */
 export type PureExternalUser = Omit<DisplayExternalUser, "lists">;
 
 export interface News {
@@ -350,6 +603,22 @@ export interface News {
   mediumTitle?: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureNews:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         title:
+ *           type: string
+ *         link:
+ *           type: string
+ *         read:
+ *           type: boolean
+ */
 export type PureNews = Omit<News, "mediumId" | "mediumTitle">;
 
 export interface NewsResult {
@@ -711,11 +980,47 @@ export interface TypedQuery<Packet = any> extends Query {
   on(ev: "end", callback: () => void): Query;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      ListMedia:
+ *        type: object
+ *        properties:
+ *          list:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/List"
+ *          media:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/Medium"
+ */
 export interface ListMedia {
   list: List[] | List;
   media: Medium[];
 }
 
+/**
+ * TODO: specify type more
+ *
+ * @openapi
+ * components:
+ *    schemas:
+ *      DataStats:
+ *        type: object
+ *        properties:
+ *          media:
+ *            type: object
+ *          mediaStats:
+ *            type: object
+ *          lists:
+ *            type: object
+ *          extLists:
+ *            type: object
+ *          extUser:
+ *            type: object
+ */
 export interface DataStats {
   media: Record<Id, Record<Id, { episodeCount: number; episodeSum: number; releaseCount: number }>>;
   mediaStats: Record<Id, { tocs: number }>;
@@ -724,6 +1029,56 @@ export interface DataStats {
   extUser: Record<Uuid, Id[]>;
 }
 
+/**
+ * TODO: specify type more
+ *
+ * @openapi
+ * components:
+ *    schemas:
+ *      DataStats:
+ *        type: object
+ *        properties:
+ *          tocs:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/FullMediumToc"
+ *          media:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/SimpleMedium"
+ *          releases:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureDisplayRelease"
+ *          episode:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureEpisode"
+ *          parts:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/MinPart"
+ *          lists:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/UserList"
+ *          extLists:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureExternalList"
+ *          extUser:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureExternalUser"
+ *          mediaInWait:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/MediumInWait"
+ *          news:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureNews"
+ */
 export interface NewData {
   tocs: FullMediumToc[];
   media: SimpleMedium[];
@@ -737,6 +1092,20 @@ export interface NewData {
   news: PureNews[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     MediumInWait:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         link:
+ *           type: string
+ */
 export interface MediumInWait {
   title: string;
   medium: MediaType;
@@ -760,6 +1129,22 @@ export interface ScraperHook {
 export type AppEventType = "start" | "end";
 export type AppEventProgram = "server" | "crawler";
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      AppEvent:
+ *        type: object
+ *        properties:
+ *          id:
+ *            $ref: "#/components/schemas/Id"
+ *          program:
+ *            type: string
+ *          date:
+ *            type: string
+ *          type:
+ *            type: string
+ */
 export interface AppEvent {
   id: number;
   program: "server" | "crawler";

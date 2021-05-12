@@ -69,6 +69,22 @@ export interface TocRequest {
   lastRequest?: Date;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      DownloadContent:
+ *        type: object
+ *        properties:
+ *          content:
+ *            type: array
+ *            items:
+ *              type: string
+ *          title:
+ *            type: string
+ *          episodeId:
+ *            $ref: "#/components/schemas/Id"
+ */
 export interface DownloadContent {
   content: string[];
   title: string;
@@ -94,11 +110,65 @@ export interface TocPart extends TocContent {
   episodes: TocEpisode[];
 }
 
+/**
+ * @openapi
+ *components:
+ *  schemas:
+ *    LinkablePerson:
+ *      type: object
+ *      properties:
+ *        name:
+ *          type: string
+ *        link:
+ *          type: string
+ */
 export interface LinkablePerson {
   name: string;
   link: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Toc:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *         content:
+ *           type: array
+ *           items:
+ *             type: object
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         synonyms:
+ *           type: array
+ *           items:
+ *             type: string
+ *         partsOnly:
+ *           type: boolean
+ *         end:
+ *           type: boolean
+ *         link:
+ *           type: string
+ *         langCOO:
+ *           type: string
+ *         langTL:
+ *           type: string
+ *         statusCOO:
+ *           type: string
+ *         statusTl:
+ *           type: string
+ *         authors:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/LinkablePerson"
+ *         artists:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/LinkablePerson"
+ */
 export interface Toc {
   title: string;
   content: TocContent[];
