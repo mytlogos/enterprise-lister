@@ -781,6 +781,28 @@ export type DisplayExternalUser = Omit<ExternalUser, "lastScrape" | "cookies">;
  */
 export type PureExternalUser = Omit<DisplayExternalUser, "lists">;
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      News:
+ *        type: object
+ *        properties:
+ *          title:
+ *            type: string
+ *          link:
+ *            type: string
+ *          date:
+ *            type: string
+ *          id:
+ *            $ref: "#/components/schemas/Id"
+ *          read:
+ *            type: boolean
+ *          mediumId:
+ *            $ref: "#/components/schemas/Id"
+ *          mediumTitle:
+ *            type: string
+ */
 export interface News {
   title: string;
   link: Link;
@@ -788,7 +810,7 @@ export interface News {
   id?: Id;
   read?: boolean;
   mediumId?: Id;
-  mediumTitle?: number;
+  mediumTitle?: string;
 }
 
 /**
