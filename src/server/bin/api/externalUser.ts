@@ -82,17 +82,158 @@ export const refreshExternalUser = createHandler((req) => {
       }),
     }),
   );
-  return storePromise;
+  return storePromise.then(() => true);
 });
 
+/**
+ * Creates the ExternalUser API Router.
+ *
+ * @openapi
+ * tags:
+ *  name: ExternalUser
+ *  description: API for ExternalUser
+ */
 export function externalUserRouter(): Router {
   const router = Router();
+
+  /**
+   * @openapi
+   * /api/user/externalUser/refresh:
+   *    get:
+   *      tags: [ExternalUser]
+   *      description: Request a Refresh Job for an external User.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: externalUuid
+   *        in: query
+   *        description: Uuid of the External User
+   *        required: true
+   *        schema:
+   *          type: string
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true of refresh job successfully requested
+   */
   router.get("/refresh", refreshExternalUser);
+
+  /**
+   * @openapi
+   * /api/user/externalUser/all:
+   *    get:
+   *      tags: [ExternalUser]
+   *      description: Get all ExternalUser
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/DisplayExternalUser"
+   *          description: ExternalUser array
+   */
   router.get("/all", getAllExternalUser);
 
   const externalUserRoute = router.route("");
+
+  /**
+   * @openapi
+   * /api/user/externalUser:
+   *    get:
+   *      tags: [ExternalUser]
+   *      description: Query ExternalUser.
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: externalUuid
+   *        in: query
+   *        description: Uuid of the External User
+   *        required: true
+   *        schema:
+   *          type: string
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/ExternalUser"
+   *          description: ExternalUser array
+   */
   externalUserRoute.get(getExternalUser);
+
+  /**
+   * @openapi
+   * /api/user/externalUser:
+   *    post:
+   *      tags: [ExternalUser]
+   *      description: Create Externaluser
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                externalUser:
+   *                  type: object
+   *                  properties:
+   *                    type:
+   *                      type: number
+   *                    pwd:
+   *                      type: string
+   *                    identifier:
+   *                      type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                $ref: "#/components/schemas/ExternalUser"
+   *          description: newly created ExternalUser array
+   */
   externalUserRoute.post(postExternalUser);
+
+  /**
+   * @openapi
+   * /api/user/externalUser:
+   *    delete:
+   *      tags: [ExternalUser]
+   *      description: Delete a ExternalUser and its associated Data.
+   *      requestBody:
+   *        content:
+   *          application/json:
+   *            schema:
+   *              type: object
+   *              properties:
+   *                uuid:
+   *                  type: string
+   *                session:
+   *                  type: string
+   *                externalUuid:
+   *                  type: string
+   *        required: true
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: boolean
+   *          description: true if delete was a success
+   */
   externalUserRoute.delete(deleteExternalUser);
   return router;
 }

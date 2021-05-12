@@ -95,7 +95,7 @@ export const getDisplayReleases = createHandler((req) => {
 });
 
 /**
- * Creates the List API Router.
+ * Creates the Episode API Router.
  *
  * @openapi
  * tags:

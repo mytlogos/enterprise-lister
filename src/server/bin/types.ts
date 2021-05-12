@@ -653,7 +653,13 @@ export type PureExternalList = Omit<ExternalList, "items">;
  *         type:
  *           type: integer
  *         lists:
- *           $ref: "#/components/schemas/ExternalList"
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/ExternalList"
+ *         lastScrape:
+ *           type: string
+ *         cookies:
+ *           type: string
  */
 export interface ExternalUser {
   localUuid: Uuid;
@@ -665,6 +671,26 @@ export interface ExternalUser {
   cookies?: Nullable<string>;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     DisplayExternalUser:
+ *       type: object
+ *       properties:
+ *         localUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         identifier:
+ *           type: string
+ *         type:
+ *           type: integer
+ *         lists:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/ExternalList"
+ */
 export type DisplayExternalUser = Omit<ExternalUser, "lastScrape" | "cookies">;
 
 /**
