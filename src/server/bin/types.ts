@@ -613,7 +613,9 @@ export interface StorageList extends MinList {
  *         userUuid:
  *           $ref: "#/components/schemas/Uuid"
  *         items:
- *           $ref: "#/components/schemas/Id"
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
  *         name:
  *           type: string
  *         medium:
