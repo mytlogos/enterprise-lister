@@ -753,30 +753,6 @@ export interface ExternalList {
  */
 export type PureExternalList = Omit<ExternalList, "items">;
 
-/**
- * @openapi
- * components:
- *   schemas:
- *     ExternalUser:
- *       type: object
- *       properties:
- *         localUuid:
- *           $ref: "#/components/schemas/Uuid"
- *         uuid:
- *           $ref: "#/components/schemas/Uuid"
- *         identifier:
- *           type: string
- *         type:
- *           type: integer
- *         lists:
- *           type: array
- *           items:
- *             $ref: "#/components/schemas/ExternalList"
- *         lastScrape:
- *           type: string
- *         cookies:
- *           type: string
- */
 export interface ExternalUser {
   localUuid: Uuid;
   uuid: Uuid;
@@ -874,6 +850,8 @@ export interface News {
  *           type: string
  *         read:
  *           type: boolean
+ *         date:
+ *           type: string
  */
 export type PureNews = Omit<News, "mediumId" | "mediumTitle">;
 
@@ -1552,14 +1530,40 @@ export interface ListMedia {
  *        properties:
  *          media:
  *            type: object
+ *            additionalProperties:
+ *              type: object
+ *              properties:
+ *                episodeCount:
+ *                  type: integer
+ *                releaseCount:
+ *                  type: integer
+ *                episodeSum:
+ *                  type: integer
  *          mediaStats:
  *            type: object
+ *            additionalProperties:
+ *              type: object
+ *              properties:
+ *                tocs:
+ *                  type: integer
  *          lists:
  *            type: object
+ *            additionalProperties:
+ *              type: array
+ *              items:
+ *                $ref: "#/components/schemas/Id"
  *          extLists:
  *            type: object
+ *            additionalProperties:
+ *              type: array
+ *              items:
+ *                $ref: "#/components/schemas/Id"
  *          extUser:
  *            type: object
+ *            additionalProperties:
+ *              type: array
+ *              items:
+ *                $ref: "#/components/schemas/Id"
  */
 export interface DataStats {
   media: Record<Id, Record<Id, { episodeCount: number; episodeSum: number; releaseCount: number }>>;
@@ -1575,7 +1579,7 @@ export interface DataStats {
  * @openapi
  * components:
  *    schemas:
- *      DataStats:
+ *      NewData:
  *        type: object
  *        properties:
  *          tocs:

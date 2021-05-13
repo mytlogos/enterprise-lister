@@ -1,10 +1,19 @@
 import { externalUserStorage, jobStorage } from "../database/storages/storage";
 import { factory } from "../externals/listManager";
 import { Errors, isString } from "../tools";
-import { ScrapeName } from "../types";
+import { DisplayExternalUser, ExternalUser, ScrapeName } from "../types";
 import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
 
+function toDisplayExternalUser(value: ExternalUser): DisplayExternalUser {
+  return {
+    identifier: value.identifier,
+    lists: value.lists,
+    localUuid: value.localUuid,
+    type: value.type,
+    uuid: value.uuid,
+  };
+}
 export const getExternalUser = createHandler((req) => {
   const externalUuidString = extractQueryParam(req, "externalUuid");
 
@@ -22,7 +31,14 @@ export const getExternalUser = createHandler((req) => {
     } else {
       externalUuid = externalUuidString;
     }
-    return externalUserStorage.getExternalUser(externalUuid);
+    return externalUserStorage.getExternalUser(externalUuid).then(
+      (value): DisplayExternalUser => {
+        if (Array.isArray(value)) {
+          throw Error("Did not expect an Array");
+        }
+        return toDisplayExternalUser(value);
+      },
+    );
   } catch (e) {
     return Promise.reject(Errors.INVALID_INPUT);
   }
@@ -44,7 +60,12 @@ export const postExternalUser = createHandler((req) => {
     delete externalUser.pwd;
     externalUser.cookies = listManager.stringifyCookies();
 
-    return externalUserStorage.addExternalUser(uuid, externalUser);
+    return externalUserStorage.addExternalUser(uuid, externalUser).then((value) => {
+      if (Array.isArray(value)) {
+        throw Error("Did not expect an Array");
+      }
+      return toDisplayExternalUser(value);
+    });
   })();
 });
 
@@ -166,7 +187,7 @@ export function externalUserRouter(): Router {
    *              schema:
    *                type: array
    *                items:
-   *                  $ref: "#/components/schemas/ExternalUser"
+   *                  $ref: "#/components/schemas/DisplayExternalUser"
    *          description: ExternalUser array
    */
   externalUserRoute.get(getExternalUser);
@@ -202,7 +223,7 @@ export function externalUserRouter(): Router {
    *          content:
    *            application/json:
    *              schema:
-   *                $ref: "#/components/schemas/ExternalUser"
+   *                $ref: "#/components/schemas/DisplayExternalUser"
    *          description: newly created ExternalUser array
    */
   externalUserRoute.post(postExternalUser);

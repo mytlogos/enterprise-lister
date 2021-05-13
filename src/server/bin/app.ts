@@ -19,7 +19,7 @@ const specs = swaggerJsDoc({
     openapi: "3.0.0",
     info: {
       title: "Enterprise API",
-      version: "1.0",
+      version: "1.0.2",
     },
   },
   apis: ["dist/server/api/*", "dist/server/types.d.ts", "dist/server/externals/types.d.ts"],
