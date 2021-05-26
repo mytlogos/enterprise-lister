@@ -93,7 +93,7 @@ async function complete() {
 }
 
 async function streamed() {
-  const jobs = await jobStorage.getJobHistoryStream();
+  const jobs = await jobStorage.getJobHistoryStream(new Date(), -1);
 
   let start: undefined | number;
   let lastDate = 0;

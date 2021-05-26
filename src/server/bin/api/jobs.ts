@@ -8,6 +8,17 @@ export const getJobs = createHandler(() => {
   return jobStorage.getAllJobs();
 });
 
+export const getHistoryJobs = createHandler((req) => {
+  let since = new Date(extractQueryParam(req, "since", true) || "");
+  const limit = Number.parseInt(extractQueryParam(req, "limit", true) || "-1");
+
+  if (Number.isNaN(since.getTime())) {
+    since = new Date();
+  }
+
+  return jobStorage.getJobHistoryStream(since, limit);
+});
+
 export const postJobEnable = createHandler((req) => {
   const jobId = req.body.id;
   const enabled = req.body.enabled;
@@ -83,6 +94,39 @@ export function jobsRouter(): Router {
    *          description: the user
    */
   jobRoute.get(getJobs);
+
+  /**
+   * @openapi
+   * /api/user/jobs/history:
+   *    get:
+   *      tags: [Job]
+   *      description: Get all Job History Items
+   *      parameters:
+   *      - $ref: "#/components/parameters/UserUuid"
+   *      - $ref: "#/components/parameters/UserSession"
+   *      - name: since
+   *        in: query
+   *        description: Date to get the Items from
+   *        required: false
+   *        schema:
+   *          type: string
+   *      - name: limit
+   *        in: query
+   *        description: Max Items to return
+   *        required: false
+   *        schema:
+   *          type: integer
+   *      responses:
+   *        200:
+   *          content:
+   *            application/json:
+   *              schema:
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/JobHistoryItem"
+   *          description: queried job history
+   */
+  router.get("/history", getHistoryJobs);
 
   /**
    * @openapi
