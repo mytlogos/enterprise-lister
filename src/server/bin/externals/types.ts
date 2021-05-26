@@ -91,6 +91,22 @@ export interface DownloadContent {
   episodeId: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      TocContent:
+ *        type: object
+ *        properties:
+ *          title:
+ *            type: string
+ *          combiIndex:
+ *            type: number
+ *          totalIndex:
+ *            type: integer
+ *          partialIndex:
+ *            type: integer
+ */
 export interface TocContent {
   title: string;
   combiIndex: number;
@@ -139,7 +155,7 @@ export interface LinkablePerson {
  *         content:
  *           type: array
  *           items:
- *             type: object
+ *             $ref: "#/components/schemas/TocContent"
  *         mediumId:
  *           $ref: "#/components/schemas/Id"
  *         synonyms:

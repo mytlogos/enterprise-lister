@@ -65,7 +65,7 @@ export function jobsRouter(): Router {
 
   /**
    * @openapi
-   * /api/user:
+   * /api/user/jobs:
    *    get:
    *      tags: [Job]
    *      description: Get all Jobs

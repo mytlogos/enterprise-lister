@@ -229,6 +229,14 @@ export function episodeRouter(): Router {
    *      parameters:
    *      - $ref: "#/components/parameters/UserUuid"
    *      - $ref: "#/components/parameters/UserSession"
+   *      - name: episodeId
+   *        in: query
+   *        description: Episode Ids
+   *        required: true
+   *        schema:
+   *          type: array
+   *          items:
+   *            $ref: "#/components/schemas/Id"
    *      responses:
    *        200:
    *          content:

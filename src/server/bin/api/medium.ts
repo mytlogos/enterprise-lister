@@ -219,7 +219,9 @@ export function mediumRouter(): Router {
    *          content:
    *            application/json:
    *              schema:
-   *                $ref: "#/components/schemas/MediumInWait"
+   *                type: array
+   *                items:
+   *                  $ref: "#/components/schemas/MediumInWait"
    *          description: query results
    */
   router.get("/unused", getUnusedMedia);
@@ -370,7 +372,7 @@ export function mediumRouter(): Router {
    *                  items:
    *                  $ref: "#/components/schemas/MediumInWait"
    *                listId:
-   *                  $ref: "#/components/schemas/MediumInWait"
+   *                  $ref: "#/components/schemas/Id"
    *        required: true
    *      responses:
    *        200:
@@ -514,7 +516,7 @@ export function mediumRouter(): Router {
   /**
    * @openapi
    * /api/user/medium:
-   *    put:
+   *    post:
    *      tags: [Medium]
    *      description: Create a Medium.
    *      requestBody:

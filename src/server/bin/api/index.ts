@@ -54,7 +54,7 @@ export function apiRouter(): Router {
    * @openapi
    * /api:
    *    get:
-   *      #tags: [Base]
+   *      tags: [Base]
    *      description: Check if an user is logged in for ip
    *      responses:
    *        200:

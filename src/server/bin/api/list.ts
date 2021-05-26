@@ -178,9 +178,7 @@ export function listRouter(): Router {
    *          content:
    *            application/json:
    *              schema:
-   *                type: array
-   *                items:
-   *                  $ref: "#/components/schemas/ListMedia"
+   *                $ref: "#/components/schemas/ListMedia"
    *          description: List array
    */
   listMediumRoute.get(getListMedium);
@@ -204,7 +202,9 @@ export function listRouter(): Router {
    *                listId:
    *                  $ref: "#/components/schemas/Id"
    *                mediumId:
-   *                  $ref: "#/components/schemas/Id"
+   *                  type: array
+   *                  items:
+   *                    $ref: "#/components/schemas/Id"
    *        required: true
    *      responses:
    *        200:

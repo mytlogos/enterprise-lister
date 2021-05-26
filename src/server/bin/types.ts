@@ -627,6 +627,20 @@ export interface List extends MinList {
   items: Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      UpdateUser:
+ *        type: object
+ *        properties:
+ *          name:
+ *            type: string
+ *          newPassword:
+ *            type: string
+ *          password:
+ *            type: string
+ */
 export interface UpdateUser {
   name?: string;
   newPassword?: string;

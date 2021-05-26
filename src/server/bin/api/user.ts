@@ -557,7 +557,7 @@ export function userRouter(): Router {
    *      parameters:
    *      - $ref: "#/components/parameters/UserUuid"
    *      - $ref: "#/components/parameters/UserSession"
-   *      - name: media
+   *      - name: mediumId
    *        in: query
    *        description: Media to get the Tocs from
    *        required: true
