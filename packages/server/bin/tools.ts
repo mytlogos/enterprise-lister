@@ -814,7 +814,14 @@ export function findRelativeProjectDirPath(dir: string, file: string): string {
 
   while (!currentDirFiles.includes("package.json")) {
     filePath = ".." + path.sep + filePath;
-    dir = path.dirname(dir);
+
+    const currentDir = dir;
+    dir = path.dirname(currentDir);
+
+    if (dir === currentDir) {
+      throw Error("Could not find project root via package.json!");
+    }
+
     currentDirFiles = fs.readdirSync(dir);
   }
   if (currentDirFiles.includes(file)) {
