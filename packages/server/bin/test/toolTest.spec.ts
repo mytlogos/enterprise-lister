@@ -4,11 +4,12 @@ import sinon_chai from "sinon-chai";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import dns from "dns";
-import logger from "../logger";
-import * as tools from "../tools";
+import logger from "enterprise-core/dist/logger";
+import * as tools from "enterprise-core/dist/tools";
+import { isTocEpisode, isTocPart } from "enterprise-scraper/dist/tools";
 import { describe, before, after, it } from "mocha";
 import { v1, NIL as NIL_UUID, v4 } from "uuid";
-import { Nullable } from "../types";
+import { Nullable } from "enterprise-core/dist/types";
 
 chai.use(sinon_chai);
 chai.use(chaiAsPromised);
@@ -522,20 +523,20 @@ describe("testing tool.js", () => {
   });
   describe("test isTocPart", function () {
     it("should work correctly when given a valid value", () => {
-      tools.isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1 }).should.equal(false);
+      isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1 }).should.equal(false);
       // @ts-expect-error
-      tools.isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid" }).should.equal(false);
+      isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid" }).should.equal(false);
       // @ts-expect-error
-      tools.isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: [] }).should.equal(true);
+      isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: [] }).should.equal(true);
     });
   });
   describe("test isTocEpisode", function () {
     it("should work correctly when given a valid value", () => {
-      tools.isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1 }).should.equal(false);
+      isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1 }).should.equal(false);
       // @ts-expect-error
-      tools.isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: [] }).should.equal(false);
+      isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: [] }).should.equal(false);
       // @ts-expect-error
-      tools.isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid" }).should.equal(true);
+      isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid" }).should.equal(true);
     });
   });
   describe("test some", function () {

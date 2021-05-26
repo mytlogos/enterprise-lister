@@ -13,7 +13,7 @@ import {
   SyntaxList,
 } from "typescript";
 import path from "path";
-import { Optional, Nullable } from "../../types";
+import { Optional, Nullable } from "enterprise-core/dist/types";
 import {
   RequestBodyObject,
   ParameterObject,

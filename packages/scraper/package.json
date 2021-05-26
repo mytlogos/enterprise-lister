@@ -5,11 +5,11 @@
   "scripts": {
     "test:unit": "vue-cli-service test:unit",
     "build": "tsc -p ./",
-    "lint": "eslint -c ./.eslintrc.js packages/server/bin/",
-    "start": "node dist/server/startCrawler.js",
+    "lint": "eslint -c ./.eslintrc.js bin/",
+    "start": "node dist/startCrawler.js",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
-    "migrate": "node dist/server/misc/migrate.js",
-    "generate:api": "node dist/server/misc/openapi/generate.js",
+    "migrate": "node dist/misc/migrate.js",
+    "generate:api": "node dist/misc/openapi/generate.js",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "husky": {

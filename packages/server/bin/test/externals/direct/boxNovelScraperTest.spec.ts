@@ -1,5 +1,5 @@
 "use strict";
-import * as tools from "../../../tools";
+import * as tools from "enterprise-core/dist/tools";
 const MediaType = tools.MediaType;
 
 import sinon from "sinon";
@@ -8,10 +8,10 @@ import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
 import fs from "fs";
 import cheerio from "cheerio";
-import { getHook } from "../../../externals/direct/boxNovelScraper";
-import * as externalErrors from "../../../externals/errors";
-import * as storage from "../../../database/storages/storage";
-import * as queueManager from "../../../externals/queueManager";
+import { getHook } from "enterprise-scraper/dist/externals/direct/boxNovelScraper";
+import * as externalErrors from "enterprise-scraper/dist/externals/errors";
+import * as storage from "enterprise-core/dist/database/storages/storage";
+import * as queueManager from "enterprise-scraper/dist/externals/queueManager";
 import * as scraperTestTools from "./scraperTestTools";
 
 const UrlError = externalErrors.UrlError;

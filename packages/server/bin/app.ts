@@ -6,11 +6,11 @@ import compression from "compression";
 // helps by preventing some known http vulnerabilities by setting http headers appropriately
 import helmet from "helmet";
 // own router
-import log from "./logger";
+import log from "enterprise-core/dist/logger";
 import { apiRouter } from "./api";
 import { blockRequests } from "./timer";
 import emojiStrip from "emoji-strip";
-import { isString } from "./tools";
+import { isString } from "enterprise-core/dist/tools";
 
 export const app = express();
 

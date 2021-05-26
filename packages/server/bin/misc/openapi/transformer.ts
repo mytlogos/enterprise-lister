@@ -1,6 +1,6 @@
 import handlebars from "handlebars";
 import fs from "fs/promises";
-import { findAbsoluteProjectDirPath } from "../../tools";
+import { findAbsoluteProjectDirPath } from "enterprise-core/dist/tools";
 import { join } from "path";
 import {
   OpenApiObject,

@@ -2,13 +2,13 @@
 import { app } from "./app";
 import debug from "debug";
 import { createServer, Server } from "http";
-import env from "./env";
+import env from "enterprise-core/dist/env";
 // start storage (connect to database)
-import { startStorage } from "./database/storages/storage";
+import { startStorage } from "enterprise-core/dist/database/storages/storage";
 import "./deviceVerificator";
 // start crawler (setup and start running)
 import os from "os";
-import logger from "./logger";
+import logger from "enterprise-core/dist/logger";
 import { startTunneling } from "./tunnel";
 
 const port = env.port || process.env.port;

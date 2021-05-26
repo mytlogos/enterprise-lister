@@ -3,7 +3,7 @@
   "version": "1.16.0",
   "private": true,
   "scripts": {
-    "build": "",
+    "build": "tsc -p ./",
     "test:unit": "vue-cli-service test:unit",
     "lint": "npm run lint:server && npm run lint:website",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",

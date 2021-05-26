@@ -9,8 +9,8 @@ module.exports = {
   outputDir: "dist/website",
   pages: {
     app: {
-      entry: "packages/website/main.ts",
-      template: "packages/public/index.html",
+      entry: "packages/website/src/main.ts",
+      template: "public/index.html",
     },
   },
   configureWebpack: {

@@ -1,8 +1,8 @@
-import * as storageTools from "../../../database/storages/storageTools";
-import * as storage from "../../../database/storages/storage";
-import { QueryContext } from "../../../database/contexts/queryContext";
-import { MediaType, delay } from "../../../tools";
-import { EmptyPromise } from "../../../types";
+import * as storageTools from "enterprise-core/dist/database/storages/storageTools";
+import * as storage from "enterprise-core/dist/database/storages/storage";
+import { QueryContext } from "enterprise-core/dist/database/contexts/queryContext";
+import { MediaType, delay } from "enterprise-core/dist/tools";
+import { EmptyPromise } from "enterprise-core/dist/types";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
   return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);

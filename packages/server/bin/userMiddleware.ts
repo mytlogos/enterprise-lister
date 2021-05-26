@@ -11,13 +11,18 @@ import {
   partStorage,
   storage,
   userStorage,
-} from "./database/storages/storage";
-import { factory } from "./externals/listManager";
+} from "enterprise-core/dist/database/storages/storage";
+import { factory } from "enterprise-scraper/dist/externals/listManager";
 import { Handler, Request, Response } from "express";
 import stringify from "stringify-stream";
-import logger from "./logger";
-import { downloadEpisodes, filterScrapeAble, search as searchMedium, loadToc } from "./externals/scraperTools";
-import { Errors, isError, isQuery, isString, stringToNumberList, getDate } from "./tools";
+import logger from "enterprise-core/dist/logger";
+import {
+  downloadEpisodes,
+  filterScrapeAble,
+  search as searchMedium,
+  loadToc,
+} from "enterprise-scraper/dist/externals/scraperTools";
+import { Errors, isError, isQuery, isString, stringToNumberList, getDate } from "enterprise-core/dist/tools";
 import {
   AppEvent,
   AppEventFilter,
@@ -28,11 +33,11 @@ import {
   ScrapeName,
   ScraperHook,
   TimeBucket,
-} from "./types";
-import { TocRequest } from "./externals/types";
+} from "enterprise-core/dist/types";
+import { TocRequest } from "enterprise-scraper/dist/externals/types";
 import { getTunnelUrls } from "./tunnel";
-import env from "./env";
-import { load } from "./externals/hookManager";
+import env from "enterprise-core/dist/env";
+import { load } from "enterprise-scraper/dist/externals/hookManager";
 
 function isNumberOrArray(value: number | any[]) {
   return Array.isArray(value) ? value.length : Number.isInteger(value);

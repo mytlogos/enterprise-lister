@@ -1,11 +1,11 @@
-import * as tools from "../../../tools";
+import * as tools from "enterprise-core/dist/tools";
 import sinon from "sinon";
 import sinon_chai from "sinon-chai";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import * as storage from "../../../database/storages/storage";
-import * as storageTools from "../../../database/storages/storageTools";
-import { EpisodeContext } from "../../../database/contexts/episodeContext";
+import * as storage from "enterprise-core/dist/database/storages/storage";
+import * as storageTools from "enterprise-core/dist/database/storages/storageTools";
+import { EpisodeContext } from "enterprise-core/dist/database/contexts/episodeContext";
 import { setupTestDatabase } from "./contextHelper";
 import { before, after, describe, it } from "mocha";
 

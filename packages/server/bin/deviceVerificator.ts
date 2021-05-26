@@ -1,7 +1,7 @@
 import diagram from "dgram";
-import { isString } from "./tools";
-import env from "./env";
-import logger from "./logger";
+import { isString } from "enterprise-core/dist/tools";
+import env from "enterprise-core/dist/env";
+import logger from "enterprise-core/dist/logger";
 
 const PORT = 3001;
 

@@ -1,5 +1,5 @@
-import * as storage from "./database/storages/storage";
-import { EpisodeRelease, JobItem, JobRequest, JobState, ScrapeName, MediumToc } from "./types";
+import * as storage from "enterprise-core/dist/database/storages/storage";
+import { EpisodeRelease, JobItem, JobRequest, JobState, ScrapeName, MediumToc } from "enterprise-core/dist/types";
 
 async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: MediumToc[]) {
   const domainMatch = domainReg.exec(toc.link);

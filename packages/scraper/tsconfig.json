@@ -1,8 +1,8 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "target": "esnext",
-    "module": "esnext",
+    "module": "commonjs",
+    "declaration": true,
     "strict": true,
     "jsx": "preserve",
     "importHelpers": true,
@@ -11,15 +11,14 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "types": [
-      "webpack-env",
-    ],
+    "skipLibCheck": true,
     "lib": [
       "esnext",
     ],
+    "outDir": "./dist/",
   },
   "include": [
-    "./**/*.ts",
+    "src/**/*.ts",
   ],
   "exclude": [
     "node_modules"

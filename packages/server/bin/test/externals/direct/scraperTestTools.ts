@@ -1,6 +1,7 @@
-import * as scraperTools from "../../../externals/scraperTools";
-import * as tools from "../../../tools";
-import { TocContent } from "../../../externals/types";
+import * as scraperTools from "enterprise-scraper/dist/externals/scraperTools";
+import * as tools from "enterprise-core/dist/tools";
+import { isTocPart } from "enterprise-scraper/dist/tools";
+import { TocContent } from "enterprise-scraper/dist/externals/types";
 const MediaType = tools.MediaType;
 
 interface GeneralToc {
@@ -30,7 +31,7 @@ exports.testGeneralToc = function testGeneralToc(toc: GeneralToc) {
       seenFirstLevelIndices.should.not.contain(tocContent.combiIndex);
       seenFirstLevelIndices.push(tocContent.combiIndex);
     }
-    if (tools.isTocPart(tocContent)) {
+    if (isTocPart(tocContent)) {
       tocContent.episodes.should.be.an("array");
       for (let j = 0; j < tocContent.episodes.length; j++) {
         const episode = tocContent.episodes[j];

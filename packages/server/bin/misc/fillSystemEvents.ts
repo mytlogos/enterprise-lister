@@ -1,5 +1,5 @@
-import { AppEvent, AppEventType } from "../types";
-import { startStorage, jobStorage, appEventStorage } from "../database/storages/storage";
+import { AppEvent, AppEventType } from "enterprise-core/dist/types";
+import { startStorage, jobStorage, appEventStorage } from "enterprise-core/dist/database/storages/storage";
 
 const events = [] as AppEvent[];
 const promises = [] as Array<Promise<void>>;

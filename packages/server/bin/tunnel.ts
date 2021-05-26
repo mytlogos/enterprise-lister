@@ -1,7 +1,7 @@
 import localtunnel from "localtunnel";
-import env from "./env";
-import { internetTester, remove, stringify } from "./tools";
-import logger from "./logger";
+import env from "enterprise-core/dist/env";
+import { internetTester, remove, stringify } from "enterprise-core/dist/tools";
+import logger from "enterprise-core/dist/logger";
 
 const tunnels: localtunnel.Tunnel[] = [];
 const port = Number(env.port || process.env.port);

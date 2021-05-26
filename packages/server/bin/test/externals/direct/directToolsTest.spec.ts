@@ -3,11 +3,11 @@ import sinon from "sinon";
 import sinon_chai from "sinon-chai";
 import chai from "chai";
 import chaiAsPromised from "chai-as-promised";
-import * as directTools from "../../../externals/direct/directTools";
-import * as tools from "../../../tools";
+import * as directTools from "enterprise-scraper/dist/externals/direct/directTools";
+import * as tools from "enterprise-core/dist/tools";
 import fs from "fs";
 import cheerio from "cheerio";
-import { EmptyPromise } from "../../../types";
+import { EmptyPromise } from "enterprise-core/dist/types";
 
 after(() => {
   tools.internetTester.stop();
