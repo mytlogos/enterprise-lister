@@ -31,14 +31,12 @@ export const getExternalUser = createHandler((req) => {
     } else {
       externalUuid = externalUuidString;
     }
-    return externalUserStorage.getExternalUser(externalUuid).then(
-      (value): DisplayExternalUser => {
-        if (Array.isArray(value)) {
-          throw Error("Did not expect an Array");
-        }
-        return toDisplayExternalUser(value);
-      },
-    );
+    return externalUserStorage.getExternalUser(externalUuid).then((value) => {
+      if (Array.isArray(value)) {
+        return value.map(toDisplayExternalUser);
+      }
+      return toDisplayExternalUser(value);
+    });
   } catch (e) {
     return Promise.reject(Errors.INVALID_INPUT);
   }
@@ -179,7 +177,9 @@ export function externalUserRouter(): Router {
    *        description: Uuid of the External User
    *        required: true
    *        schema:
-   *          type: string
+   *          type: array
+   *          items:
+   *            type: string
    *      responses:
    *        200:
    *          content:
