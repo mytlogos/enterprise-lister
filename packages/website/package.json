@@ -8,7 +8,7 @@
     "test:e2e": "vue-cli-service test:e2e",
     "build": "vue-cli-service build",
     "build:dev": "vue-cli-service build --mode development",
-    "lint:website": "eslint ./",
+    "lint": "eslint 'src/**/*.{js,ts,vue}'",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
     "commit": "npx git-cz",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
