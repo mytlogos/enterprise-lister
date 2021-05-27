@@ -1,6 +1,6 @@
-import { externalUserStorage, jobStorage } from "../database/storages/storage";
+import { externalUserStorage, jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { factory } from "../externals/listManager";
-import { Errors, isString } from "../tools";
+import { Errors, isString } from "enterprise-core/dist/tools";
 import { DisplayExternalUser, ExternalUser, ScrapeName } from "../types";
 import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";

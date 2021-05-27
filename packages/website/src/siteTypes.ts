@@ -1,4 +1,4 @@
-import { JobHistoryItem as ServerJobHistoryItem } from "../server/bin/types";
+import { JobHistoryItem as ServerJobHistoryItem } from "enterprise-core/dist/types";
 
 export type EmptyObject = Record<string, never>;
 

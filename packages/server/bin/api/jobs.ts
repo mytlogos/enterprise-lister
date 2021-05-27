@@ -1,5 +1,5 @@
-import { jobStorage } from "../database/storages/storage";
-import { isInvalidId, Errors } from "../tools";
+import { jobStorage } from "enterprise-core/dist/database/storages/storage";
+import { isInvalidId, Errors } from "enterprise-core/dist/tools";
 import { TimeBucket } from "../types";
 import { Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";

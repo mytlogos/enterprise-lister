@@ -1,5 +1,5 @@
-import { internalListStorage } from "../database/storages/storage";
-import { Errors, stringToNumberList, isNumberOrArray, isString } from "../tools";
+import { internalListStorage } from "enterprise-core/dist/database/storages/storage";
+import { Errors, stringToNumberList, isNumberOrArray, isString } from "enterprise-core/dist/tools";
 import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
 

@@ -1,6 +1,6 @@
-import { hookStorage } from "../database/storages/storage";
+import { hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { load } from "../externals/hookManager";
-import { isInvalidId, Errors } from "../tools";
+import { isInvalidId, Errors } from "enterprise-core/dist/tools";
 import { ScraperHook } from "../types";
 import { Router } from "express";
 import { createHandler } from "./apiTools";

@@ -1,5 +1,5 @@
-import { episodeStorage, storage } from "../database/storages/storage";
-import { Errors } from "../tools";
+import { episodeStorage, storage } from "enterprise-core/dist/database/storages/storage";
+import { Errors } from "enterprise-core/dist/tools";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
 

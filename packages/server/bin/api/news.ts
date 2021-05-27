@@ -1,5 +1,5 @@
-import { newsStorage } from "../database/storages/storage";
-import { stringToNumberList, Errors, isString } from "../tools";
+import { newsStorage } from "enterprise-core/dist/database/storages/storage";
+import { stringToNumberList, Errors, isString } from "enterprise-core/dist/tools";
 import { Router } from "express";
 import { createHandler, extractQueryParam, stopper } from "./apiTools";
 
