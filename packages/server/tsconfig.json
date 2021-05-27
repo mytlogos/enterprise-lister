@@ -15,7 +15,7 @@
     "lib": [
       "esnext"
     ],
-    "outDir": "../../dist/server/",
+    "outDir": "./dist/",
     "paths": {
       "@/*": [
         "./bin/*"
