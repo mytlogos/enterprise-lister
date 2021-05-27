@@ -445,8 +445,23 @@ export class JobContext extends SubContext {
     return this.query("SELECT * FROM jobs WHERE state = ? order by nextRun", state);
   }
 
-  public async getJobHistoryStream(): Promise<TypedQuery<JobHistoryItem>> {
-    return this.queryStream("SELECT * FROM job_history ORDER BY start;");
+  /**
+   * Query for JobHistoryItems.
+   *
+   * @param since Date of the earliest possible JobHistoryItem
+   * @param limit max number of results or all if negative
+   * @returns a Query object
+   */
+  public async getJobHistoryStream(since: Date, limit: number): Promise<TypedQuery<JobHistoryItem>> {
+    let query = "SELECT * FROM job_history WHERE start < ? ORDER BY start DESC";
+    const values = [since.toISOString()] as any[];
+    console.log(values);
+
+    if (limit >= 0) {
+      query += " LIMIT ?;";
+      values.push(limit);
+    }
+    return this.queryStream(query, values);
   }
 
   public async getJobHistory(): Promise<JobHistoryItem[]> {

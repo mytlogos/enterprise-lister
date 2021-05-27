@@ -24,6 +24,7 @@ import {
   MediumInWait,
   MediumInWaitSearch,
   Part,
+  JobHistoryItem,
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 
@@ -62,6 +63,9 @@ const restApi = {
         get: true,
         enable: {
           post: true,
+        },
+        history: {
+          get: true,
         },
         stats: {
           summary: {
@@ -313,6 +317,7 @@ interface TocPath {
 interface JobPath {
   readonly get: MethodObject;
   readonly enable: PostPath;
+  readonly history: GetPath;
   readonly stats: {
     summary: GetPath;
     all: GetPath;
@@ -651,6 +656,10 @@ export const HttpClient = {
 
   getJobs(): Promise<Job[]> {
     return this.queryServer(api.jobs.get);
+  },
+
+  getJobHistory(since?: Date, limit?: number): Promise<JobHistoryItem[]> {
+    return this.queryServer(api.jobs.history.get, { since, limit });
   },
 
   postJobEnabled(id: number, enabled: boolean): Promise<Job[]> {

@@ -8,6 +8,24 @@ export interface ExternalStorageUser {
   cookies: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SearchResult:
+ *       type: object
+ *       properties:
+ *         coverUrl:
+ *           type: string
+ *         link:
+ *           type: string
+ *         title:
+ *           type: string
+ *         author:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export interface SearchResult {
   coverUrl?: Link;
   link: Link;
@@ -22,6 +40,38 @@ export interface MinMedium {
   medium: MediaType;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SimpleMedium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ */
 export interface SimpleMedium {
   id?: Id;
   countryOfOrigin?: string;
@@ -39,6 +89,24 @@ export interface SimpleMedium {
   [key: string]: any;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SecondaryMedium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         totalEpisodes:
+ *           type: integer
+ *         readEpisodes:
+ *           type: integer
+ *         tocs:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/FullMediumToc"
+ */
 export interface SecondaryMedium {
   id: Id;
   totalEpisodes: number;
@@ -46,13 +114,91 @@ export interface SecondaryMedium {
   tocs: FullMediumToc[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     UpdateMedium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ */
 export type UpdateMedium = Partial<SimpleMedium> & {
   id: Id;
 };
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Medium:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ *         parts:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         latestReleased:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         currentRead:
+ *           $ref: "#/components/schemas/Id"
+ *         unreadEpisodes:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ */
 export interface Medium extends SimpleMedium {
   parts?: Id[];
-  latestReleased: number[];
+  latestReleased: Id[];
   currentRead: Id;
   unreadEpisodes: Id[];
 }
@@ -70,6 +216,42 @@ export interface MediumToc {
   link: Link;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     FullMediumToc:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         link:
+ *           type: string
+ *         countryOfOrigin:
+ *           type: string
+ *         languageOfOrigin:
+ *           type: string
+ *         author:
+ *           type: string
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         artist:
+ *           type: string
+ *         lang:
+ *           type: string
+ *         stateOrigin:
+ *           type: integer
+ *         stateTL:
+ *           type: integer
+ *         series:
+ *           type: string
+ *         universe:
+ *           type: string
+ */
 export type FullMediumToc = MediumToc & UpdateMedium;
 
 export interface ExtractedIndex {
@@ -83,16 +265,78 @@ export interface Indexable {
   partialIndex?: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     MinPart:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         title:
+ *           type: string
+ */
 export interface MinPart extends Indexable {
   id: Id;
   title?: string;
   mediumId: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Part:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         episodes:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Episode"
+ */
 export interface Part extends MinPart {
   episodes: Episode[] | Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     AddPart:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         episodes:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/SimpleEpisode"
+ */
 export interface AddPart extends MinPart {
   episodes: SimpleEpisode[];
 }
@@ -105,6 +349,28 @@ export interface ShallowPart extends Part {
   episodes: Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SimpleEpisode:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         partId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         combiIndex:
+ *           type: number
+ *         releases:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/EpisodeRelease"
+ */
 export interface SimpleEpisode extends Indexable {
   id: Id;
   partId: Id;
@@ -116,11 +382,59 @@ export type CombinedEpisode = SimpleEpisode & {
   combiIndex: number;
 };
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Episode:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         partId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         combiIndex:
+ *           type: number
+ *         releases:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/EpisodeRelease"
+ *         progress:
+ *           type: number
+ *         readDate:
+ *           type: string
+ */
 export interface Episode extends SimpleEpisode {
   progress: number;
   readDate: Nullable<Date>;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureEpisode:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         partId:
+ *           $ref: "#/components/schemas/Id"
+ *         totalIndex:
+ *           type: integer
+ *         partialIndex:
+ *           type: integer
+ *         combiIndex:
+ *           type: number
+ *         progress:
+ *           type: number
+ *         readDate:
+ *           type: string
+ */
 export type PureEpisode = Omit<Episode, "releases">;
 
 export interface ReadEpisode {
@@ -134,6 +448,28 @@ export interface SimpleRelease {
   url: Link;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     EpisodeRelease:
+ *       type: object
+ *       properties:
+ *         episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *         tocId:
+ *           $ref: "#/components/schemas/Id"
+ *         url:
+ *           type: string
+ *         title:
+ *           type: string
+ *         releaseDate:
+ *           type: string
+ *         locked:
+ *           type: boolean
+ *         sourceType:
+ *           type: string
+ */
 export interface EpisodeRelease extends SimpleRelease {
   title: string;
   releaseDate: Date;
@@ -142,8 +478,50 @@ export interface EpisodeRelease extends SimpleRelease {
   tocId?: Id;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureDisplayRelease:
+ *       type: object
+ *       properties:
+ *         episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *         tocId:
+ *           $ref: "#/components/schemas/Id"
+ *         url:
+ *           type: string
+ *         title:
+ *           type: string
+ *         releaseDate:
+ *           type: string
+ *         locked:
+ *           type: boolean
+ */
 export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">;
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     DisplayRelease:
+ *       type: object
+ *       properties:
+ *         episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *         mediumId:
+ *           $ref: "#/components/schemas/Id"
+ *         link:
+ *           type: string
+ *         title:
+ *           type: string
+ *         date:
+ *           type: string
+ *         locked:
+ *           type: boolean
+ *         progress:
+ *           type: number
+ */
 export interface DisplayRelease {
   episodeId: Id;
   title: string;
@@ -160,6 +538,26 @@ export interface DisplayReleasesResponse {
   latest: Date;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      MediumRelease:
+ *        type: object
+ *        properties:
+ *          episodeId:
+ *           $ref: "#/components/schemas/Id"
+ *          title:
+ *            type: string
+ *          link:
+ *            type: string
+ *          combiIndex:
+ *            type: number
+ *          locked:
+ *            type: boolean
+ *          date:
+ *            type: string
+ */
 export interface MediumRelease {
   episodeId: Id;
   title: string;
@@ -169,11 +567,37 @@ export interface MediumRelease {
   date: Date;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     MinList:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export interface MinList {
   name: string;
   medium: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     UserList:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export type UserList = MinList & {
   id: Id;
 };
@@ -183,24 +607,113 @@ export interface StorageList extends MinList {
   user_uuid: Uuid;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     List:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         userUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ */
 export interface List extends MinList {
   id: Id;
   userUuid: Uuid;
   items: Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      UpdateUser:
+ *        type: object
+ *        properties:
+ *          name:
+ *            type: string
+ *          newPassword:
+ *            type: string
+ *          password:
+ *            type: string
+ */
 export interface UpdateUser {
   name?: string;
   newPassword?: string;
   password?: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     SimpleUser:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         userUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         session:
+ *           type: string
+ */
 export interface SimpleUser {
   uuid: Uuid;
   name: string;
   session: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         userUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         session:
+ *           type: string
+ *         unreadNews:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         unreadChapter:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ *         readToday:
+ *           type: array
+ *           items:
+ *             type:
+ *             properties:
+ *               episodeId:
+ *                 $ref: "#/components/schemas/Id"
+ *               readDate:
+ *                 type: string
+ *               progress:
+ *                 type: number
+ *         externalUser:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/ExternalUser"
+ *         lists:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/List"
+ */
 export interface User extends SimpleUser {
   unreadNews: Id[];
   unreadChapter: Id[];
@@ -209,15 +722,55 @@ export interface User extends SimpleUser {
   lists: List[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ExternalList:
+ *       type: object
+ *       properties:
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         url:
+ *           type: string
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/Id"
+ */
 export interface ExternalList {
   uuid?: Uuid;
   id: Id;
   name: string;
   medium: number;
   url: Link;
-  items: number[];
+  items: Id[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureExternalList:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         name:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         url:
+ *           type: string
+ */
 export type PureExternalList = Omit<ExternalList, "items">;
 
 export interface ExternalUser {
@@ -230,9 +783,68 @@ export interface ExternalUser {
   cookies?: Nullable<string>;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     DisplayExternalUser:
+ *       type: object
+ *       properties:
+ *         localUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         identifier:
+ *           type: string
+ *         type:
+ *           type: integer
+ *         lists:
+ *           type: array
+ *           items:
+ *             $ref: "#/components/schemas/ExternalList"
+ */
 export type DisplayExternalUser = Omit<ExternalUser, "lastScrape" | "cookies">;
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureExternalUser:
+ *       type: object
+ *       properties:
+ *         uuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         localUuid:
+ *           $ref: "#/components/schemas/Uuid"
+ *         identifier:
+ *           type: string
+ *         type:
+ *           type: integer
+ */
 export type PureExternalUser = Omit<DisplayExternalUser, "lists">;
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      News:
+ *        type: object
+ *        properties:
+ *          title:
+ *            type: string
+ *          link:
+ *            type: string
+ *          date:
+ *            type: string
+ *          id:
+ *            $ref: "#/components/schemas/Id"
+ *          read:
+ *            type: boolean
+ *          mediumId:
+ *            $ref: "#/components/schemas/Id"
+ *          mediumTitle:
+ *            type: string
+ */
 export interface News {
   title: string;
   link: Link;
@@ -240,9 +852,27 @@ export interface News {
   id?: Id;
   read?: boolean;
   mediumId?: Id;
-  mediumTitle?: number;
+  mediumTitle?: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     PureNews:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         title:
+ *           type: string
+ *         link:
+ *           type: string
+ *         read:
+ *           type: boolean
+ *         date:
+ *           type: string
+ */
 export type PureNews = Omit<News, "mediumId" | "mediumTitle">;
 
 export interface NewsResult {
@@ -283,6 +913,26 @@ export interface LikeMediumQuery {
   type?: MediaType;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      MetaResult:
+ *        type: object
+ *        properties:
+ *          novel:
+ *            type: string
+ *          volume:
+ *            type: string
+ *          volIndex:
+ *            type: string
+ *          chapIndex:
+ *            type: string
+ *          type:
+ *            type: integer
+ *          seeAble:
+ *            type: boolean
+ */
 export interface MetaResult {
   novel: string;
   volume?: string;
@@ -293,6 +943,24 @@ export interface MetaResult {
   seeAble: boolean;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      Result:
+ *        type: object
+ *        properties:
+ *          result:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/MetaResult"
+ *          preliminary:
+ *            type: boolean
+ *          accept:
+ *            type: boolean
+ *          url:
+ *            type: string
+ */
 export interface Result {
   result: MetaResult | MetaResult[];
   preliminary?: boolean;
@@ -300,6 +968,30 @@ export interface Result {
   url: Link;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      ProgressResult:
+ *        type: object
+ *        properties:
+ *          novel:
+ *            type: string
+ *          volume:
+ *            type: string
+ *          volIndex:
+ *            type: string
+ *          chapIndex:
+ *            type: string
+ *          type:
+ *            type: integer
+ *          seeAble:
+ *            type: boolean
+ *          progress:
+ *            type: number
+ *          readDate:
+ *            type: string
+ */
 export interface ProgressResult extends MetaResult {
   progress: number;
   readDate: Date;
@@ -442,6 +1134,12 @@ export enum ReleaseState {
 
 /**
  * A String in RFC UUID Format with a length of 36 characters.
+ *
+ * @openapi
+ * components:
+ *   schemas:
+ *     Uuid:
+ *       type: string
  */
 export type Uuid = string;
 
@@ -452,6 +1150,12 @@ export type Link = string;
 
 /**
  * An Integer between 1 (inclusive) and 2^64 (inclusive?)
+ *
+ * @openapi
+ * components:
+ *   schemas:
+ *     Id:
+ *       type: integer
  */
 export type Id = number;
 
@@ -474,6 +1178,38 @@ export enum JobState {
   WAITING = "waiting",
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobItem:
+ *        type: object
+ *        properties:
+ *          type:
+ *            type: string
+ *          state:
+ *            type: string
+ *          interval:
+ *            type: integer
+ *          deleteAfterRun:
+ *            type: boolean
+ *          id:
+ *            $ref: "#/components/schemas/Id"
+ *          name:
+ *            type: string
+ *          runAfter:
+ *            $ref: "#/components/schemas/Id"
+ *          runningSince:
+ *            type: string
+ *          nextRun:
+ *            type: string
+ *          lastRun:
+ *            type: string
+ *          arguments:
+ *            type: string
+ *          previousScheduledAt:
+ *            type: string
+ */
 export interface JobItem {
   type: ScrapeName;
   state: JobState;
@@ -514,11 +1250,101 @@ export interface BasicJobStats {
   avglagging: number;
 }
 
+/**
+ * TODO: domain property need more doc
+ *
+ * @openapi
+ * components:
+ *    schemas:
+ *      TimeJobStats:
+ *        type: object
+ *        properties:
+ *          count:
+ *            type: integer
+ *          avgnetwork:
+ *            type: number
+ *          avgreceived:
+ *            type: number
+ *          avgsend:
+ *            type: number
+ *          avgduration:
+ *            type: number
+ *          allupdate:
+ *            type: integer
+ *          allcreate:
+ *            type: integer
+ *          alldelete:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          queries:
+ *            type: integer
+ *          avglagging:
+ *            type: number
+ *          timepoint:
+ *            type: string
+ *          domain:
+ *            type: object
+ */
 export interface TimeJobStats extends BasicJobStats {
   timepoint: Date;
   domain?: Record<string, BasicJobStats>;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      AllJobStats:
+ *        type: object
+ *        properties:
+ *          count:
+ *            type: integer
+ *          avgnetwork:
+ *            type: number
+ *          avgreceived:
+ *            type: number
+ *          avgsend:
+ *            type: number
+ *          avgduration:
+ *            type: number
+ *          allupdate:
+ *            type: integer
+ *          allcreate:
+ *            type: integer
+ *          alldelete:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          queries:
+ *            type: integer
+ *          avglagging:
+ *            type: number
+ *          minnetwork:
+ *            type: integer
+ *          maxnetwork:
+ *            type: integer
+ *          minreceived:
+ *            type: integer
+ *          maxreceived:
+ *            type: integer
+ *          minsend:
+ *            type: integer
+ *          maxsend:
+ *            type: integer
+ *          maxD:
+ *            type: integer
+ *          minD:
+ *            type: integer
+ *          maxQ:
+ *            type: integer
+ *          minQ:
+ *            type: integer
+ */
 export interface AllJobStats extends BasicJobStats {
   minnetwork: number;
   maxnetwork: number;
@@ -532,10 +1358,96 @@ export interface AllJobStats extends BasicJobStats {
   minQ: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobStats:
+ *        type: object
+ *        properties:
+ *          name:
+ *            type: string
+ *          count:
+ *            type: integer
+ *          avgnetwork:
+ *            type: number
+ *          avgreceived:
+ *            type: number
+ *          avgsend:
+ *            type: number
+ *          avgduration:
+ *            type: number
+ *          allupdate:
+ *            type: integer
+ *          allcreate:
+ *            type: integer
+ *          alldelete:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          queries:
+ *            type: integer
+ *          avglagging:
+ *            type: number
+ *          minnetwork:
+ *            type: integer
+ *          maxnetwork:
+ *            type: integer
+ *          minreceived:
+ *            type: integer
+ *          maxreceived:
+ *            type: integer
+ *          minsend:
+ *            type: integer
+ *          maxsend:
+ *            type: integer
+ *          maxD:
+ *            type: integer
+ *          minD:
+ *            type: integer
+ *          maxQ:
+ *            type: integer
+ *          minQ:
+ *            type: integer
+ */
 export interface JobStats extends AllJobStats {
   name: string;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobHistoryItem:
+ *        type: object
+ *        properties:
+ *          scheduled_at:
+ *            type: string
+ *          start:
+ *            type: string
+ *          end:
+ *            type: string
+ *          result:
+ *            type: string
+ *          message:
+ *            type: string
+ *          context:
+ *            type: string
+ *          state:
+ *            type: string
+ *          interval:
+ *            type: integer
+ *          runningSince:
+ *            type: string
+ *          nextRun:
+ *            type: string
+ *          lastRun:
+ *            type: string
+ *          previousScheduledAt:
+ *            type: string
+ */
 export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfterRun" | "runAfter" | "arguments"> & {
   scheduled_at: Date;
   start: Date;
@@ -545,6 +1457,20 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
   context: string;
 };
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobDetails:
+ *        type: object
+ *        properties:
+ *          job:
+ *            $ref: "#/components/schemas/JobItem"
+ *          history:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/JobHistoryItem"
+ */
 export interface JobDetails {
   job?: JobItem;
   history: JobHistoryItem[];
@@ -582,11 +1508,73 @@ export interface TypedQuery<Packet = any> extends Query {
   on(ev: "end", callback: () => void): Query;
 }
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      ListMedia:
+ *        type: object
+ *        properties:
+ *          list:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/List"
+ *          media:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/Medium"
+ */
 export interface ListMedia {
   list: List[] | List;
   media: Medium[];
 }
 
+/**
+ * TODO: specify type more
+ *
+ * @openapi
+ * components:
+ *    schemas:
+ *      DataStats:
+ *        type: object
+ *        properties:
+ *          media:
+ *            type: object
+ *            additionalProperties:
+ *              type: object
+ *              properties:
+ *                episodeCount:
+ *                  type: integer
+ *                releaseCount:
+ *                  type: integer
+ *                episodeSum:
+ *                  type: integer
+ *          mediaStats:
+ *            type: object
+ *            additionalProperties:
+ *              type: object
+ *              properties:
+ *                tocs:
+ *                  type: integer
+ *          lists:
+ *            type: object
+ *            additionalProperties:
+ *              type: array
+ *              items:
+ *                $ref: "#/components/schemas/Id"
+ *          extLists:
+ *            type: object
+ *            additionalProperties:
+ *              type: array
+ *              items:
+ *                $ref: "#/components/schemas/Id"
+ *          extUser:
+ *            type: object
+ *            additionalProperties:
+ *              type: array
+ *              items:
+ *                $ref: "#/components/schemas/Id"
+ */
 export interface DataStats {
   media: Record<Id, Record<Id, { episodeCount: number; episodeSum: number; releaseCount: number }>>;
   mediaStats: Record<Id, { tocs: number }>;
@@ -595,6 +1583,56 @@ export interface DataStats {
   extUser: Record<Uuid, Id[]>;
 }
 
+/**
+ * TODO: specify type more
+ *
+ * @openapi
+ * components:
+ *    schemas:
+ *      NewData:
+ *        type: object
+ *        properties:
+ *          tocs:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/FullMediumToc"
+ *          media:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/SimpleMedium"
+ *          releases:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureDisplayRelease"
+ *          episode:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureEpisode"
+ *          parts:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/MinPart"
+ *          lists:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/UserList"
+ *          extLists:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureExternalList"
+ *          extUser:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureExternalUser"
+ *          mediaInWait:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/MediumInWait"
+ *          news:
+ *            type: array
+ *            items:
+ *              $ref: "#/components/schemas/PureNews"
+ */
 export interface NewData {
   tocs: FullMediumToc[];
   media: SimpleMedium[];
@@ -608,6 +1646,20 @@ export interface NewData {
   news: PureNews[];
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     MediumInWait:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *         medium:
+ *           type: integer
+ *         link:
+ *           type: string
+ */
 export interface MediumInWait {
   title: string;
   medium: MediaType;
@@ -621,6 +1673,22 @@ export interface MediumInWaitSearch {
   limit?: number;
 }
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ScraperHook:
+ *       type: object
+ *       properties:
+ *         id:
+ *           $ref: "#/components/schemas/Id"
+ *         name:
+ *           type: string
+ *         state:
+ *           type: string
+ *         message:
+ *           type: string
+ */
 export interface ScraperHook {
   id: number;
   name: string;
@@ -631,6 +1699,22 @@ export interface ScraperHook {
 export type AppEventType = "start" | "end";
 export type AppEventProgram = "server" | "crawler";
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      AppEvent:
+ *        type: object
+ *        properties:
+ *          id:
+ *            $ref: "#/components/schemas/Id"
+ *          program:
+ *            type: string
+ *          date:
+ *            type: string
+ *          type:
+ *            type: string
+ */
 export interface AppEvent {
   id: number;
   program: "server" | "crawler";
@@ -648,6 +1732,78 @@ export interface AppEventFilter {
 
 type MinMax<T extends string> = Record<T | `min_${T}` | `max_${T}`, number>;
 
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      JobStatSummary:
+ *        type: object
+ *        properties:
+ *          name:
+ *            type: string
+ *          type:
+ *            type: string
+ *          count:
+ *            type: integer
+ *          failed:
+ *            type: integer
+ *          succeeded:
+ *            type: integer
+ *          network_requests:
+ *            type: integer
+ *          network_send:
+ *            type: integer
+ *          network_received:
+ *            type: integer
+ *          duration:
+ *            type: integer
+ *          updated:
+ *            type: integer
+ *          created:
+ *            type: integer
+ *          deleted:
+ *            type: integer
+ *          sql_queries:
+ *            type: integer
+ *          lagging:
+ *            type: integer
+ *          min_network_requests:
+ *            type: integer
+ *          min_network_send:
+ *            type: integer
+ *          min_network_received:
+ *            type: integer
+ *          min_duration:
+ *            type: integer
+ *          min_updated:
+ *            type: integer
+ *          min_created:
+ *            type: integer
+ *          min_deleted:
+ *            type: integer
+ *          min_sql_queries:
+ *            type: integer
+ *          min_lagging:
+ *            type: integer
+ *          max_network_requests:
+ *            type: integer
+ *          max_network_send:
+ *            type: integer
+ *          max_network_received:
+ *            type: integer
+ *          max_duration:
+ *            type: integer
+ *          max_updated:
+ *            type: integer
+ *          max_created:
+ *            type: integer
+ *          max_deleted:
+ *            type: integer
+ *          max_sql_queries:
+ *            type: integer
+ *          max_lagging:
+ *            type: integer
+ */
 export type JobStatSummary = {
   name: string;
   type: string;

@@ -160,6 +160,14 @@ const router = createRouter({
           // which is lazy-loaded when the route is visited.
           component: () => import(/* webpackChunkName: "admin" */ "./views/HooksView.vue"),
         },
+        {
+          path: "history",
+          name: "jobhistory",
+          // route level code-splitting
+          // this generates a separate chunk (login.[hash].js) for this route
+          // which is lazy-loaded when the route is visited.
+          component: () => import(/* webpackChunkName: "admin" */ "./views/JobHistory.vue"),
+        },
       ],
     },
     {

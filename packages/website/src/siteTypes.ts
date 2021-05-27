@@ -1,3 +1,5 @@
+import { JobHistoryItem as ServerJobHistoryItem } from "../server/bin/types";
+
 export type EmptyObject = Record<string, never>;
 
 export type Indexable<T> = T &
@@ -236,16 +238,8 @@ export interface JobTrack {
   queryCount: number;
 }
 
-export type JobHistoryItem = Pick<Job, "id" | "name"> & {
-  type: string;
-  runAfter?: number;
-  arguments: string;
-  deleteAfterRun: boolean;
-  start: Date;
-  end: Date;
-  result: string;
+export type JobHistoryItem = ServerJobHistoryItem & {
   message: string | JobTrack;
-  context: string;
 };
 
 export interface JobDetails {

@@ -17,8 +17,9 @@ import {
   MultiSingleNumber,
   MediumToc,
   TypedQuery,
+  Id,
 } from "../../types";
-import { count, Errors, getElseSet, invalidId, multiSingle, promiseMultiSingle } from "../../tools";
+import { count, Errors, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
@@ -313,12 +314,12 @@ export class MediumContext extends SubContext {
       "universe",
     ];
 
-    if (invalidId(mediumToc.mediumId) || !mediumToc.link) {
+    if (isInvalidId(mediumToc.mediumId) || !mediumToc.link) {
       throw Error("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
     }
     const conditions = [];
 
-    if (invalidId(mediumToc.id)) {
+    if (isInvalidId(mediumToc.id)) {
       conditions.push({ column: "medium_id", value: mediumToc.mediumId });
       conditions.push({ column: "link", value: mediumToc.link });
     } else {
@@ -646,7 +647,7 @@ export class MediumContext extends SubContext {
     return true;
   }
 
-  public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<number> {
+  public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<Id> {
     if (!destMedium || !destMedium.medium || !destMedium.title) {
       return Promise.reject(new Error(Errors.INVALID_INPUT));
     }

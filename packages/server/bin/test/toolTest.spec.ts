@@ -959,34 +959,34 @@ describe("testing tool.js", () => {
   describe("test isQuery", function () {
     it("should not throw when using valid parameters");
   });
-  describe("test invalidId", function () {
+  describe("test isInvalidId", function () {
     it("should never throw", () => {
-      tools.invalidId("").should.not.throw;
-      tools.invalidId("1212368").should.not.throw;
-      tools.invalidId(1).should.not.throw;
-      tools.invalidId(() => null).should.not.throw;
-      tools.invalidId(null).should.not.throw;
-      tools.invalidId(true).should.not.throw;
-      tools.invalidId(undefined).should.not.throw;
+      tools.isInvalidId("").should.not.throw;
+      tools.isInvalidId("1212368").should.not.throw;
+      tools.isInvalidId(1).should.not.throw;
+      tools.isInvalidId(() => null).should.not.throw;
+      tools.isInvalidId(null).should.not.throw;
+      tools.isInvalidId(true).should.not.throw;
+      tools.isInvalidId(undefined).should.not.throw;
     });
     it("should validate correctly", () => {
-      tools.invalidId("").should.equal(true);
-      tools.invalidId("1212368").should.equal(true);
-      tools.invalidId(Number.MIN_VALUE).should.equal(true);
-      tools.invalidId(-1).should.equal(true);
-      tools.invalidId(0).should.equal(true);
-      tools.invalidId(0.6).should.equal(true);
-      tools.invalidId(120.1).should.equal(true);
-      tools.invalidId(Number.POSITIVE_INFINITY).should.equal(true);
-      tools.invalidId(NaN).should.equal(true);
-      tools.invalidId(() => null).should.equal(true);
-      tools.invalidId(null).should.equal(true);
-      tools.invalidId(true).should.equal(true);
-      tools.invalidId(undefined).should.equal(true);
+      tools.isInvalidId("").should.equal(true);
+      tools.isInvalidId("1212368").should.equal(true);
+      tools.isInvalidId(Number.MIN_VALUE).should.equal(true);
+      tools.isInvalidId(-1).should.equal(true);
+      tools.isInvalidId(0).should.equal(true);
+      tools.isInvalidId(0.6).should.equal(true);
+      tools.isInvalidId(120.1).should.equal(true);
+      tools.isInvalidId(Number.POSITIVE_INFINITY).should.equal(true);
+      tools.isInvalidId(NaN).should.equal(true);
+      tools.isInvalidId(() => null).should.equal(true);
+      tools.isInvalidId(null).should.equal(true);
+      tools.isInvalidId(true).should.equal(true);
+      tools.isInvalidId(undefined).should.equal(true);
 
-      tools.invalidId(1).should.equal(false);
-      tools.invalidId(1239090909).should.equal(false);
-      tools.invalidId(Number.MAX_VALUE).should.equal(false);
+      tools.isInvalidId(1).should.equal(false);
+      tools.isInvalidId(1239090909).should.equal(false);
+      tools.isInvalidId(Number.MAX_VALUE).should.equal(false);
     });
   });
 
