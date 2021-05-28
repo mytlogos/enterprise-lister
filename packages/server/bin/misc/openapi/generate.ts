@@ -163,13 +163,18 @@ function main() {
     .help()
     .alias("help", "h").argv;
 
+  // @ts-expect-error
   if (argv.openapi) {
+    // @ts-expect-error
     generateClientOnly(argv.openapi, argv.target)
+    // @ts-expect-error
       .then(() => console.log("Created the Client at " + argv.target))
       .catch((error) => {
         console.error(error);
       });
+      // @ts-expect-error
   } else if (argv.middleware) {
+    // @ts-expect-error
     GenerateOpenApi(argv.middleware);
   } else {
     GenerateOpenApi("./packages/server/bin/api.ts");
