@@ -26,10 +26,8 @@
     "node_modules"
   ],
   "include": [
-    "bin/**/*.ts",
-    "bin/**/*.tsx",
-    "bin/**/*.vue",
-    "bin/**/*.js"
+    "./bin/**/*.ts",
+    "./bin/**/*.js"
     //    "tests/**/*.ts",
     //    "tests/**/*.tsx"
   ]

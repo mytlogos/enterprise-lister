@@ -337,6 +337,7 @@ class TypeInferrer {
   }
 
   private inferAny(symbol: ts.Symbol, stackElement: StackElement): Nullable<TypeResult> {
+    // @ts-expect-error
     if (isParameter(symbol.valueDeclaration)) {
       const parentOfFunction = symbol.valueDeclaration.parent.parent;
 
@@ -356,6 +357,7 @@ class TypeInferrer {
             // then to resolve the type one needs the argument to this function
             if (
               leftSideSymbol &&
+              // @ts-expect-error
               ts.isParameter(leftSideSymbol.valueDeclaration) &&
               leftSideSymbol.valueDeclaration.parent === stackElement.signature
             ) {
@@ -385,7 +387,7 @@ class TypeInferrer {
 
                           if (propertySymbol) {
                             const declaration = propertySymbol.valueDeclaration;
-
+                            // @ts-expect-error
                             if (ts.hasOnlyExpressionInitializer(declaration) && declaration.initializer) {
                               const initializerType = this.checker.getTypeAtLocation(declaration.initializer);
                               return this.typeToResult(initializerType);
@@ -408,6 +410,7 @@ class TypeInferrer {
                         if (ts.isFunctionLike(methodSymbol.valueDeclaration)) {
                           return this.inferFunctionLike(methodSymbol.valueDeclaration);
                         } else {
+                          // @ts-expect-error
                           const declaration = methodSymbol.declarations[0];
 
                           if (ts.isFunctionLike(declaration)) {
@@ -445,6 +448,7 @@ class TypeInferrer {
       } else {
         log("?");
       }
+      // @ts-expect-error
     } else if (isVariableDeclaration(symbol.valueDeclaration)) {
       // TODO: 11.08.2020 infer from variable declaration
       log("a variabledeclaration");
@@ -872,6 +876,7 @@ class TypeInferrer {
    * @param type type to check
    */
   private isGlobalMember(type: ts.Type): boolean {
+    // @ts-expect-error
     let node: ts.Node = type.symbol?.valueDeclaration;
     while (node) {
       if (ts.isSourceFile(node)) {
@@ -1042,6 +1047,7 @@ class Parser {
     const valueDeclaration = middlewareSymbol.valueDeclaration;
     let stackElement: Nullable<StackElement> = null;
 
+    // @ts-expect-error
     if (ts.isVariableDeclaration(valueDeclaration)) {
       const initializer = valueDeclaration.initializer;
       if (!initializer) {
@@ -1055,6 +1061,7 @@ class Parser {
       } else {
         return middlewareResult;
       }
+      // @ts-expect-error
     } else if (ts.isFunctionDeclaration(valueDeclaration)) {
       stackElement = this.createStackElement(valueDeclaration, valueDeclaration.name);
     } else {
@@ -1107,11 +1114,13 @@ class Parser {
       .filter((value) => value) as ts.Symbol[];
 
     const requestParamSymbol = parameterSymbols.find((value) => {
+      // @ts-expect-error
       const typeSymbol = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
       return typeSymbol && typeSymbol.name === "Request";
     });
 
     const responseParamSymbol = parameterSymbols.find((value) => {
+      // @ts-expect-error
       const typeSymbol = this.checker.getTypeOfSymbolAtLocation(value, value.valueDeclaration).getSymbol();
       return typeSymbol && typeSymbol.name === "Response";
     });
@@ -1463,6 +1472,7 @@ class Parser {
         log("cannot find symbol for ElementAccess of: " + node.parent.getText());
         return null;
       }
+      // @ts-expect-error
       if (ts.isParameter(keySymbol.valueDeclaration)) {
         const parameterIndex = stackElement.signature.parameters.indexOf(keySymbol.valueDeclaration);
         const argument = stackElement.arguments[parameterIndex];
@@ -1472,6 +1482,7 @@ class Parser {
         }
         return this.getStringLiteralValue(argument, container, stackLevel - 1);
       } else {
+        // @ts-expect-error
         log("Unknown node type, not a parameter: " + keySymbol.valueDeclaration.getText());
       }
       // TODO: 10.08.2020 try to infer from variableDeclaration
@@ -1761,6 +1772,7 @@ class Parser {
     return {
       name: symbol.getName(),
       documentation: ts.displayPartsToString(symbol.getDocumentationComment(this.checker)),
+      // @ts-expect-error
       type: this.checker.typeToString(this.checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration)),
     };
   }
@@ -1770,6 +1782,7 @@ class Parser {
     const details = this.serializeSymbol(symbol);
 
     // Get the construct signatures
+    // @ts-expect-error
     const constructorType = this.checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
     details.constructors = constructorType.getConstructSignatures().map((value) => this.serializeSignature(value));
     return details;

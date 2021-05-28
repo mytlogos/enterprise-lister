@@ -38,7 +38,7 @@
     "@types/expect.js": "^0.3.29",
     "@types/jquery": "^3.5.5",
     "@types/mocha": "^8.2.2",
-    "@types/sinon": "^9.0.11",
+    "@types/sinon": "^10.0.1",
     "@types/sinon-as-promised": "^4.0.14",
     "@types/sinon-chai": "^3.2.5",
     "@vue/cli-plugin-babel": "^4.5.12",
@@ -53,11 +53,11 @@
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "husky": "^5.2.0",
-    "mocha": "^8.3.2",
+    "mocha": "^8.4.0",
     "sinon": "^10.0.0",
     "sinon-as-promised": "^4.0.3",
-    "sinon-chai": "^3.6.0",
-    "typescript": "^4.2.3"
+    "sinon-chai": "^3.7.0",
+    "typescript": "^4.3.2"
   },
   "postcss": {
     "plugins": {

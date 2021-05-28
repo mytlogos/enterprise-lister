@@ -1,5 +1,5 @@
 import { userStorage } from "enterprise-core/dist/database/storages/storage";
-import env from "../env";
+import env from "enterprise-core/dist/env";
 import { Errors, isString } from "enterprise-core/dist/tools";
 import { getTunnelUrls } from "../tunnel";
 import { Router } from "express";

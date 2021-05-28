@@ -9,6 +9,11 @@ function storageAvailable(type: keyof Window) {
   let storage;
   try {
     storage = window[type];
+
+    if (!storage || typeof storage !== "object" || !("setItem" in storage) || !("removeItem" in storage)) {
+      return false;
+    }
+
     const x = "__storage_test__";
     storage.setItem(x, x);
     storage.removeItem(x);
@@ -27,6 +32,8 @@ function storageAvailable(type: keyof Window) {
         e.name === "NS_ERROR_DOM_QUOTA_REACHED") &&
       // acknowledge QuotaExceededError only if there's something already stored
       storage &&
+      typeof storage === "object" &&
+      "length" in storage &&
       storage.length !== 0
     );
   }

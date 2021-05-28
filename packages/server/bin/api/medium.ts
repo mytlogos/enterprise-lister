@@ -1,5 +1,5 @@
 import { mediumStorage, mediumInWaitStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
-import logger from "../logger";
+import logger from "enterprise-core/dist/logger";
 import { isInvalidId, Errors, isInvalidSimpleMedium, isString, stringToNumberList, isNumberOrArray } from "enterprise-core/dist/tools";
 import { Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";

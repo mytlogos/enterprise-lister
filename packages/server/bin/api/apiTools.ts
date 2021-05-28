@@ -1,4 +1,4 @@
-import logger from "../logger";
+import logger from "enterprise-core/dist/logger";
 import { isQuery, Errors, isError, isString } from "enterprise-core/dist/tools";
 import { Handler, NextFunction, Request, Response } from "express";
 import stringify from "stringify-stream";
@@ -40,7 +40,7 @@ export function extractQueryParam<T extends boolean = false>(
   }
 
   if (isString(value)) {
-    // @ts-expect-error
+    // @ts-ignore-error
     return value;
   } else {
     throw Error(`Expected a String for "${key}" but got an object of type: ${typeof value}`);
