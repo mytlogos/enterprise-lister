@@ -412,7 +412,7 @@ export default defineComponent({
         const key = value.date.getTime();
         count.set(key, (count.get(key) || 0) + 1);
         return key;
-      }) as number[];
+      });
 
       const points = [...new Set(timePoints)].sort((a, b) => (a - b));
 
