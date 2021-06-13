@@ -33,7 +33,7 @@
     "@types/bootstrap": "^4.5.0",
     "@types/chai": "^4.2.18",
     "@types/chai-as-promised": "^7.1.4",
-    "@types/chart.js": "^2.9.31",
+    "@types/chart.js": "^2.9.32",
     "@types/copy-webpack-plugin": "^6.4.1",
     "@types/expect.js": "^0.3.29",
     "@types/jquery": "^3.5.5",
