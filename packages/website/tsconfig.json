@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es2019",
     "module": "esnext",
     "strict": true,
     "jsx": "preserve",
@@ -12,7 +12,7 @@
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
     "types": [
-      "webpack-env",
+      "webpack-env"
     ],
     "lib": [
       "esnext",
@@ -20,7 +20,7 @@
       "dom.iterable",
       "scripthost"
     ],
-    "composite": true,
+    "composite": true
   },
   "include": [
     "./**/*.ts",

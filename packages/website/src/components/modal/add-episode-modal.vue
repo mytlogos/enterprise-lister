@@ -81,28 +81,29 @@ export default defineComponent({
       }
       const partIndex = this.newPartIndex;
 
-      const part: Part | undefined = this.currentParts.reduce((firstPart?: Part, secondPart?: Part):
-        | Part
-        | undefined => {
-        if (!firstPart) {
-          return secondPart;
-        }
-        if (!secondPart) {
-          return firstPart;
-        }
-        const firstDiff = firstPart.totalIndex - partIndex;
-        const secondDiff = secondPart.totalIndex - partIndex;
+      const part: Part | undefined = this.currentParts.reduce(
+        (firstPart?: Part, secondPart?: Part): Part | undefined => {
+          if (!firstPart) {
+            return secondPart;
+          }
+          if (!secondPart) {
+            return firstPart;
+          }
+          const firstDiff = firstPart.totalIndex - partIndex;
+          const secondDiff = secondPart.totalIndex - partIndex;
 
-        if (firstDiff < 0 && secondDiff < 0) {
-          return;
-        } else if (firstDiff < 0) {
-          return secondPart;
-        } else if (secondDiff < 0) {
-          return firstPart;
-        } else {
-          return firstDiff > secondDiff ? firstPart : secondPart;
-        }
-      }, undefined);
+          if (firstDiff < 0 && secondDiff < 0) {
+            return;
+          } else if (firstDiff < 0) {
+            return secondPart;
+          } else if (secondDiff < 0) {
+            return firstPart;
+          } else {
+            return firstDiff > secondDiff ? firstPart : secondPart;
+          }
+        },
+        undefined,
+      );
 
       const indexOffset =
         (part?.episodes.length &&

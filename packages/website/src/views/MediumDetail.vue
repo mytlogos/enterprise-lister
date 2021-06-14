@@ -414,7 +414,7 @@ export default defineComponent({
         return key;
       });
 
-      const points = [...new Set(timePoints)].sort((a, b) => (a - b));
+      const points = [...new Set(timePoints)].sort((a, b) => a - b);
 
       // remove the points which are not in datetime range
       for (let index = 0; index < points.length; index++) {

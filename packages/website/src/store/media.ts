@@ -10,12 +10,14 @@ const module: Module<MediaStore, VuexStore> = {
     episodesOnly: false,
   }),
   getters: {
-    getMedium: (state) => (id: number): SimpleMedium => {
-      return state.media[id];
+    getMedium(state) {
+      return (id: number): SimpleMedium => state.media[id];
     },
-    getMergedProp: (state) => <T extends StringKey<SimpleMedium>>(medium: Medium, prop: T): SimpleMedium[T] => {
-      const secondMedium = state.secondaryMedia[medium.id];
-      return mergeMediaTocProp(medium, secondMedium?.tocs || [], prop);
+    getMergedProp(state) {
+      return <T extends StringKey<SimpleMedium>>(medium: Medium, prop: T): SimpleMedium[T] => {
+        const secondMedium = state.secondaryMedia[medium.id];
+        return mergeMediaTocProp(medium, secondMedium?.tocs || [], prop);
+      };
     },
     media(state): SimpleMedium[] {
       return Object.values(state.media);

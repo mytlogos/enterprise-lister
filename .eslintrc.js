@@ -39,7 +39,6 @@ module.exports = {
         "eslint-plugin-node",
         "eslint-plugin-vue",
         "@typescript-eslint",
-        "@typescript-eslint/tslint",
         "vue",
         "prettier"
     ],

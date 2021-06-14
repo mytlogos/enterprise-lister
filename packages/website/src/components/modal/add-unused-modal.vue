@@ -260,6 +260,10 @@ export default defineComponent({
       this.toastTitle = "";
     },
     async sendForm() {
+      if (!this.item) {
+        this.showMessage("Missing MediumInWait. Cannot add anything", "Invalid");
+        return;
+      }
       const result: AddMedium = { ...this.medium };
 
       if (!result.medium || !result.title) {
@@ -272,7 +276,7 @@ export default defineComponent({
       }
       try {
         const medium = await HttpClient.postCreateMediumFromMediaInWaits(
-          this.item,
+          this.item as MediumInWait,
           this.mergedSimilarItems,
           this.selectedList,
         );
