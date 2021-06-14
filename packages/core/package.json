@@ -15,7 +15,7 @@
     "cheerio": "^1.0.0-rc.5",
     "cloudscraper": "^4.6.0",
     "debug": "^4.3.1",
-    "dotenv": "^8.2.0",
+    "dotenv": "^10.0.0",
     "emoji-strip": "latest",
     "feedparser-promised": "^2.0.1",
     "handlebars": "^4.7.7",
