@@ -34,7 +34,7 @@
     "@types/chai": "^4.2.18",
     "@types/chai-as-promised": "^7.1.4",
     "@types/chart.js": "^2.9.31",
-    "@types/copy-webpack-plugin": "^6.4.1",
+    "@types/copy-webpack-plugin": "^8.0.0",
     "@types/expect.js": "^0.3.29",
     "@types/jquery": "^3.5.5",
     "@types/mocha": "^8.2.2",
