@@ -22,7 +22,7 @@ const specs = swaggerJsDoc({
       version: "1.0.2",
     },
   },
-  apis: ["dist/server/api/*", "dist/server/types.d.ts", "dist/server/externals/types.d.ts"],
+  apis: ["dist/api/*", "dist/types.d.ts", "dist/externals/types.d.ts"],
 });
 
 export const app = express();
@@ -58,13 +58,13 @@ app.use("/api", apiRouter());
 app.use("/doc", swaggerUi.serve, swaggerUi.setup(specs));
 
 // map root to app.html first, before the static files, else it will map to index.html by default
-app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("dist", "website", "app.html"))));
+app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("website", "dist", "index.html"))));
 
-app.use(express.static(path.join(parentDirName, "dist", "website")));
+app.use(express.static(path.join(parentDirName, "website", "dist")));
 
 app.use((req, res) => {
   if (!req.path.startsWith("/api") && req.method === "GET") {
-    res.sendFile(path.join(parentDirName, path.join("dist", "website", "app.html")));
+    res.sendFile(path.join(parentDirName, path.join("website", "dist", "index.html")));
   }
 });
 
