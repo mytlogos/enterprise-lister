@@ -1,5 +1,13 @@
 import { EpisodeContent, Hook, Toc, TocEpisode, TocPart } from "../types";
-import { EpisodeNews, News, SearchResult, TocSearchMedium, VoidablePromise, Optional, Link } from "enterprise-core/dist/types";
+import {
+  EpisodeNews,
+  News,
+  SearchResult,
+  TocSearchMedium,
+  VoidablePromise,
+  Optional,
+  Link,
+} from "enterprise-core/dist/types";
 import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
@@ -46,7 +54,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
 
     const mediumElement = tableData.eq(1);
     const mediumTocLinkElement = mediumElement.children("a").first();
-    const mediumTocTotalLink = url.resolve(uri, mediumTocLinkElement.attr("href") as string);
+    const mediumTocTotalLink = new url.URL(mediumTocLinkElement.attr("href") as string, uri).href;
     const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/(.+_)?(\d+)/.exec(mediumTocTotalLink);
 
     if (!mediumTocLinkGroup) {
@@ -67,7 +75,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
       continue;
     }
 
-    const totalLink = url.resolve(uri, titleElement.attr("href") as string);
+    const totalLink = new url.URL(titleElement.attr("href") as string, uri).href;
     const linkGroup = /(https:\/\/www\.webnovel\.com\/book\/([^/]+_)?(\d+)\/([^/]+_)?(\d+)).*/.exec(totalLink);
     if (!linkGroup) {
       logger.info(`unknown news url format on webnovel: ${totalLink}`);
@@ -140,51 +148,47 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
       volume.chapterItems = volume.chapterItems.filter((episode) => episode.index >= 0);
       return volume.chapterItems.length;
     })
-    .map(
-      (volume: any): TocPart => {
-        if (!volume.name) {
-          volume.name = "Volume " + volume.index;
+    .map((volume: any): TocPart => {
+      if (!volume.name) {
+        volume.name = "Volume " + volume.index;
+      }
+      const name = volume.name;
+
+      const chapters: TocEpisode[] = volume.chapterItems.map((item: ChapterItem): TocEpisode => {
+        let date = new Date(item.createTime);
+
+        if (Number.isNaN(date.getDate())) {
+          date = relativeToAbsoluteTime(item.createTime) || new Date();
         }
-        const name = volume.name;
 
-        const chapters: TocEpisode[] = volume.chapterItems.map(
-          (item: ChapterItem): TocEpisode => {
-            let date = new Date(item.createTime);
+        if (!date) {
+          throw Error(`invalid date: '${item.createTime}'`);
+        }
 
-            if (Number.isNaN(date.getDate())) {
-              date = relativeToAbsoluteTime(item.createTime) || new Date();
-            }
+        if (!idPattern.test(item.id)) {
+          throw Error("invalid chapterId: " + item.id);
+        }
 
-            if (!date) {
-              throw Error(`invalid date: '${item.createTime}'`);
-            }
-
-            if (!idPattern.test(item.id)) {
-              throw Error("invalid chapterId: " + item.id);
-            }
-
-            const chapterContent: TocEpisode = {
-              url: toReleaseLink(bookId, item.id),
-              title: item.name,
-              combiIndex: item.index,
-              totalIndex: item.index,
-              releaseDate: date,
-              locked: item.isVip !== 0,
-            };
-            checkTocContent(chapterContent);
-            return chapterContent;
-          },
-        );
-        const partContent = {
-          episodes: chapters,
-          title: name,
-          combiIndex: volume.index,
-          totalIndex: volume.index,
+        const chapterContent: TocEpisode = {
+          url: toReleaseLink(bookId, item.id),
+          title: item.name,
+          combiIndex: item.index,
+          totalIndex: item.index,
+          releaseDate: date,
+          locked: item.isVip !== 0,
         };
-        checkTocContent(partContent, true);
-        return partContent;
-      },
-    );
+        checkTocContent(chapterContent);
+        return chapterContent;
+      });
+      const partContent = {
+        episodes: chapters,
+        title: name,
+        combiIndex: volume.index,
+        totalIndex: volume.index,
+      };
+      checkTocContent(partContent, true);
+      return partContent;
+    });
   const toc: Toc = {
     link: toTocLink(bookId),
     synonyms: [tocJson.data.bookInfo.bookSubName],
@@ -378,8 +382,8 @@ async function search(text: string): Promise<SearchResult[]> {
     const titleElement = result.find("h3 > a");
     const coverElement = result.find("img");
     const title = sanitizeString(titleElement.text());
-    const coverUrl = url.resolve(uri, coverElement.attr("src") as string);
-    const link = url.resolve(uri, titleElement.attr("href") as string);
+    const coverUrl = new url.URL(coverElement.attr("src") as string, uri).href;
+    const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
     const mediumTocLinkGroup = /https?:\/\/(www\.)?webnovel\.com\/book\/(.+_)?(\d+)/.exec(link);
 

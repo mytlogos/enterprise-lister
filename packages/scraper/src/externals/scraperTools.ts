@@ -235,18 +235,16 @@ async function processMediumNews(
     if (update) {
       const sourcedReleases = await episodeStorage.getSourcedReleases(sourceType, mediumId);
       const toUpdateReleases = oldReleases
-        .map(
-          (value): EpisodeRelease => {
-            return {
-              title: value.episodeTitle,
-              url: value.link,
-              releaseDate: value.date,
-              locked: value.locked,
-              sourceType,
-              episodeId: 0,
-            };
-          },
-        )
+        .map((value): EpisodeRelease => {
+          return {
+            title: value.episodeTitle,
+            url: value.link,
+            releaseDate: value.date,
+            locked: value.locked,
+            sourceType,
+            episodeId: 0,
+          };
+        })
         .filter((value) => {
           const foundRelease = sourcedReleases.find((release) => release.title === value.title);
 
@@ -263,26 +261,24 @@ async function processMediumNews(
   } else {
     newEpisodeNews = potentialNews;
   }
-  const newEpisodes = newEpisodeNews.map(
-    (value): SimpleEpisode => {
-      return {
-        totalIndex: value.episodeTotalIndex,
-        partialIndex: value.episodePartialIndex,
-        releases: [
-          {
-            episodeId: 0,
-            releaseDate: value.date,
-            url: value.link,
-            locked: value.locked,
-            title: value.episodeTitle,
-          },
-        ],
-        id: 0,
-        // @ts-expect-error
-        partId: standardPart.id,
-      };
-    },
-  );
+  const newEpisodes = newEpisodeNews.map((value): SimpleEpisode => {
+    return {
+      totalIndex: value.episodeTotalIndex,
+      partialIndex: value.episodePartialIndex,
+      releases: [
+        {
+          episodeId: 0,
+          releaseDate: value.date,
+          url: value.link,
+          locked: value.locked,
+          title: value.episodeTitle,
+        },
+      ],
+      id: 0,
+      // @ts-expect-error
+      partId: standardPart.id,
+    };
+  });
 
   if (newEpisodes.length) {
     await episodeStorage.addEpisode(newEpisodes);
@@ -487,18 +483,16 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
 export const queueTocsJob = async (): Promise<JobRequest[]> => {
   // TODO: 02.09.2019 a perfect candidate to use stream on
   const tocs = await mediumStorage.getAllTocs();
-  return tocs.map(
-    (value): JobRequest => {
-      return {
-        runImmediately: true,
-        arguments: JSON.stringify({ mediumId: value.mediumId, url: value.link } as TocRequest),
-        type: ScrapeName.toc,
-        name: `${ScrapeName.toc}-${value.mediumId}-${value.link}`,
-        interval: MilliTime.HOUR,
-        deleteAfterRun: false,
-      };
-    },
-  );
+  return tocs.map((value): JobRequest => {
+    return {
+      runImmediately: true,
+      arguments: JSON.stringify({ mediumId: value.mediumId, url: value.link } as TocRequest),
+      type: ScrapeName.toc,
+      name: `${ScrapeName.toc}-${value.mediumId}-${value.link}`,
+      interval: MilliTime.HOUR,
+      deleteAfterRun: false,
+    };
+  });
 };
 export const queueTocs = async (): EmptyPromise => {
   await storage.queueNewTocs();
@@ -506,7 +500,7 @@ export const queueTocs = async (): EmptyPromise => {
 
 export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: TocRequest): Promise<TocResult> => {
   logger.info("scraping one time toc: " + link);
-  const path = url.parse(link).path;
+  const path = new url.URL(link).pathname;
 
   if (!path) {
     throw new UrlError(`malformed url: '${link}'`, link);
@@ -756,7 +750,7 @@ export async function search(title: string, medium: number): Promise<SearchResul
   const promises: Array<Promise<SearchResult[]>> = getSearcher(medium).map((searcher) => searcher(title, medium));
 
   const results = await Promise.allSettled(promises);
-  return (results
+  return results
     .flat(1)
     .map((value) => {
       if (value.status === "fulfilled") {
@@ -765,7 +759,7 @@ export async function search(title: string, medium: number): Promise<SearchResul
       logger.error(value.reason);
       return null;
     })
-    .filter((value) => value) as unknown) as SearchResult[];
+    .filter((value) => value) as unknown as SearchResult[];
 }
 
 export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]> {
@@ -994,21 +988,19 @@ export async function queueExternalUser(): Promise<JobRequest[]> {
   return results
     .filter((value) => value[0])
     .map((value) => value[1])
-    .map(
-      (value): JobRequest => {
-        return {
-          type: ScrapeName.oneTimeUser,
-          interval: -1,
-          deleteAfterRun: true,
-          runImmediately: true,
-          name: `${ScrapeName.oneTimeUser}-${value.uuid}`,
-          arguments: JSON.stringify({
-            uuid: value.uuid,
-            info: value.cookies,
-          }),
-        };
-      },
-    );
+    .map((value): JobRequest => {
+      return {
+        type: ScrapeName.oneTimeUser,
+        interval: -1,
+        deleteAfterRun: true,
+        runImmediately: true,
+        name: `${ScrapeName.oneTimeUser}-${value.uuid}`,
+        arguments: JSON.stringify({
+          uuid: value.uuid,
+          info: value.cookies,
+        }),
+      };
+    });
 }
 
 export async function remapMediumPart(mediumId: number): EmptyPromise {

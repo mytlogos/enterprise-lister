@@ -154,7 +154,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
     if (!newsRow.has(".flag").length) {
       const mediumLinkElement = newsRow.find("a.manga_title");
-      currentMediumLink = url.resolve(uri, mediumLinkElement.attr("href") as string);
+      currentMediumLink = new url.URL(mediumLinkElement.attr("href") as string, uri).href;
       currentMedium = sanitizeString(mediumLinkElement.text());
       continue;
     }
@@ -169,7 +169,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
       continue;
     }
     const titleElement = children.eq(1);
-    const link = url.resolve(uri, titleElement.children("a").attr("href") as string);
+    const link = new url.URL(titleElement.children("a").attr("href") as string, uri).href;
     const title = sanitizeString(titleElement.text());
 
     // ignore oneshots, they are not 'interesting' enough, e.g. too short
@@ -371,7 +371,7 @@ async function scrapeTocPage(
 
       const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
 
-      const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
+      const link = new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href;
 
       let part: Optional<TocPart> = indexPartMap.get(volIndices.combi);
 
@@ -410,7 +410,7 @@ async function scrapeTocPage(
       if (!chapIndices) {
         throw Error(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
       }
-      const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
+      const link = new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href;
 
       const title = `Chapter ${chapIndices.combi}${chapGroups[5] ? " - " + chapGroups[7] : ""}`;
 
@@ -436,7 +436,7 @@ async function scrapeTocPage(
 
   if (nextPaging.length) {
     const link = nextPaging.find("a").attr("href") as string;
-    const nextPage = url.resolve(uri, link);
+    const nextPage = new url.URL(link, uri).href;
     return scrapeTocPage(toc, endReg, volChapReg, chapReg, indexPartMap, uri, nextPage);
   }
   return false;

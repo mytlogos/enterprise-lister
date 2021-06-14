@@ -1,5 +1,12 @@
 import { EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult } from "../types";
-import { EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise, Optional } from "enterprise-core/dist/types";
+import {
+  EpisodeNews,
+  ReleaseState,
+  SearchResult,
+  TocSearchMedium,
+  VoidablePromise,
+  Optional,
+} from "enterprise-core/dist/types";
 import * as url from "url";
 import { queueCheerioRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
@@ -7,8 +14,9 @@ import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay } from "
 import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError } from "../errors";
+import { Options } from "cloudscraper";
 
-async function tryRequest(link: string, retry = 0): Promise<cheerio.Root> {
+async function tryRequest(link: string, options?: Options, retry = 0): Promise<cheerio.Root> {
   try {
     return await queueCheerioRequest(link);
   } catch (error) {
@@ -18,7 +26,7 @@ async function tryRequest(link: string, retry = 0): Promise<cheerio.Root> {
       if (retry < 3) {
         // wait a bit before trying again
         await delay(500);
-        return tryRequest(link, retry + 1);
+        return tryRequest(link, options, retry + 1);
       } else {
         throw new UnreachableError(link);
       }
@@ -46,8 +54,8 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
     const mediumElement = children.eq(0);
     const titleElement = children.eq(1);
-    const link = url.resolve(baseUri, titleElement.attr("href") as string);
-    const mediumTocLink = url.resolve(baseUri, mediumElement.attr("href") as string);
+    const link = new url.URL(titleElement.attr("href") as string, baseUri).href;
+    const mediumTocLink = new url.URL(mediumElement.attr("href") as string, baseUri).href;
     const mediumTitle = sanitizeString(mediumElement.text());
     const title = sanitizeString(titleElement.text());
 
@@ -253,7 +261,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
       const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
 
-      const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
+      const link = new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href;
 
       if (!chapIndices) {
         logger.warn("changed episode format on mangaHasu toc: got no index " + urlString);
@@ -296,7 +304,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       if (!chapIndices) {
         throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
       }
-      const link = url.resolve(uri, chapterTitleElement.find("a").first().attr("href") as string);
+      const link = new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href;
 
       let title = "Chapter " + chapIndices.combi;
 
@@ -341,7 +349,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
 
   const body = "key=" + searchWords;
   // TODO: 26.08.2019 this does not work for any reason
-  const $ = await queueCheerioRequest(urlString, {
+  const $ = await tryRequest(urlString, {
     url: urlString,
     headers: {
       Host: "mangahasu.se",
@@ -376,7 +384,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
 
   const body = "key=" + searchWords;
   // TODO: 26.08.2019 this does not work for any reason
-  const $ = await queueCheerioRequest(urlString, {
+  const $ = await tryRequest(urlString, {
     url: urlString,
     headers: {
       Host: "mangahasu.se",
@@ -399,7 +407,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     const coverElement = linkElement.find("img");
 
     const text = sanitizeString(titleElement.text());
-    const link = url.resolve(BASE_URI, linkElement.attr("href") as string);
+    const link = new url.URL(linkElement.attr("href") as string, BASE_URI).href;
     const author = sanitizeString(authorElement.text());
     const coverLink = coverElement.attr("src");
 

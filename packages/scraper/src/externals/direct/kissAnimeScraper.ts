@@ -37,7 +37,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
   for (let i = 0; i < newsRows.length; i++) {
     const newsRow = newsRows.eq(i);
 
-    const link = url.resolve(uri, newsRow.attr("href") as string);
+    const link = new url.URL(newsRow.attr("href") as string, uri).href;
     const span = newsRow.children("span").eq(0);
     span.remove();
 
@@ -187,7 +187,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       return [];
     }
 
-    const link = url.resolve(uri, titleElement.attr("href") as string);
+    const link = new url.URL(titleElement.attr("href") as string, uri).href;
     const indices = extractIndices(episodeGroups, 1, 2, 4);
 
     if (!indices) {
@@ -295,7 +295,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     const linkElement = links.eq(i);
 
     const text = sanitizeString(linkElement.text());
-    const link = url.resolve(BASE_URI, linkElement.attr("href") as string);
+    const link = new url.URL(linkElement.attr("href") as string, BASE_URI).href;
 
     searchResults.push({ link, title: text, medium: MediaType.IMAGE });
   }

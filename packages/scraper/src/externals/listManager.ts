@@ -318,7 +318,7 @@ class NovelUpdates implements ListManager {
       const element = listElement.eq(i);
       const linkElement = element.children("a").first();
       let link = linkElement.attr("href") as string;
-      link = url.resolve(this.baseURI, link);
+      link = new url.URL(link, this.baseURI).href;
 
       const list: ScrapeList = {
         name: element.text().trim(),
@@ -354,7 +354,7 @@ class NovelUpdates implements ListManager {
     media = unique(media, (a, b) => b.title.link === a.title.link);
 
     let feedLink = $(".l-content .seticon a:nth-child(3)").attr("href") as string;
-    feedLink = url.resolve(this.baseURI, feedLink);
+    feedLink = new url.URL(feedLink, this.baseURI).href;
     feed.push(feedLink);
 
     // @ts-expect-error
@@ -473,7 +473,7 @@ class NovelUpdates implements ListManager {
 
   public scrapeList($: cheerio.Root, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {
     let feedLink = $(".l-content .seticon a:nth-child(1)").attr("href") as string;
-    feedLink = url.resolve(this.baseURI, feedLink);
+    feedLink = new url.URL(feedLink, this.baseURI).href;
     feed.push(feedLink);
 
     const rows = $(".l-content table tbody tr");

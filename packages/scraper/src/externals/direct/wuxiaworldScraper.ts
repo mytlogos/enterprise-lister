@@ -31,11 +31,11 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     const newsRow = newsRows.eq(i);
 
     const mediumLinkElement = newsRow.find("td:first-child .title a:first-child");
-    const tocLink = url.resolve(uri, mediumLinkElement.attr("href") as string);
+    const tocLink = new url.URL(mediumLinkElement.attr("href") as string, uri).href;
     const mediumTitle = sanitizeString(mediumLinkElement.text());
 
     const titleLink = newsRow.find("td:nth-child(2) a:first-child");
-    const link = url.resolve(uri, titleLink.attr("href") as string);
+    const link = new url.URL(titleLink.attr("href") as string, uri).href;
 
     let episodeTitle = sanitizeString(titleLink.text());
 
@@ -168,7 +168,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     checkTocContent(volume, true);
     for (let cIndex = 0; cIndex < volumeChapters.length; cIndex++) {
       const chapterElement = volumeChapters.eq(cIndex);
-      const link = url.resolve(uri, chapterElement.attr("href") as string);
+      const link = new url.URL(chapterElement.attr("href") as string, uri).href;
 
       const title = sanitizeString(chapterElement.text());
       const linkGroups = chapLinkReg.exec(link);

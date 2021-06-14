@@ -51,11 +51,11 @@ async function search(text: string): Promise<SearchResult[]> {
     const authorElement = resultElement.find(".author");
     const coverElement = resultElement.find("img.cover");
 
-    const coverLink = url.resolve(uri, coverElement.attr("src") as string);
+    const coverLink = new url.URL(coverElement.attr("src") as string, uri).href;
     const author = sanitizeString(authorElement.text());
     const title = sanitizeString(linkElement.text());
     let tocLink = linkElement.attr("href") as string;
-    tocLink = url.resolve(uri, tocLink);
+    tocLink = new url.URL(tocLink, uri).href;
 
     searchResults.push({ title, link: tocLink, author, coverUrl: coverLink, medium: MediaType.TEXT });
   }
@@ -139,7 +139,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
 
         for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
           const newsRow = items.eq(itemIndex);
-          const link = url.resolve(uri, newsRow.attr("href") as string);
+          const link = new url.URL(newsRow.attr("href") as string, uri).href;
           const episodeTitle = sanitizeString(newsRow.text());
           yield { title: episodeTitle, url: link, releaseDate: now } as EpisodePiece;
         }
@@ -259,7 +259,7 @@ async function scrapeTocPage($: cheerio.Root, uri: string): VoidablePromise<Toc>
   for (let i = 0; i < items.length; i++) {
     const newsRow = items.eq(i);
 
-    const link = url.resolve(uri, newsRow.attr("href") as string);
+    const link = new url.URL(newsRow.attr("href") as string, uri).href;
 
     const episodeTitle = sanitizeString(newsRow.text());
 
@@ -328,11 +328,11 @@ async function newsAdapter(): Promise<NewsScrapeResult> {
     const newsRow = items.eq(i);
 
     const mediumTitleElement = newsRow.find(".col-title a");
-    const tocLink = url.resolve(uri, mediumTitleElement.attr("href") as string);
+    const tocLink = new url.URL(mediumTitleElement.attr("href") as string, uri).href;
     const mediumTitle = sanitizeString(mediumTitleElement.text());
 
     const titleElement = newsRow.find(".col-chap a");
-    const link = url.resolve(uri, titleElement.attr("href") as string);
+    const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
     const episodeTitle = sanitizeString(titleElement.text());
 

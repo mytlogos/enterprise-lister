@@ -62,7 +62,7 @@ export function extractLinkable($: cheerio.Root, selector: string, uri: string):
     const element = elements.eq(i);
 
     const name = sanitizeString(element.text());
-    const link = url.resolve(uri, element.attr("href") as string);
+    const link = new url.URL(element.attr("href") as string, uri).href;
 
     result.push({ name, link });
   }
@@ -106,7 +106,7 @@ export async function searchTocCheerio(
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         tocLink = linkElement.attr("href") as string;
-        tocLink = url.resolve(uri, tocLink);
+        tocLink = new url.URL(tocLink, uri).href;
         break;
       }
     }
@@ -155,7 +155,7 @@ function searchForWords(
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         const tocLink = linkElement.attr("href") as string;
-        return { value: url.resolve(uri, tocLink), done: true };
+        return { value: new url.URL(tocLink, uri).href, done: true };
       }
     }
     return { done: false };
@@ -187,7 +187,7 @@ export async function searchToc(
 
     const result = await searchLink(searchString);
     if (result.value) {
-      tocLink = url.resolve(uri, result.value);
+      tocLink = new url.URL(result.value, uri).href;
     }
     if (result.done) {
       break;
@@ -490,9 +490,11 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>): 
     ascendingCount: 0,
     descendingCount: 0,
     hasParts: false,
-    volumeRegex: /(v[olume]{0,5}|(^|\d+|\B|\s+)s[eason]{0,5}|(^|\d+|\B|\s+)b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/gi,
+    volumeRegex:
+      /(v[olume]{0,5}|(^|\d+|\B|\s+)s[eason]{0,5}|(^|\d+|\B|\s+)b[ok]{0,3})[\s.]*(((\d+)(\.(\d+))?)|\W*(delete|spam))/gi,
     separatorRegex: /[-:]/g,
-    chapterRegex: /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/gi,
+    chapterRegex:
+      /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/gi,
     volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-(\s*((\d+)(\.(\d+))?)|\s)/gi,
     partRegex: /(P[art]{0,3}[.\s]*(\d+))|([[(]?(\d+)[/|](\d+)[)\]]?)/g,
     trimRegex: /^[\s:–,.-]+|[\s:–,.-]+$/g,
@@ -536,17 +538,15 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>): 
       }
     }
   }
-  return result.map(
-    (value): TocContent => {
-      if (isInternalEpisode(value)) {
-        return externalizeTocEpisode(value);
-      } else if (isInternalPart(value)) {
-        return externalizeTocPart(value);
-      } else {
-        throw TypeError();
-      }
-    },
-  );
+  return result.map((value): TocContent => {
+    if (isInternalEpisode(value)) {
+      return externalizeTocEpisode(value);
+    } else if (isInternalPart(value)) {
+      return externalizeTocPart(value);
+    } else {
+      throw TypeError();
+    }
+  });
 }
 
 type TocMatchType = "volume" | "separator" | "episode" | "part" | "volumeChapter";
