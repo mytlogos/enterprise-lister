@@ -12,7 +12,7 @@ import { setContext, removeContext, getStore, bindContext } from "enterprise-cor
 import http from "http";
 import https from "https";
 import { Socket } from "net";
-import { isString, getElseSet, stringify } from "enterprise-core/dist/tools";
+import { isString, getElseSet, stringify, delay } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import { AsyncResource } from "async_hooks";
 import { Optional } from "enterprise-core/dist/types";
@@ -138,7 +138,7 @@ export class Queue {
     }
     worker().finally(() => {
       // start next work ranging from maxLimit / 2 to maxLimit ms
-      const randomDuration = this.maxLimit - Math.random() * (this.maxLimit / 2);
+      const randomDuration = this.maxLimit - Math.random() * this.limitVariation;
       setTimeout(() => this.doWork(), randomDuration);
     });
   }
@@ -220,7 +220,42 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
     options = { uri };
   }
   options.transform = transformCheerio;
-  return queue.push(() => methodToRequest(options, toUseRequest));
+  // only transform 2xx to get full response on error
+  options.transform2xxOnly = true;
+
+  return queue.push(async () => {
+    for (let tryAgain = 0; tryAgain < 4; tryAgain++) {
+      try {
+        return await methodToRequest(options, toUseRequest);
+      } catch (error) {
+        // retry at most 3 times for 429 - Too many Requests error
+        if (error.statusCode === 429 && tryAgain < 3) {
+          const retryAfterValue = error.response?.headers["retry-after"];
+          const retryAfterSeconds = Number.parseInt(retryAfterValue);
+
+          if (Number.isInteger(retryAfterSeconds) && retryAfterSeconds > 0) {
+            if (retryAfterSeconds > 3600) {
+              logger.info("Encountered a retry-after Header with value greater than an hour");
+            }
+            await delay(retryAfterSeconds * 1000);
+          } else {
+            const retryAfterDate = new Date(retryAfterValue);
+            const diffMillis = retryAfterDate.getTime() - Date.now();
+
+            if (Number.isNaN(diffMillis) || diffMillis < 0) {
+              logger.error(`Retry-After is invalid: ${retryAfterValue}`);
+            } else {
+              await delay(diffMillis);
+            }
+          }
+          continue;
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw Error("Should never reach here, expected to return a valid response or throw an error");
+  });
 };
 
 export type QueueRequest<T> = (uri: string, options?: Options, otherRequest?: Request) => Promise<T>;
