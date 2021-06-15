@@ -187,14 +187,12 @@ export function runAsync(
 /**
  * Workaround to wrong documentation/functionality of AsyncResource.bind.
  *
+ * 15.06.2021: Works correctly in Node.js 16.3.0. Workaround was removed.
+ *
  * @see https://github.com/nodejs/node/issues/36051
  *
  * @param func function to bind to current async execution context
  */
 export function bindContext<Func extends TakeManyFunction>(func: Func): Func & { asyncResource: AsyncResource } {
-  // @ts-expect-error
-  return AsyncResource.bind(function (...args: any[]) {
-    // @ts-expect-error
-    return func(this, ...args);
-  }) as Func & { asyncResource: AsyncResource };
+  return AsyncResource.bind(func) as Func & { asyncResource: AsyncResource };
 }
