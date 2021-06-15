@@ -21,7 +21,7 @@ import * as dns from "dns";
 import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
-import { AsyncResource } from "async_hooks";
+import { setTimeout as setTimeoutPromise } from "timers/promises";
 
 export function isNumberOrArray(value: number | any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
@@ -434,21 +434,12 @@ export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
 }
 
 /**
- * A convenience delay function.
- * Returns a promise which resolves after the given time in milliseconds.
- * The true delayed time will most likely not equal the given delay time
- * as this uses setTimeout.
+ * Node.js 16 introduced stable promise timers api.
+ * Now delay is only an alias for setTimeout.
  *
  * @param timeout time to delay the promise
  */
-export function delay(timeout = 1000): EmptyPromise {
-  return new Promise((resolve) => {
-    setTimeout(
-      AsyncResource.bind(() => resolve()),
-      timeout,
-    );
-  });
-}
+export const delay = setTimeoutPromise;
 
 /**
  * Tests whether two releases should be equal.
@@ -979,7 +970,7 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
           this.since = since;
         }
       }
-      await delay(1000);
+      await setTimeoutPromise(1000);
     }
   }
 }

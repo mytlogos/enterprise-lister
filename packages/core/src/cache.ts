@@ -48,6 +48,7 @@ export class Cache extends NodeCache {
 
   private _checkPeriodicSize() {
     this._trimSize();
+    // FIXME: should this not be setInterval instead of setTimeout for an periodic check?
     this.timeOutId = setTimeout(() => this._trimSize(), (this.options.stdTTL || 10) * 1000);
   }
 
