@@ -6,27 +6,27 @@
       </div>
       <div class="flex-fill">
         <button class="btn btn-dark mt-1" @click.left="loadData">Refresh</button>
-        <select v-model="selectedTime" class="custom-select ml-1 mt-1 w-auto">
+        <select v-model="selectedTime" class="form-select ms-1 mt-1 w-auto">
           <option v-for="item of timeGrouping" :key="item.key" :value="item.key">
             {{ item.name }}
           </option>
         </select>
         <div class="mt-1">
-          <span class="mr-1 d-inline-block" style="width: 2.5em">From:</span>
-          <input v-model="fromDate" type="date" class="mr-1" name="from-date" />
+          <span class="me-1 d-inline-block" style="width: 2.5em">From:</span>
+          <input v-model="fromDate" type="date" class="me-1" name="from-date" />
           <input v-model="fromTime" type="time" name="from-time" />
         </div>
         <div class="mt-1">
-          <span class="mr-1 d-inline-block" style="width: 2.5em">To:</span>
-          <input v-model="toDate" type="date" class="mr-1" name="to-date" />
+          <span class="me-1 d-inline-block" style="width: 2.5em">To:</span>
+          <input v-model="toDate" type="date" class="me-1" name="to-date" />
           <input v-model="toTime" type="time" name="to-time" />
         </div>
-        <div class="row row-cols-3">
+        <div class="row me-5">
           <div class="col" />
           <div class="col-1">Left</div>
           <div class="col-1">Right</div>
         </div>
-        <div v-for="item of filter" :key="item.key" class="row row-cols-3">
+        <div v-for="item of filter" :key="item.key" class="row me-5">
           <div class="col">
             {{ item.name }}
           </div>
@@ -37,7 +37,7 @@
             <input v-model="item.right" type="checkbox" name="right" @click.left="changeFilter(item, 'right')" />
           </div>
         </div>
-        <div class="row row-cols-3">
+        <div class="row me-5">
           <div class="col text-nowrap">Group by Domain</div>
           <div class="col-1">
             <input v-model="groupByDomain.left" type="checkbox" name="left" />

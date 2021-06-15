@@ -3,11 +3,11 @@
     <template #title> Add Episodes </template>
     <template #input>
       Current Items: {{ parts.length }}
-      <div class="form-inline">
-        <input v-model="newPartPrefix" class="form-input" @keyup.enter="createPart" />
-        <input v-model.number="newPartIndex" type="number" class="form-input" @keyup.enter="createPart" />
-        <input v-model="newEpisodePrefix" class="form-input" @keyup.enter="createPart" />
-        <input v-model.number="newEpisodeCount" type="number" class="form-input" @keyup.enter="createPart" />
+      <div class="row">
+        <input v-model="newPartPrefix" class="form-input col-3" @keyup.enter="createPart" />
+        <input v-model.number="newPartIndex" type="number" class="form-input col-3" @keyup.enter="createPart" />
+        <input v-model="newEpisodePrefix" class="form-input col-3" @keyup.enter="createPart" />
+        <input v-model.number="newEpisodeCount" type="number" class="form-input col-3" @keyup.enter="createPart" />
       </div>
     </template>
     <template #finish> Submit </template>

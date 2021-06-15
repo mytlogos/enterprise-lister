@@ -55,12 +55,12 @@
                 class="badge"
                 :class="
                   job.state === 'success'
-                    ? 'badge-success'
+                    ? 'bg-success'
                     : job.state === 'failed'
-                    ? 'badge-danger'
+                    ? 'bg-danger'
                     : job.state === 'warning'
-                    ? 'badge-warning'
-                    : 'badge-light'
+                    ? 'bg-warning text-dark'
+                    : 'bg-light text-dark'
                 "
               >
                 {{ job.state }}

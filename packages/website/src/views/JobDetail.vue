@@ -24,7 +24,7 @@
       </thead>
       <tbody>
         <template v-for="(item, index) in history" :key="item.id">
-          <tr data-toggle="collapse" :data-target="'.collapse-' + index">
+          <tr data-bs-toggle="collapse" :data-bs-target="'.collapse-' + index">
             <td>{{ index + 1 }}</td>
             <td>{{ nameToString(item.name) }}</td>
             <td>
@@ -32,12 +32,12 @@
                 class="badge"
                 :class="
                   item.result === 'success'
-                    ? 'badge-success'
+                    ? 'bg-success'
                     : item.result === 'failed'
-                    ? 'badge-danger'
+                    ? 'bg-danger'
                     : item.result === 'warning'
-                    ? 'badge-warning'
-                    : 'badge-light'
+                    ? 'bg-warning text-dark'
+                    : 'bg-light text-dark'
                 "
               >
                 {{ item.result }}

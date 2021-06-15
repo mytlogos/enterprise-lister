@@ -2,15 +2,15 @@
   <div class="container-fluid p-0">
     <h1 id="media-title">Media</h1>
     <div>
-      <form class="form-inline">
-        <div class="mr-sm-2 ml-sm-2">
+      <form class="row mx-auto">
+        <div class="col-2">
           <input v-model="titleSearch" class="form-control" placeholder="Search in Media Title..." type="text" />
         </div>
-        <div class="btn-group" aria-label="Select which Releasestate of TL to show">
+        <div class="btn-group col-4" aria-label="Select which Releasestate of TL to show">
           <button
             class="btn btn-secondary active"
             type="button"
-            data-toggle="button"
+            data-bs-toggle="button"
             aria-pressed="true"
             @click.left="toggleReleaseStateTL(0)"
           >
@@ -19,7 +19,7 @@
           <button
             class="btn btn-secondary active"
             type="button"
-            data-toggle="button"
+            data-bs-toggle="button"
             aria-pressed="true"
             @click.left="toggleReleaseStateTL(1)"
           >
@@ -28,7 +28,7 @@
           <button
             class="btn btn-secondary active"
             type="button"
-            data-toggle="button"
+            data-bs-toggle="button"
             aria-pressed="true"
             @click.left="toggleReleaseStateTL(5)"
           >
@@ -37,7 +37,7 @@
           <button
             class="btn btn-secondary active"
             type="button"
-            data-toggle="button"
+            data-bs-toggle="button"
             aria-pressed="true"
             @click.left="toggleReleaseStateTL(2)"
           >
@@ -46,7 +46,7 @@
           <button
             class="btn btn-secondary active"
             type="button"
-            data-toggle="button"
+            data-bs-toggle="button"
             aria-pressed="true"
             @click.left="toggleReleaseStateTL(3)"
           >
@@ -55,27 +55,29 @@
           <button
             class="btn btn-secondary active"
             type="button"
-            data-toggle="button"
+            data-bs-toggle="button"
             aria-pressed="true"
             @click.left="toggleReleaseStateTL(4)"
           >
             Dropped
           </button>
         </div>
-        <div class="custom-control custom-switch">
-          <input id="hideCompleted" v-model="hideCompleted" type="checkbox" class="custom-control-input" />
-          <label class="custom-control-label" for="hideCompleted">Hide Completed Media</label>
+        <div class="form-check form-switch my-auto col-2">
+          <input id="hideCompleted" v-model="hideCompleted" type="checkbox" class="form-check-input" />
+          <label class="form-check-label" for="hideCompleted">Hide Completed Media</label>
         </div>
       </form>
     </div>
     <table class="table table-striped table-hover" aria-describedby="media-title">
-      <thead class="thead-dark">
-        <th scope="col">Title</th>
-        <th scope="col">Type</th>
-        <th scope="col">Progress</th>
-        <th scope="col">State in COO</th>
-        <th scope="col">State from TL</th>
-        <th scope="col">Author</th>
+      <thead class="table-dark">
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Type</th>
+          <th scope="col">Progress</th>
+          <th scope="col">State in COO</th>
+          <th scope="col">State from TL</th>
+          <th scope="col">Author</th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="medium of filteredMedia" :key="medium.id">

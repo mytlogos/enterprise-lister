@@ -2,21 +2,23 @@
   <div class="container-fluid p-0">
     <h1 id="media-title">MediaInWait</h1>
     <div>
-      <form class="form-inline">
-        <div class="mr-sm-2 ml-sm-2">
+      <form class="row my-1">
+        <div class="me-sm-2 ms-sm-2 col-3">
           <input v-model="titleSearch" class="form-control" placeholder="Search in Title..." type="text" />
         </div>
         <!-- @update:state="typeFilter = $event" -->
-        <media-filter v-model:state="typeFilter" class="ml-1" />
-        <span> {{ media.length }} Results</span>
+        <media-filter v-model:state="typeFilter" class="ms-1 w-auto" />
+        <span class="w-auto"> {{ media.length }} Results</span>
         <template v-if="lastFetched < currentFetchId"> Loading... </template>
       </form>
     </div>
     <table class="table table-striped table-hover" aria-describedby="media-title">
-      <thead class="thead-dark">
-        <th scope="col">Title</th>
-        <th scope="col">Type</th>
-        <th scope="col">Domain</th>
+      <thead class="table-dark">
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Type</th>
+          <th scope="col">Domain</th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="medium of media" :key="medium.link" role="button" @click="selectItem($event, medium)">

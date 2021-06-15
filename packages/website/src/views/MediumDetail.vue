@@ -51,9 +51,11 @@
     </div>
     <h1 id="tocs-title">Tocs</h1>
     <table class="table table-striped table-hover table-sm" aria-describedby="tocs-title">
-      <thead class="thead-dark">
-        <th scope="col">Title</th>
-        <th scope="col">Host</th>
+      <thead class="table-dark">
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Host</th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="toc of tocs" :key="toc.id">
@@ -63,9 +65,9 @@
             </a>
             <i
               v-if="toc.medium != details.medium"
-              class="fas fa-exclamation-triangle text-warning ml-1"
-              data-toggle="tooltip"
-              data-placement="top"
+              class="fas fa-exclamation-triangle text-warning ms-1"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
               :title="`Expected ${mediumToString(details.medium)} but got ${mediumToString(toc.medium)}`"
               aria-hidden="true"
             />
@@ -84,8 +86,8 @@
       <button
         class="btn btn-primary"
         type="button"
-        data-toggle="collapse"
-        data-target="#collapseChart"
+        data-bs-toggle="collapse"
+        data-bs-target="#collapseChart"
         aria-expanded="false"
         aria-controls="collapseChart"
       >
@@ -104,7 +106,8 @@
       :message="markToast.message"
       :error="!markToast.success"
       :success="markToast.success"
-      data-autohide="false"
+      :show="markToast.show"
+      data-bs-autohide="false"
       style="position: absolute; margin-top: -7em"
     />
     <div class="d-flex">
@@ -116,7 +119,7 @@
       </div>
     </div>
     <table class="table table-striped table-hover table-sm" aria-describedby="medium-releases-title">
-      <thead class="thead-dark">
+      <thead class="table-dark">
         <th scope="col">#</th>
         <th scope="col">Date</th>
         <th scope="col">Chapter</th>
@@ -144,8 +147,8 @@
           <td>
             <button
               class="btn"
-              data-toggle="tooltip"
-              data-placement="top"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
               :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
               @click.left="changeReadStatus(entry)"
             >
@@ -162,7 +165,13 @@
       </tbody>
     </table>
     <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
-    <toast id="progress-toast" title="Error" :message="'Could not update Progress'" @close="closeProgressToast" />
+    <toast
+      id="progress-toast"
+      title="Error"
+      :message="'Could not update Progress'"
+      :show="progressToast"
+      @close="closeProgressToast"
+    />
     <add-episode-modal :medium="addEpisodesModal" />
   </div>
 </template>
@@ -174,7 +183,7 @@ import { SimpleMedium, MediumRelease, FullMediumToc, MediaType } from "../siteTy
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
-import $ from "jquery";
+import ToolTip from "bootstrap/js/dist/tooltip";
 import { batch, formatDate, mergeMediaToc } from "../init";
 import Chart from "chart.js";
 import AddEpisodeModal from "../components/modal/add-episode-modal.vue";
@@ -187,17 +196,13 @@ interface Data {
   releases: MediumRelease[] | EpisodeRelease[];
   details: SimpleMedium;
   tocs: FullMediumToc[];
-  markToast: { message: string; success: boolean };
+  markToast: { message: string; success: boolean; show: boolean };
   dirty: boolean;
   addTocUrl: string;
   addEpisodesModal: SimpleMedium | null;
+  tooltips: ToolTip[];
+  progressToast: boolean;
 }
-
-// initialize all tooltips on this page
-$(function () {
-  // eslint-disable-next-line @typescript-eslint/quotes
-  $('[data-toggle="tooltip"]').tooltip();
-});
 
 const domainReg = /(https?:\/\/([^/]+))/;
 
@@ -257,10 +262,13 @@ export default defineComponent({
       markToast: {
         message: "",
         success: false,
+        show: false,
       },
       dirty: false,
       addTocUrl: "",
       addEpisodesModal: null,
+      tooltips: [],
+      progressToast: false,
     };
   },
 
@@ -327,6 +335,9 @@ export default defineComponent({
   },
 
   mounted() {
+    // eslint-disable-next-line @typescript-eslint/quotes
+    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
+
     chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
       type: "line",
       data: {},
@@ -525,14 +536,14 @@ export default defineComponent({
             return Promise.reject();
           }
         })
-        .catch(() => $("#progress-toast").toast("show"));
+        .catch(() => (this.progressToast = true));
     },
 
     /**
      * Hide progress error toast.
      */
     closeProgressToast() {
-      $("#progress-toast").toast("hide");
+      this.progressToast = false;
     },
 
     markAll(read: boolean) {
@@ -571,7 +582,7 @@ export default defineComponent({
           });
           this.markToast.message = `Marking as read succeeded for ${succeeded} and failed for ${failed}`;
           this.markToast.success = failed === 0;
-          $("#mark-toast").toast("show");
+          this.markToast.show = true;
           console.log(`succeeded=${succeeded}, failed=${failed}`);
         });
     },

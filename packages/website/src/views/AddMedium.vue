@@ -1,23 +1,23 @@
 <template>
   <div>
     <h1>Add Medium</h1>
-    <form class="form-inline mx-3 px-2">
+    <form class="row mx-3 px-2">
       <label>
         Load from Toc Link:
         <input
           v-model="toc"
-          class="form-control ml-1"
+          class="form-control ms-1"
           name="toc"
           title="ToC Link"
           type="url"
           placeholder="URL of the ToC"
         />
       </label>
-      <button class="btn btn-dark ml-1" type="button" @click.left="loadToc()">Load</button>
+      <button class="btn btn-dark ms-1" type="button" @click.left="loadToc()">Load</button>
     </form>
     <form>
-      <div class="form-row mx-3">
-        <div class="form-group col-md-3">
+      <div class="row mx-3">
+        <div class="row col-md-3">
           <label> Title </label>
           <input
             v-model="medium.title"
@@ -29,9 +29,9 @@
             placeholder="Title of the Medium"
           />
         </div>
-        <div class="form-group col-md-3">
+        <div class="row col-md-3">
           <label>Medium</label>
-          <select v-model="medium.medium" class="custom-select">
+          <select v-model="medium.medium" class="form-select">
             <option :value="1"><type-icon :type="1" class="form-control-plaintext" /> Text</option>
             <option :value="2"><type-icon :type="2" class="form-control-plaintext" /> Audio</option>
             <option :value="4"><type-icon :type="4" class="form-control-plaintext" /> Video</option>
@@ -39,8 +39,8 @@
           </select>
         </div>
       </div>
-      <div class="form-row mx-3">
-        <div class="form-group col-md-3">
+      <div class="row mx-3">
+        <div class="row col-md-3">
           <label> Author </label>
           <input
             v-model="medium.author"
@@ -51,7 +51,7 @@
             placeholder="One or multiple Authors of the Medium"
           />
         </div>
-        <div class="form-group col-md-3">
+        <div class="row col-md-3">
           <label>Artist</label>
           <input
             v-model="medium.artist"
@@ -63,8 +63,8 @@
           />
         </div>
       </div>
-      <div class="form-row mx-3">
-        <div class="form-group col-md-3">
+      <div class="row mx-3">
+        <div class="row col-md-3">
           <label>Series</label>
           <input
             v-model="medium.series"
@@ -75,7 +75,7 @@
             placeholder="Series of the Medium"
           />
         </div>
-        <div class="form-group col-md-3">
+        <div class="row col-md-3">
           <label>Universe</label>
           <input
             v-model="medium.universe"
@@ -87,7 +87,7 @@
           />
         </div>
       </div>
-      <div class="form-group col-md-3 mx-3 px-1">
+      <div class="row col-md-3 mx-3 px-1">
         <label>Language</label>
         <input
           v-model="medium.lang"
@@ -98,8 +98,8 @@
           placeholder="Translated Language"
         />
       </div>
-      <div class="form-row mx-3">
-        <div class="form-group col-md-3">
+      <div class="row mx-3">
+        <div class="row col-md-3">
           <label>Country Of Origin</label>
           <input
             v-model="medium.countryOfOrigin"
@@ -110,7 +110,7 @@
             placeholder="Country of Origin"
           />
         </div>
-        <div class="form-group col-md-3">
+        <div class="row col-md-3">
           <label>Language Of Origin</label>
           <input
             v-model="medium.languageOfOrigin"
@@ -122,29 +122,29 @@
           />
         </div>
       </div>
-      <div class="form-row mx-3">
-        <div class="form-group col-md-3">
+      <div class="row mx-3">
+        <div class="row col-md-3">
           <label>Status of Translator</label>
           <release-state
             :state="medium.stateTL"
-            class="ml-1"
+            class="ms-1"
             name="stateTl"
             title="Status of Translator"
             placeholder="Status of the Translation"
           />
         </div>
-        <div class="form-group col-md-3">
+        <div class="row col-md-3">
           <label>Status in COO</label>
           <release-state
             :state="medium.stateOrigin"
-            class="ml-1"
+            class="ms-1"
             name="stateCOO"
             title="Status in COO"
             placeholder="Publishing Status of the Medium"
           />
         </div>
       </div>
-      <div class="form-group mx-3 px-1">
+      <div class="row mx-3 px-1">
         <select class="form-control col-md-3" title="Select list to add medium to:">
           <option disabled selected value="">Select list to add medium to</option>
           <option v-for="list in lists" :key="list.id" :value="list.id">
@@ -161,16 +161,16 @@
       role="alert"
       aria-live="assertive"
       aria-atomic="true"
-      data-autohide="false"
+      data-bs-autohide="false"
       style="position: relative; top: -10em; left: 1em"
     >
       <div class="toast-header">
-        <i class="fas fa-exclamation-circle rounded mr-2 text-danger" aria-hidden="true" />
-        <strong class="mr-auto">{{ toastTitle }}</strong>
+        <i class="fas fa-exclamation-circle rounded me-2 text-danger" aria-hidden="true" />
+        <strong class="me-auto">{{ toastTitle }}</strong>
         <button
           type="button"
-          class="ml-2 mb-1 close"
-          data-dismiss="toast"
+          class="ms-2 mb-1 btn-close"
+          data-bs-dismiss="toast"
           aria-label="Close"
           @click.left="closeProgressToast"
         >
@@ -190,16 +190,14 @@ import { AddMedium, List } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
-import $ from "jquery";
-
-// initialize all toasts
-$(".toast").toast();
+import Toast from "bootstrap/js/dist/toast";
 
 interface Data {
   medium: AddMedium;
   toc: string;
   toastMessage: string;
   toastTitle: string;
+  toast: null | Toast;
 }
 
 export default defineComponent({
@@ -230,6 +228,7 @@ export default defineComponent({
       toc: "",
       toastMessage: "",
       toastTitle: "",
+      toast: null,
     };
   },
 
@@ -238,7 +237,9 @@ export default defineComponent({
       return this.$store.state.lists.lists;
     },
   },
-
+  mounted() {
+    this.toast = new Toast("#alert-toast");
+  },
   methods: {
     closeProgressToast() {
       // TODO: implement?
@@ -272,7 +273,7 @@ export default defineComponent({
     showMessage(message: string, title: string) {
       this.toastMessage = message;
       this.toastTitle = title;
-      $("#alert-toast").toast("show");
+      this.toast?.show();
       console.log(`Showing Message: ${title}: ${message}`);
     },
     loadToc(): void {

@@ -6,9 +6,7 @@
           <span class="modal-title">
             <slot name="title" />
           </span>
-          <button type="button" class="close" aria-label="Close" @click="close">
-            <span aria-hidden="true">&times;</span>
-          </button>
+          <button type="button" class="btn-close" aria-label="Close" @click="close" />
         </div>
         <div class="modal-body">
           <slot name="text" />
@@ -31,7 +29,7 @@
 <script lang="ts">
 import { emitBusEvent } from "../../bus";
 import { defineComponent } from "vue";
-import $ from "jquery";
+import Modal from "bootstrap/js/dist/modal";
 
 export default defineComponent({
   name: "Modal",
@@ -41,23 +39,26 @@ export default defineComponent({
   },
   emits: ["finish", "close"],
   data() {
-    return { closing: false };
+    return {
+      closing: false,
+      modal: null as Modal | null,
+    };
   },
   watch: {
     show() {
       if (this.show) {
         this.closing = false;
-        console.log(this.$refs);
-        $(this.$refs.root as HTMLElement).show();
+        this.modal?.show();
       } else {
-        $(this.$refs.root as HTMLElement).hide();
+        this.modal?.hide();
       }
     },
   },
   mounted(): void {
     console.log(this.$refs);
-    $(this.$refs.root as HTMLElement).modal({ show: false });
-    $(this.$refs.root as HTMLElement).on("hidden.bs.modal", () => this.close());
+    const modalElement = this.$refs.root as HTMLElement;
+    this.modal = new Modal(modalElement);
+    modalElement.addEventListener("hidden.bs.modal", () => this.close());
 
     document.addEventListener(
       "click",

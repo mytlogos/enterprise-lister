@@ -21,19 +21,19 @@ export default defineComponent({
     stateClass(): string {
       switch (this.state) {
         case ReleaseState.Unknown:
-          return "badge-light";
+          return "bg-light text-dark";
         case ReleaseState.Ongoing:
-          return "badge-primary";
+          return "bg-primary";
         case ReleaseState.Hiatus:
-          return "badge-warning";
+          return "bg-warning text-dark";
         case ReleaseState.Discontinued:
-          return "badge-danger";
+          return "bg-danger";
         case ReleaseState.Dropped:
-          return "badge-danger";
+          return "bg-danger";
         case ReleaseState.Complete:
-          return "badge-success";
+          return "bg-success";
         default:
-          return "badge-light";
+          return "bg-light text-dark";
       }
     },
     stateText(): string {

@@ -8,12 +8,12 @@
     :style="{ display: showing ? 'block' : 'none' }"
   >
     <div class="toast-header">
-      <i class="mr-2" :class="titleClass" aria-hidden="true" />
-      <strong class="mr-auto">{{ title }}</strong>
+      <i class="me-2" :class="titleClass" aria-hidden="true" />
+      <strong class="me-auto">{{ title }}</strong>
       <button
         type="button"
-        class="ml-2 mb-1 close"
-        data-dismiss="toast"
+        class="ms-2 mb-1 btn-close"
+        data-bs-dismiss="toast"
         aria-label="Close"
         @click.left="$emit('close')"
       >
@@ -28,10 +28,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import $ from "jquery";
-
-// initialize all toasts
-$(".toast").toast();
+import Toast from "bootstrap/js/dist/toast";
 
 export default defineComponent({
   name: "Toast",
@@ -54,11 +51,16 @@ export default defineComponent({
       type: String,
       required: true,
     },
+    show: {
+      type: Boolean,
+      required: false,
+    },
   },
   emits: ["close"],
   data() {
     return {
       showing: false,
+      toast: null as null | Toast,
     };
   },
   computed: {
@@ -74,9 +76,21 @@ export default defineComponent({
       return cssClass;
     },
   },
+  watch: {
+    show() {
+      if (this.show) {
+        this.toast?.show();
+      } else {
+        this.toast?.hide();
+      }
+    },
+  },
   mounted() {
-    $(this.$refs.root as HTMLElement).on("hidden.bs.toast", () => (this.showing = false));
-    $(this.$refs.root as HTMLElement).on("show.bs.toast", () => (this.showing = true));
+    const toast = this.$refs.root as HTMLElement;
+    this.toast = new Toast(toast);
+
+    toast.addEventListener("hidden.bs.toast", () => (this.showing = false));
+    toast.addEventListener("show.bs.toast", () => (this.showing = true));
   },
 });
 </script>

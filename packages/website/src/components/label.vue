@@ -3,7 +3,7 @@
     <span class="p-1" style="max-width: 100px; display: inline-block; text-overflow: ellipsis; overflow: hidden">{{
       value
     }}</span>
-    <button type="button" class="close" aria-label="Close" @click="$emit('delete')">
+    <button type="button" class="btn-close" aria-label="Close" @click="$emit('delete')">
       <span aria-hidden="true">&times;</span>
     </button>
   </span>

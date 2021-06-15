@@ -1,7 +1,7 @@
 <template>
   <div v-if="show" ref="root" class="modal">
     <div class="modal-header">
-      <button class="close" title="Close" type="button" @click="close()">
+      <button class="btn-close" title="Close" type="button" @click="close()">
         <span>×</span>
       </button>
     </div>

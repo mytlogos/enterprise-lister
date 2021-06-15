@@ -12,7 +12,7 @@
         placeholder="Title of the Medium"
       />
       <type-icon :type="medium.medium" class="form-control-plaintext" />
-      <div class="form-group">
+      <div class="row">
         <label> Author </label>
         <input
           v-model="medium.author"
@@ -23,7 +23,7 @@
           placeholder="One or multiple Authors of the Medium"
         />
       </div>
-      <div class="form-group">
+      <div class="row">
         <label>Artist</label>
         <input
           v-model="medium.artist"
@@ -34,7 +34,7 @@
           placeholder="One or multiple Artists of the Medium"
         />
       </div>
-      <div class="form-group">
+      <div class="row">
         <label>Series</label>
         <input
           v-model="medium.series"
@@ -45,7 +45,7 @@
           placeholder="Series of the Medium"
         />
       </div>
-      <div class="form-group">
+      <div class="row">
         <label>Universe</label>
         <input
           v-model="medium.universe"
@@ -56,7 +56,7 @@
           placeholder="Universe of the Medium"
         />
       </div>
-      <div class="form-group">
+      <div class="row">
         <label>Language</label>
         <input
           v-model="medium.lang"
@@ -67,7 +67,7 @@
           placeholder="Translated Language"
         />
       </div>
-      <div class="form-group">
+      <div class="row">
         <label>Country Of Origin</label>
         <input
           v-model="medium.countryOfOrigin"
@@ -78,7 +78,7 @@
           placeholder="Country of Origin"
         />
       </div>
-      <div class="form-group">
+      <div class="row">
         <label>Language Of Origin</label>
         <input
           v-model="medium.languageOfOrigin"
@@ -89,28 +89,28 @@
           placeholder="Original Language"
         />
       </div>
-      <div class="form-group form-inline">
+      <div class="row">
         <label>Status of Translator</label>
         <release-state
           :state="medium.stateTL"
-          class="ml-1"
+          class="ms-1"
           name="stateTl"
           title="Status of Translator"
           placeholder="Status of the Translation"
         />
       </div>
-      <div class="form-group form-inline">
+      <div class="row">
         <label>Status in COO</label>
         <release-state
           :state="medium.stateOrigin"
-          class="ml-1"
+          class="ms-1"
           name="stateCOO"
           title="Status in COO"
           placeholder="Publishing Status of the Medium"
         />
       </div>
-      <div class="form-group">
-        <select v-model="selectedList" class="custom-select" title="Select list to add medium to">
+      <div class="row">
+        <select v-model="selectedList" class="form-select col-2" title="Select list to add medium to">
           <option disabled selected value="">Select list to add medium to</option>
           <option v-for="list in lists" :key="list.id" :value="list.id">
             {{ list.name }}
@@ -158,13 +158,13 @@
     role="alert"
     aria-live="assertive"
     aria-atomic="true"
-    data-autohide="false"
+    data-bs-autohide="false"
     style="position: relative; top: -10em; left: 1em"
   >
     <div class="toast-header">
-      <i class="fas fa-exclamation-circle rounded mr-2 text-danger" aria-hidden="true" />
-      <strong class="mr-auto">{{ toastTitle }}</strong>
-      <button type="button" class="ml-2 mb-1 close" data-dismiss="toast" aria-label="Close">
+      <i class="fas fa-exclamation-circle rounded me-2 text-danger" aria-hidden="true" />
+      <strong class="me-auto">{{ toastTitle }}</strong>
+      <button type="button" class="ms-2 mb-1 btn-close" data-bs-dismiss="toast" aria-label="Close">
         <span aria-hidden="true">&times;</span>
       </button>
     </div>
@@ -178,8 +178,8 @@
 import modal from "./modal.vue";
 import { defineComponent, PropType } from "vue";
 import { HttpClient } from "../../Httpclient";
-import { AddMedium, List, MediumInWait } from "../../siteTypes";
-import $ from "jquery";
+import { AddMedium, MediumInWait } from "../../siteTypes";
+import Toast from "bootstrap/js/dist/toast";
 import { debounce } from "../../init";
 import ReleaseState from "../release-state.vue";
 import TypeIcon from "../type-icon.vue";
@@ -203,6 +203,7 @@ export default defineComponent({
       tocs: [],
       ownSimilarItems: [] as MediumInWait[],
       suggestions: [] as MediumInWait[],
+      toast: null as Toast | null,
     };
   },
   computed: {
@@ -214,6 +215,9 @@ export default defineComponent({
     item() {
       this.load();
     },
+  },
+  mounted() {
+    this.toast = new Toast("#alert-toast");
   },
   methods: {
     fetchSuggestions: debounce(async (value: string) => {
@@ -298,7 +302,7 @@ export default defineComponent({
     showMessage(message: string, title: string) {
       this.toastMessage = message;
       this.toastTitle = title;
-      $("#alert-toast").toast("show");
+      this.toast?.show();
       console.log(`Showing Message: ${title}: ${message}`);
     },
   },

@@ -5,12 +5,12 @@
       :key="item.value"
       class="btn btn-secondary"
       :class="{ active: Array.isArray(state) ? state.includes(item) : state === item }"
-      data-toggle="tooltip"
-      data-placement="top"
+      data-bs-toggle="tooltip"
+      data-bs-placement="top"
       :title="item.tooltip"
       @click.left="$emit('update:state', item)"
     >
-      <input type="radio" :checked="state === item" />
+      <input class="btn-check" type="radio" :checked="state === item" />
       <i class="fas" :class="item.class" aria-hidden="true" />
       <slot name="additional" :value="item.value"></slot>
     </label>
@@ -19,12 +19,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import $ from "jquery";
-
-// initialize all tooltips on this page
-$(function () {
-  $('[data-toggle="tooltip"]').tooltip();
-});
+import ToolTip from "bootstrap/js/dist/tooltip";
 
 /**
  * The Type for the state Prop
@@ -56,5 +51,14 @@ export default defineComponent({
     },
   },
   emits: ["update:state"],
+  data() {
+    return {
+      tooltips: [] as ToolTip[],
+    };
+  },
+  mounted() {
+    // eslint-disable-next-line @typescript-eslint/quotes
+    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
+  },
 });
 </script>

@@ -3,12 +3,12 @@
     <h1 id="releases-title">Releases</h1>
     <div class="p-1">
       <button class="btn btn-dark" @click.left="fetchReleases(true)">Refresh</button>
-      <button class="btn btn-dark ml-1" @click.left="fetchReleases">Fetch new Releases</button>
-      <triple-filter v-model:state="readFilter" class="ml-1" />
-      <media-filter :state="typeFilter" class="ml-1" @update:state="typeFilter = $event">
+      <button class="btn btn-dark ms-1" @click.left="fetchReleases">Fetch new Releases</button>
+      <triple-filter v-model:state="readFilter" class="ms-1" />
+      <media-filter :state="typeFilter" class="ms-1" @update:state="typeFilter = $event">
         <template #additional="{ value }">
           <span
-            class="badge badge-primary badge-pill"
+            class="badge bg-primary rounded-pill"
             aria-hidden="true"
             style="bottom: 26px; position: absolute; top: -10px; right: -10px; z-index: 10"
           >
@@ -16,7 +16,7 @@
           </span>
         </template>
       </media-filter>
-      <div class="d-inline ml-1">
+      <div class="d-inline ms-1">
         <auto-complete
           key="id"
           class="d-inline"
@@ -26,7 +26,7 @@
           @input="ignoreMedium"
         />
       </div>
-      <div class="d-inline ml-1">
+      <div class="d-inline ms-1">
         <auto-complete
           key="id"
           class="d-inline"
@@ -43,7 +43,7 @@
         v-for="medium in onlyMedia"
         :key="medium.id"
         :value="medium.title"
-        class="m-1 badge-success"
+        class="m-1 bg-success"
         @delete="unrequireMedium(medium)"
       />
     </div>
@@ -53,7 +53,7 @@
         v-for="medium in ignoreMedia"
         :key="medium.id"
         :value="medium.title"
-        class="m-1 badge-danger"
+        class="m-1 bg-danger"
         @delete="unignoreMedium(medium)"
       />
     </div>
@@ -63,7 +63,7 @@
         v-for="list in onlyLists"
         :key="list.id"
         :value="list.name"
-        class="m-1 badge-success"
+        class="m-1 bg-success"
         @delete="unrequireList(list)"
       />
     </div>
@@ -73,17 +73,19 @@
         v-for="list in ignoreLists"
         :key="list.id"
         :value="list.name"
-        class="m-1 badge-danger"
+        class="m-1 bg-danger"
         @delete="unignoreList(list)"
       />
     </div>
-    <table class="table table-striped table-hover table-sm" aria-describedby="releases-title">
-      <thead class="thead-dark">
-        <th scope="col">#</th>
-        <th scope="col">Date</th>
-        <th scope="col">Chapter</th>
-        <th scope="col">Medium</th>
-        <th scope="col">Actions</th>
+    <table class="table table-striped table-hover table-sm align-middle" aria-describedby="releases-title">
+      <thead class="table-dark">
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Date</th>
+          <th scope="col">Chapter</th>
+          <th scope="col">Medium</th>
+          <th scope="col">Actions</th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="(entry, index) in computedReleases" :key="entry.episodeId + entry.link">
@@ -114,8 +116,8 @@
           <td>
             <button
               class="btn"
-              data-toggle="tooltip"
-              data-placement="top"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
               :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
               @click.left="changeReadStatus(entry)"
             >
@@ -134,12 +136,12 @@
     <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
     <div id="progress-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="toast-header">
-        <i class="fas fa-exclamation-circle rounded mr-2 text-danger" aria-hidden="true" />
-        <strong class="mr-auto">Error</strong>
+        <i class="fas fa-exclamation-circle rounded me-2 text-danger" aria-hidden="true" />
+        <strong class="me-auto">Error</strong>
         <button
           type="button"
-          class="ml-2 mb-1 close"
-          data-dismiss="toast"
+          class="ms-2 mb-1 btn-close"
+          data-bs-dismiss="toast"
           aria-label="Close"
           @click.left="closeProgressToast"
         >
@@ -157,7 +159,8 @@ import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
 import TripleFilter from "../components/triple-filter.vue";
 import MediaFilter from "../components/media-filter.vue";
-import $ from "jquery";
+import ToolTip from "bootstrap/js/dist/tooltip";
+import Toast from "bootstrap/js/dist/toast";
 import AutoComplete from "../components/auto-complete.vue";
 import AppLabel from "../components/label.vue";
 
@@ -172,16 +175,9 @@ interface Data {
   replace: boolean;
   typeReleases: Record<MediaType | number, number>;
   currentReleases: Set<string>;
+  tooltips: ToolTip[];
+  progressToast: null | Toast;
 }
-
-// initialize all tooltips on this page
-$(function () {
-  // eslint-disable-next-line @typescript-eslint/quotes
-  $('[data-toggle="tooltip"]').tooltip();
-});
-
-// initialize all toasts
-$(".toast").toast();
 
 export default defineComponent({
   name: "Releases",
@@ -209,6 +205,8 @@ export default defineComponent({
         [MediaType.AUDIO]: 0,
       },
       currentReleases: new Set(),
+      tooltips: [],
+      progressToast: null,
     };
   },
   computed: {
@@ -321,6 +319,10 @@ export default defineComponent({
     },
   },
   async mounted() {
+    // eslint-disable-next-line @typescript-eslint/quotes
+    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
+    this.progressToast = new Toast("#progress-toast");
+
     await this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
     this.unmounted = false;
     // FIXME: why does this property not exist?:
@@ -484,14 +486,14 @@ export default defineComponent({
             return Promise.reject();
           }
         })
-        .catch(() => $("#progress-toast").toast("show"));
+        .catch(() => this.progressToast?.show());
     },
 
     /**
      * Hide progress error toast.
      */
     closeProgressToast() {
-      $("#progress-toast").toast("hide");
+      this.progressToast?.hide();
     },
 
     /**

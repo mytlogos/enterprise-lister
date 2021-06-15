@@ -5,15 +5,15 @@
         v-model="title"
         type="search"
         placeholder="Title"
-        class="form-control mr-2"
+        class="form-control me-2"
         style="max-width: 20em"
         @keyup.enter="search"
       />
-      <button class="btn btn-dark mr-2" @click.left="search">Search</button>
+      <button class="btn btn-dark me-2" @click.left="search">Search</button>
       <media-filter :state="type" @update:state="type = $event" />
     </div>
     <div class="d-flex flex-wrap">
-      <div v-for="item of result" :key="item.link" class="card mb-3 tile mr-3 bg-light">
+      <div v-for="item of result" :key="item.link" class="card mb-3 tile me-3 bg-light">
         <div class="row no-gutters h-100">
           <div class="col-md-4">
             <img :src="item.coverUrl" class="card-img" alt="Cover Image" />
@@ -26,8 +26,8 @@
                 rel="noopener noreferrer"
                 style="overflow: hidden; max-height: 40%"
                 class="d-block text-body card-title h5"
-                data-toggle="tooltip"
-                data-placement="top"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
                 :title="item.title"
               >
                 {{ item.title }}
@@ -36,9 +36,9 @@
               <small class="text-muted">{{ item.author || "N/A" }}</small>
               <div class="d-flex" style="bottom: 1em; position: absolute">
                 <button
-                  class="btn btn-dark mr-2"
-                  data-toggle="modal"
-                  data-target="#add-modal"
+                  class="btn btn-dark me-2"
+                  data-bs-toggle="modal"
+                  data-bs-target="#add-modal"
                   @click.left="select(item)"
                 >
                   Add
@@ -55,12 +55,10 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 id="add-modal-label" class="modal-title">Add Medium</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">&times;</span>
-            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />
           </div>
           <div class="modal-body">
-            <div class="form-group" style="padding: 0 15px">
+            <div class="row" style="padding: 0 15px">
               <label> Title </label>
               <input
                 v-model="medium.title"
@@ -72,13 +70,13 @@
                 placeholder="Title of the Medium"
               />
             </div>
-            <div class="form-group" style="padding: 0 15px">
+            <div class="row" style="padding: 0 15px">
               <label>Medium</label>
               <type-icon :type="medium.medium" class="form-control-plaintext" />
             </div>
-            <div class="form-group mx-3">
+            <div class="row mx-3">
               <label>Add Medium to List</label>
-              <select v-model="selectedList" class="custom-select" title="Select list to add medium to:">
+              <select v-model="selectedList" class="form-select" title="Select list to add medium to:">
                 <option disabled selected value="">Select list to add medium to</option>
                 <option v-for="list in lists" :key="list.id" :value="list.id">
                   {{ list.name }}
@@ -87,7 +85,7 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             <button type="button" class="btn btn-primary" @click.left="add">Add</button>
           </div>
         </div>
@@ -100,14 +98,10 @@
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import { MediaType, SearchResult } from "../siteTypes";
-import $ from "jquery";
+import ToolTip from "bootstrap/js/dist/tooltip";
+import Modal from "bootstrap/js/dist/modal";
 import TypeIcon from "../components/type-icon.vue";
 import mediaFilter from "../components/media-filter.vue";
-
-$(function () {
-  // eslint-disable-next-line prettier/prettier
-  $("[data-toggle=\"tooltip\"]").tooltip();
-});
 
 interface Data {
   title: string;
@@ -119,6 +113,8 @@ interface Data {
     medium: MediaType;
   };
   selectedList: number;
+  tooltips: ToolTip[];
+  addModal: null | Modal;
 }
 
 export default defineComponent({
@@ -138,12 +134,19 @@ export default defineComponent({
         medium: 0,
       },
       selectedList: 0,
+      tooltips: [],
+      addModal: null,
     };
   },
   computed: {
     lists() {
       return this.$store.state.lists.lists;
     },
+  },
+  mounted() {
+    // eslint-disable-next-line @typescript-eslint/quotes
+    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
+    this.addModal = new Modal("#add-modal");
   },
   methods: {
     search() {
@@ -175,7 +178,7 @@ export default defineComponent({
           this.medium.title = "";
           this.medium.url = "";
           this.medium.medium = 0;
-          $("#add-modal").modal("hide");
+          this.addModal?.hide();
         })
         .catch((reason) => {
           console.error(reason);

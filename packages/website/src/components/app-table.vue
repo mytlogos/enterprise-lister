@@ -2,7 +2,7 @@
   <div ref="root">
     <delete-modal v-bind="deleteModal" @hide="deleteModal.show = false" />
     <div class="container-fluid d-flex p-1">
-      <div class="btn-group mr-sm-3" role="group" aria-label="Select what to filter on">
+      <div class="btn-group me-sm-3" role="group" aria-label="Select what to filter on">
         <button class="btn btn-secondary all reset" name="all" type="reset" @click="showAll">All</button>
         <button
           v-for="column of columns"
@@ -15,11 +15,13 @@
           {{ column.name }}
         </button>
       </div>
-      <form class="form-inline">
-        <div class="mr-sm-2 dropdown dropdown-btn" :class="{ hidden: !showSearch }">
+      <form class="row">
+        <div class="col-2 me-sm-2 dropdown dropdown-btn" :class="{ hidden: !showSearch }">
           <input v-model="filter" class="form-control" placeholder="Type your Search..." type="text" />
         </div>
-        <button class="btn bg-dark btn-dark search" type="submit" @click="showSearch = !showSearch">Search</button>
+        <button class="col-2 btn bg-dark btn-dark search" type="submit" @click="showSearch = !showSearch">
+          Search
+        </button>
       </form>
     </div>
     <table class="table">

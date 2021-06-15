@@ -2,11 +2,11 @@
   <div class="container">
     <h1>Register</h1>
     <form>
-      <div class="form-group row">
+      <div class="row">
         <label class="col-sm-2 col-form-label">Username:</label>
         <input v-model="user" class="col-sm-4 form-control" placeholder="Your username" title="Username" type="text" />
       </div>
-      <div class="form-group row">
+      <div class="row">
         <label class="col-sm-2 col-form-label">Password:</label>
         <input
           v-model="pw"
@@ -16,7 +16,7 @@
           type="password"
         />
       </div>
-      <div class="form-group row">
+      <div class="row">
         <label class="col-sm-2 col-form-label">Repeat Password:</label>
         <input
           v-model="pwRepeat"

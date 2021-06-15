@@ -20,7 +20,7 @@
         >Lagging Jobs:
         <span
           class="badge"
-          :class="summary.lagging / (summary.waiting + summary.running) > 0.1 ? 'badge-danger' : 'badge-success'"
+          :class="summary.lagging / (summary.waiting + summary.running) > 0.1 ? 'bg-danger' : 'bg-success'"
         >
           {{ summary.lagging }}
         </span>
@@ -109,7 +109,7 @@
       </thead>
       <tbody>
         <template v-for="(job, index) in computedJobs" :key="job.name">
-          <tr data-toggle="collapse" :data-target="'.collapse-' + index">
+          <tr data-bs-toggle="collapse" :data-bs-target="'.collapse-' + index">
             <td>{{ index + 1 }}</td>
             <td>{{ nameToString(job.name) }}</td>
             <td>{{ job.state }}</td>
@@ -536,7 +536,7 @@ export default defineComponent({
 });
 </script>
 <style scoped>
-tr[data-toggle] {
+tr[data-bs-toggle] {
   cursor: pointer;
 }
 
