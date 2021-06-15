@@ -21,7 +21,6 @@
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./packages/**/dist/**/test/database/**/*.js ./packages/**/dist/**/test/*.js"
   },
   "dependencies": {
-    "@vue/babel-preset-app": "^4.5.13",
     "request": "^2.88.2"
   },
   "devDependencies": {

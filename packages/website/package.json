@@ -41,6 +41,7 @@
     "@types/sinon": "^10.0.1",
     "@types/sinon-as-promised": "^4.0.14",
     "@types/sinon-chai": "^3.2.5",
+    "@vue/babel-preset-app": "^5.0.0-beta.2",
     "@vue/cli-plugin-babel": "^5.0.0-beta.2",
     "@vue/cli-plugin-eslint": "^5.0.0-beta.2",
     "@vue/cli-plugin-router": "^5.0.0-beta.2",

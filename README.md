@@ -15,6 +15,10 @@
         - mariadb >= 10.3 does not need these options
 - A `env.env` file, similar to the available `test.env` file
 
+## Notes
+
+@vue/babel-preset-app is only listed as a devDependency because @vue/cli-plugin-babel, which it is originally a dependecy of, could not find the package in its own node_module folder.
+
 ## Project setup
 ```
 npm install
