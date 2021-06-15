@@ -113,17 +113,19 @@
     <div class="d-flex">
       <button class="btn btn-dark" @click.left="addEpisodesModal = details">Add Episodes</button>
       <button class="btn btn-dark" @click.left="markAll(true)">Mark all read</button>
-      <div class="custom-control custom-switch">
-        <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="custom-control-input" />
-        <label class="custom-control-label" for="collapseToEpisode">Display Episodes only</label>
+      <div class="form-check form-switch">
+        <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="form-check-input" />
+        <label class="form-check-label" for="collapseToEpisode">Display Episodes only</label>
       </div>
     </div>
     <table class="table table-striped table-hover table-sm" aria-describedby="medium-releases-title">
       <thead class="table-dark">
-        <th scope="col">#</th>
-        <th scope="col">Date</th>
-        <th scope="col">Chapter</th>
-        <th scope="col">Actions</th>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Date</th>
+          <th scope="col">Chapter</th>
+          <th scope="col">Actions</th>
+        </tr>
       </thead>
       <tbody>
         <tr v-for="entry of computedReleases" :key="episodesOnly ? entry.episodeId : entry.episodeId + entry.link">

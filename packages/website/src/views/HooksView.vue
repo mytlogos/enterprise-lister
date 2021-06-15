@@ -3,15 +3,15 @@
     <div style="display: grid; grid-template-columns: auto auto auto auto">
       <div v-for="(item, index) in hooks" :key="item.id" class="list-group-item">
         <h5>
-          <div class="custom-control custom-switch d-inline">
+          <div class="form-check form-switch d-inline">
             <input
               :id="'enabled-switch-' + index"
               :checked="isItemActive(item)"
               type="checkbox"
-              class="custom-control-input"
+              class="form-check-input"
               @input="toggleHook(item)"
             />
-            <label class="custom-control-label" :for="'enabled-switch-' + index"></label>
+            <label class="form-check-label" :for="'enabled-switch-' + index"></label>
           </div>
           {{ item.name }}
         </h5>

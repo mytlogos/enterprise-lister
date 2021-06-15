@@ -1,9 +1,9 @@
 <template>
   <div>
     <h1>Name: {{ job ? nameToString(job.name) : "Unknown" }}</h1>
-    <div class="custom-control custom-switch">
-      <input id="enabledSwitch" v-model="enabled" type="checkbox" class="custom-control-input" />
-      <label class="custom-control-label" for="enabledSwitch">Job enabled</label>
+    <div class="form-check form-switch">
+      <input id="enabledSwitch" v-model="enabled" type="checkbox" class="form-check-input" />
+      <label class="form-check-label" for="enabledSwitch">Job enabled</label>
     </div>
     <table class="table table-hover">
       <caption class="sr-only">
