@@ -596,6 +596,7 @@ export const HttpClient = {
   /**
    * Get a certain number of DisplayReleases including and after the <i>latest</i> parameter
    * at most until the <i>until</i> parameter if available.
+   * The returned release are between latest >= release >= until.
    *
    * @param latest the date to get all releases after (including)
    */
