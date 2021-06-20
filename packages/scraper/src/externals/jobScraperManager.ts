@@ -80,18 +80,16 @@ export class JobScraperManager {
     // TODO: 02.09.2019 clear or run all jobs which have the runAfter field, where the original job was deleted
     await jobStorage.stopJobs().catch(logger.error);
 
-    const jobs = getNewsAdapter().map(
-      (value): JobRequest => {
-        return {
-          deleteAfterRun: false,
-          runImmediately: true,
-          interval: MilliTime.MINUTE * 5,
-          name: `${value.hookName}-${ScrapeName.newsAdapter}`,
-          type: ScrapeName.newsAdapter,
-          arguments: value.hookName,
-        };
-      },
-    );
+    const jobs = getNewsAdapter().map((value): JobRequest => {
+      return {
+        deleteAfterRun: false,
+        runImmediately: true,
+        interval: MilliTime.MINUTE * 5,
+        name: `${value.hookName}-${ScrapeName.newsAdapter}`,
+        type: ScrapeName.newsAdapter,
+        arguments: value.hookName,
+      };
+    });
     jobs.push(
       {
         type: ScrapeName.checkTocs,

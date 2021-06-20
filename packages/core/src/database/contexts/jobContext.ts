@@ -309,47 +309,44 @@ export class JobContext extends SubContext {
   public async addJobs<T extends MultiSingleValue<JobRequest>>(jobs: T): PromiseMultiSingle<T, JobItem> {
     const now = new Date();
     const currentJobs: Array<{ id: number; name: string }> = await this.query("SELECT id, name FROM jobs");
-    return promiseMultiSingle(
-      jobs,
-      async (value: JobRequest): Promise<JobItem> => {
-        let args = value.arguments;
-        if (value.arguments && !isString(value.arguments)) {
-          args = JSON.stringify(value.arguments);
-        }
-        let runAfter: Optional<number>;
+    return promiseMultiSingle(jobs, async (value: JobRequest): Promise<JobItem> => {
+      let args = value.arguments;
+      if (value.arguments && !isString(value.arguments)) {
+        args = JSON.stringify(value.arguments);
+      }
+      let runAfter: Optional<number>;
 
+      // @ts-expect-error
+      if (value.runAfter && value.runAfter.id && Number.isInteger(value.runAfter.id)) {
         // @ts-expect-error
-        if (value.runAfter && value.runAfter.id && Number.isInteger(value.runAfter.id)) {
-          // @ts-expect-error
-          runAfter = value.runAfter.id;
-        }
-        const nextRun = value.runImmediately ? now : null;
-        const foundJob = currentJobs.find((job) => job.name === value.name);
+        runAfter = value.runAfter.id;
+      }
+      const nextRun = value.runImmediately ? now : null;
+      const foundJob = currentJobs.find((job) => job.name === value.name);
 
-        if (foundJob) {
-          // @ts-expect-error
-          value.id = foundJob.id;
+      if (foundJob) {
+        // @ts-expect-error
+        value.id = foundJob.id;
+      } else {
+        const result = await this.query(
+          "INSERT IGNORE INTO jobs " +
+            "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`, `job_state`) " +
+            "VALUES (?,?,?,?,?,?,?,?, 'enabled')",
+          [value.type, value.name, JobState.WAITING, value.interval, value.deleteAfterRun, runAfter, args, nextRun],
+        );
+        // the only reason it should fail to insert is when its name constraint is violated
+        if (!result.insertId) {
+          throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
         } else {
-          const result = await this.query(
-            "INSERT IGNORE INTO jobs " +
-              "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`, `job_state`) " +
-              "VALUES (?,?,?,?,?,?,?,?, 'enabled')",
-            [value.type, value.name, JobState.WAITING, value.interval, value.deleteAfterRun, runAfter, args, nextRun],
-          );
-          // the only reason it should fail to insert is when its name constraint is violated
-          if (!result.insertId) {
-            throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
-          } else {
-            // @ts-expect-error
-            value.id = result.insertId;
-          }
-          storeModifications("job", "insert", result);
+          // @ts-expect-error
+          value.id = result.insertId;
         }
-        // @ts-expect-error
-        delete value.runImmediately;
-        return (value as unknown) as JobItem;
-      },
-    );
+        storeModifications("job", "insert", result);
+      }
+      // @ts-expect-error
+      delete value.runImmediately;
+      return value as unknown as JobItem;
+    });
   }
 
   public async removeJobs(jobs: JobItem | JobItem[], finished?: Date): EmptyPromise {
