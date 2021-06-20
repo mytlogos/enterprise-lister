@@ -36,7 +36,15 @@ async function tryRequest(link: string, options?: Options, retry = 0): Promise<c
   }
 }
 
-const BASE_URI = "http://mangahasu.se/";
+const BASE_URI = "https://mangahasu.se/";
+
+function enforceHttps(link: string): string {
+  if (!link.startsWith("https://")) {
+    return link.replace(/.+?:\/\//, "https://");
+  } else {
+    return link;
+  }
+}
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
   // TODO scrape more than just the first page if there is an open end
@@ -54,8 +62,8 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
     const mediumElement = children.eq(0);
     const titleElement = children.eq(1);
-    const link = new url.URL(titleElement.attr("href") as string, baseUri).href;
-    const mediumTocLink = new url.URL(mediumElement.attr("href") as string, baseUri).href;
+    const link = enforceHttps(new url.URL(titleElement.attr("href") as string, baseUri).href);
+    const mediumTocLink = enforceHttps(new url.URL(mediumElement.attr("href") as string, baseUri).href);
     const mediumTitle = sanitizeString(mediumElement.text());
     const title = sanitizeString(titleElement.text());
 
@@ -171,7 +179,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
       logger.warn("image link format changed on mangahasu: " + chapterLink);
       return [];
     }
-    imageUrls.push(src);
+    imageUrls.push(enforceHttps(src));
   }
   const episodeContent: EpisodeContent = {
     content: imageUrls,
@@ -183,10 +191,10 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-  if (!/http:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
+  if (!/https?:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
     throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
   }
-  const $ = await tryRequest(urlString);
+  const $ = await tryRequest(enforceHttps(urlString));
   if ($("head > title").text() === "Page not found!") {
     throw new MissingResourceError("Missing Toc on NovelFull", urlString);
   }
@@ -261,7 +269,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
       const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
 
-      const link = new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href;
+      const link = enforceHttps(new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href);
 
       if (!chapIndices) {
         logger.warn("changed episode format on mangaHasu toc: got no index " + urlString);
@@ -304,7 +312,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       if (!chapIndices) {
         throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
       }
-      const link = new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href;
+      const link = enforceHttps(new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href);
 
       let title = "Chapter " + chapIndices.combi;
 
@@ -371,7 +379,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
     const text = sanitizeString(titleElement.text());
 
     if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
-      const tocLink = linkElement.attr("href") as string;
+      const tocLink = enforceHttps(linkElement.attr("href") as string);
       return { value: tocLink, done: true };
     }
   }
@@ -407,7 +415,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     const coverElement = linkElement.find("img");
 
     const text = sanitizeString(titleElement.text());
-    const link = new url.URL(linkElement.attr("href") as string, BASE_URI).href;
+    const link = enforceHttps(new url.URL(linkElement.attr("href") as string, BASE_URI).href);
     const author = sanitizeString(authorElement.text());
     const coverLink = coverElement.attr("src");
 
