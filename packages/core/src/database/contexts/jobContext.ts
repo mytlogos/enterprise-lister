@@ -84,58 +84,33 @@ export class JobContext extends SubContext {
     const values = await this.query(`
             SELECT 
             ${filterColumn}
-            AVG(network) as avgnetwork, 
-            ${minMax ? "MIN(network) as minnetwork," : ""} 
-            ${minMax ? "MAX(network) as maxnetwork, " : ""} 
-            AVG(received) as avgreceived, 
-            ${minMax ? "MIN(received) as minreceived," : ""}  
-            ${minMax ? "MAX(received) as maxreceived, " : ""} 
-            AVG(send) as avgsend, 
-            ${minMax ? "MIN(send) as minsend, " : ""} 
-            ${minMax ? "MAX(send) as maxsend, " : ""} 
+            AVG(network_queries) as avgnetwork, 
+            ${minMax ? "MIN(network_queries) as minnetwork," : ""} 
+            ${minMax ? "MAX(network_queries) as maxnetwork, " : ""} 
+            AVG(network_received) as avgreceived, 
+            ${minMax ? "MIN(network_received) as minreceived," : ""}  
+            ${minMax ? "MAX(network_received) as maxreceived, " : ""} 
+            AVG(network_send) as avgsend, 
+            ${minMax ? "MIN(network_send) as minsend, " : ""} 
+            ${minMax ? "MAX(network_send) as maxsend, " : ""} 
             AVG(duration) as avgduration, 
             ${minMax ? "MAX(duration) maxD, " : ""} 
             ${minMax ? "MIN(duration) minD," : ""} 
             Count(*) as count,
             AVG(lagging) as avglagging,
-            GROUP_CONCAT(\`update\`) as allupdate,
-            GROUP_CONCAT(\`create\`) as allcreate,
-            GROUP_CONCAT(\`delete\`) as alldelete,
-            (SUM(CASE WHEN \`result\` = 'failed' THEN 1 ELSE 0 END) / Count(*)) as failed, 
-            (SUM(CASE WHEN \`result\` = 'success' THEN 1 ELSE 0 END) / COUNT(*)) as succeeded,
-            AVG(query) as queries${minMax ? "," : ""}
-            ${minMax ? "MAX(query) maxQ, " : ""} 
-            ${minMax ? "MIN(CASE WHEN query = 0 THEN NULL ELSE query END) minQ" : ""} 
-            FROM (
-                SELECT 
-                name, 
-                start,
-                result,
-                start - scheduled_at as lagging,
-                JSON_EXTRACT(message, "$.modifications.*.updated") as \`update\`,
-                JSON_EXTRACT(message, "$.modifications.*.deleted") as \`delete\`,
-                JSON_EXTRACT(message, "$.modifications.*.created") as \`create\`,
-                CAST(JSON_EXTRACT(message, "$.queryCount") as unsigned int) as query,
-                CAST(JSON_EXTRACT(message, "$.network.count") as unsigned int) as network,
-                CAST(JSON_EXTRACT(message, "$.network.received") as unsigned int) as received,
-                CAST(JSON_EXTRACT(message, "$.network.sent") as unsigned int) as send,
-                end - start as duration
-                FROM job_history
-            ) as job_history
+            SUM(updated) as allupdate,
+            SUM(created) as allcreate,
+            SUM(deleted) as alldelete,
+            AVG(CASE WHEN \`result\` = 'failed' THEN 1 ELSE 0 END) as failed, 
+            AVG(CASE WHEN \`result\` = 'success' THEN 1 ELSE 0 END) as succeeded,
+            AVG(queries) as queries${minMax ? "," : ""}
+            ${minMax ? "MAX(queries) maxQ, " : ""} 
+            ${minMax ? "MIN(CASE WHEN queries = 0 THEN NULL ELSE queries END) minQ" : ""} 
+            FROM job_history
             ${groupBy}
             ;`);
-    // 'all*' Properties are comma separated lists of number arrays
-    for (const value of values) {
-      let numberArrays: number[][] = JSON.parse("[" + value.allcreate + "]");
-      value.allcreate = numberArrays.flat().reduce((v1, v2) => v1 + v2, 0);
-
-      numberArrays = JSON.parse("[" + value.alldelete + "]");
-      value.alldelete = numberArrays.flat().reduce((v1_1, v2_1) => v1_1 + v2_1, 0);
-
-      numberArrays = JSON.parse("[" + value.allupdate + "]");
-      value.allupdate = numberArrays.flat().reduce((v1_2, v2_2) => v1_2 + v2_2, 0);
-
-      if (statFilter?.type === "timed") {
+    if (statFilter?.type === "timed") {
+      for (const value of values) {
         value.timepoint = new Date(value.timepoint);
       }
     }
@@ -622,9 +597,23 @@ export class JobContext extends SubContext {
         values,
       );
 
+      let created = 0;
+      let updated = 0;
+      let deleted = 0;
+      modifications.forEach((value) => {
+        created += value.created;
+        updated += value.updated;
+        deleted += value.deleted;
+      });
+
+      const queries = parsedMessage.queryCount;
+      const network_received = parsedMessage.network.received || 0;
+      const network_send = parsedMessage.network.sent || 0;
+      const network_requests = parsedMessage.network.count || 0;
+
       return this.query(
-        "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments)" +
-          " VALUES (?,?,?,?,?,?,?,?,?,?,?,?);",
+        "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments, created, updated, deleted, queries, network_queries, network_received, network_send)" +
+          " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
         [
           value.id,
           value.type,
@@ -639,6 +628,13 @@ export class JobContext extends SubContext {
           // context take too much space, ignore it for now
           "",
           args,
+          created,
+          updated,
+          deleted,
+          queries,
+          network_requests,
+          network_received,
+          network_send,
         ],
       );
     });

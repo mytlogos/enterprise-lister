@@ -325,6 +325,15 @@ dataBaseBuilder
   .parseColumn("result VARCHAR(100) NOT NULL")
   .parseColumn("message VARCHAR(200) NOT NULL")
   .parseColumn("context TEXT NOT NULL")
+  .parseColumn("created INT NOT NULL DEFAULT 0")
+  .parseColumn("updated INT NOT NULL DEFAULT 0")
+  .parseColumn("deleted INT NOT NULL DEFAULT 0")
+  .parseColumn("queries INT NOT NULL DEFAULT 0")
+  .parseColumn("network_queries INT NOT NULL DEFAULT 0")
+  .parseColumn("network_received INT NOT NULL DEFAULT 0")
+  .parseColumn("network_send INT NOT NULL DEFAULT 0")
+  // .parseColumn("duration INT NOT NULL AS (end - start) PERSISTENT") // currently not supported in parseColumn
+  // .parseColumn("lagging INT NOT NULL AS (start - scheduled_at) PERSISTENT") // currently not supported in parseColumn
   .parseColumn("arguments TEXT")
   .parseMeta("PRIMARY KEY(id, start)")
   .build();

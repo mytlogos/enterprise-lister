@@ -1455,7 +1455,41 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
   result: string;
   message: string;
   context: string;
+  created?: number;
+  updated?: number;
+  deleted?: number;
+  queries?: number;
+  network_queries?: number;
+  network_received?: number;
+  network_send?: number;
+  lagging?: number;
+  duration?: number;
 };
+
+export interface Modification {
+  created: number;
+  deleted: number;
+  updated: number;
+}
+
+export interface NetworkTrack {
+  count: number;
+  sent: number;
+  received: number;
+  history: Array<{
+    url: string;
+    method: string;
+    statusCode: number;
+    send: number;
+    received: number;
+  }>;
+}
+
+export interface JobTrack {
+  modifications: Record<string, Modification>;
+  network: NetworkTrack;
+  queryCount: number;
+}
 
 /**
  * @openapi
