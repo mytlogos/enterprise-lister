@@ -112,6 +112,11 @@ export default defineComponent({
       jobQueueQueued: 0,
       requestQueues: [] as RequestQueueChannelMessage[],
       offcanvas: null as null | OffCanvas,
+      websocketsChannel: {
+        jobs: false,
+        jobqueue: false,
+        requestqueue: false,
+      },
     };
   },
   created() {
@@ -123,11 +128,16 @@ export default defineComponent({
     this.offcanvas = new OffCanvas("#offcanvasBottom");
     websocket.addEventListener("connected", () => {
       this.offcanvas?.hide();
-      websocket.send("START_REQUESTQUEUE");
-      websocket.send("START_JOBQUEUE");
-      websocket.send("START_JOBS");
+      this.listenToRequestQueue();
+      this.listenToJobqueue();
+      this.listenToJobs();
     });
-    websocket.addEventListener("disconnected", () => this.offcanvas?.show(document.body));
+    websocket.addEventListener("disconnected", () => {
+      this.websocketsChannel.jobs = false;
+      this.websocketsChannel.jobqueue = false;
+      this.websocketsChannel.requestqueue = false;
+      this.offcanvas?.show(document.body);
+    });
 
     if (!websocket.isConnected) {
       this.offcanvas.show(document.body);
@@ -143,6 +153,27 @@ export default defineComponent({
      */
     dateToString(date: Date): string {
       return formatDate(date);
+    },
+
+    listenToJobs() {
+      if (!this.websocketsChannel.jobs) {
+        this.websocketsChannel.jobs = true;
+        websocket.send("START_JOBS");
+      }
+    },
+
+    listenToJobqueue() {
+      if (!this.websocketsChannel.jobqueue) {
+        this.websocketsChannel.jobqueue = true;
+        websocket.send("START_JOBQUEUE");
+      }
+    },
+
+    listenToRequestQueue() {
+      if (!this.websocketsChannel.requestqueue) {
+        this.websocketsChannel.requestqueue = true;
+        websocket.send("START_REQUESTQUEUE");
+      }
     },
 
     addJobListener() {
@@ -173,7 +204,7 @@ export default defineComponent({
       };
       try {
         websocket.addEventListener("jobs", this.jobListener);
-        websocket.send("START_JOBS");
+        this.listenToJobs();
       } catch (error) {
         console.error(error);
       }
@@ -187,7 +218,7 @@ export default defineComponent({
       };
       try {
         websocket.addEventListener("jobqueue", this.jobQueueListener);
-        websocket.send("START_JOBQUEUE");
+        this.listenToJobqueue();
       } catch (error) {
         console.error(error);
       }
@@ -205,7 +236,7 @@ export default defineComponent({
       };
       try {
         websocket.addEventListener("requestqueue", this.requestQueueListener);
-        websocket.send("START_REQUESTQUEUE");
+        this.listenToRequestQueue();
       } catch (error) {
         console.error(error);
       }
