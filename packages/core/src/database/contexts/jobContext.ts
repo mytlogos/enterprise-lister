@@ -19,6 +19,7 @@ import {
   TypedQuery,
   Id,
   JobStatSummary,
+  JobTrack,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
@@ -454,7 +455,7 @@ export class JobContext extends SubContext {
       const result = store.get("result") || "success";
       const message = store.get("message") || "Missing Message";
 
-      const parsedMessage = {
+      const jobTrack = {
         modifications: store.get("modifications") || {},
         network: store.get("network") || {
           count: 0,
@@ -463,16 +464,7 @@ export class JobContext extends SubContext {
           history: [],
         },
         queryCount: store.get("queryCount") || 0,
-      } as {
-        modifications: Record<string, { created: number; updated: number; deleted: number }>;
-        queryCount: number;
-        network: {
-          count: number;
-          sent: number;
-          received: number;
-          history: Array<{ url: string; method: string; statusCode: number; send: number; received: number }>;
-        };
-      };
+      } as JobTrack;
 
       let [item] = (await this.query("SELECT * FROM job_stat_summary WHERE name = ?", [
         value.name,
@@ -515,7 +507,7 @@ export class JobContext extends SubContext {
         };
       }
       item.count++;
-      const modifications = Object.values(parsedMessage.modifications);
+      const modifications = Object.values(jobTrack.modifications);
       modifications.forEach((value) => {
         const created = value.created;
         item.created += created;
@@ -530,9 +522,9 @@ export class JobContext extends SubContext {
         item.min_deleted = Math.min(item.min_deleted, value.deleted);
         item.max_deleted = Math.max(item.max_deleted, value.deleted);
       });
-      item.sql_queries = parsedMessage.queryCount;
-      item.min_sql_queries = Math.min(parsedMessage.queryCount);
-      item.max_sql_queries = Math.max(parsedMessage.queryCount);
+      item.sql_queries = jobTrack.queryCount;
+      item.min_sql_queries = Math.min(jobTrack.queryCount);
+      item.max_sql_queries = Math.max(jobTrack.queryCount);
 
       item.failed += result === "failed" ? 1 : 0;
       item.succeeded += result === "success" ? 1 : 0;
@@ -603,10 +595,10 @@ export class JobContext extends SubContext {
         deleted += value.deleted;
       });
 
-      const queries = parsedMessage.queryCount;
-      const network_received = parsedMessage.network.received || 0;
-      const network_send = parsedMessage.network.sent || 0;
-      const network_requests = parsedMessage.network.count || 0;
+      const queries = jobTrack.queryCount;
+      const network_received = jobTrack.network.received || 0;
+      const network_send = jobTrack.network.sent || 0;
+      const network_requests = jobTrack.network.count || 0;
 
       return this.query(
         "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments, created, updated, deleted, queries, network_queries, network_received, network_send)" +
