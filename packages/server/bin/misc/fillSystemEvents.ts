@@ -7,7 +7,7 @@ const promises = [] as Array<Promise<void>>;
 async function main(): Promise<void> {
   startStorage();
   events.push(...(await appEventStorage.getAppEvents()));
-  await streamed();
+  await complete();
 }
 
 function toString(value: number): string {
@@ -127,7 +127,7 @@ async function streamed() {
     await Promise.allSettled(promises);
     process.exit(0);
   });
-  // jobs.start();
+  jobs.start();
 }
 
 main();
