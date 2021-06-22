@@ -1197,6 +1197,8 @@ export enum JobState {
  *            $ref: "#/components/schemas/Id"
  *          name:
  *            type: string
+ *          job_state:
+ *            type: string
  *          runAfter:
  *            $ref: "#/components/schemas/Id"
  *          runningSince:
@@ -1217,6 +1219,7 @@ export interface JobItem {
   deleteAfterRun: boolean;
   id: Id;
   name: string;
+  job_state: "enabled" | "disabled";
   runAfter?: Id;
   runningSince?: Date;
   nextRun?: Date;
