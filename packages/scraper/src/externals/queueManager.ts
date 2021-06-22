@@ -201,22 +201,33 @@ function methodToRequest(options: Optional<Options>, toUseRequest: Request) {
   }
 }
 
+const httpsProtocol = "https://";
+const httpProtocol = "http://";
+
+export function getQueueKey(link: string): string | null {
+  if (link.startsWith(httpsProtocol)) {
+    link = link.substring(httpsProtocol.length);
+  } else if (link.startsWith(httpProtocol)) {
+    link = link.substring(httpProtocol.length);
+  } else {
+    return null;
+  }
+  const index = link.indexOf("/");
+
+  if (index >= 0) {
+    link = link.substring(0, index);
+  }
+  return link;
+}
+
 function processRequest(uri: string, otherRequest?: Request, queueToUse = queues, limit?: number) {
-  const exec = /https?:\/\/([^/]+)/.exec(uri);
-
-  if (!exec) {
-    throw Error("not a valid url");
-  }
   // get the host of the uri
-  let host = exec[1];
+  const host = getQueueKey(uri);
 
-  const pathBeginIndex = host.indexOf("/");
-
-  if (pathBeginIndex > 0) {
-    host = host.substring(0, pathBeginIndex);
-  } else if (pathBeginIndex === 0) {
-    throw Error("not a valid url");
+  if (!host) {
+    throw Error("not a valid url: " + uri);
   }
+
   let queue: any = queueToUse.get(host);
 
   if (!queue) {

@@ -98,6 +98,13 @@ export class JobQueue {
   }
 
   /**
+   * Get the number of currently queued inactive Jobs.
+   */
+  public get queuedJobs(): number {
+    return this.waitingJobs.length;
+  }
+
+  /**
    * Get the number of currently schedulable Jobs
    * in regards to the number of currently and maximum active jobs.
    */

@@ -42,6 +42,10 @@ function merge<T>(mergeInto: T, merger: T, keys: Array<MergeableKey<T>>) {
   }
 }
 
+export interface JobQuery {
+  limit?: number;
+}
+
 export class JobContext extends SubContext {
   public async getJobsStats(): Promise<AllJobStats> {
     const results: AllJobStats[] = await this.getStats();
@@ -274,6 +278,21 @@ export class JobContext extends SubContext {
     return this.query(
       "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND job_state != 'disabled' order by nextRun LIMIT ?",
       limit,
+    );
+  }
+
+  public async queryJobs({ limit }: JobQuery = {}): Promise<JobItem[]> {
+    const values = [];
+    if (limit) {
+      values.push(limit);
+    }
+    return this.query(
+      "SELECT * FROM jobs " +
+        "WHERE (nextRun IS NULL OR nextRun < NOW()) " +
+        "AND state = 'waiting' AND job_state != 'disabled' " +
+        "order by nextRun" +
+        (limit ? " LIMIT ?" : ""),
+      values,
     );
   }
 

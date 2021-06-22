@@ -1,6 +1,6 @@
 import { ScrapeEvent, ScraperHelper } from "./scraperTools";
 import { Job, JobQueue, OutsideJob } from "../jobManager";
-import { getElseSet, isString, maxValue, stringify } from "enterprise-core/dist/tools";
+import { getElseSet, isString, maxValue, removeLike, stringify } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import {
   JobItem,
@@ -19,11 +19,11 @@ import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "./type
 import { getNewsAdapter, load } from "./hookManager";
 import { ScrapeJob } from "./scrapeJobs";
 import diagnostic_channel from "diagnostics_channel";
+import { SchedulingStrategy, Strategies } from "./scheduling";
 
 const missingConnections = new Set<Date>();
 const jobChannel = diagnostic_channel.channel("enterprise-jobs");
 
-// tslint:disable-next-line:max-classes-per-file
 export class JobScraperManager {
   private static initStore(item: JobItem) {
     const store = getStore();
@@ -35,12 +35,20 @@ export class JobScraperManager {
 
   public automatic = true;
   public filter: undefined | ((item: JobItem) => boolean);
-  private paused = true;
+
   private readonly helper = new ScraperHelper();
   private readonly queue = new JobQueue({ maxActive: 50 });
+  private fetching = false;
+  private paused = true;
   private jobMap = new Map<number | string, Job>();
+  private jobItems = [] as JobItem[];
   private nameIdList: Array<[number, string]> = [];
   private intervalId: Optional<Timeout>;
+  private schedulingStrategy: SchedulingStrategy;
+
+  public constructor() {
+    this.schedulingStrategy = Strategies.REQUEST_QUEUE_BALANCED;
+  }
 
   public on(event: string, callback: (value: any) => void | EmptyPromise): void {
     this.helper.on(event, callback);
@@ -242,6 +250,9 @@ export class JobScraperManager {
         if (this.filter && !this.filter(job)) {
           continue;
         }
+
+        this.jobItems.push(job);
+
         if (key.event) {
           this.queueEmittableJob(key, job);
         } else {
@@ -360,9 +371,10 @@ export class JobScraperManager {
   }
 
   private async fetchJobs(): EmptyPromise {
-    if (!this.automatic) {
+    if (!this.automatic || this.fetching) {
       return;
     }
+    this.fetching = true;
     if (this.queue.isFull()) {
       logger.info("skip fetching jobs, queue is full");
       return;
@@ -370,15 +382,16 @@ export class JobScraperManager {
     logger.info(
       `start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`,
     );
-    const scrapeBoard: JobItem[] = await jobStorage.getJobs();
-    this.processJobItems(scrapeBoard);
+    const jobs: JobItem[] = await this.schedulingStrategy(this.queue, this.jobItems);
+    this.processJobItems(jobs);
     logger.info(
       `fetched jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`,
     );
+    this.fetching = false;
   }
 
   private processJobItems(items: JobItem[]) {
-    const jobMap = new Map<ScrapeJob, any[]>();
+    const jobMap = new Map<ScrapeJob, JobItem[]>();
     items.forEach((value) => {
       let args: Optional<any>;
       let jobType: ScrapeJob;
@@ -517,12 +530,10 @@ export class JobScraperManager {
 
       if (item.name) {
         this.jobMap.delete(item.name);
-        const index = this.nameIdList.findIndex((value) => value[0] === item.id);
-
-        if (index >= 0) {
-          this.nameIdList.splice(index, 1);
-        }
+        removeLike(this.nameIdList, (value) => value[0] === item.id);
       }
+
+      removeLike(this.jobItems, (value) => value.id === item.id);
       this.jobMap.delete(item.id);
       const newJobs = await jobStorage.getAfterJobs(item.id);
       this.processJobItems(newJobs);
