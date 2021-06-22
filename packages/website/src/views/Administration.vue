@@ -14,6 +14,9 @@
         <li class="nav-item m-auto">
           <router-link :to="{ name: 'jobhistory' }" tag="a" class="nav-link text-nowrap">Job History</router-link>
         </li>
+        <li class="nav-item m-auto">
+          <router-link :to="{ name: 'joblive' }" tag="a" class="nav-link text-nowrap">Live Jobs</router-link>
+        </li>
       </ul>
     </div>
     <router-view />
