@@ -10,10 +10,88 @@ import {
   Link,
   Id,
   ExternalStorageUser,
+  JobTrack,
 } from "enterprise-core/dist/types";
 import { MediaType } from "enterprise-core/dist/tools";
 import { JobCallback } from "../jobManager";
 import { ListScrapeResult } from "./listManager";
+
+/**
+ * Channels accessible in Scraper.
+ */
+export type ScraperChannel = "enterprise-jobqueue" | "enterprise-jobs" | "enterprise-requestqueue";
+
+export interface BasicChannelMessage {
+  messageType: string;
+}
+
+export type ChannelMessage = JobChannelMessage | JobQueueChannelMessage | RequestQueueChannelMessage;
+export type WSRequest = JobWSRequest | JobQueueWSRequest | RequestQueueWSRequest;
+
+export type RequestQueueWSRequest = "START_REQUESTQUEUE" | "STOP_REQUESTQUEUE";
+
+/**
+ * Channel Message Type for "enterprise-requestqueue".
+ */
+export interface RequestQueueChannelMessage extends BasicChannelMessage {
+  messageType: "requestqueue";
+  queueName: string;
+  maxInterval: number;
+  queued: number;
+  working: boolean;
+}
+
+export type JobQueueWSRequest = "START_JOBQUEUE" | "STOP_JOBQUEUE";
+
+/**
+ * Channel Message Type for "enterprise-jobqueue".
+ */
+export interface JobQueueChannelMessage extends BasicChannelMessage {
+  messageType: "jobqueue";
+  active: number;
+  queued: number;
+  max: number;
+}
+
+export type JobWSRequest = "START_JOBS" | "STOP_JOBS";
+
+/**
+ * Channel Message Type for "enterprise-jobs".
+ */
+export interface BasicJobChannelMessage extends BasicChannelMessage {
+  messageType: "jobs";
+  type: string;
+  jobName: string;
+  jobId: number;
+  timestamp: number;
+}
+
+export type JobChannelMessage = StartJobChannelMessage | EndJobChannelMessage;
+
+/**
+ * Channel Message Type of Finished Jobs for "enterprise-jobs".
+ */
+export interface EndJobChannelMessage extends BasicJobChannelMessage {
+  messageType: "jobs";
+  type: "finished";
+  jobName: string;
+  jobId: number;
+  timestamp: number;
+  result: string;
+  reason?: string;
+  jobTrack: JobTrack;
+}
+
+/**
+ * Channel Message Type of Started Jobs for "enterprise-jobs".
+ */
+export interface StartJobChannelMessage extends BasicJobChannelMessage {
+  messageType: "jobs";
+  type: "started";
+  jobName: string;
+  jobId: number;
+  timestamp: number;
+}
 
 export interface ScraperJob {
   type: string;

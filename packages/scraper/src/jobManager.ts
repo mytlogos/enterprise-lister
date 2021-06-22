@@ -3,6 +3,10 @@ import logger from "enterprise-core/dist/logger";
 import { JobRequest, EmptyPromise, Optional, Nullable } from "enterprise-core/dist/types";
 import { getStore, runAsync, setContext, removeContext } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
+import diagnostics_channel from "diagnostics_channel";
+import { JobQueueChannelMessage } from "./externals/types";
+
+const queueChannel = diagnostics_channel.channel("enterprise-jobqueue");
 
 /**
  * Memory Units with their Values in Bytes.
@@ -188,9 +192,7 @@ export class JobQueue {
   public pause(): void {
     this.queueActive = false;
 
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-    }
+    this.stopInterval();
   }
 
   /**
@@ -201,9 +203,7 @@ export class JobQueue {
   public clear(): void {
     this.queueActive = false;
 
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-    }
+    this.stopInterval();
 
     this.waitingJobs.forEach((value) => (value.active = false));
     this.waitingJobs.length = 0;
@@ -310,7 +310,7 @@ export class JobQueue {
 
   private _queueJob(): void {
     if (this.isEmpty() && this.intervalId) {
-      clearInterval(this.intervalId);
+      this.stopInterval();
       logger.info("queue is empty");
       return;
     }
@@ -415,12 +415,17 @@ export class JobQueue {
         return;
       }
       this._queueJob();
+      this.publish();
     }, duration);
 
+    this.stopInterval();
+    this.intervalId = interval;
+  }
+
+  private stopInterval() {
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
-    this.intervalId = interval;
   }
 
   private executeCallback(callback: () => any): Promise<any> {
@@ -432,6 +437,20 @@ export class JobQueue {
         reject(e);
       }
     });
+  }
+
+  /**
+   * Publish the current state of this JobQueue to the diagnostics_channel.
+   */
+  private publish() {
+    if (queueChannel.hasSubscribers) {
+      queueChannel.publish({
+        messageType: "jobqueue",
+        active: this.activeJobs.length,
+        queued: this.waitingJobs.length,
+        max: this.maxActive,
+      } as JobQueueChannelMessage);
+    }
   }
 }
 

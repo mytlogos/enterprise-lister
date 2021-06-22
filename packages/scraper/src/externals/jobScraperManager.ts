@@ -15,11 +15,13 @@ import { jobStorage } from "enterprise-core/dist/database/storages/storage";
 import * as dns from "dns";
 import { getStore } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
-import { TocRequest } from "./types";
+import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "./types";
 import { getNewsAdapter, load } from "./hookManager";
 import { ScrapeJob } from "./scrapeJobs";
+import diagnostic_channel from "diagnostics_channel";
 
 const missingConnections = new Set<Date>();
+const jobChannel = diagnostic_channel.channel("enterprise-jobs");
 
 // tslint:disable-next-line:max-classes-per-file
 export class JobScraperManager {
@@ -212,6 +214,23 @@ export class JobScraperManager {
 
   public getJobs(): OutsideJob[] {
     return this.queue.getJobs();
+  }
+
+  public publishJobs(): void {
+    this.queue.getJobs().forEach((job) => {
+      if (!job.active) {
+        return;
+      }
+      const found = this.nameIdList.find((value) => value[0] === job.jobId);
+      const message = {
+        jobId: job.jobId,
+        messageType: "jobs",
+        jobName: found?.[1] || "Not found",
+        timestamp: job.startRun || 0,
+        type: "started",
+      } as StartJobChannelMessage;
+      jobChannel.publish(message);
+    });
   }
 
   private addDependant(jobsMap: Map<ScrapeJob, JobItem[]>): void {
@@ -474,18 +493,35 @@ export class JobScraperManager {
     job.onStart = async () => {
       if (item.name) {
         this.jobMap.set(item.name, job);
+        this.nameIdList.push([item.id, item.name]);
       }
       this.jobMap.set(item.id, job);
       item.state = JobState.RUNNING;
       item.runningSince = new Date();
+
       await jobStorage.updateJobs(item);
       logger.info(`Job ${item.name ? item.name : item.id} is running now`);
+
+      if (jobChannel.hasSubscribers) {
+        jobChannel.publish({
+          messageType: "jobs",
+          type: "started",
+          jobName: item.name,
+          jobId: item.id,
+          timestamp: Date.now(),
+        } as StartJobChannelMessage);
+      }
     };
     job.onDone = async () => {
       const end = new Date();
 
       if (item.name) {
         this.jobMap.delete(item.name);
+        const index = this.nameIdList.findIndex((value) => value[0] === item.id);
+
+        if (index >= 0) {
+          this.nameIdList.splice(index, 1);
+        }
       }
       this.jobMap.delete(item.id);
       const newJobs = await jobStorage.getAfterJobs(item.id);
@@ -507,6 +543,34 @@ export class JobScraperManager {
         await jobStorage.updateJobs(item, end);
       }
       logger.info(`Job ${item.name ? item.name : item.id} finished now`);
+
+      if (jobChannel.hasSubscribers) {
+        const store = getStore();
+        if (!store) {
+          throw Error("missing store - is this running outside a AsyncLocalStorage Instance?");
+        }
+
+        const result = store.get("result");
+        jobChannel.publish({
+          messageType: "jobs",
+          type: "finished",
+          jobName: item.name,
+          jobId: item.id,
+          jobTrack: {
+            modifications: store.get("modifications") || {},
+            network: store.get("network") || {
+              count: 0,
+              sent: 0,
+              received: 0,
+              history: [],
+            },
+            queryCount: store.get("queryCount") || 0,
+          },
+          result,
+          reason: result !== "success" ? store.get("message") : undefined,
+          timestamp: Date.now(),
+        } as EndJobChannelMessage);
+      }
     };
   }
 

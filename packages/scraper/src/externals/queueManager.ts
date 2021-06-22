@@ -16,6 +16,10 @@ import { isString, getElseSet, stringify, delay } from "enterprise-core/dist/too
 import logger from "enterprise-core/dist/logger";
 import { AsyncResource } from "async_hooks";
 import { Optional } from "enterprise-core/dist/types";
+import { channel } from "diagnostics_channel";
+import { RequestQueueChannelMessage } from "./types";
+
+const queueChannel = channel("enterprise-requestqueue");
 
 type RequestOptions = string | http.RequestOptions | https.RequestOptions;
 type RequestCallback = (res: http.IncomingMessage) => void;
@@ -91,15 +95,17 @@ type CheerioStatic = cheerio.Root;
 
 export class Queue {
   public readonly queue: Callback[];
+  public readonly name: string;
   public working: boolean;
   private readonly maxLimit: number;
   private readonly limitVariation: number;
 
-  public constructor(maxLimit = 1000) {
+  public constructor(name: string, maxLimit = 1000) {
     this.maxLimit = maxLimit > 10 ? maxLimit : 10;
     this.limitVariation = this.maxLimit / 2;
     this.queue = [];
     this.working = false;
+    this.name = name;
   }
 
   public push(callback: Callback): Promise<any> {
@@ -133,6 +139,8 @@ export class Queue {
     const worker = this.queue.shift();
     this.working = !!worker;
 
+    this.publish();
+
     if (!worker) {
       return;
     }
@@ -141,6 +149,27 @@ export class Queue {
       const randomDuration = this.maxLimit - Math.random() * this.limitVariation;
       setTimeout(() => this.doWork(), randomDuration);
     });
+  }
+
+  public publish(): void {
+    if (queueChannel.hasSubscribers) {
+      queueChannel.publish({
+        messageType: "requestqueue",
+        maxInterval: this.maxLimit,
+        queueName: this.name,
+        queued: this.queue.length,
+        working: this.working,
+      } as RequestQueueChannelMessage);
+    }
+  }
+}
+
+export function publishQueues(): void {
+  for (const queue of queues.values()) {
+    queue.publish();
+  }
+  for (const queue of fastQueues.values()) {
+    queue.publish();
   }
 }
 
@@ -191,7 +220,7 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
   let queue: any = queueToUse.get(host);
 
   if (!queue) {
-    queueToUse.set(host, (queue = new Queue(limit)));
+    queueToUse.set(host, (queue = new Queue(host, limit)));
   }
 
   const toUseRequest: Request = otherRequest || request;
@@ -418,7 +447,7 @@ function queueWithLimit(key: string, callback: Callback, limit?: number, queueTo
   let queue: any = queueToUse.get(key);
 
   if (!queue) {
-    queueToUse.set(key, (queue = new Queue(limit)));
+    queueToUse.set(key, (queue = new Queue(key, limit)));
   }
   return queue.push(callback);
 }
