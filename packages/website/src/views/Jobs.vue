@@ -109,7 +109,11 @@
       </thead>
       <tbody>
         <template v-for="(job, index) in computedJobs" :key="job.name">
-          <tr data-bs-toggle="collapse" :data-bs-target="'.collapse-' + index">
+          <tr
+            data-bs-toggle="collapse"
+            :data-bs-target="'.collapse-' + index"
+            :class="{ 'bg-light': job.job_state === 'disabled' }"
+          >
             <td>{{ index + 1 }}</td>
             <td>{{ nameToString(job.name) }}</td>
             <td>{{ job.state }}</td>
@@ -413,7 +417,8 @@ export default defineComponent({
         running++;
       } else {
         waiting++;
-        if (datum.nextRun && datum.nextRun < now) {
+        // only enabled jobs can lag
+        if (datum.nextRun && datum.nextRun < now && datum.job_state !== "disabled") {
           lagging++;
         }
         // waiting jobs should not have this value set
