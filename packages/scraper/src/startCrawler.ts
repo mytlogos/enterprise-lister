@@ -6,6 +6,8 @@ import { stringify } from "enterprise-core/dist/tools";
 import { getStores } from "enterprise-core/dist/asyncStorage";
 import os from "os";
 import debug from "debug";
+// start websocket server
+import "./websocket";
 const debugMessenger = debug("enterprise-lister:crawler");
 logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
 // first start storage, then crawler, as crawler depends on storage
