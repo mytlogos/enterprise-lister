@@ -145,6 +145,8 @@ export default defineComponent({
   },
   methods: {
     reconnect() {
+      // clear active jobs
+      this.activeJobs.length = 0;
       websocket.connect();
     },
 
