@@ -371,14 +371,18 @@ export class JobScraperManager {
   }
 
   private async fetchJobs(): EmptyPromise {
-    if (!this.automatic || this.fetching) {
+    if (!this.automatic) {
       return;
     }
-    this.fetching = true;
+    if (this.fetching) {
+      logger.warn("skip fetching jobs, previous fetch is still active");
+      return;
+    }
     if (this.queue.isFull()) {
       logger.info("skip fetching jobs, queue is full");
       return;
     }
+    this.fetching = true;
     logger.info(
       `start fetching jobs - Running: ${this.queue.runningJobs} - Schedulable: ${this.queue.schedulableJobs} - Total: ${this.queue.totalJobs}`,
     );
