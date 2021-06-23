@@ -226,7 +226,7 @@ export class JobScraperManager {
 
   public publishJobs(): void {
     this.queue.getJobs().forEach((job) => {
-      if (!job.active) {
+      if (!job.active || !job.startRun) {
         return;
       }
       const found = this.nameIdList.find((value) => value[0] === job.jobId);
