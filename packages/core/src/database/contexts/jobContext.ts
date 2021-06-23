@@ -297,7 +297,7 @@ export class JobContext extends SubContext {
   }
 
   public async getAllJobs(): Promise<JobItem[]> {
-    return this.query("SELECT id, name, state, runningSince, nextRun, job_state, interval, type FROM jobs;");
+    return this.query("SELECT id, name, state, runningSince, nextRun, job_state, `interval`, type FROM jobs;");
   }
 
   public getJobsById(jobIds: number[]): Promise<JobItem[]> {
