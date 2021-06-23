@@ -227,11 +227,11 @@ export default defineComponent({
     },
     addRequestQueueListener() {
       this.requestQueueListener = (msg) => {
-        const found = this.requestQueues.find(
+        const index = this.requestQueues.findIndex(
           (value) => value.queueName === msg.queueName && value.maxInterval === msg.maxInterval,
         );
-        if (found) {
-          found.queued = msg.queued;
+        if (index >= 0) {
+          this.requestQueues[index] = msg;
         } else {
           this.requestQueues.push(msg);
         }
