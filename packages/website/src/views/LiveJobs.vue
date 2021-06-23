@@ -227,6 +227,11 @@ export default defineComponent({
     },
     addRequestQueueListener() {
       this.requestQueueListener = (msg) => {
+        // if it is working it does not show the current item as queued.
+        // to make it less confusing, display the current item as queued
+        if (msg.working) {
+          msg.queued++;
+        }
         const index = this.requestQueues.findIndex(
           (value) => value.queueName === msg.queueName && value.maxInterval === msg.maxInterval,
         );
