@@ -95,6 +95,8 @@ import Chart from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
 import { formatDate, round } from "../init";
 import * as storage from "../storage";
+import { interpolateColors } from "../colorscale";
+import { interpolateCool } from "d3-scale-chromatic";
 
 interface ChartJobDatum extends TimeJobStats {
   modifications: number;
@@ -139,6 +141,19 @@ function hexToRgbA(hex: string, opacity = 1) {
     return `rgba(${[(fullHex >> 16) & 255, (fullHex >> 8) & 255, fullHex & 255].join(",")},${opacity})`;
   }
   throw new Error("Bad Hex");
+}
+
+function changeOpacity(color: string, opacity = 1): string {
+  if (color.startsWith("#")) {
+    return hexToRgbA(color, opacity);
+  } else if (color.startsWith("rgba(")) {
+    const index = color.lastIndexOf(",");
+    return `${color.substring(0, index)}, opacity)`;
+  } else if (color.startsWith("rgb(")) {
+    return `${color.substring(0, color.length - 1)}, ${opacity})`;
+  } else {
+    throw Error("Bad Color: " + color);
+  }
 }
 
 const colorPalette = ["#003f5c", "#2f4b7c", "#665191", "#a05195", "#d45087", "#f95d6a", "#ff7c43", "#ffa600"];
@@ -538,11 +553,9 @@ export default defineComponent({
           leftFilter.name + " - " + leftFilter.unit;
 
         newDataSet.push({
-          label: "All",
+          label: "All-" + leftFilter.name,
           data: yValues,
-          backgroundColor: bgColorPalette[newDataSet.length],
           borderWidth: 1,
-          borderColor: colorPalette[newDataSet.length],
           // This binds the dataset to the left y axis
           yAxisID: "left-y-axis",
         });
@@ -557,11 +570,9 @@ export default defineComponent({
           rightFilter.name + " - " + rightFilter.unit;
 
         newDataSet.push({
-          label: "All",
+          label: "All-" + rightFilter.name,
           data: yValues,
-          backgroundColor: bgColorPalette[newDataSet.length],
           borderWidth: 1,
-          borderColor: colorPalette[newDataSet.length],
           // This binds the dataset to the right y axis
           yAxisID: "right-y-axis",
         });
@@ -583,6 +594,18 @@ export default defineComponent({
           newDataSet.forEach((value) => value.data.splice(index, 1));
           index--;
         }
+      }
+      const colors = interpolateColors(newDataSet.length, interpolateCool, {
+        colorStart: 0,
+        colorEnd: 1,
+        useEndAsStart: false,
+      });
+      for (let index = 0; index < newDataSet.length; index++) {
+        const dataset = newDataSet[index];
+        // @ts-expect-error
+        dataset.borderColor = colors[index];
+        // @ts-expect-error
+        dataset.backgroundColor = changeOpacity(colors[index], 0.5);
       }
       // @ts-expect-error
       this.chart.data.labels = points;
