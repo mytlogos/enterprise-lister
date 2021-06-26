@@ -61,7 +61,7 @@ export async function storageInContext<T, C extends ConnectionContext>(
     await poolProvider.startPromise;
   }
   const pool = await poolProvider.provide();
-  const con = await pool.getConnection();
+  const con = await getConnection(pool);
   const context = provider(con);
 
   let result;
@@ -79,6 +79,36 @@ export async function storageInContext<T, C extends ConnectionContext>(
     }
   }
   return result;
+}
+
+async function getConnection(pool: mySql.Pool): Promise<mySql.PoolConnection> {
+  let attempt = 0;
+  const maxAttempts = 10;
+
+  while (attempt < maxAttempts) {
+    try {
+      return await pool.getConnection();
+    } catch (error: unknown) {
+      // check if it is any network or mysql error
+      if (typeof error === "object" && error && "code" in error) {
+        const code = (error as any).code;
+
+        if (code === "ECONNREFUSED") {
+          logger.debug(`Database not up yet. Attempt ${attempt + 1}/${maxAttempts}`);
+          // the service may not be up right now, so wait
+          await delay(1000);
+        } else {
+          throw error;
+        }
+      } else {
+        console.log("Error rethrown");
+        // throw it is an unknown type of error
+        throw error;
+      }
+      attempt++;
+    }
+  }
+  throw new Error(`Could not connect to Database, Maximum Attempts reached: ${attempt}/${maxAttempts}`);
 }
 
 async function catchTransactionError<T, C extends ConnectionContext>(
