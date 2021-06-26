@@ -18,6 +18,7 @@ interface Config {
   dbHost: string;
   dbPassword: string;
   dbUser: string;
+  dbPort: number;
   port: string;
   measure: boolean;
   development: boolean;
@@ -32,6 +33,7 @@ const appConfig: Config = {
   dbHost: process.env.dbHost || config.parsed.dbHost,
   dbPassword: process.env.dbPassword || config.parsed.dbPassword,
   dbUser: process.env.dbUser || config.parsed.dbUser,
+  dbPort: Number(process.env.dbPort || config.parsed.dbPort),
   port: process.env.port || config.parsed.port,
   measure: !!Number(process.env.measure || config.parsed.measure),
   development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",

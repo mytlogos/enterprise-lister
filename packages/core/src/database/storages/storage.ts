@@ -16,7 +16,7 @@ import {
 } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
-import { delay, isQuery, isString } from "../../tools";
+import { delay, isQuery, isString, stringify } from "../../tools";
 import { SchemaManager } from "../schemaManager";
 import { Query } from "mysql";
 import { ContextCallback, ContextProvider, queryContextProvider } from "./storageTools";
@@ -276,6 +276,7 @@ class SqlPoolProvider {
       charset: "utf8mb4",
       // we assume that the database exists already
       database: "enterprise",
+      port: env.dbPort,
       typeCast(field, next) {
         if (field.type === "TINY" && field.length === 1) {
           return field.string() === "1"; // 1 = true, 0 = false
