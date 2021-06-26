@@ -319,7 +319,7 @@ dataBaseBuilder
   .parseColumn("name VARCHAR(200) NOT NULL")
   .parseColumn("deleteAfterRun BOOLEAN NOT NULL")
   .parseColumn("runAfter INT")
-  .parseColumn("scheduled_at DATETIME NOT NULL DEFAULT start")
+  .parseColumn("scheduled_at DATETIME NOT NULL")
   .parseColumn("start DATETIME NOT NULL")
   .parseColumn("end DATETIME NOT NULL")
   .parseColumn("result VARCHAR(100) NOT NULL")
