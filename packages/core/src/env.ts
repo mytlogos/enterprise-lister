@@ -13,13 +13,29 @@ if (!config.parsed) {
   throw Error("env variables missing");
 }
 
-export default {
-  dbConLimit: Number(config.parsed.dbConLimit),
-  dbHost: config.parsed.dbHost,
-  dbPassword: config.parsed.dbPassword,
-  dbUser: config.parsed.dbUser,
-  port: config.parsed.port,
-  measure: !!Number(config.parsed.measure),
-  development: process.env.NODE_ENV !== "production",
-  stopScrapeEvents: !!Number(config.parsed.stopScrapeEvents),
+interface Config {
+  dbConLimit: number;
+  dbHost: string;
+  dbPassword: string;
+  dbUser: string;
+  port: string;
+  measure: boolean;
+  development: boolean;
+  stopScrapeEvents: boolean;
+}
+
+/**
+ * All Options should be overridable by Environment variables.
+ */
+const appConfig: Config = {
+  dbConLimit: Number(process.env.dbConLimit || config.parsed.dbConLimit),
+  dbHost: process.env.dbHost || config.parsed.dbHost,
+  dbPassword: process.env.dbPassword || config.parsed.dbPassword,
+  dbUser: process.env.dbUser || config.parsed.dbUser,
+  port: process.env.port || config.parsed.port,
+  measure: !!Number(process.env.measure || config.parsed.measure),
+  development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",
+  stopScrapeEvents: !!Number(process.env.stopScrapeEvents || config.parsed.stopScrapeEvents),
 };
+
+export default appConfig;
