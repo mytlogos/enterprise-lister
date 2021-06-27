@@ -1,0 +1,72 @@
+version: "2.2"
+services:
+  mariadb:
+    image: "mariadb:latest"
+    env_file: database.env
+    environment:
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
+    ports:
+      - "4306:3306"
+    volumes:
+      # first create database
+      - ./init.sql:/docker-entrypoint-initdb.d/1-init.sql:ro
+      # setup database content from latest backup if started the first time
+      #- ./enterprise-current.sql:/docker-entrypoint-initdb.d/2-enterprise-current.sql:ro
+      - type: bind
+        source: "H:\\docker\\enterprise\\database"
+        target: /var/lib/mysql
+    networks:
+      enterprise:
+        aliases:
+          - mariadb
+  crawler:
+    build:
+      context: .
+      dockerfile: Dockerfile_Git
+    image: enterprise-server:latest
+    command: node packages/scraper/dist/startCrawler.js
+    volumes:
+      - type: bind
+        source: "H:\\docker\\enterprise\\logs"
+        target: /code/logs
+    depends_on:
+      - mariadb
+    ports:
+      - "4003:3003"
+      - "4004:3004"
+    networks:
+      enterprise:
+        aliases:
+          - crawler
+    environment:
+      dbHost: mariadb
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile_Git
+    image: enterprise-server:latest
+    command: node packages/server/dist/startServer.js
+    working_dir: /code
+    volumes:
+      - type: bind
+        source: "H:\\docker\\enterprise\\logs"
+        target: /code/logs
+    depends_on:
+      - mariadb
+      - crawler
+    ports:
+      - "4000:3000"
+      - "4001:3001"
+    networks:
+      enterprise:
+        aliases:
+          - web
+    environment:
+      dbHost: mariadb
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
+networks:
+  enterprise: 
