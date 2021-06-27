@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- NodeJs 13.x
-- MariaDB 10 or Mysql 8 Server process on host.
+- NodeJs 16.x
+- MariaDB 10 (or 10.6) or Mysql 8 Server process on host.
   - after installation, initialize the mysql server with `sudo mysql_secure_installation`
     - this also ensures the correct user authentication method, via password
   - this project requires access to the root user from localhost, or a user with similar privileges of root, the password and user needs to be declared in the env.env file
@@ -14,6 +14,19 @@
     - innodb_large_prefix = ON
     - mariadb >= 10.3 does not need these options
 - A `env.env` file, similar to the available `test.env` file
+
+## Docker
+
+Requires a `database.env` and `env.env` file to be available in current working directory.
+`database.env` has the same properties as `test-database.env`.
+
+### Windows
+
+On Windows use the `docker-compose -f Dockerfil_win up` command.
+
+### Linux
+
+On Linux, the current work directory is used as the fully setup code base. Any code changes are immediately available after starting (anew).
 
 ## Notes
 
