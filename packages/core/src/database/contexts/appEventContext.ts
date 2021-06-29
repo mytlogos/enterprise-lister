@@ -14,7 +14,7 @@ export class AppEventContext extends SubContext {
     await this.update(
       "app_events",
       (updates, values) => {
-        updates.push("`date`");
+        updates.push("`date` = ?");
         values.push(event.date);
       },
       {
