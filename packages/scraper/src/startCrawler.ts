@@ -3,6 +3,7 @@ import { startStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
 import { createServer, Server } from "http";
 import { stringify } from "enterprise-core/dist/tools";
+import { AppStatus } from "enterprise-core/dist/status";
 import { getStores } from "enterprise-core/dist/asyncStorage";
 import os from "os";
 import debug from "debug";
@@ -13,6 +14,9 @@ logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}
 // first start storage, then crawler, as crawler depends on storage
 startStorage();
 startCrawler();
+
+const status = new AppStatus("crawler");
+status.start();
 
 /**
  * Create HTTP server.

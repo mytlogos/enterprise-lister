@@ -1754,7 +1754,7 @@ export type AppEventProgram = "server" | "crawler";
  */
 export interface AppEvent {
   id: number;
-  program: "server" | "crawler";
+  program: AppEventProgram;
   date: Date;
   type: AppEventType;
 }

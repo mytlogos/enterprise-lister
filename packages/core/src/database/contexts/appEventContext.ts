@@ -2,12 +2,26 @@ import { AppEvent, AppEventFilter } from "@/types";
 import { SubContext } from "./subContext";
 
 export class AppEventContext extends SubContext {
-  public async addAppEvent(event: AppEvent): Promise<void> {
-    await this.query("INSERT INTO app_events (`program`, `date`, `type`) VALUES (?,?,?)", [
-      event.program,
-      event.date,
-      event.type,
-    ]);
+  public async addAppEvent(event: AppEvent): Promise<AppEvent> {
+    const newEvent = await this.query(
+      "INSERT INTO app_events (`program`, `date`, `type`) VALUES (?,?,?) RETURNING `id`, `program`, `date`, `type`",
+      [event.program, event.date, event.type],
+    );
+    return newEvent[0];
+  }
+
+  public async updateAppEvent(event: AppEvent): Promise<void> {
+    await this.update(
+      "app_events",
+      (updates, values) => {
+        updates.push("`date`");
+        values.push(event.date);
+      },
+      {
+        column: "id",
+        value: event.id,
+      },
+    );
   }
 
   public async getAppEvents(filter: AppEventFilter = {}): Promise<AppEvent[]> {
