@@ -51,7 +51,7 @@
     "@types/mocha": "^8.2.2",
     "@types/morgan": "^1.9.2",
     "@types/mysql": "^2.15.18",
-    "@types/node": "^15.12.2",
+    "@types/node": "^16.0.1",
     "@types/node-cache": "^4.2.5",
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.17",
