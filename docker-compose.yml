@@ -21,7 +21,7 @@ services:
   crawler:
     build: .
     image: enterprise-server:latest
-    command: node packages/scraper/dist/startCrawler.js
+    command: ["node", "packages/scraper/dist/startCrawler.js"]
     working_dir: /code
     volumes:
       # for development purposes mount fully setup repository
@@ -30,8 +30,8 @@ services:
     depends_on:
       - mariadb
     ports:
-      - "4003:3003"
-      - "4004:3004"
+      - "3003:3003"
+      - "3004:3004"
     networks:
       enterprise:
         aliases:
@@ -43,7 +43,7 @@ services:
   web:
     build: .
     image: enterprise-server:latest
-    command: node packages/server/dist/startServer.js
+    command: ["node", "packages/server/dist/startServer.js"]
     working_dir: /code
     volumes:
       - ./:/code
@@ -53,8 +53,8 @@ services:
       - mariadb
       - crawler
     ports:
-      - "4000:3000"
-      - "4001:3001"
+      - "3000:3000"
+      - "3001:3001/udp"
     networks:
       enterprise:
         aliases:
