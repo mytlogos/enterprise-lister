@@ -32,6 +32,7 @@ function loop(program: AppEventProgram): NodeJS.Timeout {
   return setInterval(() => {
     if (active) {
       logger.warn("Previous tick did not yet finish");
+      return;
     }
     active = true;
     ensureAppStatus(program, previous)
