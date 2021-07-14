@@ -240,7 +240,8 @@ interface MediumPath {
   readonly allFull: AllFullMediumPath;
   readonly allSecondary: GetPath;
   readonly releases: MediumReleasesPath;
-  readonly unused: GetPath;
+  readonly unused: GetPath & PutPath;
+  readonly create: PostPath;
 }
 
 interface MediumReleasesPath {
@@ -729,7 +730,7 @@ export const HttpClient = {
   },
 
   postCreateMediumFromMediaInWaits(source: MediumInWait, others: MediumInWait[], listId: number): Promise<Medium> {
-    return this.queryServer(api.medium.unused.get, { createMedium: source, tocsMedia: others, listId });
+    return this.queryServer(api.medium.create.post, { createMedium: source, tocsMedia: others, listId });
   },
 
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
