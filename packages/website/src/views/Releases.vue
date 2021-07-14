@@ -130,6 +130,15 @@
                 }"
               />
             </button>
+            <button
+              class="btn"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="Ignore Medium"
+              @click.left="ignoreMedium(getMedium(entry.mediumId))"
+            >
+              <i class="fas fa-ban text-warning" aria-hidden="true" />
+            </button>
           </td>
         </tr>
       </tbody>
