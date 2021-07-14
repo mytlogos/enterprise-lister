@@ -30,8 +30,8 @@
         <auto-complete
           key="id"
           class="d-inline"
-          :items="media"
-          title-key="title"
+          :items="lists"
+          title-key="name"
           placeholder="Ignore List"
           @input="ignoreList"
         />
@@ -259,6 +259,9 @@ export default defineComponent({
     },
     media(): SimpleMedium[] {
       return Object.values(this.$store.state.media.media);
+    },
+    lists(): List[] {
+      return this.$store.state.lists.lists;
     },
     computedReleases(): DisplayRelease[] {
       let copy = [...this.releases] as DisplayRelease[];
