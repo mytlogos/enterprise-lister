@@ -19,6 +19,7 @@ import {
   EmptyPromise,
   Optional,
   NewsResult,
+  MediumInWait,
 } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import {
@@ -132,7 +133,8 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
         processMediumNews(newsItem.mediumTitle, newsItem.mediumType, newsItem.mediumTocLink, value, rawNews.update),
       );
     }
-    await Promise.all(promises);
+    const newMediumInWaits = (await Promise.all(promises)).filter((v) => v);
+    await mediumInWaitStorage.addMediumInWait(newMediumInWaits as MediumInWait[]);
   }
   return {
     link: adapter.link,
@@ -146,12 +148,12 @@ async function processMediumNews(
   tocLink: Optional<string>,
   potentialNews: EpisodeNews[],
   update = false,
-): EmptyPromise {
+): Promise<MediumInWait | undefined> {
   const likeMedium: LikeMedium = await mediumStorage.getLikeMedium({ title, type });
 
   if (!likeMedium || !likeMedium.medium || !likeMedium.medium.id) {
     if (tocLink) {
-      await mediumInWaitStorage.addMediumInWait({ title, medium: type, link: tocLink });
+      return { title, medium: type, link: tocLink };
     }
     return;
   }
