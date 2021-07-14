@@ -77,6 +77,7 @@
         @delete="unignoreList(list)"
       />
     </div>
+    <pagination class="m-1" :pages="50" @page="paginate" />
     <table class="table table-striped table-hover table-sm align-middle" aria-describedby="releases-title">
       <thead class="table-dark">
         <tr>
@@ -163,6 +164,7 @@ import ToolTip from "bootstrap/js/dist/tooltip";
 import Toast from "bootstrap/js/dist/toast";
 import AutoComplete from "../components/auto-complete.vue";
 import AppLabel from "../components/label.vue";
+import Pagination from "../components/pagination.vue";
 
 interface Data {
   releases: DisplayRelease[];
@@ -177,11 +179,14 @@ interface Data {
   currentReleases: Set<string>;
   tooltips: ToolTip[];
   progressToast: null | Toast;
+  latest: Date;
+  until?: Date;
+  pages: Array<{ latest: Date; until: Date }>;
 }
 
 export default defineComponent({
   name: "Releases",
-  components: { TripleFilter, MediaFilter, AutoComplete, AppLabel },
+  components: { TripleFilter, MediaFilter, AutoComplete, AppLabel, Pagination },
 
   props: {
     read: Boolean,
@@ -192,6 +197,12 @@ export default defineComponent({
   },
 
   data(): Data {
+    const latest = new Date();
+    latest.setFullYear(latest.getFullYear() + 1);
+
+    const until = new Date();
+    until.setMonth(until.getMonth() - 1);
+
     return {
       releases: [],
       currentDate: new Date(),
@@ -207,6 +218,9 @@ export default defineComponent({
       currentReleases: new Set(),
       tooltips: [],
       progressToast: null,
+      latest: new Date(),
+      until: undefined,
+      pages: [{ latest, until }],
     };
   },
   computed: {
@@ -333,6 +347,70 @@ export default defineComponent({
     this.unmounted = true;
   },
   methods: {
+    defaultLatest(): Date {
+      // some releases have dates in the future, so get them at most one year in the future
+      const latest = new Date();
+      latest.setFullYear(latest.getFullYear() + 1);
+      return latest;
+    },
+    defaultUntil(): Date {
+      // this is more of a hotfix to speedup the queries
+      // view only the last month on the first full request
+      const until = new Date();
+      until.setMonth(until.getMonth() - 1);
+      return until;
+    },
+    paginate(event: { previous: number; current: number }) {
+      const diff = event.current - event.previous;
+
+      // TODO: support page difference of more than 1 page
+      if (Math.abs(diff) != 1) {
+        return;
+      }
+
+      if (diff < 0) {
+        const page = this.pages[event.current - 1];
+
+        if (!page) {
+          console.warn("Previous Page not found: " + page);
+          return;
+        }
+        this.until = page.until;
+        this.latest = page.latest;
+      } else {
+        const newIndex = event.current - 1;
+        const page = this.pages[newIndex];
+
+        if (page) {
+          this.until = page.until;
+          this.latest = page.latest;
+        } else {
+          const lastRelease = this.releases[this.releases.length - 1];
+
+          if (!lastRelease) {
+            console.warn("No Releases left");
+            return;
+          }
+          this.until = (this.until && new Date(this.until)) || this.defaultUntil();
+          this.until.setMonth(this.until.getMonth() - 1);
+
+          this.latest = new Date(lastRelease.date);
+          // do not miss releases which have the same time, but were not included in this page
+          this.latest.setSeconds(this.latest.getSeconds() - 1);
+
+          if (newIndex !== this.pages.length) {
+            console.warn(
+              "Cannot append Page at the current end, does not match end: ",
+              event.current,
+              this.pages.length,
+            );
+            return;
+          }
+          this.pages.push({ latest: this.latest, until: this.until });
+        }
+      }
+      this.fetchReleases(true);
+    },
     requireMedium(item: SimpleMedium): void {
       if (item) {
         this.$store.commit("releases/requireMedium", item.id);
@@ -402,23 +480,18 @@ export default defineComponent({
       }
       replace = replace || this.replace;
       this.fetching = true;
-      let until: Date | undefined;
 
-      if (this.releases.length && !replace) {
-        until = this.computedReleases[0].date;
-      } else {
-        // this is more of a hotfix to speedup the queries
-        // view only the last month on the first full request
-        until = new Date();
-        until.setMonth(until.getMonth() - 1);
+      if (replace) {
+        this.until = this.until || this.defaultUntil();
+        this.latest = this.latest || this.defaultLatest();
       }
+      // if (this.releases.length && !replace) {
+      //   this.until = this.computedReleases[0].date;
+      // }
       try {
-        // some releases have dates in the future, so get them at most one year in the future
-        const latest = new Date();
-        latest.setFullYear(latest.getFullYear() + 1);
         const response = await HttpClient.getDisplayReleases(
-          latest,
-          until,
+          this.latest,
+          this.until,
           this.read,
           this.onlyLists.map((item) => item.id),
           this.onlyMedia.map((item) => item.id) as number[],
@@ -449,21 +522,12 @@ export default defineComponent({
         // insert fetched releases at the corresponding place
         releases.push(...response.releases);
         this.releases = releases;
-        // response.releases.forEach(release => {
-        //     const insertIndex = binarySearch(this.releases, (value: DisplayRelease) => value.date < release.date);
-
-        //     if (insertIndex >= 0) {
-        //         releases.splice(insertIndex, 0, release);
-        //     } else {
-        //         console.warn("No Insertindex found for Release: ", release);
-        //     }
-        // });
       } catch (error) {
         console.error(error);
       } finally {
         this.fetching = false;
         // fetch again in a minute
-        setTimeout(() => this.fetchReleases(), 60000);
+        // setTimeout(() => this.fetchReleases(), 60000);
       }
     },
 
