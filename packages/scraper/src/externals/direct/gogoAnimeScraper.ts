@@ -9,7 +9,7 @@ import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc } from "./directTools";
 import { UrlError } from "../errors";
 
-const BASE_URI = "https://www.gogoanime.so/";
+const BASE_URI = "https://www.gogoanime.vc/";
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
   const uri = BASE_URI;
@@ -117,7 +117,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       title: `Episode ${i}`,
       combiIndex: i,
       totalIndex: i,
-      url: `https://www.gogoanime.so/${animeAlias}-episode-${i}`,
+      url: `https://www.gogoanime.vc/${animeAlias}-episode-${i}`,
     };
     checkTocContent(episodeContent);
     content.push(episodeContent);
@@ -145,7 +145,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     }
   }
   const toc: Toc = {
-    link: `https://www.gogoanime.so/category/${animeAlias}`,
+    link: `https://www.gogoanime.vc/category/${animeAlias}`,
     content,
     title: animeTitle,
     statusTl: releaseState,
@@ -176,7 +176,7 @@ async function searchForToc(searchMedium: TocSearchMedium): VoidablePromise<Toc>
 async function search(searchWords: string): Promise<SearchResult[]> {
   const urlString = `https://ajax.apimovie.xyz/site/loadAjaxSearch?keyword=${encodeURIComponent(
     searchWords,
-  )}&id=-1&link_web=https%3A%2F%2Fwww.gogoanime.so%2F`;
+  )}&id=-1&link_web=https%3A%2F%2Fwww.gogoanime.vc%2F`;
 
   const response: string = await queueRequest(urlString);
   const responseJson: { content: string } = JSON.parse(response);
@@ -216,7 +216,7 @@ searchForToc.blindSearch = true;
 search.medium = MediaType.VIDEO;
 
 async function contentDownloader(link: string): Promise<EpisodeContent[]> {
-  const episodeRegex = /https:\/\/www\d*\.gogoanime\.so\/.+-episode-(\d+)/;
+  const episodeRegex = /https:\/\/www\d*\.gogoanime\.vc\/.+-episode-(\d+)/;
   const exec = episodeRegex.exec(link);
   if (!exec) {
     logger.warn(`invalid gogoanime episode link: '${link}'`);
@@ -244,7 +244,7 @@ export function getHook(): Hook {
   return {
     name: "gogoanime",
     medium: MediaType.VIDEO,
-    domainReg: /^https?:\/\/(www\d*\.)?gogoanime\.so/,
+    domainReg: /^https?:\/\/(www\d*\.)?gogoanime\.(so|vc)/,
     searchAdapter: search,
     newsAdapter: scrapeNews,
     tocAdapter: scrapeToc,
