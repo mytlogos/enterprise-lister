@@ -38,7 +38,7 @@ const Methods: { post: string; get: string; put: string; delete: string } = {
   delete: "DELETE",
 };
 
-const restApi = {
+const restApi = createRestDefinition({
   api: {
     get: true,
     login: {
@@ -115,6 +115,10 @@ const restApi = {
         },
         unused: {
           get: true,
+          put: true,
+        },
+        create: {
+          post: true,
         },
         progress: {
           get: true,
@@ -177,292 +181,66 @@ const restApi = {
       },
     },
   },
-};
+});
 
-/**
- * @typedef {Object} pathObject
- * @property {string} path,
- * @property {string} method
- */
+type MethodName = keyof typeof Methods;
 
-interface KeyObj {
-  [key: string]: KeyObj | boolean;
+type Rest<T extends any = any> = {
+  [key in Extract<keyof T, MethodName>]: true;
+} &
+  {
+    [key in Exclude<keyof T, MethodName>]: Rest<T[key]>;
+  };
+
+function createRestDefinition<T extends any>(value: T): Rest<T> {
+  return value as unknown as any;
 }
+
+function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
+  const api = {} as RestAPI<any>;
+  const apis = [api];
+  const values = [value];
+  const paths = [""];
+
+  while (values.length) {
+    const last = values.pop();
+    const path = paths.pop();
+    const currentApi = apis.pop() as RestAPI<any>;
+
+    for (const key in last) {
+      if (key in Methods) {
+        // @ts-expect-error
+        currentApi[key] = {
+          method: Methods[key as MethodName],
+          path: path,
+        } as MethodObject;
+      } else {
+        const subPath = path ? path + "/" + key : key;
+        const subApi = {};
+        currentApi[key] = subApi;
+        apis.push(subApi);
+        paths.push(subPath);
+        // @ts-expect-error
+        values.push(last[key]);
+      }
+    }
+  }
+  return api as any;
+}
+
+type RestAPI<T extends any> = {
+  [key in Extract<keyof T, MethodName>]: MethodObject;
+} &
+  {
+    [key in Exclude<keyof T, MethodName>]: RestAPI<T[key]>;
+  };
+
+const serverRestApi = createRestApi(restApi);
 
 interface MethodObject {
   readonly method: string;
   readonly path: string;
 }
-
-interface ApiPath {
-  readonly get: MethodObject;
-}
-
-interface LoginPath {
-  readonly post: MethodObject;
-}
-
-interface RegisterPath {
-  readonly post: MethodObject;
-}
-
-interface UserPath {
-  readonly post: MethodObject;
-  readonly events: GetPath;
-}
-
-interface LogoutPath {
-  readonly post: MethodObject;
-}
-
-interface ListsPath {
-  readonly get: MethodObject;
-}
-
-interface GetPath {
-  readonly get: MethodObject;
-}
-
-interface PostPath {
-  readonly post: MethodObject;
-}
-
-interface PutPath {
-  readonly put: MethodObject;
-}
-
-interface MediumPath {
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly put: MethodObject;
-  readonly delete: MethodObject;
-  readonly all: AllMediumPath;
-  readonly allFull: AllFullMediumPath;
-  readonly allSecondary: GetPath;
-  readonly releases: MediumReleasesPath;
-  readonly unused: GetPath & PutPath;
-  readonly create: PostPath;
-}
-
-interface MediumReleasesPath {
-  readonly get: MethodObject;
-}
-
-interface AllMediumPath {
-  readonly get: MethodObject;
-}
-
-interface AllFullMediumPath {
-  readonly get: MethodObject;
-}
-
-interface PartPath {
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly put: MethodObject;
-  readonly delete: MethodObject;
-}
-
-interface EpisodePath {
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly put: MethodObject;
-  readonly delete: MethodObject;
-}
-
-interface ReleasePath {
-  readonly get: MethodObject;
-}
-
-interface ProgressPath {
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly put: MethodObject;
-  readonly delete: MethodObject;
-}
-
-interface NewsPath {
-  readonly get: MethodObject;
-}
-
-interface ListPath {
-  readonly medium: ListMediumPath;
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly put: MethodObject;
-  readonly delete: MethodObject;
-}
-
-interface ListMediumPath {
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly put: MethodObject;
-  readonly delete: MethodObject;
-}
-
-interface ExternalUserPath {
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly delete: MethodObject;
-
-  readonly all: GetPath;
-  readonly refresh: GetPath;
-}
-
-interface TocPath {
-  readonly get: MethodObject;
-  readonly post: MethodObject;
-  readonly delete: MethodObject;
-}
-
-interface JobPath {
-  readonly get: MethodObject;
-  readonly enable: PostPath;
-  readonly history: GetPath;
-  readonly stats: {
-    summary: GetPath;
-    all: GetPath;
-    grouped: GetPath;
-    detail: GetPath;
-    timed: GetPath;
-  };
-}
-
-interface Api {
-  readonly api: ApiPath;
-  readonly externalUser: ExternalUserPath;
-  readonly jobs: JobPath;
-  readonly list: ListPath;
-  readonly news: NewsPath;
-  readonly toc: TocPath;
-  readonly searchtoc: { get: MethodObject };
-  readonly progress: ProgressPath;
-  readonly episode: EpisodePath;
-  readonly release: ReleasePath;
-  readonly part: PartPath;
-  readonly medium: MediumPath;
-  readonly lists: ListsPath;
-  readonly logout: LogoutPath;
-  readonly login: LoginPath;
-  readonly register: RegisterPath;
-  readonly user: UserPath;
-  readonly search: GetPath;
-  readonly hook: GetPath & PutPath;
-}
-
-const api: Api = (function pathGenerator() {
-  const abbreviations: { [key: string]: string[] } = {};
-  const allowedPreviousStates: { [key: string]: string[] } = {};
-  const paths: { [key: string]: string[][] } = {};
-  const methods: { [key: string]: boolean } = {};
-
-  (function run(previous?: string, path: string[] = [], object: KeyObj = restApi, depth = 0): void {
-    if (previous) {
-      path.push(previous);
-    }
-
-    for (const key of Object.keys(object)) {
-      const value = object[key];
-
-      let keyPath = paths[key];
-      if (!keyPath) {
-        keyPath = paths[key] = [];
-      }
-      keyPath.push([...path]);
-
-      if (!allowedPreviousStates[key]) {
-        allowedPreviousStates[key] = [];
-      }
-      if (previous) {
-        allowedPreviousStates[key].push(previous);
-      }
-
-      if (typeof value === "object") {
-        run(key, path, value, depth++);
-      } else {
-        methods[key] = true;
-      }
-    }
-    path.pop();
-  })();
-
-  function generateAbbrev(state: string) {
-    const allowedStates = allowedPreviousStates[state];
-
-    for (const allowed of allowedStates) {
-      const smallestPath = paths[allowed].reduce((previous, current) =>
-        current.length > previous.length ? previous : current,
-      );
-      if (smallestPath.length) {
-        abbreviations[allowed] = smallestPath;
-      }
-    }
-  }
-
-  for (const method of Object.keys(methods)) {
-    generateAbbrev(method);
-  }
-  const currentPath: string[] = [];
-  let currentState: string | null;
-
-  return new Proxy(
-    {},
-    {
-      get(target: any, p: string, receiver) {
-        const allowed = allowedPreviousStates[p];
-
-        if (!currentState) {
-          const abbreviatedPath = abbreviations[p];
-
-          if (abbreviatedPath) {
-            currentPath.push(...abbreviatedPath);
-          } else if (allowed.length) {
-            throw Error(`path section '${p}' is not part of the rest api`);
-          }
-        } else if (allowed.includes(currentState)) {
-          currentPath.push(currentState);
-        } else {
-          throw Error(`path section '${p}' is not part of the rest api`);
-        }
-
-        if (p in methods) {
-          const path = currentPath.join("/");
-          // @ts-ignore
-          const method = Methods[p];
-
-          if (!method) {
-            throw Error(`unknown method: '${p}'`);
-          }
-
-          currentPath.length = 0;
-          currentState = null;
-
-          return new Proxy(
-            {
-              path,
-              method,
-            },
-            {
-              get(targetObj, prop) {
-                // need to check if p is in paths, because the IDE inspector accesses the object too,
-                // which would throw an error here, if p is not 'valid', so check it if it is in paths
-                // (hopefully intellij inspector won't use these either)
-                // @ts-ignore
-                if ((prop !== "path" || prop !== "method") && prop in paths) {
-                  throw Error(`'${String(prop)}' is not a property of object`);
-                }
-                // @ts-ignore
-                return targetObj[prop];
-              },
-            },
-          );
-        }
-        currentState = p;
-        return receiver;
-      },
-    },
-  );
-})();
 
 export const HttpClient = {
   get loggedIn(): boolean {
@@ -478,7 +256,7 @@ export const HttpClient = {
     if (this._checkLogin) {
       return this._checkLogin;
     } else {
-      const checkPromise = this.queryServer(api.api.get).finally(() => (this._checkLogin = null));
+      const checkPromise = this.queryServer(serverRestApi.api.get).finally(() => (this._checkLogin = null));
       return (this._checkLogin = checkPromise);
     }
   },
@@ -493,7 +271,7 @@ export const HttpClient = {
       return Promise.reject();
     }
 
-    return this.queryServer(api.login.post, {
+    return this.queryServer(serverRestApi.api.login.post, {
       userName,
       pw: psw,
     });
@@ -509,38 +287,38 @@ export const HttpClient = {
       return Promise.reject();
     }
 
-    return this.queryServer(api.register.post, {
+    return this.queryServer(serverRestApi.api.register.post, {
       userName,
       pw: psw,
     });
   },
 
   logout(): Promise<boolean> {
-    return this.queryServer(api.logout.post).then((result) => result.loggedOut);
+    return this.queryServer(serverRestApi.api.user.logout.post).then((result) => result.loggedOut);
   },
 
   getExternalUser(): Promise<ExternalUser[]> {
-    return this.queryServer(api.externalUser.all.get);
+    return this.queryServer(serverRestApi.api.user.externalUser.all.get);
   },
 
   addExternalUser(externalUser: { identifier: string; pwd: string }): Promise<ExternalUser> {
-    return this.queryServer(api.externalUser.post, { externalUser });
+    return this.queryServer(serverRestApi.api.user.externalUser.post, { externalUser });
   },
 
   deleteExternalUser(uuid: string): Promise<any> {
-    return this.queryServer(api.externalUser.delete, { externalUuid: uuid });
+    return this.queryServer(serverRestApi.api.user.externalUser.delete, { externalUuid: uuid });
   },
 
   createList(list: { name: string; type: number }): Promise<List> {
-    return this.queryServer(api.list.post, { list }).then((newList) => Object.assign(list, newList));
+    return this.queryServer(serverRestApi.api.user.list.post, { list }).then((newList) => Object.assign(list, newList));
   },
 
   updateList(list: List): Promise<boolean> {
-    return this.queryServer(api.list.put, { list });
+    return this.queryServer(serverRestApi.api.user.list.put, { list });
   },
 
   deleteList(listId: number): Promise<boolean> {
-    return this.queryServer(api.list.delete, { listId }).then((result) => {
+    return this.queryServer(serverRestApi.api.user.list.delete, { listId }).then((result) => {
       if (result.error) {
         return Promise.reject(result.error);
       }
@@ -555,26 +333,26 @@ export const HttpClient = {
    * @param medium medium to create
    */
   createMedium(medium: AddMedium): Promise<SimpleMedium & { id: number }> {
-    return this.queryServer(api.medium.post, { medium });
+    return this.queryServer(serverRestApi.api.user.medium.post, { medium });
   },
 
   getAllMedia(): Promise<SimpleMedium[]> {
-    return this.queryServer(api.medium.allFull.get);
+    return this.queryServer(serverRestApi.api.user.medium.allFull.get);
   },
 
   getAllSecondaryMedia(): Promise<SecondaryMedium[]> {
-    return this.queryServer(api.medium.allSecondary.get);
+    return this.queryServer(serverRestApi.api.user.medium.allSecondary.get);
   },
 
   getMedia(media: number | number[]): Promise<Medium | Medium[]> {
     if (Array.isArray(media) && !media.length) {
       return Promise.reject();
     }
-    return this.queryServer(api.medium.get, { mediumId: media });
+    return this.queryServer(serverRestApi.api.user.medium.get, { mediumId: media });
   },
 
   updateMedium(data: SimpleMedium): Promise<boolean> {
-    return this.queryServer(api.medium.post, { medium: data });
+    return this.queryServer(serverRestApi.api.user.medium.post, { medium: data });
   },
 
   deleteMedium(id: number): Promise<void> {
@@ -583,15 +361,15 @@ export const HttpClient = {
   },
 
   getNews(from: Date | undefined, to: Date | undefined): Promise<News[]> {
-    return this.queryServer(api.news.get, { from, to });
+    return this.queryServer(serverRestApi.api.user.news.get, { from, to });
   },
 
   createPart(part: AddPart, mediumId: number): EmptyPromise {
-    return this.queryServer(api.part.post, { part, mediumId });
+    return this.queryServer(serverRestApi.api.user.medium.part.post, { part, mediumId });
   },
 
   getMediumParts(mediumId: number): Promise<Part[]> {
-    return this.queryServer(api.part.get, { mediumId });
+    return this.queryServer(serverRestApi.api.user.medium.part.get, { mediumId });
   },
 
   /**
@@ -638,11 +416,11 @@ export const HttpClient = {
    * @param mediumId the medium to get all their releases from
    */
   getReleases(mediumId: number): Promise<MediumRelease[]> {
-    return this.queryServer(api.medium.releases.get, { id: mediumId });
+    return this.queryServer(serverRestApi.api.user.medium.releases.get, { id: mediumId });
   },
 
   getLists(): Promise<List[]> {
-    return this.queryServer(api.lists.get);
+    return this.queryServer(serverRestApi.api.user.lists.get);
   },
 
   /**
@@ -653,39 +431,39 @@ export const HttpClient = {
    * @param progress the new progress value
    */
   updateProgress(episodeId: number | number[], progress: number): Promise<boolean> {
-    return this.queryServer(api.progress.post, { episodeId, progress });
+    return this.queryServer(serverRestApi.api.user.medium.progress.post, { episodeId, progress });
   },
 
   getJobs(): Promise<Job[]> {
-    return this.queryServer(api.jobs.get);
+    return this.queryServer(serverRestApi.api.user.jobs.get);
   },
 
   getJobHistory(since?: Date, limit?: number): Promise<JobHistoryItem[]> {
-    return this.queryServer(api.jobs.history.get, { since, limit });
+    return this.queryServer(serverRestApi.api.user.jobs.history.get, { since, limit });
   },
 
   postJobEnabled(id: number, enabled: boolean): Promise<Job[]> {
-    return this.queryServer(api.jobs.enable.post, { id, enabled });
+    return this.queryServer(serverRestApi.api.user.jobs.enable.post, { id, enabled });
   },
 
   getJobsStatsSummary(): Promise<JobStatSummary[]> {
-    return this.queryServer(api.jobs.stats.summary.get);
+    return this.queryServer(serverRestApi.api.user.jobs.stats.summary.get);
   },
 
   getJobsStats(): Promise<AllJobStats> {
-    return this.queryServer(api.jobs.stats.all.get);
+    return this.queryServer(serverRestApi.api.user.jobs.stats.all.get);
   },
 
   getJobsStatsGrouped(): Promise<JobStats[]> {
-    return this.queryServer(api.jobs.stats.grouped.get);
+    return this.queryServer(serverRestApi.api.user.jobs.stats.grouped.get);
   },
 
   getJobsStatsTimed(bucket: TimeBucket, groupByDomain: boolean): Promise<TimeJobStats[]> {
-    return this.queryServer(api.jobs.stats.timed.get, { bucket, groupByDomain });
+    return this.queryServer(serverRestApi.api.user.jobs.stats.timed.get, { bucket, groupByDomain });
   },
 
   getAppEvents(filter: AppEventFilter): Promise<AppEvent[]> {
-    return this.queryServer(api.user.events.get, filter);
+    return this.queryServer(serverRestApi.api.user.events.get, filter);
   },
 
   /**
@@ -693,44 +471,48 @@ export const HttpClient = {
    * @param id id of the Job
    */
   getJobDetails(id: number): Promise<JobDetails> {
-    return this.queryServer(api.jobs.stats.detail.get, { id });
+    return this.queryServer(serverRestApi.api.user.jobs.stats.detail.get, { id });
   },
 
   getToc(link: string): Promise<Toc[]> {
     link = encodeURIComponent(link);
-    return this.queryServer(api.searchtoc.get, { link });
+    return this.queryServer(serverRestApi.api.user.searchtoc.get, { link });
   },
 
   getTocs(mediumId: number | number[]): Promise<FullMediumToc[]> {
-    return this.queryServer(api.toc.get, { mediumId });
+    return this.queryServer(serverRestApi.api.user.toc.get, { mediumId });
   },
 
   addToc(link: string, id: number): Promise<boolean> {
-    return this.queryServer(api.toc.post, { toc: link, mediumId: id });
+    return this.queryServer(serverRestApi.api.user.toc.post, { toc: link, mediumId: id });
   },
 
   search(title: string, type: MediaType): Promise<SearchResult[]> {
-    return this.queryServer(api.search.get, { text: title, medium: type });
+    return this.queryServer(serverRestApi.api.user.search.get, { text: title, medium: type });
   },
 
   addListItem(listId: number, mediumId: number): Promise<void> {
-    return this.queryServer(api.list.medium.post, { listId, mediumId });
+    return this.queryServer(serverRestApi.api.user.list.medium.post, { listId, mediumId });
   },
 
   getHooks(): Promise<ScraperHook[]> {
-    return this.queryServer(api.hook.get);
+    return this.queryServer(serverRestApi.api.user.hook.get);
   },
 
   updateHook(hook: ScraperHook): Promise<void> {
-    return this.queryServer(api.hook.put, { hook });
+    return this.queryServer(serverRestApi.api.user.hook.put, { hook });
   },
 
   getAllMediaInWaits(search?: MediumInWaitSearch): Promise<MediumInWait[]> {
-    return this.queryServer(api.medium.unused.get, search);
+    return this.queryServer(serverRestApi.api.user.medium.unused.get, search);
   },
 
   postCreateMediumFromMediaInWaits(source: MediumInWait, others: MediumInWait[], listId: number): Promise<Medium> {
-    return this.queryServer(api.medium.create.post, { createMedium: source, tocsMedia: others, listId });
+    return this.queryServer(serverRestApi.api.user.medium.create.post, {
+      createMedium: source,
+      tocsMedia: others,
+      listId,
+    });
   },
 
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
