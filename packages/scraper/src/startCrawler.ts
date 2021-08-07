@@ -7,6 +7,7 @@ import { AppStatus } from "enterprise-core/dist/status";
 import { getStores } from "enterprise-core/dist/asyncStorage";
 import os from "os";
 import debug from "debug";
+import env from "enterprise-core/dist/env";
 // start websocket server
 import "./websocket";
 const debugMessenger = debug("enterprise-lister:crawler");
@@ -28,7 +29,7 @@ const server: Server = createServer((_req, res) => {
   res.write(stringify(stores));
   res.end();
 });
-server.listen(3003, "localhost");
+server.listen(env.crawlerPort);
 server.on("error", onError);
 server.on("listening", onListening);
 
@@ -37,7 +38,7 @@ function onError(error: any) {
     throw error;
   }
 
-  const bind = "Port " + 3003;
+  const bind = "Port " + env.crawlerPort;
 
   // handle specific listen errors with friendly messages
   switch (error.code) {

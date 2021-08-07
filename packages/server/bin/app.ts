@@ -13,6 +13,7 @@ import emojiStrip from "emoji-strip";
 import { isString } from "enterprise-core/dist/tools";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
+import enableWS from "express-ws";
 
 const specs = swaggerJsDoc({
   swaggerDefinition: {
@@ -26,6 +27,7 @@ const specs = swaggerJsDoc({
 });
 
 export const app = express();
+enableWS(app); // allow router/app to use *.ws
 
 const parentDirName = path.dirname(path.dirname(__dirname));
 

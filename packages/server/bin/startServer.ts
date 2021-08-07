@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { app } from "./app";
 import debug from "debug";
-import { createServer, Server } from "http";
 import env from "enterprise-core/dist/env";
 // start storage (connect to database)
 import { startStorage } from "enterprise-core/dist/database/storages/storage";
@@ -11,7 +10,7 @@ import os from "os";
 import logger from "enterprise-core/dist/logger";
 import { startTunneling } from "./tunnel";
 
-const port = env.port || process.env.port;
+const port = env.port;
 // first start storage
 startStorage();
 const debugMessenger = debug("enterprise-lister:server");
@@ -22,17 +21,11 @@ const debugMessenger = debug("enterprise-lister:server");
 app.set("port", port);
 
 /**
- * Create HTTP server.
- */
-const server: Server = createServer(app);
-
-/**
  * Listen on provided port, on all network interfaces.
  */
-
-server.listen(port);
-server.on("error", onError);
-server.on("listening", onListening);
+app.listen(port);
+app.on("error", onError);
+app.on("listening", onListening);
 
 /**
  * Event listener for HTTP server "error" event.
@@ -63,24 +56,21 @@ function onError(error: any) {
  * Event listener for HTTP server "listening" event.
  */
 function onListening() {
-  const address = server.address();
   startTunneling();
-  if (address != null) {
-    const bind = typeof address === "string" ? "pipe " + address : "port " + address.port;
+  const bind = "port " + port;
 
-    const networkInterfaces = os.networkInterfaces();
-    for (const arrays of Object.values(networkInterfaces)) {
-      if (!Array.isArray(arrays)) {
-        continue;
-      }
-      const foundIpInterface = arrays.find((value) => value.family === "IPv4");
-
-      if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
-        continue;
-      }
-      debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
-      logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
-      break;
+  const networkInterfaces = os.networkInterfaces();
+  for (const arrays of Object.values(networkInterfaces)) {
+    if (!Array.isArray(arrays)) {
+      continue;
     }
+    const foundIpInterface = arrays.find((value) => value.family === "IPv4");
+
+    if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
+      continue;
+    }
+    debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
+    logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
+    break;
   }
 }

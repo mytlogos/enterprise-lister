@@ -19,7 +19,10 @@ interface Config {
   dbPassword: string;
   dbUser: string;
   dbPort: number;
-  port: string;
+  crawlerHost: string;
+  crawlerPort: number;
+  crawlerWSPort: number;
+  port: number;
   measure: boolean;
   development: boolean;
   stopScrapeEvents: boolean;
@@ -34,7 +37,10 @@ const appConfig: Config = {
   dbPassword: process.env.dbPassword || config.parsed.dbPassword,
   dbUser: process.env.dbUser || config.parsed.dbUser,
   dbPort: Number(process.env.dbPort || config.parsed.dbPort),
-  port: process.env.port || config.parsed.port,
+  crawlerHost: process.env.crawlerHost || config.parsed.crawlerHost || "localhost",
+  crawlerPort: Number(process.env.crawlerPort || config.parsed.crawlerPort) || 3000,
+  crawlerWSPort: Number(process.env.crawlerWSPort || config.parsed.crawlerWSPort) || 3001,
+  port: Number(process.env.port || config.parsed.port) || 3000,
   measure: !!Number(process.env.measure || config.parsed.measure),
   development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",
   stopScrapeEvents: !!Number(process.env.stopScrapeEvents || config.parsed.stopScrapeEvents),

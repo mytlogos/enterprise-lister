@@ -434,9 +434,8 @@ export default defineComponent({
       .map((value) => Object.assign(nameMap[value.name], value));
 
     // fetch live jobs data
-    await fetch("http://localhost:3003")
-      .then((response) => response.json())
-      .then((data: { [key: number]: LiveJob }) => {
+    await HttpClient.getCrawlerJobs()
+      .then((data: Record<number, LiveJob>) => {
         for (const datum of Object.values(data)) {
           for (const key of [...Object.keys(datum)]) {
             const newKey = key.replaceAll('"', "");

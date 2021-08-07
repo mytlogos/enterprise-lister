@@ -42,6 +42,7 @@
     "@types/cheerio": "^0.22.29",
     "@types/debug": "^4.1.5",
     "@types/expect.js": "^0.3.29",
+    "@types/express-ws": "3.0.1",
     "@types/htmlparser2": "^3.10.2",
     "@types/http-errors": "^1.8.0",
     "@types/js-yaml": "^4.0.1",

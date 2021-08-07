@@ -6,11 +6,31 @@ import {
   storage,
   userStorage,
 } from "enterprise-core/dist/database/storages/storage";
-import { filterScrapeAble, downloadEpisodes, loadToc, search as searchMedium } from "enterprise-scraper/dist/externals/scraperTools";
+import {
+  filterScrapeAble,
+  downloadEpisodes,
+  loadToc,
+  search as searchMedium,
+} from "enterprise-scraper/dist/externals/scraperTools";
 import { TocRequest } from "enterprise-scraper/dist/externals/types";
 import logger from "enterprise-core/dist/logger";
-import { Errors, getDate, isError, isInvalidId, isString, stringToNumberList, toArray } from "enterprise-core/dist/tools";
-import { JobRequest, ScrapeName, AppEventFilter, AppEventProgram, AppEventType, AppEvent } from "enterprise-core/dist/types";
+import {
+  Errors,
+  getDate,
+  isError,
+  isInvalidId,
+  isString,
+  stringToNumberList,
+  toArray,
+} from "enterprise-core/dist/tools";
+import {
+  JobRequest,
+  ScrapeName,
+  AppEventFilter,
+  AppEventProgram,
+  AppEventType,
+  AppEvent,
+} from "enterprise-core/dist/types";
 import { Handler, Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";
 import { externalUserRouter } from "./externalUser";
@@ -20,6 +40,7 @@ import { getAllLists, listRouter } from "./list";
 import { mediumRouter } from "./medium";
 import { newsRouter } from "./news";
 import { processRouter } from "./process";
+import { crawlerRouter } from "./crawler";
 
 export const authenticate: Handler = (req, res, next) => {
   let { uuid, session } = req.body;
@@ -82,21 +103,19 @@ export const addBookmarked = createHandler((req) => {
 
     const storePromise = jobStorage
       .addJobs(
-        scrapeAble.available.map(
-          (link: string): JobRequest => {
-            return {
-              name: `${ScrapeName.oneTimeToc}-${link}`,
-              type: ScrapeName.oneTimeToc,
-              runImmediately: true,
-              deleteAfterRun: true,
-              interval: -1,
-              arguments: JSON.stringify({
-                url: link,
-                uuid,
-              } as TocRequest),
-            };
-          },
-        ),
+        scrapeAble.available.map((link: string): JobRequest => {
+          return {
+            name: `${ScrapeName.oneTimeToc}-${link}`,
+            type: ScrapeName.oneTimeToc,
+            runImmediately: true,
+            deleteAfterRun: true,
+            interval: -1,
+            arguments: JSON.stringify({
+              url: link,
+              uuid,
+            } as TocRequest),
+          };
+        }),
       )
       .then(() => scrapeAble.unavailable);
     return storePromise;
@@ -781,6 +800,6 @@ export function userRouter(): Router {
   router.use("/list", listRouter());
   router.use("/process", processRouter());
   router.use("/externalUser", externalUserRouter());
-
+  router.use("/crawler", crawlerRouter());
   return router;
 }

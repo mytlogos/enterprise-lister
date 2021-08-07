@@ -179,6 +179,11 @@ const restApi = createRestDefinition({
       search: {
         get: true,
       },
+      crawler: {
+        jobs: {
+          get: true,
+        },
+      },
     },
   },
 });
@@ -513,6 +518,10 @@ export const HttpClient = {
       tocsMedia: others,
       listId,
     });
+  },
+
+  getCrawlerJobs(): Promise<Record<number, any>> {
+    return this.queryServer(serverRestApi.api.user.crawler.jobs.get);
   },
 
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {

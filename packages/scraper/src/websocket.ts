@@ -7,7 +7,7 @@ import { DefaultJobScraper } from "./externals/jobScraperManager";
 import { publishQueues } from "./externals/queueManager";
 
 const ws = new Websocket.Server({
-  port: 3004,
+  port: 3001,
 });
 
 ws.on("connection", (socket) => {
