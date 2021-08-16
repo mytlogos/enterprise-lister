@@ -409,7 +409,7 @@ export function getHook(): Hook {
     medium: MediaType.TEXT,
     domainReg: /^https:\/\/(www\.)?webnovel\.com/,
     // tslint:disable-next-line:max-line-length
-    tocPattern: /^https:\/\/(paste\.tech-port\.de)|(priv\.atebin\.com)|(paste\.fizi\.ca)|(privatebin\.secured\.fi)\/$/,
+    tocPattern: /^https:\/\/((paste\.tech-port\.de)|(priv\.atebin\.com)|(paste\.fizi\.ca)|(privatebin\.secured\.fi))\/$/,
     newsAdapter: scrapeNews,
     contentDownloadAdapter: scrapeContent,
     tocAdapter: scrapeToc,

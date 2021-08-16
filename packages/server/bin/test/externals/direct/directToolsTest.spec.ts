@@ -362,7 +362,7 @@ async function testCase(casePath: string): EmptyPromise {
       for (const episode of content.episodes) {
         caseData.hasParts.should.not.equal(false);
         episode.should.have.property("title");
-        episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+        episode.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
         episode.combiIndex.should.be.at.least(currentEpisodeIndex);
         episode.should.have.property("url");
 
@@ -378,7 +378,7 @@ async function testCase(casePath: string): EmptyPromise {
     } else {
       episodesCount++;
       content.combiIndex.should.be.at.least(currentEpisodeIndex);
-      content.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+      content.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
       content.should.have.property("url");
 
       if (!caseData.hasLocked) {
@@ -1937,7 +1937,7 @@ describe("testing scrapeToc", () => {
         // @ts-expect-error
         for (const episode of content.episodes) {
           episode.should.have.property("title");
-          episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+          episode.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
           episode.combiIndex.should.be.at.least(currentEpisodeIndex);
           episode.should.have.property("url");
           episode.should.have.property("locked", false);
@@ -1948,7 +1948,7 @@ describe("testing scrapeToc", () => {
       } else {
         episodesCount++;
         content.combiIndex.should.be.at.least(currentEpisodeIndex);
-        content.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+        content.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
         content.should.have.property("url");
         content.should.have.property("locked", false);
         content.should.have.property("releaseDate");
@@ -1978,7 +1978,7 @@ describe("testing scrapeToc", () => {
         // @ts-expect-error
         for (const episode of content.episodes) {
           episode.should.have.property("title");
-          episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+          episode.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
           episode.combiIndex.should.be.at.least(currentEpisodeIndex);
           episode.should.have.property("url");
           episode.should.have.property("locked", false);
@@ -1989,7 +1989,7 @@ describe("testing scrapeToc", () => {
       } else {
         episodesCount++;
         content.combiIndex.should.be.at.least(currentEpisodeIndex);
-        content.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+        content.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
         content.should.have.property("url");
         content.should.have.property("locked", false);
         content.should.have.property("releaseDate");
@@ -2019,7 +2019,7 @@ describe("testing scrapeToc", () => {
         // @ts-expect-error
         for (const episode of content.episodes) {
           episode.should.have.property("title");
-          episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+          episode.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
           episode.combiIndex.should.be.at.least(currentEpisodeIndex);
           episode.should.have.property("url");
           episode.should.have.property("locked", false);
@@ -2030,7 +2030,7 @@ describe("testing scrapeToc", () => {
       } else {
         episodesCount++;
         content.combiIndex.should.be.at.least(currentEpisodeIndex);
-        content.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+        content.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
         content.should.have.property("url");
         content.should.have.property("locked", false);
         content.should.have.property("releaseDate");
@@ -2061,7 +2061,7 @@ describe("testing scrapeToc", () => {
         // @ts-expect-error
         for (const episode of content.episodes) {
           episode.should.have.property("title");
-          episode.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+          episode.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
           episode.combiIndex.should.be.at.least(currentEpisodeIndex);
           episode.should.have.property("url");
           episode.should.have.property("locked", false);
@@ -2072,7 +2072,7 @@ describe("testing scrapeToc", () => {
       } else {
         episodesCount++;
         content.combiIndex.should.be.at.least(currentEpisodeIndex);
-        content.should.not.match(/^[\s:–,.-]+|[\s:–,.-]+$/);
+        content.should.not.match(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
         content.should.have.property("url");
         content.should.have.property("locked", false);
         content.should.have.property("releaseDate");

@@ -497,7 +497,7 @@ export async function scrapeToc(pageGenerator: AsyncGenerator<TocPiece, void>): 
       /(^|(c[hapter]{0,6}|(ep[isode]{0,5})|(word)))[\s.]*((((\d+)(\.(\d+))?)(\s*-\s*((\d+)(\.(\d+))?))?)|\W*(delete|spam))/gi,
     volumeChapterRegex: /(^|\s)((\d+)(\.(\d+))?)\s*-(\s*((\d+)(\.(\d+))?)|\s)/gi,
     partRegex: /(P[art]{0,3}[.\s]*(\d+))|([[(]?(\d+)[/|](\d+)[)\]]?)/g,
-    trimRegex: /^[\s:–,.-]+|[\s:–,.-]+$/g,
+    trimRegex: /(^[\s:–,.-]+)|([\s:–,.-]+$)/g,
     endRegex: /end/g,
     startRegex: /start/g,
     order: "unknown",
