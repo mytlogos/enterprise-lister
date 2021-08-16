@@ -1,0 +1,74 @@
+{
+  "name": "enterprise-website",
+  "version": "1.16.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "test:unit": "vue-cli-service test:unit",
+    "test:e2e": "vue-cli-service test:e2e",
+    "lint": "eslint 'src/**/*.{js,ts,vue}'",
+    "build:dev": "vue-cli-service build --mode development",
+    "commit": "npx git-cz",
+    "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'",
+    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^5.15.4",
+    "@fortawesome/fontawesome-svg-core": "^1.2.36",
+    "@fortawesome/free-solid-svg-icons": "^5.15.4",
+    "bootstrap": "^5.1.0",
+    "chart.js": "^2.9.4",
+    "d3-scale-chromatic": "^3.0.0",
+    "mitt": "^3.0.0",
+    "@popperjs/core": "^2.9.3",
+    "tslib": "^2.3.1",
+    "vue": "^3.2.2",
+    "vue-observe-visibility": "^1.0.0",
+    "vue-router": "^4.0.11",
+    "vuex": "^4.0.2",
+    "vuex-persistedstate": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bootstrap": "^5.1.1",
+    "@types/chai": "^4.2.18",
+    "@types/chai-as-promised": "^7.1.4",
+    "@types/chart.js": "^2.9.34",
+    "@types/copy-webpack-plugin": "^8.0.1",
+    "@types/d3-scale-chromatic": "^3.0.0",
+    "@types/expect.js": "^0.3.29",
+    "@types/mocha": "^9.0.0",
+    "@types/sinon": "^10.0.2",
+    "@types/sinon-as-promised": "^4.0.14",
+    "@types/sinon-chai": "^3.2.5",
+    "@vue/babel-preset-app": "^5.0.0-beta.3",
+    "@vue/cli-plugin-babel": "^5.0.0-beta.3",
+    "@vue/cli-plugin-eslint": "^5.0.0-beta.3",
+    "@vue/cli-plugin-router": "^5.0.0-beta.3",
+    "@vue/cli-plugin-typescript": "^5.0.0-beta.3",
+    "@vue/cli-plugin-vuex": "^5.0.0-beta.3",
+    "@vue/cli-service": "^5.0.0-beta.3",
+    "@vue/compiler-sfc": "^3.2.2",
+    "@vue/test-utils": "^2.0.0-rc.12",
+    "babel-core": "6.26.3",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "copy-webpack-plugin": "9.0.1",
+    "mocha": "^9.0.3",
+    "sinon": "^11.1.2",
+    "sinon-as-promised": "^4.0.3",
+    "sinon-chai": "^3.7.0",
+    "typescript": "^4.3.2"
+  },
+  "postcss": {
+    "plugins": {
+      "autoprefixer": {}
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ]
+}
