@@ -153,6 +153,7 @@ export class Queue {
 
   public publish(): void {
     if (queueChannel.hasSubscribers) {
+      // @ts-expect-error
       queueChannel.publish({
         messageType: "requestqueue",
         maxInterval: this.maxLimit,

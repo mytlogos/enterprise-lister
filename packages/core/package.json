@@ -10,11 +10,10 @@
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "dependencies": {
-    "@rmp135/sql-ts": "^1.8.2",
     "bcryptjs": "^2.4.3",
     "cheerio": "^1.0.0-rc.5",
     "cloudscraper": "^4.6.0",
-    "debug": "^4.3.1",
+    "debug": "^4.3.2",
     "dotenv": "^10.0.0",
     "emoji-strip": "latest",
     "feedparser-promised": "^2.0.1",
@@ -30,12 +29,11 @@
     "stringify-stream": "^1.0.5",
     "tar-fs": "^2.1.1",
     "tough-cookie": "^4.0.0",
-    "tslib": "^2.1.0",
+    "tslib": "^2.3.1",
     "uuid": "^8.3.2",
     "validate.js": "^0.13.1",
     "winston": "^3.3.3",
-    "winston-daily-rotate-file": "^4.5.5",
-    "yargs": "^17.0.1"
+    "winston-daily-rotate-file": "^4.5.5"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
@@ -48,14 +46,14 @@
     "@types/htmlparser2": "^3.10.2",
     "@types/http-errors": "^1.8.0",
     "@types/js-yaml": "^4.0.1",
-    "@types/mocha": "^8.2.2",
-    "@types/morgan": "^1.9.2",
+    "@types/mocha": "^9.0.0",
+    "@types/morgan": "^1.9.3",
     "@types/mysql": "^2.15.18",
-    "@types/node": "^15.12.2",
+    "@types/node": "^16.6.1",
     "@types/node-cache": "^4.2.5",
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.17",
-    "@types/sinon": "^10.0.1",
+    "@types/sinon": "^10.0.2",
     "@types/sinon-as-promised": "^4.0.14",
     "@types/sinon-chai": "^3.2.5",
     "@types/tar-fs": "^2.0.0",
@@ -65,10 +63,10 @@
     "chai-as-promised": "^7.1.1",
     "commitizen": "^4.2.3",
     "js-yaml": "^4.1.0",
-    "mocha": "^8.4.0",
-    "sinon": "^10.0.0",
+    "mocha": "^9.0.3",
+    "sinon": "^11.1.2",
     "sinon-as-promised": "^4.0.3",
     "sinon-chai": "^3.7.0",
-    "typescript": "^4.3.2"
+    "typescript": "^4.3.5"
   }
 }

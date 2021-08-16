@@ -166,22 +166,18 @@ export function runAsync(
   callback: TakeManyFunction<void | EmptyPromise>,
   ...args: any[]
 ): void {
-  localStorage.run(
-    store,
-    async () => {
-      stores.set(id, store);
-      try {
-        const result = callback(...args);
+  localStorage.run(store, async () => {
+    stores.set(id, store);
+    try {
+      const result = callback(...args);
 
-        if (result && result.then) {
-          await result;
-        }
-      } finally {
-        stores.delete(id);
+      if (result && result.then) {
+        await result;
       }
-    },
-    args,
-  );
+    } finally {
+      stores.delete(id);
+    }
+  });
 }
 
 /**

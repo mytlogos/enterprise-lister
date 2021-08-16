@@ -5,8 +5,8 @@ const bus = mitt();
 /**
  * Emit an event on the bus, with optional parameter.
  */
-export function emitBusEvent(event: string, ...param: any[]): void {
-  bus.emit(event, ...param);
+export function emitBusEvent(event: string, param?: any): void {
+  bus.emit(event, param);
 }
 
 /**

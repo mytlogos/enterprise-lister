@@ -20,35 +20,32 @@
     "start:server": "node packages/server/dist/startServer.js",
     "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./packages/**/dist/**/test/database/**/*.js ./packages/**/dist/**/test/*.js"
   },
-  "dependencies": {
-    "request": "^2.88.2"
-  },
   "devDependencies": {
-    "@commitlint/cli": "^12.0.1",
-    "@commitlint/config-conventional": "^12.0.1",
-    "@commitlint/prompt": "^12.0.1",
+    "@commitlint/cli": "^13.1.0",
+    "@commitlint/config-conventional": "^13.1.0",
+    "@commitlint/prompt": "^13.1.0",
     "@semantic-release/changelog": "^5.0.1",
     "@semantic-release/git": "^9.0.0",
     "@semantic-release/release-notes-generator": "^9.0.2",
-    "@typescript-eslint/eslint-plugin": "^4.27.0",
-    "@typescript-eslint/parser": "^4.27.0",
+    "@typescript-eslint/eslint-plugin": "^4.29.1",
+    "@typescript-eslint/parser": "^4.29.1",
     "@vue/eslint-config-standard": "^6.0.0",
     "@vue/eslint-config-typescript": "^7.0.0",
     "commitizen": "^4.2.3",
     "cz-conventional-changelog": "^3.3.0",
-    "eslint": "^7.23.0",
+    "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-config-standard": "^16.0.2",
-    "eslint-plugin-import": "^2.22.1",
-    "eslint-plugin-jsdoc": "^35.2.0",
+    "eslint-plugin-import": "^2.24.0",
+    "eslint-plugin-jsdoc": "^36.0.7",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
     "eslint-plugin-prettier": "^3.3.1",
     "eslint-plugin-promise": "^5.1.0",
-    "eslint-plugin-vue": "^7.8.0",
-    "husky": "^6.0.0",
-    "prettier": "^2.2.1",
-    "semantic-release": "^17.4.2"
+    "eslint-plugin-vue": "^7.16.0",
+    "husky": "^7.0.1",
+    "prettier": "^2.3.2",
+    "semantic-release": "^17.4.5"
   },
   "postcss": {
     "plugins": {

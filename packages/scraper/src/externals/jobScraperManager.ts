@@ -237,6 +237,7 @@ export class JobScraperManager {
         timestamp: job.startRun || 0,
         type: "started",
       } as StartJobChannelMessage;
+      // @ts-expect-error
       jobChannel.publish(message);
     });
   }
@@ -520,6 +521,7 @@ export class JobScraperManager {
       logger.info(`Job ${item.name ? item.name : item.id} is running now`);
 
       if (jobChannel.hasSubscribers) {
+        // @ts-expect-error
         jobChannel.publish({
           messageType: "jobs",
           type: "started",
@@ -566,6 +568,7 @@ export class JobScraperManager {
         }
 
         const result = store.get("result");
+        // @ts-expect-error
         jobChannel.publish({
           messageType: "jobs",
           type: "finished",
