@@ -7,7 +7,7 @@
     "build": "tsc -p ./",
     "lint": "eslint -c ./.eslintrc.js src/",
     "start": "node dist/startCrawler.js",
-    "test": " LOG_LEVEL=error node ../..//node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
+    "test": "echo 'Implement tests'",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "dependencies": {
