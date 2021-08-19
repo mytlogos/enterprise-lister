@@ -37,6 +37,8 @@ jobs:
       - run: npm install
       - run: npm run build --ws
       - run: npm run test --ws
+      - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
+      - run: zip -r dist-src.zip package.json package-lock.json packages/
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
