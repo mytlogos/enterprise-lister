@@ -22,19 +22,12 @@
       "@semantic-release/github",
       {
         "assets": [
-          [
-            "packages/**/dist"
-          ],
           {
-            "path": "package.*",
+            "path": "dist.zip",
             "label": "Dist Files only"
           },
-          [
-            "**/*.*",
-            "!**/node_modules"
-          ],
           {
-            "path": "package.json",
+            "path": "dist-src.zip",
             "label": "Source and Dist Files"
           }
         ]
