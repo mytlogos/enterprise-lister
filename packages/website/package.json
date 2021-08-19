@@ -11,7 +11,7 @@
     "build:dev": "vue-cli-service build --mode development",
     "commit": "npx git-cz",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js"
+    "test": " LOG_LEVEL=error node ../../node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.4",
