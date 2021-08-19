@@ -6,7 +6,7 @@
     "build": "tsc -p ./",
     "test:unit": "vue-cli-service test:unit",
     "lint": "eslint '*/**/*.{js,ts,vue}'",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
+    "test": "echo 'Implement tests'",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "dependencies": {
