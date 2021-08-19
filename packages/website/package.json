@@ -11,7 +11,7 @@
     "build:dev": "vue-cli-service build --mode development",
     "commit": "npx git-cz",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'",
-    "test": "echo 'Implement tests'",
+    "test": "echo 'Implement tests'"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.4",
