@@ -17,11 +17,13 @@ jobs:
       dbUser: enterprise
       dbPort: 3306
     steps:
+      - run: sudo service mysql stop
       - run: |
           curl -sS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --mariadb-server-version="mariadb-10.6"
           sudo apt update
-          sudo apt install mariadb-server
-
+          sudo apt install mariadb-server mariadb-client
+          sudo mariadb -u root -e "CREATE USER '$dbUser'@localhost IDENTIFIED BY '$dbPassword';"
+          sudo mariadb -u root -e "GRANT ALL PRIVILEGES ON *.* TO '$dbUser'@localhost;"
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
