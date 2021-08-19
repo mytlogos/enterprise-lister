@@ -13,7 +13,6 @@
     - innodb_default_row_format = dynamic
     - innodb_large_prefix = ON
     - mariadb >= 10.3 does not need these options
-- A `env.env` file, similar to the available `test.env` file
 
 ## Hardware Requirements
 
@@ -26,7 +25,8 @@ Example Hardware requirements for the magnitude:
 
 ## Configuration
 
-The variables can be defined in env.env (file itself is required) or via Environment Variables (takes precedence).
+The variables can be defined in a env.env file or via Environment Variables (takes precedence).
+The file `test.env` can be taken as an template.
 
 default < env.env < environment variable
 
@@ -47,7 +47,7 @@ crawlerWSPort=3001      # port on which the crawler listens for Websocket - both
 
 ## Docker
 
-Requires a `database.env` and `env.env` file to be available in current working directory.
+Requires a `database.env` file to be available in current working directory.
 `database.env` has the same properties as `test-database.env`.
 
 ### Windows

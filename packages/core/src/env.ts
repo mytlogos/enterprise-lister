@@ -1,9 +1,17 @@
 import dotenv from "dotenv";
 import { findProjectDirPath } from "./tools";
 
+let config;
+
+// try to find env.env but do not require
 const envPath = findProjectDirPath("env.env");
 
-const config = dotenv.config({ path: envPath });
+if (envPath) {
+  config = dotenv.config({ path: envPath });
+} else {
+  console.error("Could not find 'env.env' File.");
+  config = { parsed: {} };
+}
 
 if (config.error) {
   throw config.error;
@@ -32,7 +40,7 @@ interface Config {
  * All Options should be overridable by Environment variables.
  */
 const appConfig: Config = {
-  dbConLimit: Number(process.env.dbConLimit || config.parsed.dbConLimit),
+  dbConLimit: Number(process.env.dbConLimit || config.parsed.dbConLimit) || 50,
   dbHost: process.env.dbHost || config.parsed.dbHost,
   dbPassword: process.env.dbPassword || config.parsed.dbPassword,
   dbUser: process.env.dbUser || config.parsed.dbUser,
@@ -45,5 +53,12 @@ const appConfig: Config = {
   development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",
   stopScrapeEvents: !!Number(process.env.stopScrapeEvents || config.parsed.stopScrapeEvents),
 };
+
+// this should not output sensitive information
+for (const [key, value] of Object.entries(appConfig)) {
+  if (value == null || Number.isNaN(value)) {
+    throw Error(`Config Error: ${key} has invalid Value: ${value}`);
+  }
+}
 
 export default appConfig;

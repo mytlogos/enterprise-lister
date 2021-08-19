@@ -804,6 +804,7 @@ export function ignore(): void {
  * and all its parent directories for a package.json.
  *
  * Relativize the path of file to project dir.
+ * Returns an empty string if it could not find a valid path.
  */
 export function findProjectDirPath(file: string): string {
   return findRelativeProjectDirPath(process.cwd(), file);
@@ -820,7 +821,7 @@ export function findRelativeProjectDirPath(dir: string, file: string): string {
     dir = path.dirname(currentDir);
 
     if (dir === currentDir) {
-      throw Error("Could not find project root via package.json!");
+      return "";
     }
 
     currentDirFiles = fs.readdirSync(dir);
@@ -828,7 +829,8 @@ export function findRelativeProjectDirPath(dir: string, file: string): string {
   if (currentDirFiles.includes(file)) {
     return filePath;
   }
-  return ".." + path.sep + findRelativeProjectDirPath(path.dirname(dir), file);
+  const subPath = findRelativeProjectDirPath(path.dirname(dir), file);
+  return subPath ? ".." + path.sep + subPath : subPath;
 }
 
 export function findAbsoluteProjectDirPath(dir = process.cwd()): string {
