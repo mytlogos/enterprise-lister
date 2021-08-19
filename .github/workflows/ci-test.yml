@@ -38,3 +38,5 @@ jobs:
       - run: npm run build --ws
       - run: npm run test --ws
       - run: npx semantic-release
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
