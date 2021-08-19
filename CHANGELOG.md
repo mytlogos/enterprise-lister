@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/mytlogos/enterprise-lister/compare/v1.18.0...v1.18.1) (2021-08-19)
+
+
+### Bug Fixes
+
+* create release zips ([ab04bdc](https://github.com/mytlogos/enterprise-lister/commit/ab04bdcf6c8bb67515a6ee9c1f6b2a4044d4733a))
+
 # [1.18.0](https://github.com/mytlogos/enterprise-lister/compare/v1.17.0...v1.18.0) (2021-08-19)
 
 
