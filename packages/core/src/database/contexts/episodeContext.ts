@@ -32,6 +32,7 @@ import {
   promiseMultiSingle,
   separateIndex,
   batch,
+  hasPropType,
 } from "../../tools";
 import logger from "../../logger";
 import { MysqlServerError } from "../mysqlError";
@@ -736,7 +737,7 @@ export class EpisodeContext extends SubContext {
         } catch (e) {
           // do not catch if it isn't an duplicate key error
           // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
+          if (!e || (hasPropType<number>(e, "errno") && e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
             throw e;
           }
           const result = await this.query("SELECT id from episode where part_id=? and combiIndex=?", [

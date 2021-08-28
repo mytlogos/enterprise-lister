@@ -386,7 +386,7 @@ export class JobQueue {
             modifications: store.get("modifications") || {},
             queryCount: store.get("queryCount") || 0,
             network: store.get("network") || {},
-            reason: error.message,
+            reason: typeof error === "object" && error && (error as any).message,
           };
           store.set("message", JSON.stringify(message));
         }

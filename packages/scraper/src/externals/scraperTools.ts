@@ -1,6 +1,6 @@
 import { factory, ListScrapeResult, ListType } from "./listManager";
 import feedParserPromised from "feedparser-promised";
-import { combiIndex, getElseSet, hasMediaType, ignore, max, maxValue, MediaType } from "enterprise-core/dist/tools";
+import { combiIndex, getElseSet, hasMediaType, hasProp, ignore, max, maxValue, MediaType } from "enterprise-core/dist/tools";
 import { isTocPart } from "../tools";
 import {
   Episode,
@@ -529,7 +529,7 @@ export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: Toc
   try {
     allTocs = await allTocPromise;
   } catch (e) {
-    if (e && e.statusCode === 404) {
+    if (e && hasProp(e, "statusCode") && e.statusCode === 404) {
       throw new MissingResourceError("missing toc resource: " + link, link);
     } else {
       throw e;
@@ -821,7 +821,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
       try {
         episodeContents = await downloaderEntry[1](release.url);
       } catch (e) {
-        if (e instanceof MissingResourceError || (e.statusCode && (e.statusCode === 410 || e.statusCode === 404))) {
+        if (e instanceof MissingResourceError || (hasProp(e, "statusCode") &&  e.statusCode && (e.statusCode === 410 || e.statusCode === 404))) {
           episodeStorage.deleteRelease(release).catch(logger.error);
         } else {
           logger.error(e);

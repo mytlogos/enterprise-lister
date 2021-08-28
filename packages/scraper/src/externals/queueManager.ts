@@ -12,7 +12,7 @@ import { setContext, removeContext, getStore, bindContext } from "enterprise-cor
 import http from "http";
 import https from "https";
 import { Socket } from "net";
-import { isString, getElseSet, stringify, delay } from "enterprise-core/dist/tools";
+import { isString, getElseSet, stringify, delay, hasProps } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import { AsyncResource } from "async_hooks";
 import { Optional } from "enterprise-core/dist/types";
@@ -270,8 +270,8 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
         return await methodToRequest(options, toUseRequest);
       } catch (error) {
         // retry at most 3 times for 429 - Too many Requests error
-        if (error.statusCode === 429 && tryAgain < 3) {
-          const retryAfterValue = error.response?.headers["retry-after"];
+        if (hasProps(error, "statusCode", "response") && error.statusCode === 429 && tryAgain < 3) {
+          const retryAfterValue = (error.response as any)?.headers["retry-after"];
           const retryAfterSeconds = Number.parseInt(retryAfterValue);
 
           if (Number.isInteger(retryAfterSeconds) && retryAfterSeconds > 0) {

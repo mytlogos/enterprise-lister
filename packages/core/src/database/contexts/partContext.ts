@@ -13,7 +13,7 @@ import {
   TypedQuery,
   AddPart,
 } from "../../types";
-import { combiIndex, getElseSetObj, multiSingle, separateIndex } from "../../tools";
+import { combiIndex, getElseSetObj, hasPropType, multiSingle, separateIndex } from "../../tools";
 import { MysqlServerError } from "../mysqlError";
 import { storeModifications } from "../sqlTools";
 
@@ -284,7 +284,7 @@ export class PartContext extends SubContext {
       storeModifications("part", "insert", result);
     } catch (e) {
       // do not catch if it isn't an duplicate key error
-      if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
+      if (!e || (hasPropType<number>(e, "errno") && e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
         throw e;
       }
       const result = await this.query("SELECT id from part where medium_id=? and combiIndex=?", [
