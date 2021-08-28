@@ -376,7 +376,7 @@ type ContextName = PropertyNames<QueryContext, SubContext>;
 type ContextProxy<T extends SubContext, K extends StringKeys<T>> = new () => PromiseFunctions<T, K>;
 
 function inContextGeneric<T, C extends SubContext>(callback: ContextCallback<T, C>, context: ContextName) {
-  return storageInContext(callback, (con) => (queryContextProvider(con)[context] as unknown) as C, true);
+  return storageInContext(callback, (con) => queryContextProvider(con)[context] as unknown as C, true);
 }
 
 export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T>>(
@@ -384,7 +384,7 @@ export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T
   omitted: K[],
 ): ContextProxy<T, K> {
   const hiddenProps: K[] = [...omitted];
-  return (function ContextProxy() {
+  return function ContextProxy() {
     return new Proxy(
       {},
       {
@@ -400,7 +400,7 @@ export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T
         },
       },
     );
-  } as unknown) as ContextProxy<T, K>;
+  } as unknown as ContextProxy<T, K>;
 }
 
 export function SubContextProxyFactory<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(

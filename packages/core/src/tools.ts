@@ -804,9 +804,28 @@ export function ignore(): void {
  * and all its parent directories for a package.json.
  *
  * Relativize the path of file to project dir.
+ * Returns an empty string if it could not find a valid path.
  */
 export function findProjectDirPath(file: string): string {
   return findRelativeProjectDirPath(process.cwd(), file);
+}
+
+export function hasProps<T, U extends string | number | symbol>(
+  obj: T,
+  ...propName: U[]
+): obj is T & { [P in U]: unknown } {
+  return obj && propName.every((x) => x in obj);
+}
+
+export function hasProp<T, U extends string | number | symbol>(obj: T, propName: U): obj is T & { [P in U]: unknown } {
+  return obj && propName in obj;
+}
+
+export function hasPropType<V, T = any, U extends string | number | symbol = string | number | symbol>(
+  obj: T,
+  propName: U,
+): obj is T & { [P in U]: V } {
+  return obj && propName in obj;
 }
 
 export function findRelativeProjectDirPath(dir: string, file: string): string {
@@ -820,7 +839,7 @@ export function findRelativeProjectDirPath(dir: string, file: string): string {
     dir = path.dirname(currentDir);
 
     if (dir === currentDir) {
-      throw Error("Could not find project root via package.json!");
+      return "";
     }
 
     currentDirFiles = fs.readdirSync(dir);
@@ -828,7 +847,8 @@ export function findRelativeProjectDirPath(dir: string, file: string): string {
   if (currentDirFiles.includes(file)) {
     return filePath;
   }
-  return ".." + path.sep + findRelativeProjectDirPath(path.dirname(dir), file);
+  const subPath = findRelativeProjectDirPath(path.dirname(dir), file);
+  return subPath ? ".." + path.sep + subPath : subPath;
 }
 
 export function findAbsoluteProjectDirPath(dir = process.cwd()): string {

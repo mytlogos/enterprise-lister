@@ -111,7 +111,7 @@ export class MediumContext extends SubContext {
         "GROUP BY mediumId, host;",
     );
     const idMap = new Map<number, TocSearchMedium>();
-    const tocSearchMedia = (result
+    const tocSearchMedia = result
       .map((value) => {
         const medium = idMap.get(value.mediumId);
         if (medium) {
@@ -133,7 +133,7 @@ export class MediumContext extends SubContext {
         idMap.set(value.mediumId, searchMedium);
         return searchMedium;
       })
-      .filter((value) => value) as any[]) as TocSearchMedium[];
+      .filter((value) => value) as any[] as TocSearchMedium[];
     const synonyms = await this.getSynonyms(tocSearchMedia.map((value) => value.mediumId));
 
     synonyms.forEach((value) => {
@@ -172,54 +172,51 @@ export class MediumContext extends SubContext {
    */
   public getMedium<T extends MultiSingleNumber>(id: T, uuid: Uuid): PromiseMultiSingle<T, Medium> {
     // TODO: 29.06.2019 replace with id IN (...)
-    return promiseMultiSingle(
-      id,
-      async (mediumId: number): Promise<Medium> => {
-        let result = await this.query("SELECT * FROM medium WHERE medium.id=?;", mediumId);
-        result = result[0];
+    return promiseMultiSingle(id, async (mediumId: number): Promise<Medium> => {
+      let result = await this.query("SELECT * FROM medium WHERE medium.id=?;", mediumId);
+      result = result[0];
 
-        const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
+      const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
 
-        const currentReadResult = await this.query(
-          "SELECT * FROM " +
-            "(SELECT * FROM user_episode " +
-            "WHERE episode_id IN (SELECT id from episode " +
-            "WHERE part_id IN (SELECT id FROM part " +
-            "WHERE medium_id=?))) as user_episode " +
-            "INNER JOIN episode ON user_episode.episode_id=episode.id " +
-            "WHERE user_uuid=? " +
-            "ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1",
-          [mediumId, uuid],
-        );
-        const unReadResult = await this.query(
-          "SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
-            "AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) " +
-            "ORDER BY totalIndex DESC, partialIndex DESC;",
-          [mediumId, uuid],
-        );
-        const partsResult = await this.query("SELECT id FROM part WHERE medium_id=?;", mediumId);
+      const currentReadResult = await this.query(
+        "SELECT * FROM " +
+          "(SELECT * FROM user_episode " +
+          "WHERE episode_id IN (SELECT id from episode " +
+          "WHERE part_id IN (SELECT id FROM part " +
+          "WHERE medium_id=?))) as user_episode " +
+          "INNER JOIN episode ON user_episode.episode_id=episode.id " +
+          "WHERE user_uuid=? " +
+          "ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1",
+        [mediumId, uuid],
+      );
+      const unReadResult = await this.query(
+        "SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
+          "AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) " +
+          "ORDER BY totalIndex DESC, partialIndex DESC;",
+        [mediumId, uuid],
+      );
+      const partsResult = await this.query("SELECT id FROM part WHERE medium_id=?;", mediumId);
 
-        return {
-          id: result.id,
-          countryOfOrigin: result.countryOfOrigin,
-          languageOfOrigin: result.languageOfOrigin,
-          author: result.author,
-          title: result.title,
-          medium: result.medium,
-          artist: result.artist,
-          lang: result.lang,
-          stateOrigin: result.stateOrigin,
-          stateTL: result.stateTL,
-          series: result.series,
-          universe: result.universe,
-          parts: partsResult.map((packet: any) => packet.id),
-          currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
-          latestReleases: latestReleasesResult.map((packet: any) => packet.id),
-          unreadEpisodes: unReadResult.map((packet: any) => packet.id),
-          latestReleased: [],
-        };
-      },
-    );
+      return {
+        id: result.id,
+        countryOfOrigin: result.countryOfOrigin,
+        languageOfOrigin: result.languageOfOrigin,
+        author: result.author,
+        title: result.title,
+        medium: result.medium,
+        artist: result.artist,
+        lang: result.lang,
+        stateOrigin: result.stateOrigin,
+        stateTL: result.stateTL,
+        series: result.series,
+        universe: result.universe,
+        parts: partsResult.map((packet: any) => packet.id),
+        currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
+        latestReleases: latestReleasesResult.map((packet: any) => packet.id),
+        unreadEpisodes: unReadResult.map((packet: any) => packet.id),
+        latestReleased: [],
+      };
+    });
   }
 
   public async getAllMediaFull(): Promise<TypedQuery<SimpleMedium>> {
@@ -250,7 +247,7 @@ export class MediumContext extends SubContext {
     const idMap = new Map<number, SecondaryMedium>();
 
     for (const value of readStats) {
-      const secondary = (value as unknown) as SecondaryMedium;
+      const secondary = value as unknown as SecondaryMedium;
       secondary.tocs = [];
       idMap.set(value.id, secondary);
     }

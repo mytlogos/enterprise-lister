@@ -187,8 +187,12 @@ import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
 import ToolTip from "bootstrap/js/dist/tooltip";
 import { batch, formatDate, mergeMediaToc } from "../init";
-import Chart from "chart.js";
+// @ts-ignore
+import { Chart, LineController, LineElement, PointElement, LinearScale, Title } from "chart.js";
 import AddEpisodeModal from "../components/modal/add-episode-modal.vue";
+
+// @ts-ignore
+Chart.register(LineController, LineElement, PointElement, LinearScale, Title);
 
 interface EpisodeRelease extends MediumRelease {
   others: MediumRelease[];
@@ -342,37 +346,31 @@ export default defineComponent({
 
     chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
       type: "line",
-      data: {},
+      data: {
+        datasets: [],
+      },
       options: {
         scales: {
-          xAxes: [
-            {
-              type: "time",
-              distribution: "linear",
-              time: {
-                unit: "hour",
-                displayFormats: {
-                  hour: "DD.MM.YYYY",
-                },
+          // @ts-ignore
+          x: {
+            // @ts-ignore
+            type: "time",
+            distribution: "linear",
+            time: {
+              unit: "hour",
+              displayFormats: {
+                hour: "DD.MM.YYYY",
               },
             },
-          ],
-          yAxes: [
-            {
-              display: true,
-              id: "left-y-axis",
-              type: "linear",
-              position: "left",
-              ticks: {
-                // beginAtZero: true,
-                // max: 20,
-              },
-              scaleLabel: {
-                display: true,
-                labelString: "Unused",
-              },
-            },
-          ],
+          },
+          y: {
+            display: true,
+            // @ts-ignore
+            type: "linear",
+            position: "left",
+            // @ts-ignore
+            title: "Number of Releases",
+          },
         },
       },
     });
@@ -445,7 +443,7 @@ export default defineComponent({
       const newDataSet = [];
 
       // @ts-expect-error
-      chart.options.scales.yAxes[0].scaleLabel.labelString = "Release Count";
+      chart.options.scales.y.scaleLabel.labelString = "Release Count";
 
       newDataSet.push({
         label: "All",
@@ -458,6 +456,7 @@ export default defineComponent({
       });
 
       chart.data.labels = xValues;
+      // @ts-ignore
       chart.data.datasets = newDataSet;
       chart.update();
 

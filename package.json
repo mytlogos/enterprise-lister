@@ -1,6 +1,6 @@
 {
   "name": "enterprise-other",
-  "version": "1.17.0",
+  "version": "1.18.2",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -27,8 +27,8 @@
     "@semantic-release/changelog": "^5.0.1",
     "@semantic-release/git": "^9.0.0",
     "@semantic-release/release-notes-generator": "^9.0.2",
-    "@typescript-eslint/eslint-plugin": "^4.29.1",
-    "@typescript-eslint/parser": "^4.29.1",
+    "@typescript-eslint/eslint-plugin": "^4.29.3",
+    "@typescript-eslint/parser": "^4.29.3",
     "@vue/eslint-config-standard": "^6.0.0",
     "@vue/eslint-config-typescript": "^7.0.0",
     "commitizen": "^4.2.3",
@@ -36,16 +36,16 @@
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.1.0",
     "eslint-config-standard": "^16.0.2",
-    "eslint-plugin-import": "^2.24.0",
-    "eslint-plugin-jsdoc": "^36.0.7",
+    "eslint-plugin-import": "^2.24.2",
+    "eslint-plugin-jsdoc": "^36.0.8",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-prettier": "^3.4.1",
     "eslint-plugin-promise": "^5.1.0",
-    "eslint-plugin-vue": "^7.16.0",
-    "husky": "^7.0.1",
+    "eslint-plugin-vue": "^7.17.0",
+    "husky": "^7.0.2",
     "prettier": "^2.3.2",
-    "semantic-release": "^17.4.5"
+    "semantic-release": "^17.4.7"
   },
   "postcss": {
     "plugins": {

@@ -25,7 +25,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const newsRow = newsRows.eq(i);
 
     const mediumElement = newsRow.find(".name a");
-    const link = new url.URL(mediumElement.attr("href") as string, uri).href
+    const link = new url.URL(mediumElement.attr("href") as string, uri).href;
     const linkMatch = linkPattern.exec(link);
 
     if (!linkMatch) {

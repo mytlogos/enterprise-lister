@@ -10,7 +10,7 @@ import {
 import * as url from "url";
 import { queueCheerioRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
-import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay } from "enterprise-core/dist/tools";
+import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError } from "../errors";
@@ -21,7 +21,7 @@ async function tryRequest(link: string, options?: Options, retry = 0): Promise<c
     return await queueCheerioRequest(link);
   } catch (error) {
     // mangahasu likes to throw an Internal Server Error every now and then
-    if (error.statusCode === 500) {
+    if (hasProp(error, "statusCode") && error.statusCode === 500) {
       // try at most 3 times
       if (retry < 3) {
         // wait a bit before trying again

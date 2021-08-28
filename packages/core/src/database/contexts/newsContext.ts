@@ -60,17 +60,15 @@ export class NewsContext extends SubContext {
       [uuid, uuid, uuid],
     );
 
-    return newsResult.map(
-      (value): News => {
-        return {
-          title: value.title,
-          date: value.date,
-          link: value.link,
-          id: value.id,
-          read: Boolean(value.read_news),
-        };
-      },
-    );
+    return newsResult.map((value): News => {
+      return {
+        title: value.title,
+        date: value.date,
+        link: value.link,
+        id: value.id,
+        read: Boolean(value.read_news),
+      };
+    });
   }
 
   /**
@@ -121,17 +119,15 @@ export class NewsContext extends SubContext {
     }
     const newsResult: any[] = await this.query(query, parameter);
 
-    return newsResult.map(
-      (value): News => {
-        return {
-          title: value.title,
-          date: value.date,
-          link: value.link,
-          id: value.id,
-          read: Boolean(value.read_news),
-        };
-      },
-    );
+    return newsResult.map((value): News => {
+      return {
+        title: value.title,
+        date: value.date,
+        link: value.link,
+        id: value.id,
+        read: Boolean(value.read_news),
+      };
+    });
   }
 
   /**
