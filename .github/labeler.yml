@@ -1,0 +1,20 @@
+deps@core:
+- packages/core/package.json
+deps@scraper:
+- packages/scraper/package.json
+deps@server:
+- packages/server/package.json
+deps@website:
+- packages/website/package.json
+deps:
+- package.json
+docs:
+- README.md
+@core:
+- any: [ "packages/core/**", "!packages/core/package.json", "!packages/core/package-lock.json" ]
+@scraper:
+- any: [ "packages/scraper/**", "!packages/scraper/package.json", "!packages/scraper/package-lock.json" ]
+@server:
+- any: [ "packages/server/**", "!packages/server/package.json", "!packages/server/package-lock.json" ]
+@website:
+- any: [ "packages/website/**", "!packages/website/package.json", "!packages/website/package-lock.json" ]
