@@ -810,6 +810,24 @@ export function findProjectDirPath(file: string): string {
   return findRelativeProjectDirPath(process.cwd(), file);
 }
 
+export function hasProps<T, U extends string | number | symbol>(
+  obj: T,
+  ...propName: U[]
+): obj is T & { [P in U]: unknown } {
+  return obj && propName.every((x) => x in obj);
+}
+
+export function hasProp<T, U extends string | number | symbol>(obj: T, propName: U): obj is T & { [P in U]: unknown } {
+  return obj && propName in obj;
+}
+
+export function hasPropType<V, T = any, U extends string | number | symbol = string | number | symbol>(
+  obj: T,
+  propName: U,
+): obj is T & { [P in U]: V } {
+  return obj && propName in obj;
+}
+
 export function findRelativeProjectDirPath(dir: string, file: string): string {
   let filePath = file;
   let currentDirFiles: string[] = fs.readdirSync(dir);
