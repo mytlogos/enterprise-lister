@@ -112,3 +112,4 @@ packages/server/bin/validateMiddleware.ts
 packages/server/bin/database/schema.ts
 packages/server/bin/misc/openapi/validateMiddleware.ts
 packages/server/bin/misc/openapi/webclient.ts
+tsconfig.tsbuildinfo
