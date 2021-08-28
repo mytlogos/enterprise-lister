@@ -10,11 +10,11 @@ deps:
 - package.json
 docs:
 - README.md
-@core:
+core:
 - any: [ "packages/core/**", "!packages/core/package.json", "!packages/core/package-lock.json" ]
-@scraper:
+scraper:
 - any: [ "packages/scraper/**", "!packages/scraper/package.json", "!packages/scraper/package-lock.json" ]
-@server:
+server:
 - any: [ "packages/server/**", "!packages/server/package.json", "!packages/server/package-lock.json" ]
-@website:
+website:
 - any: [ "packages/website/**", "!packages/website/package.json", "!packages/website/package-lock.json" ]
