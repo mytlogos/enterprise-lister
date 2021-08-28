@@ -1,5 +1,5 @@
 
-name: Node.js CI
+name: Node.js CI Build-Test-Release
 
 on:
   pull_request:
@@ -34,7 +34,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm install
+      - run: npm ci
       - run: npm run build --ws
       - run: npm run test --ws
       - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
