@@ -8,6 +8,13 @@ import { getStores } from "enterprise-core/dist/asyncStorage";
 import os from "os";
 import debug from "debug";
 import env from "enterprise-core/dist/env";
+import { register, collectDefaultMetrics } from "prom-client";
+collectDefaultMetrics({
+  labels: {
+    NODE_APP_INSTANCE: "enterprise-crawler",
+  },
+});
+
 // start websocket server
 import "./websocket";
 const debugMessenger = debug("enterprise-lister:crawler");
@@ -22,7 +29,19 @@ status.start();
 /**
  * Create HTTP server.
  */
-const server: Server = createServer((_req, res) => {
+const server: Server = createServer((req, res) => {
+  if (req.url === "/metrics") {
+    res.setHeader("Content-Type", register.contentType);
+    register
+      .metrics()
+      .then((metrics) => res.end(metrics))
+      .catch((reason) => {
+        res.statusCode = 500;
+        res.end();
+        logger.error(reason);
+      });
+    return;
+  }
   const stores = getStores();
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Access-Control-Allow-Origin", "*");

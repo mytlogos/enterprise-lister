@@ -14,6 +14,21 @@ import { isString } from "enterprise-core/dist/tools";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
 import enableWS from "express-ws";
+import promBundle from "express-prom-bundle";
+
+// Add the options to the prometheus middleware most option are for http_request_duration_seconds histogram metric
+const metricsMiddleware = promBundle({
+  includeMethod: true,
+  includePath: true,
+  includeStatusCode: true,
+  includeUp: true,
+  customLabels: { NODE_APP_INSTANCE: "enterprise-server" },
+  promClient: {
+    collectDefaultMetrics: {
+      labels: { NODE_APP_INSTANCE: "enterprise-server" },
+    },
+  },
+});
 
 const specs = swaggerJsDoc({
   swaggerDefinition: {
@@ -55,6 +70,7 @@ app.use((req, res, next) => {
 
 // only accept json as req body
 app.use(express.json());
+app.use(metricsMiddleware);
 
 app.use("/api", apiRouter());
 app.use("/doc", swaggerUi.serve, swaggerUi.setup(specs));
