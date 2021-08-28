@@ -49,7 +49,7 @@
     "@types/mocha": "^9.0.0",
     "@types/morgan": "^1.9.3",
     "@types/mysql": "^2.15.18",
-    "@types/node": "^16.6.2",
+    "@types/node": "^16.7.2",
     "@types/node-cache": "^4.2.5",
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.17",
@@ -67,6 +67,6 @@
     "sinon": "^11.1.2",
     "sinon-as-promised": "^4.0.3",
     "sinon-chai": "^3.7.0",
-    "typescript": "^4.3.5"
+    "typescript": "^4.4.2"
   }
 }
