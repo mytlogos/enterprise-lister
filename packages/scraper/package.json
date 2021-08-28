@@ -18,7 +18,7 @@
     "emoji-strip": "latest",
     "feedparser-promised": "^2.0.1",
     "handlebars": "^4.7.7",
-    "htmlparser2": "^6.0.1",
+    "htmlparser2": "^7.1.0",
     "http-errors": "^1.8.0",
     "mysql": "^2.18.1",
     "node-cache": "^5.1.2",
