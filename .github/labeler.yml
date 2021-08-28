@@ -3,7 +3,7 @@ deps:
 docs:
 - README.md
 core:
-- packages/core/**"
+- "packages/core/**"
 scraper:
 - "packages/scraper/**"
 server:
