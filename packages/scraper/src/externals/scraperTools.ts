@@ -1,6 +1,15 @@
 import { factory, ListScrapeResult, ListType } from "./listManager";
 import feedParserPromised from "feedparser-promised";
-import { combiIndex, getElseSet, hasMediaType, hasProp, ignore, max, maxValue, MediaType } from "enterprise-core/dist/tools";
+import {
+  combiIndex,
+  getElseSet,
+  hasMediaType,
+  hasProp,
+  ignore,
+  max,
+  maxValue,
+  MediaType,
+} from "enterprise-core/dist/tools";
 import { isTocPart } from "../tools";
 import {
   Episode,
@@ -821,7 +830,10 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
       try {
         episodeContents = await downloaderEntry[1](release.url);
       } catch (e) {
-        if (e instanceof MissingResourceError || (hasProp(e, "statusCode") &&  e.statusCode && (e.statusCode === 410 || e.statusCode === 404))) {
+        if (
+          e instanceof MissingResourceError ||
+          (hasProp(e, "statusCode") && e.statusCode && (e.statusCode === 410 || e.statusCode === 404))
+        ) {
           episodeStorage.deleteRelease(release).catch(logger.error);
         } else {
           logger.error(e);

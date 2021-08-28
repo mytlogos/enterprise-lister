@@ -123,12 +123,10 @@ export class PartContext extends SubContext {
    * If there is no such part, it returns an object with only the totalIndex as property.
    */
   public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: MultiSingleNumber): Promise<MinPart[]> {
-    const parts: Optional<
-      any[]
-    > = await this.queryInList("SELECT * FROM part WHERE medium_id = ? AND combiIndex IN (??);", [
-      mediumId,
-      partCombiIndex,
-    ]);
+    const parts: Optional<any[]> = await this.queryInList(
+      "SELECT * FROM part WHERE medium_id = ? AND combiIndex IN (??);",
+      [mediumId, partCombiIndex],
+    );
     if (!parts || !parts.length) {
       return [];
     }
@@ -140,17 +138,15 @@ export class PartContext extends SubContext {
       }
     });
 
-    return parts.map(
-      (value): MinPart => {
-        return {
-          id: value.id,
-          totalIndex: value.totalIndex,
-          partialIndex: value.partialIndex,
-          title: value.title,
-          mediumId: value.medium_id,
-        };
-      },
-    );
+    return parts.map((value): MinPart => {
+      return {
+        id: value.id,
+        totalIndex: value.totalIndex,
+        partialIndex: value.partialIndex,
+        title: value.title,
+        mediumId: value.medium_id,
+      };
+    });
   }
 
   /**
@@ -227,9 +223,7 @@ export class PartContext extends SubContext {
     if (!partIds.length) {
       return {};
     }
-    const episodesResult: Array<
-      SimpleRelease & { part_id: number }
-    > = await this.queryInList(
+    const episodesResult: Array<SimpleRelease & { part_id: number }> = await this.queryInList(
       "SELECT id as episodeId, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id IN (??);",
       [partIds],
     );
@@ -284,7 +278,12 @@ export class PartContext extends SubContext {
       storeModifications("part", "insert", result);
     } catch (e) {
       // do not catch if it isn't an duplicate key error
-      if (!e || (hasPropType<number>(e, "errno") && e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
+      if (
+        !e ||
+        (hasPropType<number>(e, "errno") &&
+          e.errno !== MysqlServerError.ER_DUP_KEY &&
+          e.errno !== MysqlServerError.ER_DUP_ENTRY)
+      ) {
         throw e;
       }
       const result = await this.query("SELECT id from part where medium_id=? and combiIndex=?", [
@@ -372,17 +371,15 @@ export class PartContext extends SubContext {
       partName,
       -1,
       -1,
-    ]).then(
-      (value): ShallowPart => {
-        storeModifications("part", "insert", value);
-        return {
-          totalIndex: -1,
-          title: partName,
-          id: value.insertId,
-          mediumId,
-          episodes: [],
-        };
-      },
-    );
+    ]).then((value): ShallowPart => {
+      storeModifications("part", "insert", value);
+      return {
+        totalIndex: -1,
+        title: partName,
+        id: value.insertId,
+        mediumId,
+        episodes: [],
+      };
+    });
   }
 }

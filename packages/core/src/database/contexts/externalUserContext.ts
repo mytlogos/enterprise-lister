@@ -122,19 +122,17 @@ export class ExternalUserContext extends SubContext {
         "WHERE last_scrape IS NULL OR last_scrape < TIMESTAMPADD(day, -7, now())",
     );
 
-    return result.map(
-      (value: any): ExternalUser => {
-        return {
-          uuid: value.uuid,
-          localUuid: value.local_uuid,
-          type: value.service,
-          cookies: value.cookies,
-          identifier: value.name,
-          lastScrape: value.last_scrape && new Date(value.last_scrape),
-          lists: [],
-        };
-      },
-    );
+    return result.map((value: any): ExternalUser => {
+      return {
+        uuid: value.uuid,
+        localUuid: value.local_uuid,
+        type: value.service,
+        cookies: value.cookies,
+        identifier: value.name,
+        lastScrape: value.last_scrape && new Date(value.last_scrape),
+        lists: [],
+      };
+    });
   }
 
   /**

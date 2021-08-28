@@ -296,21 +296,19 @@ export class QueryContext implements ConnectionContext {
   public async getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
     const result: any[] = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
     await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger.error(reason));
-    return result.map(
-      (value: any): Invalidation => {
-        return {
-          externalListId: value.external_list_id,
-          externalUuid: value.external_uuid,
-          mediumId: value.medium_id,
-          partId: value.part_id,
-          episodeId: value.episode_id,
-          userUuid: !!value.user_uuid,
-          listId: value.list_id,
-          newsId: value.news_id,
-          uuid,
-        };
-      },
-    );
+    return result.map((value: any): Invalidation => {
+      return {
+        externalListId: value.external_list_id,
+        externalUuid: value.external_uuid,
+        mediumId: value.medium_id,
+        partId: value.part_id,
+        episodeId: value.episode_id,
+        userUuid: !!value.user_uuid,
+        listId: value.list_id,
+        newsId: value.news_id,
+        uuid,
+      };
+    });
   }
 
   public async getInvalidatedStream(uuid: Uuid): Promise<Query> {
