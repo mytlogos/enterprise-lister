@@ -45,7 +45,7 @@
     "@types/expect.js": "^0.3.29",
     "@types/htmlparser2": "^3.10.2",
     "@types/http-errors": "^1.8.0",
-    "@types/js-yaml": "^4.0.1",
+    "@types/js-yaml": "^4.0.3",
     "@types/mocha": "^9.0.0",
     "@types/morgan": "^1.9.3",
     "@types/mysql": "^2.15.18",
