@@ -91,12 +91,16 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
-import Chart from "chart.js";
+// @ts-ignore
+import { Chart, LineController, LineElement, PointElement, LinearScale, Title } from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
 import { formatDate, round } from "../init";
 import * as storage from "../storage";
 import { interpolateColors } from "../colorscale";
 import { interpolateCool } from "d3-scale-chromatic";
+
+// @ts-ignore
+Chart.register(LineController, LineElement, PointElement, LinearScale, Title);
 
 interface ChartJobDatum extends TimeJobStats {
   modifications: number;
@@ -349,45 +353,39 @@ export default defineComponent({
   mounted() {
     this.chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
       type: "line",
-      data: {},
+      data: {
+        datasets: [],
+      },
       options: {
         scales: {
-          xAxes: [
-            {
-              type: "time",
-              distribution: "series",
-              time: {
-                unit: "hour",
-                displayFormats: {
-                  hour: "DD.MM HH:mm",
-                },
+          // @ts-ignore
+          x: {
+            // @ts-ignore
+            type: "time",
+            distribution: "series",
+            time: {
+              unit: "hour",
+              displayFormats: {
+                hour: "DD.MM HH:mm",
               },
             },
-          ],
-          yAxes: [
-            {
-              display: false,
-              id: "left-y-axis",
-              type: "linear",
-              position: "left",
-              ticks: {},
-              scaleLabel: {
-                display: true,
-                labelString: "Unused",
-              },
-            },
-            {
-              display: false,
-              id: "right-y-axis",
-              type: "linear",
-              position: "right",
-              ticks: {},
-              scaleLabel: {
-                display: true,
-                labelString: "Unused",
-              },
-            },
-          ],
+          },
+          "left-y-axis": {
+            display: false,
+            // @ts-ignore
+            type: "linear",
+            position: "left",
+            // @ts-ignore
+            title: "unused",
+          },
+          "right-y-axis": {
+            display: false,
+            // @ts-ignore
+            type: "linear",
+            position: "right",
+            // @ts-ignore
+            title: "unused",
+          },
         },
       },
     });
