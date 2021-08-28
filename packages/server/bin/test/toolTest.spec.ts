@@ -44,9 +44,7 @@ function testRelative(value: string, offset: number, unit: TimeUnit): void {
   if (unit === "Week") {
     now.setDate(now.getDate() - offset * 7);
   } else {
-    // @ts-expect-error
     const setter = now[`set${unit}`].bind(now);
-    // @ts-expect-error
     const getter = now[`get${unit}`].bind(now);
     setter(getter() - offset);
   }

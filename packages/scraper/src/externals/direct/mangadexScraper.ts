@@ -3,7 +3,7 @@ import { EpisodeContentData, EpisodeNews, ReleaseState, Optional } from "enterpr
 import * as url from "url";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
-import { extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
+import { extractIndices, hasProp, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import * as request from "request";
 import { checkTocContent } from "../scraperTools";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
@@ -99,7 +99,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
   try {
     jsonResponse = await jsonPromise;
   } catch (e) {
-    if (e.statusCode && e.statusCode === 409) {
+    if (hasProp(e, "statusCode") && e.statusCode && e.statusCode === 409) {
       return [
         {
           content: [],

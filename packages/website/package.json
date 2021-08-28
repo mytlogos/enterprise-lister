@@ -11,26 +11,26 @@
     "build:dev": "vue-cli-service build --mode development",
     "commit": "npx git-cz",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js"
+    "test": "echo 'Implement tests'"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^5.15.4",
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "bootstrap": "^5.1.0",
-    "chart.js": "^2.9.4",
+    "chart.js": "^3.5.1",
     "d3-scale-chromatic": "^3.0.0",
     "mitt": "^3.0.0",
     "@popperjs/core": "^2.9.3",
     "tslib": "^2.3.1",
-    "vue": "^3.2.2",
+    "vue": "^3.2.6",
     "vue-observe-visibility": "^1.0.0",
     "vue-router": "^4.0.11",
     "vuex": "^4.0.2",
     "vuex-persistedstate": "^4.0.0"
   },
   "devDependencies": {
-    "@types/bootstrap": "^5.1.1",
+    "@types/bootstrap": "^5.1.2",
     "@types/chai": "^4.2.18",
     "@types/chai-as-promised": "^7.1.4",
     "@types/chart.js": "^2.9.34",
@@ -48,17 +48,17 @@
     "@vue/cli-plugin-typescript": "^5.0.0-beta.3",
     "@vue/cli-plugin-vuex": "^5.0.0-beta.3",
     "@vue/cli-service": "^5.0.0-beta.3",
-    "@vue/compiler-sfc": "^3.2.2",
+    "@vue/compiler-sfc": "^3.2.6",
     "@vue/test-utils": "^2.0.0-rc.12",
     "babel-core": "6.26.3",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "copy-webpack-plugin": "9.0.1",
-    "mocha": "^9.0.3",
+    "mocha": "^9.1.0",
     "sinon": "^11.1.2",
     "sinon-as-promised": "^4.0.3",
     "sinon-chai": "^3.7.0",
-    "typescript": "^4.3.2"
+    "typescript": "^4.4.2"
   },
   "postcss": {
     "plugins": {

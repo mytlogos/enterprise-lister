@@ -135,17 +135,15 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
 
     const sourcedReleases = await episodeStorage.getSourcedReleases(sourceType, mediumId);
     const toUpdateReleases = oldReleases
-      .map(
-        (value): EpisodeRelease => {
-          return {
-            title: value.title,
-            url: value.link,
-            releaseDate: value.date,
-            sourceType,
-            episodeId: 0,
-          };
-        },
-      )
+      .map((value): EpisodeRelease => {
+        return {
+          title: value.title,
+          url: value.link,
+          releaseDate: value.date,
+          sourceType,
+          episodeId: 0,
+        };
+      })
       .filter((value) => {
         const foundRelease = sourcedReleases.find((release) => release.title === value.title);
 
@@ -162,30 +160,28 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
     news = potentialNews;
   }
 
-  const newEpisodes = news.map(
-    (value): SimpleEpisode => {
-      const exec = chapIndexReg.exec(value.title);
-      if (!exec) {
-        throw Error(`'${value.title}' does not end with chapter number`);
-      }
-      const totalIndex = Number(exec[1]);
-      return {
-        totalIndex,
-        releases: [
-          {
-            episodeId: 0,
-            sourceType,
-            releaseDate: value.date,
-            url: value.link,
-            title: value.title,
-          },
-        ],
-        id: 0,
-        // @ts-expect-error
-        partId: standardPart.id,
-      };
-    },
-  );
+  const newEpisodes = news.map((value): SimpleEpisode => {
+    const exec = chapIndexReg.exec(value.title);
+    if (!exec) {
+      throw Error(`'${value.title}' does not end with chapter number`);
+    }
+    const totalIndex = Number(exec[1]);
+    return {
+      totalIndex,
+      releases: [
+        {
+          episodeId: 0,
+          sourceType,
+          releaseDate: value.date,
+          url: value.link,
+          title: value.title,
+        },
+      ],
+      id: 0,
+      // @ts-expect-error
+      partId: standardPart.id,
+    };
+  });
 
   if (newEpisodes.length) {
     await episodeStorage.addEpisode(newEpisodes);

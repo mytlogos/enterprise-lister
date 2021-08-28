@@ -1,8 +1,9 @@
 import { JobItem } from "enterprise-core/dist/types";
 import { jobStorage } from "enterprise-core/dist/database/storages/storage";
+import { getElseSet, stringify } from "enterprise-core/dist/tools";
 import { JobQueue } from "../jobManager";
 import { getQueueKey } from "./queueManager";
-import { getElseSet } from "../../../core/dist/tools";
+import { writeFile } from "fs/promises";
 
 export type SchedulingStrategy = (queue: JobQueue, items: JobItem[]) => Promise<JobItem[]>;
 
@@ -42,6 +43,7 @@ async function requestQueueBalanced(queue: JobQueue, currentItems: JobItem[]): P
   const currentShares = getRequestQueueShare(currentItems);
   const jobs = await jobStorage.queryJobs();
   const sharesToStake = getRequestQueueShare(jobs);
+  const sharesCopy = new Map(sharesToStake);
 
   const futureShares = new Map(currentShares);
 
@@ -51,6 +53,7 @@ async function requestQueueBalanced(queue: JobQueue, currentItems: JobItem[]): P
     }
   }
 
+  const futureOnlyShares = new Map<string, JobItem[]>([...futureShares.keys()].map((key) => [key, []]));
   const maximumSchedulableJobs = Math.max(queue.maxActive - queue.queuedJobs, 0);
   const jobsToQueue = [];
 
@@ -83,12 +86,24 @@ async function requestQueueBalanced(queue: JobQueue, currentItems: JobItem[]): P
     if (firstItem) {
       jobsToQueue.push(firstItem);
       futureShares.get(queueKey)?.push(firstItem);
+      futureOnlyShares.get(queueKey)?.push(firstItem);
     }
     // remove key from map if no items to queue are left
     if (!items.length) {
       sharesToStake.delete(queueKey);
     }
   }
+  writeFile(
+    "jobqueue-plan.json",
+    stringify({
+      current: currentShares,
+      available: sharesCopy,
+      next: futureShares,
+    }) + "\n",
+    {
+      flag: "a",
+    },
+  ).catch(console.error);
   return jobsToQueue;
 }
 

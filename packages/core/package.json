@@ -6,7 +6,7 @@
     "build": "tsc -p ./",
     "test:unit": "vue-cli-service test:unit",
     "lint": "eslint '*/**/*.{js,ts,vue}'",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./dist/**/test/database/**/*.js ./dist/**/test/*.js",
+    "test": "echo 'Implement tests'",
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "dependencies": {
@@ -18,7 +18,7 @@
     "emoji-strip": "latest",
     "feedparser-promised": "^2.0.1",
     "handlebars": "^4.7.7",
-    "htmlparser2": "^6.0.1",
+    "htmlparser2": "^7.1.0",
     "http-errors": "^1.8.0",
     "localtunnel": "^2.0.1",
     "mysql": "^2.18.1",
@@ -45,11 +45,11 @@
     "@types/expect.js": "^0.3.29",
     "@types/htmlparser2": "^3.10.2",
     "@types/http-errors": "^1.8.0",
-    "@types/js-yaml": "^4.0.1",
+    "@types/js-yaml": "^4.0.3",
     "@types/mocha": "^9.0.0",
     "@types/morgan": "^1.9.3",
     "@types/mysql": "^2.15.18",
-    "@types/node": "^16.6.1",
+    "@types/node": "^16.7.4",
     "@types/node-cache": "^4.2.5",
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.17",
@@ -63,10 +63,10 @@
     "chai-as-promised": "^7.1.1",
     "commitizen": "^4.2.3",
     "js-yaml": "^4.1.0",
-    "mocha": "^9.0.3",
+    "mocha": "^9.1.0",
     "sinon": "^11.1.2",
     "sinon-as-promised": "^4.0.3",
     "sinon-chai": "^3.7.0",
-    "typescript": "^4.3.5"
+    "typescript": "^4.4.2"
   }
 }

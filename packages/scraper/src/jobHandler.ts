@@ -282,82 +282,80 @@ async function addPartEpisodes(
       }
       nonNewIndices.push(index);
     })
-    .map(
-      (episodeIndex): SimpleEpisode => {
-        const episodeToc = value.episodeMap.get(episodeIndex);
+    .map((episodeIndex): SimpleEpisode => {
+      const episodeToc = value.episodeMap.get(episodeIndex);
 
-        if (!episodeToc) {
-          throw Error("something went wrong. got no value at this episode index");
-        }
-        return {
-          id: 0,
-          // @ts-expect-error
-          partId: value.part.id,
-          totalIndex: episodeToc.tocEpisode.totalIndex,
-          partialIndex: episodeToc.tocEpisode.partialIndex,
-          releases: [
-            {
-              episodeId: 0,
-              title: episodeToc.tocEpisode.title,
-              url: episodeToc.tocEpisode.url,
-              releaseDate: getLatestDate(episodeToc.tocEpisode.releaseDate || new Date()),
-            },
-          ],
-        };
-      },
-    );
-  const knownEpisodeIds = (nonNewIndices
-    .map((index) => episodes.find((episode) => combiIndex(episode) === index))
-    .filter((episode) => episode != null) as SimpleEpisode[]).map((episode: SimpleEpisode) => episode.id);
+      if (!episodeToc) {
+        throw Error("something went wrong. got no value at this episode index");
+      }
+      return {
+        id: 0,
+        // @ts-expect-error
+        partId: value.part.id,
+        totalIndex: episodeToc.tocEpisode.totalIndex,
+        partialIndex: episodeToc.tocEpisode.partialIndex,
+        releases: [
+          {
+            episodeId: 0,
+            title: episodeToc.tocEpisode.title,
+            url: episodeToc.tocEpisode.url,
+            releaseDate: getLatestDate(episodeToc.tocEpisode.releaseDate || new Date()),
+          },
+        ],
+      };
+    });
+  const knownEpisodeIds = (
+    nonNewIndices
+      .map((index) => episodes.find((episode) => combiIndex(episode) === index))
+      .filter((episode) => episode != null) as SimpleEpisode[]
+  ).map((episode: SimpleEpisode) => episode.id);
 
   if (knownEpisodeIds.length) {
     const updateReleases: EpisodeRelease[] = [];
 
     const newReleases = nonNewIndices
-      .map(
-        (index): Optional<EpisodeRelease> => {
-          const episodeValue = value.episodeMap.get(index);
+      .map((index): Optional<EpisodeRelease> => {
+        const episodeValue = value.episodeMap.get(index);
 
-          if (!episodeValue) {
-            throw Error(`no episodeValue for index ${index} of medium ${value.part && value.part.mediumId}`);
+        if (!episodeValue) {
+          throw Error(`no episodeValue for index ${index} of medium ${value.part && value.part.mediumId}`);
+        }
+        const currentEpisode = episodeValue.episode;
+
+        if (!currentEpisode) {
+          throw Error("known episode has no episode from storage");
+        }
+        const id = currentEpisode.id;
+        const foundRelease = storageReleases.find(
+          (release) => release.url === episodeValue.tocEpisode.url && release.episodeId === id,
+        );
+
+        const tocRelease: EpisodeRelease = {
+          episodeId: id,
+          releaseDate: getLatestDate(episodeValue.tocEpisode.releaseDate || new Date()),
+          title: episodeValue.tocEpisode.title,
+          url: episodeValue.tocEpisode.url,
+          locked: episodeValue.tocEpisode.locked,
+          tocId: episodeValue.tocEpisode.tocId,
+        };
+        if (foundRelease) {
+          const date =
+            foundRelease.releaseDate < tocRelease.releaseDate ? foundRelease.releaseDate : tocRelease.releaseDate;
+
+          // check in what way the releases differ, there are cases there
+          // only the time changes, as the same releases is extracted
+          // from a non changing relative Time value, thus having a later absolute time
+          // a release should only be update if any value except releaseDate is different
+          // or the releaseDate of the new value is earlier then the previous one
+          if (tocRelease.releaseDate < foundRelease.releaseDate || !equalsRelease(foundRelease, tocRelease)) {
+            // use the earliest release date as value
+            tocRelease.releaseDate = date;
+            updateReleases.push(tocRelease);
           }
-          const currentEpisode = episodeValue.episode;
-
-          if (!currentEpisode) {
-            throw Error("known episode has no episode from storage");
-          }
-          const id = currentEpisode.id;
-          const foundRelease = storageReleases.find(
-            (release) => release.url === episodeValue.tocEpisode.url && release.episodeId === id,
-          );
-
-          const tocRelease: EpisodeRelease = {
-            episodeId: id,
-            releaseDate: getLatestDate(episodeValue.tocEpisode.releaseDate || new Date()),
-            title: episodeValue.tocEpisode.title,
-            url: episodeValue.tocEpisode.url,
-            locked: episodeValue.tocEpisode.locked,
-            tocId: episodeValue.tocEpisode.tocId,
-          };
-          if (foundRelease) {
-            const date =
-              foundRelease.releaseDate < tocRelease.releaseDate ? foundRelease.releaseDate : tocRelease.releaseDate;
-
-            // check in what way the releases differ, there are cases there
-            // only the time changes, as the same releases is extracted
-            // from a non changing relative Time value, thus having a later absolute time
-            // a release should only be update if any value except releaseDate is different
-            // or the releaseDate of the new value is earlier then the previous one
-            if (tocRelease.releaseDate < foundRelease.releaseDate || !equalsRelease(foundRelease, tocRelease)) {
-              // use the earliest release date as value
-              tocRelease.releaseDate = date;
-              updateReleases.push(tocRelease);
-            }
-            return;
-          }
-          return tocRelease;
-        },
-      )
+          return;
+        }
+        return tocRelease;
+      })
       .filter((v) => v) as EpisodeRelease[];
 
     if (newReleases.length) {
@@ -523,18 +521,16 @@ async function addFeeds(feeds: string[]): EmptyPromise {
     return;
   }
   await scraper.addJobs(
-    ...scrapeFeeds.map(
-      (value): JobRequest => {
-        return {
-          arguments: value,
-          type: ScrapeName.feed,
-          name: `${ScrapeName.feed}-${value}`,
-          interval: MilliTime.MINUTE * 10,
-          runImmediately: true,
-          deleteAfterRun: false,
-        };
-      },
-    ),
+    ...scrapeFeeds.map((value): JobRequest => {
+      return {
+        arguments: value,
+        type: ScrapeName.feed,
+        name: `${ScrapeName.feed}-${value}`,
+        interval: MilliTime.MINUTE * 10,
+        runImmediately: true,
+        deleteAfterRun: false,
+      };
+    }),
   );
 }
 

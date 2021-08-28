@@ -91,12 +91,16 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
-import Chart from "chart.js";
+// @ts-ignore
+import { Chart, LineController, LineElement, PointElement, LinearScale, Title } from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
 import { formatDate, round } from "../init";
 import * as storage from "../storage";
 import { interpolateColors } from "../colorscale";
 import { interpolateCool } from "d3-scale-chromatic";
+
+// @ts-ignore
+Chart.register(LineController, LineElement, PointElement, LinearScale, Title);
 
 interface ChartJobDatum extends TimeJobStats {
   modifications: number;
@@ -347,50 +351,44 @@ export default defineComponent({
     },
   },
   mounted() {
-    this.chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
-      type: "line",
-      data: {},
-      options: {
-        scales: {
-          xAxes: [
-            {
-              type: "time",
-              distribution: "series",
-              time: {
-                unit: "hour",
-                displayFormats: {
-                  hour: "DD.MM HH:mm",
-                },
-              },
-            },
-          ],
-          yAxes: [
-            {
-              display: false,
-              id: "left-y-axis",
-              type: "linear",
-              position: "left",
-              ticks: {},
-              scaleLabel: {
-                display: true,
-                labelString: "Unused",
-              },
-            },
-            {
-              display: false,
-              id: "right-y-axis",
-              type: "linear",
-              position: "right",
-              ticks: {},
-              scaleLabel: {
-                display: true,
-                labelString: "Unused",
-              },
-            },
-          ],
-        },
-      },
-    });
+    // this.chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
+    //   type: "line",
+    //   data: {
+    //     datasets: [],
+    //   },
+    //   options: {
+    //     scales: {
+    //       // @ts-ignore
+    //       x: {
+    //         // @ts-ignore
+    //         type: "time",
+    //         distribution: "series",
+    //         time: {
+    //           unit: "hour",
+    //           displayFormats: {
+    //             hour: "DD.MM HH:mm",
+    //           },
+    //         },
+    //       },
+    //       "left-y-axis": {
+    //         display: false,
+    //         // @ts-ignore
+    //         type: "linear",
+    //         position: "left",
+    //         // @ts-ignore
+    //         title: "unused",
+    //       },
+    //       "right-y-axis": {
+    //         display: false,
+    //         // @ts-ignore
+    //         type: "linear",
+    //         position: "right",
+    //         // @ts-ignore
+    //         title: "unused",
+    //       },
+    //     },
+    //   },
+    // });
     this.loadData();
   },
   methods: {
@@ -541,16 +539,16 @@ export default defineComponent({
       const newDataSet = [];
 
       // hide axis when unused
-      // @ts-expect-error
-      (this.chart as Chart).options.scales.yAxes[0].display = leftFilter;
-      // @ts-expect-error
-      (this.chart as Chart).options.scales.yAxes[1].display = rightFilter;
+      // ts-expect-error
+      //(this.chart as Chart).options.scales.yAxes[0].display = leftFilter;
+      // ts-expect-error
+      //(this.chart as Chart).options.scales.yAxes[1].display = rightFilter;
 
       if (leftFilter) {
         const yValues = this.data.map((value) => value[leftFilter.key]);
-        // @ts-expect-error
-        (this.chart as Chart).options.scales.yAxes[0].scaleLabel.labelString =
-          leftFilter.name + " - " + leftFilter.unit;
+        // ts-expect-error
+        // (this.chart as Chart).options.scales.yAxes[0].scaleLabel.labelString =
+        //   leftFilter.name + " - " + leftFilter.unit;
 
         newDataSet.push({
           label: "All-" + leftFilter.name,
@@ -565,9 +563,9 @@ export default defineComponent({
       }
       if (rightFilter) {
         const yValues = this.data.map((value) => value[rightFilter.key]);
-        // @ts-expect-error
-        (this.chart as Chart).options.scales.yAxes[1].scaleLabel.labelString =
-          rightFilter.name + " - " + rightFilter.unit;
+        // ts-expect-error
+        // (this.chart as Chart).options.scales.yAxes[1].scaleLabel.labelString =
+        //   rightFilter.name + " - " + rightFilter.unit;
 
         newDataSet.push({
           label: "All-" + rightFilter.name,
@@ -581,8 +579,8 @@ export default defineComponent({
         }
       } else {
         // hide axis when unused
-        // @ts-expect-error
-        (this.chart as Chart).options.scales.yAxes[1].display = false;
+        // ts-expect-error
+        //(this.chart as Chart).options.scales.yAxes[1].display = false;
       }
 
       // remove the points which are not in datetime range
@@ -607,12 +605,12 @@ export default defineComponent({
         // @ts-expect-error
         dataset.backgroundColor = changeOpacity(colors[index], 0.5);
       }
-      // @ts-expect-error
-      this.chart.data.labels = points;
-      // @ts-expect-error
-      this.chart.data.datasets = newDataSet;
-      // @ts-expect-error
-      this.chart.update();
+      // ts-expect-error
+      //this.chart.data.labels = points;
+      // ts-expect-error
+      //this.chart.data.datasets = newDataSet;
+      // ts-expect-error
+      //this.chart.update();
 
       // no longer dirty as it is "tidied up" now
       this.dirty = false;

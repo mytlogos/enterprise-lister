@@ -1,3 +1,35 @@
+## [1.18.2](https://github.com/mytlogos/enterprise-lister/compare/v1.18.1...v1.18.2) (2021-08-28)
+
+
+### Bug Fixes
+
+* commit missing file ([7f9a8bd](https://github.com/mytlogos/enterprise-lister/commit/7f9a8bd4a687631d077f6ce7ed7ba86c0a17244b))
+* correct typescript errors ([7285a6d](https://github.com/mytlogos/enterprise-lister/commit/7285a6de6444be23ffcda1817100e02a5ea987d7))
+* disable JobStatistics Chart ([0afed15](https://github.com/mytlogos/enterprise-lister/commit/0afed1522dc12034464440bf44b9d0679631f96e))
+* lint workspaces ([debe4c8](https://github.com/mytlogos/enterprise-lister/commit/debe4c81b2a6ec2f644d0da9760224bbe44e3c30))
+
+## [1.18.1](https://github.com/mytlogos/enterprise-lister/compare/v1.18.0...v1.18.1) (2021-08-19)
+
+
+### Bug Fixes
+
+* create release zips ([ab04bdc](https://github.com/mytlogos/enterprise-lister/commit/ab04bdcf6c8bb67515a6ee9c1f6b2a4044d4733a))
+
+# [1.18.0](https://github.com/mytlogos/enterprise-lister/compare/v1.17.0...v1.18.0) (2021-08-19)
+
+
+### Bug Fixes
+
+* add github token to workflow ([1d85726](https://github.com/mytlogos/enterprise-lister/commit/1d8572653bb7187f5e7daf0d34fd2e7ce531dcb9))
+* add mariadb user ([21e5ae8](https://github.com/mytlogos/enterprise-lister/commit/21e5ae847d2cee641fb4cf6bdaa3f030441745e7))
+* add missing env variables and packages ([6920f6e](https://github.com/mytlogos/enterprise-lister/commit/6920f6e003b5bf4875e3b39f8e85d5eae883a6ce))
+* fix npm test script ([c2d09af](https://github.com/mytlogos/enterprise-lister/commit/c2d09afcac53985dbdbe3570e50cc0e610a49462))
+
+
+### Features
+
+* do not require env.env file ([91b20fd](https://github.com/mytlogos/enterprise-lister/commit/91b20fd9d6634ccbdfcbe88a26c7d91d8d81d256))
+
 # [1.17.0](https://github.com/mytlogos/enterprise-lister/compare/v1.16.0...v1.17.0) (2021-08-16)
 
 

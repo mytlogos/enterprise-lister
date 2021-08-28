@@ -332,6 +332,12 @@ export default defineComponent({
       console.log("Sorting Jobs on Fields: " + JSON.stringify(this.sortedOn));
 
       jobs.sort((a, b) => {
+        if (a.job_state === "enabled" && b.job_state === "disabled") {
+          return 1;
+        }
+        if (a.job_state === "disabled" && b.job_state === "enabled") {
+          return -1;
+        }
         for (const [key, order] of sortEntries) {
           if (!order) {
             continue;
@@ -424,14 +430,20 @@ export default defineComponent({
         // waiting jobs should not have this value set
         datum.runningSince = null;
       }
-      nameMap[datum.name] = Object.assign(datum, defaultJobStatSummmary);
+      if (datum.job_state !== "disabled") {
+        nameMap[datum.name] = Object.assign({}, defaultJobStatSummmary, datum);
+      }
     }
     this.summary.running = running;
     this.summary.waiting = waiting;
     this.summary.lagging = lagging;
-    this.jobStats = stats
-      .filter((value) => value.name in nameMap)
-      .map((value) => Object.assign(nameMap[value.name], value));
+
+    for (const value of stats) {
+      if (value.name in nameMap) {
+        Object.assign(nameMap[value.name], value);
+      }
+    }
+    this.jobStats = Object.values(nameMap);
 
     // fetch live jobs data
     await HttpClient.getCrawlerJobs()

@@ -32,6 +32,7 @@ import {
   promiseMultiSingle,
   separateIndex,
   batch,
+  hasPropType,
 } from "../../tools";
 import logger from "../../logger";
 import { MysqlServerError } from "../mysqlError";
@@ -178,51 +179,46 @@ export class EpisodeContext extends SubContext {
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
       return [];
     }
-    const resultArray: Optional<
-      any[]
-    > = await this.queryInList("SELECT * FROM episode_release WHERE episode_id IN (??)", [episodeId]);
+    const resultArray: Optional<any[]> = await this.queryInList(
+      "SELECT * FROM episode_release WHERE episode_id IN (??)",
+      [episodeId],
+    );
     if (!resultArray || !resultArray.length) {
       return [];
     }
-    return resultArray.map(
-      (value: any): EpisodeRelease => {
-        return {
-          episodeId: value.episode_id,
-          sourceType: value.source_type,
-          releaseDate: value.releaseDate,
-          locked: !!value.locked,
-          url: value.url,
-          title: value.title,
-        };
-      },
-    );
+    return resultArray.map((value: any): EpisodeRelease => {
+      return {
+        episodeId: value.episode_id,
+        sourceType: value.source_type,
+        releaseDate: value.releaseDate,
+        locked: !!value.locked,
+        url: value.url,
+        title: value.title,
+      };
+    });
   }
 
   public async getReleasesByHost(episodeId: number | number[], host: string): Promise<EpisodeRelease[]> {
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
       return [];
     }
-    const resultArray: Optional<
-      any[]
-    > = await this.queryInList("SELECT * FROM episode_release WHERE locate(?, url) = 1 AND episode_id IN (??);", [
-      host,
-      episodeId,
-    ]);
+    const resultArray: Optional<any[]> = await this.queryInList(
+      "SELECT * FROM episode_release WHERE locate(?, url) = 1 AND episode_id IN (??);",
+      [host, episodeId],
+    );
     if (!resultArray || !resultArray.length) {
       return [];
     }
-    return resultArray.map(
-      (value: any): EpisodeRelease => {
-        return {
-          episodeId: value.episode_id,
-          sourceType: value.source_type,
-          releaseDate: value.releaseDate,
-          locked: !!value.locked,
-          url: value.url,
-          title: value.title,
-        };
-      },
-    );
+    return resultArray.map((value: any): EpisodeRelease => {
+      return {
+        episodeId: value.episode_id,
+        sourceType: value.source_type,
+        releaseDate: value.releaseDate,
+        locked: !!value.locked,
+        url: value.url,
+        title: value.title,
+      };
+    });
   }
 
   public async getMediumReleasesByHost(mediumId: number, host: string): Promise<EpisodeRelease[]> {
@@ -236,29 +232,26 @@ export class EpisodeContext extends SubContext {
             `,
       [mediumId, host],
     );
-    return resultArray.map(
-      (value: any): EpisodeRelease => {
-        return {
-          episodeId: value.episode_id,
-          sourceType: value.source_type,
-          releaseDate: value.releaseDate,
-          locked: !!value.locked,
-          url: value.url,
-          title: value.title,
-          tocId: value.toc_id,
-        };
-      },
-    );
+    return resultArray.map((value: any): EpisodeRelease => {
+      return {
+        episodeId: value.episode_id,
+        sourceType: value.source_type,
+        releaseDate: value.releaseDate,
+        locked: !!value.locked,
+        url: value.url,
+        title: value.title,
+        tocId: value.toc_id,
+      };
+    });
   }
 
   public async getPartsEpisodeIndices(
     partId: number | number[],
   ): Promise<Array<{ partId: number; episodes: number[] }>> {
-    const result: Optional<
-      Array<{ part_id: number; combinedIndex: number }>
-    > = await this.queryInList("SELECT part_id, combiIndex as combinedIndex " + "FROM episode WHERE part_id IN (??)", [
-      partId,
-    ]);
+    const result: Optional<Array<{ part_id: number; combinedIndex: number }>> = await this.queryInList(
+      "SELECT part_id, combiIndex as combinedIndex " + "FROM episode WHERE part_id IN (??)",
+      [partId],
+    );
     if (!result) {
       return [];
     }
@@ -372,201 +365,198 @@ export class EpisodeContext extends SubContext {
       return;
     }
     const teaserMatcher = /\(?teaser\)?$|(\s+$)/i;
-    return promiseMultiSingle(
-      result.result,
-      async (value: MetaResult): EmptyPromise => {
-        // TODO what if it is not a serial medium but only an article? should it even save such things?
-        if (
-          !value.novel ||
-          (!value.chapIndex && !value.chapter) ||
-          // do not mark episode if they are a teaser only
-          (value.chapter && value.chapter.match(teaserMatcher))
-        ) {
-          return;
-        }
+    return promiseMultiSingle(result.result, async (value: MetaResult): EmptyPromise => {
+      // TODO what if it is not a serial medium but only an article? should it even save such things?
+      if (
+        !value.novel ||
+        (!value.chapIndex && !value.chapter) ||
+        // do not mark episode if they are a teaser only
+        (value.chapter && value.chapter.match(teaserMatcher))
+      ) {
+        return;
+      }
 
-        const resultArray: any[] = await this.query(
-          "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?);",
-          [value.novel, value.chapter, value.chapIndex],
+      const resultArray: any[] = await this.query(
+        "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?);",
+        [value.novel, value.chapter, value.chapIndex],
+      );
+      // if a similar/same result was mapped to an episode before, get episode_id and update read
+      if (resultArray[0] && resultArray[0].episode_id != null) {
+        const insertResult = await this.query(
+          "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
+          [uuid, resultArray[0].episode_id],
         );
-        // if a similar/same result was mapped to an episode before, get episode_id and update read
-        if (resultArray[0] && resultArray[0].episode_id != null) {
-          const insertResult = await this.query(
-            "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
-            [uuid, resultArray[0].episode_id],
-          );
-          storeModifications("progress", "insert", insertResult);
-          return;
-        }
+        storeModifications("progress", "insert", insertResult);
+        return;
+      }
 
-        const escapedNovel = escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
-        const media: Array<{
-          title: string;
-          id: number;
-          synonym?: string;
-        }> = await this.query(
-          "SELECT title, id,synonym FROM medium " +
-            "LEFT JOIN medium_synonyms ON medium.id=medium_synonyms.medium_id " +
-            "WHERE medium.title LIKE ? OR medium_synonyms.synonym LIKE ?;",
-          [escapedNovel, escapedNovel],
+      const escapedNovel = escapeLike(value.novel, { singleQuotes: true, noBoundaries: true });
+      const media: Array<{
+        title: string;
+        id: number;
+        synonym?: string;
+      }> = await this.query(
+        "SELECT title, id,synonym FROM medium " +
+          "LEFT JOIN medium_synonyms ON medium.id=medium_synonyms.medium_id " +
+          "WHERE medium.title LIKE ? OR medium_synonyms.synonym LIKE ?;",
+        [escapedNovel, escapedNovel],
+      );
+      // TODO for now only get the first medium?, later test it against each other
+      let bestMedium = media[0];
+
+      if (!bestMedium) {
+        const addedMedium = await this.parentContext.mediumContext.addMedium(
+          {
+            title: value.novel,
+            medium: MediaType.TEXT,
+          },
+          uuid,
         );
-        // TODO for now only get the first medium?, later test it against each other
-        let bestMedium = media[0];
+        bestMedium = { id: addedMedium.insertId, title: value.novel };
+        // TODO add medium if it is not known?
+      }
 
-        if (!bestMedium) {
-          const addedMedium = await this.parentContext.mediumContext.addMedium(
-            {
-              title: value.novel,
-              medium: MediaType.TEXT,
-            },
-            uuid,
-          );
-          bestMedium = { id: addedMedium.insertId, title: value.novel };
-          // TODO add medium if it is not known?
-        }
+      let volumeId;
 
-        let volumeId;
+      // if there is either an volume or volIndex in result
+      // search or add the given volume to link the episode to the part/volume
+      let volumeTitle = value.volume;
+      // if there is no volume yet, with the given volumeTitle or index, add one
+      let volIndex = Number(value.volIndex);
 
-        // if there is either an volume or volIndex in result
-        // search or add the given volume to link the episode to the part/volume
-        let volumeTitle = value.volume;
-        // if there is no volume yet, with the given volumeTitle or index, add one
-        let volIndex = Number(value.volIndex);
-
-        if (volIndex || volumeTitle) {
-          // TODO: do i need to convert volIndex from a string to a number for the query?
-          const volumeArray: Array<{ id: number }> = await this.query(
-            "SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)",
-            [
-              bestMedium.id,
-              volumeTitle &&
-                escapeLike(volumeTitle, {
-                  singleQuotes: true,
-                  noBoundaries: true,
-                }),
-              volIndex,
-            ],
-          );
-
-          const volume = volumeArray[0];
-
-          if (volume) {
-            volumeId = volume.id;
-          } else {
-            if (Number.isNaN(volIndex)) {
-              const lowestIndexArray: Array<{ totalIndex: number }> = await this.query(
-                "SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?",
-                bestMedium.id,
-              );
-              // TODO look if totalIndex incremential needs to be replaced with combiIndex
-              const lowestIndexObj = lowestIndexArray[0];
-              // if the lowest available totalIndex not indexed, decrement, else take -2
-              // -1 is reserved for all episodes, which do not have any volume/part assigned
-              volIndex = lowestIndexObj && lowestIndexObj.totalIndex < 0 ? --lowestIndexObj.totalIndex : -2;
-            }
-            if (!volumeTitle) {
-              volumeTitle = "Volume " + volIndex;
-            }
-            const addedVolume = await this.parentContext.partContext.addPart(
-              // @ts-expect-error
-              { title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id },
-            );
-            volumeId = addedVolume.id;
-          }
-        } else {
-          // check if there is a part/volume, with index -1, reserved for all episodes, which are not indexed
-          const volumeArray: Array<{
-            id: number;
-          }> = await this.query("SELECT id FROM part WHERE medium_id=? AND totalIndex=?", [bestMedium.id, -1]);
-          const volume = volumeArray[0];
-
-          if (!volume) {
-            volumeId = (await this.parentContext.partContext.createStandardPart(bestMedium.id)).id;
-          } else {
-            volumeId = volume.id;
-          }
-        }
-
-        if (!Number.isInteger(volumeId) || volumeId <= 0) {
-          throw Error("no volume id available");
-        }
-
-        const episodeSelectArray: Array<{ id: number; part_id: number; link: string }> = await this.query(
-          "SELECT id, part_id, url FROM episode " +
-            "LEFT JOIN episode_release " +
-            "ON episode.id=episode_release.episode_id " +
-            "WHERE title LIKE ? OR totalIndex=?",
+      if (volIndex || volumeTitle) {
+        // TODO: do i need to convert volIndex from a string to a number for the query?
+        const volumeArray: Array<{ id: number }> = await this.query(
+          "SELECT id FROM part WHERE medium_id=? AND title LIKE ? OR totalIndex=?)",
           [
-            value.chapter &&
-              escapeLike(value.chapter, {
-                noBoundaries: true,
+            bestMedium.id,
+            volumeTitle &&
+              escapeLike(volumeTitle, {
                 singleQuotes: true,
+                noBoundaries: true,
               }),
-            value.chapIndex,
+            volIndex,
           ],
         );
 
-        const episodeSelect = episodeSelectArray[0];
+        const volume = volumeArray[0];
 
-        let episodeId = episodeSelect && episodeSelect.id;
-
-        if (episodeId == null) {
-          let episodeIndex = Number(value.chapIndex);
-
-          // if there is no index, decrement the minimum index available for this medium
-          if (Number.isNaN(episodeIndex)) {
-            const latestEpisodeArray: Array<{ totalIndex: number }> = await this.query(
-              "SELECT MIN(totalIndex) as totalIndex FROM episode " +
-                "WHERE part_id EXISTS (SELECT id from part WHERE medium_id=?);",
+        if (volume) {
+          volumeId = volume.id;
+        } else {
+          if (Number.isNaN(volIndex)) {
+            const lowestIndexArray: Array<{ totalIndex: number }> = await this.query(
+              "SELECT MIN(totalIndex) as totalIndex FROM part WHERE medium_id=?",
               bestMedium.id,
             );
-            const latestEpisode = latestEpisodeArray[0];
-
-            // TODO: 23.07.2019 look if totalIndex needs to be replaced with combiIndex
-            // if the lowest available totalIndex not indexed, decrement, else take -1
-            episodeIndex = latestEpisode && latestEpisode.totalIndex < 0 ? --latestEpisode.totalIndex : -1;
+            // TODO look if totalIndex incremential needs to be replaced with combiIndex
+            const lowestIndexObj = lowestIndexArray[0];
+            // if the lowest available totalIndex not indexed, decrement, else take -2
+            // -1 is reserved for all episodes, which do not have any volume/part assigned
+            volIndex = lowestIndexObj && lowestIndexObj.totalIndex < 0 ? --lowestIndexObj.totalIndex : -2;
           }
-
-          let chapter = value.chapter;
-          if (!chapter) {
-            chapter = "Chapter " + episodeIndex;
+          if (!volumeTitle) {
+            volumeTitle = "Volume " + volIndex;
           }
+          const addedVolume = await this.parentContext.partContext.addPart(
+            // @ts-expect-error
+            { title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id },
+          );
+          volumeId = addedVolume.id;
+        }
+      } else {
+        // check if there is a part/volume, with index -1, reserved for all episodes, which are not indexed
+        const volumeArray: Array<{
+          id: number;
+        }> = await this.query("SELECT id FROM part WHERE medium_id=? AND totalIndex=?", [bestMedium.id, -1]);
+        const volume = volumeArray[0];
 
-          const episode = await this.addEpisode({
-            id: 0,
-            partId: volumeId,
-            totalIndex: episodeIndex,
-            releases: [
-              {
-                title: chapter,
-                url: result.url,
-                releaseDate: new Date(),
-                // TODO get source type
-                sourceType: "",
-                episodeId: 0,
-              },
-            ],
-          });
-          episodeId = episode.id;
+        if (!volume) {
+          volumeId = (await this.parentContext.partContext.createStandardPart(bestMedium.id)).id;
+        } else {
+          volumeId = volume.id;
+        }
+      }
+
+      if (!Number.isInteger(volumeId) || volumeId <= 0) {
+        throw Error("no volume id available");
+      }
+
+      const episodeSelectArray: Array<{ id: number; part_id: number; link: string }> = await this.query(
+        "SELECT id, part_id, url FROM episode " +
+          "LEFT JOIN episode_release " +
+          "ON episode.id=episode_release.episode_id " +
+          "WHERE title LIKE ? OR totalIndex=?",
+        [
+          value.chapter &&
+            escapeLike(value.chapter, {
+              noBoundaries: true,
+              singleQuotes: true,
+            }),
+          value.chapIndex,
+        ],
+      );
+
+      const episodeSelect = episodeSelectArray[0];
+
+      let episodeId = episodeSelect && episodeSelect.id;
+
+      if (episodeId == null) {
+        let episodeIndex = Number(value.chapIndex);
+
+        // if there is no index, decrement the minimum index available for this medium
+        if (Number.isNaN(episodeIndex)) {
+          const latestEpisodeArray: Array<{ totalIndex: number }> = await this.query(
+            "SELECT MIN(totalIndex) as totalIndex FROM episode " +
+              "WHERE part_id EXISTS (SELECT id from part WHERE medium_id=?);",
+            bestMedium.id,
+          );
+          const latestEpisode = latestEpisodeArray[0];
+
+          // TODO: 23.07.2019 look if totalIndex needs to be replaced with combiIndex
+          // if the lowest available totalIndex not indexed, decrement, else take -1
+          episodeIndex = latestEpisode && latestEpisode.totalIndex < 0 ? --latestEpisode.totalIndex : -1;
         }
 
-        // now after setting the storage up, so that all data is 'consistent' with this result,
-        // mark the episode as read
-        // normally the progress should be updated by messages of the tracker
-        // it should be inserted only, if there does not exist any progress
-        let queryResult = await this.query(
-          "INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);",
-          [uuid, episodeId],
-        );
-        storeModifications("progress", "insert", queryResult);
-        queryResult = await this.query(
-          "INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
-            "VALUES (?,?,?,?,?,?);",
-          [value.novel, value.chapter, value.chapIndex, value.volume, value.volIndex, episodeId],
-        );
-        storeModifications("result_episode", "insert", queryResult);
-      },
-    ).then(ignore);
+        let chapter = value.chapter;
+        if (!chapter) {
+          chapter = "Chapter " + episodeIndex;
+        }
+
+        const episode = await this.addEpisode({
+          id: 0,
+          partId: volumeId,
+          totalIndex: episodeIndex,
+          releases: [
+            {
+              title: chapter,
+              url: result.url,
+              releaseDate: new Date(),
+              // TODO get source type
+              sourceType: "",
+              episodeId: 0,
+            },
+          ],
+        });
+        episodeId = episode.id;
+      }
+
+      // now after setting the storage up, so that all data is 'consistent' with this result,
+      // mark the episode as read
+      // normally the progress should be updated by messages of the tracker
+      // it should be inserted only, if there does not exist any progress
+      let queryResult = await this.query(
+        "INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,0);",
+        [uuid, episodeId],
+      );
+      storeModifications("progress", "insert", queryResult);
+      queryResult = await this.query(
+        "INSERT INTO result_episode (novel, chapter, chapIndex, volume, volIndex, episode_id) " +
+          "VALUES (?,?,?,?,?,?);",
+        [value.novel, value.chapter, value.chapIndex, value.volume, value.volIndex, episodeId],
+      );
+      storeModifications("result_episode", "insert", queryResult);
+    }).then(ignore);
   }
 
   public async addRelease<T extends EpisodeRelease>(releases: T[]): Promise<T[]>;
@@ -718,54 +708,56 @@ export class EpisodeContext extends SubContext {
     // TODO: 29.06.2019 insert multiple rows, what happens with insertId?
     const insertReleases: EpisodeRelease[] = [];
     // @ts-expect-error
-    return promiseMultiSingle(
-      episodes,
-      async (episode: SimpleEpisode): Promise<Episode> => {
-        if (episode.partId == null || episode.partId <= 0) {
-          throw Error("episode without partId");
+    return promiseMultiSingle(episodes, async (episode: SimpleEpisode): Promise<Episode> => {
+      if (episode.partId == null || episode.partId <= 0) {
+        throw Error("episode without partId");
+      }
+      let insertId: Optional<number>;
+      const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
+      try {
+        const result: any = await this.query(
+          "INSERT INTO episode " + "(part_id, totalIndex, partialIndex, combiIndex) " + "VALUES (?,?,?,?);",
+          [episode.partId, episode.totalIndex, episode.partialIndex, episodeCombiIndex],
+        );
+        storeModifications("episode", "insert", result);
+        insertId = result.insertId;
+      } catch (e) {
+        // do not catch if it isn't an duplicate key error
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (
+          !e ||
+          (hasPropType<number>(e, "errno") &&
+            e.errno !== MysqlServerError.ER_DUP_KEY &&
+            e.errno !== MysqlServerError.ER_DUP_ENTRY)
+        ) {
+          throw e;
         }
-        let insertId: Optional<number>;
-        const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
-        try {
-          const result: any = await this.query(
-            "INSERT INTO episode " + "(part_id, totalIndex, partialIndex, combiIndex) " + "VALUES (?,?,?,?);",
-            [episode.partId, episode.totalIndex, episode.partialIndex, episodeCombiIndex],
-          );
-          storeModifications("episode", "insert", result);
-          insertId = result.insertId;
-        } catch (e) {
-          // do not catch if it isn't an duplicate key error
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          if (!e || (e.errno !== MysqlServerError.ER_DUP_KEY && e.errno !== MysqlServerError.ER_DUP_ENTRY)) {
-            throw e;
-          }
-          const result = await this.query("SELECT id from episode where part_id=? and combiIndex=?", [
-            episode.partId,
-            combiIndex(episode),
-          ]);
-          insertId = result[0].id;
-        }
-        if (!Number.isInteger(insertId)) {
-          throw Error(`invalid ID ${insertId}`);
-        }
+        const result = await this.query("SELECT id from episode where part_id=? and combiIndex=?", [
+          episode.partId,
+          combiIndex(episode),
+        ]);
+        insertId = result[0].id;
+      }
+      if (!Number.isInteger(insertId)) {
+        throw Error(`invalid ID ${insertId}`);
+      }
 
-        if (episode.releases) {
-          // @ts-expect-error
-          episode.releases.forEach((value) => (value.episodeId = insertId));
-          insertReleases.push(...episode.releases);
-        }
-        return {
-          id: insertId as number,
-          partId: episode.partId,
-          partialIndex: episode.partialIndex,
-          totalIndex: episode.totalIndex,
-          combiIndex: episodeCombiIndex,
-          releases: episode.releases,
-          progress: 0,
-          readDate: null,
-        } as Episode;
-      },
-    ).then(async (value: MultiSingleValue<Episode>) => {
+      if (episode.releases) {
+        // @ts-expect-error
+        episode.releases.forEach((value) => (value.episodeId = insertId));
+        insertReleases.push(...episode.releases);
+      }
+      return {
+        id: insertId as number,
+        partId: episode.partId,
+        partialIndex: episode.partialIndex,
+        totalIndex: episode.totalIndex,
+        combiIndex: episodeCombiIndex,
+        releases: episode.releases,
+        progress: 0,
+        readDate: null,
+      } as Episode;
+    }).then(async (value: MultiSingleValue<Episode>) => {
       if (insertReleases.length) {
         await this.addRelease(insertReleases);
       }
@@ -780,9 +772,7 @@ export class EpisodeContext extends SubContext {
    * Gets an episode from the storage.
    */
   public async getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
-    const episodes: Optional<
-      any[]
-    > = await this.queryInList(
+    const episodes: Optional<any[]> = await this.queryInList(
       "SELECT * FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
         "WHERE (user_uuid IS NULL OR user_uuid=?) AND episode.id IN (??);",
       [uuid, id],
@@ -827,9 +817,10 @@ export class EpisodeContext extends SubContext {
   }
 
   public async getPartEpisodePerIndex(partId: number, index: number | number[]): Promise<SimpleEpisode[]> {
-    const episodes: Optional<
-      any[]
-    > = await this.queryInList("SELECT * FROM episode WHERE part_id = ? AND combiIndex IN (??);", [partId, index]);
+    const episodes: Optional<any[]> = await this.queryInList(
+      "SELECT * FROM episode WHERE part_id = ? AND combiIndex IN (??);",
+      [partId, index],
+    );
     if (!episodes || !episodes.length) {
       return [];
     }
@@ -906,9 +897,7 @@ export class EpisodeContext extends SubContext {
     index: number | number[],
     ignoreRelease = false,
   ): Promise<SimpleEpisode | SimpleEpisode[]> {
-    const episodes: Optional<
-      any[]
-    > = await this.queryInList(
+    const episodes: Optional<any[]> = await this.queryInList(
       "SELECT episode.* FROM episode INNER JOIN part ON part.id=episode.part_id " +
         "WHERE medium_id = ? AND episode.combiIndex IN (??);",
       [mediumId, index],
@@ -1138,15 +1127,13 @@ export class EpisodeContext extends SubContext {
       "SELECT * FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=?;",
       uuid,
     );
-    return resultArray.map(
-      (value: any): ReadEpisode => {
-        return {
-          episodeId: value.episode_id,
-          readDate: value.read_date,
-          progress: value.progress,
-        };
-      },
-    );
+    return resultArray.map((value: any): ReadEpisode => {
+      return {
+        episodeId: value.episode_id,
+        readDate: value.read_date,
+        progress: value.progress,
+      };
+    });
   }
 
   public async markLowerIndicesRead(uuid: Uuid, id: number, partInd?: number, episodeInd?: number): EmptyPromise {
