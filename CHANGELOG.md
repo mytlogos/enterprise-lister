@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/mytlogos/enterprise-lister/compare/v1.18.2...v1.19.0) (2021-08-28)
+
+
+### Features
+
+* add prometheus exporter ([894948c](https://github.com/mytlogos/enterprise-lister/commit/894948cb255b6ecd80310feefe7e6192e035fd94))
+
 ## [1.18.2](https://github.com/mytlogos/enterprise-lister/compare/v1.18.1...v1.18.2) (2021-08-28)
 
 
