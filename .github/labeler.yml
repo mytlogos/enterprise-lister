@@ -1,0 +1,12 @@
+deps:
+- package.json
+docs:
+- README.md
+core:
+- "packages/core/**"
+scraper:
+- "packages/scraper/**"
+server:
+- "packages/server/**"
+website:
+- "packages/website/**"

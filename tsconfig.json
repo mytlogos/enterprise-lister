@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "strict": false,
+    "strict": true,
     "jsx": "preserve",
     "importHelpers": true,
     "moduleResolution": "node",
@@ -10,9 +10,9 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "baseUrl": "src/website",
     "types": [
       "webpack-env",
+      "node"
     ],
     "lib": [
       "esnext",
@@ -22,11 +22,7 @@
     ]
   },
   "include": [
-    "src/website/**/*.ts",
-    "src/website/**/*.tsx",
-    "src/website/**/*.vue"
-//    "tests/**/*.ts",
-//    "tests/**/*.tsx"
+    "*.js"
   ],
   "exclude": [
     "node_modules"

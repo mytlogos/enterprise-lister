@@ -1,0 +1,76 @@
+version: "3.4"
+services:
+  mariadb:
+    restart: always
+    image: "mariadb:latest"
+    env_file: database.env
+    environment:
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
+    ports:
+      - "4306:3306"
+    volumes:
+      # first create database
+      - ./init.sql:/docker-entrypoint-initdb.d/1-init.sql:ro
+      # setup database content from latest backup if started the first time
+      - ./enterprise-current.sql:/docker-entrypoint-initdb.d/3-enterprise-current.sql:ro
+      - db-data:/var/lib/mysql
+    networks:
+      enterprise:
+        aliases:
+          - mariadb
+  crawler:
+    restart: always
+    image: enterprise-server:latest
+    command: ["node", "packages/scraper/dist/startCrawler.js"]
+    working_dir: /code
+    build:
+      context: .
+      network: host
+      dockerfile: Dockerfile_Git_Prod
+    volumes:
+      - /media/data/docker/enterprise/logs:/code/logs
+    depends_on:
+      - mariadb
+    ports:
+      - "3003:3003"
+      - "3004:3004"
+    networks:
+      enterprise:
+        aliases:
+          - crawler
+    environment:
+      dbHost: mariadb
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
+  web:
+    restart: always
+    image: enterprise-server:latest
+    command: ["node", "packages/server/dist/startServer.js"]
+    build:
+      context: .
+      network: host
+      dockerfile: Dockerfile_Git_Prod
+    working_dir: /code
+    volumes:
+      - /media/data/docker/enterprise/logs:/code/logs
+    depends_on:
+      - mariadb
+      #- crawler
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
+    ports:
+      - "3000:3000"
+      - "3001:3001/udp"
+    networks:
+      enterprise:
+        aliases:
+          - web
+    environment:
+      dbHost: mariadb
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
+volumes:
+  db-data:
+networks:
+  enterprise: 

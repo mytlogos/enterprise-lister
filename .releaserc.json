@@ -2,7 +2,10 @@
   "release": {
     "branches": [
       "master",
-      "develop"
+      {
+        "name": "next",
+        "prerelease": "rc"
+      }
     ]
   },
   "plugins": [
@@ -19,7 +22,14 @@
       "@semantic-release/github",
       {
         "assets": [
-          "dist.tar"
+          {
+            "path": "dist.zip",
+            "label": "Dist Files only"
+          },
+          {
+            "path": "dist-src.zip",
+            "label": "Source and Dist Files"
+          }
         ]
       }
     ],

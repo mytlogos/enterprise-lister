@@ -1,0 +1,108 @@
+.modal-own {
+    display: block;
+    padding: 10px;
+    margin: 0 auto;
+}
+
+.modal-own .modal-own-header {
+    margin: 10px;
+    font-size: 25px;
+}
+
+.modal-own form > * {
+    margin: 10px 0;
+}
+
+.modal-own form {
+    /* Just to center the form on the page */
+    margin: 0 auto;
+    /*width: 400px;*/
+    /* To see the outline of the form */
+    padding: 1em;
+    /*border: 1px solid #CCC;*/
+    border-radius: 1em;
+}
+
+.modal-own label {
+    display: block;
+}
+
+.modal-own input {
+    /* To make sure that all text fields have the same font settings */
+    font: 1em sans-serif;
+
+    /* To give the same size to all text fields */
+    width: 300px;
+    box-sizing: border-box;
+
+    /* To harmonize the look & feel of text field border */
+    /*border: 1px solid #999;*/
+    border: none;
+    background: none;
+    border-bottom: 1px solid #b3b3b3;
+}
+
+.modal-own input[type=checkbox] {
+    width: 20px;
+}
+
+.modal-own span label {
+    width: 75px;
+    padding: 0 5px;
+}
+
+.modal-own input:focus {
+    /* To give a little highlight on active elements */
+    border-color: #000;
+}
+
+.modal-own .finish {
+    /* This extra margin represent roughly the same space as the space
+       between the labels and their text fields */
+    /*margin-left: .5em;*/
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    font-size: 16px;
+    line-height: 20px;
+    position: relative;
+    padding: 11px 2em;
+    -webkit-transition: .2s;
+    transition: .2s;
+    color: #fff;
+    border-radius: 3px;
+    text-align: center;
+    background-color: #4c5fe2;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+    border: 1px solid #4c5fe2;
+    width: 100%;
+    display: block;
+}
+
+.modal-own .finish:hover {
+    text-decoration: none;
+    opacity: .8;
+    -webkit-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.modal-own .close {
+    cursor: pointer;
+    float: right;
+    font-size: 21px;
+    font-weight: bold;
+    line-height: 1;
+    background-color: white;
+    border: 0;
+    color: #000;
+    text-shadow: 0 1px 0 #fff;
+    opacity: .2;
+    margin: auto;
+}
+
+.modal-own form div + div {
+    margin-top: 1em;
+}
