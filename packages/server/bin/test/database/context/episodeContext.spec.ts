@@ -102,35 +102,45 @@ describe("episodeContext", () => {
   });
 
   describe("getAllReleases", function () {
-    it("should not throw when using valid parameters");
-  });
-
-  describe("getDisplayReleases", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw", async function () {
+      await episodeStorage.getAllReleases().should.eventually.not.be.rejected;
+    });
   });
 
   describe("getMediumReleases", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getMediumReleases(0, "").should.eventually.not.be.rejected;
+    });
   });
 
   describe("getAssociatedEpisode", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getAssociatedEpisode("").should.eventually.not.be.rejected;
+    });
   });
 
   describe("getLatestReleases", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getLatestReleases(0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getReleases", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getReleases(0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getReleasesByHost", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getReleasesByHost(0, "").should.eventually.not.be.rejected;
+    });
   });
 
   describe("getPartsEpisodeIndices", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getPartsEpisodeIndices(0).should.eventually.not.be.rejected;
+    });
   });
 
   /**
@@ -140,118 +150,177 @@ describe("episodeContext", () => {
      * Removes progress of an user in regard to an episode.
      */
   describe("removeProgress", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.removeProgress("", 0).should.eventually.not.be.rejected;
+    });
   });
 
   /**
    * Sets the progress of an user in regard to an episode with one or multiple progressResult objects.
    */
   describe("setProgress", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.setProgress("", []).should.eventually.not.be.rejected;
+    });
   });
 
   /**
    * Get the progress of an user in regard to an episode.
    */
   describe("getProgress", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getProgress("", 0).should.eventually.not.be.rejected;
+    });
   });
 
   /**
    * Updates the progress of an user in regard to an episode.
    */
   describe("updateProgress", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.updateProgress("", 0, 0, null).should.eventually.not.be.rejected;
+    });
   });
 
   /**
    * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
    */
   describe("markEpisodeRead", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.markEpisodeRead("", { result: [], url: "", accept: true }).should.eventually.not.be.rejected;
+    });
   });
   describe("addRelease", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.addRelease([]).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getEpisodeLinksByMedium", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getEpisodeLinksByMedium(0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getSourcedReleases", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getSourcedReleases("", 0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("updateRelease", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.updateRelease([]).should.eventually.not.be.rejected;
+    });
   });
 
   describe("deleteRelease", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.deleteRelease({ episodeId: 0, releaseDate: new Date(), title: "", url: "" }).should
+        .eventually.not.be.rejected;
+    });
   });
 
   describe("getEpisodeContentData", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getEpisodeContentData("").should.eventually.not.be.rejected;
+    });
   });
 
   describe("addEpisode", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.addEpisode({
+        id: 1,
+        partId: 1,
+        releases: [],
+        totalIndex: 0,
+      }).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getEpisode", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getEpisode(0, "").should.eventually.not.be.rejected;
+    });
   });
 
   describe("getPartMinimalEpisodes", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getPartMinimalEpisodes(0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getPartEpisodePerIndex", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getPartEpisodePerIndex(0, 0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getMediumEpisodePerIndex", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getMediumEpisodePerIndex(0, 0).should.eventually.not.be.rejected;
+    });
   });
 
   /**
    * Updates an episode from the storage.
    */
   describe("updateEpisode", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.updateEpisode({
+        id: 0,
+        partId: 0,
+        releases: [],
+        totalIndex: 0,
+      }).should.eventually.not.be.rejected;
+    });
   });
 
   /**
    * Updates an episode from the storage.
    */
   describe("moveEpisodeToPart", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.moveEpisodeToPart(0, 0).should.eventually.not.be.rejected;
+    });
   });
 
   /**
    * Deletes an episode from the storage irreversibly.
    */
   describe("deleteEpisode", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.deleteEpisode(0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getChapterIndices", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getChapterIndices(0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getAllChapterLinks", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getAllChapterLinks(0).should.eventually.not.be.rejected;
+    });
   });
 
   describe("getUnreadChapter", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getUnreadChapter("").should.eventually.not.be.rejected;
+    });
   });
 
   describe("getReadToday", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.getReadToday("").should.eventually.not.be.rejected;
+    });
   });
 
   describe("markLowerIndicesRead", function () {
-    it("should not throw when using valid parameters");
+    it("should not throw when using valid parameters", async function () {
+      await episodeStorage.markLowerIndicesRead("", 0).should.eventually.not.be.rejected;
+    });
   });
 });
