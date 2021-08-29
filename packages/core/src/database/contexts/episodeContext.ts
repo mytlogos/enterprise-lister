@@ -44,7 +44,7 @@ export class EpisodeContext extends SubContext {
   /**
    * Return a Query of all episodes and together with the read progress and date of the given user uuid.
    * @param uuid uuid to check the progress of
-   */
+   *
   public async getAll(uuid: Uuid): Promise<TypedQuery<PureEpisode>> {
     return this.queryStream(
       "SELECT episode.id, episode.partialIndex, episode.totalIndex, episode.combiIndex, " +
