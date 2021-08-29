@@ -31,7 +31,6 @@ module.exports = {
         "sourceType": "module",
         "extraFileExtensions": [ ".vue" ]
     },
-
     "plugins": [
         "eslint-plugin-import",
         "eslint-plugin-jsdoc",
@@ -40,7 +39,6 @@ module.exports = {
         "eslint-plugin-node",
         "eslint-plugin-vue",
         "@typescript-eslint",
-        "@typescript-eslint/tslint",
         "vue",
         "prettier"
     ],
@@ -111,7 +109,7 @@ module.exports = {
             2,
             { SwitchCase: 1}
         ],
-        'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+        'no-console': 'off',
         'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
     },
 };

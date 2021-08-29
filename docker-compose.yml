@@ -29,7 +29,6 @@ services:
       network: host
       dockerfile: Dockerfile_Git_Prod
     volumes:
-      # for development purposes mount fully setup repository
       - /media/data/docker/enterprise/logs:/code/logs
     depends_on:
       - mariadb
@@ -42,7 +41,6 @@ services:
           - crawler
     environment:
       dbHost: mariadb
-      #dbPassword: Aighahg2XeeYae5C
       TZ: Europe/Berlin
       TIME_ZONE: Europe/Berlin
   web:
@@ -55,11 +53,12 @@ services:
       dockerfile: Dockerfile_Git_Prod
     working_dir: /code
     volumes:
-      # for development purposes mount fully setup repository
       - /media/data/docker/enterprise/logs:/code/logs
     depends_on:
       - mariadb
       #- crawler
+      TZ: Europe/Berlin
+      TIME_ZONE: Europe/Berlin
     ports:
       - "3000:3000"
       - "3001:3001/udp"
@@ -69,7 +68,6 @@ services:
           - web
     environment:
       dbHost: mariadb
-      # dbPassword: Aighahg2XeeYae5C
       TZ: Europe/Berlin
       TIME_ZONE: Europe/Berlin
 volumes:
