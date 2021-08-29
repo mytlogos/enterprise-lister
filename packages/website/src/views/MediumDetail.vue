@@ -186,7 +186,7 @@ import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import toast from "../components/toast.vue";
 import ToolTip from "bootstrap/js/dist/tooltip";
-import { batch, formatDate, mergeMediaToc } from "../init";
+import { batch, formatDate, mergeMediaToc, hexToRgbA } from "../init";
 // @ts-ignore
 import { Chart, LineController, LineElement, PointElement, LinearScale, Title } from "chart.js";
 import AddEpisodeModal from "../components/modal/add-episode-modal.vue";
@@ -211,21 +211,6 @@ interface Data {
 }
 
 const domainReg = /(https?:\/\/([^/]+))/;
-
-/**
- * Slightly modified from: https://stackoverflow.com/a/21648508
- */
-function hexToRgbA(hex: string, opacity = 1) {
-  if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex) && (opacity < 1 || opacity > 0)) {
-    let c = hex.substring(1).split("");
-    if (c.length == 3) {
-      c = [c[0], c[0], c[1], c[1], c[2], c[2]];
-    }
-    const fullHex = Number("0x" + c.join(""));
-    return `rgba(${[(fullHex >> 16) & 255, (fullHex >> 8) & 255, fullHex & 255].join(",")},${opacity})`;
-  }
-  throw new Error("Bad Hex");
-}
 
 const colorPalette = ["#003f5c", "#2f4b7c", "#665191", "#a05195", "#d45087", "#f95d6a", "#ff7c43", "#ffa600"];
 

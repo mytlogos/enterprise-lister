@@ -1,6 +1,21 @@
 import { SimpleMedium, FullMediumToc, StringKey } from "./siteTypes";
 
 /**
+ * Slightly modified from: https://stackoverflow.com/a/21648508
+ */
+export function hexToRgbA(hex: string, opacity = 1) {
+  if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex) && (opacity < 1 || opacity > 0)) {
+    let c = hex.substring(1).split("");
+    if (c.length == 3) {
+      c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+    }
+    const fullHex = Number("0x" + c.join(""));
+    return `rgba(${[(fullHex >> 16) & 255, (fullHex >> 8) & 255, fullHex & 255].join(",")},${opacity})`;
+  }
+  throw new Error("Bad Hex");
+}
+
+/**
  *
  */
 export function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: (value: T, index: number) => void): void {

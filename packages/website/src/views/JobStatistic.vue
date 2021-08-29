@@ -94,7 +94,7 @@ import { defineComponent } from "vue";
 // @ts-ignore
 import { Chart, LineController, LineElement, PointElement, LinearScale, Title } from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
-import { formatDate, round } from "../init";
+import { formatDate, round, hexToRgbA } from "../init";
 import * as storage from "../storage";
 import { interpolateColors } from "../colorscale";
 import { interpolateCool } from "d3-scale-chromatic";
@@ -130,21 +130,6 @@ interface Data {
   fromTime: string;
   toDate: string;
   toTime: string;
-}
-
-/**
- * Slightly modified from: https://stackoverflow.com/a/21648508
- */
-function hexToRgbA(hex: string, opacity = 1) {
-  if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex) && (opacity < 1 || opacity > 0)) {
-    let c = hex.substring(1).split("");
-    if (c.length == 3) {
-      c = [c[0], c[0], c[1], c[1], c[2], c[2]];
-    }
-    const fullHex = Number("0x" + c.join(""));
-    return `rgba(${[(fullHex >> 16) & 255, (fullHex >> 8) & 255, fullHex & 255].join(",")},${opacity})`;
-  }
-  throw new Error("Bad Hex");
 }
 
 function changeOpacity(color: string, opacity = 1): string {

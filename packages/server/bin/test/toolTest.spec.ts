@@ -52,6 +52,17 @@ function testRelative(value: string, offset: number, unit: TimeUnit): void {
   result.getTime().should.approximately(now.getTime(), 1000);
 }
 
+/**
+ * Test whether "relativeToAbsoluteTime" parses a relative date
+ * correctly for multiple values of a given unit like
+ * "second|minute|hour|day|week|month|year".
+ */
+function testRelativeUnit(unitName: string, unit: TimeUnit) {
+  testRelative(`1 ${unitName} ago`, 1, unit);
+  testRelative(`a ${unitName} ago`, 1, unit);
+  testRelative(`5 ${unitName}s ago`, 5, unit);
+}
+
 describe("testing tool.js", () => {
   const sandbox = sinon.createSandbox();
   before("setting up", () => {
@@ -716,39 +727,25 @@ describe("testing tool.js", () => {
       testRelative("just now", 30, "Seconds");
     });
     it("should parse 'seconds ago' correctly", () => {
-      testRelative("1 second ago", 1, "Seconds");
-      testRelative("a second ago", 1, "Seconds");
-      testRelative("5 seconds ago", 5, "Seconds");
+      testRelativeUnit("second", "Seconds");
     });
     it("should parse 'minutes ago' correctly", () => {
-      testRelative("1 minute ago", 1, "Minutes");
-      testRelative("a minute ago", 1, "Minutes");
-      testRelative("5 minutes ago", 5, "Minutes");
+      testRelativeUnit("minute", "Minutes");
     });
     it("should parse 'hours ago' correctly", () => {
-      testRelative("1 hour ago", 1, "Hours");
-      testRelative("a hour ago", 1, "Hours");
-      testRelative("5 hours ago", 5, "Hours");
+      testRelativeUnit("hour", "Hours");
     });
     it("should parse 'days ago' correctly", () => {
-      testRelative("1 day ago", 1, "Date");
-      testRelative("a day ago", 1, "Date");
-      testRelative("5 days ago", 5, "Date");
+      testRelativeUnit("day", "Date");
     });
     it("should parse 'weeks ago' correctly", () => {
-      testRelative("1 week ago", 1, "Week");
-      testRelative("a week ago", 1, "Week");
-      testRelative("5 weeks ago", 5, "Week");
+      testRelativeUnit("week", "Week");
     });
     it("should parse 'months ago' correctly", () => {
-      testRelative("1 month ago", 1, "Month");
-      testRelative("a month ago", 1, "Month");
-      testRelative("5 months ago", 5, "Month");
+      testRelativeUnit("month", "Month");
     });
     it("should parse 'years ago' correctly", () => {
-      testRelative("1 year ago", 1, "FullYear");
-      testRelative("a year ago", 1, "FullYear");
-      testRelative("5 years ago", 5, "FullYear");
+      testRelativeUnit("year", "FullYear");
     });
   });
   describe("test delay", function () {
