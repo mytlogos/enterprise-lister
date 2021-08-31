@@ -89,7 +89,7 @@ npm run build -ws
 ### Run your tests
 
 ```bash
-npm run test -ws
+npm run test
 ```
 
 ### Lints files
