@@ -48,12 +48,14 @@ function create(type: AppEventType, date: number): Promise<void> {
   if (events.find((event) => event.date.getTime() === date)) {
     return Promise.resolve();
   }
-  return appEventStorage.addAppEvent({
-    id: 0,
-    date: new Date(date),
-    program: "crawler",
-    type,
-  });
+  return appEventStorage
+    .addAppEvent({
+      id: 0,
+      date: new Date(date),
+      program: "crawler",
+      type,
+    })
+    .then(() => undefined);
 }
 
 function reportToDatabase(start: number, lastDate: number): void {
