@@ -45,7 +45,6 @@ describe("episodeContext", () => {
       const query = await episodeStorage.getAll("");
       // on the first query it should not produce any rows
       const checkEmpty = checkEmptyQuery(query);
-      // query.start();
       await expect(checkEmpty).resolves.toBeUndefined();
     });
     it("should return correct rows", async () => {
