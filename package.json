@@ -18,7 +18,8 @@
     "start": "npm run start:server &; npm run start:crawler &",
     "start:crawler": "node packages/scraper/dist/startCrawler.js",
     "start:server": "node packages/server/dist/startServer.js",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./packages/**/dist/**/test/database/**/*.js ./packages/**/dist/**/test/*.js"
+    "test": "LOG_LEVEL=error node node_modules/.bin/jest",
+    "test:debug": "node --inspect --inspect-brk node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
     "@commitlint/cli": "^13.1.0",

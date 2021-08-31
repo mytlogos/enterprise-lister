@@ -36,7 +36,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: npm run build --ws
-      - run: npm run test --ws
+      - run: npm test
       - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
       - run: zip -r dist-src.zip package.json package-lock.json packages/
       - run: npx semantic-release

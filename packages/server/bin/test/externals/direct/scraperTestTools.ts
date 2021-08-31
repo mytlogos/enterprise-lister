@@ -1,48 +1,41 @@
 import * as scraperTools from "enterprise-scraper/dist/externals/scraperTools";
 import * as tools from "enterprise-core/dist/tools";
 import { isTocPart } from "enterprise-scraper/dist/tools";
-import { TocContent } from "enterprise-scraper/dist/externals/types";
+import { Toc } from "enterprise-scraper/dist/externals/types";
 const MediaType = tools.MediaType;
 
-interface GeneralToc {
-  title: string;
-  link: string;
-  mediumType: tools.MediaType.TEXT;
-  content: TocContent[];
-}
-
-exports.testGeneralToc = function testGeneralToc(toc: GeneralToc) {
-  toc.should.be.an("object");
-  toc.title.should.be.a("string");
-  toc.link.should.be.a("string");
-  toc.mediumType.should.equals(MediaType.TEXT);
-  toc.content.should.be.an("array");
+export function testGeneralToc(toc: Toc): void {
+  expect(toc).toBeInstanceOf("object");
+  expect(toc.title).toBeInstanceOf("string");
+  expect(toc.link).toBeInstanceOf("string");
+  expect(toc.mediumType).toBe(MediaType.TEXT);
+  expect(toc.content).toBeInstanceOf("array");
 
   const seenFirstLevelIndices = [];
   const seenSecondLevelIndices = [];
 
   for (let i = 0; i < toc.content.length; i++) {
     const tocContent = toc.content[i];
-    (() => scraperTools.checkTocContent(tocContent)).should.not.throw();
-    tocContent.title.should.be.an("string").and.be.not.empty;
+    expect(() => scraperTools.checkTocContent(tocContent)).not.toThrowError();
+    expect(tocContent.title).not.toHaveLength(0);
 
     if (i > 0) {
       // total Index of TocContent should be unique to ToC at this level
-      seenFirstLevelIndices.should.not.contain(tocContent.combiIndex);
+      expect(seenFirstLevelIndices).toEqual(expect.not.arrayContaining([tocContent.combiIndex]));
       seenFirstLevelIndices.push(tocContent.combiIndex);
     }
     if (isTocPart(tocContent)) {
-      tocContent.episodes.should.be.an("array");
+      expect(tocContent.episodes).toBeInstanceOf("array");
       for (let j = 0; j < tocContent.episodes.length; j++) {
         const episode = tocContent.episodes[j];
-        (() => scraperTools.checkTocContent(episode)).should.not.throw();
+        expect(() => scraperTools.checkTocContent(episode)).not.toThrowError();
 
         if (j > 0) {
           // total Index of TocContent should be unique to ToC at this level
-          seenSecondLevelIndices.should.not.contain(episode.combiIndex);
+          expect(seenSecondLevelIndices).not.toContain(episode.combiIndex);
           seenSecondLevelIndices.push(episode.combiIndex);
         }
       }
     }
   }
-};
+}

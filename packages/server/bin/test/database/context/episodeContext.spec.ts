@@ -1,7 +1,4 @@
 import * as tools from "enterprise-core/dist/tools";
-import sinon_chai from "sinon-chai";
-import chai from "chai";
-import chaiAsPromised from "chai-as-promised";
 import * as storage from "enterprise-core/dist/database/storages/storage";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import {
@@ -12,51 +9,52 @@ import {
   resultFromQuery,
   getDatabaseData,
   fillUserEpisodeTable,
+  fillPartTable,
 } from "./contextHelper";
-import { before, after, describe, it } from "mocha";
 
-chai.use(sinon_chai);
-chai.use(chaiAsPromised);
-const should = chai.should();
+jest.setTimeout(60000);
 
-before(async function () {
-  this.timeout(60000);
+beforeAll(async () => {
+  jest.setTimeout(60000);
   await setupTestDatabase();
   await tools.delay(2000);
 });
 
-after(async () => {
+afterAll(async () => {
   // await tearDownTestDatabase();
   tools.internetTester.stop();
   return storage.stopStorage();
 });
 
 describe("episodeContext", () => {
-  describe("getDisplayReleases", function () {
-    it("should not throw, when using valid parameters", async function () {
-      await episodeStorage.getDisplayReleases(new Date(), new Date(), true, "12", [], [], [], []).should.eventually.not
-        .be.rejected;
-      await episodeStorage.getDisplayReleases(new Date(), null, null, "12", [], [], [], []).should.eventually.not.be
-        .rejected;
+  describe("getDisplayReleases", () => {
+    it("should not throw, when using valid parameters", async () => {
+      await expect(
+        episodeStorage.getDisplayReleases(new Date(), new Date(), true, "12", [], [], [], []),
+      ).resolves.toBeDefined();
+      await expect(
+        episodeStorage.getDisplayReleases(new Date(), null, null, "12", [], [], [], []),
+      ).resolves.toBeDefined();
     });
   });
 
-  describe("getAll", function () {
-    after(() => cleanAll());
+  describe("getAll", () => {
+    afterAll(() => cleanAll());
     afterEach(() => cleanUserEpisode());
     it("should not return any rows", async () => {
       const query = await episodeStorage.getAll("");
       // on the first query it should not produce any rows
       const checkEmpty = checkEmptyQuery(query);
-      query.start();
-      await checkEmpty.should.be.eventually.not.rejected;
+      // query.start();
+      await expect(checkEmpty).resolves.toBeUndefined();
     });
-    it("should return correct rows", async function () {
+    it("should return correct rows", async () => {
       // the data available in the table
-      await fillUserEpisodeTable();
+      const expected = await fillUserEpisodeTable();
+      const uuid = expected[0].uuid;
 
       // query without a user uuid which exists
-      let query = await episodeStorage.getAll("");
+      let query = await episodeStorage.getAll(uuid);
       // should return all episodes with progress = 0
       let result = await resultFromQuery(query);
 
@@ -65,14 +63,18 @@ describe("episodeContext", () => {
       data[1].episodes.forEach((value) => {
         const index = result.findIndex((progress) => progress.id === value.id);
         // every episode in database should be returned from query
-        index.should.not.equal(-1);
+        expect(index).not.toEqual(-1);
         // remove every progress hit
         const [episodeProgress] = result.splice(index, 1);
+
+        const expectedIndex = expected.findIndex((progress) => progress.episodeId === value.id);
+        expect(expectedIndex).not.toEqual(-1);
+
         // progress needs to be zero
-        episodeProgress.progress.should.equal(0);
+        expect(episodeProgress.progress).toEqual(expected[expectedIndex].progress);
       });
       // there should not be any episodes progress left
-      result.should.be.empty;
+      expect(result).toHaveLength(0);
 
       const existingUser = Object.values(data[0])[0];
 
@@ -80,247 +82,256 @@ describe("episodeContext", () => {
       query = await episodeStorage.getAll(existingUser.uuid);
       // should return all episodes with progress = 0
       result = await resultFromQuery(query);
-      result.should.not.be.empty;
+      expect(result.length).toBeGreaterThan(0);
 
       // check that any episode has the corresponding progress
       data[1].episodes.forEach((value) => {
         const index = result.findIndex((progress) => progress.id === value.id);
         // every episode in database should be returned from query
-        index.should.not.equal(-1);
+        expect(index).not.toBe(-1);
         // remove every progress hit
         const [episodeProgress] = result.splice(index, 1);
 
         const expectedProgress = existingUser.progress.find((progress) => progress.episodeId === episodeProgress.id);
-        should.exist(expectedProgress);
+        expect(expectedProgress).toBeDefined();
 
         // progress needs to be zero
-        episodeProgress.progress.should.equal(expectedProgress?.progress);
+        expect(episodeProgress.progress).toBe(expectedProgress?.progress);
       });
       // there should not be any episodes progress left
-      result.should.be.empty;
+      expect(result).toHaveLength(0);
     });
   });
 
-  describe("getAllReleases", function () {
-    it("should not throw", async function () {
-      await episodeStorage.getAllReleases().should.eventually.not.be.rejected;
+  describe("getAllReleases", () => {
+    it("should not throw", async () => {
+      await expect(episodeStorage.getAllReleases()).resolves.toBeDefined();
     });
   });
 
-  describe("getMediumReleases", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getMediumReleases(0, "").should.eventually.not.be.rejected;
+  describe("getMediumReleases", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getMediumReleases(0, "")).resolves.toBeDefined();
     });
   });
 
-  describe("getAssociatedEpisode", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getAssociatedEpisode("").should.eventually.not.be.rejected;
+  describe("getAssociatedEpisode", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getAssociatedEpisode("")).resolves.toBeDefined();
     });
   });
 
-  describe("getLatestReleases", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getLatestReleases(0).should.eventually.not.be.rejected;
+  describe("getLatestReleases", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getLatestReleases(0)).resolves.toBeDefined();
     });
   });
 
-  describe("getReleases", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getReleases(0).should.eventually.not.be.rejected;
+  describe("getReleases", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getReleases(0)).resolves.toBeDefined();
     });
   });
 
-  describe("getReleasesByHost", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getReleasesByHost(0, "").should.eventually.not.be.rejected;
+  describe("getReleasesByHost", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getReleasesByHost(0, "")).resolves.toBeDefined();
     });
   });
 
-  describe("getPartsEpisodeIndices", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getPartsEpisodeIndices(0).should.eventually.not.be.rejected;
+  describe("getPartsEpisodeIndices", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getPartsEpisodeIndices(0)).resolves.toBeDefined();
     });
   });
 
   /**
-    * Add progress of an user in regard to an episode to the storage.;
-
-    /**
-     * Removes progress of an user in regard to an episode.
-     */
-  describe("removeProgress", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.removeProgress("", 0).should.eventually.not.be.rejected;
+   * Removes progress of an user in regard to an episode.
+   */
+  describe("removeProgress", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.removeProgress("", 0)).resolves.toBeDefined();
     });
   });
 
   /**
    * Sets the progress of an user in regard to an episode with one or multiple progressResult objects.
    */
-  describe("setProgress", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.setProgress("", []).should.eventually.not.be.rejected;
+  describe("setProgress", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.setProgress("", [])).resolves.toBeUndefined();
     });
   });
 
   /**
    * Get the progress of an user in regard to an episode.
    */
-  describe("getProgress", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getProgress("", 0).should.eventually.not.be.rejected;
+  describe("getProgress", () => {
+    afterAll(() => cleanAll());
+    it("should not throw when using valid parameters", async () => {
+      const expected = await fillUserEpisodeTable();
+      await expect(episodeStorage.getProgress(expected[0].uuid, expected[0].episodeId)).resolves.toBe(
+        expected[0].progress,
+      );
     });
   });
 
   /**
    * Updates the progress of an user in regard to an episode.
    */
-  describe("updateProgress", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.updateProgress("", 0, 0, null).should.eventually.not.be.rejected;
+  describe("updateProgress", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.updateProgress("", 0, 0, null)).resolves.toBeDefined();
     });
   });
 
   /**
    * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
    */
-  describe("markEpisodeRead", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.markEpisodeRead("", { result: [], url: "", accept: true }).should.eventually.not.be.rejected;
+  describe("markEpisodeRead", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.markEpisodeRead("", { result: [], url: "", accept: true })).resolves.toBeUndefined();
     });
   });
-  describe("addRelease", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.addRelease([]).should.eventually.not.be.rejected;
-    });
-  });
-
-  describe("getEpisodeLinksByMedium", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getEpisodeLinksByMedium(0).should.eventually.not.be.rejected;
+  describe("addRelease", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.addRelease([])).resolves.toBeDefined();
     });
   });
 
-  describe("getSourcedReleases", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getSourcedReleases("", 0).should.eventually.not.be.rejected;
+  describe("getEpisodeLinksByMedium", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getEpisodeLinksByMedium(0)).resolves.toBeDefined();
     });
   });
 
-  describe("updateRelease", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.updateRelease([]).should.eventually.not.be.rejected;
+  describe("getSourcedReleases", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getSourcedReleases("", 0)).resolves.toBeDefined();
     });
   });
 
-  describe("deleteRelease", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.deleteRelease({ episodeId: 0, releaseDate: new Date(), title: "", url: "" }).should
-        .eventually.not.be.rejected;
+  describe("updateRelease", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.updateRelease([])).resolves.toBeUndefined();
     });
   });
 
-  describe("getEpisodeContentData", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getEpisodeContentData("").should.eventually.not.be.rejected;
+  describe("deleteRelease", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(
+        episodeStorage.deleteRelease({ episodeId: 0, releaseDate: new Date(), title: "", url: "" }),
+      ).resolves.toBeUndefined();
     });
   });
 
-  describe("addEpisode", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.addEpisode({
-        id: 1,
-        partId: 1,
-        releases: [],
-        totalIndex: 0,
-      }).should.eventually.not.be.rejected;
+  describe("getEpisodeContentData", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getEpisodeContentData("")).resolves.toBeDefined();
     });
   });
 
-  describe("getEpisode", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getEpisode(0, "").should.eventually.not.be.rejected;
+  describe("addEpisode", () => {
+    afterAll(() => cleanAll());
+    it("should not throw when using valid parameters", async () => {
+      await fillPartTable();
+
+      await expect(
+        episodeStorage.addEpisode({
+          id: 0,
+          partId: 1,
+          releases: [],
+          totalIndex: 0,
+        }),
+      ).resolves.toBeDefined();
     });
   });
 
-  describe("getPartMinimalEpisodes", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getPartMinimalEpisodes(0).should.eventually.not.be.rejected;
+  describe("getEpisode", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getEpisode(0, "")).resolves.toBeDefined();
     });
   });
 
-  describe("getPartEpisodePerIndex", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getPartEpisodePerIndex(0, 0).should.eventually.not.be.rejected;
+  describe("getPartMinimalEpisodes", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getPartMinimalEpisodes(0)).resolves.toBeDefined();
     });
   });
 
-  describe("getMediumEpisodePerIndex", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getMediumEpisodePerIndex(0, 0).should.eventually.not.be.rejected;
+  describe("getPartEpisodePerIndex", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getPartEpisodePerIndex(0, 0)).resolves.toBeDefined();
     });
   });
 
-  /**
-   * Updates an episode from the storage.
-   */
-  describe("updateEpisode", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.updateEpisode({
-        id: 0,
-        partId: 0,
-        releases: [],
-        totalIndex: 0,
-      }).should.eventually.not.be.rejected;
+  describe("getMediumEpisodePerIndex", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getMediumEpisodePerIndex(0, 0)).resolves.toBeDefined();
     });
   });
 
   /**
    * Updates an episode from the storage.
    */
-  describe("moveEpisodeToPart", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.moveEpisodeToPart(0, 0).should.eventually.not.be.rejected;
+  describe("updateEpisode", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(
+        episodeStorage.updateEpisode({
+          id: 0,
+          partId: 0,
+          releases: [],
+          totalIndex: 0,
+        }),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  /**
+   * Updates an episode from the storage.
+   */
+  describe("moveEpisodeToPart", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.moveEpisodeToPart(0, 0)).resolves.toBeDefined();
     });
   });
 
   /**
    * Deletes an episode from the storage irreversibly.
    */
-  describe("deleteEpisode", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.deleteEpisode(0).should.eventually.not.be.rejected;
+  describe("deleteEpisode", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.deleteEpisode(0)).resolves.toBeDefined();
     });
   });
 
-  describe("getChapterIndices", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getChapterIndices(0).should.eventually.not.be.rejected;
+  describe("getChapterIndices", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getChapterIndices(0)).resolves.toBeDefined();
     });
   });
 
-  describe("getAllChapterLinks", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getAllChapterLinks(0).should.eventually.not.be.rejected;
+  describe("getAllChapterLinks", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getAllChapterLinks(0)).resolves.toBeDefined();
     });
   });
 
-  describe("getUnreadChapter", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getUnreadChapter("").should.eventually.not.be.rejected;
+  describe("getUnreadChapter", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getUnreadChapter("")).resolves.toBeDefined();
     });
   });
 
-  describe("getReadToday", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.getReadToday("").should.eventually.not.be.rejected;
+  describe("getReadToday", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.getReadToday("")).resolves.toBeDefined();
     });
   });
 
-  describe("markLowerIndicesRead", function () {
-    it("should not throw when using valid parameters", async function () {
-      await episodeStorage.markLowerIndicesRead("", 0).should.eventually.not.be.rejected;
+  describe("markLowerIndicesRead", () => {
+    it("should not throw when using valid parameters", async () => {
+      await expect(episodeStorage.markLowerIndicesRead("", 0)).resolves.toBeUndefined();
     });
   });
 });

@@ -20,7 +20,10 @@
       "@/*": [
         "./bin/*"
       ]
-    }
+    },
+    "types": [
+      "jest"
+    ]
   },
   "exclude": [
     "node_modules"

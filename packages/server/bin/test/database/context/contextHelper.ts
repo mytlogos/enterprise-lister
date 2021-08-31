@@ -247,7 +247,7 @@ export async function fillEpisodeReleaseTable(): EmptyPromise {
   }
 }
 
-export async function fillUserEpisodeTable(): EmptyPromise {
+export async function fillUserEpisodeTable(): Promise<Progress[]> {
   await fillEpisodeTable();
   await fillUserTable();
   const dummy = user[0].progress[0];
@@ -266,6 +266,7 @@ export async function fillUserEpisodeTable(): EmptyPromise {
   ) {
     databaseData[0][user[0].uuid].progress.push({ ...dummy });
   }
+  return [dummy];
 }
 
 export async function cleanUser(): EmptyPromise {
