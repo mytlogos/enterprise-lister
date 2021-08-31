@@ -388,6 +388,62 @@ async function testCase(casePath: string): EmptyPromise {
   expect(episodesCount).toBe(caseData.numberEpisodes);
 }
 
+async function testGeneratorCase(
+  generator: AsyncGenerator<directTools.TocPiece, void>,
+  ascending = true,
+  startIndex = 1,
+) {
+  const contents = await directTools.scrapeToc(generator);
+  expect(contents).toBeInstanceOf(Array);
+
+  let currentEpisodeIndex = startIndex;
+  let episodesCount = 0;
+  const titleNegativeRegex = /(^[\s:–,.-]+)|([\s:–,.-]+$)/;
+
+  for (const content of contents) {
+    expect(content).toHaveProperty("title");
+
+    // @ts-expect-error
+    if (content.episodes) {
+      // @ts-expect-error
+      expect(content.episodes).toBeInstanceOf(Array);
+
+      // @ts-expect-error
+      for (const episode of content.episodes) {
+        expect(episode).toHaveProperty("title");
+        expect(episode.title).not.toMatch(titleNegativeRegex);
+
+        if (ascending) {
+          expect(episode.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
+        } else {
+          expect(episode.combiIndex).toBeLessThanOrEqual(currentEpisodeIndex);
+        }
+        expect(episode).toHaveProperty("url");
+        expect(episode).toHaveProperty("locked", false);
+        expect(episode).toHaveProperty("releaseDate");
+        currentEpisodeIndex = episode.combiIndex;
+        episodesCount++;
+      }
+    } else {
+      episodesCount++;
+      if (ascending) {
+        expect(content.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
+      } else {
+        expect(content.combiIndex).toBeLessThanOrEqual(currentEpisodeIndex);
+      }
+      expect(content.title).not.toMatch(titleNegativeRegex);
+      expect(content).toHaveProperty("url");
+      expect(content).toHaveProperty("locked", false);
+      expect(content).toHaveProperty("releaseDate");
+      currentEpisodeIndex = content.combiIndex;
+    }
+  }
+  return {
+    episodesCount,
+    currentEpisodeIndex,
+  };
+}
+
 describe.skip("testing scrapeToc", () => {
   it("should extract correct toc: chapter indices only", async () => {
     testStaticCase(
@@ -1833,40 +1889,8 @@ describe.skip("testing scrapeToc", () => {
   it("should extract correct toc: for an example toc with descending index and sometimes partialindex", async () => {
     const generator = boxNovelGenerator("boxnovel-173-html");
 
-    const contents = await directTools.scrapeToc(generator);
-    expect(contents).toBeInstanceOf(Array);
-
-    let currentEpisodeIndex = 210;
-    let episodesCount = 0;
-
-    for (const content of contents) {
-      expect(content).toHaveProperty("title");
-
-      // @ts-expect-error
-      if (content.episodes) {
-        // @ts-expect-error
-        expect(content.episodes).toBeInstanceOf(Array);
-
-        // @ts-expect-error
-        for (const episode of content.episodes) {
-          expect(episode).toHaveProperty("title");
-          expect(episode.combiIndex).toBeLessThanOrEqual(currentEpisodeIndex);
-          expect(episode).toHaveProperty("url");
-          expect(episode).toHaveProperty("locked", false);
-          expect(episode).toHaveProperty("releaseDate");
-          currentEpisodeIndex = episode.combiIndex;
-          episodesCount++;
-        }
-      } else {
-        episodesCount++;
-        expect(content.combiIndex).toBeLessThanOrEqual(currentEpisodeIndex);
-        expect(content).toHaveProperty("url");
-        expect(content).toHaveProperty("locked", false);
-        expect(content).toHaveProperty("releaseDate");
-        currentEpisodeIndex = content.combiIndex;
-      }
-    }
-    expect(episodesCount).toBe(342);
+    const counts = await testGeneratorCase(generator, false, 210);
+    expect(counts.episodesCount).toBe(342);
   });
   it("should extract correct toc: for an example toc with chaotic, but ordered format, sometimes volume, sometimes not with sometimes partialIndex and sometimes no index", async () => {
     const pages = Array.from(new Array(7), (_val, index) => `tests/resources/novelfull-122-${index + 1}.html`);
@@ -1913,167 +1937,31 @@ describe.skip("testing scrapeToc", () => {
     const pages = Array.from(new Array(13), (_val, index) => `tests/resources/novel-test-toc-1-${index + 1}.html`);
     const generator = novelfullGenerator(pages);
 
-    const contents = await directTools.scrapeToc(generator);
-    expect(contents).toBeInstanceOf(Array);
-
-    let currentEpisodeIndex = 1;
-    let episodesCount = 0;
-
-    for (const content of contents) {
-      expect(content).toHaveProperty("title");
-
-      // @ts-expect-error
-      if (content.episodes) {
-        // @ts-expect-error
-        expect(content.episodes).toBeInstanceOf(Array);
-
-        // @ts-expect-error
-        for (const episode of content.episodes) {
-          expect(episode).toHaveProperty("title");
-          expect(episode.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-          expect(episode.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-          expect(episode).toHaveProperty("url");
-          expect(episode).toHaveProperty("locked", false);
-          expect(episode).toHaveProperty("releaseDate");
-          currentEpisodeIndex = episode.combiIndex;
-          episodesCount++;
-        }
-      } else {
-        episodesCount++;
-        expect(content.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-        expect(content.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-        expect(content).toHaveProperty("url");
-        expect(content).toHaveProperty("locked", false);
-        expect(content).toHaveProperty("releaseDate");
-        currentEpisodeIndex = content.combiIndex;
-      }
-    }
-    expect(episodesCount).toBe(637);
+    const counts = await testGeneratorCase(generator);
+    expect(counts.episodesCount).toBe(637);
   });
   it("should extract correct toc: for an example toc with mostly 'chapter Volume-Chapter-Part' Format", async () => {
     const pages = Array.from(new Array(13), (_val, index) => `tests/resources/novelfull-155-${index + 1}.html`);
     const generator = novelfullGenerator(pages);
 
-    const contents = await directTools.scrapeToc(generator);
-    expect(contents).toBeInstanceOf(Array);
-
-    let currentEpisodeIndex = 1;
-    let episodesCount = 0;
-
-    for (const content of contents) {
-      expect(content).toHaveProperty("title");
-
-      // @ts-expect-error
-      if (content.episodes) {
-        // @ts-expect-error
-        expect(content.episodes).toBeInstanceOf(Array);
-
-        // @ts-expect-error
-        for (const episode of content.episodes) {
-          expect(episode).toHaveProperty("title");
-          expect(episode.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-          expect(episode.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-          expect(episode).toHaveProperty("url");
-          expect(episode).toHaveProperty("locked", false);
-          expect(episode).toHaveProperty("releaseDate");
-          currentEpisodeIndex = episode.combiIndex;
-          episodesCount++;
-        }
-      } else {
-        episodesCount++;
-        expect(content.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-        expect(content.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-        expect(content).toHaveProperty("url");
-        expect(content).toHaveProperty("locked", false);
-        expect(content).toHaveProperty("releaseDate");
-        currentEpisodeIndex = content.combiIndex;
-      }
-    }
-    expect(episodesCount).toBe(626);
+    const counts = await testGeneratorCase(generator);
+    expect(counts.episodesCount).toBe(626);
   });
   it("should extract correct toc: for an example toc", async () => {
     const pages = Array.from(new Array(25), (_val, index) => `tests/resources/novelfull-178-${index + 1}.html`);
     const generator = novelfullGenerator(pages);
 
-    const contents = await directTools.scrapeToc(generator);
-    expect(contents).toBeInstanceOf(Array);
-
-    let currentEpisodeIndex = 1;
-    let episodesCount = 0;
-
-    for (const content of contents) {
-      expect(content).toHaveProperty("title");
-
-      // @ts-expect-error
-      if (content.episodes) {
-        // @ts-expect-error
-        expect(content.episodes).toBeInstanceOf(Array);
-
-        // @ts-expect-error
-        for (const episode of content.episodes) {
-          expect(episode).toHaveProperty("title");
-          expect(episode.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-          expect(episode.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-          expect(episode).toHaveProperty("url");
-          expect(episode).toHaveProperty("locked", false);
-          expect(episode).toHaveProperty("releaseDate");
-          currentEpisodeIndex = episode.combiIndex;
-          episodesCount++;
-        }
-      } else {
-        episodesCount++;
-        expect(content.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-        expect(content.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-        expect(content).toHaveProperty("url");
-        expect(content).toHaveProperty("locked", false);
-        expect(content).toHaveProperty("releaseDate");
-        currentEpisodeIndex = content.combiIndex;
-      }
-    }
-    expect(currentEpisodeIndex).toBe(1222);
-    expect(episodesCount).toBe(1222);
+    const counts = await testGeneratorCase(generator);
+    expect(counts.episodesCount).toBe(1222);
+    expect(counts.currentEpisodeIndex).toBe(1222);
   });
   it("should extract correct toc: for an example toc where it runs at risk to create many nonsense chapters because one chapter title starts with a big number", async () => {
     const pages = Array.from(new Array(12), (_val, index) => `tests/resources/novelfull-182-${index + 1}.html`);
     const generator = novelfullGenerator(pages);
 
-    const contents = await directTools.scrapeToc(generator);
-    expect(contents).toBeInstanceOf(Array);
-
-    let currentEpisodeIndex = 0;
-    let episodesCount = 0;
-
-    for (const content of contents) {
-      expect(content).toHaveProperty("title");
-
-      // @ts-expect-error
-      if (content.episodes) {
-        // @ts-expect-error
-        expect(content.episodes).toBeInstanceOf(Array);
-
-        // @ts-expect-error
-        for (const episode of content.episodes) {
-          expect(episode).toHaveProperty("title");
-          expect(episode.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-          expect(episode.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-          expect(episode).toHaveProperty("url");
-          expect(episode).toHaveProperty("locked", false);
-          expect(episode).toHaveProperty("releaseDate");
-          currentEpisodeIndex = episode.combiIndex;
-          episodesCount++;
-        }
-      } else {
-        episodesCount++;
-        expect(content.combiIndex).toBeGreaterThanOrEqual(currentEpisodeIndex);
-        expect(content.title).not.toMatch(/(^[\s:–,.-]+)|([\s:–,.-]+$)/);
-        expect(content).toHaveProperty("url");
-        expect(content).toHaveProperty("locked", false);
-        expect(content).toHaveProperty("releaseDate");
-        currentEpisodeIndex = content.combiIndex;
-      }
-    }
-    expect(currentEpisodeIndex).toBe(551);
-    expect(episodesCount).toBe(551);
+    const counts = await testGeneratorCase(generator, true, 0);
+    expect(counts.episodesCount).toBe(551);
+    expect(counts.currentEpisodeIndex).toBe(551);
   });
   it("should extract correct toc: for the monk toc on novelfull", async () => {
     await testCase("novelfull-monk.json");
