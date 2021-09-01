@@ -109,7 +109,7 @@ describe("testing tool.js", () => {
       });
     }
   });
-  describe("internet tester", () => {
+  describe.skip("internet tester", () => {
     const internetMocks = [] as jest.SpyInstance[];
     let up = false;
 
