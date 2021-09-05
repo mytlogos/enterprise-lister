@@ -358,7 +358,7 @@ export default defineComponent({
       //    },
       //  },
       //},
-    });
+    //});
     HttpClient.getMedia(this.id)
       .then((medium) => {
         if (Array.isArray(medium)) {
