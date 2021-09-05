@@ -1,3 +1,12 @@
+## [1.19.1](https://github.com/mytlogos/enterprise-lister/compare/v1.19.0...v1.19.1) (2021-09-05)
+
+
+### Bug Fixes
+
+* correct missing comment ([dabeb92](https://github.com/mytlogos/enterprise-lister/commit/dabeb9297bb85d159d0483bf744430869960b647))
+* disable chart until chart migration ([fbaac14](https://github.com/mytlogos/enterprise-lister/commit/fbaac140f70c2278abb30b7cb33da094d454693c))
+* indentation ([28a6607](https://github.com/mytlogos/enterprise-lister/commit/28a6607116e8b3a1a16d36b8c4bc9fc41738f282))
+
 # [1.19.0](https://github.com/mytlogos/enterprise-lister/compare/v1.18.2...v1.19.0) (2021-08-28)
 
 
