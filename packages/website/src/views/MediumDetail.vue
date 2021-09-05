@@ -329,35 +329,35 @@ export default defineComponent({
     // eslint-disable-next-line @typescript-eslint/quotes
     this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
 
-    chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
-      type: "line",
-      data: {
-        datasets: [],
-      },
-      options: {
-        scales: {
-          // @ts-ignore
-          x: {
-            // @ts-ignore
-            type: "time",
-            distribution: "linear",
-            time: {
-              unit: "hour",
-              displayFormats: {
-                hour: "DD.MM.YYYY",
-              },
-            },
-          },
-          y: {
-            display: true,
-            // @ts-ignore
-            type: "linear",
-            position: "left",
-            // @ts-ignore
-            title: "Number of Releases",
-          },
-        },
-      },
+      //chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
+      //type: "line",
+      //data: {
+      //  datasets: [],
+      //},
+      //options: {
+      //  scales: {
+      //    // @ts-ignore
+      //    x: {
+      //      // @ts-ignore
+      //      type: "time",
+      //      distribution: "linear",
+      //      time: {
+      //        unit: "hour",
+      //        displayFormats: {
+      //          hour: "DD.MM.YYYY",
+      //        },
+      //      },
+      //    },
+      //    y: {
+      //      display: true,
+      //      // @ts-ignore
+      //      type: "linear",
+      //      position: "left",
+      //      // @ts-ignore
+      //      title: "Number of Releases",
+      //    },
+      //  },
+      //},
     });
     HttpClient.getMedia(this.id)
       .then((medium) => {
@@ -428,7 +428,7 @@ export default defineComponent({
       const newDataSet = [];
 
       // @ts-expect-error
-      chart.options.scales.y.scaleLabel.labelString = "Release Count";
+      //chart.options.scales.y.scaleLabel.labelString = "Release Count";
 
       newDataSet.push({
         label: "All",
@@ -440,10 +440,10 @@ export default defineComponent({
         yAxisID: "left-y-axis",
       });
 
-      chart.data.labels = xValues;
+      //chart.data.labels = xValues;
       // @ts-ignore
-      chart.data.datasets = newDataSet;
-      chart.update();
+      //chart.data.datasets = newDataSet;
+      //chart.update();
 
       // no longer dirty as it is "tidied up" now
       this.dirty = false;
