@@ -10,6 +10,7 @@ import {
   getDatabaseData,
   fillUserEpisodeTable,
   fillPartTable,
+  fillEpisodeReleaseTable,
 } from "./contextHelper";
 
 jest.setTimeout(60000);
@@ -110,25 +111,44 @@ describe("episodeContext", () => {
 
   describe("getMediumReleases", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.getMediumReleases(0, "")).resolves.toBeDefined();
+      await fillEpisodeReleaseTable();
+      const mediumId = getDatabaseData()[1].media[0].id;
+      const uuid = Object.keys(getDatabaseData()[0])[0];
+      const result = await episodeStorage.getMediumReleases(mediumId, uuid);
+      expect(result.length).toBeGreaterThan(0);
     });
   });
 
   describe("getAssociatedEpisode", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.getAssociatedEpisode("")).resolves.toBeDefined();
+      const values = await fillEpisodeReleaseTable();
+      expect(await episodeStorage.getAssociatedEpisode(values[0].url)).toBe(values[0].episodeId);
     });
   });
 
   describe("getLatestReleases", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.getLatestReleases(0)).resolves.toBeDefined();
+      await fillEpisodeReleaseTable();
+      const staticData = getDatabaseData()[1];
+      const mediumId = staticData.media[0].id;
+      const result = await episodeStorage.getLatestReleases(mediumId);
+      const expected = staticData.releases.filter((release) =>
+        staticData.episodes.find(
+          (episode) =>
+            episode.id === release.episodeId &&
+            staticData.parts.find((part) => part.id === episode.partId && part.mediumId === mediumId),
+        ),
+      );
+      expect(result.length).toBeLessThanOrEqual(expected.length);
+      expect(result.length === 0).toBe(expected.length === 0);
     });
   });
 
   describe("getReleases", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.getReleases(0)).resolves.toBeDefined();
+      const values = await fillEpisodeReleaseTable();
+      const result = await episodeStorage.getReleases(values.map((release) => release.episodeId));
+      expect(values.length).toBe(result.length);
     });
   });
 
