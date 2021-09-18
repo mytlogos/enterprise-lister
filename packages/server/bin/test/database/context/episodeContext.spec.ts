@@ -11,6 +11,8 @@ import {
   fillUserEpisodeTable,
   fillPartTable,
   fillEpisodeReleaseTable,
+  fillEpisodeTable,
+  fillUserTable,
 } from "./contextHelper";
 
 jest.setTimeout(60000);
@@ -154,13 +156,18 @@ describe("episodeContext", () => {
 
   describe("getReleasesByHost", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.getReleasesByHost(0, "")).resolves.toBeDefined();
+      const values = await fillEpisodeReleaseTable();
+      const result = await episodeStorage.getReleasesByHost(values[0].episodeId, values[0].url);
+      expect(result.length).toBeGreaterThan(0);
     });
   });
 
   describe("getPartsEpisodeIndices", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.getPartsEpisodeIndices(0)).resolves.toBeDefined();
+      const values = await fillEpisodeTable();
+      const partIds = new Set(values.map((episode) => episode.partId));
+      const result = await episodeStorage.getPartsEpisodeIndices([...partIds]);
+      expect(partIds.size).toBe(result.length);
     });
   });
 
@@ -169,7 +176,12 @@ describe("episodeContext", () => {
    */
   describe("removeProgress", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.removeProgress("", 0)).resolves.toBeDefined();
+      const [value] = await fillUserEpisodeTable();
+      expect(value.progress).toBeGreaterThan(0);
+      await expect(episodeStorage.getProgress(value.uuid, value.episodeId)).resolves.toBe(value.progress);
+      await expect(episodeStorage.removeProgress(value.uuid, value.episodeId)).resolves.toBe(true);
+      await expect(episodeStorage.getProgress(value.uuid, value.episodeId)).resolves.toBe(0);
+      await expect(episodeStorage.removeProgress(value.uuid, value.episodeId)).resolves.toBe(false);
     });
   });
 
@@ -178,6 +190,7 @@ describe("episodeContext", () => {
    */
   describe("setProgress", () => {
     it("should not throw when using valid parameters", async () => {
+      // FIXME remote this test and the whole method
       await expect(episodeStorage.setProgress("", [])).resolves.toBeUndefined();
     });
   });
@@ -200,7 +213,12 @@ describe("episodeContext", () => {
    */
   describe("updateProgress", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.updateProgress("", 0, 0, null)).resolves.toBeDefined();
+      const [user] = await fillUserTable();
+      const [episode] = await fillEpisodeTable();
+      await expect(episodeStorage.updateProgress(user.uuid, episode.id, 0.5, null)).resolves.toBe(true);
+      await expect(episodeStorage.getProgress(user.uuid, episode.id)).resolves.toBe(0.5);
+      await expect(episodeStorage.updateProgress(user.uuid, episode.id, 0, null)).resolves.toBe(true);
+      await expect(episodeStorage.getProgress(user.uuid, episode.id)).resolves.toBe(0);
     });
   });
 
