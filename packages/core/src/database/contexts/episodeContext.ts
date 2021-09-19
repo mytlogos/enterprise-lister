@@ -198,6 +198,7 @@ export class EpisodeContext extends SubContext {
         locked: !!value.locked,
         url: value.url,
         title: value.title,
+        tocId: value.toc_id,
       };
     });
   }
@@ -282,6 +283,7 @@ export class EpisodeContext extends SubContext {
 
   /**
    * Add progress of an user in regard to an episode to the storage.
+   * A null value for readDate will be saved as "now".
    * Returns always true if it succeeded (no error).
    */
   public async addProgress(
@@ -296,7 +298,7 @@ export class EpisodeContext extends SubContext {
     const results = await this.multiInsert(
       "REPLACE INTO user_episode " + "(user_uuid, episode_id, progress, read_date) " + "VALUES ",
       episodeId,
-      (value) => [uuid, value, progress, readDate],
+      (value) => [uuid, value, progress, readDate || new Date()],
     );
     multiSingle(results, (value: OkPacket) => storeModifications("progress", "update", value));
     return true;
@@ -343,6 +345,7 @@ export class EpisodeContext extends SubContext {
 
   /**
    * Get the progress of an user in regard to an episode.
+   * Defaults to zero if no entry is found.
    */
   public async getProgress(uuid: Uuid, episodeId: number): Promise<number> {
     const result = await this.query("SELECT * FROM user_episode " + "WHERE user_uuid = ? " + "AND episode_id = ?", [
@@ -350,7 +353,7 @@ export class EpisodeContext extends SubContext {
       episodeId,
     ]);
 
-    return result[0].progress;
+    return result[0]?.progress || 0;
   }
 
   /**

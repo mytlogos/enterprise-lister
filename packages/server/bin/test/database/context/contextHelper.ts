@@ -2,7 +2,7 @@ import * as storageTools from "enterprise-core/dist/database/storages/storageToo
 import * as storage from "enterprise-core/dist/database/storages/storage";
 import { QueryContext } from "enterprise-core/dist/database/contexts/queryContext";
 import { MediaType, delay } from "enterprise-core/dist/tools";
-import { EmptyPromise } from "enterprise-core/dist/types";
+import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "enterprise-core/dist/types";
 import { Query } from "mysql";
 import bcrypt from "bcryptjs";
 
@@ -67,7 +67,7 @@ export function resultFromQuery(query: Query): Promise<any[]> {
 interface StaticData {
   media: Array<{ id: number; medium: MediaType }>;
   parts: Array<{ id: number; mediumId: number; totalIndex: number }>;
-  episodes: Array<{ id: number; partId: number; totalIndex: number }>;
+  episodes: Array<{ id: number; partId: number; totalIndex: number; releases: EpisodeRelease[] }>;
   releases: Array<{ url: string; episodeId: number; title: string; releaseDate: Date }>;
   media_in_waits: Array<{ id: number; medium: MediaType }>;
   news: Array<{ id: number; medium: MediaType }>;
@@ -95,6 +95,7 @@ const data: StaticData = {
       id: 1,
       partId: 1,
       totalIndex: 1,
+      releases: [],
     },
   ],
   releases: [],
@@ -154,6 +155,22 @@ const databaseData: [Record<string, User>, StaticData] = [
   },
 ];
 
+type ArrayElement<A> = A extends ReadonlyArray<infer T> ? T : never;
+
+export function getMediumOfEpisode(episodeId: number): ArrayElement<StaticData["media"]> | undefined {
+  const episode = databaseData[1].episodes.find((value) => value.id === episodeId);
+
+  if (!episode) {
+    return;
+  }
+  const part = databaseData[1].parts.find((value) => value.id === episode.partId);
+
+  if (!part) {
+    return;
+  }
+  return databaseData[1].media.find((value) => value.id === part.mediumId);
+}
+
 export function getDatabaseData(): [Record<string, User>, StaticData] {
   return databaseData;
 }
@@ -162,7 +179,7 @@ export async function tearDownTestDatabase(): EmptyPromise {
   return inContext((context) => context.query("DROP DATABASE enterprise_test;"));
 }
 
-export async function fillUserTable(): EmptyPromise {
+export async function fillUserTable(): Promise<User[]> {
   const dummy = user[0];
   await inContext((context) =>
     context.query("INSERT IGNORE INTO user (name, uuid, password, alg) VALUES (?,?,?,?);", [
@@ -179,6 +196,7 @@ export async function fillUserTable(): EmptyPromise {
       list_medium: [],
     };
   }
+  return [dummy];
 }
 
 export async function fillMediumTable(): EmptyPromise {
@@ -208,7 +226,7 @@ export async function fillPartTable(): EmptyPromise {
   }
 }
 
-export async function fillEpisodeTable(): EmptyPromise {
+export async function fillEpisodeTable(): Promise<SimpleEpisode[]> {
   await fillPartTable();
   const dummy = data.episodes[0];
 
@@ -223,9 +241,10 @@ export async function fillEpisodeTable(): EmptyPromise {
   if (!databaseData[1].episodes.find((value) => value.id === dummy.id)) {
     databaseData[1].episodes.push({ ...dummy });
   }
+  return [dummy];
 }
 
-export async function fillEpisodeReleaseTable(): EmptyPromise {
+export async function fillEpisodeReleaseTable(): Promise<EpisodeRelease[]> {
   await fillEpisodeTable();
   const dummy = {
     episodeId: 1,
@@ -245,6 +264,7 @@ export async function fillEpisodeReleaseTable(): EmptyPromise {
   if (!databaseData[1].releases.find((value) => value.episodeId === dummy.episodeId && value.url === dummy.url)) {
     databaseData[1].releases.push({ ...dummy });
   }
+  return [dummy];
 }
 
 export async function fillUserEpisodeTable(): Promise<Progress[]> {

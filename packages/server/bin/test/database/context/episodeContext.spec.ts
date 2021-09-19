@@ -13,7 +13,9 @@ import {
   fillEpisodeReleaseTable,
   fillEpisodeTable,
   fillUserTable,
+  getMediumOfEpisode,
 } from "./contextHelper";
+import { EpisodeRelease } from "enterprise-core/dist/types";
 
 jest.setTimeout(60000);
 
@@ -30,6 +32,8 @@ afterAll(async () => {
 });
 
 describe("episodeContext", () => {
+  afterEach(() => cleanAll());
+
   describe("getDisplayReleases", () => {
     it("should not throw, when using valid parameters", async () => {
       await expect(
@@ -107,6 +111,7 @@ describe("episodeContext", () => {
 
   describe("getAllReleases", () => {
     it("should not throw", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getAllReleases()).resolves.toBeDefined();
     });
   });
@@ -162,6 +167,15 @@ describe("episodeContext", () => {
     });
   });
 
+  describe("getMediumReleasesByHost", () => {
+    it("should not throw when using valid parameters", async () => {
+      const [value] = await fillEpisodeReleaseTable();
+      const medium = getMediumOfEpisode(value.episodeId);
+      const result = await episodeStorage.getMediumReleasesByHost((medium as NonNullable<typeof medium>).id, value.url);
+      expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
   describe("getPartsEpisodeIndices", () => {
     it("should not throw when using valid parameters", async () => {
       const values = await fillEpisodeTable();
@@ -190,7 +204,7 @@ describe("episodeContext", () => {
    */
   describe("setProgress", () => {
     it("should not throw when using valid parameters", async () => {
-      // FIXME remote this test and the whole method
+      // FIXME remove this test and the whole method
       await expect(episodeStorage.setProgress("", [])).resolves.toBeUndefined();
     });
   });
@@ -227,35 +241,73 @@ describe("episodeContext", () => {
    */
   describe("markEpisodeRead", () => {
     it("should not throw when using valid parameters", async () => {
+      // FIXME remote this test and the whole method
       await expect(episodeStorage.markEpisodeRead("", { result: [], url: "", accept: true })).resolves.toBeUndefined();
     });
   });
   describe("addRelease", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.addRelease([])).resolves.toBeDefined();
+      const [episode] = await fillEpisodeTable();
+      const release = {
+        episodeId: episode.id,
+        releaseDate: new Date(),
+        title: "hi",
+        url: "https://book.url/test/",
+      } as EpisodeRelease;
+      await expect(episodeStorage.addRelease(release)).resolves.toEqual(release);
     });
   });
 
   describe("getEpisodeLinksByMedium", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.getEpisodeLinksByMedium(0)).resolves.toBeDefined();
+      const [release] = await fillEpisodeReleaseTable();
+      const medium = getMediumOfEpisode(release.episodeId) as NonNullable<ReturnType<typeof getMediumOfEpisode>>;
+      const result = await episodeStorage.getEpisodeLinksByMedium(medium.id);
+      expect(result).toContainEqual({ episodeId: release.episodeId, url: release.url });
     });
   });
 
   describe("getSourcedReleases", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getSourcedReleases("", 0)).resolves.toBeDefined();
     });
   });
 
   describe("updateRelease", () => {
     it("should not throw when using valid parameters", async () => {
-      await expect(episodeStorage.updateRelease([])).resolves.toBeUndefined();
+      const [episode] = await fillEpisodeTable();
+      const release = {
+        episodeId: episode.id,
+        releaseDate: new Date(),
+        title: "hi",
+        url: "https://book.url/test/",
+      } as EpisodeRelease;
+      release.releaseDate.setMilliseconds(0);
+
+      // FIXME: currently getReleases returns null values for properties which do not contain the null type
+      // either allow null, or remove keys with null values
+      await episodeStorage.addRelease(release);
+      await expect(episodeStorage.getReleases(release.episodeId)).resolves.toEqual([
+        {
+          ...release,
+          sourceType: null,
+          tocId: null,
+          locked: false,
+        },
+      ]);
+      release.locked = true;
+      release.releaseDate.setHours(release.releaseDate.getHours() - 1);
+      release.sourceType = "2";
+      release.title = "2";
+      await expect(episodeStorage.updateRelease(release)).resolves.toBeUndefined();
+      await expect(episodeStorage.getReleases(release.episodeId)).resolves.toEqual([{ ...release, tocId: null }]);
     });
   });
 
   describe("deleteRelease", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(
         episodeStorage.deleteRelease({ episodeId: 0, releaseDate: new Date(), title: "", url: "" }),
       ).resolves.toBeUndefined();
@@ -264,6 +316,7 @@ describe("episodeContext", () => {
 
   describe("getEpisodeContentData", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getEpisodeContentData("")).resolves.toBeDefined();
     });
   });
@@ -272,7 +325,7 @@ describe("episodeContext", () => {
     afterAll(() => cleanAll());
     it("should not throw when using valid parameters", async () => {
       await fillPartTable();
-
+      // TODO: write better test
       await expect(
         episodeStorage.addEpisode({
           id: 0,
@@ -286,24 +339,28 @@ describe("episodeContext", () => {
 
   describe("getEpisode", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getEpisode(0, "")).resolves.toBeDefined();
     });
   });
 
   describe("getPartMinimalEpisodes", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getPartMinimalEpisodes(0)).resolves.toBeDefined();
     });
   });
 
   describe("getPartEpisodePerIndex", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getPartEpisodePerIndex(0, 0)).resolves.toBeDefined();
     });
   });
 
   describe("getMediumEpisodePerIndex", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getMediumEpisodePerIndex(0, 0)).resolves.toBeDefined();
     });
   });
@@ -313,6 +370,7 @@ describe("episodeContext", () => {
    */
   describe("updateEpisode", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(
         episodeStorage.updateEpisode({
           id: 0,
@@ -329,6 +387,7 @@ describe("episodeContext", () => {
    */
   describe("moveEpisodeToPart", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.moveEpisodeToPart(0, 0)).resolves.toBeDefined();
     });
   });
@@ -338,36 +397,42 @@ describe("episodeContext", () => {
    */
   describe("deleteEpisode", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.deleteEpisode(0)).resolves.toBeDefined();
     });
   });
 
   describe("getChapterIndices", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getChapterIndices(0)).resolves.toBeDefined();
     });
   });
 
   describe("getAllChapterLinks", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getAllChapterLinks(0)).resolves.toBeDefined();
     });
   });
 
   describe("getUnreadChapter", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getUnreadChapter("")).resolves.toBeDefined();
     });
   });
 
   describe("getReadToday", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.getReadToday("")).resolves.toBeDefined();
     });
   });
 
   describe("markLowerIndicesRead", () => {
     it("should not throw when using valid parameters", async () => {
+      // TODO: write better test
       await expect(episodeStorage.markLowerIndicesRead("", 0)).resolves.toBeUndefined();
     });
   });
