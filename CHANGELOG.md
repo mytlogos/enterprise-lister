@@ -1,3 +1,11 @@
+## [1.19.2](https://github.com/mytlogos/enterprise-lister/compare/v1.19.1...v1.19.2) (2021-09-20)
+
+
+### Bug Fixes
+
+* fix some behaviours, add doc ([ee49733](https://github.com/mytlogos/enterprise-lister/commit/ee49733abf874087168dca85aa0309ac50f1d42e))
+* **database:** fix query not returning expected result ([5b0fa84](https://github.com/mytlogos/enterprise-lister/commit/5b0fa84ac3a16964450b938eacdab76a2f680e8e))
+
 ## [1.19.1](https://github.com/mytlogos/enterprise-lister/compare/v1.19.0...v1.19.1) (2021-09-05)
 
 
