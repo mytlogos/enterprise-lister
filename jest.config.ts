@@ -118,7 +118,9 @@ export default {
 
   // A list of paths to directories that Jest should use to search for files in
   roots: [
-    "packages/**/test/",
+    "packages/core/src/test/",
+    "packages/server/bin/test/",
+    "packages/scraper/src/test/",
   ],
 
   // Allows you to use a custom runner instead of Jest's default test runner
