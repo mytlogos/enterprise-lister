@@ -3,7 +3,7 @@ import * as storage from "enterprise-core/dist/database/storages/storage";
 import { QueryContext } from "enterprise-core/dist/database/contexts/queryContext";
 import { MediaType } from "enterprise-core/dist/tools";
 import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "enterprise-core/dist/types";
-import { Query } from "mysql";
+import { escapeId, Query } from "mysql";
 import bcrypt from "bcryptjs";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
@@ -123,6 +123,7 @@ interface Progress {
   uuid: string;
   episodeId: number;
   progress: number;
+  readDate?: Date;
 }
 
 interface User {
@@ -151,6 +152,7 @@ const user: User[] = [
         uuid: "123789",
         episodeId: 1,
         progress: 0.5,
+        readDate: new Date(),
       },
     ],
   },
@@ -173,18 +175,32 @@ const databaseData: [Record<string, User>, StaticData] = [
 
 type ArrayElement<A> = A extends ReadonlyArray<infer T> ? T : never;
 
-export function getMediumOfEpisode(episodeId: number): ArrayElement<StaticData["media"]> | undefined {
+export function getEpisode(episodeId: number): ArrayElement<StaticData["episodes"]> {
   const episode = databaseData[1].episodes.find((value) => value.id === episodeId);
 
   if (!episode) {
-    return;
+    throw Error("No Episode for episodeId: " + episodeId);
+  }
+  return episode;
+}
+
+export function getMediumOfEpisode(episodeId: number): ArrayElement<StaticData["media"]> {
+  const episode = databaseData[1].episodes.find((value) => value.id === episodeId);
+
+  if (!episode) {
+    throw Error("No Episode for episodeId: " + episodeId);
   }
   const part = databaseData[1].parts.find((value) => value.id === episode.partId);
 
   if (!part) {
-    return;
+    throw Error("No Part for episodeId: " + episodeId);
   }
-  return databaseData[1].media.find((value) => value.id === part.mediumId);
+  const medium = databaseData[1].media.find((value) => value.id === part.mediumId);
+
+  if (!medium) {
+    throw Error("No Medium for episodeId: " + episodeId);
+  }
+  return medium;
 }
 
 export function getDatabaseData(): [Record<string, User>, StaticData] {
@@ -226,7 +242,7 @@ export async function fillMediumTable(): EmptyPromise {
   }
 }
 
-export async function fillPartTable(): EmptyPromise {
+export async function fillPartTable(): Promise<StaticData["parts"]> {
   await fillMediumTable();
   const dummy = data.parts[0];
   await inContext((context) =>
@@ -240,6 +256,7 @@ export async function fillPartTable(): EmptyPromise {
   if (!databaseData[1].parts.find((value) => value.id === dummy.id)) {
     databaseData[1].parts.push({ ...dummy });
   }
+  return [dummy];
 }
 
 export async function fillEpisodeTable(): Promise<SimpleEpisode[]> {
@@ -247,9 +264,10 @@ export async function fillEpisodeTable(): Promise<SimpleEpisode[]> {
   const dummy = data.episodes[0];
 
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO episode (id, part_id, totalIndex) VALUES (?,?,?);", [
+    context.query("INSERT IGNORE INTO episode (id, part_id, totalIndex, combiIndex) VALUES (?,?,?,?);", [
       dummy.id,
       dummy.partId,
+      dummy.totalIndex,
       dummy.totalIndex,
     ]),
   );
@@ -264,10 +282,13 @@ export async function fillEpisodeReleaseTable(): Promise<EpisodeRelease[]> {
   await fillEpisodeTable();
   const dummy = {
     episodeId: 1,
-    url: "",
+    url: "https://my.url/release",
     title: "",
     releaseDate: new Date(),
   };
+  // set ms part to 0, as this is not saved in database
+  dummy.releaseDate.setMilliseconds(0);
+
   await inContext((context) =>
     context.query("INSERT IGNORE INTO episode_release (episode_id, url, title, releaseDate) VALUES (?,?,?,?);", [
       dummy.episodeId,
@@ -287,12 +308,17 @@ export async function fillUserEpisodeTable(): Promise<Progress[]> {
   await fillEpisodeTable();
   await fillUserTable();
   const dummy = user[0].progress[0];
+  const now = new Date();
+  // set ms part to 0, as this is not saved in database
+  now.setMilliseconds(0);
+  dummy.readDate = now;
 
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress) VALUES (?,?,?);", [
+    context.query("INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress, read_date) VALUES (?,?,?,?);", [
       dummy.uuid,
       dummy.episodeId,
       dummy.progress,
+      dummy.readDate,
     ]),
   );
   if (
@@ -303,6 +329,10 @@ export async function fillUserEpisodeTable(): Promise<Progress[]> {
     databaseData[0][user[0].uuid].progress.push({ ...dummy });
   }
   return [dummy];
+}
+
+export async function dumpTable(table: string): Promise<any[]> {
+  return inContext((context) => context.query(`SELECT * FROM ${escapeId(table)};`));
 }
 
 export async function cleanUser(): EmptyPromise {

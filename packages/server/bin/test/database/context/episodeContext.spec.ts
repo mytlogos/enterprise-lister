@@ -14,8 +14,9 @@ import {
   fillEpisodeTable,
   fillUserTable,
   getMediumOfEpisode,
+  getEpisode,
 } from "./contextHelper";
-import { EpisodeRelease } from "enterprise-core/dist/types";
+import { EpisodeRelease, ReadEpisode } from "enterprise-core/dist/types";
 
 jest.setTimeout(60000);
 
@@ -307,17 +308,36 @@ describe("episodeContext", () => {
 
   describe("deleteRelease", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(
-        episodeStorage.deleteRelease({ episodeId: 0, releaseDate: new Date(), title: "", url: "" }),
-      ).resolves.toBeUndefined();
+      const [release] = await fillEpisodeReleaseTable();
+
+      await expect(episodeStorage.getReleases(release.episodeId)).resolves.toContainEqual({
+        ...release,
+        sourceType: null,
+        tocId: null,
+        locked: false,
+      });
+
+      await expect(episodeStorage.deleteRelease(release)).resolves.toBeUndefined();
+
+      await expect(episodeStorage.getReleases(release.episodeId)).resolves.not.toContainEqual({
+        ...release,
+        sourceType: null,
+        tocId: null,
+        locked: false,
+      });
     });
   });
 
   describe("getEpisodeContentData", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getEpisodeContentData("")).resolves.toBeDefined();
+      const [release] = await fillEpisodeReleaseTable();
+      const episode = getEpisode(release.episodeId);
+
+      await expect(episodeStorage.getEpisodeContentData(release.url)).resolves.toEqual({
+        episodeTitle: release.title,
+        index: episode.totalIndex,
+        mediumTitle: "",
+      });
     });
   });
 
@@ -325,43 +345,92 @@ describe("episodeContext", () => {
     afterAll(() => cleanAll());
     it("should not throw when using valid parameters", async () => {
       await fillPartTable();
-      // TODO: write better test
-      await expect(
-        episodeStorage.addEpisode({
-          id: 0,
-          partId: 1,
-          releases: [],
-          totalIndex: 0,
-        }),
-      ).resolves.toBeDefined();
+      const episode = {
+        id: 0,
+        partId: 1,
+        releases: [],
+        totalIndex: 0,
+      };
+      const firstResult = await episodeStorage.addEpisode(episode);
+      expect(firstResult.id).not.toBe(episode.id);
+      expect(firstResult).toEqual({
+        ...episode,
+        id: firstResult.id,
+        combiIndex: episode.totalIndex,
+        progress: 0,
+        readDate: null,
+      });
+      const secondResult = await episodeStorage.addEpisode(episode);
+      expect(secondResult.id).not.toBe(episode.id);
+      expect(secondResult.id).toBeGreaterThan(firstResult.id);
+      expect(secondResult).toEqual({
+        ...episode,
+        id: secondResult.id,
+        combiIndex: episode.totalIndex,
+        progress: 0,
+        readDate: null,
+      });
     });
   });
 
   describe("getEpisode", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getEpisode(0, "")).resolves.toBeDefined();
+      const [episode] = await fillEpisodeTable();
+      const [progress] = await fillUserEpisodeTable();
+
+      // for this test both episode and progress must have the same id
+      expect(episode.id).toBe(progress.episodeId);
+
+      await expect(episodeStorage.getEpisode(progress.episodeId, progress.uuid)).resolves.toEqual([
+        {
+          ...episode,
+          combiIndex: episode.totalIndex,
+          partialIndex: null,
+          progress: progress.progress,
+          readDate: progress.readDate,
+        },
+      ]);
     });
   });
 
   describe("getPartMinimalEpisodes", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getPartMinimalEpisodes(0)).resolves.toBeDefined();
+      const [episode] = await fillEpisodeTable();
+
+      await expect(episodeStorage.getPartMinimalEpisodes(episode.partId)).resolves.toEqual([
+        {
+          id: episode.id,
+          combiIndex: episode.totalIndex,
+        },
+      ]);
     });
   });
 
   describe("getPartEpisodePerIndex", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getPartEpisodePerIndex(0, 0)).resolves.toBeDefined();
+      const [episode] = await fillEpisodeTable();
+      await expect(episodeStorage.getPartEpisodePerIndex(episode.partId, episode.totalIndex)).resolves.toEqual([
+        {
+          ...episode,
+          partialIndex: null,
+          combiIndex: episode.totalIndex,
+        },
+      ]);
     });
   });
 
   describe("getMediumEpisodePerIndex", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getMediumEpisodePerIndex(0, 0)).resolves.toBeDefined();
+      const [episode] = await fillEpisodeTable();
+      const medium = getMediumOfEpisode(episode.id);
+
+      await expect(episodeStorage.getMediumEpisodePerIndex(medium.id, episode.totalIndex)).resolves.toEqual([
+        {
+          ...episode,
+          partialIndex: null,
+          combiIndex: episode.totalIndex,
+        },
+      ]);
     });
   });
 
@@ -370,15 +439,27 @@ describe("episodeContext", () => {
    */
   describe("updateEpisode", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(
-        episodeStorage.updateEpisode({
-          id: 0,
-          partId: 0,
-          releases: [],
-          totalIndex: 0,
-        }),
-      ).resolves.toBeDefined();
+      const [part] = await fillPartTable();
+      const episode = {
+        id: 0,
+        partId: part.id,
+        releases: [],
+        totalIndex: 0,
+      };
+      await expect(episodeStorage.updateEpisode(episode)).resolves.toBe(false);
+      const result = await episodeStorage.addEpisode(episode);
+      episode.id = result.id;
+      episode.totalIndex = 1;
+      await expect(episodeStorage.updateEpisode(episode)).resolves.toBe(true);
+      await expect(episodeStorage.getEpisode(episode.id, "")).resolves.toEqual([
+        {
+          ...episode,
+          combiIndex: episode.totalIndex,
+          partialIndex: null,
+          progress: 0,
+          readDate: null,
+        },
+      ]);
     });
   });
 
@@ -397,43 +478,98 @@ describe("episodeContext", () => {
    */
   describe("deleteEpisode", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.deleteEpisode(0)).resolves.toBeDefined();
+      const [episode] = await fillEpisodeTable();
+      await expect(episodeStorage.getEpisode(episode.id, "")).resolves.toEqual([
+        {
+          ...episode,
+          combiIndex: episode.totalIndex,
+          partialIndex: null,
+          progress: 0,
+          readDate: null,
+        },
+      ]);
+      await expect(episodeStorage.deleteEpisode(episode.id)).resolves.toBeDefined();
+      await expect(episodeStorage.getEpisode(episode.id, "")).resolves.toEqual([]);
     });
   });
 
   describe("getChapterIndices", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getChapterIndices(0)).resolves.toBeDefined();
+      const [episode] = await fillEpisodeTable();
+      const medium = getMediumOfEpisode(episode.id);
+      await expect(episodeStorage.getChapterIndices(medium.id)).resolves.toEqual([episode.totalIndex]);
     });
   });
 
   describe("getAllChapterLinks", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getAllChapterLinks(0)).resolves.toBeDefined();
+      const [release] = await fillEpisodeReleaseTable();
+      const medium = getMediumOfEpisode(release.episodeId);
+
+      await expect(episodeStorage.getAllChapterLinks(medium.id)).resolves.toEqual([release.url]);
     });
   });
 
   describe("getUnreadChapter", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getUnreadChapter("")).resolves.toBeDefined();
+      const [user] = await fillUserTable();
+      const [episode] = await fillEpisodeTable();
+
+      await expect(episodeStorage.getUnreadChapter(user.uuid)).resolves.toEqual([episode.id]);
+      await episodeStorage.addProgress(user.uuid, episode.id, 1, null);
+      await expect(episodeStorage.getUnreadChapter(user.uuid)).resolves.toEqual([]);
     });
   });
 
   describe("getReadToday", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.getReadToday("")).resolves.toBeDefined();
+      const [user] = await fillUserTable();
+      const [episode] = await fillEpisodeTable();
+
+      await expect(episodeStorage.getReadToday(user.uuid)).resolves.toStrictEqual<ReadEpisode[]>([]);
+      const date = new Date();
+      date.setMilliseconds(0);
+
+      await episodeStorage.addProgress(user.uuid, episode.id, 1, date);
+      await expect(episodeStorage.getReadToday(user.uuid)).resolves.toStrictEqual<ReadEpisode[]>([
+        {
+          episodeId: episode.id,
+          progress: 1,
+          readDate: date,
+        },
+      ]);
     });
   });
 
   describe("markLowerIndicesRead", () => {
     it("should not throw when using valid parameters", async () => {
-      // TODO: write better test
-      await expect(episodeStorage.markLowerIndicesRead("", 0)).resolves.toBeUndefined();
+      const [user] = await fillUserTable();
+      const [episode] = await fillEpisodeTable();
+      const medium = getMediumOfEpisode(episode.id);
+
+      const [second, third] = await episodeStorage.addEpisode([
+        {
+          id: 0,
+          partId: episode.partId,
+          releases: [],
+          totalIndex: episode.totalIndex + 1,
+          combiIndex: episode.totalIndex + 1,
+        },
+        {
+          id: 0,
+          partId: episode.partId,
+          releases: [],
+          totalIndex: episode.totalIndex + 2,
+          combiIndex: episode.totalIndex + 2,
+        },
+      ]);
+
+      await expect(
+        episodeStorage.markLowerIndicesRead(user.uuid, medium.id, undefined, third.totalIndex),
+      ).resolves.toBeUndefined();
+      await expect(episodeStorage.getProgress(user.uuid, episode.id)).resolves.toBe(1);
+      await expect(episodeStorage.getProgress(user.uuid, second.id)).resolves.toBe(1);
+      await expect(episodeStorage.getProgress(user.uuid, third.id)).resolves.toBe(0);
     });
   });
 });
