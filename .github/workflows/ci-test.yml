@@ -51,6 +51,7 @@ jobs:
           path: reports/jest-*.xml    # Path to test results
           reporter: jest-junit        # Format of test results
       - uses: artiomtr/jest-coverage-report-action@v2.0-rc.1
+        if: ${{ github.event_name == 'pull_request' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           threshold: 30
