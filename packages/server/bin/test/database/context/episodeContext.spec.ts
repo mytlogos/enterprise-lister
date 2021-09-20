@@ -16,7 +16,7 @@ import {
   getMediumOfEpisode,
   getEpisode,
 } from "./contextHelper";
-import { EpisodeRelease, ReadEpisode } from "enterprise-core/dist/types";
+import { EpisodeRelease, ReadEpisode, SimpleRelease } from "enterprise-core/dist/types";
 
 jest.setTimeout(60000);
 
@@ -536,6 +536,37 @@ describe("episodeContext", () => {
           episodeId: episode.id,
           progress: 1,
           readDate: date,
+        },
+      ]);
+    });
+  });
+
+  describe("getMediumEpisodes", () => {
+    it("should not throw when using valid parameters", async () => {
+      const [episode] = await fillEpisodeTable();
+      const medium = getMediumOfEpisode(episode.id);
+
+      await expect(episodeStorage.getMediumEpisodes(medium.id)).resolves.toStrictEqual([
+        {
+          id: episode.id,
+          partId: episode.partId,
+          totalIndex: episode.totalIndex,
+          partialIndex: null,
+          combiIndex: episode.totalIndex,
+          releases: [],
+        },
+      ]);
+    });
+  });
+
+  describe("getEpisodeLinks", () => {
+    it("should not throw when using valid parameters", async () => {
+      const [release] = await fillEpisodeReleaseTable();
+
+      await expect(episodeStorage.getEpisodeLinks([release.episodeId])).resolves.toEqual<SimpleRelease[]>([
+        {
+          episodeId: release.episodeId,
+          url: release.url,
         },
       ]);
     });
