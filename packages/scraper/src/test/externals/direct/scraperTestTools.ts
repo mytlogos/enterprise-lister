@@ -1,7 +1,7 @@
-import * as scraperTools from "enterprise-scraper/dist/externals/scraperTools";
+import * as scraperTools from "../../../externals/scraperTools";
 import * as tools from "enterprise-core/dist/tools";
-import { isTocPart } from "enterprise-scraper/dist/tools";
-import { Toc } from "enterprise-scraper/dist/externals/types";
+import { isTocPart } from "../../../tools";
+import { Toc } from "../../../externals/types";
 const MediaType = tools.MediaType;
 
 export function testGeneralToc(toc: Toc): void {

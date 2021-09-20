@@ -1,6 +1,6 @@
-import * as tools from "enterprise-core/dist/tools";
-import * as storage from "enterprise-core/dist/database/storages/storage";
-import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
+import * as tools from "../../../tools";
+import * as storage from "../../../database/storages/storage";
+import { episodeStorage } from "../../../database/storages/storage";
 import {
   setupTestDatabase,
   checkEmptyQuery,
@@ -16,7 +16,7 @@ import {
   getMediumOfEpisode,
   getEpisode,
 } from "./contextHelper";
-import { EpisodeRelease, ReadEpisode, SimpleRelease } from "enterprise-core/dist/types";
+import { EpisodeRelease, ReadEpisode, SimpleRelease } from "../../../types";
 
 jest.setTimeout(60000);
 

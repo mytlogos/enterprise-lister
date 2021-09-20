@@ -4,12 +4,12 @@ jest.mock("request-promise-native");
 import fs from "fs";
 import cheerio from "cheerio";
 import * as tools from "enterprise-core/dist/tools";
-import { getHook } from "enterprise-scraper/dist/externals/direct/boxNovelScraper";
-import * as externalErrors from "enterprise-scraper/dist/externals/errors";
+import { getHook } from "../../../externals/direct/boxNovelScraper";
+import * as externalErrors from "../../../externals/errors";
 import * as storage from "enterprise-core/dist/database/storages/storage";
-import * as queueManager from "enterprise-scraper/dist/externals/queueManager";
+import * as queueManager from "../../../externals/queueManager";
 import * as scraperTestTools from "./scraperTestTools";
-import { Hook } from "enterprise-scraper/dist/externals/types";
+import { Hook } from "../../../externals/types";
 
 const MediaType = tools.MediaType;
 const UrlError = externalErrors.UrlError;

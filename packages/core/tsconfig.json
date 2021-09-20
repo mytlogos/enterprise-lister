@@ -16,6 +16,9 @@
     "lib": [
       "esnext"
     ],
+    "types": [
+      "jest",
+    ],
     "outDir": "./dist/",
     "paths": {
       "@/*": [

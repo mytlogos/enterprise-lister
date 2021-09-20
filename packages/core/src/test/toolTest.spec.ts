@@ -1,10 +1,9 @@
 "use strict";
 import dns from "dns";
-import logger from "enterprise-core/dist/logger";
-import * as tools from "enterprise-core/dist/tools";
-import { isTocEpisode, isTocPart } from "enterprise-scraper/dist/tools";
+import logger from "../logger";
+import * as tools from "../tools";
 import { v1, NIL as NIL_UUID, v4 } from "uuid";
-import { Nullable } from "enterprise-core/dist/types";
+import { Nullable } from "../types";
 
 process.on("unhandledRejection", () => console.log("an unhandled rejection!"));
 process.on("uncaughtException", (args) => console.log("an unhandled exception!", args));
@@ -469,24 +468,6 @@ describe("testing tool.js", () => {
       );
       expect(result).toBeInstanceOf(Array);
       expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }]);
-    });
-  });
-  describe("test isTocPart", () => {
-    it("should work correctly when given a valid value", () => {
-      expect(isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1 })).toBe(false);
-      // @ts-expect-error
-      expect(isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid" })).toBe(false);
-      // @ts-expect-error
-      expect(isTocPart({ combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: [] })).toBe(true);
-    });
-  });
-  describe("test isTocEpisode", () => {
-    it("should work correctly when given a valid value", () => {
-      expect(isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1 })).toBe(false);
-      // @ts-expect-error
-      expect(isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1, episodes: [] })).toBe(false);
-      // @ts-expect-error
-      expect(isTocEpisode({ combiIndex: 1, title: "ajsio", totalIndex: 1, url: "sjid" })).toBe(true);
     });
   });
   describe("test some", () => {

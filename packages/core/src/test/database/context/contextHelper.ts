@@ -1,8 +1,8 @@
-import * as storageTools from "enterprise-core/dist/database/storages/storageTools";
-import * as storage from "enterprise-core/dist/database/storages/storage";
-import { QueryContext } from "enterprise-core/dist/database/contexts/queryContext";
-import { MediaType } from "enterprise-core/dist/tools";
-import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "enterprise-core/dist/types";
+import * as storageTools from "../../../database/storages/storageTools";
+import * as storage from "../../../database/storages/storage";
+import { QueryContext } from "../../../database/contexts/queryContext";
+import { MediaType } from "../../../tools";
+import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "../../../types";
 import { escapeId, Query } from "mysql";
 import bcrypt from "bcryptjs";
 

@@ -34,7 +34,6 @@
     "@types/chart.js": "^2.9.34",
     "@types/copy-webpack-plugin": "^8.0.1",
     "@types/d3-scale-chromatic": "^3.0.0",
-    "@types/expect.js": "^0.3.29",
     "@vue/babel-preset-app": "^5.0.0-beta.3",
     "@vue/cli-plugin-babel": "^5.0.0-beta.3",
     "@vue/cli-plugin-eslint": "^5.0.0-beta.3",
