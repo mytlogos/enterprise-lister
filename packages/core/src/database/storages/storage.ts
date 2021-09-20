@@ -197,6 +197,7 @@ class SqlPoolProvider {
 
   public recreate() {
     this.remake = true;
+    this.errorAtStart = false;
   }
 
   public useConfig(config: mySql.PoolConfig) {
