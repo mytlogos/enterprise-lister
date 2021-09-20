@@ -20,6 +20,9 @@ lib-cov
 # Coverage directory used by tools like istanbul
 coverage
 
+# report directory
+reports/
+
 # nyc test coverage
 .nyc_output
 
@@ -106,6 +109,9 @@ checkReleases.*
 *.js
 *.key
 *.pem
+*.sql
+*.html
+*.xml
 
 packages/server/bin/misc/fixJobs.ts
 packages/server/bin/validateMiddleware.ts
