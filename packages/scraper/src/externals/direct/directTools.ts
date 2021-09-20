@@ -12,6 +12,7 @@ import {
 import * as url from "url";
 import { ReleaseState, TocSearchMedium, Optional, Nullable } from "enterprise-core/dist/types";
 import { checkTocContent } from "../scraperTools";
+import * as cheerio from "cheerio";
 
 export function getTextContent(
   novelTitle: string,
@@ -54,7 +55,7 @@ export function getTextContent(
  * @param selector a valid css selector
  * @param uri a valid base url
  */
-export function extractLinkable($: cheerio.Root, selector: string, uri: string): LinkablePerson[] {
+export function extractLinkable($: cheerio.CheerioAPI, selector: string, uri: string): LinkablePerson[] {
   const elements = $(selector);
   const result = [];
 

@@ -1,6 +1,6 @@
 import request, { FullResponse, Options } from "cloudscraper";
 import requestNative, { RequestAPI } from "request";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 import ParserStream from "parse5-parser-stream";
 import * as htmlparser2 from "htmlparser2";
 import { WritableStream as WritableParseStream } from "htmlparser2/lib/WritableStream";
@@ -91,7 +91,7 @@ function patchRequest(module: HttpModule, protocol: string) {
 patchRequest(http, "http");
 patchRequest(https, "https");
 
-type CheerioStatic = cheerio.Root;
+type CheerioStatic = cheerio.CheerioAPI;
 
 export class Queue {
   public readonly queue: Callback[];
@@ -353,7 +353,6 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
   const parser = new WritableParseStream(
     new htmlparser2.DomHandler(
       (error, dom) => {
-        // @ts-expect-error
         const load = cheerio.load(dom, { decodeEntities: false });
         resolve(load);
       },

@@ -23,6 +23,7 @@ import { checkTocContent } from "../scraperTools";
 import { MissingResourceError, UrlError } from "../errors";
 import { StatusCodeError } from "cloudscraper/errors";
 import { StatusCodeError as RequestStatusCodeError } from "request-promise-native/errors";
+import * as cheerio from "cheerio";
 
 interface NovelSearchResponse {
   success: boolean;
@@ -114,7 +115,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
   const novelTitle = sanitizeString(mediumTitleElement.text());
 
   const chaTit = $(".cha-tit h3");
-  let directContentElement: cheerio.Cheerio;
+  let directContentElement: cheerio.Cheerio<cheerio.Element>;
   let episodeTitle: string;
 
   if (chaTit.length) {
@@ -158,7 +159,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
   if (!tocLink.startsWith(BASE_URI + "novel/")) {
     throw new UrlError("not a valid toc url for BoxNovel: " + tocLink, tocLink);
   }
-  let $: cheerio.Root;
+  let $: cheerio.CheerioAPI;
   try {
     $ = await queueCheerioRequest(tocLink);
   } catch (e) {

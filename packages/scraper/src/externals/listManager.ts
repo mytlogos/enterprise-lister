@@ -5,7 +5,7 @@ import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "./q
 import { CookieJar } from "tough-cookie";
 import { Hook, Toc } from "./types";
 import logger from "enterprise-core/dist/logger";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 import { ReleaseState, EmptyPromise, Optional } from "enterprise-core/dist/types";
 
 interface SimpleReadingList {

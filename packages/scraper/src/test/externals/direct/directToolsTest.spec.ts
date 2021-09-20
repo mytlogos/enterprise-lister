@@ -3,7 +3,7 @@ jest.mock("request-promise-native");
 import * as directTools from "../../../externals/direct/directTools";
 import * as tools from "enterprise-core/dist/tools";
 import fs from "fs";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 import { EmptyPromise } from "enterprise-core/dist/types";
 
 afterAll(() => {

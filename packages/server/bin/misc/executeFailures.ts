@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import { join as joinPath } from "path";
 import { getHooks } from "enterprise-scraper/dist/externals/hookManager";
 import { getElseSet } from "enterprise-core/dist/tools";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 
 const path = joinPath(process.cwd(), "tests", "results", "Test Results - tests_mocha_hook_test_js.html");
 const html = readFileSync(path, { encoding: "utf-8" });

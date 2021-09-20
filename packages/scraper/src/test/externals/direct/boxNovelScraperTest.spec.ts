@@ -2,7 +2,7 @@
 jest.mock("request-promise-native");
 
 import fs from "fs";
-import cheerio from "cheerio";
+import * as cheerio from "cheerio";
 import * as tools from "enterprise-core/dist/tools";
 import { getHook } from "../../../externals/direct/boxNovelScraper";
 import * as externalErrors from "../../../externals/errors";
