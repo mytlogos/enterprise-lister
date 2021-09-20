@@ -1,7 +1,7 @@
 import * as storageTools from "enterprise-core/dist/database/storages/storageTools";
 import * as storage from "enterprise-core/dist/database/storages/storage";
 import { QueryContext } from "enterprise-core/dist/database/contexts/queryContext";
-import { MediaType, delay } from "enterprise-core/dist/tools";
+import { MediaType } from "enterprise-core/dist/tools";
 import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "enterprise-core/dist/types";
 import { Query } from "mysql";
 import bcrypt from "bcryptjs";
@@ -10,18 +10,34 @@ function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, t
   return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);
 }
 
-export async function setupTestDatabase(): EmptyPromise {
-  storage.poolConfig.update({ host: "localhost" });
+async function recreateStorage() {
   await storage.poolConfig.recreate(true);
   storage.startStorage();
-  await delay(5000);
+
+  try {
+    await storage.waitStorage();
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+export async function setupTestDatabase(): EmptyPromise {
+  // assume the enterprise_test already exists
+  storage.poolConfig.update({ database: "enterprise_test", host: "localhost" });
+
+  // database setup finished if recreation is successful
+  if (await recreateStorage()) {
+    return;
+  }
+
+  // recreate database
+  storage.poolConfig.update({ host: "localhost" });
+  await recreateStorage();
 
   await inContext((context) => context.query("CREATE DATABASE IF NOT EXISTS enterprise_test;"));
-
   storage.poolConfig.update({ database: "enterprise_test", host: "localhost" });
-  await storage.poolConfig.recreate(true);
-  storage.startStorage();
-  await delay(5000);
+  await recreateStorage();
 }
 
 export function checkEmptyQuery(query: Query): EmptyPromise {
