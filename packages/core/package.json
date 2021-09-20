@@ -18,9 +18,7 @@
     "emoji-strip": "latest",
     "feedparser-promised": "^2.0.1",
     "handlebars": "^4.7.7",
-    "htmlparser2": "^7.1.0",
     "http-errors": "^1.8.0",
-    "localtunnel": "^2.0.1",
     "mysql": "^2.18.1",
     "node-cache": "^5.1.2",
     "parse5-parser-stream": "^6.0.1",
@@ -54,6 +52,6 @@
     "@types/yargs": "^17.0.0",
     "commitizen": "^4.2.3",
     "js-yaml": "^4.1.0",
-    "typescript": "^4.4.2"
+    "typescript": "^4.4.3"
   }
 }

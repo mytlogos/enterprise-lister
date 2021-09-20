@@ -1098,10 +1098,9 @@ export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>
 /**
  * Set specific properties with string keys as required.
  */
-export type NonNull<T, K extends StringKeys<T>> = T &
-  {
-    [S in K]-?: T[K];
-  };
+export type NonNull<T, K extends StringKeys<T>> = T & {
+  [S in K]-?: T[K];
+};
 
 export type Primitive = string | number | boolean;
 

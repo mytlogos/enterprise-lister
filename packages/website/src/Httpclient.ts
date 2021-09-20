@@ -192,10 +192,9 @@ type MethodName = keyof typeof Methods;
 
 type Rest<T extends any = any> = {
   [key in Extract<keyof T, MethodName>]: true;
-} &
-  {
-    [key in Exclude<keyof T, MethodName>]: Rest<T[key]>;
-  };
+} & {
+  [key in Exclude<keyof T, MethodName>]: Rest<T[key]>;
+};
 
 function createRestDefinition<T extends any>(value: T): Rest<T> {
   return value as unknown as any;
@@ -235,10 +234,9 @@ function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
 
 type RestAPI<T extends any> = {
   [key in Extract<keyof T, MethodName>]: MethodObject;
-} &
-  {
-    [key in Exclude<keyof T, MethodName>]: RestAPI<T[key]>;
-  };
+} & {
+  [key in Exclude<keyof T, MethodName>]: RestAPI<T[key]>;
+};
 
 const serverRestApi = createRestApi(restApi);
 

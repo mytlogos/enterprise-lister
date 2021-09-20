@@ -2,10 +2,9 @@ import { JobHistoryItem as ServerJobHistoryItem } from "enterprise-core/dist/typ
 
 export type EmptyObject = Record<string, never>;
 
-export type Indexable<T> = T &
-  {
-    [key in keyof T]: T[key];
-  };
+export type Indexable<T> = T & {
+  [key in keyof T]: T[key];
+};
 
 export type StringKey<T> = Extract<keyof T, string>;
 

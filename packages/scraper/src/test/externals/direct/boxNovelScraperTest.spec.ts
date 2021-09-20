@@ -18,10 +18,9 @@ const MissingResourceError = externalErrors.MissingResourceError;
 /**
  * Make specific properties in T required
  */
-type Require<T, K extends keyof T> = T &
-  {
-    [P in K]-?: T[P];
-  };
+type Require<T, K extends keyof T> = T & {
+  [P in K]-?: T[P];
+};
 
 const boxNovelHook = getHook() as Require<Hook, "tocAdapter">;
 
