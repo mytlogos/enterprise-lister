@@ -52,7 +52,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           threshold: 30
-          test-script: npx jest --silent --ci --coverage --coverageReporters="text" --coverageReporters="text-summary" --forceExit
+          test-script: npx ts-jest --silent --ci --coverage --coverageReporters="text" --coverageReporters="text-summary" --forceExit
       - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
       - run: zip -r dist-src.zip package.json package-lock.json packages/
       - run: npx semantic-release
