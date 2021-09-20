@@ -77,10 +77,9 @@ type NonNullableColumn<T extends TableEntity<any>> = {
  */
 type Entity<T extends TableEntity<any>> = {
   [U in NullableColumn<T>]?: PrimitiveType<T["columns"][U]["type"]>;
-} &
-  {
-    [U in NonNullableColumn<T>]: PrimitiveType<T["columns"][U]["type"]>;
-  };
+} & {
+  [U in NonNullableColumn<T>]: PrimitiveType<T["columns"][U]["type"]>;
+};
 
 interface TableEntity<Props extends Record<string, Column>> extends Table<Props> {
   update(entity: Entity<TableEntity<Props>>): Promise<void>;
