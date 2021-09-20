@@ -18,12 +18,12 @@
     "emoji-strip": "latest",
     "feedparser-promised": "^2.0.1",
     "handlebars": "^4.7.7",
-    "htmlparser2": "^7.1.0",
+    "htmlparser2": "^7.1.2",
     "http-errors": "^1.8.0",
     "mysql": "^2.18.1",
     "node-cache": "^5.1.2",
     "parse5-parser-stream": "^6.0.1",
-    "promise-mysql": "^5.0.3",
+    "promise-mysql": "^5.0.4",
     "request-promise-native": "^1.0.9",
     "stringify-stream": "^1.0.5",
     "tar-fs": "^2.1.1",
@@ -31,7 +31,7 @@
     "tslib": "^2.1.0",
     "uuid": "^8.3.2",
     "validate.js": "^0.13.1",
-    "ws": "^8.2.0"
+    "ws": "^8.2.2"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
@@ -42,7 +42,7 @@
     "@types/http-errors": "^1.8.1",
     "@types/js-yaml": "^4.0.3",
     "@types/mysql": "^2.15.19",
-    "@types/node": "^16.7.4",
+    "@types/node": "^16.9.4",
     "@types/node-cache": "^4.2.5",
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.18",
@@ -51,6 +51,6 @@
     "@types/ws": "^7.4.7",
     "@types/yargs": "^17.0.2",
     "js-yaml": "^4.1.0",
-    "typescript": "^4.4.2"
+    "typescript": "^4.4.3"
   }
 }
