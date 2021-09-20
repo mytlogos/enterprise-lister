@@ -29,6 +29,7 @@ jobs:
           sudo mariadb -u root -e "CREATE USER '$dbUser'@localhost IDENTIFIED BY '$dbPassword';"
           sudo mariadb -u root -e "GRANT ALL PRIVILEGES ON *.* TO '$dbUser'@localhost;"
           sudo mariadb -u root -e "CREATE DATABASE enterprise;"
+          sudo mariadb -u root -e "CREATE DATABASE enterprise_test;"
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
