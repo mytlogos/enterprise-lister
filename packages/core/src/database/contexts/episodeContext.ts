@@ -1123,7 +1123,7 @@ export class EpisodeContext extends SubContext {
   public async getUnreadChapter(uuid: Uuid): Promise<number[]> {
     const resultArray = await this.query(
       "SELECT id FROM episode WHERE id NOT IN " +
-        "(SELECT episode_id FROM user_episode WHERE progress < 1 AND user_uuid=?);",
+        "(SELECT episode_id FROM user_episode WHERE progress >= 1 AND user_uuid=?);",
       uuid,
     );
     return resultArray.map((value: any) => value.id);
@@ -1143,23 +1143,52 @@ export class EpisodeContext extends SubContext {
     });
   }
 
-  public async markLowerIndicesRead(uuid: Uuid, id: number, partInd?: number, episodeInd?: number): EmptyPromise {
-    if (!uuid || !id || (partInd == null && episodeInd == null)) {
+  /**
+   * Requires either a valid partIndex or episodeIndex.
+   * Marks all episodes with lower indices excluding the parameter index as read.
+   *
+   * @param uuid uuid of the user which has read
+   * @param mediumId id of the medium to mark the episodes for
+   * @param partIndex index of the part
+   * @param episodeIndex index of the episode
+   * @returns void
+   */
+  public async markLowerIndicesRead(
+    uuid: Uuid,
+    mediumId: number,
+    partIndex?: number,
+    episodeIndex?: number,
+  ): EmptyPromise {
+    if (!uuid || !mediumId || (partIndex == null && episodeIndex == null)) {
       return;
     }
     // TODO: 09.03.2020 rework query and input, for now the episodeIndices are only relative to their parts mostly,
     //  not always relative to the medium
-    const result = await this.query(
+    // first update existing user-episode-progress where it not marked as read
+    let result = await this.query(
       "UPDATE user_episode, episode, part " +
-        "SET user_episode.progress=1 " +
-        "WHERE user_episode.episode_id=episode.id" +
-        "AND episode.part_id=part.id" +
-        "AND user_uuid = ?" +
-        "AND part.medium_id=?" +
-        "AND (? IS NOT NULL AND part.combiIndex < ?)" +
+        "SET user_episode.progress=1, user_episode.read_date=NOW() " +
+        "WHERE user_episode.progress != 1 " +
+        "AND user_episode.user_uuid = ? " +
+        "AND user_episode.episode_id=episode.id " +
+        "AND episode.part_id=part.id " +
+        "AND part.medium_id=? " +
+        "AND (? IS NULL OR part.combiIndex < ?) " +
         "AND episode.combiIndex < ?",
-      [uuid, id, partInd, episodeInd],
+      [uuid, mediumId, partIndex, partIndex, episodeIndex],
     );
     storeModifications("progress", "update", result);
+
+    // then insert non-existing user-episode-progress as read
+    result = await this.query(
+      "INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress, read_date) " +
+        "SELECT ?, episode.id, 1, NOW() FROM episode, part " +
+        "WHERE episode.part_id=part.id " +
+        "AND part.medium_id=? " +
+        "AND (? IS NULL OR part.combiIndex < ?) " +
+        "AND episode.combiIndex < ?",
+      [uuid, mediumId, partIndex, partIndex, episodeIndex],
+    );
+    storeModifications("progress", "insert", result);
   }
 }
