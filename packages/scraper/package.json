@@ -8,7 +8,7 @@
     "lint": "eslint -c ./.eslintrc.js src/",
     "start": "node dist/startCrawler.js",
     "test": "echo 'Implement tests'",
-    "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
+    "lintfix": "eslint --fix 'src/**/*.{js,ts,vue}'"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

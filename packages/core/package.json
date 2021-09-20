@@ -5,9 +5,9 @@
   "scripts": {
     "build": "tsc -p ./",
     "test:unit": "vue-cli-service test:unit",
-    "lint": "eslint '*/**/*.{js,ts,vue}'",
+    "lint": "eslint 'src/**/*.{js,ts,vue}'",
     "test": "echo 'Implement tests'",
-    "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
+    "lintfix": "eslint --fix 'src/**/*.{js,ts,vue}'"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
