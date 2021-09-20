@@ -1,3 +1,10 @@
+## [1.19.3](https://github.com/mytlogos/enterprise-lister/compare/v1.19.2...v1.19.3) (2021-09-20)
+
+
+### Bug Fixes
+
+* fix imports, tests and package.json ([cff1c0b](https://github.com/mytlogos/enterprise-lister/commit/cff1c0b378e75399dab6d7b02c4729e9d462bc9f))
+
 ## [1.19.2](https://github.com/mytlogos/enterprise-lister/compare/v1.19.1...v1.19.2) (2021-09-20)
 
 
