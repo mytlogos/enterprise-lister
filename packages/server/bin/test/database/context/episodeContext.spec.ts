@@ -172,7 +172,7 @@ describe("episodeContext", () => {
     it("should not throw when using valid parameters", async () => {
       const [value] = await fillEpisodeReleaseTable();
       const medium = getMediumOfEpisode(value.episodeId);
-      const result = await episodeStorage.getMediumReleasesByHost((medium as NonNullable<typeof medium>).id, value.url);
+      const result = await episodeStorage.getMediumReleasesByHost(medium.id, value.url);
       expect(result.length).toBeGreaterThan(0);
     });
   });
@@ -262,7 +262,7 @@ describe("episodeContext", () => {
   describe("getEpisodeLinksByMedium", () => {
     it("should not throw when using valid parameters", async () => {
       const [release] = await fillEpisodeReleaseTable();
-      const medium = getMediumOfEpisode(release.episodeId) as NonNullable<ReturnType<typeof getMediumOfEpisode>>;
+      const medium = getMediumOfEpisode(release.episodeId);
       const result = await episodeStorage.getEpisodeLinksByMedium(medium.id);
       expect(result).toContainEqual({ episodeId: release.episodeId, url: release.url });
     });
