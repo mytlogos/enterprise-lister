@@ -12,7 +12,8 @@
     "sourceMap": true,
     "types": [
       "webpack-env",
-      "node"
+      "node",
+      "jest",
     ],
     "lib": [
       "esnext",

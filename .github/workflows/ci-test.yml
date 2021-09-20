@@ -29,6 +29,7 @@ jobs:
           sudo mariadb -u root -e "CREATE USER '$dbUser'@localhost IDENTIFIED BY '$dbPassword';"
           sudo mariadb -u root -e "GRANT ALL PRIVILEGES ON *.* TO '$dbUser'@localhost;"
           sudo mariadb -u root -e "CREATE DATABASE enterprise;"
+          sudo mariadb -u root -e "CREATE DATABASE enterprise_test;"
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
@@ -36,7 +37,24 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: npm run build --ws
-      - run: npm run test --ws
+      # runs npm test and comments coverage on pr
+      - uses: mattallty/jest-github-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          coverage-comment: false
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
+        with:
+          name: JEST Tests            # Name of the check run which will be created
+          path: reports/jest-*.xml    # Path to test results
+          reporter: jest-junit        # Format of test results
+      - uses: artiomtr/jest-coverage-report-action@v2.0-rc.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          threshold: 30
+          test-script: npx jest --silent --ci --coverage --testLocationInResults --json --outputFile="report.json" --forceExit
       - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
       - run: zip -r dist-src.zip package.json package-lock.json packages/
       - run: npx semantic-release

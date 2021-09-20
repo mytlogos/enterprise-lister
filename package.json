@@ -18,7 +18,8 @@
     "start": "npm run start:server &; npm run start:crawler &",
     "start:crawler": "node packages/scraper/dist/startCrawler.js",
     "start:server": "node packages/server/dist/startServer.js",
-    "test": " LOG_LEVEL=error node ./node_modules/mocha/bin/mocha --ui bdd ./packages/**/dist/**/test/database/**/*.js ./packages/**/dist/**/test/*.js"
+    "test": "LOG_LEVEL=error node node_modules/.bin/jest --detectOpenHandles --coverage --reporters=default --reporters=jest-junit --forceExit",
+    "test:debug": "node --inspect --inspect-brk node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
     "@commitlint/cli": "^13.1.0",
@@ -44,8 +45,18 @@
     "eslint-plugin-promise": "^5.1.0",
     "eslint-plugin-vue": "^7.17.0",
     "husky": "^7.0.2",
+    "jest-junit": "^12.2.0",
     "prettier": "^2.3.2",
     "semantic-release": "^17.4.7"
+  },
+  "jest-junit": {
+    "outputDirectory": "reports",
+    "outputName": "jest-junit.xml",
+    "ancestorSeparator": " › ",
+    "uniqueOutputName": "false",
+    "suiteNameTemplate": "{filepath}",
+    "classNameTemplate": "{classname}",
+    "titleTemplate": "{title}"
   },
   "postcss": {
     "plugins": {

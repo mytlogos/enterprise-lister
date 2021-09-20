@@ -197,6 +197,7 @@ class SqlPoolProvider {
 
   public recreate() {
     this.remake = true;
+    this.errorAtStart = false;
   }
 
   public useConfig(config: mySql.PoolConfig) {
@@ -467,3 +468,5 @@ export const appEventStorage = createStorage<AppEventContext>("appEventContext")
 export const startStorage = (): void => poolProvider.start();
 
 export const stopStorage = (): EmptyPromise => poolProvider.stop();
+
+export const waitStorage = (): EmptyPromise => poolProvider.startPromise;
