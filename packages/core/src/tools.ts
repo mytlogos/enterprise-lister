@@ -3,7 +3,6 @@ import {
   MultiSingle,
   Uuid,
   PromiseMultiSingle,
-  EmptyPromise,
   Unpack,
   UnpackArray,
   Optional,
@@ -13,7 +12,7 @@ import {
 } from "./types";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import emojiStrip from "emoji-strip";
+import emojiRegex from "emoji-regex/RGI_Emoji";
 import * as fs from "fs";
 import * as path from "path";
 import { Query } from "mysql";
@@ -503,6 +502,18 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
   return value;
 }
 
+const emojiReplaceRegex = emojiRegex();
+
+/**
+ * Wrapper for Emoji-Regex.
+ *
+ * @param s string to strip
+ * @returns stripped string
+ */
+export function emojiStrip(s: string): string {
+  return s.replace(emojiReplaceRegex, "");
+}
+
 /**
  * Sanitizes a given string.
  * Removes any unicode emojis.
@@ -515,7 +526,7 @@ export function sanitizeString(s: string): string {
   if (!s) {
     return s;
   }
-  return emojiStrip(s).trim().replace(/\s+/g, " ");
+  return s.replace(emojiReplaceRegex, "").trim().replace(/\s+/g, " ");
 }
 
 /**

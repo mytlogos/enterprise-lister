@@ -15,7 +15,6 @@
     "cheerio": "^1.0.0-rc.5",
     "cloudscraper": "^4.6.0",
     "debug": "^4.3.2",
-    "emoji-strip": "latest",
     "feedparser-promised": "^2.0.1",
     "handlebars": "^4.7.7",
     "htmlparser2": "^7.1.2",
