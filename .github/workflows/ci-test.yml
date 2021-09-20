@@ -48,12 +48,10 @@ jobs:
           name: JEST Tests            # Name of the check run which will be created
           path: reports/jest-*.xml    # Path to test results
           reporter: jest-junit        # Format of test results
-      - run: npm install -g jest ts-jest
       - uses: artiomtr/jest-coverage-report-action@v2.0-rc.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           threshold: 30
-          skip-step: install
           test-script: npx jest --silent --ci --coverage --coverageReporters="text" --coverageReporters="text-summary" --forceExit
       - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
       - run: zip -r dist-src.zip package.json package-lock.json packages/
