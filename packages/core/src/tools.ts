@@ -12,7 +12,7 @@ import {
 } from "./types";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import emojiRegex from "emoji-regex/RGI_Emoji";
+import emojiRegex from "emoji-regex";
 import * as fs from "fs";
 import * as path from "path";
 import { Query } from "mysql";
