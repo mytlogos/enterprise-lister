@@ -24,6 +24,7 @@ import {
 } from "./directTools";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
+import * as cheerio from "cheerio";
 
 const BASE_URI = "https://novelfull.com/";
 
@@ -86,7 +87,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
   return getTextContent(novelTitle, episodeTitle, urlString, content);
 }
 
-function extractTocSnippet($: cheerio.Root, link: string): Toc {
+function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
   let end = false;
   let releaseState: ReleaseState = ReleaseState.Unknown;
   const releaseStateElement = $('a[href^="/status/"]');
@@ -244,7 +245,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
   return [toc as Toc];
 }
 
-async function scrapeTocPage($: cheerio.Root, uri: string): VoidablePromise<Toc> {
+async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromise<Toc> {
   // TODO: 20.07.2019 scrape alternative titles and author too
   const mediumTitleElement = $(".desc .title").first();
   const mediumTitle = sanitizeString(mediumTitleElement.text());

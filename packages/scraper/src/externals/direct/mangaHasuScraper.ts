@@ -15,8 +15,9 @@ import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError } from "../errors";
 import { Options } from "cloudscraper";
+import * as cheerio from "cheerio";
 
-async function tryRequest(link: string, options?: Options, retry = 0): Promise<cheerio.Root> {
+async function tryRequest(link: string, options?: Options, retry = 0): Promise<cheerio.CheerioAPI> {
   try {
     return await queueCheerioRequest(link);
   } catch (error) {

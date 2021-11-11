@@ -15,6 +15,7 @@ import { queueCheerioRequest, queueRequest } from "../queueManager";
 import * as request from "request-promise-native";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
+import * as cheerio from "cheerio";
 
 const jar = request.jar();
 const defaultRequest = request.defaults({
@@ -202,7 +203,7 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
   return [toc];
 }
 
-function loadBody(urlString: string): Promise<cheerio.Root> {
+function loadBody(urlString: string): Promise<cheerio.CheerioAPI> {
   return initPromise.then(() => queueCheerioRequest(urlString, undefined, defaultRequest));
 }
 
@@ -224,7 +225,7 @@ function loadJson(urlString: string, retry = 0): Promise<any> {
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
-  let $: cheerio.Root;
+  let $: cheerio.CheerioAPI;
   try {
     $ = await loadBody(urlString);
   } catch (e) {

@@ -9,6 +9,7 @@ import { CloudScraper, CloudscraperOptions } from "cloudscraper";
 import * as normalRequest from "request";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
+import * as cheerio from "cheerio";
 
 // @ts-expect-error
 const jar = request.jar();
@@ -18,7 +19,7 @@ const defaultRequest: RequestAPI = request.defaults({
   jar,
 });
 
-function loadBody(urlString: string, options?: CloudscraperOptions): Promise<cheerio.Root> {
+function loadBody(urlString: string, options?: CloudscraperOptions): Promise<cheerio.CheerioAPI> {
   // @ts-expect-error
   return queueCheerioRequest(urlString, options, defaultRequest);
 }
