@@ -114,48 +114,6 @@ export interface RegexSelector extends BasicSelector<RegexTransfer<EpisodeNews>>
   regex: RegExp | JsonRegex;
 }
 
-const gogoAnimeScraper: Selector = {
-  selector: ".items li",
-  multiple: true,
-  children: [
-    {
-      selector: ".name a",
-      transfers: [
-        {
-          targetKey: "mediumTitle",
-          type: "string",
-        },
-        {
-          targetKey: "mediumTocLink",
-          type: "string",
-          extract: {
-            regex: /(.+\/\/.+\/)(.+)-episode-\d+$/,
-            replace: "$1category/$2",
-            attribute: "href",
-          },
-        },
-        {
-          targetKey: "link",
-          type: "string",
-          extract: {
-            attribute: "href",
-          },
-        },
-      ],
-    },
-    {
-      selector: ".episode",
-      regex: /Episode\s*((\d+)(\.(\d+))?)/i,
-      transfers: [
-        { targetKey: "episodeTitle", type: "string", extract: "$0" },
-        { targetKey: "episodeTitle", type: "string", extract: "$1" },
-        { targetKey: "episodeTitle", type: "string", extract: "$2" },
-        { targetKey: "episodeTitle", type: "string", extract: "$4" },
-      ],
-    },
-  ],
-};
-
 export interface NewsConfig {
   /**
    * Base to resolve all extracted links against.
