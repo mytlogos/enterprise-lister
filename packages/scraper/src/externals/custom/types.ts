@@ -1,74 +1,5 @@
 import { EpisodeNews } from "enterprise-core/dist/types";
 
-export interface SearchConfig {
-  searchUrl: string;
-  base?: string;
-}
-
-export interface DownloadConfig {
-  prefix?: string;
-  base?: string;
-}
-
-export interface TocConfig {
-  prefix?: string;
-  base?: string;
-}
-
-export interface NewsEpisode {
-  selector: string;
-  regex: RegExp | JsonRegex;
-  title: string;
-  combiIndex: string;
-  totalIndex: string;
-  partialIndex: string;
-  newsLink: NewsLink;
-}
-
-export interface NewsPart {
-  selector: string;
-  regex: RegExp | JsonRegex;
-  title?: string;
-  combiIndex: string;
-  totalIndex: string;
-  partialIndex: string;
-}
-
-export interface NewsMediumLink {
-  selector: string;
-  regex?: RegExp | JsonRegex;
-  replace?: string;
-}
-
-export interface NewsLink {
-  selector: string;
-  regex?: RegExp | JsonRegex;
-  replace?: string;
-}
-
-export interface NewsMediumTitle {
-  selector: string;
-  regex?: RegExp | JsonRegex;
-  replace?: string;
-}
-
-export interface NewsContainer {
-  /**
-   * Selector which selects the "best" element container for each news item.
-   */
-  selector: string;
-
-  medium: NewsMediumTitle;
-
-  mediumLink: NewsMediumLink;
-
-  newsLink: NewsLink;
-
-  episode: NewsEpisode;
-
-  part?: NewsPart;
-}
-
 export type AttributeSelector = BasicAttributeSelector | AttributeRegexSelector;
 
 interface BasicAttributeSelector {
@@ -112,6 +43,21 @@ export type SimpleSelector = BasicSelector<SimpleTransfer<EpisodeNews>>;
 
 export interface RegexSelector extends BasicSelector<RegexTransfer<EpisodeNews>> {
   regex: RegExp | JsonRegex;
+}
+
+export interface SearchConfig {
+  searchUrl: string;
+  base?: string;
+}
+
+export interface DownloadConfig {
+  prefix?: string;
+  base?: string;
+}
+
+export interface TocConfig {
+  prefix?: string;
+  base?: string;
 }
 
 export interface NewsConfig {

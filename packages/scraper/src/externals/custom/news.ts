@@ -1,17 +1,13 @@
-import { Cheerio, CheerioAPI, Element } from "cheerio";
-import logger from "enterprise-core/dist/logger";
-import { sanitizeString, extractIndices, relativeToAbsoluteTime } from "enterprise-core/dist/tools";
-import { EpisodeNews, Optional } from "enterprise-core/dist/types";
+import { Cheerio, Element } from "cheerio";
+import { sanitizeString, relativeToAbsoluteTime } from "enterprise-core/dist/tools";
+import { EpisodeNews } from "enterprise-core/dist/types";
 import * as url from "url";
 import { queueCheerioRequest } from "../queueManager";
-import { NewsScraper, NewsScrapeResult } from "../types";
+import { NewsScraper } from "../types";
 import {
   AttributeSelector,
   HookConfig,
   JsonRegex,
-  NewsConfig,
-  NewsContainer,
-  NewsEpisode,
   RegexSelector,
   RegexTransfer,
   Selector,
@@ -19,16 +15,6 @@ import {
   SimpleTransfer,
   TransferType,
 } from "./types";
-
-function extractLink(element: Cheerio<Element>, attribute: string, baseUri: string): string {
-  const href = element.attr(attribute);
-
-  if (!href) {
-    throw Error(`Expected ${attribute} attribute - not found`);
-  }
-
-  return new url.URL(href, baseUri).href;
-}
 
 function toRegex(value: RegExp | JsonRegex): RegExp {
   if (value instanceof RegExp) {
@@ -53,107 +39,6 @@ function extractFromRegex(value: string, regex: RegExp, ...replace: string[]) {
     }
   }
   return replace;
-}
-
-function getMediumLink(element: Cheerio<Element>, baseUri: string, container: NewsContainer) {
-  const link = extractLink(element, "href", baseUri);
-
-  const linkPattern = container.mediumLink.regex;
-  const replace = container.mediumLink.replace;
-
-  if (linkPattern && replace) {
-    const [tocLink] = extractFromRegex(link, toRegex(linkPattern), replace) || [];
-
-    return tocLink;
-  } else {
-    return link;
-  }
-}
-
-function getMediumTitle(element: Cheerio<Element>) {
-  return sanitizeString(element.text());
-}
-
-function getEpisode(element: Cheerio<Element>, config: NewsEpisode) {
-  const rawTitle = sanitizeString(element.text());
-  const titlePattern = toRegex(config.regex);
-
-  const result = extractFromRegex(
-    rawTitle,
-    titlePattern,
-    config.combiIndex,
-    config.totalIndex,
-    config.partialIndex,
-    config.title,
-  );
-
-  if (!result) {
-    return;
-  }
-
-  const episodeIndices = extractIndices(result, 0, 1, 2);
-  const episodeTitle = sanitizeString(result[3]);
-
-  if (!episodeIndices) {
-    return;
-  }
-
-  return {
-    episodeTitle,
-    episodeIndex: episodeIndices.combi,
-    episodeTotalIndex: episodeIndices.total,
-    episodePartialIndex: episodeIndices.fraction,
-  };
-}
-
-export function extractNews(
-  $: CheerioAPI,
-  config: HookConfig,
-  newsConfig: NewsConfig,
-  container: NewsContainer,
-): Optional<NewsScrapeResult> {
-  const baseUri = newsConfig.base || config.base;
-  const newsRows = $(newsConfig.container.selector);
-
-  const episodeNews: EpisodeNews[] = [];
-
-  for (let i = 0; i < newsRows.length; i++) {
-    const newsRow = newsRows.eq(i);
-
-    const mediumElement = newsRow.find(container.medium.selector);
-    const mediumTitle = getMediumTitle(mediumElement);
-    const tocLink = getMediumLink(mediumElement, baseUri, container);
-
-    if (!tocLink) {
-      logger.warn(`Unknown ${config.name} News Link Format: '${tocLink}'`);
-      continue;
-    }
-
-    const episodeTitleElements = newsRow.find(container.episode.selector);
-    for (let episodeIndex = 0; episodeIndex < episodeTitleElements.length; episodeIndex++) {
-      const episodeTitleElement = episodeTitleElements.eq(episodeIndex);
-
-      const episode = getEpisode(episodeTitleElement, container.episode);
-
-      if (!episode) {
-        logger.warn(`Unknown ${config.name} News Format: '${episodeTitleElement.text()}' for '${mediumTitle}'`);
-        continue;
-      }
-
-      episodeNews.push({
-        mediumType: config.medium,
-        mediumTocLink: tocLink,
-        mediumTitle,
-        link: "true",
-        date: new Date(),
-        ...episode,
-      });
-    }
-  }
-  if (!episodeNews.length) {
-    return {};
-  }
-  return { episodes: episodeNews };
 }
 
 function coerceType(value: string, type: TransferType): string | number | Date {
