@@ -102,7 +102,7 @@ function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelect
   return attrValue;
 }
 
-function applyBasicSelector<Target>(
+function applyBasicSelector<Target extends object>(
   element: Cheerio<Element>,
   selector: SimpleSelector<Target>,
   base: string,
@@ -136,7 +136,7 @@ function applyBasicSelector<Target>(
   return result;
 }
 
-function applyRegexSelector<Target>(
+function applyRegexSelector<Target extends object>(
   element: Cheerio<Element>,
   selector: RegexSelector<Target>,
   base: string,
@@ -182,7 +182,7 @@ function applyRegexSelector<Target>(
   return result;
 }
 
-function applySelector<Target>(element: Cheerio<Element>, selector: Selector<Target>, base: string) {
+function applySelector<Target extends object>(element: Cheerio<Element>, selector: Selector<Target>, base: string) {
   if ("regex" in selector) {
     return applyRegexSelector(element, selector, base);
   } else {
@@ -190,7 +190,7 @@ function applySelector<Target>(element: Cheerio<Element>, selector: Selector<Tar
   }
 }
 
-export function extract<Target>(
+export function extract<Target extends object>(
   element: Cheerio<Element>,
   selector: Selector<Target>,
   baseUri: string,

@@ -13,26 +13,40 @@ interface AttributeRegexSelector extends BasicAttributeSelector {
   replace: string;
 }
 
-type Transfer<Target> = SimpleTransfer<Target> | RegexTransfer<Target>;
+type Transfer<Target extends object> = SimpleTransfer<Target> | RegexTransfer<Target>;
 export type TransferType = "string" | "decimal" | "integer" | "date";
 
-interface BasicTransfer<Target> {
-  targetKey: keyof Target;
+/**
+ * Modified from https://stackoverflow.com/a/65333050
+ * to infer element type of arrays.
+ */
+export type RecursiveKeyOf<TObj extends object> = {
+  [TKey in keyof TObj & (string | number)]: TObj[TKey] extends Array<infer U>
+    ? U extends object
+      ? `${TKey}` | `${TKey}.[*].${RecursiveKeyOf<U>}`
+      : `${TKey}`
+    : TObj[TKey] extends object
+    ? `${TKey}` | `${TKey}.${RecursiveKeyOf<TObj[TKey]>}`
+    : `${TKey}`;
+}[keyof TObj & (string | number)];
+
+interface BasicTransfer<Target extends object> {
+  targetKey: RecursiveKeyOf<Target>;
   type: TransferType;
   optional?: boolean;
 }
 
-export interface SimpleTransfer<Target> extends BasicTransfer<Target> {
+export interface SimpleTransfer<Target extends object> extends BasicTransfer<Target> {
   extract?: AttributeSelector;
 }
 
-export interface RegexTransfer<Target> extends BasicTransfer<Target> {
+export interface RegexTransfer<Target extends object> extends BasicTransfer<Target> {
   extract: string | AttributeSelector;
 }
 
-export type Selector<Target> = SimpleSelector<Target> | RegexSelector<Target>;
+export type Selector<Target extends object> = SimpleSelector<Target> | RegexSelector<Target>;
 
-interface BasicSelector<Target, T extends Transfer<Target>> {
+interface BasicSelector<Target extends object, T extends Transfer<Target>> {
   selector: string;
   multiple?: boolean;
 
@@ -40,9 +54,9 @@ interface BasicSelector<Target, T extends Transfer<Target>> {
   transfers?: T[];
 }
 
-export type SimpleSelector<Target> = BasicSelector<Target, SimpleTransfer<Target>>;
+export type SimpleSelector<Target extends object> = BasicSelector<Target, SimpleTransfer<Target>>;
 
-export interface RegexSelector<Target> extends BasicSelector<Target, RegexTransfer<Target>> {
+export interface RegexSelector<Target extends object> extends BasicSelector<Target, RegexTransfer<Target>> {
   regex: RegExp | JsonRegex;
 }
 
