@@ -1,4 +1,5 @@
 import { EpisodeNews } from "enterprise-core/dist/types";
+import { Toc } from "../types";
 
 export type AttributeSelector = BasicAttributeSelector | AttributeRegexSelector;
 
@@ -29,19 +30,19 @@ export interface RegexTransfer<Target> extends BasicTransfer<Target> {
   extract: string | AttributeSelector;
 }
 
-export type Selector = SimpleSelector | RegexSelector;
+export type Selector<Target> = SimpleSelector<Target> | RegexSelector<Target>;
 
-interface BasicSelector<T extends Transfer<EpisodeNews>> {
+interface BasicSelector<Target, T extends Transfer<Target>> {
   selector: string;
   multiple?: boolean;
 
-  children?: Selector[];
+  children?: Array<Selector<Target>>;
   transfers?: T[];
 }
 
-export type SimpleSelector = BasicSelector<SimpleTransfer<EpisodeNews>>;
+export type SimpleSelector<Target> = BasicSelector<Target, SimpleTransfer<Target>>;
 
-export interface RegexSelector extends BasicSelector<RegexTransfer<EpisodeNews>> {
+export interface RegexSelector<Target> extends BasicSelector<Target, RegexTransfer<Target>> {
   regex: RegExp | JsonRegex;
 }
 
@@ -58,6 +59,11 @@ export interface DownloadConfig {
 export interface TocConfig {
   prefix?: string;
   base?: string;
+
+  /**
+   * Selector which selects the "best" element container for each news item.
+   */
+  container: Selector<Toc>;
 }
 
 export interface NewsConfig {
@@ -74,7 +80,7 @@ export interface NewsConfig {
   /**
    * Selector which selects the "best" element container for each news item.
    */
-  container: Selector;
+  container: Selector<EpisodeNews>;
 }
 
 export interface JsonRegex {
