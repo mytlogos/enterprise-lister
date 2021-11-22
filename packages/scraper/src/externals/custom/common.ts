@@ -10,6 +10,7 @@ import {
   RegexSelector,
   RegexTransfer,
   Selector,
+  BasicTransfer,
 } from "./types";
 
 function toRegex(value: RegExp | JsonRegex): RegExp {
@@ -102,6 +103,40 @@ function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelect
   return attrValue;
 }
 
+function transferValue<Target extends object>(value: string, transfer: BasicTransfer<Target>, result: Target): void {
+  let transferTarget: any = result;
+  let transferKey = "";
+
+  for (const property of transfer.targetKey.split(".")) {
+    if (transferKey) {
+      if (!transferTarget[transferKey]) {
+        const newValue = property === "[*]" ? [] : {};
+        transferTarget[transferKey] = newValue;
+      }
+      transferTarget = transferTarget[transferKey];
+    }
+    transferKey = property;
+  }
+
+  if (transferKey !== "[*]") {
+    throw Error("Cannot transfer non-object type as object type - wrong transferkey");
+  }
+
+  try {
+    const coercedValue = coerceType(value, transfer.type);
+
+    if (Array.isArray(transferTarget)) {
+      transferTarget.push(coercedValue);
+    } else {
+      transferTarget[transferKey] = coercedValue;
+    }
+  } catch (error) {
+    if (!transfer.optional) {
+      throw error;
+    }
+  }
+}
+
 function applyBasicSelector<Target extends object>(
   element: Cheerio<Element>,
   selector: SimpleSelector<Target>,
@@ -124,14 +159,8 @@ function applyBasicSelector<Target extends object>(
       value = text;
     }
 
-    try {
-      // @ts-expect-error
-      result[transfer.targetKey] = coerceType(value, transfer.type);
-    } catch (error) {
-      if (!transfer.optional) {
-        throw error;
-      }
-    }
+    // @ts-expect-error
+    transferValue(value, transfer, result);
   }
   return result;
 }
@@ -170,14 +199,8 @@ function applyRegexSelector<Target extends object>(
       }
     }
 
-    try {
-      // @ts-expect-error
-      result[transfer.targetKey] = coerceType(value, transfer.type);
-    } catch (error) {
-      if (!transfer.optional) {
-        throw error;
-      }
-    }
+    // @ts-expect-error
+    transferValue(value, transfer, result);
   }
   return result;
 }

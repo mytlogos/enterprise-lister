@@ -15,6 +15,7 @@ interface AttributeRegexSelector extends BasicAttributeSelector {
 
 type Transfer<Target extends object> = SimpleTransfer<Target> | RegexTransfer<Target>;
 export type TransferType = "string" | "decimal" | "integer" | "date";
+export type ArrayType = "[*]";
 
 /**
  * Modified from https://stackoverflow.com/a/65333050
@@ -23,14 +24,14 @@ export type TransferType = "string" | "decimal" | "integer" | "date";
 export type RecursiveKeyOf<TObj extends object> = {
   [TKey in keyof TObj & (string | number)]: TObj[TKey] extends Array<infer U>
     ? U extends object
-      ? `${TKey}` | `${TKey}.[*].${RecursiveKeyOf<U>}`
+      ? `${TKey}` | `${TKey}.${ArrayType}.${RecursiveKeyOf<U>}`
       : `${TKey}`
     : TObj[TKey] extends object
     ? `${TKey}` | `${TKey}.${RecursiveKeyOf<TObj[TKey]>}`
     : `${TKey}`;
 }[keyof TObj & (string | number)];
 
-interface BasicTransfer<Target extends object> {
+export interface BasicTransfer<Target extends object> {
   targetKey: RecursiveKeyOf<Target>;
   type: TransferType;
   optional?: boolean;
