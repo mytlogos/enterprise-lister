@@ -1,6 +1,6 @@
 import { Cheerio, Element } from "cheerio";
 import { Toc, TocScraper } from "../types";
-import { extract, makeRequest, merge } from "./common";
+import { defaultContext, extract, makeRequest, merge } from "./common";
 import { HookConfig, TocConfig } from "./types";
 import { validate } from "jsonschema";
 import { JSONSchema7 } from "json-schema";
@@ -93,14 +93,18 @@ export function createTocScraper(config: HookConfig): TocScraper | undefined {
   }
 
   const scraper: TocScraper = async (url) => {
+    const context = defaultContext();
+
     async function scrape(tocConfig: TocConfig) {
-      const $ = await makeRequest(url, tocConfig.request);
+      const $ = await makeRequest(url, context, tocConfig.request);
       const baseUri = tocConfig.base || config.base;
 
       if (Array.isArray(tocConfig.selector)) {
-        return tocConfig.selector.flatMap((selector) => extract($.root() as Cheerio<Element>, selector, baseUri));
+        return tocConfig.selector.flatMap((selector) =>
+          extract($.root() as Cheerio<Element>, selector, baseUri, context),
+        );
       } else {
-        return extract($.root() as Cheerio<Element>, tocConfig.selector, baseUri);
+        return extract($.root() as Cheerio<Element>, tocConfig.selector, baseUri, context);
       }
     }
 

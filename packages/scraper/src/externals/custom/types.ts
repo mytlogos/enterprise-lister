@@ -51,12 +51,19 @@ export interface RegexTransfer<Target extends object> extends BasicTransfer<Targ
 
 export type Selector<Target extends object> = SimpleSelector<Target> | RegexSelector<Target>;
 
+export interface VariableExtractor {
+  variableName: string;
+  value?: string;
+  extract?: AttributeSelector;
+}
+
 interface BasicSelector<Target extends object, T extends Transfer<Target>> {
   selector: string;
   multiple?: boolean;
 
   children?: Array<Selector<Target>>;
   transfers?: T[];
+  variables?: VariableExtractor[];
 }
 
 export type SimpleSelector<Target extends object> = BasicSelector<Target, SimpleTransfer<Target>>;
@@ -78,7 +85,8 @@ export interface DownloadConfig {
 export interface RequestConfig {
   regexUrl?: RegExp;
   transformUrl?: string;
-  options: Omit<Options, "url" | "uri">;
+  templateUrl?: string;
+  options?: Omit<Options, "url" | "uri">;
 }
 
 export interface TocConfig {

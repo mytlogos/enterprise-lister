@@ -72,7 +72,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-  const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.so\/category\/(.+)/;
+  const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.wiki\/category\/(.+)/;
   const aliasExec = animeAliasReg.exec(urlString);
 
   if (!aliasExec) {

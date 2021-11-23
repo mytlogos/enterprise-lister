@@ -206,6 +206,19 @@ function applyBasicSelector<Target extends object>(
     // @ts-expect-error
     transferValue(value, transfer, result, context);
   }
+  for (const variable of selector.variables || []) {
+    let value;
+
+    if (variable.extract) {
+      value = getAttributeValue(element, variable.extract, base);
+    } else {
+      if (text == undefined) {
+        text = sanitizeString(element.text().trim());
+      }
+      value = text;
+    }
+    context.variables[variable.variableName] = value;
+  }
   return result;
 }
 
@@ -247,6 +260,31 @@ function applyRegexSelector<Target extends object>(
     // @ts-expect-error
     transferValue(value, transfer, result, context);
   }
+  for (const variable of selector.variables || []) {
+    let value = "";
+
+    if (variable.extract) {
+      value = getAttributeValue(element, variable.extract, base);
+    } else if (variable.value) {
+      if (match === undefined) {
+        const text = sanitizeString(element.text().trim());
+        match = toRegex(selector.regex).exec(text);
+
+        if (!match) {
+          throw Error(`Could not match regex to text '${text}'`);
+        }
+      }
+
+      value = variable.value;
+
+      for (let index = 0; index < match.length; index++) {
+        const groupValue = match[index] || "";
+        const replaceRegex = new RegExp("\\$" + index + "(\\D|$)");
+        value = value.replace(replaceRegex, groupValue);
+      }
+    }
+    context.variables[variable.variableName] = value;
+  }
   return result;
 }
 
@@ -266,12 +304,14 @@ function applySelector<Target extends object>(
 interface Context {
   transferKeysIndices: Record<string, number | "DONE">;
   multipleIndex: number;
+  variables: Record<string, string>;
 }
 
-function defaultContext(): Context {
+export function defaultContext(): Context {
   return {
     transferKeysIndices: {},
     multipleIndex: 0,
+    variables: {},
   };
 }
 
@@ -408,24 +448,86 @@ export function merge<T extends any[] | Record<string, any>>(target: T, source: 
   return target;
 }
 
-export function makeRequest(url: string, requestConfig?: RequestConfig) {
+function templateString(value: string, context: Context): string {
+  const originalValue = value;
+  const braces: Array<{ type: string; index: number }> = [];
+  let lastBrace: { type: string; index: number } | undefined = undefined;
+
+  for (let index = 0; index < value.length; index++) {
+    const char = value[index];
+
+    if (char === "{") {
+      if (lastBrace && lastBrace.type === char) {
+        throw Error("two consecutive opening braces are not allowed!");
+      } else {
+        lastBrace = { type: char, index };
+        braces.push(lastBrace);
+      }
+    } else if (char === "}") {
+      if (!lastBrace || lastBrace.type === char) {
+        throw Error("missing opening brace!");
+      } else {
+        lastBrace = { type: char, index };
+        braces.push(lastBrace);
+      }
+    }
+  }
+
+  if (braces.length % 2 !== 0) {
+    throw Error("missing closing brace!");
+  }
+
+  const replaceables: Record<string, string> = {};
+
+  for (let index = 0; index < braces.length; index += 2) {
+    const opening = braces[index];
+    const closing = braces[index + 1];
+
+    const variableName = value.slice(opening.index + 1, closing.index);
+
+    if (!(variableName in context.variables)) {
+      throw Error(`Unknown Variable '${variableName}'!`);
+    }
+    const variableValue = context.variables[variableName];
+
+    if (variableValue == undefined) {
+      throw Error(`Variable '${variableName}' has no value!`);
+    }
+
+    replaceables[variableName] = variableValue;
+  }
+
+  for (const [replaceName, replaceValue] of Object.entries(replaceables)) {
+    value = value.replaceAll(`{${replaceName}}`, replaceValue);
+  }
+  console.log(`Templated Value '${originalValue}' into ${value}`);
+  return value;
+}
+
+export function makeRequest(targetUrl: string, context: Context, requestConfig?: RequestConfig) {
   // @ts-expect-error
   const options: Options = {};
 
   if (requestConfig) {
     if (requestConfig.regexUrl && requestConfig.transformUrl) {
-      const transformedUrl = extractFromRegex(url, requestConfig.regexUrl, requestConfig.transformUrl);
+      const transformedUrl = extractFromRegex(targetUrl, requestConfig.regexUrl, requestConfig.transformUrl);
 
       if (!transformedUrl) {
         throw Error("URL Transformation failed");
       }
 
-      url = transformedUrl[0];
+      targetUrl = transformedUrl[0];
     }
-    Object.assign(options, requestConfig.options);
+    if (requestConfig.templateUrl) {
+      targetUrl = templateString(requestConfig.templateUrl, context);
+    }
+    if (requestConfig.options) {
+      Object.assign(options, requestConfig.options);
+    }
   }
   // @ts-expect-error
-  options.url = url;
+  options.url = targetUrl;
 
-  return queueCheerioRequest(url, options as any);
+  console.log("Requesting url: " + targetUrl);
+  return queueCheerioRequest(targetUrl, options as any);
 }
