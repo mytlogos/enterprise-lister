@@ -1,3 +1,4 @@
+import { Options } from "cloudscraper";
 import { EpisodeNews } from "enterprise-core/dist/types";
 import { Toc } from "../types";
 
@@ -35,6 +36,9 @@ export interface BasicTransfer<Target extends object> {
   targetKey: RecursiveKeyOf<Target>;
   type: TransferType;
   optional?: boolean;
+  mapping?: {
+    include: Record<string, string>;
+  };
 }
 
 export interface SimpleTransfer<Target extends object> extends BasicTransfer<Target> {
@@ -71,14 +75,21 @@ export interface DownloadConfig {
   base?: string;
 }
 
+export interface RequestConfig {
+  regexUrl?: RegExp;
+  transformUrl?: string;
+  options: Omit<Options, "url" | "uri">;
+}
+
 export interface TocConfig {
   prefix?: string;
   base?: string;
+  request?: RequestConfig;
 
   /**
    * Selector which selects the "best" element container for each news item.
    */
-  container: Selector<Toc>;
+  selector: Selector<Toc> | Array<Selector<Toc>>;
 }
 
 export interface NewsConfig {
@@ -112,6 +123,6 @@ export interface HookConfig {
   domain: string | HookDomain | HookDomain[];
   search?: SearchConfig;
   download?: DownloadConfig;
-  toc?: TocConfig;
+  toc?: TocConfig | TocConfig[];
   news?: NewsConfig;
 }

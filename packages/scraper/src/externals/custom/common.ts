@@ -1,6 +1,8 @@
 import { Cheerio, Element } from "cheerio";
+import { Options } from "cloudscraper";
 import { relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import * as url from "url";
+import { queueCheerioRequest } from "../queueManager";
 import {
   JsonRegex,
   TransferType,
@@ -11,6 +13,7 @@ import {
   RegexTransfer,
   Selector,
   BasicTransfer,
+  RequestConfig,
 } from "./types";
 
 function toRegex(value: RegExp | JsonRegex): RegExp {
@@ -20,7 +23,7 @@ function toRegex(value: RegExp | JsonRegex): RegExp {
   return new RegExp(value.pattern, value.flags);
 }
 
-function extractFromRegex(value: string, regex: RegExp, ...replace: string[]) {
+export function extractFromRegex(value: string, regex: RegExp, ...replace: string[]) {
   const match = regex.exec(value);
 
   if (!match) {
@@ -103,23 +106,63 @@ function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelect
   return attrValue;
 }
 
-function transferValue<Target extends object>(value: string, transfer: BasicTransfer<Target>, result: Target): void {
+const EXTRACT_ITEM_INDEX = Symbol.for("extract_item_index");
+
+function transferValue<Target extends object>(
+  value: string,
+  transfer: BasicTransfer<Target>,
+  result: Target,
+  context: Context,
+): void {
   let transferTarget: any = result;
   let transferKey = "";
 
   for (const property of transfer.targetKey.split(".")) {
     if (transferKey) {
-      if (!transferTarget[transferKey]) {
-        const newValue = property === "[*]" ? [] : {};
-        transferTarget[transferKey] = newValue;
+      const currentTransferredValue = transferTarget[transferKey];
+
+      if (!currentTransferredValue || Array.isArray(transferTarget)) {
+        // either reuse last item, if index matches, or create new item
+        if (
+          Array.isArray(transferTarget) &&
+          transferTarget.length &&
+          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] == context.multipleIndex
+        ) {
+          // reuse item
+          transferTarget = transferTarget[transferTarget.length - 1];
+        } else {
+          // create new item
+          const newValue = property === "[*]" ? [] : { [EXTRACT_ITEM_INDEX]: context.multipleIndex };
+
+          if (Array.isArray(transferTarget)) {
+            transferTarget.push(newValue);
+          } else {
+            transferTarget[transferKey] = newValue;
+          }
+          transferTarget = newValue;
+        }
+      } else {
+        transferTarget = transferTarget[transferKey];
       }
-      transferTarget = transferTarget[transferKey];
     }
     transferKey = property;
   }
 
-  if (transferKey !== "[*]") {
-    throw Error("Cannot transfer non-object type as object type - wrong transferkey");
+  if (transferKey === "[*]") {
+    throw Error("Cannot transfer non-object type as object type - wrong transferkey, initially: " + transfer.targetKey);
+  }
+
+  if (transfer.mapping) {
+    if (transfer.mapping.include) {
+      value = value.toLowerCase();
+
+      for (const [mappingKey, mappingValue] of Object.entries(transfer.mapping.include)) {
+        if (value.includes(mappingKey)) {
+          value = mappingValue;
+          break;
+        }
+      }
+    }
   }
 
   try {
@@ -141,7 +184,8 @@ function applyBasicSelector<Target extends object>(
   element: Cheerio<Element>,
   selector: SimpleSelector<Target>,
   base: string,
-  result: Partial<Target> = {},
+  result: Partial<Target>,
+  context: Context,
 ) {
   const transfers: Array<SimpleTransfer<Target>> = selector.transfers || [];
 
@@ -160,7 +204,7 @@ function applyBasicSelector<Target extends object>(
     }
 
     // @ts-expect-error
-    transferValue(value, transfer, result);
+    transferValue(value, transfer, result, context);
   }
   return result;
 }
@@ -169,7 +213,8 @@ function applyRegexSelector<Target extends object>(
   element: Cheerio<Element>,
   selector: RegexSelector<Target>,
   base: string,
-  result: Partial<Target> = {},
+  result: Partial<Target>,
+  context: Context,
 ) {
   const transfers: Array<RegexTransfer<Target>> = selector.transfers || [];
 
@@ -200,34 +245,53 @@ function applyRegexSelector<Target extends object>(
     }
 
     // @ts-expect-error
-    transferValue(value, transfer, result);
+    transferValue(value, transfer, result, context);
   }
   return result;
 }
 
-function applySelector<Target extends object>(element: Cheerio<Element>, selector: Selector<Target>, base: string) {
+function applySelector<Target extends object>(
+  element: Cheerio<Element>,
+  selector: Selector<Target>,
+  base: string,
+  context: Context,
+) {
   if ("regex" in selector) {
-    return applyRegexSelector(element, selector, base);
+    return applyRegexSelector(element, selector, base, {}, context);
   } else {
-    return applyBasicSelector(element, selector, base);
+    return applyBasicSelector(element, selector, base, {}, context);
   }
+}
+
+interface Context {
+  transferKeysIndices: Record<string, number | "DONE">;
+  multipleIndex: number;
+}
+
+function defaultContext(): Context {
+  return {
+    transferKeysIndices: {},
+    multipleIndex: 0,
+  };
 }
 
 export function extract<Target extends object>(
   element: Cheerio<Element>,
   selector: Selector<Target>,
   baseUri: string,
+  context: Context = defaultContext(),
 ): Array<Partial<Target>> {
   const found = element.find(selector.selector);
   console.log(`Matched selector ${selector.selector} found ${found.length} matches`);
   let results: Array<Partial<Target>> = [];
 
-  if (selector.multiple && found.length > 1) {
+  if ((selector.multiple && found.length > 1) || found.length === 1) {
     for (let index = 0; index < found.length; index++) {
-      results.push(applySelector(found.eq(index), selector, baseUri));
+      if (selector.multiple) {
+        context.multipleIndex = index;
+      }
+      results.push(applySelector(found.eq(index), selector, baseUri, context));
     }
-  } else if (found.length === 1) {
-    results.push(applySelector(found, selector, baseUri));
   } else {
     throw Error("Invalid Selector: no exact match found for: " + selector.selector);
   }
@@ -238,7 +302,10 @@ export function extract<Target extends object>(
     for (const child of selector.children) {
       // length of 'found' and 'results' must be the same
       for (let index = 0; index < found.length; index++) {
-        const extractResults = extract(found.eq(index), child, baseUri);
+        if (selector.multiple) {
+          context.multipleIndex = index;
+        }
+        const extractResults = extract(found.eq(index), child, baseUri, context);
         nextBuckets[index].push(extractResults);
       }
     }
@@ -259,7 +326,7 @@ export function extract<Target extends object>(
           multipleBucket = bucket;
         } else {
           const [partial] = bucket;
-          Object.assign(currentPartial, partial);
+          merge(currentPartial, partial);
         }
       }
 
@@ -274,4 +341,91 @@ export function extract<Target extends object>(
     results = nextResults;
   }
   return results;
+}
+
+function mergeSameIndexSymbol(
+  target: Array<Record<string | symbol, any>>,
+  source: Array<Record<string | symbol, any>>,
+) {
+  const indices: Record<number, Record<string | symbol, any>> = {};
+  let processingTarget = true;
+
+  const filter = (value: Record<string | symbol, any>) => {
+    const index = value[EXTRACT_ITEM_INDEX];
+
+    if (index != undefined) {
+      if (indices[index]) {
+        merge(indices[index], value);
+      } else {
+        indices[index] = value;
+
+        if (!processingTarget) {
+          target.push(value);
+        }
+      }
+      return false;
+    }
+    return true;
+  };
+  target.forEach(filter);
+  processingTarget = false;
+  target.push(...source.filter(filter));
+}
+
+export function merge<T extends any[] | Record<string, any>>(target: T, source: T): T {
+  if (Array.isArray(target) && Array.isArray(source)) {
+    if (target[0] && target[0][EXTRACT_ITEM_INDEX] != undefined) {
+      mergeSameIndexSymbol(target, source);
+    } else {
+      target.push(...source);
+    }
+  } else if (!Array.isArray(target) && !Array.isArray(source)) {
+    for (const key of Object.keys(target)) {
+      if (key in source) {
+        const sourceValue = source[key];
+        const targetValue = target[key];
+
+        if (typeof sourceValue === "object" && typeof targetValue === "object") {
+          merge(targetValue, sourceValue);
+        } else {
+          throw Error(
+            `Cannot merge non object values: key: '${key}', target: '${targetValue}', source: '${sourceValue}'`,
+          );
+        }
+      }
+    }
+    for (const key of Object.keys(source)) {
+      // do not overwrite values in target
+      if (key in target) {
+        continue;
+      }
+
+      target[key] = source[key];
+    }
+  } else {
+    throw Error("Mismatched Value Types - both do not have same array or object type");
+  }
+  return target;
+}
+
+export function makeRequest(url: string, requestConfig?: RequestConfig) {
+  // @ts-expect-error
+  const options: Options = {};
+
+  if (requestConfig) {
+    if (requestConfig.regexUrl && requestConfig.transformUrl) {
+      const transformedUrl = extractFromRegex(url, requestConfig.regexUrl, requestConfig.transformUrl);
+
+      if (!transformedUrl) {
+        throw Error("URL Transformation failed");
+      }
+
+      url = transformedUrl[0];
+    }
+    Object.assign(options, requestConfig.options);
+  }
+  // @ts-expect-error
+  options.url = url;
+
+  return queueCheerioRequest(url, options as any);
 }
