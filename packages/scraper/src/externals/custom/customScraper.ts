@@ -1,5 +1,6 @@
 import { MediaType } from "enterprise-core/dist/tools";
 import { ContentDownloader, NewsScraper, SearchScraper, TocScraper, TocSearchScraper } from "../types";
+import { createDownloadScraper } from "./download";
 import { createNewsScraper } from "./news";
 import { createTocScraper } from "./toc";
 import { HookConfig } from "./types";
@@ -28,5 +29,7 @@ export function createHook<T extends HookConfig>(config: T): CustomHook<T> {
     newsAdapter: createNewsScraper(config),
     // @ts-expect-error
     tocAdapter: createTocScraper(config),
+    // @ts-expect-error
+    contentDownloadAdapter: createDownloadScraper(config),
   };
 }

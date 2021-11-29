@@ -190,12 +190,18 @@ function applyBasicSelector<Target extends object>(
   const transfers: Array<SimpleTransfer<Target>> = selector.transfers || [];
 
   let text: string | undefined = undefined;
+  let html: string | null = null;
 
   for (const transfer of transfers) {
     let value: string;
 
     if (transfer.extract) {
       value = getAttributeValue(element, transfer.extract, base);
+    } else if (transfer.html) {
+      if (html == null) {
+        html = element.html() || "";
+      }
+      value = html;
     } else {
       if (text == undefined) {
         text = sanitizeString(element.text().trim());

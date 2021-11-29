@@ -1,6 +1,6 @@
 import { Options } from "cloudscraper";
 import { EpisodeNews } from "enterprise-core/dist/types";
-import { Toc } from "../types";
+import { EpisodeContent, Toc } from "../types";
 
 export type AttributeSelector = BasicAttributeSelector | AttributeRegexSelector;
 
@@ -36,6 +36,7 @@ export interface BasicTransfer<Target extends object> {
   targetKey: RecursiveKeyOf<Target>;
   type: TransferType;
   optional?: boolean;
+  html?: boolean;
   mapping?: {
     include: Record<string, string>;
   };
@@ -80,6 +81,12 @@ export interface SearchConfig {
 export interface DownloadConfig {
   prefix?: string;
   base?: string;
+  request?: RequestConfig;
+
+  /**
+   * Selector which selects the "best" element container for each news item.
+   */
+  selector: Selector<EpisodeContent> | Array<Selector<EpisodeContent>>;
 }
 
 export interface RequestConfig {
