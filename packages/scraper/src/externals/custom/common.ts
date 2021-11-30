@@ -1,8 +1,8 @@
-import { Cheerio, Element } from "cheerio";
+import { Cheerio, CheerioAPI, Element } from "cheerio";
 import { Options } from "cloudscraper";
 import { relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import * as url from "url";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest, queueRequest } from "../queueManager";
 import {
   JsonRegex,
   TransferType,
@@ -14,6 +14,9 @@ import {
   Selector,
   BasicTransfer,
   RequestConfig,
+  JSONTransfer,
+  JsonSelector,
+  TransferMapping,
 } from "./types";
 
 function toRegex(value: RegExp | JsonRegex): RegExp {
@@ -108,16 +111,53 @@ function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelect
 
 const EXTRACT_ITEM_INDEX = Symbol.for("extract_item_index");
 
-function transferValue<Target extends object>(
-  value: string,
-  transfer: BasicTransfer<Target>,
-  result: Target,
-  context: Context,
-): void {
+export function extractValue(result: any, targetKey: string, context: Context): any {
   let transferTarget: any = result;
   let transferKey = "";
 
-  for (const property of transfer.targetKey.split(".")) {
+  for (const property of targetKey.split(".")) {
+    if (transferKey) {
+      const currentTransferredValue = transferTarget[transferKey];
+
+      if (!currentTransferredValue || Array.isArray(transferTarget)) {
+        if (
+          Array.isArray(transferTarget) &&
+          transferTarget.length &&
+          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] == context.multipleIndex
+        ) {
+          transferTarget = transferTarget[transferTarget.length - 1];
+        } else {
+          throw Error("No Value");
+        }
+      } else {
+        transferTarget = transferTarget[transferKey];
+      }
+    }
+    transferKey = property;
+  }
+  return transferTarget[transferKey];
+}
+
+function mapValue(value: string, mapping: TransferMapping | undefined): string {
+  if (mapping) {
+    if (mapping.include) {
+      value = value.toLowerCase();
+
+      for (const [mappingKey, mappingValue] of Object.entries(mapping.include)) {
+        if (value.includes(mappingKey)) {
+          return mappingValue;
+        }
+      }
+    }
+  }
+  return value;
+}
+
+function getTransferContext<Target extends object>(targetKey: string, result: Target, context: Context) {
+  let transferTarget: any = result;
+  let transferKey = "";
+
+  for (const property of targetKey.split(".")) {
     if (transferKey) {
       const currentTransferredValue = transferTarget[transferKey];
 
@@ -149,21 +189,20 @@ function transferValue<Target extends object>(
   }
 
   if (transferKey === "[*]") {
-    throw Error("Cannot transfer non-object type as object type - wrong transferkey, initially: " + transfer.targetKey);
+    throw Error("Cannot transfer non-object type as object type - wrong transferkey, initially: " + targetKey);
   }
 
-  if (transfer.mapping) {
-    if (transfer.mapping.include) {
-      value = value.toLowerCase();
+  return { transferKey, transferTarget };
+}
 
-      for (const [mappingKey, mappingValue] of Object.entries(transfer.mapping.include)) {
-        if (value.includes(mappingKey)) {
-          value = mappingValue;
-          break;
-        }
-      }
-    }
-  }
+function transferValue<Target extends object>(
+  value: string,
+  transfer: BasicTransfer<Target>,
+  result: Target,
+  context: Context,
+): void {
+  const { transferKey, transferTarget } = getTransferContext(transfer.targetKey, result, context);
+  value = mapValue(value, transfer.mapping);
 
   try {
     const coercedValue = coerceType(value, transfer.type);
@@ -294,6 +333,24 @@ function applyRegexSelector<Target extends object>(
   return result;
 }
 
+function applyJsonSelector<Target extends object, Source extends object>(
+  element: Source,
+  selector: JsonSelector<Target, Source>,
+  result: Partial<Target>,
+  context: Context,
+) {
+  const transfers: Array<JSONTransfer<Target, Source>> = selector.transfers || [];
+
+  for (const transfer of transfers) {
+    let value: string = extractValue(element, transfer.sourceKey, context);
+    value = mapValue(value, transfer.mapping);
+
+    const { transferKey, transferTarget } = getTransferContext(transfer.targetKey, result, context);
+    transferTarget[transferKey] = value;
+  }
+  return result;
+}
+
 function applySelector<Target extends object>(
   element: Cheerio<Element>,
   selector: Selector<Target>,
@@ -319,6 +376,84 @@ export function defaultContext(): Context {
     multipleIndex: 0,
     variables: {},
   };
+}
+
+export function extractJSON<Target extends object, Source extends object>(
+  target: any,
+  selector: JsonSelector<Target, Source>,
+  context: Context,
+): Array<Partial<Target>> {
+  let found = extractValue(target, selector.selector, context);
+
+  if (!Array.isArray(found)) {
+    if (found) {
+      found = [found];
+    } else {
+      found = [];
+    }
+  }
+
+  console.log(`Matched selector ${selector.selector} found ${found.length} matches`);
+  console.log(`Has multiple: ${!!selector.multiple}`);
+
+  let results: Array<Partial<Target>> = [];
+
+  if ((selector.multiple && found.length > 1) || found.length === 1) {
+    for (let index = 0; index < found.length; index++) {
+      if (selector.multiple) {
+        context.multipleIndex = index;
+      }
+      results.push(applyJsonSelector(found[index], selector, {}, context));
+    }
+  } else {
+    throw Error("Invalid Selector: no exact match found for: " + selector.selector);
+  }
+  if (selector.children?.length) {
+    const nextBuckets: Array<Array<Array<Partial<Target>>>> = Array.from({ length: results.length }, () => []);
+
+    // merge children with 'parent' results with children overriding parents
+    for (const child of selector.children) {
+      // length of 'found' and 'results' must be the same
+      for (let index = 0; index < found.length; index++) {
+        if (selector.multiple) {
+          context.multipleIndex = index;
+        }
+        const extractResults = extractJSON(found[index], child, context);
+        nextBuckets[index].push(extractResults);
+      }
+    }
+
+    const nextResults: Array<Partial<Target>> = [];
+
+    for (let index = 0; index < results.length; index++) {
+      const currentPartial = results[index];
+      const nexts = nextBuckets[index];
+
+      let multipleBucket: Array<Partial<Target>> | undefined = undefined;
+
+      for (const bucket of nexts) {
+        if (bucket.length > 1) {
+          if (multipleBucket != undefined) {
+            throw Error("Multiple Child Selectors of the same parent with multiple=true are not allowed");
+          }
+          multipleBucket = bucket;
+        } else {
+          const [partial] = bucket;
+          merge(currentPartial, partial);
+        }
+      }
+
+      if (multipleBucket) {
+        for (const partial of multipleBucket) {
+          nextResults.push(Object.assign(partial, currentPartial));
+        }
+      } else {
+        nextResults.push(currentPartial);
+      }
+    }
+    results = nextResults;
+  }
+  return results;
 }
 
 export function extract<Target extends object>(
@@ -489,18 +624,30 @@ function templateString(value: string, context: Context): string {
     const opening = braces[index];
     const closing = braces[index + 1];
 
-    const variableName = value.slice(opening.index + 1, closing.index);
+    const originalName = value.slice(opening.index + 1, closing.index);
+    let variableName = originalName;
+
+    const match = variableName.match(/(.+)\[(\d+)]/);
+
+    if (match) {
+      variableName = match[1];
+    }
 
     if (!(variableName in context.variables)) {
-      throw Error(`Unknown Variable '${variableName}'!`);
+      throw Error(`Unknown Variable '${variableName}', original: '${originalName}'!`);
     }
-    const variableValue = context.variables[variableName];
+
+    let variableValue = context.variables[variableName];
+
+    if (match) {
+      variableValue = variableValue[Number(match[2])];
+    }
 
     if (variableValue == undefined) {
-      throw Error(`Variable '${variableName}' has no value!`);
+      throw Error(`Variable '${originalName}' has no value!`);
     }
 
-    replaceables[variableName] = variableValue;
+    replaceables[originalName] = variableValue;
   }
 
   for (const [replaceName, replaceValue] of Object.entries(replaceables)) {
@@ -510,7 +657,11 @@ function templateString(value: string, context: Context): string {
   return value;
 }
 
-export function makeRequest(targetUrl: string, context: Context, requestConfig?: RequestConfig) {
+export function makeRequest(
+  targetUrl: string,
+  context: Context,
+  requestConfig?: RequestConfig,
+): Promise<CheerioAPI | any> {
   // @ts-expect-error
   const options: Options = {};
 
@@ -527,6 +678,9 @@ export function makeRequest(targetUrl: string, context: Context, requestConfig?:
     if (requestConfig.templateUrl) {
       targetUrl = templateString(requestConfig.templateUrl, context);
     }
+    if (requestConfig.templateBody) {
+      options.body = templateString(requestConfig.templateBody, context);
+    }
     if (requestConfig.options) {
       Object.assign(options, requestConfig.options);
     }
@@ -535,5 +689,8 @@ export function makeRequest(targetUrl: string, context: Context, requestConfig?:
   options.url = targetUrl;
 
   console.log("Requesting url: " + targetUrl);
+  if (requestConfig?.jsonResponse) {
+    return queueRequest(targetUrl, options as any).then((value) => JSON.parse(value));
+  }
   return queueCheerioRequest(targetUrl, options as any);
 }

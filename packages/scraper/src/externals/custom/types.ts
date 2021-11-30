@@ -1,5 +1,5 @@
 import { Options } from "cloudscraper";
-import { EpisodeNews } from "enterprise-core/dist/types";
+import { EpisodeNews, SearchResult } from "enterprise-core/dist/types";
 import { EpisodeContent, Toc } from "../types";
 
 export type AttributeSelector = BasicAttributeSelector | AttributeRegexSelector;
@@ -32,14 +32,23 @@ export type RecursiveKeyOf<TObj extends object> = {
     : `${TKey}`;
 }[keyof TObj & (string | number)];
 
+export interface JSONTransfer<Target extends object, Source extends object> {
+  sourceKey: RecursiveKeyOf<Source>;
+  targetKey: RecursiveKeyOf<Target>;
+  optional?: boolean;
+  mapping?: TransferMapping;
+}
+
+export interface TransferMapping {
+  include: Record<string, string>;
+}
+
 export interface BasicTransfer<Target extends object> {
   targetKey: RecursiveKeyOf<Target>;
   type: TransferType;
   optional?: boolean;
   html?: boolean;
-  mapping?: {
-    include: Record<string, string>;
-  };
+  mapping?: TransferMapping;
 }
 
 export interface SimpleTransfer<Target extends object> extends BasicTransfer<Target> {
@@ -48,6 +57,15 @@ export interface SimpleTransfer<Target extends object> extends BasicTransfer<Tar
 
 export interface RegexTransfer<Target extends object> extends BasicTransfer<Target> {
   extract: string | AttributeSelector;
+}
+
+export interface JsonSelector<Target extends object, Source extends object> {
+  selector: string;
+  multiple?: boolean;
+
+  children?: Array<JsonSelector<Target, Source>>;
+  transfers?: Array<JSONTransfer<Target, Source>>;
+  variables?: VariableExtractor[];
 }
 
 export type Selector<Target extends object> = SimpleSelector<Target> | RegexSelector<Target>;
@@ -73,9 +91,11 @@ export interface RegexSelector<Target extends object> extends BasicSelector<Targ
   regex: RegExp | JsonRegex;
 }
 
-export interface SearchConfig {
+export interface SearchConfig<Source extends object = Record<any, any>> {
   searchUrl: string;
   base?: string;
+  request?: RequestConfig;
+  selector: JsonSelector<SearchResult, Source> | Array<JsonSelector<SearchResult, Source>>;
 }
 
 export interface DownloadConfig {
@@ -93,6 +113,8 @@ export interface RequestConfig {
   regexUrl?: RegExp;
   transformUrl?: string;
   templateUrl?: string;
+  templateBody?: string;
+  jsonResponse?: boolean;
   options?: Omit<Options, "url" | "uri">;
 }
 
