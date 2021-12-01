@@ -18,7 +18,7 @@
       </media-filter>
       <div class="d-inline ms-1">
         <auto-complete
-          key="id"
+          thing-key="id"
           class="d-inline"
           :items="media"
           title-key="title"
@@ -28,7 +28,7 @@
       </div>
       <div class="d-inline ms-1">
         <auto-complete
-          key="id"
+          thing-key="id"
           class="d-inline"
           :items="lists"
           title-key="name"

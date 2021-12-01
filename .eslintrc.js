@@ -110,6 +110,8 @@ module.exports = {
             { SwitchCase: 1}
         ],
         'no-console': 'off',
-        'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
+        'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+        'vue/multi-word-component-names': 'off', // TODO: address this rule and remove this override
+        'vue/no-deprecated-router-link-tag-prop': 'off' // TODO: address this rule and remove this override
     },
 };
