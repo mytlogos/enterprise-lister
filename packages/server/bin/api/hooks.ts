@@ -2,8 +2,11 @@ import { hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { load } from "enterprise-scraper/dist/externals/hookManager";
 import { isInvalidId, Errors } from "enterprise-core/dist/tools";
 import { ScraperHook } from "enterprise-core/dist/types";
+import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
+import { createHook } from "enterprise-scraper/dist/externals/custom/customScraper";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
+import { HookTest } from "@/types";
 
 export const getAllHooks = createHandler(() => {
   return load(true).then(() => hookStorage.getAllStream());
@@ -17,6 +20,29 @@ export const putHook = createHandler((req) => {
   }
 
   return hookStorage.updateScraperHook(hook);
+});
+
+const testHook = createHandler((req) => {
+  const { config, key, param }: HookTest = req.body;
+  const allowed: Array<keyof HookConfig> = ["download", "news", "search", "toc"];
+
+  if (!allowed.includes(key)) {
+    return Promise.reject(Errors.INVALID_INPUT);
+  }
+
+  const hook = createHook(config);
+
+  if (key === "download" && hook.contentDownloadAdapter) {
+    return hook.contentDownloadAdapter(param);
+  } else if (key === "news" && hook.newsAdapter) {
+    return hook.newsAdapter();
+  } else if (key === "search" && hook.searchAdapter) {
+    return hook.searchAdapter(param, hook.medium);
+  } else if (key === "toc" && hook.tocAdapter) {
+    return hook.tocAdapter(param);
+  } else {
+    return Promise.reject(Errors.INVALID_INPUT);
+  }
 });
 
 /**
@@ -79,6 +105,8 @@ export function hooksRouter(): Router {
    *          description: true if update succeeded
    */
   hookRoute.put(putHook);
+
+  router.post("/test", testHook);
 
   return router;
 }

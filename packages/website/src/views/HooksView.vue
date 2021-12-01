@@ -1,5 +1,12 @@
 <template>
   <div class="container">
+    <div class="row">
+      <div class="col text-end">
+        <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'addhook' }" custom>
+          <button :active="isActive" :href="href" class="btn btn-success" @click="navigate">Add Hook</button>
+        </router-link>
+      </div>
+    </div>
     <div style="display: grid; grid-template-columns: auto auto auto auto">
       <div v-for="(item, index) in hooks" :key="item.id" class="list-group-item">
         <h5>
