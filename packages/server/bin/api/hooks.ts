@@ -1,7 +1,7 @@
-import { hookStorage } from "enterprise-core/dist/database/storages/storage";
+import { customHookStorage, hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { load } from "enterprise-scraper/dist/externals/hookManager";
 import { isInvalidId, Errors } from "enterprise-core/dist/tools";
-import { ScraperHook } from "enterprise-core/dist/types";
+import { ScraperHook, CustomHook } from "enterprise-core/dist/types";
 import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { createHook } from "enterprise-scraper/dist/externals/custom/customScraper";
 import { Router } from "express";
@@ -43,6 +43,12 @@ const testHook = createHandler((req) => {
   } else {
     return Promise.reject(Errors.INVALID_INPUT);
   }
+});
+
+const createCustomHook = createHandler((req) => {
+  const { config }: { config: HookConfig } = req.body;
+  const customHook: CustomHook = { id: 0, name: config.name, state: JSON.stringify(config) };
+  return customHookStorage.addHook(customHook);
 });
 
 /**
@@ -107,6 +113,9 @@ export function hooksRouter(): Router {
   hookRoute.put(putHook);
 
   router.post("/test", testHook);
+
+  const customHookRoute = router.route("/custom");
+  customHookRoute.post(createCustomHook);
 
   return router;
 }

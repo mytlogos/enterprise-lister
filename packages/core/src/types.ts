@@ -1857,3 +1857,10 @@ export type JobStatSummary = {
   | "sql_queries"
   | "lagging"
 >;
+
+export interface CustomHook {
+  id: number;
+  name: string;
+  state: string;
+  updated_at?: Date;
+}

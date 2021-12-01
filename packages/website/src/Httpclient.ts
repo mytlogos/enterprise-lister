@@ -28,6 +28,8 @@ import {
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 import { HookTest } from "enterprise-server/bin/types";
+import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
+import { CustomHook } from "enterprise-core/dist/types";
 
 /**
  * Allowed Methods for the API.
@@ -90,6 +92,9 @@ const restApi = createRestDefinition({
         get: true,
         put: true,
         test: {
+          post: true,
+        },
+        custom: {
           post: true,
         },
       },
@@ -510,8 +515,12 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.hook.put, { hook });
   },
 
-  testHook(hook: HookTest): Promise<void> {
+  testHook(hook: HookTest): Promise<any> {
     return this.queryServer(serverRestApi.api.user.hook.test.post, hook);
+  },
+
+  createCustomHook(hook: HookConfig): Promise<CustomHook> {
+    return this.queryServer(serverRestApi.api.user.hook.custom.post, { config: hook });
   },
 
   getAllMediaInWaits(search?: MediumInWaitSearch): Promise<MediumInWait[]> {

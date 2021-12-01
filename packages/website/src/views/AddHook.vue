@@ -1,6 +1,17 @@
 <template>
   <div class="w-100">
     <div class="row">
+      <div class="col text-end">
+        <button class="btn btn-success" @click="create">Create</button>
+      </div>
+    </div>
+    <div v-if="createResult === 'success'" class="alert alert-success" role="alert">
+      Successfully created CustomHook {{ value.name }}
+    </div>
+    <div v-else-if="createResult === 'failed'" class="alert alert-danger" role="alert">
+      Failed at creating CustomHook {{ value.name }}
+    </div>
+    <div class="row">
       <div class="col">
         <div class="row g-3 align-items-center">
           <div class="col-auto">
@@ -53,6 +64,7 @@ interface Data {
   param: string;
   result: string;
   loading: boolean;
+  createResult?: "success" | "failed";
   value: Partial<HookConfig>;
 }
 
@@ -68,6 +80,7 @@ export default defineComponent({
       param: "",
       result: "",
       value: {},
+      createResult: undefined,
     };
   },
   watch: {
@@ -104,6 +117,18 @@ export default defineComponent({
         .then((value) => (this.result = JSON.stringify(value)))
         .catch((value) => (this.result = JSON.stringify(value)))
         .finally(() => (this.loading = false));
+    },
+
+    create() {
+      HttpClient.createCustomHook(this.value as HookConfig)
+        .then((value) => {
+          console.log(value);
+          this.createResult = "success";
+        })
+        .catch((value) => {
+          console.log(value);
+          this.createResult = "failed";
+        });
     },
   },
 });

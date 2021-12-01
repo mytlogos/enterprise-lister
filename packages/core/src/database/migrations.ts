@@ -262,4 +262,11 @@ export const Migrations: Migration[] = [
       // empty migration as it adds trigger only
     },
   },
+  {
+    fromVersion: 14,
+    toVersion: 15,
+    async migrate(): EmptyPromise {
+      // Table 'custom_hook is automatically added'
+    },
+  },
 ];
