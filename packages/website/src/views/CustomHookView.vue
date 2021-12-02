@@ -9,7 +9,7 @@
       Successfully saved CustomHook {{ value.name }}
     </div>
     <div v-else-if="createResult === 'failed'" class="alert alert-danger" role="alert">
-      Failed at saved CustomHook {{ value.name }}
+      Failed saving CustomHook {{ value.name }}
     </div>
     <div class="row">
       <div class="col">
