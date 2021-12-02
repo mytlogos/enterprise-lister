@@ -9,6 +9,7 @@ import listStore from "./lists";
 import mediumStore from "./media";
 import externalUserStore from "./externaluser";
 import newsStore from "./news";
+import hookStore from "./hooks";
 
 function userClear(commit: Commit) {
   commit("userName", "");
@@ -36,6 +37,7 @@ export const store = createStore({
     externalUser: externalUserStore,
     media: mediumStore,
     news: newsStore,
+    hooks: hookStore,
   },
   // @ts-expect-error
   state: (): VuexStore => ({
@@ -68,7 +70,12 @@ export const store = createStore({
   },
   actions: {
     async load({ dispatch }) {
-      await Promise.all([dispatch("loadMedia"), dispatch("loadLists"), dispatch("loadExternalUser")]);
+      await Promise.all([
+        dispatch("loadMedia"),
+        dispatch("loadLists"),
+        dispatch("loadExternalUser"),
+        dispatch("loadHooks"),
+      ]);
     },
     async changeUser({ commit, dispatch, state }, { user, modal }: { user: User; modal: string }) {
       const userChanged = user && state.uuid !== user.uuid;

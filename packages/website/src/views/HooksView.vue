@@ -2,7 +2,7 @@
   <div class="container">
     <div class="row">
       <div class="col text-end">
-        <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'addhook' }" custom>
+        <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'addHook' }" custom>
           <button :active="isActive" :href="href" class="btn btn-success" @click="navigate">Add Hook</button>
         </router-link>
       </div>
@@ -40,6 +40,11 @@
           </div>
           {{ item.name }}
         </h5>
+        <router-link
+          class="btn fa fa-edit"
+          :to="{ name: 'editHook', params: { hookId: item.id } }"
+          aria-hidden="true"
+        />
         <div>{{ item.comment }}</div>
       </div>
     </div>

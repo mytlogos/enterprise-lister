@@ -2,14 +2,14 @@
   <div class="w-100">
     <div class="row">
       <div class="col text-end">
-        <button class="btn btn-success" @click="create">Create</button>
+        <button class="btn btn-success" @click="save">Save</button>
       </div>
     </div>
     <div v-if="createResult === 'success'" class="alert alert-success" role="alert">
-      Successfully created CustomHook {{ value.name }}
+      Successfully saved CustomHook {{ value.name }}
     </div>
     <div v-else-if="createResult === 'failed'" class="alert alert-danger" role="alert">
-      Failed at creating CustomHook {{ value.name }}
+      Failed at saved CustomHook {{ value.name }}
     </div>
     <div class="row">
       <div class="col">
@@ -58,6 +58,7 @@ import type { HookConfig } from "enterprise-scraper/dist/externals/custom/types"
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "@vue/runtime-core";
 import { HookState } from "../siteTypes";
+import { CustomHook } from "enterprise-core/dist/types";
 
 interface Data {
   code: string;
@@ -67,11 +68,18 @@ interface Data {
   loading: boolean;
   createResult?: "success" | "failed";
   value: Partial<HookConfig>;
+  hook: Partial<CustomHook>;
 }
 
 export default defineComponent({
   components: {
     PrismEditor,
+  },
+  props: {
+    id: {
+      type: Number,
+      default: 0,
+    },
   },
   data(): Data {
     return {
@@ -81,6 +89,13 @@ export default defineComponent({
       param: "",
       result: "",
       value: {},
+      hook: {
+        id: 0,
+        name: "",
+        comment: "",
+        hookState: HookState.ENABLED,
+        state: "",
+      },
       createResult: undefined,
     };
   },
@@ -98,6 +113,9 @@ export default defineComponent({
         }
       }
     },
+  },
+  mounted() {
+    this.load();
   },
   methods: {
     highlighter(code: string) {
@@ -120,23 +138,36 @@ export default defineComponent({
         .finally(() => (this.loading = false));
     },
 
-    create() {
-      if (!this.value.name) {
+    load() {
+      if (this.id) {
+        this.hook = { ...this.$store.state.hooks.hooks[this.id] };
+        this.code = this.hook.state || "";
+      }
+    },
+
+    save() {
+      if (this.value.name && !this.hook.name) {
+        this.hook.name = this.value.name;
+      }
+
+      if (!this.hook.name) {
         console.error("No name defined!");
         return;
       }
-      HttpClient.createCustomHook({
-        id: 0,
-        name: this.value.name as string,
-        comment: "",
-        hookState: HookState.ENABLED,
-        state: this.code,
-      })
-        .then((value) => {
+
+      this.hook.state = this.code;
+
+      const action = this.hook.id ? "updateHook" : "createHook";
+
+      this.$store
+        .dispatch(action, this.hook)
+        .then((value: CustomHook) => {
           console.log(value);
+          this.hook = value;
+          this.code = value.state;
           this.createResult = "success";
         })
-        .catch((value) => {
+        .catch((value: any) => {
           console.log(value);
           this.createResult = "failed";
         });
