@@ -39,8 +39,43 @@
       </div>
       <template v-else-if="result">{{ result }}</template>
     </div>
-    <div v-if="invalid" class="alert alert-danger" role="alert">Invalid JSON: {{ invalid }}</div>
-    <prism-editor v-model="code" class="my-editor" :highlight="highlighter" line-numbers></prism-editor>
+    <ul class="nav nav-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button
+          data-bs-toggle="tab"
+          class="nav-link"
+          :class="{ active: isActiveTab('form') }"
+          data-bs-target="#hook-form"
+          type="button"
+          role="tab"
+          @click.prevent="setActiveTab('form')"
+        >
+          Form
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          data-bs-toggle="tab"
+          class="nav-link"
+          :class="{ active: isActiveTab('editor') }"
+          data-bs-target="#hook-editor"
+          type="button"
+          role="tab"
+          @click.prevent="setActiveTab('editor')"
+        >
+          JSON Editor
+        </button>
+      </li>
+    </ul>
+    <div class="tab-content">
+      <div id="hook-form" class="tab-pane fade" role="tabpanel" :class="{ 'show active': isActiveTab('form') }">
+        <custom-hook-form v-model="hook" />
+      </div>
+      <div id="hook-editor" class="tab-pane fade" role="tabpanel" :class="{ 'show active': isActiveTab('editor') }">
+        <div v-if="invalid" class="alert alert-danger" role="alert">Invalid JSON: {{ invalid }}</div>
+        <prism-editor v-model="code" class="my-editor" :highlight="highlighter" line-numbers></prism-editor>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -59,6 +94,7 @@ import { HttpClient } from "../Httpclient";
 import { defineComponent } from "@vue/runtime-core";
 import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
+import CustomHookForm from "../components/custom-hook-form.vue";
 
 interface Data {
   code: string;
@@ -69,11 +105,13 @@ interface Data {
   createResult?: "success" | "failed";
   value: Partial<HookConfig>;
   hook: Partial<CustomHook>;
+  activeTab: "form" | "editor";
 }
 
 export default defineComponent({
   components: {
     PrismEditor,
+    CustomHookForm,
   },
   props: {
     id: {
@@ -97,6 +135,7 @@ export default defineComponent({
         state: "",
       },
       createResult: undefined,
+      activeTab: "form",
     };
   },
   watch: {
@@ -118,6 +157,12 @@ export default defineComponent({
     this.load();
   },
   methods: {
+    isActiveTab(tab: Data["activeTab"]) {
+      return this.activeTab === tab;
+    },
+    setActiveTab(tab: Data["activeTab"]) {
+      this.activeTab = tab;
+    },
     highlighter(code: string) {
       return highlight(code, languages.json); // languages.<insert language> to return html with markup
     },
