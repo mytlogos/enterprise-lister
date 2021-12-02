@@ -25,24 +25,39 @@
         <div>{{ item.message }}</div>
       </div>
     </div>
+    <div style="display: grid; grid-template-columns: auto auto auto auto">
+      <div v-for="(item, index) in customHooks" :key="item.id" class="list-group-item">
+        <h5>
+          <div class="form-check form-switch d-inline">
+            <input
+              :id="'enabled-switch-' + index"
+              :checked="isCustomItemActive(item)"
+              type="checkbox"
+              class="form-check-input"
+              @input="toggleCustomHook(item)"
+            />
+            <label class="form-check-label" :for="'enabled-switch-' + index"></label>
+          </div>
+          {{ item.name }}
+        </h5>
+        <div>{{ item.comment }}</div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
-import { ScraperHook } from "../siteTypes";
+import { ScraperHook, HookState } from "../siteTypes";
 import { defineComponent } from "vue";
-
-export enum HookState {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
-}
+import { CustomHook } from "enterprise-core/dist/types";
 
 export default defineComponent({
   name: "HooksView",
   data() {
     return {
       hooks: [] as ScraperHook[],
+      customHooks: [] as CustomHook[],
     };
   },
   created() {
@@ -50,12 +65,18 @@ export default defineComponent({
   },
   methods: {
     async fetch() {
-      const hooks = await HttpClient.getHooks();
+      const [hooks, customHooks] = await Promise.all([HttpClient.getHooks(), HttpClient.getCustomHooks()]);
+
       hooks.sort((a, b) => {
         let compare = a.state.localeCompare(b.state);
         return compare ? compare : a.name.localeCompare(b.name);
       });
+      customHooks.sort((a, b) => {
+        let compare = a.state.localeCompare(b.state);
+        return compare ? compare : a.name.localeCompare(b.name);
+      });
       this.hooks = hooks;
+      this.customHooks = customHooks;
     },
     async toggleHook(item: ScraperHook) {
       const newState = item.state === HookState.DISABLED ? HookState.ENABLED : HookState.DISABLED;
@@ -64,6 +85,14 @@ export default defineComponent({
     },
     isItemActive(item: ScraperHook): boolean {
       return item.state === HookState.ENABLED;
+    },
+    async toggleCustomHook(item: CustomHook) {
+      const newState = item.hookState === HookState.DISABLED ? HookState.ENABLED : HookState.DISABLED;
+      await HttpClient.updateCustomHook({ ...item, hookState: newState });
+      item.hookState = newState;
+    },
+    isCustomItemActive(item: CustomHook): boolean {
+      return item.hookState === HookState.ENABLED;
     },
   },
 });

@@ -427,3 +427,8 @@ export interface MediumInWaitSearch {
   link?: string;
   limit?: number;
 }
+
+export enum HookState {
+  ENABLED = "enabled",
+  DISABLED = "disabled",
+}

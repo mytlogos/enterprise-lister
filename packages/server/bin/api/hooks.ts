@@ -46,9 +46,17 @@ const testHook = createHandler((req) => {
 });
 
 const createCustomHook = createHandler((req) => {
-  const { config }: { config: HookConfig } = req.body;
-  const customHook: CustomHook = { id: 0, name: config.name, state: JSON.stringify(config) };
-  return customHookStorage.addHook(customHook);
+  const { hook }: { hook: CustomHook } = req.body;
+  return customHookStorage.addHook(hook);
+});
+
+const updateCustomHook = createHandler((req) => {
+  const { hook }: { hook: CustomHook } = req.body;
+  return customHookStorage.updateHook(hook);
+});
+
+const getAllCustomHooks = createHandler(() => {
+  return customHookStorage.getHooks();
 });
 
 /**
@@ -116,6 +124,8 @@ export function hooksRouter(): Router {
 
   const customHookRoute = router.route("/custom");
   customHookRoute.post(createCustomHook);
+  customHookRoute.put(updateCustomHook);
+  customHookRoute.get(getAllCustomHooks);
 
   return router;
 }

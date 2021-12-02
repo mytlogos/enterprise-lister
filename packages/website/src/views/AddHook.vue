@@ -57,6 +57,7 @@ import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
 import type { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "@vue/runtime-core";
+import { HookState } from "../siteTypes";
 
 interface Data {
   code: string;
@@ -120,7 +121,17 @@ export default defineComponent({
     },
 
     create() {
-      HttpClient.createCustomHook(this.value as HookConfig)
+      if (!this.value.name) {
+        console.error("No name defined!");
+        return;
+      }
+      HttpClient.createCustomHook({
+        id: 0,
+        name: this.value.name as string,
+        comment: "",
+        hookState: HookState.ENABLED,
+        state: this.code,
+      })
         .then((value) => {
           console.log(value);
           this.createResult = "success";

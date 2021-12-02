@@ -95,7 +95,9 @@ const restApi = createRestDefinition({
           post: true,
         },
         custom: {
+          get: true,
           post: true,
+          put: true,
         },
       },
       searchtoc: {
@@ -519,8 +521,16 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.hook.test.post, hook);
   },
 
-  createCustomHook(hook: HookConfig): Promise<CustomHook> {
-    return this.queryServer(serverRestApi.api.user.hook.custom.post, { config: hook });
+  createCustomHook(hook: CustomHook): Promise<CustomHook> {
+    return this.queryServer(serverRestApi.api.user.hook.custom.post, { hook });
+  },
+
+  updateCustomHook(hook: CustomHook): Promise<CustomHook> {
+    return this.queryServer(serverRestApi.api.user.hook.custom.put, { hook });
+  },
+
+  getCustomHooks(): Promise<CustomHook[]> {
+    return this.queryServer(serverRestApi.api.user.hook.custom.get);
   },
 
   getAllMediaInWaits(search?: MediumInWaitSearch): Promise<MediumInWait[]> {
