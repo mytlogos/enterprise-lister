@@ -72,7 +72,7 @@ export type Selector<Target extends object> = SimpleSelector<Target> | RegexSele
 
 export interface VariableExtractor {
   variableName: string;
-  value?: string;
+  value?: string; // for regex selector, else the full text is taken
   extract?: AttributeSelector;
 }
 

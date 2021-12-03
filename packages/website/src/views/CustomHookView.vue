@@ -67,7 +67,7 @@
         </button>
       </li>
     </ul>
-    <div class="tab-content">
+    <div class="tab-content container p-4">
       <div id="hook-form" class="tab-pane fade" role="tabpanel" :class="{ 'show active': isActiveTab('form') }">
         <custom-hook-form v-model="hook" />
       </div>
@@ -94,7 +94,7 @@ import { HttpClient } from "../Httpclient";
 import { defineComponent } from "@vue/runtime-core";
 import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
-import CustomHookForm from "../components/custom-hook-form.vue";
+import CustomHookForm from "../components/customHook/custom-hook-form.vue";
 
 interface Data {
   code: string;
