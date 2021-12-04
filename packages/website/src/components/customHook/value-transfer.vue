@@ -1,5 +1,5 @@
 <template>
-  <div class="card card-body">
+  <div>
     <div class="row mb-3">
       <div class="col">
         <!-- TODO: use select instead of string -->
@@ -76,10 +76,14 @@
 </template>
 <script lang="ts">
 import { defineComponent } from "vue";
+import { idGenerator } from "../../init";
+
+const nextId = idGenerator();
 
 export default defineComponent({
   name: "ValueTransfer",
   data: () => ({
+    id: nextId(),
     optional: false,
     useHtml: false,
     nextTo: "",

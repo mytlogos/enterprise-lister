@@ -1,45 +1,96 @@
 <template>
-  <div class="card card-body">
-    <div class="row mb-3">
-      <div class="col">
-        <label for="selector" class="form-label">CSS Selector</label>
-        <input id="selector" type="text" class="form-control" placeholder="body > *" />
-      </div>
-    </div>
-    <div class="row align-items-center mb-3">
-      <div class="col">
-        <div class="form-check form-switch">
-          <input id="flexSwitchCheckChecked" class="form-check-input" type="checkbox" role="switch" checked />
-          <label class="form-check-label" for="flexSwitchCheckChecked">Expect multiple results for Selector</label>
+  <div
+    class="card mt-3"
+    role="button"
+    data-bs-toggle="collapse"
+    :data-bs-target="'#selector' + id"
+    aria-expanded="true"
+  >
+    <div class="card-body">Selector {{ selector }}</div>
+  </div>
+  <div :id="'selector' + id" ref="collapse" class="collapse show">
+    <div class="card card-body">
+      <div class="row mb-3">
+        <div class="col">
+          <label for="selector" class="form-label">CSS Selector</label>
+          <input id="selector" type="text" class="form-control" placeholder="body > *" />
         </div>
       </div>
-    </div>
-    <div class="mb-3">
-      <button class="btn btn-primary" role="button" @click="addVariable">Add Variable</button>
-      <variable-extractor
-        v-for="(variable, index) in variables"
-        :key="variable.variableName + index"
-        is-regex="false"
-        class="mt-3"
-      />
-    </div>
-    <div class="mb-3">
-      <button class="btn btn-primary" role="button" @click="addTransfer">Add Transfer</button>
-      <value-transfer
-        v-for="(transfer, index) in transfers"
-        :key="transfer.targetKey + index"
-        is-regex="false"
-        class="mt-3"
-      />
-    </div>
-    <div class="mb-3">
-      <button class="btn btn-primary" role="button" @click="addChild">Add Child</button>
-      <selector v-for="(child, index) in children" :key="index" :selector-types="selectorTypes" class="mt-3" />
+      <div class="row align-items-center mb-3">
+        <div class="col">
+          <div class="form-check form-switch">
+            <input
+              id="multipleResults"
+              v-model="multiple"
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              :checked="multiple"
+            />
+            <label class="form-check-label" for="multipleResults">Expect multiple results for Selector</label>
+          </div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <button class="btn btn-primary" role="button" @click="addVariable">Add Variable</button>
+        <template v-if="variables.length">
+          <div
+            class="card card-body mt-3"
+            role="button"
+            data-bs-toggle="collapse"
+            :data-bs-target="'#selector' + id + 'transfers'"
+            aria-expanded="true"
+          >
+            Variables
+          </div>
+          <div :id="'selector' + id + 'transfers'" class="collapse show">
+            <div class="card">
+              <variable-extractor
+                v-for="(variable, index) in variables"
+                :key="variable.variableName + index"
+                is-regex="false"
+                class="card-body mt-3"
+                :class="{ 'border-top': index }"
+              />
+            </div>
+          </div>
+        </template>
+      </div>
+      <div class="mb-3">
+        <button class="btn btn-primary" role="button" @click="addTransfer">Add Transfer</button>
+        <template v-if="transfers.length">
+          <div
+            class="card card-body mt-3"
+            role="button"
+            data-bs-toggle="collapse"
+            :data-bs-target="'#selector' + id + 'transfers'"
+            aria-expanded="true"
+          >
+            Transfers
+          </div>
+          <div :id="'selector' + id + 'transfers'" class="collapse show">
+            <div class="card">
+              <value-transfer
+                v-for="(transfer, index) in transfers"
+                :key="transfer.targetKey + index"
+                is-regex="false"
+                class="card-body mt-3"
+                :class="{ 'border-top': index }"
+              />
+            </div>
+          </div>
+        </template>
+      </div>
+      <div class="mb-3">
+        <button class="btn btn-primary" role="button" @click="addChild">Add Child</button>
+        <selector v-for="(child, index) in children" :key="index" :selector-types="selectorTypes" class="mt-3" />
+      </div>
     </div>
   </div>
 </template>
 <script lang="ts">
 import {
+  JsonSelector,
   RegexTransfer,
   Selector,
   SimpleTransfer,
@@ -48,12 +99,15 @@ import {
 import { defineComponent, PropType } from "vue";
 import ValueTransfer from "./value-transfer.vue";
 import VariableExtractor from "./variable-extractor.vue";
+import { idGenerator } from "../../init";
 
 export enum SelectorType {
   SIMPLE = "SIMPLE",
   JSON = "JSON",
   REGEX = "REGEX",
 }
+// this relies on the fact that a component is loaded only once
+const nextId = idGenerator();
 
 export default defineComponent({
   name: "Selector",
@@ -66,9 +120,14 @@ export default defineComponent({
       type: Array as PropType<string[]>,
       required: true,
     },
+    value: {
+      type: Object as PropType<Selector<any> | JsonSelector<any, any>>,
+      required: true,
+    },
   },
   data() {
     return {
+      id: nextId(),
       selector: "",
       multiple: false,
       children: [] as Array<Selector<any>>,
@@ -105,3 +164,14 @@ export default defineComponent({
   },
 });
 </script>
+<style scoped>
+.card[aria-expanded="true"] {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.card + * > .card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top: 0;
+}
+</style>

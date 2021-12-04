@@ -347,3 +347,11 @@ export function formatDate(date: Date, omitToday = false): string {
   }
   return result;
 }
+
+export function idGenerator() {
+  let id = 0;
+  return () => {
+    id++;
+    return id;
+  };
+}

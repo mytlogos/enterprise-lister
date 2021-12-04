@@ -44,7 +44,7 @@
       </div>
       <template v-for="(item, index) in tocConfig" :key="index">
         <div
-          class="card mb-3"
+          class="card mt-3"
           role="button"
           data-bs-toggle="collapse"
           aria-expanded="true"
@@ -53,10 +53,38 @@
         >
           <div class="card-body">Toggle ToC Config {{ index }}</div>
         </div>
-        <div :id="'collapseToc' + index" class="collapse">
+        <div :id="'collapseToc' + index" class="collapse show">
           <div class="card card-body">
-            Some placeholder content for the first collapse component of this multi-collapse example. This panel is
-            hidden by default but revealed when the user activates the relevant trigger.
+            <div class="row mb-3">
+              <div class="col">
+                <label for="hookBase" class="form-label">Base URL for Search</label>
+                <input
+                  id="hookBase"
+                  v-model="item.base"
+                  type="text"
+                  class="form-control"
+                  placeholder="Base URL for Links"
+                />
+              </div>
+              <div class="col">
+                <label for="tocPrefix" class="form-label">Prefix</label>
+                <input
+                  id="tocPrefix"
+                  v-model="item.prefix"
+                  type="text"
+                  class="form-control"
+                  placeholder="Prefix"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <button class="btn btn-primary" role="button" :disabled="item.request" @click="setCustomRequest(item)">
+                Use Custom Request Configuration
+              </button>
+              <request-config v-if="item.request" v-model="item.request" />
+            </div>
+            <selector v-model="item.selector" :selector-types="['regex', 'string']" />
           </div>
         </div>
       </template>
@@ -73,17 +101,41 @@
         </div>
         <div id="searchConfig" class="collapse show">
           <div class="card card-body">
-            <div class="row mb-3 align-items-center">
+            <div class="row mb-3">
               <div class="col">
                 <label for="hookBase" class="form-label">Base URL for Search</label>
-                <input id="hookBase" type="text" class="form-control" placeholder="Base URL for Links" />
+                <input
+                  id="hookBase"
+                  v-model="searchConfig.base"
+                  type="text"
+                  class="form-control"
+                  placeholder="Base URL for Links"
+                />
               </div>
               <div class="col">
-                <label for="newsUrl" class="form-label">News URL</label>
-                <input id="newsUrl" type="text" class="form-control" placeholder="https://iamanewspage.com/" required />
+                <label for="newsUrl" class="form-label">Search URL</label>
+                <input
+                  id="newsUrl"
+                  v-model="searchConfig.searchUrl"
+                  type="text"
+                  class="form-control"
+                  placeholder="https://iamanewspage.com/"
+                  required
+                />
               </div>
             </div>
-            <selector />
+            <div>
+              <button
+                class="btn btn-primary"
+                role="button"
+                :disabled="searchConfig.request"
+                @click="setCustomRequest(item)"
+              >
+                Use Custom Request Configuration
+              </button>
+              <request-config v-if="searchConfig.request" v-model="searchConfig.request" />
+            </div>
+            <selector v-model="searchConfig.selector" :selector-types="['json']" />
           </div>
         </div>
       </template>
@@ -100,8 +152,30 @@
         </div>
         <div id="newsConfig" class="collapse">
           <div class="card card-body">
-            Some placeholder content for the first collapse component of this multi-collapse example. This panel is
-            hidden by default but revealed when the user activates the relevant trigger.
+            <div class="row mb-3">
+              <div class="col">
+                <label for="hookBase" class="form-label">Base URL for Links</label>
+                <input
+                  id="hookBase"
+                  v-model="newsConfig.base"
+                  type="text"
+                  class="form-control"
+                  placeholder="Base URL for Links"
+                />
+              </div>
+              <div class="col">
+                <label for="newsUrl" class="form-label">News URL</label>
+                <input
+                  id="newsUrl"
+                  v-model="newsConfig.newsUrl"
+                  type="text"
+                  class="form-control"
+                  placeholder="https://iamanewspage.com/"
+                  required
+                />
+              </div>
+            </div>
+            <selector v-model="newsConfig.container" :selector-types="['regex', 'string']" />
           </div>
         </div>
       </template>
@@ -118,8 +192,41 @@
         </div>
         <div id="downloadConfig" class="collapse">
           <div class="card card-body">
-            Some placeholder content for the first collapse component of this multi-collapse example. This panel is
-            hidden by default but revealed when the user activates the relevant trigger.
+            <div class="row mb-3">
+              <div class="col">
+                <label for="hookBase" class="form-label">Base URL for Links</label>
+                <input
+                  id="hookBase"
+                  v-model="downloadConfig.base"
+                  type="text"
+                  class="form-control"
+                  placeholder="Base URL for Links"
+                />
+              </div>
+              <div class="col">
+                <label for="newsUrl" class="form-label">Prefix</label>
+                <input
+                  id="newsUrl"
+                  v-model="downloadConfig.prefix"
+                  type="text"
+                  class="form-control"
+                  placeholder="Prefix"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <button
+                class="btn btn-primary"
+                role="button"
+                :disabled="downloadConfig.request"
+                @click="setCustomRequest(item)"
+              >
+                Use Custom Request Configuration
+              </button>
+              <request-config v-if="downloadConfig.request" v-model="downloadConfig.request" />
+            </div>
+            <selector v-model="downloadConfig.selector" :selector-types="['regex', 'string']" />
           </div>
         </div>
       </template>
@@ -128,15 +235,23 @@
 </template>
 <script lang="ts">
 import { CustomHook } from "enterprise-core/dist/types";
-import { DownloadConfig, NewsConfig, SearchConfig, TocConfig } from "enterprise-scraper/dist/externals/custom/types";
+import {
+  DownloadConfig,
+  NewsConfig,
+  RequestConfig as RequestConfiguration,
+  SearchConfig,
+  TocConfig,
+} from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
 import Selector from "./selector.vue";
+import RequestConfig from "./request-config.vue";
 import "bootstrap/js/dist/collapse";
 
 export default defineComponent({
   name: "CustomHookForm",
   components: {
     Selector,
+    RequestConfig,
   },
   props: {
     value: {
@@ -154,6 +269,9 @@ export default defineComponent({
     };
   },
   methods: {
+    setCustomRequest(item: any) {
+      item.request = {} as RequestConfiguration;
+    },
     addToc() {
       this.tocConfig.push({
         selector: { selector: "" },

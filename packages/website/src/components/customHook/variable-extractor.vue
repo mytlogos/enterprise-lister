@@ -1,5 +1,5 @@
 <template>
-  <div class="card card-body">
+  <div>
     <div class="row mb-3">
       <div class="col">
         <label for="variableName" class="form-label">Variable Name</label>
@@ -11,36 +11,36 @@
         <label for="variableSource" class="form-label me-3">Variable Source</label>
         <div id="variableSource" class="btn-group" role="group" aria-label="Select the source of the variable value">
           <input
-            id="sourceText"
+            :id="'sourceText' + id"
             v-model="useText"
             type="radio"
             class="btn-check"
-            name="variableSource"
+            :name="'variableSource' + id"
             autocomplete="off"
             :checked="useText"
           />
-          <label class="btn btn-outline-primary" for="sourceText">Full Value</label>
+          <label class="btn btn-outline-primary" :for="'sourceText' + id">Full Value</label>
           <input
             v-if="isRegex"
-            id="sourceRegex"
+            :id="'sourceRegex' + id"
             v-model="useRegex"
             type="radio"
             class="btn-check"
-            name="variableSource"
+            :name="'variableSource' + id"
             autocomplete="off"
             :checked="useRegex"
           />
-          <label class="btn btn-outline-primary" for="sourceRegex">Regex</label>
+          <label class="btn btn-outline-primary" :for="'sourceRegex' + id">Regex</label>
           <input
-            id="sourceAttribute"
+            :id="'sourceAttribute' + id"
             v-model="useAttributes"
             type="radio"
             class="btn-check"
-            name="variableSource"
+            :name="'variableSource' + id"
             autocomplete="off"
             :checked="useAttributes"
           />
-          <label class="btn btn-outline-primary" for="sourceAttribute">Attribute</label>
+          <label class="btn btn-outline-primary" :for="'sourceAttribute' + id">Attribute</label>
         </div>
       </div>
     </div>
@@ -55,7 +55,10 @@
 </template>
 <script lang="ts">
 import { defineComponent } from "vue";
+import { idGenerator } from "../../init";
 import AttributeSelector from "./attribute-selector.vue";
+
+const nextId = idGenerator();
 
 export default defineComponent({
   name: "VariableExtractor",
@@ -68,6 +71,7 @@ export default defineComponent({
   },
   data() {
     return {
+      id: nextId(),
       useRegex: false,
       useText: true,
       useAttributes: false,
