@@ -4,28 +4,41 @@
   </div>
   <div :id="'request' + id" ref="collapse" class="collapse show">
     <div class="card card-body">
-      <div class="row mb-3">
-        <div class="col">
-          <label for="regexUrl" class="form-label">Regex</label>
-          <input id="regexUrl" type="text" class="form-control" placeholder="Pattern" v-bind="regexUrl" />
-        </div>
-      </div>
+      <regex v-model="regexUrl" class="mb-3" />
       <div class="row mb-3">
         <div class="col">
           <label for="transformUrl" class="form-label">Regex Replace Value</label>
           <input
             id="transformUrl"
+            v-model="transformUrl"
             type="text"
             class="form-control"
             placeholder="Replace Pattern"
-            v-bind="transformUrl"
           />
         </div>
       </div>
       <div class="row mb-3">
         <div class="col">
           <label for="templateUrl" class="form-label">Template URL</label>
-          <input id="templateUrl" type="text" class="form-control" placeholder="Template String" v-bind="templateUrl" />
+          <input
+            id="templateUrl"
+            v-model="templateUrl"
+            type="text"
+            class="form-control"
+            placeholder="Template String"
+          />
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col">
+          <label for="templateBody" class="form-label">Template Body</label>
+          <input
+            id="templateBody"
+            v-model="templateBody"
+            type="text"
+            class="form-control"
+            placeholder="Template String"
+          />
         </div>
       </div>
       <div class="row align-items-center mb-3">
@@ -37,7 +50,7 @@
               class="form-check-input"
               type="checkbox"
               role="switch"
-              checked
+              :checked="jsonResponse"
             />
             <label class="form-check-label" for="jsonResponse">Transform Response into JSON</label>
           </div>
@@ -49,28 +62,35 @@
 <script lang="ts">
 import { RequestConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
-import { idGenerator } from "../../init";
+import { createComputedProperty, idGenerator } from "../../init";
+import Regex from "./regex.vue";
 
 const nextId = idGenerator();
 
 export default defineComponent({
   name: "RequestConfig",
+  components: {
+    Regex,
+  },
   props: {
-    value: {
+    modelValue: {
       type: Object as PropType<RequestConfig>,
       required: true,
     },
   },
+  emits: ["update:modelValue"],
   data() {
     return {
       id: nextId(),
-      regexUrl: "",
-      transformUrl: "",
-      templateUrl: "",
-      templateBody: "",
-      jsonResponse: false,
       options: {},
     };
+  },
+  computed: {
+    regexUrl: createComputedProperty("modelValue", "regexUrl"),
+    transformUrl: createComputedProperty("modelValue", "transformUrl"),
+    templateUrl: createComputedProperty("modelValue", "templateUrl"),
+    templateBody: createComputedProperty("modelValue", "templateBody"),
+    jsonResponse: createComputedProperty("modelValue", "jsonResponse"),
   },
 });
 </script>

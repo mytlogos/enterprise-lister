@@ -23,9 +23,17 @@
         </div>
       </div>
       <div class="col text-end">
-        <button class="btn btn-primary" :disabled="!value['news']" @click="testHook('news')">Test News</button>
-        <button class="btn btn-primary" :disabled="!value['toc']" @click="testHook('toc')">Test ToC</button>
-        <button class="btn btn-primary" :disabled="!value['search']" @click="testHook('search')">Test Search</button>
+        <button class="btn btn-primary me-1" :disabled="!value['news']" @click="testHook('news')">Test News</button>
+        <button
+          class="btn btn-primary me-1"
+          :disabled="!value['toc'] || (Array.isArray(value.toc) && !value.toc.length)"
+          @click="testHook('toc')"
+        >
+          Test ToC
+        </button>
+        <button class="btn btn-primary me-1" :disabled="!value['search']" @click="testHook('search')">
+          Test Search
+        </button>
         <button class="btn btn-primary" :disabled="!value['download']" @click="testHook('download')">
           Test Download
         </button>
@@ -69,7 +77,7 @@
     </ul>
     <div class="tab-content container p-4">
       <div id="hook-form" class="tab-pane fade" role="tabpanel" :class="{ 'show active': isActiveTab('form') }">
-        <custom-hook-form v-model="hook" />
+        <custom-hook-form v-model:hook="hook" v-model:config="value" />
       </div>
       <div id="hook-editor" class="tab-pane fade" role="tabpanel" :class="{ 'show active': isActiveTab('editor') }">
         <div v-if="invalid" class="alert alert-danger" role="alert">Invalid JSON: {{ invalid }}</div>
@@ -152,8 +160,11 @@ export default defineComponent({
         }
       }
     },
+    value(newValue: any) {
+      this.code = JSON.stringify(newValue, undefined, 2);
+    },
   },
-  mounted() {
+  created() {
     this.load();
   },
   methods: {
@@ -185,7 +196,9 @@ export default defineComponent({
 
     load() {
       if (this.id) {
-        this.hook = { ...this.$store.state.hooks.hooks[this.id] };
+        // simple but stupid way to clone the hook, firefox went off alone in 94 and introduced "structuredClone" (with Node 17 support at this time)
+        // when there is wider support, maybe use that, else if lodash is ever used use that cloneDeep
+        this.hook = JSON.parse(JSON.stringify(this.$store.state.hooks.hooks[this.id]));
         this.code = this.hook.state || "";
       }
     },

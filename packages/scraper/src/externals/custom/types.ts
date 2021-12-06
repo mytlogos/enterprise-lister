@@ -91,23 +91,31 @@ export interface RegexSelector<Target extends object> extends BasicSelector<Targ
   regex: RegExp | JsonRegex;
 }
 
-export interface SearchConfig<Source extends object = Record<any, any>> {
-  searchUrl: string;
-  base?: string;
-  request?: RequestConfig;
-  selector: JsonSelector<SearchResult, Source> | Array<JsonSelector<SearchResult, Source>>;
-}
-
-export interface DownloadConfig {
-  prefix?: string;
-  base?: string;
-  request?: RequestConfig;
-
+export interface BasicScraperConfig<T> {
   /**
-   * Selector which selects the "best" element container for each news item.
+   * TODO: For what is this?
    */
-  selector: Selector<EpisodeContent> | Array<Selector<EpisodeContent>>;
+  prefix?: string;
+  /**
+   * Base to resolve all extracted links against.
+   */
+  base?: string;
+  /**
+   * Modify the way a request is done
+   */
+  request?: RequestConfig;
+  /**
+   * Select Values from Response Data into Result or Context Variables
+   */
+  selector: T | T[];
 }
+
+export interface SearchConfig<Source extends object = Record<any, any>>
+  extends BasicScraperConfig<JsonSelector<SearchResult, Source>> {
+  searchUrl: string;
+}
+
+export type DownloadConfig = BasicScraperConfig<Selector<EpisodeContent>>;
 
 export interface RequestConfig {
   regexUrl?: RegExp;
@@ -118,32 +126,13 @@ export interface RequestConfig {
   options?: Omit<Options, "url" | "uri">;
 }
 
-export interface TocConfig {
-  prefix?: string;
-  base?: string;
-  request?: RequestConfig;
+export type TocConfig = BasicScraperConfig<Selector<Toc>>;
 
-  /**
-   * Selector which selects the "best" element container for each news item.
-   */
-  selector: Selector<Toc> | Array<Selector<Toc>>;
-}
-
-export interface NewsConfig {
-  /**
-   * Base to resolve all extracted links against.
-   */
-  base?: string;
-
+export interface NewsConfig extends BasicScraperConfig<Selector<EpisodeNews>> {
   /**
    * URL to query for the news page.
    */
   newsUrl: string;
-
-  /**
-   * Selector which selects the "best" element container for each news item.
-   */
-  container: Selector<EpisodeNews>;
 }
 
 export interface JsonRegex {

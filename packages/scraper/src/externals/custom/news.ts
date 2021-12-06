@@ -1,8 +1,9 @@
 import { EpisodeNews } from "enterprise-core/dist/types";
 import { queueCheerioRequest } from "../queueManager";
 import { NewsScraper } from "../types";
-import { extract } from "./common";
+import { defaultContext, extract } from "./common";
 import { HookConfig } from "./types";
+import { Cheerio, Element } from "cheerio";
 
 function validateEpisodeNews(episodes: Array<Partial<EpisodeNews>>): EpisodeNews[] {
   for (const episode of episodes) {
@@ -51,7 +52,18 @@ export function createNewsScraper(config: HookConfig): NewsScraper | undefined {
   const scraper: NewsScraper = async () => {
     const $ = await queueCheerioRequest(newsConfig.newsUrl);
     const baseUri = newsConfig.base || config.base;
-    const result = extract($("body"), newsConfig.container, baseUri).map((value) => {
+    const context = defaultContext();
+
+    let result;
+
+    if (Array.isArray(newsConfig.selector)) {
+      result = newsConfig.selector.flatMap((selector) =>
+        extract($.root() as Cheerio<Element>, selector, baseUri, context),
+      );
+    } else {
+      result = extract($.root() as Cheerio<Element>, newsConfig.selector, baseUri, context);
+    }
+    result = result.map((value) => {
       value.mediumType = config.medium;
 
       if (value.date == undefined) {
