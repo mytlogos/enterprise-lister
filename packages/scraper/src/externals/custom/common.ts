@@ -829,7 +829,7 @@ export function makeRequest(
 
   if (requestConfig) {
     if (requestConfig.regexUrl && requestConfig.transformUrl) {
-      const transformedUrl = extractFromRegex(targetUrl, requestConfig.regexUrl, requestConfig.transformUrl);
+      const transformedUrl = extractFromRegex(targetUrl, toRegex(requestConfig.regexUrl), requestConfig.transformUrl);
 
       if (!transformedUrl) {
         throw new CustomHookError("URL Transformation failed", CustomHookErrorCodes.REQUEST_URL_TRANSFORMATION_FAIL, {
