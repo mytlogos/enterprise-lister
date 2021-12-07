@@ -45,7 +45,7 @@
         <strong>Processing...</strong>
         <div class="spinner-border ms-auto" role="status" aria-hidden="true"></div>
       </div>
-      <template v-else-if="result">{{ result }}</template>
+      <span v-else-if="result" style="white-space: pre">{{ result }}</span>
     </div>
     <ul class="nav nav-tabs" role="tablist">
       <li class="nav-item" role="presentation">
@@ -190,7 +190,9 @@ export default defineComponent({
         param: this.param,
       })
         .then((value) => (this.result = JSON.stringify(value)))
-        .catch((value) => (this.result = JSON.stringify(value)))
+        .catch((value) => {
+          this.result = (value.message ? value.message + "\n" : "") + JSON.stringify(value);
+        })
         .finally(() => (this.loading = false));
     },
 
