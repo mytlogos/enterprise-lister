@@ -1,6 +1,7 @@
 import { customHookStorage, hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { load } from "enterprise-scraper/dist/externals/hookManager";
 import { isInvalidId, Errors } from "enterprise-core/dist/tools";
+import { runAsync } from "enterprise-core/dist/asyncStorage";
 import { ScraperHook, CustomHook } from "enterprise-core/dist/types";
 import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { createHook } from "enterprise-scraper/dist/externals/custom/customScraper";
@@ -34,28 +35,33 @@ const testHook = createHandler(async (req) => {
 
   const hook = createHook(config);
 
-  let resultPromise;
-  if (key === "download" && hook.contentDownloadAdapter) {
-    resultPromise = hook.contentDownloadAdapter(param);
-  } else if (key === "news" && hook.newsAdapter) {
-    resultPromise = hook.newsAdapter();
-  } else if (key === "search" && hook.searchAdapter) {
-    resultPromise = hook.searchAdapter(param, hook.medium);
-  } else if (key === "toc" && hook.tocAdapter) {
-    resultPromise = hook.tocAdapter(param);
-  } else {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  try {
-    return await resultPromise;
-  } catch (error) {
-    // translate custom hook errors into RestResponseError for informing user
-    if (error instanceof CustomHookError) {
-      throw new RestResponseError(error.code, error.msg, error.data);
+  const store = new Map();
+
+  return runAsync(0, store, async () => {
+    let resultPromise;
+    if (key === "download" && hook.contentDownloadAdapter) {
+      resultPromise = hook.contentDownloadAdapter(param);
+    } else if (key === "news" && hook.newsAdapter) {
+      resultPromise = hook.newsAdapter();
+    } else if (key === "search" && hook.searchAdapter) {
+      resultPromise = hook.searchAdapter(param, hook.medium);
+    } else if (key === "toc" && hook.tocAdapter) {
+      resultPromise = hook.tocAdapter(param);
     } else {
-      throw error;
+      return Promise.reject(Errors.INVALID_INPUT);
     }
-  }
+    try {
+      return await resultPromise;
+    } catch (error) {
+      // translate custom hook errors into RestResponseError for informing user
+      if (error instanceof CustomHookError) {
+        error.data.trace = Object.fromEntries(store);
+        throw new RestResponseError(error.code, error.msg, error.data);
+      } else {
+        throw error;
+      }
+    }
+  });
 });
 
 const createCustomHook = createHandler((req) => {

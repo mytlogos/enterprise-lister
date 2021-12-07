@@ -1,6 +1,8 @@
 import { Cheerio, CheerioAPI, Element } from "cheerio";
 import { Options } from "cloudscraper";
-import { relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
+import { getStore } from "enterprise-core/dist/asyncStorage";
+import logger from "enterprise-core/dist/logger";
+import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import * as url from "url";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
 import { CustomHookError, CustomHookErrorCodes } from "./errors";
@@ -20,14 +22,154 @@ import {
   TransferMapping,
 } from "./types";
 
-function toRegex(value: RegExp | JsonRegex): RegExp {
+export interface FunctionTrace {
+  name: string;
+  callCount: number;
+  parameters: any[];
+  result: any;
+  calledFunctions: FunctionTrace[];
+}
+
+export interface Trace {
+  functionTraces: FunctionTrace[];
+  unnamedIds: number;
+  callStack: FunctionTrace[];
+  callCounts: Record<string, number>;
+}
+
+/**
+ * Serializes a Cheerio Object into html or its selected items in a html string array.
+ * @param key property key
+ * @param value property value
+ * @returns serializable value
+ */
+function replacer(key: unknown, value: any): unknown {
+  if ((typeof value === "object" || typeof value === "function") && value && typeof value.html === "function") {
+    if (typeof value.eq === "function" && typeof value.length === "number") {
+      const serialized = [];
+
+      for (let index = 0; index < value.length; index++) {
+        const element = value.eq(index);
+        serialized.push(element.html());
+      }
+      return serialized;
+    }
+    return value.html();
+  }
+  return value;
+}
+
+/**
+ * Simple clone, does not work with circular references.
+ *
+ * @param value value to clone
+ */
+function clone(value: any): any | string {
+  if (value === undefined) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(JSON.stringify(value, replacer));
+  } catch (error) {
+    return "Clone failed";
+  }
+}
+
+function traceWrap<T extends (...args: any[]) => any>(target: T): T {
+  // @ts-expect-error
+  return (...args: Parameters<T>): ReturnType<T> => {
+    const store = getStore() as undefined | Map<keyof Trace, Trace[keyof Trace]>;
+
+    // no store means no tracing, so exit as light weight as possible
+    if (!store) {
+      return target(...args);
+    }
+
+    let functionName = target.name;
+
+    // every function should have a name
+    // except unnamed (arrow) function expressions which are not bound to an variable, e.g. taken as parameter
+    if (!functionName) {
+      const nextId = ((store.get("unnamedIds") as number) || 0) + 1;
+      store.set("unnamedIds", nextId);
+      functionName = "Unnamed" + nextId;
+    }
+
+    const callCounts = getElseSet(store, "callCounts", () => ({})) as Trace["callCounts"];
+
+    const clonedParams = clone(args);
+
+    const currentCallCount = (callCounts[functionName] || 0) + 1;
+    callCounts[functionName] = currentCallCount;
+
+    const functionTrace: FunctionTrace = {
+      callCount: currentCallCount,
+      name: functionName,
+      parameters: clonedParams,
+      result: null,
+      calledFunctions: [],
+    };
+
+    const callStack = getElseSet(store, "callStack", () => []) as Trace["callStack"];
+    const parentCaller = callStack[callStack.length - 1];
+
+    if (parentCaller) {
+      parentCaller.calledFunctions.push(functionTrace);
+    } else {
+      const callTraces = getElseSet(store, "functionTraces", () => []) as Trace["functionTraces"];
+      // if there is no tracked parent call function, it is one of the top ones
+      callTraces.push(functionTrace);
+    }
+    callStack.push(functionTrace);
+
+    // Make the original function call, do not catch possible error
+    const result = target(...args);
+
+    // remove function from stack and store cloned result
+    if (result instanceof Promise || (result && typeof result.then === "function")) {
+      return result.then((promiseResult: any) => {
+        functionTrace.result = clone(promiseResult);
+
+        const lastTrace = callStack[callStack.length - 1];
+
+        if (lastTrace !== functionTrace) {
+          logger.warn(
+            `Last Call trace does not match expected one: Expected: ${functionTrace.name}-${functionTrace.callCount}, Found: ${lastTrace?.name}-${lastTrace?.callCount}`,
+          );
+        } else {
+          callStack.pop();
+        }
+        return promiseResult;
+      });
+    } else {
+      functionTrace.result = clone(result);
+
+      const lastTrace = callStack[callStack.length - 1];
+
+      if (lastTrace !== functionTrace) {
+        logger.warn(
+          `Last Call trace does not match expected one: Expected: ${functionTrace.name}-${functionTrace.callCount}, Found: ${lastTrace?.name}-${lastTrace?.callCount}`,
+        );
+      } else {
+        callStack.pop();
+      }
+      return result;
+    }
+  };
+}
+
+const toRegex = traceWrap(function toRegex(value: RegExp | JsonRegex): RegExp {
   if (value instanceof RegExp) {
     return value;
   }
   return new RegExp(value.pattern, value.flags);
-}
+});
 
-export function extractFromRegex(value: string, regex: RegExp, ...replace: string[]) {
+export const extractFromRegex = traceWrap(function extractFromRegex(
+  value: string,
+  regex: RegExp,
+  ...replace: string[]
+) {
   const match = regex.exec(value);
 
   if (!match) {
@@ -43,9 +185,9 @@ export function extractFromRegex(value: string, regex: RegExp, ...replace: strin
     }
   }
   return replace;
-}
+});
 
-function coerceType(value: string, type: TransferType): string | number | Date {
+const coerceType = traceWrap(function coerceType(value: string, type: TransferType): string | number | Date {
   if (!value) {
     throw new CustomHookError("Empty Value", CustomHookErrorCodes.TYPE_COERCE_FAIL, {
       value,
@@ -117,9 +259,13 @@ function coerceType(value: string, type: TransferType): string | number | Date {
     type,
     result: null,
   });
-}
+});
 
-function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelector, base: string) {
+const getAttributeValue = traceWrap(function getAttributeValue(
+  element: Cheerio<Element>,
+  attribute: AttributeSelector,
+  base: string,
+) {
   let attrValue = element.attr(attribute.attribute);
 
   if (attrValue === undefined) {
@@ -157,11 +303,11 @@ function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelect
     attrValue = extractions[0];
   }
   return attrValue;
-}
+});
 
 const EXTRACT_ITEM_INDEX = Symbol.for("extract_item_index");
 
-export function extractValue(result: any, targetKey: string, context: Context): any {
+export const extractValue = traceWrap(function extractValue(result: any, targetKey: string, context: Context): any {
   let transferTarget: any = result;
   let transferKey = "";
 
@@ -191,9 +337,9 @@ export function extractValue(result: any, targetKey: string, context: Context): 
     transferKey = property;
   }
   return transferTarget[transferKey];
-}
+});
 
-function mapValue(value: string, mapping: TransferMapping | undefined): string {
+const mapValue = traceWrap(function mapValue(value: string, mapping: TransferMapping | undefined): string {
   if (mapping) {
     if (mapping.include) {
       const lowerValue = value.toLowerCase();
@@ -206,9 +352,13 @@ function mapValue(value: string, mapping: TransferMapping | undefined): string {
     }
   }
   return value;
-}
+});
 
-function getTransferContext<Target extends object>(targetKey: string, result: Target, context: Context) {
+const getTransferContext = traceWrap(function getTransferContext<Target extends object>(
+  targetKey: string,
+  result: Target,
+  context: Context,
+) {
   let transferTarget: any = result;
   let transferKey = "";
 
@@ -256,9 +406,9 @@ function getTransferContext<Target extends object>(targetKey: string, result: Ta
   }
 
   return { transferKey, transferTarget };
-}
+});
 
-function transferValue<Target extends object>(
+const transferValue = traceWrap(function transferValue<Target extends object>(
   value: string,
   transfer: BasicTransfer<Target>,
   result: Target,
@@ -280,9 +430,9 @@ function transferValue<Target extends object>(
       throw error;
     }
   }
-}
+});
 
-function applyBasicSelector<Target extends object>(
+const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends object>(
   element: Cheerio<Element>,
   selector: SimpleSelector<Target>,
   base: string,
@@ -328,9 +478,9 @@ function applyBasicSelector<Target extends object>(
     context.variables[variable.variableName] = value;
   }
   return result;
-}
+});
 
-function applyRegexSelector<Target extends object>(
+const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends object>(
   element: Cheerio<Element>,
   selector: RegexSelector<Target>,
   base: string,
@@ -406,9 +556,9 @@ function applyRegexSelector<Target extends object>(
     context.variables[variable.variableName] = value;
   }
   return result;
-}
+});
 
-function applyJsonSelector<Target extends object, Source extends object>(
+const applyJsonSelector = traceWrap(function applyJsonSelector<Target extends object, Source extends object>(
   element: Source,
   selector: JsonSelector<Target, Source>,
   result: Partial<Target>,
@@ -424,9 +574,9 @@ function applyJsonSelector<Target extends object, Source extends object>(
     transferTarget[transferKey] = value;
   }
   return result;
-}
+});
 
-function applySelector<Target extends object>(
+const applySelector = traceWrap(function applySelector<Target extends object>(
   element: Cheerio<Element>,
   selector: Selector<Target>,
   base: string,
@@ -437,7 +587,7 @@ function applySelector<Target extends object>(
   } else {
     return applyBasicSelector(element, selector, base, {}, context);
   }
-}
+});
 
 interface Context {
   transferKeysIndices: Record<string, number | "DONE">;
@@ -453,7 +603,7 @@ export function defaultContext(): Context {
   };
 }
 
-export function extractJSON<Target extends object, Source extends object>(
+export const extractJSON = traceWrap(function extractJSON<Target extends object, Source extends object>(
   target: any,
   selector: JsonSelector<Target, Source>,
   context: Context,
@@ -548,9 +698,9 @@ export function extractJSON<Target extends object, Source extends object>(
     results = nextResults;
   }
   return results;
-}
+});
 
-export function extract<Target extends object>(
+export const extract = traceWrap(function extract<Target extends object>(
   element: Cheerio<Element>,
   selector: Selector<Target>,
   baseUri: string,
@@ -635,9 +785,9 @@ export function extract<Target extends object>(
     results = nextResults;
   }
   return results;
-}
+});
 
-function mergeSameIndexSymbol(
+const mergeSameIndexSymbol = traceWrap(function mergeSameIndexSymbol(
   target: Array<Record<string | symbol, any>>,
   source: Array<Record<string | symbol, any>>,
 ) {
@@ -664,9 +814,9 @@ function mergeSameIndexSymbol(
   target.forEach(filter);
   processingTarget = false;
   target.push(...source.filter(filter));
-}
+});
 
-export function merge<T extends any[] | Record<string, any>>(target: T, source: T): T {
+export const merge = traceWrap(function merge<T extends any[] | Record<string, any>>(target: T, source: T): T {
   if (Array.isArray(target) && Array.isArray(source)) {
     if (target[0] && target[0][EXTRACT_ITEM_INDEX] != undefined) {
       mergeSameIndexSymbol(target, source);
@@ -715,9 +865,9 @@ export function merge<T extends any[] | Record<string, any>>(target: T, source: 
     );
   }
   return target;
-}
+});
 
-function templateString(value: string, context: Context): string {
+const templateString = traceWrap(function templateString(value: string, context: Context): string {
   const originalValue = value;
   const braces: Array<{ type: string; index: number }> = [];
   let lastBrace: { type: string; index: number } | undefined = undefined;
@@ -817,9 +967,9 @@ function templateString(value: string, context: Context): string {
   }
   console.log(`Templated Value '${originalValue}' into ${value}`);
   return value;
-}
+});
 
-export function makeRequest(
+export const makeRequest = traceWrap(function makeRequest(
   targetUrl: string,
   context: Context,
   requestConfig?: RequestConfig,
@@ -858,4 +1008,4 @@ export function makeRequest(
     return queueRequest(targetUrl, options as any).then((value) => JSON.parse(value));
   }
   return queueCheerioRequest(targetUrl, options as any);
-}
+});

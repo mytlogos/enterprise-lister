@@ -160,22 +160,38 @@ export function removeContext(name: string): void {
 
 type TakeManyFunction<T = any> = (...args: any[]) => T;
 
-export function runAsync(
+/**
+ * Run a Function with access to an independent store.
+ *
+ * Saves the store with access outside of the Store Context,
+ * if any id except 0 is given (see getStores).
+ *
+ * @param id id key to save the store
+ * @param store store for the localStorage
+ * @param callback function to execute
+ * @param args parameter for function
+ */
+export function runAsync<T extends (...fArgs: any[]) => any>(
   id: number,
   store: Map<string, any>,
-  callback: TakeManyFunction<void | EmptyPromise>,
-  ...args: any[]
-): void {
-  localStorage.run(store, async () => {
-    stores.set(id, store);
+  callback: T,
+  ...args: Parameters<T>
+): Promise<ReturnType<T>> {
+  return localStorage.run(store, async () => {
+    if (!id) {
+      stores.set(id, store);
+    }
     try {
       const result = callback(...args);
 
       if (result && result.then) {
-        await result;
+        return await result;
       }
+      return result;
     } finally {
-      stores.delete(id);
+      if (!id) {
+        stores.delete(id);
+      }
     }
   });
 }
