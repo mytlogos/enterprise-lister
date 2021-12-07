@@ -55,12 +55,12 @@ jobs:
           path: reports/jest-*.xml    # Path to test results
           reporter: jest-junit        # Format of test results
 
-      - uses: artiomtr/jest-coverage-report-action@v2.0-rc.1
+      - uses: artiomtr/jest-coverage-report-action@v2.0-rc.6
         if: ${{ github.event_name == 'pull_request' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           threshold: 30
-          test-script: npx jest --silent --ci --coverage --testLocationInResults --json --outputFile="report.json" --forceExit
+          test-script: npx jest --silent --ci --coverage --coverageReporters="text" --coverageReporters="text-summary" --testLocationInResults --json --outputFile="report.json" --forceExit
         continue-on-error: true
 
       - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
