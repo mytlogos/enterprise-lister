@@ -36,6 +36,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
+      - run: npm install ts-node
       - run: npm run build --ws
       # runs npm test and comments coverage on pr
       - uses: mattallty/jest-github-action@v1
