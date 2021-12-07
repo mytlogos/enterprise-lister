@@ -1,3 +1,39 @@
+# [1.20.0](https://github.com/mytlogos/enterprise-lister/compare/v1.19.3...v1.20.0) (2021-12-07)
+
+
+### Bug Fixes
+
+* expand title regex ([7fbac8c](https://github.com/mytlogos/enterprise-lister/commit/7fbac8c92039385c938ec0dc4a44a01ee50b5c27))
+* **scraper:** do not lowerCase all values ([68ba2ff](https://github.com/mytlogos/enterprise-lister/commit/68ba2ff4ccd440a7fbc362fa99fd9338637cbd36))
+* **scraper:** transform jsonregex to regexp ([4e99204](https://github.com/mytlogos/enterprise-lister/commit/4e99204eda0ed5aa70a856894d7e3d2a2d19ce88))
+* **website:** display error better ([3e1b48b](https://github.com/mytlogos/enterprise-lister/commit/3e1b48b2df70b7dbaae5b197a95ebdf2322e8005))
+* **website:** do not use custom router-link ([497eadf](https://github.com/mytlogos/enterprise-lister/commit/497eadf2f4ec1630473de72c573df72b91fad112))
+* **website:** fix not compiling ([6c146e7](https://github.com/mytlogos/enterprise-lister/commit/6c146e70e0f1feb0682d8478ca928b3187b5060f))
+* **website:** fix typo ([5c134b6](https://github.com/mytlogos/enterprise-lister/commit/5c134b6eaf41cfa20118c59bf2213b5759e58597))
+* **website:** reject bad responses ([aab72ea](https://github.com/mytlogos/enterprise-lister/commit/aab72ea5a49959625bd738419c16e962a139af82))
+
+
+### Features
+
+* add basic ui to create hook ([a45aabd](https://github.com/mytlogos/enterprise-lister/commit/a45aabd18c191eb90c8e0295819ff2c8600cebe0))
+* enable custom hook edit ([97ae460](https://github.com/mytlogos/enterprise-lister/commit/97ae4608e1ef8412c70a478e150d02f76ff989f5))
+* enable storing custom hooks ([8488e39](https://github.com/mytlogos/enterprise-lister/commit/8488e397698eebda2f541fce97c947c0ccd3fc45))
+* enable viewing custom hooks ([274f1df](https://github.com/mytlogos/enterprise-lister/commit/274f1df845b4089ce2ab68827095df62f2849a81))
+* handle nested targetKeys ([f088328](https://github.com/mytlogos/enterprise-lister/commit/f0883289bfc3280faf261b57554f9ce9b0415c0c))
+* **scraper:** add context variables and templates ([2225f51](https://github.com/mytlogos/enterprise-lister/commit/2225f5159def32042465353c4576053c26e6a625))
+* **scraper:** add custom download feature ([23d7763](https://github.com/mytlogos/enterprise-lister/commit/23d7763a31b9433f2005b26f69ec2821dada4259))
+* **scraper:** add custom search ([8726c0b](https://github.com/mytlogos/enterprise-lister/commit/8726c0b523b4c3d6794b350d03d31c3d64880839))
+* **scraper:** add custom toc ([1191c33](https://github.com/mytlogos/enterprise-lister/commit/1191c33a008a619f37e8e2f0a508299bf3248b38))
+* **scraper:** enhance custom toc scraper ([5089ecc](https://github.com/mytlogos/enterprise-lister/commit/5089ecc115f8b7ed297b6460c599495fe3754406))
+* **scraper:** provide better error context ([cec4cd9](https://github.com/mytlogos/enterprise-lister/commit/cec4cd96ada5baf9abdcfbe1c3348ca80e564882))
+* **scraper:** use custom hooks for crawling ([c71f309](https://github.com/mytlogos/enterprise-lister/commit/c71f30930fce806001cf68405630d3de169367ee))
+* trace functions of custom hook module ([1803e56](https://github.com/mytlogos/enterprise-lister/commit/1803e56f8191cd37b8629f38c04dde7234d99660))
+* **website:** add basic hook components ([8c573dc](https://github.com/mytlogos/enterprise-lister/commit/8c573dc5935020a64a52c9f12678900457e72225))
+* **website:** add http method and header forms ([fcc4024](https://github.com/mytlogos/enterprise-lister/commit/fcc402461a2aa0ccc7ef464d0c1ba873d7d7535b))
+* **website:** add most missing components ([dfa71dd](https://github.com/mytlogos/enterprise-lister/commit/dfa71dde5bc4000be6b88ee2b4fc59a584476578))
+* **website:** add tabbed content for custom hook ([47715e5](https://github.com/mytlogos/enterprise-lister/commit/47715e520e617d36247d77aff1998d54cb5c99f0))
+* **website:** expand custom hook forms ([a134eab](https://github.com/mytlogos/enterprise-lister/commit/a134eabec1b890adb3b351148f8e7f0573ebffac))
+
 ## [1.19.3](https://github.com/mytlogos/enterprise-lister/compare/v1.19.2...v1.19.3) (2021-09-20)
 
 
