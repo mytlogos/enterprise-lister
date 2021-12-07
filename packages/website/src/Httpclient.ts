@@ -590,6 +590,10 @@ export const HttpClient = {
     }
     const response = await fetch(url.toString(), init);
     const result = await response.json();
+
+    if (!response.ok) {
+      return Promise.reject(result);
+    }
     if (result.error) {
       return Promise.reject(result.error);
     }
