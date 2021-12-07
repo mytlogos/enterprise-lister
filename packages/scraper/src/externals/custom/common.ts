@@ -196,10 +196,10 @@ export function extractValue(result: any, targetKey: string, context: Context): 
 function mapValue(value: string, mapping: TransferMapping | undefined): string {
   if (mapping) {
     if (mapping.include) {
-      value = value.toLowerCase();
+      const lowerValue = value.toLowerCase();
 
       for (const [mappingKey, mappingValue] of Object.entries(mapping.include)) {
-        if (value.includes(mappingKey)) {
+        if (lowerValue.includes(mappingKey)) {
           return mappingValue;
         }
       }
