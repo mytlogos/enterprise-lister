@@ -6,8 +6,7 @@ import { TocEpisode, TocPart, TocContent } from "./externals/types";
  * @param tocContent value to check
  */
 export function isTocEpisode(tocContent: TocContent): tocContent is TocEpisode {
-  // @ts-expect-error
-  return !!tocContent.url;
+  return "url" in tocContent;
 }
 
 /**
@@ -16,6 +15,5 @@ export function isTocEpisode(tocContent: TocContent): tocContent is TocEpisode {
  * @param tocContent value to check
  */
 export function isTocPart(tocContent: TocContent): tocContent is TocPart {
-  // @ts-expect-error
-  return !!tocContent.episodes;
+  return "episodes" in tocContent;
 }

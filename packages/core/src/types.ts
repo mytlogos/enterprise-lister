@@ -1857,3 +1857,17 @@ export type JobStatSummary = {
   | "sql_queries"
   | "lagging"
 >;
+
+export enum HookState {
+  ENABLED = "enabled",
+  DISABLED = "disabled",
+}
+
+export interface CustomHook {
+  id: number;
+  name: string;
+  state: string;
+  updated_at?: Date;
+  hookState: HookState;
+  comment: string;
+}

@@ -1,3 +1,4 @@
+import { RestResponseError } from "../errors";
 import logger from "enterprise-core/dist/logger";
 import { isQuery, Errors, isError, isString } from "enterprise-core/dist/tools";
 import { Handler, NextFunction, Request, Response } from "express";
@@ -20,10 +21,13 @@ export function sendResult(res: Response, promise: Promise<any>): void {
       }
     })
     .catch((error) => {
-      const errorCode = isError(error);
-      res.status(errorCode ? 400 : 500).json({ error: errorCode ? error : Errors.INVALID_MESSAGE });
-
-      logger.error(error);
+      if (error instanceof RestResponseError) {
+        res.status(400).json({ message: error.errorMessage, code: error.errorCode, data: error.errorData });
+      } else {
+        const errorCode = isError(error);
+        res.status(errorCode ? 400 : 500).json({ error: errorCode ? error : Errors.INVALID_MESSAGE });
+        logger.error(error);
+      }
     });
 }
 

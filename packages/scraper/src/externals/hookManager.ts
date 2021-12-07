@@ -1,4 +1,5 @@
-import { EmptyPromise } from "enterprise-core/dist/types";
+import { CustomHook as CustomHookEntity, EmptyPromise } from "enterprise-core/dist/types";
+import logger from "enterprise-core/dist/logger";
 import { getHook as getWWHook } from "./direct/wuxiaworldScraper";
 import { getHook as getGogoAnimeHook } from "./direct/gogoAnimeScraper";
 import { getHook as getKissAnimeHook } from "./direct/kissAnimeScraper";
@@ -10,9 +11,11 @@ import { getHook as getNovelFullHook } from "./direct/novelFullScraper";
 import { getHook as getBoxnovelHook } from "./direct/boxNovelScraper";
 import { getHook as getOpenLibraryHook } from "./direct/openLibraryScraper";
 import { ContentDownloader, Hook, NewsScraper, SearchScraper, TocScraper, TocSearchScraper } from "./types";
-import { hookStorage } from "enterprise-core/dist/database/storages/storage";
+import { customHookStorage, hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { getListManagerHooks } from "./listManager";
 import { MediaType, multiSingle } from "enterprise-core/dist/tools";
+import { HookConfig } from "./custom/types";
+import { createHook } from "./custom/customScraper";
 
 function getRawHooks(): Hook[] {
   return [
@@ -25,7 +28,7 @@ function getRawHooks(): Hook[] {
     // qidian underground seems to be closed down
     getQUndergroundHook(),
     getWebnovelHook(),
-    getBoxnovelHook(),
+    // getBoxnovelHook(), // already migrated
     getNovelFullHook(),
     getOpenLibraryHook(),
     ...getListManagerHooks(),
@@ -49,12 +52,41 @@ export enum HookState {
   DISABLED = "disabled",
 }
 
-export async function load(unloadedOnly = false): EmptyPromise {
-  if (unloadedOnly && loaded) {
-    return;
-  }
-  timeoutId = undefined;
+async function loadCustomHooks(): Promise<Hook[]> {
+  const hooks: CustomHookEntity[] = await customHookStorage.getHooks();
 
+  const loadedCustomHooks: Hook[] = [];
+
+  for (const hookEntity of hooks) {
+    if (hookEntity.hookState === HookState.DISABLED) {
+      continue;
+    }
+    let hookConfig: HookConfig;
+    try {
+      hookConfig = JSON.parse(hookEntity.state);
+    } catch (error) {
+      logger.warn("Could not parse HookState of CustomHook " + hookEntity.name);
+      continue;
+    }
+
+    const customHook = createHook(hookConfig);
+    loadedCustomHooks.push({
+      name: customHook.name,
+      medium: customHook.medium,
+      domainReg: customHook.domainReg,
+      custom: true,
+      disabled: false,
+      contentDownloadAdapter: customHook.contentDownloadAdapter,
+      newsAdapter: customHook.newsAdapter,
+      redirectReg: customHook.redirectReg,
+      searchAdapter: customHook.searchAdapter,
+      tocAdapter: customHook.tocAdapter,
+    });
+  }
+  return loadedCustomHooks;
+}
+
+async function loadRawHooks() {
   const hooks = getRawHooks();
   const storageHooks = await hookStorage.getAll();
 
@@ -79,7 +111,18 @@ export async function load(unloadedOnly = false): EmptyPromise {
 
   // remove any superflous hooks stored in storage
   await Promise.all(storageHooks.map((hook) => hookStorage.deleteScraperHook(hook.id)));
+  return hooks;
+}
 
+export async function load(unloadedOnly = false): EmptyPromise {
+  if (unloadedOnly && loaded) {
+    return;
+  }
+  timeoutId = undefined;
+  const hooks = await loadRawHooks();
+  hooks.push(...(await loadCustomHooks()));
+
+  // remove registered hooks
   redirects.length = 0;
   tocScraper.clear();
   episodeDownloader.clear();

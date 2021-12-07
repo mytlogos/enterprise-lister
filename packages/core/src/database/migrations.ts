@@ -262,4 +262,23 @@ export const Migrations: Migration[] = [
       // empty migration as it adds trigger only
     },
   },
+  {
+    fromVersion: 14,
+    toVersion: 15,
+    async migrate(): EmptyPromise {
+      // Table 'custom_hook is automatically added'
+    },
+  },
+  {
+    fromVersion: 15,
+    toVersion: 16,
+    async migrate(context: DatabaseContext): EmptyPromise {
+      // add columns and ignore duplicate column error
+      await Promise.all(
+        ["hookState VARCHAR(200) NOT NULL", "comment TEXT NOT NULL"].map((value) =>
+          ignoreError(() => context.addColumn("custom_hook", value), [MysqlServerError.ER_DUP_FIELDNAME]),
+        ),
+      );
+    },
+  },
 ];

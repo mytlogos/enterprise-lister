@@ -58,7 +58,7 @@ export default defineComponent({
       required: false,
       default: "",
     },
-    key: {
+    thingKey: {
       type: String,
       required: false,
       default: "",

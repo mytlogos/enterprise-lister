@@ -19,7 +19,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
   const news: EpisodeNews[] = [];
   const titlePattern = /Episode\s*((\d+)(\.(\d+))?)/i;
-  const linkPattern = /(.+\/\/.+\/)(.+)-episode-\d+$/;
+  const linkPattern = /(.+\/\/.+\/)(.+)-episode-\d+(-\d+)?$/;
 
   for (let i = 0; i < newsRows.length; i++) {
     const newsRow = newsRows.eq(i);
@@ -72,7 +72,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-  const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.so\/category\/(.+)/;
+  const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.wiki\/category\/(.+)/;
   const aliasExec = animeAliasReg.exec(urlString);
 
   if (!aliasExec) {
