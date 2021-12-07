@@ -2,9 +2,7 @@
   <div class="container">
     <div class="row">
       <div class="col text-end">
-        <router-link v-slot="{ href, navigate, isActive }" :to="{ name: 'addHook' }" custom>
-          <button :active="isActive" :href="href" class="btn btn-success" @click="navigate">Add Hook</button>
-        </router-link>
+        <router-link class="btn btn-success" :to="{ name: 'addHook' }"> Add Hook </router-link>
       </div>
     </div>
     <div style="display: grid; grid-template-columns: auto auto auto auto">
