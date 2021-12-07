@@ -4,6 +4,7 @@ import { defaultContext, extract, makeRequest, merge } from "./common";
 import { HookConfig, TocConfig } from "./types";
 import { validate } from "jsonschema";
 import { JSONSchema7 } from "json-schema";
+import { CustomHookError } from "./errors";
 
 const tocSchema: JSONSchema7 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -99,12 +100,22 @@ export function createTocScraper(config: HookConfig): TocScraper | undefined {
       const $ = await makeRequest(url, context, tocConfig.request);
       const baseUri = tocConfig.base || config.base;
 
-      if (Array.isArray(tocConfig.selector)) {
-        return tocConfig.selector.flatMap((selector) =>
-          extract($.root() as Cheerio<Element>, selector, baseUri, context),
-        );
-      } else {
-        return extract($.root() as Cheerio<Element>, tocConfig.selector, baseUri, context);
+      try {
+        if (Array.isArray(tocConfig.selector)) {
+          return tocConfig.selector.flatMap((selector) =>
+            extract($.root() as Cheerio<Element>, selector, baseUri, context),
+          );
+        } else {
+          return extract($.root() as Cheerio<Element>, tocConfig.selector, baseUri, context);
+        }
+      } catch (error) {
+        if (error instanceof CustomHookError) {
+          error.data.context = context;
+          error.data.html = true;
+          error.data.config = config;
+          error.data.body = $.html();
+        }
+        throw error;
       }
     }
 

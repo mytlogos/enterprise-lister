@@ -3,6 +3,7 @@ import { JSONSchema7 } from "json-schema";
 import { validate } from "jsonschema";
 import { ContentDownloader, EpisodeContent } from "../types";
 import { defaultContext, extract, makeRequest } from "./common";
+import { CustomHookError } from "./errors";
 import { DownloadConfig, HookConfig } from "./types";
 
 const tocSchema: JSONSchema7 = {
@@ -55,12 +56,22 @@ export function createDownloadScraper(config: HookConfig): ContentDownloader | u
       const $ = await makeRequest(url, context, downloadConfig.request);
       const baseUri = downloadConfig.base || config.base;
 
-      if (Array.isArray(downloadConfig.selector)) {
-        return downloadConfig.selector.flatMap((selector) =>
-          extract($.root() as Cheerio<Element>, selector, baseUri, context),
-        );
-      } else {
-        return extract($.root() as Cheerio<Element>, downloadConfig.selector, baseUri, context);
+      try {
+        if (Array.isArray(downloadConfig.selector)) {
+          return downloadConfig.selector.flatMap((selector) =>
+            extract($.root() as Cheerio<Element>, selector, baseUri, context),
+          );
+        } else {
+          return extract($.root() as Cheerio<Element>, downloadConfig.selector, baseUri, context);
+        }
+      } catch (error) {
+        if (error instanceof CustomHookError) {
+          error.data.context = context;
+          error.data.html = true;
+          error.data.config = config;
+          error.data.body = $.html();
+        }
+        throw error;
       }
     }
 

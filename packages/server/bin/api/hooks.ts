@@ -7,6 +7,8 @@ import { createHook } from "enterprise-scraper/dist/externals/custom/customScrap
 import { Router } from "express";
 import { createHandler } from "./apiTools";
 import { HookTest } from "@/types";
+import { CustomHookError } from "enterprise-scraper/dist/externals/custom/errors";
+import { RestResponseError } from "../errors";
 
 export const getAllHooks = createHandler(() => {
   return load(true).then(() => hookStorage.getAllStream());
@@ -22,7 +24,7 @@ export const putHook = createHandler((req) => {
   return hookStorage.updateScraperHook(hook);
 });
 
-const testHook = createHandler((req) => {
+const testHook = createHandler(async (req) => {
   const { config, key, param }: HookTest = req.body;
   const allowed: Array<keyof HookConfig> = ["download", "news", "search", "toc"];
 
@@ -32,16 +34,27 @@ const testHook = createHandler((req) => {
 
   const hook = createHook(config);
 
+  let resultPromise;
   if (key === "download" && hook.contentDownloadAdapter) {
-    return hook.contentDownloadAdapter(param);
+    resultPromise = hook.contentDownloadAdapter(param);
   } else if (key === "news" && hook.newsAdapter) {
-    return hook.newsAdapter();
+    resultPromise = hook.newsAdapter();
   } else if (key === "search" && hook.searchAdapter) {
-    return hook.searchAdapter(param, hook.medium);
+    resultPromise = hook.searchAdapter(param, hook.medium);
   } else if (key === "toc" && hook.tocAdapter) {
-    return hook.tocAdapter(param);
+    resultPromise = hook.tocAdapter(param);
   } else {
     return Promise.reject(Errors.INVALID_INPUT);
+  }
+  try {
+    return await resultPromise;
+  } catch (error) {
+    // translate custom hook errors into RestResponseError for informing user
+    if (error instanceof CustomHookError) {
+      throw new RestResponseError(error.code, error.msg, error.data);
+    } else {
+      throw error;
+    }
   }
 });
 

@@ -5,6 +5,7 @@ import { validate } from "jsonschema";
 import { SearchScraper } from "../types";
 import { defaultContext, extractJSON, makeRequest } from "./common";
 import { SearchResult } from "enterprise-core/dist/types";
+import { CustomHookError } from "./errors";
 
 const tocSchema: JSONSchema7 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -53,10 +54,20 @@ export function createSearchScraper(config: HookConfig): SearchScraper | undefin
     async function scrape(searchConfig: SearchConfig) {
       const value = await makeRequest(searchConfig.searchUrl, context, searchConfig.request);
 
-      if (Array.isArray(searchConfig.selector)) {
-        return searchConfig.selector.flatMap((selector) => extractJSON(value, selector, context));
-      } else {
-        return extractJSON(value, searchConfig.selector, context);
+      try {
+        if (Array.isArray(searchConfig.selector)) {
+          return searchConfig.selector.flatMap((selector) => extractJSON(value, selector, context));
+        } else {
+          return extractJSON(value, searchConfig.selector, context);
+        }
+      } catch (error) {
+        if (error instanceof CustomHookError) {
+          error.data.context = context;
+          error.data.json = true;
+          error.data.config = config;
+          error.data.body = value;
+        }
+        throw error;
       }
     }
 

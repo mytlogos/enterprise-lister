@@ -3,6 +3,7 @@ import { Options } from "cloudscraper";
 import { relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import * as url from "url";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { CustomHookError, CustomHookErrorCodes } from "./errors";
 import {
   JsonRegex,
   TransferType,
@@ -46,27 +47,47 @@ export function extractFromRegex(value: string, regex: RegExp, ...replace: strin
 
 function coerceType(value: string, type: TransferType): string | number | Date {
   if (!value) {
-    throw Error("Empty value");
+    throw new CustomHookError("Empty Value", CustomHookErrorCodes.TYPE_COERCE_FAIL, {
+      value,
+      type,
+      result: null,
+    });
   }
   if (type === "date") {
     const lowerDate = value.toLowerCase();
+    let date;
 
     if (lowerDate.includes("now") || lowerDate.includes("ago")) {
-      const date = relativeToAbsoluteTime(value);
-
-      if (!date) {
-        throw Error(`Could not coerce value '${value}' into a date`);
-      }
-      return date;
+      date = relativeToAbsoluteTime(value);
     } else {
-      return new Date(value);
+      date = new Date(value);
     }
+    if (!date || Number.isNaN(date.getTime())) {
+      throw new CustomHookError(
+        `Could not coerce value '${value}' into a valid date`,
+        CustomHookErrorCodes.TYPE_COERCE_FAIL,
+        {
+          value,
+          type,
+          result: date,
+        },
+      );
+    }
+    return date;
   }
   if (type === "decimal") {
     const decimal = Number(value);
 
     if (Number.isNaN(decimal)) {
-      throw Error(`Could not coerce value '${value}' into a decimal`);
+      throw new CustomHookError(
+        `Could not coerce value '${value}' into a decimal`,
+        CustomHookErrorCodes.TYPE_COERCE_FAIL,
+        {
+          value,
+          type,
+          result: decimal,
+        },
+      );
     }
     return decimal;
   }
@@ -74,7 +95,15 @@ function coerceType(value: string, type: TransferType): string | number | Date {
     const integer = Number(value);
 
     if (!Number.isInteger(integer)) {
-      throw Error(`Could not coerce value '${value}' into a integer`);
+      throw new CustomHookError(
+        `Could not coerce value '${value}' into a integer`,
+        CustomHookErrorCodes.TYPE_COERCE_FAIL,
+        {
+          value,
+          type,
+          result: integer,
+        },
+      );
     }
     return integer;
   }
@@ -82,14 +111,27 @@ function coerceType(value: string, type: TransferType): string | number | Date {
   if (type === "string") {
     return value;
   }
-  throw Error("unknown type " + type);
+
+  throw new CustomHookError("Unknown type " + type, CustomHookErrorCodes.TYPE_COERCE_FAIL, {
+    value,
+    type,
+    result: null,
+  });
 }
 
 function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelector, base: string) {
   let attrValue = element.attr(attribute.attribute);
 
   if (attrValue === undefined) {
-    throw Error("Attribute Value is undefined");
+    throw new CustomHookError(
+      `Attribute Value for ${attribute.attribute} is undefined`,
+      CustomHookErrorCodes.ATTRIBUTE_NO_VALUE,
+      {
+        element: element.html(),
+        attribute,
+        value: attrValue,
+      },
+    );
   }
 
   if (attribute.resolve === true) {
@@ -102,7 +144,15 @@ function getAttributeValue(element: Cheerio<Element>, attribute: AttributeSelect
     const extractions = extractFromRegex(attrValue, toRegex(attribute.regex), attribute.replace);
 
     if (!extractions) {
-      throw Error(`Could not transform value: ${attrValue} to ${attribute.replace}`);
+      throw new CustomHookError(
+        `Could not transform value: ${attrValue} to ${attribute.replace}`,
+        CustomHookErrorCodes.ATTRIBUTE_TRANSFORM_FAIL,
+        {
+          element: element.html(),
+          attribute,
+          value: attrValue,
+        },
+      );
     }
     attrValue = extractions[0];
   }
@@ -127,7 +177,12 @@ export function extractValue(result: any, targetKey: string, context: Context): 
         ) {
           transferTarget = transferTarget[transferTarget.length - 1];
         } else {
-          throw Error("No Value");
+          throw new CustomHookError("No value to extract", CustomHookErrorCodes.EXTRACT_NO_VALUE, {
+            result,
+            targetKey,
+            transferKey,
+            transferTarget,
+          });
         }
       } else {
         transferTarget = transferTarget[transferKey];
@@ -189,7 +244,15 @@ function getTransferContext<Target extends object>(targetKey: string, result: Ta
   }
 
   if (transferKey === "[*]") {
-    throw Error("Cannot transfer non-object type as object type - wrong transferkey, initially: " + targetKey);
+    throw new CustomHookError(
+      "Cannot transfer non-object type as object type - wrong transferkey, initially: " + targetKey,
+      CustomHookErrorCodes.TRANSFER_WRONG_KEY,
+      {
+        transferKey,
+        targetKey,
+        result,
+      },
+    );
   }
 
   return { transferKey, transferTarget };
@@ -289,7 +352,13 @@ function applyRegexSelector<Target extends object>(
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {
-          throw Error(`Could not match regex to text '${text}'`);
+          throw new CustomHookError(`Could not match regex to text '${text}'`, CustomHookErrorCodes.REGEX_NO_MATCH, {
+            regex: selector.regex,
+            value: text,
+            element: element.html(),
+            selector,
+            result,
+          });
         }
       }
 
@@ -316,7 +385,13 @@ function applyRegexSelector<Target extends object>(
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {
-          throw Error(`Could not match regex to text '${text}'`);
+          throw new CustomHookError(`Could not match regex to text '${text}'`, CustomHookErrorCodes.REGEX_NO_MATCH, {
+            regex: selector.regex,
+            value: text,
+            element: element.html(),
+            selector,
+            result,
+          });
         }
       }
 
@@ -406,7 +481,15 @@ export function extractJSON<Target extends object, Source extends object>(
       results.push(applyJsonSelector(found[index], selector, {}, context));
     }
   } else {
-    throw Error("Invalid Selector: no exact match found for: " + selector.selector);
+    throw new CustomHookError(
+      "Invalid Selector: no exact match found for: " + selector.selector,
+      CustomHookErrorCodes.SELECTOR_NO_MATCH,
+      {
+        selector,
+        element: target,
+        found,
+      },
+    );
   }
   if (selector.children?.length) {
     const nextBuckets: Array<Array<Array<Partial<Target>>>> = Array.from({ length: results.length }, () => []);
@@ -434,7 +517,18 @@ export function extractJSON<Target extends object, Source extends object>(
       for (const bucket of nexts) {
         if (bucket.length > 1) {
           if (multipleBucket != undefined) {
-            throw Error("Multiple Child Selectors of the same parent with multiple=true are not allowed");
+            throw new CustomHookError(
+              "Multiple Child Selectors of the same parent with multiple=true are not allowed",
+              CustomHookErrorCodes.MULTIPLE_IN_MULTIPLE_SIBLINGS,
+              {
+                nextResults,
+                nextBuckets,
+                index,
+                multipleBucket,
+                bucket,
+                parent: selector,
+              },
+            );
           }
           multipleBucket = bucket;
         } else {
@@ -474,7 +568,15 @@ export function extract<Target extends object>(
       results.push(applySelector(found.eq(index), selector, baseUri, context));
     }
   } else {
-    throw Error("Invalid Selector: no exact match found for: " + selector.selector);
+    throw new CustomHookError(
+      "Invalid Selector: no exact match found for: " + selector.selector,
+      CustomHookErrorCodes.SELECTOR_NO_MATCH,
+      {
+        selector,
+        element: element.html(),
+        found: found.html(),
+      },
+    );
   }
   if (selector.children?.length) {
     const nextBuckets: Array<Array<Array<Partial<Target>>>> = Array.from({ length: results.length }, () => []);
@@ -502,7 +604,18 @@ export function extract<Target extends object>(
       for (const bucket of nexts) {
         if (bucket.length > 1) {
           if (multipleBucket != undefined) {
-            throw Error("Multiple Child Selectors of the same parent with multiple=true are not allowed");
+            throw new CustomHookError(
+              "Multiple Child Selectors of the same parent with multiple=true are not allowed",
+              CustomHookErrorCodes.MULTIPLE_IN_MULTIPLE_SIBLINGS,
+              {
+                nextResults,
+                nextBuckets,
+                index,
+                multipleBucket,
+                bucket,
+                parent: selector,
+              },
+            );
           }
           multipleBucket = bucket;
         } else {
@@ -569,8 +682,16 @@ export function merge<T extends any[] | Record<string, any>>(target: T, source: 
         if (typeof sourceValue === "object" && typeof targetValue === "object") {
           merge(targetValue, sourceValue);
         } else {
-          throw Error(
+          throw new CustomHookError(
             `Cannot merge non object values: key: '${key}', target: '${targetValue}', source: '${sourceValue}'`,
+            CustomHookErrorCodes.MERGE_TYPE_NON_OBJECT,
+            {
+              target,
+              source,
+              key,
+              targetValue,
+              sourceValue,
+            },
           );
         }
       }
@@ -584,7 +705,14 @@ export function merge<T extends any[] | Record<string, any>>(target: T, source: 
       target[key] = source[key];
     }
   } else {
-    throw Error("Mismatched Value Types - both do not have same array or object type");
+    throw new CustomHookError(
+      "Mismatched Value Types - both do not have same array or object type",
+      CustomHookErrorCodes.MERGE_TYPE_MISMATCH,
+      {
+        target,
+        source,
+      },
+    );
   }
   return target;
 }
@@ -599,14 +727,26 @@ function templateString(value: string, context: Context): string {
 
     if (char === "{") {
       if (lastBrace && lastBrace.type === char) {
-        throw Error("two consecutive opening braces are not allowed!");
+        throw new CustomHookError(
+          "Two consecutive opening braces are not allowed!",
+          CustomHookErrorCodes.TEMPLATE_MISSING_CLOSE_BRACE,
+          {
+            currentIndex: index,
+            lastBrace,
+            template: value,
+          },
+        );
       } else {
         lastBrace = { type: char, index };
         braces.push(lastBrace);
       }
     } else if (char === "}") {
       if (!lastBrace || lastBrace.type === char) {
-        throw Error("missing opening brace!");
+        throw new CustomHookError("Missing Opening Brace!", CustomHookErrorCodes.TEMPLATE_MISSING_OPEN_BRACE, {
+          currentIndex: index,
+          lastBrace,
+          template: value,
+        });
       } else {
         lastBrace = { type: char, index };
         braces.push(lastBrace);
@@ -615,7 +755,11 @@ function templateString(value: string, context: Context): string {
   }
 
   if (braces.length % 2 !== 0) {
-    throw Error("missing closing brace!");
+    throw new CustomHookError("Missing Closing Brace!", CustomHookErrorCodes.TEMPLATE_MISSING_CLOSE_BRACE, {
+      currentIndex: undefined,
+      lastBrace,
+      template: value,
+    });
   }
 
   const replaceables: Record<string, string> = {};
@@ -634,7 +778,17 @@ function templateString(value: string, context: Context): string {
     }
 
     if (!(variableName in context.variables)) {
-      throw Error(`Unknown Variable '${variableName}', original: '${originalName}'!`);
+      throw new CustomHookError(
+        `Unknown Variable '${variableName}', original: '${originalName}'!`,
+        CustomHookErrorCodes.TEMPLATE_UNKNOWN_VARIABLE,
+        {
+          opening,
+          closing,
+          originalVariableName: originalName,
+          variableName,
+          template: value,
+        },
+      );
     }
 
     let variableValue = context.variables[variableName];
@@ -644,7 +798,15 @@ function templateString(value: string, context: Context): string {
     }
 
     if (variableValue == undefined) {
-      throw Error(`Variable '${originalName}' has no value!`);
+      throw new CustomHookError(
+        `Variable '${originalName}' has no value!`,
+        CustomHookErrorCodes.TEMPLATE_VARIABLE_NO_VALUE,
+        {
+          originalVariableName: originalName,
+          variableName,
+          template: value,
+        },
+      );
     }
 
     replaceables[originalName] = variableValue;
@@ -670,7 +832,10 @@ export function makeRequest(
       const transformedUrl = extractFromRegex(targetUrl, requestConfig.regexUrl, requestConfig.transformUrl);
 
       if (!transformedUrl) {
-        throw Error("URL Transformation failed");
+        throw new CustomHookError("URL Transformation failed", CustomHookErrorCodes.REQUEST_URL_TRANSFORMATION_FAIL, {
+          requestConfig,
+          targetUrl,
+        });
       }
 
       targetUrl = transformedUrl[0];

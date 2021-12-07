@@ -4,6 +4,7 @@ import { NewsScraper } from "../types";
 import { defaultContext, extract } from "./common";
 import { HookConfig } from "./types";
 import { Cheerio, Element } from "cheerio";
+import { CustomHookError } from "./errors";
 
 function validateEpisodeNews(episodes: Array<Partial<EpisodeNews>>): EpisodeNews[] {
   for (const episode of episodes) {
@@ -56,12 +57,22 @@ export function createNewsScraper(config: HookConfig): NewsScraper | undefined {
 
     let result;
 
-    if (Array.isArray(newsConfig.selector)) {
-      result = newsConfig.selector.flatMap((selector) =>
-        extract($.root() as Cheerio<Element>, selector, baseUri, context),
-      );
-    } else {
-      result = extract($.root() as Cheerio<Element>, newsConfig.selector, baseUri, context);
+    try {
+      if (Array.isArray(newsConfig.selector)) {
+        result = newsConfig.selector.flatMap((selector) =>
+          extract($.root() as Cheerio<Element>, selector, baseUri, context),
+        );
+      } else {
+        result = extract($.root() as Cheerio<Element>, newsConfig.selector, baseUri, context);
+      }
+    } catch (error) {
+      if (error instanceof CustomHookError) {
+        error.data.context = context;
+        error.data.html = true;
+        error.data.config = config;
+        error.data.body = $.html();
+      }
+      throw error;
     }
     result = result.map((value) => {
       value.mediumType = config.medium;
