@@ -158,7 +158,7 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
   };
 }
 
-const toRegex = traceWrap(function toRegex(value: RegExp | JsonRegex): RegExp {
+export const toRegex = traceWrap(function toRegex(value: RegExp | JsonRegex): RegExp {
   if (value instanceof RegExp) {
     return value;
   }

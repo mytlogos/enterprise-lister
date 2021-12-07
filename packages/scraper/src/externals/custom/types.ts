@@ -118,7 +118,7 @@ export interface SearchConfig<Source extends object = Record<any, any>>
 export type DownloadConfig = BasicScraperConfig<Selector<EpisodeContent>>;
 
 export interface RequestConfig {
-  regexUrl?: RegExp;
+  regexUrl?: JsonRegex;
   transformUrl?: string;
   templateUrl?: string;
   templateBody?: string;
@@ -146,7 +146,7 @@ export interface HookConfig {
   name: string;
   medium: number;
   base: string;
-  domain: string | HookDomain | HookDomain[];
+  domain: JsonRegex;
   search?: SearchConfig;
   download?: DownloadConfig;
   toc?: TocConfig | TocConfig[];

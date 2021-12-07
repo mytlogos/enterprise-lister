@@ -1,5 +1,6 @@
 import { MediaType } from "enterprise-core/dist/tools";
 import { ContentDownloader, NewsScraper, SearchScraper, TocScraper, TocSearchScraper } from "../types";
+import { toRegex } from "./common";
 import { createDownloadScraper } from "./download";
 import { createNewsScraper } from "./news";
 import { createSearchScraper } from "./search";
@@ -13,7 +14,7 @@ export interface CustomHook<T extends HookConfig = HookConfig> {
   medium: MediaType;
   disabled?: boolean;
   domainReg?: RegExp;
-  tocPattern?: RegExp;
+  tocPattern?: RegExp; // used for toc discover
   redirectReg?: RegExp;
   newsAdapter: Conditional<T["news"], NewsScraper>;
   tocAdapter: Conditional<T["toc"], TocScraper>;
@@ -26,6 +27,7 @@ export function createHook<T extends HookConfig>(config: T): CustomHook<T> {
   return {
     medium: config.medium,
     name: config.name,
+    domainReg: toRegex(config.domain),
     // @ts-expect-error
     newsAdapter: createNewsScraper(config),
     // @ts-expect-error

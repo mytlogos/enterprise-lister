@@ -124,9 +124,10 @@ export interface PeriodicJob extends ScraperJob {
 export interface Hook {
   name: string;
   medium: MediaType;
+  custom?: boolean;
   disabled?: boolean;
   domainReg?: RegExp;
-  tocPattern?: RegExp;
+  tocPattern?: RegExp; // used for toc discover
   redirectReg?: RegExp;
   newsAdapter?: NewsScraper;
   tocAdapter?: TocScraper;
