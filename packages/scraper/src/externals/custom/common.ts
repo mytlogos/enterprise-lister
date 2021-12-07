@@ -1005,7 +1005,7 @@ export const makeRequest = traceWrap(function makeRequest(
 
   console.log("Requesting url: " + targetUrl);
   if (requestConfig?.jsonResponse) {
-    return queueRequest(targetUrl, options as any).then((value) => JSON.parse(value));
+    return queueRequest(targetUrl, options).then((value) => JSON.parse(value));
   }
-  return queueCheerioRequest(targetUrl, options as any);
+  return queueCheerioRequest(targetUrl, options);
 });

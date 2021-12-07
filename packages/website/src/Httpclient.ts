@@ -28,7 +28,6 @@ import {
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 import { HookTest } from "enterprise-server/bin/types";
-import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { CustomHook } from "enterprise-core/dist/types";
 
 /**

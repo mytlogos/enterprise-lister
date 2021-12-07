@@ -1,5 +1,5 @@
 import { AsyncLocalStorage, createHook, AsyncResource } from "async_hooks";
-import { EmptyPromise, Optional } from "./types";
+import { Optional } from "./types";
 
 const localStorage = new AsyncLocalStorage();
 
