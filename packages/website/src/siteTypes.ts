@@ -1,4 +1,4 @@
-import { JobHistoryItem as ServerJobHistoryItem } from "enterprise-core/dist/types";
+import { CustomHook, JobHistoryItem as ServerJobHistoryItem } from "enterprise-core/dist/types";
 
 export type EmptyObject = Record<string, never>;
 
@@ -379,6 +379,7 @@ export interface VuexStore {
   media: MediaStore;
   lists: ListsStore;
   news: NewsStore;
+  hooks: CustomHookStore;
 }
 
 export interface ReleaseStore {
@@ -408,6 +409,10 @@ export interface NewsStore {
   news: News[];
 }
 
+export interface CustomHookStore {
+  hooks: Record<number, CustomHook>;
+}
+
 export interface ScraperHook {
   id: number;
   name: string;
@@ -427,3 +432,12 @@ export interface MediumInWaitSearch {
   link?: string;
   limit?: number;
 }
+
+export enum HookState {
+  ENABLED = "enabled",
+  DISABLED = "disabled",
+}
+
+export type SelectorValueType = "json" | "regex" | "text";
+
+export type SelectorType = [SelectorValueType] | ["regex", "text"];

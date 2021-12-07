@@ -124,9 +124,10 @@ export interface PeriodicJob extends ScraperJob {
 export interface Hook {
   name: string;
   medium: MediaType;
+  custom?: boolean;
   disabled?: boolean;
   domainReg?: RegExp;
-  tocPattern?: RegExp;
+  tocPattern?: RegExp; // used for toc discover
   redirectReg?: RegExp;
   newsAdapter?: NewsScraper;
   tocAdapter?: TocScraper;
@@ -172,6 +173,7 @@ export interface DownloadContent {
   episodeId: number;
 }
 
+// TODO: correct the api doc for this type
 /**
  * @openapi
  * components:
@@ -188,14 +190,32 @@ export interface DownloadContent {
  *          partialIndex:
  *            type: integer
  */
-export interface TocContent {
+export type TocContent = TocEpisode | TocPart;
+
+/**
+ * @openapi
+ * components:
+ *    schemas:
+ *      TocContent:
+ *        type: object
+ *        properties:
+ *          title:
+ *            type: string
+ *          combiIndex:
+ *            type: number
+ *          totalIndex:
+ *            type: integer
+ *          partialIndex:
+ *            type: integer
+ */
+export interface BasicTocContent {
   title: string;
   combiIndex: number;
   totalIndex: number;
   partialIndex?: number;
 }
 
-export interface TocEpisode extends TocContent {
+export interface TocEpisode extends BasicTocContent {
   url: string;
   releaseDate?: Date;
   noTime?: boolean;
@@ -203,7 +223,7 @@ export interface TocEpisode extends TocContent {
   tocId?: number;
 }
 
-export interface TocPart extends TocContent {
+export interface TocPart extends BasicTocContent {
   episodes: TocEpisode[];
 }
 

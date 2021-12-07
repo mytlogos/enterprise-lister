@@ -347,3 +347,31 @@ export function formatDate(date: Date, omitToday = false): string {
   }
   return result;
 }
+
+export function idGenerator() {
+  let id = 0;
+  return () => {
+    id++;
+    return id;
+  };
+}
+export function createComputedProperty(propName: string, property: string) {
+  return {
+    get(): any {
+      // @ts-expect-error
+      if (!this[propName]) {
+        return;
+      }
+      // @ts-expect-error
+      return this[propName][property];
+    },
+    set(value: any) {
+      // @ts-expect-error
+      if (!this[propName]) {
+        return;
+      }
+      // @ts-expect-error
+      this.$emit("update:" + propName, { ...this[propName], [property]: value });
+    },
+  };
+}

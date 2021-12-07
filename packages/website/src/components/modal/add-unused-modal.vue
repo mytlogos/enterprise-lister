@@ -118,7 +118,7 @@
         </select>
       </div>
       <auto-complete
-        key="id"
+        thing-key="id"
         input-class="form-control"
         :items="suggestions"
         title-key="title"

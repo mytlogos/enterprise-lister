@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(14);
+const dataBaseBuilder = new DataBaseBuilder(16);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -345,6 +345,18 @@ dataBaseBuilder
   .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
   .parseColumn("state VARCHAR(200) NOT NULL")
   .parseColumn("message VARCHAR(200) NOT NULL")
+  .parseMeta("PRIMARY KEY(id)")
+  .build();
+
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("custom_hook")
+  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
+  .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
+  .parseColumn("hookState VARCHAR(200) NOT NULL")
+  .parseColumn("comment TEXT NOT NULL")
+  .parseColumn("state TEXT NOT NULL")
+  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
   .parseMeta("PRIMARY KEY(id)")
   .build();
 

@@ -16,7 +16,7 @@ import {
 } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
-import { delay, isQuery, isString, stringify } from "../../tools";
+import { delay, isQuery, isString } from "../../tools";
 import { SchemaManager } from "../schemaManager";
 import { Query } from "mysql";
 import { ContextCallback, ContextProvider, queryContextProvider } from "./storageTools";
@@ -36,6 +36,7 @@ import { ExternalListContext } from "../contexts/externalListContext";
 import { ScraperHookContext } from "../contexts/scraperHookContext";
 import { SubContext } from "../contexts/subContext";
 import { AppEventContext } from "../contexts/appEventContext";
+import { CustomHookContext } from "../contexts/customHookContext";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -461,6 +462,7 @@ export const externalUserStorage = createStorage<ExternalUserContext>("externalU
 export const externalListStorage = createStorage<ExternalListContext>("externalListContext");
 export const hookStorage = createStorage<ScraperHookContext>("scraperHookContext");
 export const appEventStorage = createStorage<AppEventContext>("appEventContext");
+export const customHookStorage = createStorage<CustomHookContext>("customHookContext");
 
 /**
  *

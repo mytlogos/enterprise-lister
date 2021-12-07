@@ -27,6 +27,8 @@ import {
   JobHistoryItem,
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
+import { HookTest } from "enterprise-server/bin/types";
+import { CustomHook } from "enterprise-core/dist/types";
 
 /**
  * Allowed Methods for the API.
@@ -88,6 +90,14 @@ const restApi = createRestDefinition({
       hook: {
         get: true,
         put: true,
+        test: {
+          post: true,
+        },
+        custom: {
+          get: true,
+          post: true,
+          put: true,
+        },
       },
       searchtoc: {
         get: true,
@@ -190,13 +200,13 @@ const restApi = createRestDefinition({
 
 type MethodName = keyof typeof Methods;
 
-type Rest<T extends any = any> = {
+type Rest<T extends Record<string, any> = any> = {
   [key in Extract<keyof T, MethodName>]: true;
 } & {
   [key in Exclude<keyof T, MethodName>]: Rest<T[key]>;
 };
 
-function createRestDefinition<T extends any>(value: T): Rest<T> {
+function createRestDefinition<T extends Record<string, any>>(value: T): Rest<T> {
   return value as unknown as any;
 }
 
@@ -232,7 +242,7 @@ function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
   return api as any;
 }
 
-type RestAPI<T extends any> = {
+type RestAPI<T extends Record<string, any>> = {
   [key in Extract<keyof T, MethodName>]: MethodObject;
 } & {
   [key in Exclude<keyof T, MethodName>]: RestAPI<T[key]>;
@@ -506,6 +516,22 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.hook.put, { hook });
   },
 
+  testHook(hook: HookTest): Promise<any> {
+    return this.queryServer(serverRestApi.api.user.hook.test.post, hook);
+  },
+
+  createCustomHook(hook: CustomHook): Promise<CustomHook> {
+    return this.queryServer(serverRestApi.api.user.hook.custom.post, { hook });
+  },
+
+  updateCustomHook(hook: CustomHook): Promise<CustomHook> {
+    return this.queryServer(serverRestApi.api.user.hook.custom.put, { hook });
+  },
+
+  getCustomHooks(): Promise<CustomHook[]> {
+    return this.queryServer(serverRestApi.api.user.hook.custom.get);
+  },
+
   getAllMediaInWaits(search?: MediumInWaitSearch): Promise<MediumInWait[]> {
     return this.queryServer(serverRestApi.api.user.medium.unused.get, search);
   },
@@ -563,6 +589,10 @@ export const HttpClient = {
     }
     const response = await fetch(url.toString(), init);
     const result = await response.json();
+
+    if (!response.ok) {
+      return Promise.reject(result);
+    }
     if (result.error) {
       return Promise.reject(result.error);
     }

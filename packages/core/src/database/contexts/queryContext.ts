@@ -36,6 +36,7 @@ import { setContext, removeContext } from "../../asyncStorage";
 import { storeCount } from "../sqlTools";
 import { ScraperHookContext } from "./scraperHookContext";
 import { AppEventContext } from "./appEventContext";
+import { CustomHookContext } from "./customHookContext";
 
 const database = "enterprise";
 
@@ -99,6 +100,8 @@ export class QueryContext implements ConnectionContext {
   private _scraperHookContext?: ScraperHookContext;
   // tslint:disable-next-line:variable-name
   private _appEventContext?: AppEventContext;
+  // tslint:disable-next-line:variable-name
+  private _customHookContext?: CustomHookContext;
 
   public get databaseContext(): DatabaseContext {
     return this._databaseContext ? this._databaseContext : (this._databaseContext = new DatabaseContext(this));
@@ -160,6 +163,10 @@ export class QueryContext implements ConnectionContext {
 
   public get appEventContext(): AppEventContext {
     return this._appEventContext ? this._appEventContext : (this._appEventContext = new AppEventContext(this));
+  }
+
+  public get customHookContext(): CustomHookContext {
+    return this._customHookContext ? this._customHookContext : (this._customHookContext = new CustomHookContext(this));
   }
 
   public constructor(con: Connection) {
