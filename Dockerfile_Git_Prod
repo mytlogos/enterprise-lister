@@ -2,10 +2,10 @@
 FROM node:16
 
 WORKDIR /code
-RUN wget https://github.com/mytlogos/enterprise-lister/releases/latest/download/dist-src.zip
+# download the dist-src.zip of the latest release
+RUN wget $(curl -s https://api.github.com/repos/mytlogos/enterprise-lister/releases/latest | grep 'browser_' | cut -d\" -f4 | grep "dist-src.zip")
 RUN unzip dist-src.zip
+RUN rm dist-src.zip
 RUN npm install -g npm
 RUN npm install --production
-# for some reason the package ws is not installed properly
-RUN npm install ws --production
 COPY *.env ./
