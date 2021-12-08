@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/mytlogos/enterprise-lister/compare/v1.20.0...v1.20.1) (2021-12-08)
+
+
+### Bug Fixes
+
+* **scraper:** add missing dependency ([84cdd17](https://github.com/mytlogos/enterprise-lister/commit/84cdd17fc588b620f313b351351fb37fe53069f4))
+
 # [1.20.0](https://github.com/mytlogos/enterprise-lister/compare/v1.19.3...v1.20.0) (2021-12-07)
 
 
