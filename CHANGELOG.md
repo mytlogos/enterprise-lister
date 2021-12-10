@@ -1,3 +1,10 @@
+## [1.20.3](https://github.com/mytlogos/enterprise-lister/compare/v1.20.2...v1.20.3) (2021-12-10)
+
+
+### Bug Fixes
+
+* install latest npm in docker ([39a09a4](https://github.com/mytlogos/enterprise-lister/commit/39a09a4af657d108c6bb66c13f4507e8c69dd3f1))
+
 ## [1.20.2](https://github.com/mytlogos/enterprise-lister/compare/v1.20.1...v1.20.2) (2021-12-10)
 
 
