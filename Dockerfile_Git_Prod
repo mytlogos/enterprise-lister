@@ -6,6 +6,6 @@ WORKDIR /code
 RUN wget $(curl -s https://api.github.com/repos/mytlogos/enterprise-lister/releases/latest | grep 'browser_' | cut -d\" -f4 | grep "dist-src.zip")
 RUN unzip dist-src.zip
 RUN rm dist-src.zip
-RUN npm install -g npm
+RUN npm install -g npm@latest
 RUN npm install --production
 COPY *.env ./
