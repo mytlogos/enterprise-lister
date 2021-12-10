@@ -36,6 +36,7 @@ const testHook = createHandler(async (req) => {
   const hook = createHook(config);
 
   const store = new Map();
+  store.set("enableTrace", true);
 
   return runAsync(0, store, async () => {
     let resultPromise;

@@ -35,6 +35,7 @@ export interface Trace {
   unnamedIds: number;
   callStack: FunctionTrace[];
   callCounts: Record<string, number>;
+  enableTrace: boolean;
 }
 
 /**
@@ -81,7 +82,7 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
     const store = getStore() as undefined | Map<keyof Trace, Trace[keyof Trace]>;
 
     // no store means no tracing, so exit as light weight as possible
-    if (!store) {
+    if (!store || !store.get("enableTrace")) {
       return target(...args);
     }
 
