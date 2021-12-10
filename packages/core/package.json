@@ -12,7 +12,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cloudscraper": "^4.6.0",
-    "debug": "^4.3.2",
+    "debug": "^4.3.3",
     "dotenv": "^10.0.0",
     "emoji-regex": "^10.0.0",
     "feedparser-promised": "^2.0.1",
