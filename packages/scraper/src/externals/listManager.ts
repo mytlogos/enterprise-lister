@@ -357,7 +357,6 @@ class NovelUpdates implements ListManager {
     feedLink = new url.URL(feedLink, this.baseURI).href;
     feed.push(feedLink);
 
-    // @ts-expect-error
     await Promise.all(promises);
 
     return {
