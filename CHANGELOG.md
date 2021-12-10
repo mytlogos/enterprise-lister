@@ -1,3 +1,10 @@
+## [1.20.2](https://github.com/mytlogos/enterprise-lister/compare/v1.20.1...v1.20.2) (2021-12-10)
+
+
+### Bug Fixes
+
+* **scraper:** trace only when enabled ([04e8e42](https://github.com/mytlogos/enterprise-lister/commit/04e8e42b5fc5e878c6b5d4e61faac8cdab5a266e))
+
 ## [1.20.1](https://github.com/mytlogos/enterprise-lister/compare/v1.20.0...v1.20.1) (2021-12-08)
 
 
