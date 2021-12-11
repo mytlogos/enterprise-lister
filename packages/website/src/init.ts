@@ -440,3 +440,41 @@ export function deepEqual(actual: any, expected: any): boolean {
     return actual === expected;
   }
 }
+
+export class Logger {
+  public readonly prefix: string;
+
+  public constructor(prefix: string) {
+    this.prefix = prefix;
+  }
+
+  public debug(...args: any[]): void {
+    console.debug(`[${new Date().toLocaleString()}] ${this.prefix}:`, ...args);
+  }
+
+  public info(...args: any[]): void {
+    console.info(`[${new Date().toLocaleString()}] ${this.prefix}:`, ...args);
+  }
+
+  public error(...args: any[]): void {
+    console.error(`[${new Date().toLocaleString()}] ${this.prefix}:`, ...args);
+  }
+
+  public warn(...args: any[]): void {
+    console.warn(`[${new Date().toLocaleString()}] ${this.prefix}:`, ...args);
+  }
+
+  public log(...args: any[]): void {
+    console.log(`[${new Date().toLocaleString()}] ${this.prefix}:`, ...args);
+  }
+}
+
+export function toArray<T>(value: T[] | T | undefined): T[] {
+  if (Array.isArray(value)) {
+    return [...value];
+  } else if (value) {
+    return [value];
+  } else {
+    return [];
+  }
+}

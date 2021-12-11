@@ -290,7 +290,7 @@ export default defineComponent({
       if (this.id) {
         // simple but stupid way to clone the hook, firefox went off alone in 94 and introduced "structuredClone" (with Node 17 support at this time)
         // when there is wider support, maybe use that, else if lodash is ever used use that cloneDeep
-        this.hook = JSON.parse(JSON.stringify(this.$store.state.hooks.hooks[this.id]));
+        this.hook = clone(this.$store.state.hooks.hooks[this.id]);
         this.code = this.hook.state || "";
       }
     },

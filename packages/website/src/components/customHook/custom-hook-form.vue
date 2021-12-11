@@ -55,13 +55,13 @@
     <div>
       <div>
         <button class="btn btn-primary me-1" role="button" @click="addToc">Create Toc Scraper</button>
-        <button class="btn btn-primary me-1" role="button" :disabled="searchConfig" @click="addSearch">
+        <button class="btn btn-primary me-1" role="button" :disabled="!!searchConfig" @click="addSearch">
           Create Search Scraper
         </button>
-        <button class="btn btn-primary me-1" role="button" :disabled="newsConfig" @click="addNews">
+        <button class="btn btn-primary me-1" role="button" :disabled="!!newsConfig" @click="addNews">
           Create News Scraper
         </button>
-        <button class="btn btn-primary" role="button" :disabled="downloadConfig" @click="addDownload">
+        <button class="btn btn-primary" role="button" :disabled="!!downloadConfig" @click="addDownload">
           Create Download Scraper
         </button>
       </div>
@@ -126,19 +126,13 @@
 </template>
 <script lang="ts">
 import { CustomHook, HookState } from "enterprise-core/dist/types";
-import {
-  DownloadConfig,
-  HookConfig,
-  NewsConfig,
-  SearchConfig,
-  TocConfig,
-  Selector as SelectorType,
-} from "enterprise-scraper/dist/externals/custom/types";
+import { HookConfig, Selector as SelectorType, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
 import ScraperConfig from "./scraper-config.vue";
 import Regex from "./regex.vue";
 import "bootstrap/js/dist/collapse";
-import { createComputedProperty } from "../../init";
+import { toArray, deepEqual, Logger } from "../../init";
+import { MediaType } from "../../siteTypes";
 
 export default defineComponent({
   name: "CustomHookForm",
@@ -159,96 +153,115 @@ export default defineComponent({
   emits: ["update:hook", "update:config"],
   data() {
     return {
-      tocConfig: [] as TocConfig[],
-      searchConfig: null as null | SearchConfig,
-      newsConfig: null as null | NewsConfig,
-      downloadConfig: null as null | DownloadConfig,
+      name: this.hook.name,
+      enabled: this.hook.hookState ? this.hook.hookState === HookState.ENABLED : true,
+      comment: this.hook.comment,
+      baseUrl: this.config.base,
+      medium: MediaType.TEXT,
+      domain: this.config.domain || ({ pattern: "", flags: "" } as JsonRegex),
+      tocConfig: toArray(this.config.toc),
+      searchConfig: this.config.search && { ...this.config.search },
+      newsConfig: this.config.news && { ...this.config.news },
+      downloadConfig: this.config.download && { ...this.config.download },
+      logger: new Logger("custom-hook-form"),
     };
   },
   computed: {
-    name: {
-      get() {
-        return this.hook.name;
-      },
-      set(value: string) {
-        this.$emit("update:hook", { ...this.hook, name: value });
-        this.$emit("update:config", { ...this.config, name: value });
-      },
+    hookModel(): CustomHook {
+      return {
+        ...this.hook,
+        name: this.name,
+        comment: this.comment,
+        hookState: this.enabled ? HookState.ENABLED : HookState.DISABLED,
+      };
     },
-    enabled: {
-      get() {
-        return this.hook.hookState === HookState.ENABLED;
-      },
-      set(value: boolean) {
-        this.$emit("update:hook", { ...this.hook, hookState: value ? HookState.ENABLED : HookState.DISABLED });
-      },
+    configModel(): HookConfig {
+      return {
+        name: this.name,
+        domain: this.domain,
+        base: this.baseUrl,
+        medium: Number(this.medium),
+        download: this.downloadConfig,
+        news: this.newsConfig,
+        toc: this.tocConfig,
+        search: this.searchConfig,
+      };
     },
-    comment: createComputedProperty("hook", "comment"),
-    medium: {
-      get() {
-        return this.config.medium;
-      },
-      set(value: number) {
-        this.$emit("update:config", { ...this.config, medium: Number(value) });
-      },
-    },
-    baseUrl: createComputedProperty("config", "base"),
-    domain: createComputedProperty("config", "domain"),
   },
   watch: {
-    tocConfig: {
-      handler(newValue: any[]) {
-        this.$emit("update:config", { ...this.config, toc: newValue });
+    hookModel: {
+      handler(newValue: CustomHook) {
+        if (deepEqual(newValue, this.hook)) {
+          this.logger.info("Did not update hook");
+        } else {
+          this.logger.info("Updated hook");
+          this.$emit("update:hook", newValue);
+        }
       },
       deep: true,
     },
-    newsConfig: {
-      handler(newValue: any[]) {
-        this.$emit("update:config", { ...this.config, news: newValue });
+    configModel: {
+      handler(newValue: HookConfig) {
+        if (deepEqual(newValue, this.hook)) {
+          this.logger.info("Did not update config");
+        } else {
+          this.logger.info("Updated config");
+          this.$emit("update:config", newValue);
+        }
       },
       deep: true,
     },
-    downloadConfig: {
-      handler(newValue: any[]) {
-        this.$emit("update:config", { ...this.config, download: newValue });
+    hook: {
+      handler(newValue: CustomHook) {
+        if (newValue.comment !== this.comment) {
+          this.comment = newValue.comment;
+        }
+        const enabled = newValue.hookState === HookState.ENABLED;
+        if (enabled !== this.enabled) {
+          this.enabled = enabled;
+        }
+        if (newValue.name !== this.name) {
+          this.name = newValue.name;
+        }
       },
       deep: true,
     },
-    searchConfig: {
-      handler(newValue: any[]) {
-        this.$emit("update:config", { ...this.config, search: newValue });
+    config: {
+      handler(newValue: HookConfig) {
+        if (newValue.base !== this.baseUrl) {
+          this.baseUrl = newValue.base;
+        }
+        if (newValue.medium != this.medium) {
+          this.medium = newValue.medium;
+        }
+        if (newValue.name !== this.name) {
+          this.name = newValue.name;
+        }
+        if (!deepEqual(newValue.domain, this.domain)) {
+          this.domain = newValue.domain;
+        }
+        if (!deepEqual(newValue.news, this.newsConfig)) {
+          this.newsConfig = newValue.news;
+        }
+        if (!deepEqual(newValue.toc, this.tocConfig)) {
+          this.tocConfig = toArray(newValue.toc);
+        }
+        if (!deepEqual(newValue.download, this.downloadConfig)) {
+          this.downloadConfig = newValue.download;
+        }
+        if (!deepEqual(newValue.search, this.searchConfig)) {
+          this.searchConfig = newValue.search;
+        }
       },
       deep: true,
     },
-  },
-  created() {
-    if (this.config.toc) {
-      this.tocConfig = Array.isArray(this.config.toc) ? [...this.config.toc] : [this.config.toc];
-      this.tocConfig.forEach((value) => this.ensureArray(value, "selector"));
-    }
-    if (this.config.search) {
-      this.searchConfig = { ...this.config.search };
-      this.ensureArray(this.searchConfig, "selector");
-    }
-    if (this.config.news) {
-      this.newsConfig = { ...this.config.news };
-      this.ensureArray(this.newsConfig, "selector");
-    }
-    if (this.config.download) {
-      this.downloadConfig = { ...this.config.download };
-      this.ensureArray(this.downloadConfig, "selector");
-    }
-    // ensure that regex component binds to value of config
-    if (!this.config.domain) {
-      this.$emit("update:config", { ...this.config, domain: {} });
-    }
   },
   methods: {
     remove(array: any[], index: number) {
       array.splice(index, 1);
     },
     removeConfig(prop: "searchConfig" | "newsConfig" | "downloadConfig") {
-      this[prop] = null;
+      this[prop] = undefined;
     },
     addToc() {
       this.tocConfig.push({
@@ -280,18 +293,11 @@ export default defineComponent({
         selector: [{ selector: "" }],
       };
     },
-    ensureArray<T, K extends keyof T>(value: T, key: K) {
-      if (!value[key]) {
-        // @ts-expect-error
-        value[key] = [];
-      } else if (!Array.isArray(value[key])) {
-        // @ts-expect-error
-        value[key] = [value[key]];
+    addSelector(config: any) {
+      if (!Array.isArray(config.selector)) {
+        config.selector = toArray(config.selector);
       }
-    },
-    addSelector(config: any, key = "selector") {
-      this.ensureArray(config, key);
-      config[key].push({
+      config.selector.push({
         selector: "",
       } as SelectorType<any>);
     },

@@ -4,13 +4,13 @@
   </div>
   <div :id="'request' + id" ref="collapse" class="collapse show">
     <div class="card card-body">
-      <regex v-model="regexUrl" class="mb-3" />
+      <regex v-model="model.regexUrl" class="mb-3" />
       <div class="row mb-3">
         <div class="col">
           <label for="transformUrl" class="form-label">Regex Replace Value</label>
           <input
             id="transformUrl"
-            v-model="transformUrl"
+            v-model="model.transformUrl"
             type="text"
             class="form-control"
             placeholder="Replace Pattern"
@@ -22,7 +22,7 @@
           <label for="templateUrl" class="form-label">Template URL</label>
           <input
             id="templateUrl"
-            v-model="templateUrl"
+            v-model="model.templateUrl"
             type="text"
             class="form-control"
             placeholder="Template String"
@@ -34,7 +34,7 @@
           <label for="templateBody" class="form-label">Template Body</label>
           <input
             id="templateBody"
-            v-model="templateBody"
+            v-model="model.templateBody"
             type="text"
             class="form-control"
             placeholder="Template String"
@@ -46,11 +46,11 @@
           <div class="form-check form-switch">
             <input
               id="jsonResponse"
-              v-model="jsonResponse"
+              v-model="model.jsonResponse"
               class="form-check-input"
               type="checkbox"
               role="switch"
-              :checked="jsonResponse"
+              :checked="model.jsonResponse"
             />
             <label class="form-check-label" for="jsonResponse">Transform Response into JSON</label>
           </div>
@@ -62,42 +62,42 @@
           <div id="httpmethod" class="btn-group" role="group" aria-label="Select the HTTP Method">
             <input
               :id="'get' + id"
-              v-model="options.method"
+              v-model="model.options.method"
               type="radio"
               class="btn-check"
               :name="'httpmethod' + id"
               autocomplete="off"
               value="GET"
-              :checked="options.method === 'GET'"
+              :checked="model.options.method === 'GET'"
             />
             <label class="btn btn-outline-primary" :for="'get' + id">Get</label>
             <input
               :id="'post' + id"
-              v-model="options.method"
+              v-model="model.options.method"
               type="radio"
               class="btn-check"
               :name="'httpmethod' + id"
               autocomplete="off"
               value="POST"
-              :checked="options.method === 'POST'"
+              :checked="model.options.method === 'POST'"
             />
             <label class="btn btn-outline-primary" :for="'post' + id">Post</label>
             <input
               :id="'head' + id"
-              v-model="options.method"
+              v-model="model.options.method"
               type="radio"
               class="btn-check"
               :name="'httpmethod' + id"
               autocomplete="off"
               value="HEAD"
-              :checked="options.method === 'HEAD'"
+              :checked="model.options.method === 'HEAD'"
             />
             <label class="btn btn-outline-primary" :for="'head' + id">Head</label>
           </div>
         </div>
       </div>
       <div>Headers</div>
-      <div v-for="entry in headers" :key="entry[0]" class="row align-items-center mb-3">
+      <div v-for="entry in model.headers" :key="entry[0]" class="row align-items-center mb-3">
         <div class="col">
           <label for="headerName" class="form-label">Name</label>
           <input id="headerName" v-model="entry[0]" type="text" class="form-control" placeholder="Header Key" />
@@ -136,12 +136,23 @@
 </template>
 <script lang="ts">
 import { RequestConfig } from "enterprise-scraper/dist/externals/custom/types";
-import { Options } from "request";
 import { defineComponent, PropType } from "vue";
-import { createComputedProperty, idGenerator } from "../../init";
+import { clone, deepEqual, idGenerator, Logger } from "../../init";
 import Regex from "./regex.vue";
 
 const nextId = idGenerator();
+
+function model(prop: RequestConfig) {
+  return {
+    options: Object.assign({}, prop.options || {}, { method: "GET" }),
+    headers: Object.entries((prop.options || {}).headers || {}) as Array<[string, string]>,
+    regexUrl: prop.regexUrl || { flags: "", pattern: "" },
+    transformUrl: prop.transformUrl || "",
+    templateUrl: prop.templateUrl || "",
+    templateBody: prop.templateBody || "",
+    jsonResponse: prop.jsonResponse || false,
+  };
+}
 
 export default defineComponent({
   name: "RequestConfig",
@@ -156,67 +167,73 @@ export default defineComponent({
   },
   emits: ["update:modelValue"],
   data() {
+    const id = nextId();
     return {
-      id: nextId(),
-      options: {
-        method: "GET",
-      } as Options & { headers: NonNullable<Options["headers"]> },
-      headers: [] as Array<[string, string]>,
+      id,
+      logger: new Logger("request-config-" + id),
+      model: model(this.modelValue),
       nextHeaderName: "",
       nextHeaderValue: "",
     };
   },
-  computed: {
-    regexUrl: createComputedProperty("modelValue", "regexUrl"),
-    transformUrl: createComputedProperty("modelValue", "transformUrl"),
-    templateUrl: createComputedProperty("modelValue", "templateUrl"),
-    templateBody: createComputedProperty("modelValue", "templateBody"),
-    jsonResponse: createComputedProperty("modelValue", "jsonResponse"),
-  },
   watch: {
-    options: {
-      handler(newValue: Options) {
-        this.$emit("update:modelValue", { ...this.modelValue, options: newValue });
-      },
-      deep: true,
-    },
-    "modelValue.options": {
-      handler(newValue: any) {
-        this.options = newValue;
-      },
-      deep: true,
-    },
-    "modelValue.options.headers": {
-      handler(newValue: any) {
-        this.headers = Object.entries(newValue || {});
-      },
-      deep: true,
-    },
-    headers: {
-      handler(newValue: any) {
-        this.$emit("update:modelValue", { ...this.modelValue, headers: Object.fromEntries(newValue) });
-      },
-      deep: true,
-    },
-  },
-  created() {
-    const options = this.modelValue.options;
-    if (options) {
-      // set defaults from data() to options, if they do not have any value
-      for (const [key, value] of Object.entries(this.options)) {
-        // @ts-expect-error
-        if (!options[key]) {
-          // @ts-expect-error
-          options[key] = value;
+    model: {
+      handler(newValue: ReturnType<typeof model>) {
+        const result = clone(this.modelValue);
+
+        result.jsonResponse = newValue.jsonResponse;
+        result.templateBody = newValue.templateBody;
+        result.templateUrl = newValue.templateUrl;
+
+        if (newValue.regexUrl.pattern || newValue.regexUrl.flags) {
+          result.regexUrl = newValue.regexUrl;
+        } else {
+          delete result.regexUrl;
         }
-      }
-      // @ts-expect-error
-      this.options = options;
-    }
+        result.transformUrl = newValue.transformUrl || "";
+
+        result.options = clone(newValue.options);
+        result.options.headers = Object.fromEntries(newValue.headers);
+
+        if (deepEqual(result, this.modelValue)) {
+          this.logger.info("Did not update modelValue");
+        } else {
+          this.logger.info("Updated modelValue");
+          this.$emit("update:modelValue", result);
+        }
+      },
+      deep: true,
+    },
+    modelValue: {
+      handler(newValue: RequestConfig) {
+        const result = clone(this.model);
+
+        result.jsonResponse = newValue.jsonResponse || false;
+        result.templateBody = newValue.templateBody || "";
+        result.templateUrl = newValue.templateUrl || "";
+        result.regexUrl = newValue.regexUrl || { pattern: "", flags: "" };
+        result.transformUrl = newValue.transformUrl || "";
+
+        result.options = Object.assign({ method: "GET" }, newValue.options || {});
+
+        // remove it as it is managed separately
+        delete result.options.headers;
+
+        result.headers = Object.entries((newValue.options || {}).headers || {});
+
+        if (deepEqual(result, this.model)) {
+          this.logger.info("Did not update model from prop");
+        } else {
+          this.logger.info("Updated model from prop");
+          this.model = result;
+        }
+      },
+      deep: true,
+    },
   },
   methods: {
     createHeaderEntry() {
-      this.headers.push([this.nextHeaderName, this.nextHeaderValue]);
+      this.model.headers.push([this.nextHeaderName, this.nextHeaderValue]);
       this.nextHeaderName = "";
       this.nextHeaderValue = "";
     },

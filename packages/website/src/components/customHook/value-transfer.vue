@@ -59,39 +59,39 @@
           <template v-if="selectorType !== 'regex'">
             <input
               :id="'valueText' + id"
-              v-model="use"
+              v-model="model.use"
               type="radio"
               class="btn-check"
               :name="'valueSource' + id"
               autocomplete="off"
               value="text"
-              :checked="use === 'text'"
+              :checked="model.use === 'text'"
             />
             <label class="btn btn-outline-primary" :for="'valueText' + id">Full Value</label>
           </template>
           <template v-if="allowRegex">
             <input
               :id="'valueRegex' + id"
-              v-model="use"
+              v-model="model.use"
               type="radio"
               class="btn-check"
               :name="'valueSource' + id"
               autocomplete="off"
               value="regex"
-              :checked="use === 'regex'"
+              :checked="model.use === 'regex'"
             />
             <label class="btn btn-outline-primary" :for="'valueRegex' + id">Regex</label>
           </template>
           <template v-if="allowAttribute">
             <input
               :id="'valueAttribute' + id"
-              v-model="use"
+              v-model="model.use"
               type="radio"
               class="btn-check"
               :name="'valueSource' + id"
               autocomplete="off"
               value="attribute"
-              :checked="use === 'attribute'"
+              :checked="model.use === 'attribute'"
             />
             <label class="btn btn-outline-primary" :for="'valueAttribute' + id">Attribute</label>
           </template>
@@ -128,28 +128,28 @@
         </div>
       </div>
     </div>
-    <div v-if="use === 'regex'" class="row mb-3">
+    <div v-if="model.use === 'regex'" class="row mb-3">
       <div class="col">
         <label for="variableName" class="form-label">Value Transformation Regex Replace</label>
         <input
           id="variableName"
-          v-model="extractRegex"
+          v-model="model.extractRegex"
           type="text"
           class="form-control"
           placeholder="Replace Pattern"
         />
       </div>
     </div>
-    <attribute-selector v-else-if="use === 'attribute' && allowAttribute" v-model="extractAttribute" />
+    <attribute-selector v-else-if="model.use === 'attribute' && allowAttribute" v-model="model.extractAttribute" />
     <div>Transfer Mapping</div>
-    <div v-for="mapping in mappings" :key="mapping.from" class="row align-items-center mb-3">
+    <div v-for="mapping in model.mappings" :key="mapping[0]" class="row align-items-center mb-3">
       <div class="col">
         <label for="attributeName" class="form-label">From</label>
-        <input id="attributeName" v-model="mapping.from" type="text" class="form-control" placeholder="Mapped from" />
+        <input id="attributeName" v-model="mapping[0]" type="text" class="form-control" placeholder="Mapped from" />
       </div>
       <div class="col">
         <label for="attributeName" class="form-label">To</label>
-        <input id="attributeName" v-model="mapping.to" type="text" class="form-control" placeholder="Mapped to" />
+        <input id="attributeName" v-model="mapping[1]" type="text" class="form-control" placeholder="Mapped to" />
       </div>
     </div>
     <div class="row align-items-center mb-3">
@@ -187,7 +187,7 @@ import {
   TransferType,
 } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
-import { clone, idGenerator, deepEqual } from "../../init";
+import { clone, idGenerator, deepEqual, Logger } from "../../init";
 import { SelectorValueType } from "../../siteTypes";
 import AttributeSelector from "./attribute-selector.vue";
 
@@ -195,6 +195,22 @@ const nextId = idGenerator();
 type Source = "text" | "regex" | "attribute";
 
 type Transfer = SimpleTransfer<any> | RegexTransfer<any> | JSONTransfer<any, any>;
+
+function model() {
+  return {
+    mappings: [] as Array<[string, string]>,
+    use: "text" as Source,
+    extractAttribute: {
+      attribute: "",
+    } as AttributeSelectorType,
+    extractRegex: "",
+    targetKey: "",
+    sourceKey: "",
+    type: "string" as TransferType,
+    optional: false as boolean | undefined,
+    html: false as boolean | undefined,
+  };
+}
 
 export default defineComponent({
   name: "ValueTransfer",
@@ -212,23 +228,17 @@ export default defineComponent({
     },
   },
   emits: ["update:modelValue", "delete"],
-  data: () => ({
-    id: nextId(),
-    use: "text" as Source,
-    extractAttribute: {} as AttributeSelectorType,
-    extractRegex: "",
-    nextTo: "",
-    nextFrom: "",
-    mappings: [] as Array<{ from: string; to: string }>,
-    allowedTypes: ["string", "decimal", "integer", "date"] as TransferType[],
-    model: {
-      targetKey: "",
-      sourceKey: "",
-      type: "string",
-      optional: false as boolean | undefined,
-      html: false as boolean | undefined,
-    },
-  }),
+  data() {
+    const id = nextId();
+    return {
+      id,
+      logger: new Logger("value-transfer-" + id),
+      nextTo: "",
+      nextFrom: "",
+      allowedTypes: ["string", "decimal", "integer", "date"] as TransferType[],
+      model: model(),
+    };
+  },
   computed: {
     allowRegex(): boolean {
       return this.selectorType === "regex";
@@ -239,145 +249,108 @@ export default defineComponent({
     },
   },
   watch: {
-    use(newValue: Source) {
-      const tmp = { ...this.modelValue };
-      let update = false;
-
-      if (newValue === "text") {
-        // @ts-expect-error
-        delete tmp.extract;
-        // @ts-expect-error
-        delete tmp.value;
-        update = true;
-      }
-      if (newValue !== "attribute" && "extract" in tmp && typeof tmp.extract === "object") {
-        delete tmp.extract;
-        update = true;
-      }
-      if (newValue === "attribute") {
-        // @ts-expect-error
-        tmp.extract = {};
-        update = true;
-      }
-      if (update) {
-        this.$emit("update:modelValue", tmp);
-      }
-    },
     selectorType(newValue: SelectorValueType) {
-      const tmp = { ...this.modelValue };
-      let update = false;
-
       if (newValue === "json") {
         // json does not have attributes and is not string only, so allow only values/text
-        this.use = "text";
-
-        if ("html" in tmp) {
-          delete tmp.html;
-          update = true;
-        }
-      } else if (newValue === "regex" && this.use === "text") {
+        this.model.use = "text";
+      } else if (newValue === "regex" && this.model.use === "text") {
         // either use attribute or regex replace when parent selector has regex
-        this.use = "regex";
-      } else if (newValue === "text" && this.use === "regex") {
+        this.model.use = "regex";
+      } else if (newValue === "text" && this.model.use === "regex") {
         // regex is only allowed when selectorType === "regex"
-        this.use = "text";
+        this.model.use = "text";
       }
-
-      if (newValue !== "json" && "sourceKey" in tmp) {
-        // @ts-expect-error
-        delete tmp.sourceKey;
-        update = true;
-      }
-      if (update) {
-        this.$emit("update:modelValue", tmp);
-      }
-    },
-    mappings: {
-      handler() {
-        const result = this.mappings.reduce((previous, current) => {
-          previous[current.from] = current.to;
-          return previous;
-        }, {} as { [key: string]: string });
-        this.$emit("update:modelValue", { ...this.modelValue, mapping: { include: result } });
-      },
-      deep: true,
-    },
-    extractAttribute: {
-      handler(newValue: AttributeSelectorType) {
-        // @ts-expect-error
-        this.model.extract = newValue;
-      },
-      deep: true,
-    },
-    extractRegex: {
-      handler(newValue: string) {
-        // @ts-expect-error
-        this.model.extract = newValue;
-      },
-      deep: true,
     },
     model: {
-      handler(newValue: Transfer) {
-        // do not check strict, use undefined == ""
-        if (deepEqual(this.modelValue, newValue) || JSON.stringify(newValue) === JSON.stringify(this.modelValue)) {
-          console.log("value-transfer: Model Value is the same, not updating");
-          return;
+      handler(newValue: ReturnType<typeof model>) {
+        const result: Partial<Transfer> = {
+          targetKey: newValue.targetKey,
+          optional: newValue.optional,
+        };
+
+        if (newValue.mappings.length) {
+          result.mapping = { include: Object.fromEntries(newValue.mappings) };
         }
-        clone(this.modelValue);
-        console.log("value-transfer: Updating modelValue", JSON.stringify(newValue));
-        this.$emit("update:modelValue", clone(newValue));
+
+        if (this.selectorType === "json") {
+          // @ts-expect-error
+          result.sourceKey = newValue.sourceKey;
+        } else {
+          // @ts-expect-error
+          result.html = newValue.html;
+
+          if (newValue.use === "regex") {
+            // @ts-expect-error
+            result.extract = newValue.extractRegex;
+          } else if (newValue.use === "attribute") {
+            // @ts-expect-error
+            result.extract = newValue.extractAttribute;
+          }
+        }
+
+        if (deepEqual(result, this.modelValue)) {
+          this.logger.info("Did not update modelValue");
+        } else {
+          this.logger.info("Updated modelValue");
+          this.$emit("update:modelValue", result);
+        }
       },
       deep: true,
     },
     modelValue: {
-      handler(newValue: Transfer) {
-        if (deepEqual(this.model, newValue) || JSON.stringify(newValue) === JSON.stringify(this.model)) {
-          console.log("value-transfer: Model is the same, not updating");
-          return;
-        }
+      handler(newValue: Partial<Transfer>) {
         if (!newValue) {
-          console.log("value-transfer: Reset");
-          this.reset();
+          this.logger.info("Reset");
+          this.model = model();
         } else {
-          console.log("value-transfer: Updating model from prop", JSON.stringify(newValue));
-          this.model.targetKey = newValue.targetKey;
-          this.model.optional = newValue.optional;
-          // @ts-expect-error
-          this.model.sourceKey = newValue.sourceKey;
-          // @ts-expect-error
-          this.model.extract = newValue.extract;
-          // @ts-expect-error
-          this.model.html = newValue.html;
-          // @ts-expect-error
-          this.model.type = newValue.type;
-          // @ts-expect-error
-          this.model.mapping = newValue.mapping;
+          const newModel = clone(this.model);
+          newModel.targetKey = newValue.targetKey || "";
+          newModel.optional = newValue.optional || false;
+          newModel.sourceKey = ("sourceKey" in newValue && newValue.sourceKey) || "";
+
+          let toUse: Source = "text";
+
+          if ("extract" in newValue) {
+            if (typeof newValue.extract === "string") {
+              newModel.extractRegex = newValue.extract || "";
+
+              if (newValue.extract) {
+                toUse = "regex";
+              }
+            } else if (typeof newValue.extract === "object") {
+              newModel.extractAttribute = newValue.extract || {};
+
+              if (newValue.extract.attribute) {
+                toUse = "attribute";
+              }
+            } else {
+              newModel.extractRegex = "";
+              newModel.extractAttribute = { attribute: "" };
+            }
+          }
+          newModel.use = toUse;
+          newModel.html = "html" in newValue && newValue.html;
+          newModel.type = ("type" in newValue && newValue.type) || "string";
+          newModel.mappings = Object.entries((newValue.mapping || {}).include || {});
+
+          if (deepEqual(newModel, this.model)) {
+            this.logger.info("Did not update model from prop");
+          } else {
+            this.logger.info("Updated model from prop");
+            this.model = newModel;
+          }
         }
       },
       deep: true,
+      immediate: true,
     },
   },
   created() {
-    const mapping = this.modelValue.mapping?.include || {};
-    this.mappings = Object.entries(mapping).map((value) => ({ from: value[0], to: value[1] }));
+    this.logger.info("I have created!");
   },
   methods: {
-    reset() {
-      this.extractAttribute = { attribute: "" };
-      this.extractRegex = "";
-      this.mappings = [];
-      this.nextFrom = "";
-      this.nextTo = "";
-      this.model = {
-        targetKey: "",
-        sourceKey: "",
-        type: "string",
-        optional: false,
-        html: false,
-      };
-    },
     createMapping() {
-      this.mappings.push({ from: this.nextFrom, to: this.nextTo });
+      this.model.mappings.push([this.nextFrom, this.nextTo]);
       this.nextFrom = "";
       this.nextTo = "";
     },

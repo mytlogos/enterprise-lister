@@ -5,7 +5,7 @@
         <label for="attributeName" class="form-label">Attributename</label>
         <input
           id="attributeName"
-          v-model="attribute"
+          v-model="model.attribute"
           type="text"
           class="form-control"
           placeholder="Name of the Attribute"
@@ -17,11 +17,11 @@
         <div class="form-check form-switch">
           <input
             id="resolveAttributeValue"
-            v-model="resolve"
+            v-model="model.resolve"
             class="form-check-input"
             type="checkbox"
             role="switch"
-            :checked="resolve"
+            :checked="model.resolve"
           />
           <label class="form-check-label" for="resolveAttributeValue">Resolve Value with Base Link</label>
         </div>
@@ -32,32 +32,47 @@
         <div class="form-check form-switch">
           <input
             id="useRegex"
-            v-model="useRegex"
+            v-model="model.useRegex"
             class="form-check-input"
             type="checkbox"
             role="switch"
-            :checked="useRegex"
+            :checked="model.useRegex"
           />
           <label class="form-check-label" for="useRegex">Use Regex for Value</label>
         </div>
       </div>
     </div>
-    <div v-if="useRegex" class="row mb-3">
+    <div v-if="model.useRegex" class="row mb-3">
       <div class="col">
-        <regex v-model="regex" />
+        <regex v-model="model.regex" />
       </div>
       <div class="col">
         <label for="replace" class="form-label">Replace value with</label>
-        <input id="replace" v-model="replace" type="text" class="form-control" placeholder="Replace Pattern" />
+        <input id="replace" v-model="model.replace" type="text" class="form-control" placeholder="Replace Pattern" />
       </div>
     </div>
   </div>
 </template>
 <script lang="ts">
-import { AttributeSelector } from "enterprise-scraper/dist/externals/custom/types";
+import { AttributeSelector, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
-import { createComputedProperty } from "../../init";
+import { clone, deepEqual, Logger } from "../../init";
 import Regex from "./regex.vue";
+
+function model() {
+  return {
+    useRegex: false,
+    attribute: "",
+    resolve: false,
+    regex: {
+      pattern: "",
+      flags: "",
+    },
+    replace: "",
+  };
+}
+
+const logger = new Logger("attribute-selector");
 
 export default defineComponent({
   name: "AttributeSelector",
@@ -73,31 +88,62 @@ export default defineComponent({
   emits: ["update:modelValue"],
   data() {
     return {
-      useRegex: false,
+      model: model(),
     };
   },
-  computed: {
-    attribute: createComputedProperty("modelValue", "attribute"),
-    resolve: createComputedProperty("modelValue", "resolve"),
-    regex: createComputedProperty("modelValue", "regex"),
-    replace: createComputedProperty("modelValue", "replace"),
-  },
   watch: {
-    useRegex(newValue: boolean) {
-      if (!newValue) {
-        const tmp = { ...this.modelValue };
-
-        if ("regex" in tmp) {
+    model: {
+      handler(newValue: ReturnType<typeof model>) {
+        const newModelValue: Partial<AttributeSelector> = {
+          attribute: newValue.attribute,
           // @ts-expect-error
-          delete tmp.regex;
-          // @ts-expect-error
-          delete tmp.replace;
+          resolve: newValue.resolve,
+        };
 
-          this.$emit("update:modelValue", tmp);
+        if (newValue.useRegex) {
+          // @ts-expect-error
+          newModelValue.regex = {
+            pattern: newValue.regex.pattern,
+            flags: newValue.regex.flags,
+          };
+          // @ts-expect-error
+          newModelValue.replace = newValue.replace;
         }
-      } else {
-        this.$emit("update:modelValue", { ...this.modelValue, regex: {} });
-      }
+
+        if (deepEqual(newModelValue, this.modelValue)) {
+          logger.info("Did not update model from prop");
+        } else {
+          logger.info("Updated modelValue");
+          this.$emit("update:modelValue", newModelValue);
+        }
+      },
+      deep: true,
+    },
+    modelValue: {
+      handler(newValue: Partial<AttributeSelector>) {
+        if (!newValue) {
+          this.model = model();
+          logger.info("attribute-selector: Resetting cuz ther is no value");
+          return;
+        }
+        const newModel = clone(this.model);
+        newModel.attribute = newValue.attribute || "";
+        newModel.resolve = (newValue.resolve as boolean) || false;
+        newModel.regex = ("regex" in newValue && (newValue.regex as JsonRegex)) || { flags: "", pattern: "" };
+        newModel.replace = ("replace" in newValue && newValue.replace) || "";
+
+        if (newModel.regex.pattern || newModel.regex.flags) {
+          newModel.useRegex = true;
+        }
+        if (deepEqual(newModel, this.model)) {
+          logger.info("Did not update model from prop");
+        } else {
+          logger.info("Updated model from prop");
+          this.model = newModel;
+        }
+      },
+      deep: true,
+      immediate: true,
     },
   },
 });
