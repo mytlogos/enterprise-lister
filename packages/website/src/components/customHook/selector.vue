@@ -1,116 +1,112 @@
 <template>
-  <div
-    class="card mt-3"
-    role="button"
-    data-bs-toggle="collapse"
-    :data-bs-target="'#selector' + id"
-    aria-expanded="true"
-  >
-    <div class="card-body">Selector {{ selector }}</div>
-  </div>
-  <div :id="'selector' + id" ref="collapse" class="collapse show">
-    <div class="card card-body">
-      <div class="d-flex">
-        <i
-          aria-hidden="true"
-          title="Delete Item"
-          class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-          @click="$emit('delete')"
-        ></i>
-      </div>
-      <div class="row mb-3">
-        <div class="col">
-          <label for="selector" class="form-label">{{ selectorTitle }} Selector</label>
-          <input
-            id="selector"
-            v-model="selector"
-            type="text"
-            class="form-control"
-            :placeholder="selectorPlaceholder"
-            required
+  <div>
+    <div class="card" role="button" data-bs-toggle="collapse" :data-bs-target="'#selector' + id" aria-expanded="true">
+      <div class="card-body">Selector {{ selector }}</div>
+    </div>
+    <div :id="'selector' + id" ref="collapse" class="collapse show">
+      <div class="card card-body">
+        <div class="d-flex">
+          <i
+            aria-hidden="true"
+            title="Delete Item"
+            class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
+            @click="$emit('delete')"
+          ></i>
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <label for="selector" class="form-label">{{ selectorTitle }} Selector</label>
+            <input
+              id="selector"
+              v-model="selector"
+              type="text"
+              class="form-control"
+              :placeholder="selectorPlaceholder"
+              required
+            />
+          </div>
+        </div>
+        <regex v-if="allowRegex" v-model="regex" />
+        <div class="row align-items-center mb-3">
+          <div class="col">
+            <div class="form-check form-switch">
+              <input
+                id="multipleResults"
+                v-model="multiple"
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                :checked="multiple"
+              />
+              <label class="form-check-label" for="multipleResults">Expect multiple results for Selector</label>
+            </div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <button class="btn btn-primary" role="button" @click="addVariable">Add Variable</button>
+          <template v-if="variables.length">
+            <div
+              class="card card-body mt-3"
+              role="button"
+              data-bs-toggle="collapse"
+              :data-bs-target="'#selector' + id + 'transfers'"
+              aria-expanded="true"
+            >
+              Variables
+            </div>
+            <div :id="'selector' + id + 'transfers'" class="collapse show">
+              <div class="card">
+                <variable-extractor
+                  v-for="(variable, index) in variables"
+                  :key="variable.variableName + index"
+                  v-model="variables[index]"
+                  :selector-type="currentSelectorType"
+                  class="card-body mt-3"
+                  :class="{ 'border-top': index }"
+                  @delete="remove(variables, index)"
+                />
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="mb-3">
+          <button class="btn btn-primary" role="button" @click="addTransfer">Add Transfer</button>
+          <template v-if="transfers.length">
+            <div
+              class="card card-body mt-3"
+              role="button"
+              data-bs-toggle="collapse"
+              :data-bs-target="'#selector' + id + 'transfers'"
+              aria-expanded="true"
+            >
+              Transfers
+            </div>
+            <div :id="'selector' + id + 'transfers'" class="collapse show">
+              <div class="card">
+                <value-transfer
+                  v-for="(transfer, index) in transfers"
+                  :key="transfer.targetKey + index"
+                  v-model="transfers[index]"
+                  :selector-type="currentSelectorType"
+                  class="card-body mt-3"
+                  :class="{ 'border-top': index }"
+                  @delete="remove(transfers, index)"
+                />
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="mb-3">
+          <button class="btn btn-primary" role="button" @click="addChild">Add Child</button>
+          <selector
+            v-for="(child, index) in children"
+            :key="index"
+            v-model="children[index]"
+            :selector-types="selectorTypes"
+            class="mt-3"
+            @delete="remove(children, index)"
           />
         </div>
-      </div>
-      <regex v-if="allowRegex" v-model="regex" />
-      <div class="row align-items-center mb-3">
-        <div class="col">
-          <div class="form-check form-switch">
-            <input
-              id="multipleResults"
-              v-model="multiple"
-              class="form-check-input"
-              type="checkbox"
-              role="switch"
-              :checked="multiple"
-            />
-            <label class="form-check-label" for="multipleResults">Expect multiple results for Selector</label>
-          </div>
-        </div>
-      </div>
-      <div class="mb-3">
-        <button class="btn btn-primary" role="button" @click="addVariable">Add Variable</button>
-        <template v-if="variables.length">
-          <div
-            class="card card-body mt-3"
-            role="button"
-            data-bs-toggle="collapse"
-            :data-bs-target="'#selector' + id + 'transfers'"
-            aria-expanded="true"
-          >
-            Variables
-          </div>
-          <div :id="'selector' + id + 'transfers'" class="collapse show">
-            <div class="card">
-              <variable-extractor
-                v-for="(variable, index) in variables"
-                :key="variable.variableName + index"
-                v-model="variables[index]"
-                :selector-type="currentSelectorType"
-                class="card-body mt-3"
-                :class="{ 'border-top': index }"
-                @delete="remove(variables, index)"
-              />
-            </div>
-          </div>
-        </template>
-      </div>
-      <div class="mb-3">
-        <button class="btn btn-primary" role="button" @click="addTransfer">Add Transfer</button>
-        <template v-if="transfers.length">
-          <div
-            class="card card-body mt-3"
-            role="button"
-            data-bs-toggle="collapse"
-            :data-bs-target="'#selector' + id + 'transfers'"
-            aria-expanded="true"
-          >
-            Transfers
-          </div>
-          <div :id="'selector' + id + 'transfers'" class="collapse show">
-            <div class="card">
-              <value-transfer
-                v-for="(transfer, index) in transfers"
-                :key="transfer.targetKey + index"
-                v-model="transfers[index]"
-                :selector-type="currentSelectorType"
-                class="card-body mt-3"
-                :class="{ 'border-top': index }"
-                @delete="remove(transfers, index)"
-              />
-            </div>
-          </div>
-        </template>
-      </div>
-      <div class="mb-3">
-        <button class="btn btn-primary" role="button" @click="addChild">Add Child</button>
-        <selector
-          v-for="(child, index) in children"
-          :key="index"
-          v-model="children[index]"
-          :selector-types="selectorTypes"
-          class="mt-3"
-          @delete="remove(children, index)"
-        />
       </div>
     </div>
   </div>
