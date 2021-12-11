@@ -14,7 +14,7 @@
         <label for="sourceKey" class="form-label">Source Key</label>
         <input
           id="sourceKey"
-          v-model="sourceKey"
+          v-model="model.sourceKey"
           type="text"
           class="form-control"
           placeholder="Name of the Source Property"
@@ -25,7 +25,7 @@
         <label for="targetKey" class="form-label">Target Key</label>
         <input
           id="targetKey"
-          v-model="targetKey"
+          v-model="model.targetKey"
           type="text"
           class="form-control"
           placeholder="Name of the Target Property"
@@ -39,13 +39,13 @@
           <template v-for="type in allowedTypes" :key="type">
             <input
               :id="'type' + type + id"
-              v-model="useType"
+              v-model="model.type"
               type="radio"
               class="btn-check"
               :name="'valueType' + id"
               autocomplete="off"
               :value="type"
-              :checked="useType === type"
+              :checked="model.type === type"
             />
             <label class="btn btn-outline-primary" :for="'type' + type + id">{{ type }}</label>
           </template>
@@ -103,11 +103,11 @@
         <div class="form-check form-switch">
           <input
             id="optionalTransfer"
-            v-model="optional"
+            v-model="model.optional"
             class="form-check-input"
             type="checkbox"
             role="switch"
-            :checked="optional"
+            :checked="model.optional"
           />
           <label class="form-check-label" for="optionalTransfer">Optional (does not throw error when failing)</label>
         </div>
@@ -118,11 +118,11 @@
         <div class="form-check form-switch">
           <input
             id="useHtml"
-            v-model="useHtml"
+            v-model="model.html"
             class="form-check-input"
             type="checkbox"
             role="switch"
-            :checked="useHtml"
+            :checked="model.html"
           />
           <label class="form-check-label" for="useHtml">Use HTML for value source</label>
         </div>
@@ -131,10 +131,16 @@
     <div v-if="use === 'regex'" class="row mb-3">
       <div class="col">
         <label for="variableName" class="form-label">Value Transformation Regex Replace</label>
-        <input id="variableName" v-model="value" type="text" class="form-control" placeholder="Replace Pattern" />
+        <input
+          id="variableName"
+          v-model="extractRegex"
+          type="text"
+          class="form-control"
+          placeholder="Replace Pattern"
+        />
       </div>
     </div>
-    <attribute-selector v-else-if="use === 'attribute' && extract && allowAttribute" v-model="extract" />
+    <attribute-selector v-else-if="use === 'attribute' && allowAttribute" v-model="extractAttribute" />
     <div>Transfer Mapping</div>
     <div v-for="mapping in mappings" :key="mapping.from" class="row align-items-center mb-3">
       <div class="col">
@@ -174,18 +180,21 @@
 </template>
 <script lang="ts">
 import {
+  AttributeSelector as AttributeSelectorType,
   JSONTransfer,
   RegexTransfer,
   SimpleTransfer,
   TransferType,
 } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
-import { createComputedProperty, idGenerator } from "../../init";
+import { clone, idGenerator, deepEqual } from "../../init";
 import { SelectorValueType } from "../../siteTypes";
 import AttributeSelector from "./attribute-selector.vue";
 
 const nextId = idGenerator();
 type Source = "text" | "regex" | "attribute";
+
+type Transfer = SimpleTransfer<any> | RegexTransfer<any> | JSONTransfer<any, any>;
 
 export default defineComponent({
   name: "ValueTransfer",
@@ -198,7 +207,7 @@ export default defineComponent({
       required: true,
     },
     modelValue: {
-      type: Object as PropType<SimpleTransfer<any> | RegexTransfer<any> | JSONTransfer<any, any>>,
+      type: Object as PropType<Transfer>,
       required: true,
     },
   },
@@ -206,20 +215,21 @@ export default defineComponent({
   data: () => ({
     id: nextId(),
     use: "text" as Source,
-    extract: {},
-    value: "",
+    extractAttribute: {} as AttributeSelectorType,
+    extractRegex: "",
     nextTo: "",
     nextFrom: "",
     mappings: [] as Array<{ from: string; to: string }>,
     allowedTypes: ["string", "decimal", "integer", "date"] as TransferType[],
+    model: {
+      targetKey: "",
+      sourceKey: "",
+      type: "string",
+      optional: false as boolean | undefined,
+      html: false as boolean | undefined,
+    },
   }),
   computed: {
-    sourceKey: createComputedProperty("modelValue", "sourceKey"),
-    targetKey: createComputedProperty("modelValue", "targetKey"),
-    useType: createComputedProperty("modelValue", "type"),
-    optional: createComputedProperty("modelValue", "optional"),
-    useHtml: createComputedProperty("modelValue", "html"),
-
     allowRegex(): boolean {
       return this.selectorType === "regex";
     },
@@ -292,21 +302,56 @@ export default defineComponent({
       },
       deep: true,
     },
-    extract: {
-      handler() {
-        this.$emit("update:modelValue", { ...this.modelValue, extract: { ...this.extract } });
+    extractAttribute: {
+      handler(newValue: AttributeSelectorType) {
+        // @ts-expect-error
+        this.model.extract = newValue;
       },
       deep: true,
     },
-    "modelValue.extract": {
-      handler(newValue: any) {
+    extractRegex: {
+      handler(newValue: string) {
+        // @ts-expect-error
+        this.model.extract = newValue;
+      },
+      deep: true,
+    },
+    model: {
+      handler(newValue: Transfer) {
+        // do not check strict, use undefined == ""
+        if (deepEqual(this.modelValue, newValue) || JSON.stringify(newValue) === JSON.stringify(this.modelValue)) {
+          console.log("value-transfer: Model Value is the same, not updating");
+          return;
+        }
+        clone(this.modelValue);
+        console.log("value-transfer: Updating modelValue", JSON.stringify(newValue));
+        this.$emit("update:modelValue", clone(newValue));
+      },
+      deep: true,
+    },
+    modelValue: {
+      handler(newValue: Transfer) {
+        if (deepEqual(this.model, newValue) || JSON.stringify(newValue) === JSON.stringify(this.model)) {
+          console.log("value-transfer: Model is the same, not updating");
+          return;
+        }
         if (!newValue) {
-          this.extract = {};
+          console.log("value-transfer: Reset");
+          this.reset();
         } else {
-          if (Object.values(newValue).some((value) => !!value)) {
-            this.use = "attribute";
-          }
-          this.extract = { ...newValue };
+          console.log("value-transfer: Updating model from prop", JSON.stringify(newValue));
+          this.model.targetKey = newValue.targetKey;
+          this.model.optional = newValue.optional;
+          // @ts-expect-error
+          this.model.sourceKey = newValue.sourceKey;
+          // @ts-expect-error
+          this.model.extract = newValue.extract;
+          // @ts-expect-error
+          this.model.html = newValue.html;
+          // @ts-expect-error
+          this.model.type = newValue.type;
+          // @ts-expect-error
+          this.model.mapping = newValue.mapping;
         }
       },
       deep: true,
@@ -317,6 +362,20 @@ export default defineComponent({
     this.mappings = Object.entries(mapping).map((value) => ({ from: value[0], to: value[1] }));
   },
   methods: {
+    reset() {
+      this.extractAttribute = { attribute: "" };
+      this.extractRegex = "";
+      this.mappings = [];
+      this.nextFrom = "";
+      this.nextTo = "";
+      this.model = {
+        targetKey: "",
+        sourceKey: "",
+        type: "string",
+        optional: false,
+        html: false,
+      };
+    },
     createMapping() {
       this.mappings.push({ from: this.nextFrom, to: this.nextTo });
       this.nextFrom = "";

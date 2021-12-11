@@ -97,12 +97,13 @@ import "vue-prism-editor/dist/prismeditor.min.css"; // import the styles somewhe
 import { highlight, languages } from "prismjs/components/prism-core";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
-import type { HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
+import type { BasicScraperConfig, HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "@vue/runtime-core";
 import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/custom-hook-form.vue";
+import { clone } from "../init";
 
 interface Data {
   code: string;
@@ -174,51 +175,7 @@ export default defineComponent({
   },
   methods: {
     setConfig(value: Partial<HookConfig>) {
-      if (value.news) {
-        if (!value.news.selector) {
-          value.news.selector = [{ selector: "" }];
-        }
-        if (Array.isArray(value.news.selector)) {
-          value.news.selector.forEach((item: any) => this.validateSelector(item));
-        } else {
-          this.validateSelector(value.news.selector as any);
-        }
-      }
-      if (value.download) {
-        if (!value.download.selector) {
-          value.download.selector = [{ selector: "" }];
-        }
-        if (Array.isArray(value.download.selector)) {
-          value.download.selector.forEach((item: any) => this.validateSelector(item));
-        } else {
-          this.validateSelector(value.download.selector as any);
-        }
-      }
-      if (value.search) {
-        if (!value.search.selector) {
-          value.search.selector = [{ selector: "" }];
-        }
-        if (Array.isArray(value.search.selector)) {
-          value.search.selector.forEach((item: any) => this.validateSelector(item));
-        } else {
-          this.validateSelector(value.search.selector as any);
-        }
-      }
-      if (value.toc) {
-        if (!Array.isArray(value.toc)) {
-          value.toc = [value.toc];
-        }
-        value.toc.forEach((element: any) => {
-          if (!element.selector) {
-            element.selector = [{ selector: "" }];
-          }
-          if (Array.isArray(element.selector)) {
-            element.selector.forEach((item: any) => this.validateSelector(item));
-          } else {
-            this.validateSelector(element.selector as any);
-          }
-        });
-      }
+      console.log("CustomHookView: Updating HookConfig");
       this.value = value;
     },
     validateSelector<T extends BasicSelector>(value: T) {
@@ -238,14 +195,87 @@ export default defineComponent({
     highlighter(code: string) {
       return highlight(code, languages.json); // languages.<insert language> to return html with markup
     },
+    cleanSelector(value: any) {
+      if (!value) {
+        return;
+      }
+      if (typeof value.regex === "object" && !value.regex.pattern && !value.regex.flags) {
+        delete value.regex;
+
+        for (const transfer of value.transfers || []) {
+          if (!transfer.extract) {
+            delete transfer.extract;
+          }
+        }
+        for (const variable of value.variables || []) {
+          if (!variable.value) {
+            delete variable.value;
+          }
+        }
+      }
+      for (const child of value.children || []) {
+        this.cleanSelector(child);
+      }
+    },
+    cleanEmptyObject(value: any) {
+      if (typeof value !== "object") {
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (let index = 0; index < value.length; index++) {
+          const keyValue = value[index];
+
+          if (typeof keyValue === "object" && keyValue) {
+            this.cleanEmptyObject(keyValue);
+
+            if (!Object.keys(keyValue).length) {
+              value.splice(index, 1);
+              index--;
+            }
+          } else if (typeof keyValue === "string" && !keyValue) {
+            value.splice(index, 1);
+            index--;
+          }
+        }
+        return;
+      }
+      for (const [key, keyValue] of Object.entries(value)) {
+        if (typeof keyValue === "object" && keyValue) {
+          this.cleanEmptyObject(keyValue);
+
+          if (!Object.keys(keyValue).length) {
+            delete value[key];
+          }
+        } else if (typeof keyValue === "string" && !keyValue) {
+          delete value[key];
+        }
+      }
+    },
+    clean(value: any & BasicScraperConfig<any>) {
+      if (!value) {
+        return;
+      }
+      if (Array.isArray(value.selector)) {
+        value.selector.forEach((selector: any) => this.cleanSelector(selector));
+      } else {
+        this.cleanSelector(value.selector);
+      }
+      this.cleanEmptyObject(value);
+    },
     testHook(hookKey: keyof HookConfig) {
       if (this.loading) {
         return;
       }
       this.loading = true;
 
+      const hookConfig = clone(this.value);
+      this.clean(hookConfig.news);
+      this.clean(hookConfig.toc);
+      this.clean(hookConfig.download);
+      this.clean(hookConfig.search);
+
       HttpClient.testHook({
-        config: this.value as any,
+        config: hookConfig as any,
         key: hookKey,
         param: this.param,
       })

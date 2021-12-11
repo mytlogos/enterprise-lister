@@ -375,3 +375,68 @@ export function createComputedProperty(propName: string, property: string) {
     },
   };
 }
+
+export function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
+}
+
+export function deepEqual(actual: any, expected: any): boolean {
+  if (!!actual !== !!expected) {
+    return false;
+  }
+  if (!!actual === false) {
+    return true;
+  }
+  if (typeof actual !== typeof expected) {
+    return false;
+  }
+  if (actual.toString() !== expected.toString()) {
+    return false;
+  }
+
+  if (typeof actual === "object") {
+    if (actual instanceof Date) {
+      if (expected instanceof Date) {
+        return actual.getTime() === expected.getTime();
+      } else {
+        return false;
+      }
+    } else if (expected instanceof Date) {
+      return false;
+    }
+
+    const expectedKeys = Object.keys(expected);
+    const actualKeys = Object.keys(actual);
+
+    expectedKeys.sort();
+    actualKeys.sort();
+
+    for (const key of actualKeys) {
+      const index = expectedKeys.indexOf(key);
+
+      // trim expectedKeys
+      if (index >= 0) {
+        expectedKeys.splice(index, 1);
+      }
+
+      const actualValue = actual[key];
+      const expectedValue = expected[key];
+
+      if (!deepEqual(actualValue, expectedValue)) {
+        return false;
+      }
+    }
+
+    for (const key of expectedKeys) {
+      const actualValue = actual[key];
+      const expectedValue = expected[key];
+
+      if (!deepEqual(actualValue, expectedValue)) {
+        return false;
+      }
+    }
+    return true;
+  } else {
+    return actual === expected;
+  }
+}
