@@ -278,6 +278,8 @@ export default defineComponent({
         } else {
           // @ts-expect-error
           result.html = newValue.html;
+          // @ts-expect-error
+          result.type = newValue.type;
 
           if (newValue.use === "regex") {
             // @ts-expect-error
