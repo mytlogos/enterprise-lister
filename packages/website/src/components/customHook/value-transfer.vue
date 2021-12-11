@@ -182,12 +182,16 @@ import {
 import { defineComponent, PropType } from "vue";
 import { createComputedProperty, idGenerator } from "../../init";
 import { SelectorValueType } from "../../siteTypes";
+import AttributeSelector from "./attribute-selector.vue";
 
 const nextId = idGenerator();
 type Source = "text" | "regex" | "attribute";
 
 export default defineComponent({
   name: "ValueTransfer",
+  components: {
+    AttributeSelector,
+  },
   props: {
     selectorType: {
       type: String as PropType<SelectorValueType>,
@@ -285,6 +289,25 @@ export default defineComponent({
           return previous;
         }, {} as { [key: string]: string });
         this.$emit("update:modelValue", { ...this.modelValue, mapping: { include: result } });
+      },
+      deep: true,
+    },
+    extract: {
+      handler() {
+        this.$emit("update:modelValue", { ...this.modelValue, extract: { ...this.extract } });
+      },
+      deep: true,
+    },
+    "modelValue.extract": {
+      handler(newValue: any) {
+        if (!newValue) {
+          this.extract = {};
+        } else {
+          if (Object.values(newValue).some((value) => !!value)) {
+            this.use = "attribute";
+          }
+          this.extract = { ...newValue };
+        }
       },
       deep: true,
     },

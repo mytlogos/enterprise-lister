@@ -235,6 +235,9 @@ export default defineComponent({
     if (this.modelValue.variables) {
       this.variables = [...this.modelValue.variables];
     }
+    if (this.allowRegex && !this.regex) {
+      this.regex = {};
+    }
   },
   methods: {
     remove(array: any[], index: number) {

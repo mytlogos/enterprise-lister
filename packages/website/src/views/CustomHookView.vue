@@ -97,7 +97,7 @@ import "vue-prism-editor/dist/prismeditor.min.css"; // import the styles somewhe
 import { highlight, languages } from "prismjs/components/prism-core";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
-import type { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
+import type { HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "@vue/runtime-core";
 import { HookState } from "../siteTypes";
@@ -114,6 +114,11 @@ interface Data {
   value: Partial<HookConfig>;
   hook: Partial<CustomHook>;
   activeTab: "form" | "editor";
+}
+
+interface BasicSelector {
+  regex?: JsonRegex;
+  children: BasicSelector[];
 }
 
 export default defineComponent({
@@ -150,7 +155,7 @@ export default defineComponent({
     code(newValue: string) {
       try {
         // TODO: debounce this
-        this.value = JSON.parse(newValue);
+        this.setConfig(JSON.parse(newValue));
         this.invalid = "";
       } catch (e) {
         if (e && typeof e === "object" && "message" in e) {
@@ -168,6 +173,62 @@ export default defineComponent({
     this.load();
   },
   methods: {
+    setConfig(value: Partial<HookConfig>) {
+      if (value.news) {
+        if (!value.news.selector) {
+          value.news.selector = [{ selector: "" }];
+        }
+        if (Array.isArray(value.news.selector)) {
+          value.news.selector.forEach((item: any) => this.validateSelector(item));
+        } else {
+          this.validateSelector(value.news.selector as any);
+        }
+      }
+      if (value.download) {
+        if (!value.download.selector) {
+          value.download.selector = [{ selector: "" }];
+        }
+        if (Array.isArray(value.download.selector)) {
+          value.download.selector.forEach((item: any) => this.validateSelector(item));
+        } else {
+          this.validateSelector(value.download.selector as any);
+        }
+      }
+      if (value.search) {
+        if (!value.search.selector) {
+          value.search.selector = [{ selector: "" }];
+        }
+        if (Array.isArray(value.search.selector)) {
+          value.search.selector.forEach((item: any) => this.validateSelector(item));
+        } else {
+          this.validateSelector(value.search.selector as any);
+        }
+      }
+      if (value.toc) {
+        if (!Array.isArray(value.toc)) {
+          value.toc = [value.toc];
+        }
+        value.toc.forEach((element: any) => {
+          if (!element.selector) {
+            element.selector = [{ selector: "" }];
+          }
+          if (Array.isArray(element.selector)) {
+            element.selector.forEach((item: any) => this.validateSelector(item));
+          } else {
+            this.validateSelector(element.selector as any);
+          }
+        });
+      }
+      this.value = value;
+    },
+    validateSelector<T extends BasicSelector>(value: T) {
+      if (!value.regex) {
+        value.regex = { pattern: "", flags: "" };
+      }
+      if (value.children) {
+        value.children.forEach((child: BasicSelector) => this.validateSelector(child));
+      }
+    },
     isActiveTab(tab: Data["activeTab"]) {
       return this.activeTab === tab;
     },
@@ -177,7 +238,6 @@ export default defineComponent({
     highlighter(code: string) {
       return highlight(code, languages.json); // languages.<insert language> to return html with markup
     },
-
     testHook(hookKey: keyof HookConfig) {
       if (this.loading) {
         return;
