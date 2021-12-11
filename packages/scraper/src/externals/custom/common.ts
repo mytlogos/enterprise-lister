@@ -341,6 +341,10 @@ export const extractValue = traceWrap(function extractValue(result: any, targetK
 });
 
 const mapValue = traceWrap(function mapValue(value: string, mapping: TransferMapping | undefined): string {
+  if (!value) {
+    return value;
+  }
+
   if (mapping) {
     if (mapping.include) {
       const lowerValue = value.toLowerCase();
@@ -448,7 +452,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
   for (const transfer of transfers) {
     let value: string;
 
-    if (transfer.extract) {
+    if (transfer.extract && Object.keys(transfer.extract).length) {
       value = getAttributeValue(element, transfer.extract, base);
     } else if (transfer.html) {
       if (html == null) {
@@ -495,9 +499,9 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
   for (const transfer of transfers) {
     let value: string;
 
-    if (typeof transfer.extract === "object") {
+    if (typeof transfer.extract === "object" && Object.keys(transfer.extract).length) {
       value = getAttributeValue(element, transfer.extract, base);
-    } else {
+    } else if (typeof transfer.extract === "string") {
       if (match === undefined) {
         const text = sanitizeString(element.text().trim());
         match = toRegex(selector.regex).exec(text);
