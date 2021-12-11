@@ -103,7 +103,7 @@ import { defineComponent } from "@vue/runtime-core";
 import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/custom-hook-form.vue";
-import { clone } from "../init";
+import { clone, deepEqual, Logger } from "../init";
 
 interface Data {
   code: string;
@@ -115,6 +115,7 @@ interface Data {
   value: Partial<HookConfig>;
   hook: Partial<CustomHook>;
   activeTab: "form" | "editor";
+  logger: Logger;
 }
 
 interface BasicSelector {
@@ -136,6 +137,7 @@ export default defineComponent({
   data(): Data {
     return {
       loading: false,
+      logger: new Logger("CustomHookView"),
       code: "",
       invalid: "",
       param: "",
@@ -175,7 +177,11 @@ export default defineComponent({
   },
   methods: {
     setConfig(value: Partial<HookConfig>) {
-      console.log("CustomHookView: Updating HookConfig");
+      if (deepEqual(value, this.value)) {
+        this.logger.info("No config update required");
+        return;
+      }
+      this.logger.info("Updated HookConfig");
       this.value = value;
     },
     validateSelector<T extends BasicSelector>(value: T) {
