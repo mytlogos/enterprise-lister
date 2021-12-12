@@ -1,3 +1,15 @@
+# [1.21.0](https://github.com/mytlogos/enterprise-lister/compare/v1.20.4...v1.21.0) (2021-12-12)
+
+
+### Bug Fixes
+
+* **website:** update config only on change ([fbfc28f](https://github.com/mytlogos/enterprise-lister/commit/fbfc28f0fa7e80d5d2a7fa259164b936121534cf))
+
+
+### Features
+
+* **website:** add syntax highlight to regex ([17e3226](https://github.com/mytlogos/enterprise-lister/commit/17e322638672de1548169bb61a4c6b54978a0e50))
+
 ## [1.20.4](https://github.com/mytlogos/enterprise-lister/compare/v1.20.3...v1.20.4) (2021-12-11)
 
 
