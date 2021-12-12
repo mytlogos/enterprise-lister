@@ -1,3 +1,15 @@
+## [1.20.4](https://github.com/mytlogos/enterprise-lister/compare/v1.20.3...v1.20.4) (2021-12-11)
+
+
+### Bug Fixes
+
+* **scraper:** fix falsy value and empty objects ([ee95e54](https://github.com/mytlogos/enterprise-lister/commit/ee95e54ab03f4781b8501192e8cfa0821fafc949))
+* **website:** add missing type binding ([7086cd7](https://github.com/mytlogos/enterprise-lister/commit/7086cd79c1d60b77fdbb5affca96cc0a5f2f2c39))
+* **website:** address vue warnings ([5e3411a](https://github.com/mytlogos/enterprise-lister/commit/5e3411ac54d78c5d34a963f51b8ec2770674c3ca))
+* **website:** address warnings ([4714130](https://github.com/mytlogos/enterprise-lister/commit/4714130ed55bf7974ec8b5f8104a731618fee968))
+* **website:** fix vue warning ([1900203](https://github.com/mytlogos/enterprise-lister/commit/19002035fbdbab8310173a3ac785992f2c7d21a3))
+* **website:** missing bindings ([e13eead](https://github.com/mytlogos/enterprise-lister/commit/e13eead61aa41ad0b541fa0b4c35e69c380dcc6f))
+
 ## [1.20.3](https://github.com/mytlogos/enterprise-lister/compare/v1.20.2...v1.20.3) (2021-12-10)
 
 
