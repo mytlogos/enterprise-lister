@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "@fortawesome/fontawesome-free/css/all.css";
 import Router from "./router";
 import AppComponent from "./App.vue";
+import "./registerServiceWorker";
 import VueObserveVisibility from "vue-observe-visibility";
 import { store } from "./store/store";
 
