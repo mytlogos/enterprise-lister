@@ -77,7 +77,8 @@ app.use("/doc", swaggerUi.serve, swaggerUi.setup(specs));
 app.use(express.static(path.join(parentDirName, "website", "dist")));
 
 app.use((req, res) => {
-  if (!req.path.startsWith("/api") && req.method === "GET") {
+  // all other GET requests should be the pwa root with path from pwa router
+  if (!req.path.startsWith("/api") && !req.path.startsWith("/doc") && req.method === "GET") {
     res.sendFile(path.join(parentDirName, path.join("website", "dist", "index.html")));
   }
 });
