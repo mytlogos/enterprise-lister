@@ -1,3 +1,11 @@
+## [1.22.1](https://github.com/mytlogos/enterprise-lister/compare/v1.22.0...v1.22.1) (2021-12-15)
+
+
+### Bug Fixes
+
+* **website:** label the table ([ecd3988](https://github.com/mytlogos/enterprise-lister/commit/ecd39887f358c9bd47829d8ab6cf886eb094b4bd))
+* **website:** remove type intersection ([e3ffa0a](https://github.com/mytlogos/enterprise-lister/commit/e3ffa0a7ec22da92691e895710e6e1c3aa0be2a1))
+
 # [1.22.0](https://github.com/mytlogos/enterprise-lister/compare/v1.21.0...v1.22.0) (2021-12-15)
 
 
