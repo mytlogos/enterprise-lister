@@ -257,7 +257,7 @@ export default defineComponent({
         }
       }
     },
-    clean(value: any & BasicScraperConfig<any>) {
+    clean(value: any) {
       if (!value) {
         return;
       }
