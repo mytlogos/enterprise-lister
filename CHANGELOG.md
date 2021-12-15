@@ -1,3 +1,21 @@
+# [1.22.0](https://github.com/mytlogos/enterprise-lister/compare/v1.21.0...v1.22.0) (2021-12-15)
+
+
+### Bug Fixes
+
+* fix pwa not working when offline ([23b787b](https://github.com/mytlogos/enterprise-lister/commit/23b787bc1378b368d5bc2beb23d774ed08f6b800))
+* **server:** restrict index redirect ([74d7418](https://github.com/mytlogos/enterprise-lister/commit/74d741807192a4d4e456c1ea7195bf1c4adb81bb))
+* **server:** restrict serving index.html ([2111361](https://github.com/mytlogos/enterprise-lister/commit/2111361337674cafcd9648af1084f51fa5d38bb6))
+* **website:** add missing icons ([0548331](https://github.com/mytlogos/enterprise-lister/commit/05483311b8ceae37d4c0818f76e787282b9839b8))
+* **website:** fix svg ([26b2a79](https://github.com/mytlogos/enterprise-lister/commit/26b2a792b5b0a643537131b6a84a00ac3be4e7c9))
+* **website:** fix svg ([d5d7fe2](https://github.com/mytlogos/enterprise-lister/commit/d5d7fe295ee9dbca96adc0b410189dc5bf8e271e))
+* **website:** offline navigation ([bffbe36](https://github.com/mytlogos/enterprise-lister/commit/bffbe36e506b7b43b02e9977319d1e4cc2302732))
+
+
+### Features
+
+* **website:** enable basic pwa ([adbfec8](https://github.com/mytlogos/enterprise-lister/commit/adbfec82b9d21fb81e2bb4c37d1c0c007c7775ff))
+
 # [1.21.0](https://github.com/mytlogos/enterprise-lister/compare/v1.20.4...v1.21.0) (2021-12-12)
 
 
