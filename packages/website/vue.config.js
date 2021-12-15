@@ -7,4 +7,12 @@ module.exports = {
   configureWebpack: {
     devtool: "source-map",
   },
+  pwa: {
+    workboxOptions: {
+      navigateFallback: "/index.html",
+      navigateFallbackDenylist: [
+        /\.[^.]+$/ // do not serve index.html for assets (anything with file extension)
+      ],
+    },
+  },
 };
