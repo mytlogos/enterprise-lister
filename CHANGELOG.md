@@ -1,3 +1,10 @@
+## [1.22.2](https://github.com/mytlogos/enterprise-lister/compare/v1.22.1...v1.22.2) (2021-12-15)
+
+
+### Bug Fixes
+
+* **website:** add missing collapsed nav button ([c93c3ba](https://github.com/mytlogos/enterprise-lister/commit/c93c3ba247b61141a0446c7169a0c37214dcf502))
+
 ## [1.22.1](https://github.com/mytlogos/enterprise-lister/compare/v1.22.0...v1.22.1) (2021-12-15)
 
 
