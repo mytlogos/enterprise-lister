@@ -24,7 +24,7 @@
         </button>
       </form>
     </div>
-    <table class="table">
+    <table class="table" aria-label="Table of Medium Items">
       <thead>
         <tr>
           <th scope="col" class="fit">No.</th>
