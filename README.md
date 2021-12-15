@@ -66,6 +66,9 @@ On Linux, the current work directory is used as the fully setup code base. Any c
 
 ```bash
 npm install
+cd packages/website/
+npx vue-pwa-asset-generator -a \<favicon svg image path> # generate pwa icons
+cp \<favicon svg image path> public/img/icons/favicon.svg # copy favicon.svg which is not generated
 ```
 
 ### Start Server
