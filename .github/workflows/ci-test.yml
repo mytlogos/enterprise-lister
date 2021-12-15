@@ -26,6 +26,7 @@ jobs:
           curl -sS https://downloads.mariadb.com/MariaDB/mariadb_repo_setup | sudo bash -s -- --mariadb-server-version="mariadb-10.6"
           sudo apt update
           sudo apt install mariadb-server mariadb-client
+          sudo service mariadb start
           sudo mariadb -u root -e "CREATE USER '$dbUser'@localhost IDENTIFIED BY '$dbPassword';"
           sudo mariadb -u root -e "GRANT ALL PRIVILEGES ON *.* TO '$dbUser'@localhost;"
           sudo mariadb -u root -e "CREATE DATABASE enterprise;"
