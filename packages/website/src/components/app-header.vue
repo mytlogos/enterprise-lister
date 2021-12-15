@@ -3,7 +3,18 @@
     <div class="container-fluid">
       <!-- TODO: set active dynamically via router? -->
       <router-link :to="{ name: 'home' }" tag="a" class="nav-link navbar-brand active"> Enterprise </router-link>
-      <div class="collapse navbar-collapse">
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div id="navbarSupportedContent" class="collapse navbar-collapse">
         <ul class="navbar-nav me-auto">
           <template v-if="loggedIn">
             <li class="nav-item">
@@ -69,6 +80,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import { mapGetters, mapState } from "vuex";
+import "bootstrap/js/dist/collapse";
 
 export default defineComponent({
   name: "AppHeader",
