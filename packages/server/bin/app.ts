@@ -74,14 +74,14 @@ app.use(metricsMiddleware);
 app.use("/api", apiRouter());
 app.use("/doc", swaggerUi.serve, swaggerUi.setup(specs));
 
-// map root to app.html first, before the static files, else it will map to index.html by default
-app.get("/", (req, res) => res.sendFile(path.join(parentDirName, path.join("website", "dist", "app.html"))));
-
 app.use(express.static(path.join(parentDirName, "website", "dist")));
 
+const ignorePaths = ["/api", "/doc", "/js/", "/css/", "/img/"];
+
 app.use((req, res) => {
-  if (!req.path.startsWith("/api") && req.method === "GET") {
-    res.sendFile(path.join(parentDirName, path.join("website", "dist", "app.html")));
+  // all other GET requests should be the pwa root with path from pwa router
+  if (req.method === "GET" && ignorePaths.every((ignored) => !req.path.startsWith(ignored))) {
+    res.sendFile(path.join(parentDirName, path.join("website", "dist", "index.html")));
   }
 });
 
