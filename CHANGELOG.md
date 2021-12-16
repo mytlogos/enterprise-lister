@@ -1,3 +1,15 @@
+# [1.23.0](https://github.com/mytlogos/enterprise-lister/compare/v1.22.2...v1.23.0) (2021-12-16)
+
+
+### Bug Fixes
+
+* **website:** fix progressive side menu ([4519c26](https://github.com/mytlogos/enterprise-lister/commit/4519c267721633a76ee392dd9c627e0b77a31ffc))
+
+
+### Features
+
+* add status page ([d7230b0](https://github.com/mytlogos/enterprise-lister/commit/d7230b0730b35d6271ed45af08867fdcf307fb43))
+
 ## [1.22.2](https://github.com/mytlogos/enterprise-lister/compare/v1.22.1...v1.22.2) (2021-12-15)
 
 
