@@ -58,7 +58,7 @@ export function resolveReference(root: OpenApiObject, reference: ReferenceObject
 
 export async function generateWebClient(data: Readonly<OpenApiObject>, target?: string): Promise<void> {
   const rootDir = findAbsoluteProjectDirPath(__dirname);
-  const templateDir = join(rootDir, "src", "server", "bin", "misc", "openapi");
+  const templateDir = join(rootDir, "src", "server", "src", "misc", "openapi");
 
   if (!target) {
     target = join(templateDir, "webclient.ts");
@@ -372,8 +372,8 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
   public constructor(data: Readonly<OpenApiObject>) {
     super(
       data,
-      "./packages/server/bin/misc/openapi/validateMiddleware.ts.handlebars",
-      "./packages/server/bin/misc/openapi/validateMiddleware.ts",
+      "./packages/server/src/misc/openapi/validateMiddleware.ts.handlebars",
+      "./packages/server/src/misc/openapi/validateMiddleware.ts",
     );
     this.addHandler();
   }

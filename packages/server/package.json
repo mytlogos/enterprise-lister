@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc -p ./",
-    "lint": "eslint -c ./.eslintrc.js bin/",
+    "lint": "eslint -c ./.eslintrc.js src/",
     "start": "node ./dist/startServer.js",
     "test": " LOG_LEVEL=error jest",
     "migrate": "node ../dist/misc/migrate.js",

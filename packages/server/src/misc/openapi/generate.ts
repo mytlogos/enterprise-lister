@@ -177,7 +177,7 @@ function main() {
     // @ts-expect-error
     GenerateOpenApi(argv.middleware);
   } else {
-    GenerateOpenApi("./packages/server/bin/api.ts");
+    GenerateOpenApi("./packages/server/src/api.ts");
   }
 }
 

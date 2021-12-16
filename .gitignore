@@ -87,14 +87,14 @@ typings/
 ### Example user template
 
 # IntelliJ project filessrc/
-packages/server/bin/externals/direct/webnovelTocResponse 04.19.json
-packages/server/bin/externals/direct/wwSearchResponse.json
+packages/server/src/externals/direct/webnovelTocResponse 04.19.json
+packages/server/src/externals/direct/wwSearchResponse.json
 packages/**/*.vue.js
 packages/**/*.vue.js.map
 *.bat
 *.gz
 *.json
-packages/server/bin/ignore/
+packages/server/src/ignore/
 dist/
 
 # vscode project files
@@ -113,9 +113,9 @@ checkReleases.*
 *.html
 *.xml
 
-packages/server/bin/misc/fixJobs.ts
-packages/server/bin/validateMiddleware.ts
-packages/server/bin/database/schema.ts
-packages/server/bin/misc/openapi/validateMiddleware.ts
-packages/server/bin/misc/openapi/webclient.ts
+packages/server/src/misc/fixJobs.ts
+packages/server/src/validateMiddleware.ts
+packages/server/src/database/schema.ts
+packages/server/src/misc/openapi/validateMiddleware.ts
+packages/server/src/misc/openapi/webclient.ts
 tsconfig.tsbuildinfo

@@ -27,7 +27,7 @@ import {
   JobHistoryItem,
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
-import { HookTest } from "enterprise-server/bin/types";
+import { HookTest } from "enterprise-server/src/types";
 import { CustomHook } from "enterprise-core/dist/types";
 
 /**

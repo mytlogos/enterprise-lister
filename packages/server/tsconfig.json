@@ -18,7 +18,7 @@
     "outDir": "./dist/",
     "paths": {
       "@/*": [
-        "./bin/*"
+        "./src/*"
       ]
     },
     "types": [
@@ -29,8 +29,8 @@
     "node_modules"
   ],
   "include": [
-    "./bin/**/*.ts",
-    "./bin/**/*.js"
+    "./src/**/*.ts",
+    "./src/**/*.js"
     //    "tests/**/*.ts",
     //    "tests/**/*.tsx"
   ]

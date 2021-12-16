@@ -9,7 +9,7 @@
     "lint": "npm run lint:server && npm run lint:website",
     "commit": "npx git-cz",
     "generate:api": "node dist/server/misc/openapi/generate.js",
-    "lint:server": "eslint -c packages/server/.eslintrc.js packages/server/bin/",
+    "lint:server": "eslint -c packages/server/.eslintrc.js packages/server/src/",
     "lint:website": "eslint packages/website/",
     "lintfix": "eslint --fix 'packages/**/*.{js,ts,vue}'",
     "migrate": "node dist/server/misc/migrate.js",
