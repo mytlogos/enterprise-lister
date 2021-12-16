@@ -195,7 +195,7 @@
   </div>
 </template>
 <script lang="ts">
-import { CrawlerStatus, Status } from "enterprise-server/src/types";
+import { Status } from "enterprise-server/src/types";
 import { defineComponent } from "vue";
 import { HttpClient } from "../Httpclient";
 

@@ -38,6 +38,12 @@ startCrawler();
 const status = new AppStatus("crawler");
 status.start();
 
+function scraperEntry<T extends { hookName?: string }>(entry: [RegExp, T]): { pattern: string; name?: string } {
+  return {
+    pattern: entry[0] + "",
+    name: entry[1].hookName,
+  };
+}
 /**
  * Create HTTP server.
  */
@@ -95,29 +101,14 @@ const server: Server = createServer((req, res) => {
               domain: hook.domainReg + "",
             };
           }),
-          toc: tocScraperEntries().map((entry) => {
-            return {
-              pattern: entry[0] + "",
-              name: entry[1].hookName,
-            };
-          }),
-          download: episodeDownloaderEntries().map((entry) => {
-            return {
-              pattern: entry[0] + "",
-              name: entry[1].hookName,
-            };
-          }),
+          toc: tocScraperEntries().map(scraperEntry),
+          download: episodeDownloaderEntries().map(scraperEntry),
           search: getAllSearcher().map((entry) => {
             return {
               name: entry.hookName,
             };
           }),
-          tocSearch: tocDiscoveryEntries().map((entry) => {
-            return {
-              pattern: entry[0] + "",
-              name: entry[1].hookName,
-            };
-          }),
+          tocSearch: tocDiscoveryEntries().map(scraperEntry),
           news: getNewsAdapter().map((entry) => {
             return {
               link: entry.link,
