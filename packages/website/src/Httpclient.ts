@@ -27,7 +27,7 @@ import {
   JobHistoryItem,
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
-import { HookTest } from "enterprise-server/src/types";
+import { HookTest, Status } from "enterprise-server/src/types";
 import { CustomHook } from "enterprise-core/dist/types";
 
 /**
@@ -59,6 +59,9 @@ const restApi = createRestDefinition({
         get: true,
       },
       events: {
+        get: true,
+      },
+      status: {
         get: true,
       },
       jobs: {
@@ -530,6 +533,10 @@ export const HttpClient = {
 
   getCustomHooks(): Promise<CustomHook[]> {
     return this.queryServer(serverRestApi.api.user.hook.custom.get);
+  },
+
+  getStatus(): Promise<Status> {
+    return this.queryServer(serverRestApi.api.user.status.get);
   },
 
   getAllMediaInWaits(search?: MediumInWaitSearch): Promise<MediumInWait[]> {

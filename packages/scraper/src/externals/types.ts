@@ -337,6 +337,7 @@ export interface SearchScraper {
   (text: string, medium: number): Promise<SearchResult[]>;
 
   medium: MediaType;
+  hookName?: string;
 }
 
 export interface TocScraper {

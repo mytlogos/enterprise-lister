@@ -16,6 +16,10 @@ export class DatabaseContext extends SubContext {
     return this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
   }
 
+  public getServerVersion(): Promise<[{ version: string }]> {
+    return this.query("SELECT version() as version");
+  }
+
   public async startMigration(): Promise<boolean> {
     return (
       this.query("UPDATE enterprise_database_info SET migrating=1;")

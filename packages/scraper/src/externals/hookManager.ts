@@ -189,6 +189,7 @@ function registerHooks(hook: Hook[] | Hook): void {
       newsAdapter.push(value.newsAdapter);
     }
     if (value.searchAdapter) {
+      value.searchAdapter.hookName = value.name;
       searchAdapter.push(value.searchAdapter);
     }
     if (value.domainReg) {
@@ -228,6 +229,10 @@ export function episodeDownloaderEntries(): Array<[RegExp, ContentDownloader]> {
 
 export function getSearcher(medium: MediaType): SearchScraper[] {
   return searchAdapter.filter((searcher) => searcher.medium & medium);
+}
+
+export function getAllSearcher(): SearchScraper[] {
+  return [...searchAdapter];
 }
 
 export function getNewsAdapter(): NewsScraper[] {

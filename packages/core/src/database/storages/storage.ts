@@ -37,6 +37,7 @@ import { ScraperHookContext } from "../contexts/scraperHookContext";
 import { SubContext } from "../contexts/subContext";
 import { AppEventContext } from "../contexts/appEventContext";
 import { CustomHookContext } from "../contexts/customHookContext";
+import { DatabaseContext } from "../contexts/databaseContext";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -450,6 +451,7 @@ export function createStorage<T extends SubContext, K extends StringKeys<T> = ke
 }
 
 export const storage = new Storage();
+export const databaseStorage = createStorage<DatabaseContext>("databaseContext");
 export const mediumStorage = createStorage<MediumContext>("mediumContext");
 export const partStorage = createStorage<PartContext>("partContext");
 export const episodeStorage = createStorage<EpisodeContext>("episodeContext");

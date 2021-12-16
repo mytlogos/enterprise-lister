@@ -1,5 +1,6 @@
 import {
   appEventStorage,
+  databaseStorage,
   episodeStorage,
   jobStorage,
   mediumStorage,
@@ -41,6 +42,12 @@ import { mediumRouter } from "./medium";
 import { newsRouter } from "./news";
 import { processRouter } from "./process";
 import { crawlerRouter } from "./crawler";
+import { CrawlerStatus, DatabaseStatus, Status } from "../types";
+import os from "os";
+import { readFile } from "fs/promises";
+import path from "path";
+import appConfig from "enterprise-core/dist/env";
+import requestPromise from "request-promise-native";
 
 export const authenticate: Handler = (req, res, next) => {
   let { uuid, session } = req.body;
@@ -286,6 +293,97 @@ export const getAllAppEvents = createHandler((req) => {
     }
   }
   return appEventStorage.getAppEvents(filter);
+});
+
+async function getDatabaseStatus(): Promise<DatabaseStatus> {
+  try {
+    const [dbVersion] = await databaseStorage.getServerVersion();
+    return {
+      status: "available",
+      host: `${appConfig.dbHost}:${appConfig.dbPort}`,
+      type: "mariadb",
+      version: dbVersion.version,
+    };
+  } catch (error) {
+    return {
+      status: "unavailable",
+      host: `${appConfig.dbHost}:${appConfig.dbPort}`,
+      type: "mariadb",
+    };
+  }
+}
+
+async function getCrawlerStatus(): Promise<CrawlerStatus> {
+  try {
+    const status = await requestPromise.get({
+      url: `http://${appConfig.crawlerHost}:${appConfig.crawlerPort}/status`,
+      timeout: 500, // milliseconds
+    });
+
+    let statusObject: CrawlerStatus;
+
+    if (isString(status)) {
+      statusObject = JSON.parse(status);
+    } else if (status && typeof status === "object" && !Array.isArray(status)) {
+      statusObject = status;
+    } else {
+      return {
+        status: "invalid",
+      };
+    }
+
+    statusObject.status = "available";
+    return statusObject;
+  } catch (error) {
+    return {
+      status: "unavailable",
+    };
+  }
+}
+
+const getStatus = createHandler(async (): Promise<Status> => {
+  const packageJsonPath = path.join(path.dirname(path.dirname(__dirname)), "package.json");
+
+  const [database, crawler, packageString] = await Promise.all([
+    getDatabaseStatus(),
+    getCrawlerStatus(),
+    readFile(packageJsonPath, { encoding: "utf8" }),
+  ]);
+
+  let packageJson: any;
+
+  try {
+    packageJson = JSON.parse(packageString);
+  } catch (error) {
+    packageJson = { project_version: "Error" };
+  }
+
+  return {
+    crawler,
+    database,
+    server: {
+      cpu_average: os.loadavg(),
+      memory: process.memoryUsage(),
+      freemem: os.freemem(),
+      totalmem: os.totalmem(),
+      uptime: os.uptime(),
+      project_version: packageJson.version,
+      node_version: process.version,
+      config: {
+        dbConLimit: appConfig.dbConLimit,
+        dbHost: appConfig.dbHost,
+        dbUser: appConfig.dbUser,
+        dbPort: appConfig.dbPort,
+        crawlerHost: appConfig.crawlerHost,
+        crawlerPort: appConfig.crawlerPort,
+        crawlerWSPort: appConfig.crawlerWSPort,
+        port: appConfig.port,
+        measure: appConfig.measure,
+        development: appConfig.development,
+        stopScrapeEvents: appConfig.stopScrapeEvents,
+      },
+    },
+  };
 });
 
 /**
@@ -792,6 +890,7 @@ export function userRouter(): Router {
    *          description: List array
    */
   router.get("/events", getAllAppEvents);
+  router.get("/status", getStatus);
 
   router.use("/medium", mediumRouter());
   router.use("/jobs", jobsRouter());
