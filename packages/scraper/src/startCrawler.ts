@@ -9,6 +9,17 @@ import os from "os";
 import debug from "debug";
 import env from "enterprise-core/dist/env";
 import { register, collectDefaultMetrics } from "prom-client";
+import {
+  episodeDownloaderEntries,
+  getAllSearcher,
+  getHooks,
+  getNewsAdapter,
+  tocDiscoveryEntries,
+  tocScraperEntries,
+} from "./externals/hookManager";
+import path from "path";
+import { readFileSync } from "fs";
+
 collectDefaultMetrics({
   labels: {
     NODE_APP_INSTANCE: "enterprise-crawler",
@@ -17,6 +28,7 @@ collectDefaultMetrics({
 
 // start websocket server
 import "./websocket";
+
 const debugMessenger = debug("enterprise-lister:crawler");
 logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
 // first start storage, then crawler, as crawler depends on storage
@@ -26,6 +38,12 @@ startCrawler();
 const status = new AppStatus("crawler");
 status.start();
 
+function scraperEntry<T extends { hookName?: string }>(entry: [RegExp, T]): { pattern: string; name?: string } {
+  return {
+    pattern: entry[0] + "",
+    name: entry[1].hookName,
+  };
+}
 /**
  * Create HTTP server.
  */
@@ -40,6 +58,67 @@ const server: Server = createServer((req, res) => {
         res.end();
         logger.error(reason);
       });
+    return;
+  }
+  if (req.url === "/status") {
+    const packageJsonPath = path.join(path.dirname(__dirname), "package.json");
+
+    let packageJson: any;
+
+    try {
+      const packageString = readFileSync(packageJsonPath, { encoding: "utf8" });
+      packageJson = JSON.parse(packageString);
+    } catch (error) {
+      packageJson = { project_version: "Error" };
+    }
+    res.write(
+      stringify({
+        cpu_average: os.loadavg(),
+        memory: process.memoryUsage(),
+        freemem: os.freemem(),
+        totalmem: os.totalmem(),
+        uptime: os.uptime(),
+        project_version: packageJson.version,
+        node_version: process.version,
+        config: {
+          dbConLimit: env.dbConLimit,
+          dbHost: env.dbHost,
+          dbUser: env.dbUser,
+          dbPort: env.dbPort,
+          crawlerHost: env.crawlerHost,
+          crawlerPort: env.crawlerPort,
+          crawlerWSPort: env.crawlerWSPort,
+          port: env.port,
+          measure: env.measure,
+          development: env.development,
+          stopScrapeEvents: env.stopScrapeEvents,
+        },
+        hooks: {
+          all: getHooks().map((hook) => {
+            return {
+              name: hook.name,
+              medium: hook.medium,
+              domain: hook.domainReg + "",
+            };
+          }),
+          toc: tocScraperEntries().map(scraperEntry),
+          download: episodeDownloaderEntries().map(scraperEntry),
+          search: getAllSearcher().map((entry) => {
+            return {
+              name: entry.hookName,
+            };
+          }),
+          tocSearch: tocDiscoveryEntries().map(scraperEntry),
+          news: getNewsAdapter().map((entry) => {
+            return {
+              link: entry.link,
+              name: entry.hookName,
+            };
+          }),
+        },
+      }),
+    );
+    res.end();
     return;
   }
   const stores = getStores();

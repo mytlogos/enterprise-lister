@@ -1,11 +1,11 @@
 import { Router } from "express";
-import request from "request";
+import request from "request-promise-native";
 import { createHandler } from "./apiTools";
 import env from "enterprise-core/dist/env";
 import Websocket from "ws";
 
 const getJobs = createHandler(() => {
-  return request.get("http://" + env.crawlerHost + ":3000/");
+  return request.get("http://" + env.crawlerHost + ":" + env.crawlerPort + "/");
 });
 
 const liveSockets = [] as Websocket[];
