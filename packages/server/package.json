@@ -35,7 +35,7 @@
     "request-promise-native": "^1.0.9",
     "stringify-stream": "^1.0.5",
     "swagger-jsdoc": "^6.1.0",
-    "swagger-ui-express": "^4.2.0",
+    "swagger-ui-express": "^4.3.0",
     "tar-fs": "^2.1.1",
     "tough-cookie": "^4.0.0",
     "tslib": "^2.3.1",
