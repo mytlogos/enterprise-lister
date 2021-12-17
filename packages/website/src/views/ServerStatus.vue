@@ -45,14 +45,20 @@
             <div class="col">{{ data.server.totalmem || "N/A" }}</div>
           </div>
           <h6 class="mt-2">Configuration:</h6>
-          <div class="row">
-            <div class="col">Key</div>
-            <div class="col">Value</div>
-          </div>
-          <div v-for="entry in Object.entries(data.server.config || {})" :key="entry[0] + ''" class="row">
-            <div class="col">{{ entry[0] }}</div>
-            <div class="col">{{ entry[1] }}</div>
-          </div>
+          <table class="table" aria-label="Server Configuration">
+            <thead>
+              <tr>
+                <th scope="col">Key</th>
+                <th scope="col">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="entry in Object.entries(data.server.config || {})" :key="entry[0] + ''">
+                <td>{{ entry[0] }}</td>
+                <td>{{ entry[1] }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <div class="card col-sm m-1">
@@ -102,65 +108,101 @@
               <div class="col">{{ data.crawler.totalmem || "N/A" }}</div>
             </div>
             <h6 class="mt-2">Configuration:</h6>
-            <div class="row">
-              <div class="col">Key</div>
-              <div class="col">Value</div>
-            </div>
-            <div v-for="entry in Object.entries(data.crawler.config || {})" :key="entry[0] + ''" class="row">
-              <div class="col">{{ entry[0] }}</div>
-              <div class="col">{{ entry[1] }}</div>
-            </div>
+            <table class="table" aria-label="Crawler Configuration">
+              <thead>
+                <tr>
+                  <th scope="col">Key</th>
+                  <th scope="col">Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="entry in Object.entries(data.crawler.config || {})" :key="entry[0] + ''">
+                  <td>{{ entry[0] }}</td>
+                  <td>{{ entry[1] }}</td>
+                </tr>
+              </tbody>
+            </table>
             <h6 class="mt-2">Loaded Hooks:</h6>
-            <div class="row">
-              <div class="col">Name</div>
-              <div class="col">Medium</div>
-              <div class="col">Domain</div>
-            </div>
-            <div v-for="hook in data.crawler.hooks.all" :key="hook.name" class="row">
-              <div class="col">{{ hook.name }}</div>
-              <div class="col">{{ hook.medium }}</div>
-              <div class="col">{{ hook.domain }}</div>
-            </div>
+            <table class="table" aria-label="Loaded Hooks">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Medium</th>
+                  <th scope="col">Domain</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="hook in data.crawler.hooks.all" :key="hook.name">
+                  <td>{{ hook.name }}</td>
+                  <td>{{ hook.medium }}</td>
+                  <td>{{ hook.domain }}</td>
+                </tr>
+              </tbody>
+            </table>
             <h6 class="mt-2">Loaded TocScraper:</h6>
-            <div class="row">
-              <div class="col">Name</div>
-              <div class="col">Pattern</div>
-            </div>
-            <div v-for="hook in data.crawler.hooks.toc" :key="hook.name" class="row">
-              <div class="col">{{ hook.name }}</div>
-              <div class="col">{{ hook.pattern }}</div>
-            </div>
+            <table class="table" aria-label="Loaded TocScraper">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Pattern</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="hook in data.crawler.hooks.toc" :key="hook.name">
+                  <td>{{ hook.name }}</td>
+                  <td>{{ hook.pattern }}</td>
+                </tr>
+              </tbody>
+            </table>
             <h6 class="mt-2">Loaded DownloadScraper:</h6>
-            <div class="row">
-              <div class="col">Name</div>
-              <div class="col">Pattern</div>
-            </div>
-            <div v-for="hook in data.crawler.hooks.download" :key="hook.name" class="row">
-              <div class="col">{{ hook.name }}</div>
-              <div class="col">{{ hook.pattern }}</div>
-            </div>
+            <table class="table" aria-label="Loaded DownloadScraper">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Pattern</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="hook in data.crawler.hooks.download" :key="hook.name">
+                  <td>{{ hook.name }}</td>
+                  <td>{{ hook.pattern }}</td>
+                </tr>
+              </tbody>
+            </table>
             <h6 class="mt-2">Loaded SearchScraper:</h6>
             <div v-for="hook in data.crawler.hooks.search" :key="hook.name" class="row">
               <div class="col">{{ hook.name }}</div>
             </div>
             <h6 class="mt-2">Loaded TocSearchScraper:</h6>
-            <div class="row">
-              <div class="col">Name</div>
-              <div class="col">Pattern</div>
-            </div>
-            <div v-for="hook in data.crawler.hooks.tocSearch" :key="hook.name" class="row">
-              <div class="col">{{ hook.name }}</div>
-              <div class="col">{{ hook.pattern }}</div>
-            </div>
+            <table class="table" aria-label="Loaded TocSearchScraper">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Pattern</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="hook in data.crawler.hooks.tocSearch" :key="hook.name">
+                  <td>{{ hook.name }}</td>
+                  <td>{{ hook.pattern }}</td>
+                </tr>
+              </tbody>
+            </table>
             <h6 class="mt-2">Loaded NewsScraper:</h6>
-            <div class="row">
-              <div class="col">Name</div>
-              <div class="col">Link</div>
-            </div>
-            <div v-for="hook in data.crawler.hooks.news" :key="hook.name" class="row">
-              <div class="col">{{ hook.name }}</div>
-              <div class="col">{{ hook.link }}</div>
-            </div>
+            <table class="table" aria-label="Loaded NewsScraper">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="hook in data.crawler.hooks.news" :key="hook.name">
+                  <td>{{ hook.name }}</td>
+                  <td>{{ hook.link }}</td>
+                </tr>
+              </tbody>
+            </table>
           </template>
         </div>
       </div>
