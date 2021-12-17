@@ -1,3 +1,15 @@
+# [1.24.0](https://github.com/mytlogos/enterprise-lister/compare/v1.23.0...v1.24.0) (2021-12-17)
+
+
+### Bug Fixes
+
+* **website:** fix navigation ([ef0f12a](https://github.com/mytlogos/enterprise-lister/commit/ef0f12a287d67874b4c1cdd619e7e5ecd257885c))
+
+
+### Features
+
+* **website:** use tables ([e00961f](https://github.com/mytlogos/enterprise-lister/commit/e00961f9357f290273c1dfed690cba2fbca6c476))
+
 # [1.23.0](https://github.com/mytlogos/enterprise-lister/compare/v1.22.2...v1.23.0) (2021-12-16)
 
 
