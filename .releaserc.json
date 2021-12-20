@@ -112,7 +112,9 @@
         "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}",
         "assets": [
           "dist.zip",
-          "dist-src.zip"
+          "dist-src.zip",
+          "docker-compose.yml",
+          "packages/*/package.json"
         ]
       }
     ]
