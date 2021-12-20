@@ -1,6 +1,6 @@
 <template>
-  <div class="row">
-    <div class="navbar navbar-expand-xl navbar-dark align-items-start col-auto mx-auto">
+  <div class="row m-0">
+    <div class="navbar navbar-expand-xl navbar-dark align-items-start col-auto p-0">
       <ul class="navbar-nav bg-dark align-items-start flex-column">
         <li class="nav-item p-2">
           <router-link :to="{ name: 'status' }" tag="a" class="nav-link"> Status </router-link>

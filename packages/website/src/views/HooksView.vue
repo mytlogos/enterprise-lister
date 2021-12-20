@@ -5,41 +5,35 @@
         <router-link class="btn btn-success" :to="{ name: 'addHook' }"> Add Hook </router-link>
       </div>
     </div>
-    <div style="display: grid; grid-template-columns: auto auto auto auto">
-      <div v-for="(item, index) in hooks" :key="item.id" class="list-group-item">
-        <h5>
-          <div class="form-check form-switch d-inline">
-            <input
-              :id="'enabled-switch-' + index"
-              :checked="isItemActive(item)"
-              type="checkbox"
-              class="form-check-input"
-              @input="toggleHook(item)"
-            />
-            <label class="form-check-label" :for="'enabled-switch-' + index"></label>
-          </div>
-          {{ item.name }}
-        </h5>
+    <div class="d-flex flex-wrap">
+      <div v-for="(item, index) in hooks" :key="item.id" class="card card-body" style="width: 20em">
+        <div class="form-check form-switch">
+          <input
+            :id="'enabled-switch-' + index"
+            :checked="isItemActive(item)"
+            type="checkbox"
+            class="form-check-input"
+            @input="toggleHook(item)"
+          />
+          <label class="form-check-label" :for="'enabled-switch-' + index"> {{ item.name }}</label>
+        </div>
         <div>{{ item.message }}</div>
       </div>
     </div>
-    <div style="display: grid; grid-template-columns: auto auto auto auto">
-      <div v-for="(item, index) in customHooks" :key="item.id" class="list-group-item">
-        <h5>
-          <div class="form-check form-switch d-inline">
-            <input
-              :id="'enabled-switch-' + index"
-              :checked="isCustomItemActive(item)"
-              type="checkbox"
-              class="form-check-input"
-              @input="toggleCustomHook(item)"
-            />
-            <label class="form-check-label" :for="'enabled-switch-' + index"></label>
-          </div>
-          {{ item.name }}
-        </h5>
+    <div class="d-flex flex-wrap">
+      <div v-for="(item, index) in customHooks" :key="item.id" class="card card-body" style="width: 20em">
+        <div class="form-check form-switch">
+          <input
+            :id="'enabled-switch-' + index"
+            :checked="isCustomItemActive(item)"
+            type="checkbox"
+            class="form-check-input"
+            @input="toggleCustomHook(item)"
+          />
+          <label class="form-check-label" :for="'enabled-switch-' + index"> {{ item.name }}</label>
+        </div>
         <router-link
-          class="btn fa fa-edit"
+          class="btn fa fa-edit align-self-start"
           :to="{ name: 'editHook', params: { hookId: item.id } }"
           aria-hidden="true"
         />
