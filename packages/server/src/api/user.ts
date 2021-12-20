@@ -101,12 +101,12 @@ const logout = createHandler((req) => {
   return userStorage.logoutUser(uuid, req.ip);
 });
 
-export const addBookmarked = createHandler((req) => {
+export const addBookmarked = createHandler(async (req) => {
   const { uuid, bookmarked } = req.body;
   const protocol = /^https?:\/\//;
 
   if (bookmarked && bookmarked.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
-    const scrapeAble = filterScrapeAble(bookmarked);
+    const scrapeAble = await filterScrapeAble(bookmarked);
 
     const storePromise = jobStorage
       .addJobs(

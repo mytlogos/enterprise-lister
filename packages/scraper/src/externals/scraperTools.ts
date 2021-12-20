@@ -79,8 +79,8 @@ interface ScrapeableFilterResult {
   unavailable: string[];
 }
 
-export const filterScrapeAble = (urls: string): ScrapeableFilterResult => {
-  checkHooks();
+export const filterScrapeAble = async (urls: string): Promise<ScrapeableFilterResult> => {
+  await checkHooks();
 
   const regs: RegExp[] = [];
   for (const hook of getHooks()) {
@@ -300,7 +300,7 @@ async function processMediumNews(
 }
 
 export async function loadToc(link: string): Promise<Toc[]> {
-  checkHooks();
+  await checkHooks();
   const results = await Promise.allSettled(
     tocScraperEntries()
       .filter((value) => value[0].test(link))
