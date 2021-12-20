@@ -114,6 +114,7 @@
           "README.md",
           "CHANGELOG.md",
           "package.json",
+          "package-lock.json",
           "docker-compose.yml",
           "packages/*/package.json"
         ]
