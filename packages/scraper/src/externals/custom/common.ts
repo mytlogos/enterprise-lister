@@ -587,10 +587,10 @@ const applySelector = traceWrap(function applySelector<Target extends object>(
   base: string,
   context: Context,
 ) {
-  if ("regex" in selector) {
+  if ("regex" in selector && "pattern" in selector.regex && selector.regex.pattern) {
     return applyRegexSelector(element, selector, base, {}, context);
   } else {
-    return applyBasicSelector(element, selector, base, {}, context);
+    return applyBasicSelector(element, selector as SimpleSelector<Target>, base, {}, context);
   }
 });
 
