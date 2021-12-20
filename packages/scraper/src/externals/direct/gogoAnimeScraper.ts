@@ -72,7 +72,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
-  const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.wiki\/category\/(.+)/;
+  const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.(vc|wiki)\/category\/(.+)/;
   const aliasExec = animeAliasReg.exec(urlString);
 
   if (!aliasExec) {
@@ -216,7 +216,7 @@ searchForToc.blindSearch = true;
 search.medium = MediaType.VIDEO;
 
 async function contentDownloader(link: string): Promise<EpisodeContent[]> {
-  const episodeRegex = /https:\/\/www\d*\.gogoanime\.vc\/.+-episode-(\d+)/;
+  const episodeRegex = /https:\/\/www\d*\.gogoanime\.(vc|wiki)\/.+-episode-(\d+)/;
   const exec = episodeRegex.exec(link);
   if (!exec) {
     logger.warn(`invalid gogoanime episode link: '${link}'`);
@@ -244,7 +244,7 @@ export function getHook(): Hook {
   return {
     name: "gogoanime",
     medium: MediaType.VIDEO,
-    domainReg: /^https?:\/\/(www\d*\.)?gogoanime\.(so|vc)/,
+    domainReg: /^https?:\/\/(www\d*\.)?gogoanime\.(vc|wiki)/,
     searchAdapter: search,
     newsAdapter: scrapeNews,
     tocAdapter: scrapeToc,
