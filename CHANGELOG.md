@@ -1,3 +1,11 @@
+## [1.24.6](https://github.com/mytlogos/enterprise-lister/compare/v1.24.5...v1.24.6) (2021-12-20)
+
+
+### Bug Fixes
+
+* add missing git assets ([55ae81b](https://github.com/mytlogos/enterprise-lister/commit/55ae81bcbcea5eaf8f5dcfa03a78d996da085c8b))
+* add missing git assets ([53da05c](https://github.com/mytlogos/enterprise-lister/commit/53da05c54ce883c375abc65abe6dfc330b22eae8))
+
 ## [1.24.2](https://github.com/mytlogos/enterprise-lister/compare/v1.24.1...v1.24.2) (2021-12-20)
 
 
