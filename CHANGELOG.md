@@ -1,3 +1,11 @@
+## [1.24.1](https://github.com/mytlogos/enterprise-lister/compare/v1.24.0...v1.24.1) (2021-12-20)
+
+
+### Bug Fixes
+
+* missing promise await ([524aaa4](https://github.com/mytlogos/enterprise-lister/commit/524aaa4cb3f8ceb5e4544537ca7e25dab353c1f1))
+* **scraper:** scraper url regex ([9003ed4](https://github.com/mytlogos/enterprise-lister/commit/9003ed4425fc3e3553b69282fda8440ecb1c6c3a))
+
 # [1.24.0](https://github.com/mytlogos/enterprise-lister/compare/v1.23.0...v1.24.0) (2021-12-17)
 
 
