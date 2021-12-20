@@ -1,3 +1,10 @@
+## [1.24.8](https://github.com/mytlogos/enterprise-lister/compare/v1.24.7...v1.24.8) (2021-12-20)
+
+
+### Bug Fixes
+
+* **website:** improve admin ui design ([1b42368](https://github.com/mytlogos/enterprise-lister/commit/1b423688c71f5de7c46b7f1d63038363e8ea8a62))
+
 ## [1.24.7](https://github.com/mytlogos/enterprise-lister/compare/v1.24.6...v1.24.7) (2021-12-20)
 
 
