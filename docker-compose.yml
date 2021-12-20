@@ -23,13 +23,15 @@ services:
           - mariadb
   crawler:
     restart: always
-    image: enterprise-server:latest
+    image: enterprise-server:v1.24.1
     command: ["node", "packages/scraper/dist/startCrawler.js"]
     working_dir: /code
     build:
       context: .
       network: host
       dockerfile: Dockerfile_Git_Prod
+      args:
+        PROJECT_VERSION: v1.24.1
     volumes:
       - /media/data/docker/enterprise/logs:/code/logs
     depends_on:
@@ -50,12 +52,14 @@ services:
       TIME_ZONE: Europe/Berlin
   web:
     restart: always
-    image: enterprise-server:latest
+    image: enterprise-server:v1.24.1
     command: ["node", "packages/server/dist/startServer.js"]
     build:
       context: .
       network: host
       dockerfile: Dockerfile_Git_Prod
+      args:
+        PROJECT_VERSION: v1.24.1
     working_dir: /code
     volumes:
       - /media/data/docker/enterprise/logs:/code/logs

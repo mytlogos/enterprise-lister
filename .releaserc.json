@@ -34,6 +34,79 @@
       }
     ],
     [
+      "@google/semantic-release-replace-plugin",
+      {
+        "replacements": [
+          {
+            "files": [
+              "packages/*/package.json"
+            ],
+            "from": "\"version\": \".*\"",
+            "to": "\"version\": \"${nextRelease.version}\"",
+            "results": [
+              {
+                "file": "packages/core/package.json",
+                "hasChanged": true,
+                "numMatches": 1,
+                "numReplacements": 1
+              },
+              {
+                "file": "packages/scraper/package.json",
+                "hasChanged": true,
+                "numMatches": 1,
+                "numReplacements": 1
+              },
+              {
+                "file": "packages/server/package.json",
+                "hasChanged": true,
+                "numMatches": 1,
+                "numReplacements": 1
+              },
+              {
+                "file": "packages/website/package.json",
+                "hasChanged": true,
+                "numMatches": 1,
+                "numReplacements": 1
+              }
+            ],
+            "countMatches": true
+          },
+          {
+            "files": [
+              "docker-compose.yml"
+            ],
+            "from": "PROJECT_VERSION: .*",
+            "to": "PROJECT_VERSION: ${nextRelease.gitTag}",
+            "results": [
+              {
+                "file": "docker-compose.yml",
+                "hasChanged": true,
+                "numMatches": 2,
+                "numReplacements": 2
+              }
+            ],
+            "countMatches": true
+          },
+          {
+            "files": [
+              "docker-compose.yml"
+            ],
+            "from": "image: enterprise-server:.*",
+            "to": "image: enterprise-server:${nextRelease.gitTag}",
+            "results": [
+              {
+                "file": "docker-compose.yml",
+                "hasChanged": true,
+                "numMatches": 2,
+                "numReplacements": 2
+              }
+            ],
+            "countMatches": true
+          }
+        ]
+      }
+    ],
+    [
       "@semantic-release/git",
       {
         "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
