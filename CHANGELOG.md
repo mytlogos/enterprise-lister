@@ -1,3 +1,10 @@
+## [1.24.2](https://github.com/mytlogos/enterprise-lister/compare/v1.24.1...v1.24.2) (2021-12-20)
+
+
+### Bug Fixes
+
+* **scraper:** regex matching group ([413731b](https://github.com/mytlogos/enterprise-lister/commit/413731bf570cc671ccaf058c83f5825e5121dbf7))
+
 ## [1.24.1](https://github.com/mytlogos/enterprise-lister/compare/v1.24.0...v1.24.1) (2021-12-20)
 
 
