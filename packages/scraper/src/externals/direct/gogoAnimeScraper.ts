@@ -78,7 +78,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   if (!aliasExec) {
     throw new UrlError("invalid toc url for GogoAnime: " + urlString, urlString);
   }
-  const animeAlias = aliasExec[2];
+  const animeAlias = aliasExec[3];
 
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $(".content_left .main_body");
@@ -235,7 +235,7 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
       content: [downloadLink],
       index: 1,
       mediumTitle,
-      episodeTitle: `Episode ${exec[1]}`,
+      episodeTitle: `Episode ${exec[2]}`,
     },
   ];
 }
