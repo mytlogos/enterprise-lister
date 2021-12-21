@@ -1,6 +1,6 @@
 <template>
   <div>
-    <reading-list :lists="displayLists" />
+    <reading-list class="reading-list" :lists="displayLists" />
     <div>
       <h1 id="news-title">News</h1>
       <div class="d-flex container-fluid">
@@ -25,9 +25,9 @@
         <tbody>
           <tr
             v-for="(item, index) in displayNews"
-            :key="item"
+            :key="item.id"
             v-observe-visibility="{
-              callback: (visible) => markNewsRead(visible, item, index),
+              callback: (visible: boolean) => markNewsRead(visible, item, index),
               throttle: 300,
               intersection: {
                 threshold: 1.0,
@@ -63,6 +63,7 @@ interface Data {
   currentLength: number;
   emptySpaceDirty: boolean;
   emptySpaceSpare: number;
+  clickListener: (evt: MouseEvent) => void;
 }
 
 export default defineComponent({
@@ -80,6 +81,15 @@ export default defineComponent({
       currentLength: 0,
       emptySpaceDirty: false,
       emptySpaceSpare: 0,
+      clickListener: (evt) => {
+        const list = document.querySelector(".reading-list .list");
+
+        if (list) {
+          this.listFocused = list.contains(evt.target as Node) as any;
+        } else {
+          console.warn("Could not find expected HtmlElement");
+        }
+      },
     };
   },
 
@@ -119,7 +129,7 @@ export default defineComponent({
         }
         // TODO news should have related medium id´s, so news can be filtered per list
         return true;
-      }) as News[];
+      });
       return news.sort((a, b) => b.date.getTime() - a.date.getTime());
     },
   },
@@ -141,13 +151,17 @@ export default defineComponent({
     },
   },
   mounted(): void {
-    const list = document.querySelector(".news-page .list") as Node;
-    document.addEventListener("click", (evt) => (this.listFocused = list.contains(evt.target as Node)), {
+    document.addEventListener("click", this.clickListener, {
       capture: true,
     });
     onBusEvent("select:list", (id, external) => this.selectList(id, external));
     onBusEvent("window:resize", () => (this.emptySpaceDirty = true));
     this.$store.dispatch("loadNews", { from: this.from, to: this.to });
+  },
+  unmounted() {
+    document.removeEventListener("click", this.clickListener, {
+      capture: true,
+    });
   },
   methods: {
     markNewsRead(visible: boolean, news: News, index: number): void {

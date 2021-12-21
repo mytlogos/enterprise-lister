@@ -3,7 +3,7 @@
     <div class="d-flex flex-column dropdown-container">
       <div class="select-container" :class="{ open: selectOpen }" @click="selectOpen = !selectOpen">
         <select id="sorter" v-model="selectedSorter" title="Sorting after">
-          <option v-for="sort in sorter" :key="sort" :value="sort.value">
+          <option v-for="sort in sorter" :key="sort.name" :value="sort.value">
             {{ sort.name }}
           </option>
         </select>
@@ -33,6 +33,8 @@ interface Data {
   }>;
   selectedSorter: number;
   listFocused: boolean;
+  clickListener: (evt: MouseEvent) => void;
+  windowClickListener: (evt: MouseEvent) => void;
 }
 
 import { defineComponent, PropType } from "vue";
@@ -63,6 +65,24 @@ export default defineComponent({
       ],
       selectedSorter: 1,
       listFocused: false,
+      clickListener: (evt) => {
+        if (!this.$refs.root) {
+          console.warn("Expected $refs.root to be set");
+          return;
+        }
+        this.listFocused = (this.$refs.root as HTMLElement).contains(evt.target as Node | null) as any;
+      },
+      windowClickListener: (evt) => {
+        if (!this.$refs.root) {
+          console.warn("Expected $refs.root to be set");
+          return;
+        }
+        const element = (this.$refs.root as HTMLElement).querySelector(".select-container") as HTMLElement;
+
+        if (!element || !element.contains(evt.target as Node | null)) {
+          this.selectOpen = false as any;
+        }
+      },
     };
   },
   computed: {
@@ -95,19 +115,12 @@ export default defineComponent({
     },
   },
   mounted(): void {
-    console.log("read", this);
-    const element = (this.$refs.root as HTMLElement).querySelector(".select-container") as HTMLElement;
-    document.addEventListener(
-      "click",
-      (evt) => (this.listFocused = (this.$refs.root as HTMLElement).contains(evt.target as Node | null)),
-      { capture: true },
-    );
-
-    window.addEventListener("click", (evt) => {
-      if (!element.contains(evt.target as Node | null)) {
-        this.selectOpen = false;
-      }
-    });
+    document.addEventListener("click", this.clickListener, { capture: true });
+    window.addEventListener("click", this.windowClickListener);
+  },
+  unmounted() {
+    document.removeEventListener("click", this.clickListener, { capture: true });
+    window.removeEventListener("click", this.windowClickListener);
   },
   methods: {
     selectList({ id, external, multiSelect }: SelectItemEvent): void {

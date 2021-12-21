@@ -42,6 +42,17 @@ export default defineComponent({
     return {
       closing: false,
       modal: null as Modal | null,
+      listener: (evt: MouseEvent) => {
+        if (!this.$refs.root) {
+          return;
+        }
+        // noinspection JSCheckFunctionSignatures
+        if (!(this.$refs.root as HTMLElement).contains(evt.target as Node | null) && this.show) {
+          evt.stopImmediatePropagation();
+          evt.preventDefault();
+          this.close();
+        }
+      },
     };
   },
   watch: {
@@ -58,20 +69,12 @@ export default defineComponent({
     console.log(this.$refs);
     const modalElement = this.$refs.root as HTMLElement;
     this.modal = new Modal(modalElement);
-    modalElement.addEventListener("hidden.bs.modal", () => this.close());
 
-    document.addEventListener(
-      "click",
-      (evt) => {
-        // noinspection JSCheckFunctionSignatures
-        if (!(this.$refs.root as HTMLElement).contains(evt.target as Node | null) && this.show) {
-          evt.stopImmediatePropagation();
-          evt.preventDefault();
-          this.close();
-        }
-      },
-      { capture: true },
-    );
+    modalElement.addEventListener("hidden.bs.modal", () => this.close());
+    document.addEventListener("click", this.listener, { capture: true });
+  },
+  unmounted() {
+    document.removeEventListener("click", this.listener, { capture: true });
   },
   methods: {
     close(): void {

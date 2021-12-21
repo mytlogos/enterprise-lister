@@ -3,7 +3,7 @@
     <ul class="list-group list">
       <li
         v-for="(item, i) in displayedData"
-        :key="item"
+        :key="item.id"
         :class="{
           active: item.show,
           marked: markClassId === item.id && (item.external == null || markClassExternal === item.external),
@@ -29,6 +29,7 @@ interface Data {
   marked: { external: boolean; id: null | number; index: null | number };
   markClassId: number | null;
   markClassExternal: boolean;
+  keyListener: (evt: KeyboardEvent) => void;
 }
 
 import { defineComponent, PropType } from "vue";
@@ -57,6 +58,23 @@ export default defineComponent({
       },
       markClassId: null,
       markClassExternal: false,
+      keyListener: (evt) => {
+        if (!this.focused) {
+          return;
+        }
+        // FIXME: vue recognize data properties as Function type only here
+        const marked = this.marked as unknown as Data["marked"];
+
+        if (evt.key === "ArrowDown") {
+          this.moveList(false);
+        } else if (evt.key === "ArrowUp") {
+          this.moveList(true);
+        } else if (evt.key === "Enter") {
+          if (marked.id && marked.index) {
+            this.select(marked.id, marked.external, marked.index, evt);
+          }
+        }
+      },
     };
   },
   computed: {
@@ -79,23 +97,13 @@ export default defineComponent({
     },
   },
   mounted(): void {
-    document.addEventListener("keydown", (evt) => {
-      if (!this.focused) {
-        return;
-      }
-      if (evt.key === "ArrowDown") {
-        this.moveList(false);
-      } else if (evt.key === "ArrowUp") {
-        this.moveList(true);
-      } else if (evt.key === "Enter") {
-        if (this.marked.id && this.marked.index) {
-          this.select(this.marked.id, this.marked.external, this.marked.index, evt);
-        }
-      }
-    });
+    document.addEventListener("keydown", this.keyListener);
+  },
+  unmounted() {
+    document.removeEventListener("keydown", this.keyListener);
   },
   methods: {
-    select(id: number, external: boolean, index: number, evt: KeyboardEvent): void {
+    select(id: number, external: boolean, index: number, evt: KeyboardEvent | MouseEvent): void {
       this.$emit("select", {
         id,
         external,
