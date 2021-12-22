@@ -1,29 +1,31 @@
 <template>
-  <modal :error="error" :show="show" @finish="send()">
-    <template #title> Add Reading List </template>
-    <template #input>
-      <div class="input-name">
-        <label>
-          Name:
-          <input v-model="name" name="name" required title="List Name" type="text" />
-        </label>
-      </div>
-      <div class="input-medium">
-        <label>Medium:</label>
-        <span v-for="type of mediaTypes" :key="type" class="medium-check-container">
+  <div class="container">
+    <div class="card m-1">
+      <div class="card-body">
+        <div class="card-title">Add Reading List</div>
+        <div class="input-name">
           <label>
-            <input v-model="type.checked" type="checkbox" />
-            {{ type.name }}
+            Name:
+            <input v-model="name" name="name" required title="List Name" type="text" />
           </label>
-        </span>
+        </div>
+        <div class="input-medium">
+          <label>Medium:</label>
+          <span v-for="type of mediaTypes" :key="type.name" class="medium-check-container">
+            <label>
+              <input v-model="type.checked" type="checkbox" />
+              {{ type.name }}
+            </label>
+          </span>
+        </div>
+        <button class="btn btn-primary" type="button" @click="send">Add List</button>
       </div>
-    </template>
-    <template #finish> Add List </template>
-  </modal>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
-import modal from "../components/modal/modal.vue";
+import { defineComponent } from "vue";
 
 interface GuiMediaType {
   value: number;
@@ -31,15 +33,8 @@ interface GuiMediaType {
   checked: boolean;
 }
 
-import { defineComponent } from "vue";
-
 export default defineComponent({
-  name: "AddListModal",
-  components: { modal },
-  props: {
-    show: { type: Boolean, required: true },
-    error: { type: String, required: true },
-  },
+  name: "AddList",
   data(): { mediaTypes: GuiMediaType[]; name: string } {
     return {
       mediaTypes: [
