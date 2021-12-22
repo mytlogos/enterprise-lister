@@ -1,3 +1,10 @@
+## [1.24.10](https://github.com/mytlogos/enterprise-lister/compare/v1.24.9...v1.24.10) (2021-12-22)
+
+
+### Bug Fixes
+
+* **website:** unregister event handler ([c5ae748](https://github.com/mytlogos/enterprise-lister/commit/c5ae7485e0cbbc4653f54bbda77bc87fddd62998))
+
 ## [1.24.9](https://github.com/mytlogos/enterprise-lister/compare/v1.24.8...v1.24.9) (2021-12-21)
 
 
