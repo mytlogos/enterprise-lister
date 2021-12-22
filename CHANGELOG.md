@@ -1,3 +1,10 @@
+## [1.24.12](https://github.com/mytlogos/enterprise-lister/compare/v1.24.11...v1.24.12) (2021-12-22)
+
+
+### Bug Fixes
+
+* **website:** addList is a view not modal ([e3dabf0](https://github.com/mytlogos/enterprise-lister/commit/e3dabf0ece0b4799de5386debc6d745742379521))
+
 ## [1.24.11](https://github.com/mytlogos/enterprise-lister/compare/v1.24.10...v1.24.11) (2021-12-22)
 
 
