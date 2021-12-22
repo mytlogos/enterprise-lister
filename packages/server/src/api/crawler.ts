@@ -4,8 +4,9 @@ import { createHandler } from "./apiTools";
 import env from "enterprise-core/dist/env";
 import Websocket from "ws";
 
-const getJobs = createHandler(() => {
-  return request.get("http://" + env.crawlerHost + ":" + env.crawlerPort + "/");
+const getJobs = createHandler(async () => {
+  const result = await request.get("http://" + env.crawlerHost + ":" + env.crawlerPort + "/");
+  return JSON.parse(result);
 });
 
 const liveSockets = [] as Websocket[];
