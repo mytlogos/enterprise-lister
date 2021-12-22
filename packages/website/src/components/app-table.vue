@@ -6,7 +6,7 @@
         <button class="btn btn-secondary all reset" name="all" type="reset" @click="showAll">All</button>
         <button
           v-for="column of columns"
-          :key="column"
+          :key="column.name"
           class="btn btn-secondary"
           type="button"
           :class="{ checked: column.show }"
@@ -34,7 +34,7 @@
           <th
             v-for="column in columns"
             v-show="column.show"
-            :key="column"
+            :key="column.name"
             :class="{ active: sortProp === column.prop }"
             scope="col"
             @click="sortBy(column.prop)"
@@ -73,7 +73,7 @@
           <td
             v-for="column in columns"
             v-show="column.show"
-            :key="column"
+            :key="column.name"
             :class="{
               marked: marked.id != null && marked.id === entry.id,
             }"
@@ -134,9 +134,11 @@ interface Data {
   filter: string;
   currentLength: number;
   focused: boolean;
+  clickListener: ClickListener | null;
+  typeListener: KeyboardListener | null;
 }
 import { defineComponent, PropType } from "vue";
-import { Column, EmptyObject, Medium, StringKey } from "../siteTypes";
+import { ClickListener, KeyboardListener, Column, EmptyObject, Medium, StringKey } from "../siteTypes";
 
 export default defineComponent({
   name: "AppTable",
@@ -177,6 +179,8 @@ export default defineComponent({
       filter: "",
       currentLength: 0,
       focused: false,
+      clickListener: null,
+      typeListener: null,
     };
   },
 
@@ -293,9 +297,17 @@ export default defineComponent({
 
     onBusEvent("window:resize", () => (this.emptySpaceDirty = true));
 
-    document.addEventListener("click", (evt) => (this.focused = this.getRoot().contains(evt.target as Node | null)));
+    this.clickListener = (evt) => {
+      const root = this.getRoot();
+      if (!root) {
+        console.warn("Did not have expected Root");
+        return;
+      }
+      this.focused = root.contains(evt.target as Node | null);
+    };
+    document.addEventListener("click", this.clickListener);
 
-    document.addEventListener("keydown", (evt) => {
+    this.typeListener = (evt) => {
       if (!this.listFocused) {
         return;
       }
@@ -340,7 +352,16 @@ export default defineComponent({
           this.startEdit(entry as Medium, this.marked.prop as string);
         }
       }
-    });
+    };
+    document.addEventListener("keydown", this.typeListener);
+  },
+  unmounted() {
+    if (this.typeListener) {
+      document.removeEventListener("keydown", this.typeListener);
+    }
+    if (this.clickListener) {
+      document.removeEventListener("click", this.clickListener);
+    }
   },
   methods: {
     getRoot() {

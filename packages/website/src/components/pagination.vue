@@ -32,6 +32,7 @@
 </template>
 <script lang="ts">
 import { defineComponent } from "vue";
+import { KeyboardListener } from "../siteTypes";
 
 interface Page {
   text: string;
@@ -50,6 +51,7 @@ export default defineComponent({
   data() {
     return {
       currentPage: 1,
+      typeListener: null as null | KeyboardListener,
     };
   },
   computed: {
@@ -98,7 +100,7 @@ export default defineComponent({
     },
   },
   mounted() {
-    document.addEventListener("keyup", (event) => {
+    this.typeListener = (event) => {
       if (!this.keyNavigation || event.altKey || event.ctrlKey) {
         return;
       }
@@ -107,7 +109,13 @@ export default defineComponent({
       } else if (event.key === "ArrowLeft") {
         this.decrementCurrent();
       }
-    });
+    };
+    document.addEventListener("keyup", this.typeListener);
+  },
+  unmounted() {
+    if (this.typeListener) {
+      document.removeEventListener("keyup", this.typeListener);
+    }
   },
   methods: {
     incrementCurrent() {

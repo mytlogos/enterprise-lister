@@ -17,12 +17,14 @@ import { defineComponent } from "vue";
 import { onBusEvent } from "../bus";
 import listComp from "../components/list-comp.vue";
 import externalUser from "../components/external-user.vue";
+import { ClickListener } from "../siteTypes";
 
 interface Data {
   lists: Array<{ name: string; id: number; show: boolean }>;
   filter: string;
   listFocused: boolean;
   show: null | number;
+  clickListener: null | ClickListener;
 }
 
 export default defineComponent({
@@ -43,14 +45,26 @@ export default defineComponent({
       filter: "",
       listFocused: false,
       show: null,
+      clickListener: null,
     };
   },
   mounted(): void {
-    const list = document.querySelector(".settings-list .list") as Node;
-    document.addEventListener("click", (evt) => (this.listFocused = list.contains(evt.target as Node)), {
-      capture: true,
-    });
+    this.clickListener = (evt) => {
+      const list = document.querySelector(".settings-list .list");
+
+      if (!list) {
+        console.warn("Could not find expected list element");
+        return;
+      }
+      this.listFocused = list.contains(evt.target as Node);
+    };
+    document.addEventListener("click", this.clickListener, { capture: true });
     onBusEvent("select:list", (id) => this.selectList(id));
+  },
+  unmounted() {
+    if (this.clickListener) {
+      document.removeEventListener("click", this.clickListener, { capture: true });
+    }
   },
   methods: {
     selectList(id: number): void {

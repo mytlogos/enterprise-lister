@@ -19,6 +19,7 @@
 import { emitBusEvent, onBusEvent } from "../../bus";
 
 import { defineComponent, PropType } from "vue";
+import { ClickListener } from "../../siteTypes";
 
 interface ToDeleteObject {
   name: string;
@@ -33,9 +34,10 @@ export default defineComponent({
     object: { type: Object as PropType<ToDeleteObject>, required: true },
   },
   emits: ["hide"],
-  data(): { failure: boolean } {
+  data() {
     return {
       failure: false,
+      clickListener: null as null | ClickListener,
     };
   },
   watch: {
@@ -46,21 +48,18 @@ export default defineComponent({
     },
   },
   mounted(): void {
-    document.addEventListener(
-      "click",
-      (evt) => {
-        const root = this.$refs.root as HTMLElement | undefined;
-        if (!root) {
-          console.error("Root Ref not defined in Delete Modal");
-          return;
-        }
-        if (!root.contains(evt.target as Node | null) && this.show) {
-          evt.stopImmediatePropagation();
-          this.close();
-        }
-      },
-      { capture: true },
-    );
+    this.clickListener = (evt) => {
+      const root = this.$refs.root as HTMLElement | undefined;
+      if (!root) {
+        console.error("Root Ref not defined in Delete Modal");
+        return;
+      }
+      if (!root.contains(evt.target as Node | null) && this.show) {
+        evt.stopImmediatePropagation();
+        this.close();
+      }
+    };
+    document.addEventListener("click", this.clickListener, { capture: true });
     onBusEvent("deletion", (failure) => {
       if (!this.show) {
         return;
@@ -70,6 +69,11 @@ export default defineComponent({
       }
       this.failure = failure;
     });
+  },
+  unmounted() {
+    if (this.clickListener) {
+      document.removeEventListener("click", this.clickListener, { capture: true });
+    }
   },
   methods: {
     sendForm(): void {

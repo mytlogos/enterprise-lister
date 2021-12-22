@@ -1,5 +1,8 @@
 import { CustomHook, JobHistoryItem as ServerJobHistoryItem } from "enterprise-core/dist/types";
 
+export type ClickListener = (evt: MouseEvent) => void;
+export type KeyboardListener = (evt: KeyboardEvent) => void;
+
 export type EmptyObject = Record<string, never>;
 
 export type Indexable<T> = T & {
