@@ -1,3 +1,10 @@
+## [1.24.11](https://github.com/mytlogos/enterprise-lister/compare/v1.24.10...v1.24.11) (2021-12-22)
+
+
+### Bug Fixes
+
+* **server:** did not return valid json response ([b409138](https://github.com/mytlogos/enterprise-lister/commit/b409138276b7320949e8f9efb019fafe8470dc3d))
+
 ## [1.24.10](https://github.com/mytlogos/enterprise-lister/compare/v1.24.9...v1.24.10) (2021-12-22)
 
 
