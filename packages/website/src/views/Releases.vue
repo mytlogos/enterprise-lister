@@ -2,20 +2,20 @@
   <div class="container-fluid p-0">
     <h1 id="releases-title">Releases</h1>
     <div class="p-1">
-      <button class="btn btn-dark" @click.left="fetchReleases(true)">Refresh</button>
-      <button class="btn btn-dark ms-1" @click.left="fetchReleases">Fetch new Releases</button>
-      <triple-filter v-model:state="readFilter" class="ms-1" />
-      <media-filter :state="typeFilter" class="ms-1" @update:state="typeFilter = $event">
-        <template #additional="{ value }">
-          <span
-            class="badge bg-primary rounded-pill"
-            aria-hidden="true"
-            style="bottom: 26px; position: absolute; top: -10px; right: -10px; z-index: 10"
-          >
-            {{ typeReleases[value] }}
-          </span>
+      <Button :loading="isRefreshing" label="Refresh" @click.left="refresh"></Button>
+      <Button class="ms-1" :loading="isFetching" label="Fetch new Releases" @click.left="fetchNew"></Button>
+      <SelectButton v-model="readFilter" class="d-inline-block ms-1" :options="readFilterValues" data-key="value">
+        <template #option="slotProps">
+          <i class="fas fa-check" :class="{ 'text-success': slotProps.option.value }" aria-hidden="true" />
         </template>
-      </media-filter>
+      </SelectButton>
+      <media-filter :state="typeFilter" class="ms-1" :state-count="typeReleases" @update:state="typeFilter = $event" />
+      <AutoComplete
+        force-selection
+        :suggestions="filteredCountriesBasic"
+        field="title"
+        @complete="searchCountry($event)"
+      />
       <div class="d-inline ms-1">
         <auto-complete
           thing-key="id"
@@ -160,6 +160,7 @@
       </div>
       <div class="toast-body">Could not update Progress</div>
     </div>
+    <Toast />
   </div>
 </template>
 <script lang="ts">
@@ -167,16 +168,22 @@ import { DisplayRelease, List, MediaType, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
-import TripleFilter from "../components/triple-filter.vue";
 import MediaFilter from "../components/media-filter.vue";
 import ToolTip from "bootstrap/js/dist/tooltip";
 import Toast from "bootstrap/js/dist/toast";
-import AutoComplete from "../components/auto-complete.vue";
 import AppLabel from "../components/label.vue";
 import Pagination from "../components/pagination.vue";
 
+interface DisplayMediumRelease extends DisplayRelease {
+  medium: MediaType;
+}
+
+interface Value<T> {
+  value: T;
+}
+
 interface Data {
-  releases: DisplayRelease[];
+  releases: DisplayMediumRelease[];
   currentDate: Date;
   fetching: boolean;
   unmounted: boolean;
@@ -191,19 +198,14 @@ interface Data {
   latest: Date;
   until?: Date;
   pages: Array<{ latest: Date; until: Date }>;
+  isFetching: boolean;
+  isRefreshing: boolean;
+  readFilterValues: [Value<true>, Value<false>];
 }
 
 export default defineComponent({
   name: "Releases",
-  components: { TripleFilter, MediaFilter, AutoComplete, AppLabel, Pagination },
-
-  props: {
-    read: Boolean,
-    type: {
-      type: Number,
-      default: 0,
-    },
-  },
+  components: { MediaFilter, AppLabel, Pagination },
 
   data(): Data {
     const latest = new Date();
@@ -215,7 +217,9 @@ export default defineComponent({
     return {
       releases: [],
       currentDate: new Date(),
-      fetching: false,
+      fetching: false, // for the method
+      isFetching: false, // for the button
+      isRefreshing: false, // for the button
       unmounted: false,
       replace: false,
       typeReleases: {
@@ -230,6 +234,7 @@ export default defineComponent({
       latest: new Date(),
       until: undefined,
       pages: [{ latest, until }],
+      readFilterValues: [{ value: true }, { value: false }],
     };
   },
   computed: {
@@ -263,20 +268,20 @@ export default defineComponent({
     lists(): List[] {
       return this.$store.state.lists.lists;
     },
-    computedReleases(): DisplayRelease[] {
-      let copy = [...this.releases] as DisplayRelease[];
+    computedReleases(): DisplayMediumRelease[] {
+      let copy = [...this.releases] as DisplayMediumRelease[];
 
       if (this.typeFilter) {
-        copy = copy.filter((value) => (this.$store.state.media.media[value.mediumId]?.medium || 0) & this.typeFilter);
+        copy = copy.filter((value) => value.medium & this.typeFilter);
       }
-      return copy.sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
+      return copy;
     },
     readFilter: {
-      get(): boolean | undefined {
-        return this.$store.state.releases.readFilter;
+      get(): Value<boolean> {
+        return { value: !!this.$store.state.releases.readFilter };
       },
-      set(read?: boolean) {
-        this.$store.commit("releases/readFilter", read);
+      set(read?: Value<boolean>) {
+        this.$store.commit("releases/readFilter", read?.value);
       },
     },
     typeFilter: {
@@ -290,15 +295,8 @@ export default defineComponent({
   },
   watch: {
     readFilter() {
-      this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
-    },
-    typeFilter() {
-      this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
-    },
-    read() {
       // when release filter changed, set replace current items flag and fetch anew
-      this.replace = true;
-      this.fetchReleases();
+      this.fetchReleases(true);
     },
     onlyMedia: {
       handler() {
@@ -334,10 +332,10 @@ export default defineComponent({
       } as Record<number, number>;
 
       this.releases.forEach((value) => {
-        const medium = this.$store.getters.getMedium(value.mediumId) as SimpleMedium;
+        const medium = value.medium;
 
         if (medium) {
-          newCount[medium.medium]++;
+          newCount[medium]++;
         }
       });
 
@@ -349,7 +347,6 @@ export default defineComponent({
     this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
     this.progressToast = new Toast("#progress-toast");
 
-    await this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
     this.unmounted = false;
     // FIXME: why does this property not exist?:
     // @ts-expect-error
@@ -423,6 +420,8 @@ export default defineComponent({
       }
       this.fetchReleases(true);
     },
+    searchMedium() {},
+    searchList() {},
     requireMedium(item: SimpleMedium): void {
       if (item) {
         this.$store.commit("releases/requireMedium", item.id);
@@ -490,21 +489,18 @@ export default defineComponent({
       if (this.fetching || this.unmounted) {
         return;
       }
-      replace = replace || this.replace;
       this.fetching = true;
 
       if (replace) {
         this.until = this.until || this.defaultUntil();
         this.latest = this.latest || this.defaultLatest();
+        this.isRefreshing = true;
       }
-      // if (this.releases.length && !replace) {
-      //   this.until = this.computedReleases[0].date;
-      // }
       try {
         const response = await HttpClient.getDisplayReleases(
           this.latest,
           this.until,
-          this.read,
+          this.readFilter.value,
           this.onlyLists.map((item) => item.id),
           this.onlyMedia.map((item) => item.id) as number[],
           this.ignoreLists.map((item) => item.id),
@@ -522,22 +518,40 @@ export default defineComponent({
           if (!(value.date instanceof Date)) {
             value.date = new Date(value.date);
           }
+          const medium = this.getMedium(value.mediumId);
+          // @ts-expect-error
+          value.medium = medium?.medium || 0;
           this.currentReleases.add(value.episodeId + value.link);
         });
         this.currentDate = new Date();
         // replace previous releases if necessary
-        const releases: DisplayRelease[] = replace ? reactive([]) : this.releases;
-        this.replace = false;
+        const releases: DisplayMediumRelease[] = replace ? reactive([]) : this.releases;
         // when filter changed while a previous query is still running, it may lead to wrong results
         // should not happen because no two fetches should happen at the same time
 
         // insert fetched releases at the corresponding place
-        releases.push(...response.releases);
+        releases.push(...(response.releases as DisplayMediumRelease[]));
+        releases.sort((a: DisplayMediumRelease, b: DisplayMediumRelease) => b.date.getTime() - a.date.getTime());
         this.releases = releases;
+        this.$toast.add({
+          severity: "success",
+          summary: "Loaded Releases",
+          life: 1000,
+        });
       } catch (error) {
+        this.$toast.add({
+          severity: "error",
+          summary: "Could not load Releases",
+          detail: error + "",
+          // life: 1000,
+        });
         console.error(error);
       } finally {
         this.fetching = false;
+
+        if (replace) {
+          this.isRefreshing = false;
+        }
         // fetch again in a minute
         // setTimeout(() => this.fetchReleases(), 60000);
       }
@@ -547,13 +561,13 @@ export default defineComponent({
      * Update the progress of the episode of the release to either 0 or 1.
      * Shows an error toast if it could not update the progress.
      */
-    changeReadStatus(release: DisplayRelease): void {
+    changeReadStatus(release: DisplayMediumRelease): void {
       const newProgress = release.progress < 1 ? 1 : 0;
       HttpClient.updateProgress(release.episodeId, newProgress)
         .then((success) => {
           if (success) {
             // update progress of all releases for the same episode
-            this.releases.forEach((element: DisplayRelease) => {
+            this.releases.forEach((element: DisplayMediumRelease) => {
               if (release.episodeId === element.episodeId) {
                 element.progress = newProgress;
               }
@@ -577,6 +591,14 @@ export default defineComponent({
      */
     dateToString(date: Date): string {
       return formatDate(date);
+    },
+    refresh() {
+      this.isRefreshing = true;
+      this.fetchReleases(true).finally(() => (this.isRefreshing = false));
+    },
+    fetchNew() {
+      this.isFetching = true;
+      this.fetchReleases(false).finally(() => (this.isFetching = false));
     },
   },
 });

@@ -19,17 +19,17 @@ const module: Module<ReleaseStore, VuexStore> = {
     typeFilter(state: ReleaseStore, type: number): void {
       state.typeFilter = type;
     },
-    ignoreMedium(state, id: number) {
-      state.ignoreMedia.push(id);
+    ignoreMedium(state, ids: number[]) {
+      state.ignoreMedia = ids;
     },
-    ignoreList(state, id: number) {
-      state.ignoreLists.push(id);
+    ignoreList(state, ids: number[]) {
+      state.ignoreLists = ids;
     },
-    requireMedium(state, id: number) {
-      state.onlyMedia.push(id);
+    requireMedium(state, ids: number[]) {
+      state.onlyMedia = ids;
     },
-    requireList(state, id: number) {
-      state.onlyLists.push(id);
+    requireList(state, ids: number[]) {
+      state.onlyLists = ids;
     },
     unignoreMedium(state, id: number) {
       remove(state.ignoreMedia, id);
