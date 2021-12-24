@@ -97,12 +97,12 @@ export class EpisodeContext extends SubContext {
 
     const releasePromise = this.query(
       "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId, progress " +
-        "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?)) as er " +
+        "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?) ORDER BY releaseDate DESC LIMIT 500) as er " +
         "INNER JOIN episode ON episode.id=er.episode_id " +
         "LEFT JOIN (SELECT * FROM user_episode WHERE user_uuid = ?) as ue ON episode.id=ue.episode_id " +
         "INNER JOIN part ON part.id=part_id " +
         additionalMainQuery +
-        `WHERE ${progressCondition}${filterQuery} ORDER BY releaseDate DESC LIMIT 500;`,
+        `WHERE ${progressCondition}${filterQuery};`,
       [latestDate, untilDate, untilDate, uuid, read, read],
     );
     const mediaPromise: Promise<Array<{ id: number; title: string; medium: MediaType }>> = this.query(
