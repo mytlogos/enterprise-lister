@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/mytlogos/enterprise-lister/compare/v1.24.12...v1.25.0) (2021-12-24)
+
+
+### Features
+
+* **core:** reduce query time for displayrelease ([80354ee](https://github.com/mytlogos/enterprise-lister/commit/80354ee7b94bb341d255016da15378797d226eb6))
+
 ## [1.24.12](https://github.com/mytlogos/enterprise-lister/compare/v1.24.11...v1.24.12) (2021-12-22)
 
 
