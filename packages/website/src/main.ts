@@ -17,6 +17,8 @@ import BadgeDirective from "primevue/badgedirective";
 import Button from "primevue/button";
 import SelectButton from "primevue/selectbutton";
 import AutoComplete from "primevue/autocomplete";
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
@@ -30,6 +32,8 @@ app.component("Toast", Toast);
 app.component("Button", Button);
 app.component("SelectButton", SelectButton);
 app.component("AutoComplete", AutoComplete);
+app.component("DataTable", DataTable);
+app.component("Column", Column);
 app.component("Badge", Badge);
 app.directive("badge", BadgeDirective);
 Router.isReady().then(() => app.mount("#app"));

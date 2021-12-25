@@ -10,32 +10,8 @@
         </template>
       </SelectButton>
       <media-filter :state="typeFilter" class="ms-1" :state-count="typeReleases" @update:state="typeFilter = $event" />
-      <AutoComplete
-        force-selection
-        :suggestions="filteredCountriesBasic"
-        field="title"
-        @complete="searchCountry($event)"
-      />
-      <div class="d-inline ms-1">
-        <auto-complete
-          thing-key="id"
-          class="d-inline"
-          :items="media"
-          title-key="title"
-          placeholder="Ignore Medium"
-          @input="ignoreMedium"
-        />
-      </div>
-      <div class="d-inline ms-1">
-        <auto-complete
-          thing-key="id"
-          class="d-inline"
-          :items="lists"
-          title-key="name"
-          placeholder="Ignore List"
-          @input="ignoreList"
-        />
-      </div>
+      <AutoComplete force-selection :suggestions="mediumSuggestions" field="title" @complete="searchMedium($event)" />
+      <AutoComplete :suggestions="listSuggestions" field="name" @complete="searchList($event)" />
     </div>
     <div v-if="onlyMedia.length">
       <div class="px-1">Required Media:</div>
@@ -77,72 +53,57 @@
         @delete="unignoreList(list)"
       />
     </div>
-    <pagination class="m-1" :pages="50" @page="paginate" />
-    <table class="table table-striped table-hover table-sm align-middle" aria-describedby="releases-title">
-      <thead class="table-dark">
-        <tr>
-          <th scope="col">#</th>
-          <th scope="col">Date</th>
-          <th scope="col">Chapter</th>
-          <th scope="col">Medium</th>
-          <th scope="col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(entry, index) in computedReleases" :key="entry.episodeId + entry.link">
-          <td class="">
-            {{ index + 1 }}
-          </td>
-          <td class="">
-            {{ dateToString(entry.date) }}
-          </td>
-          <td>
-            <template v-if="entry.locked">
-              <i class="fas fa-lock" aria-hidden="true" />
-            </template>
-            <a :href="entry.link" target="_blank" rel="noopener noreferrer">
-              {{ entry.title }}
-            </a>
-          </td>
-          <td>
-            <router-link
-              :to="{
-                name: 'medium',
-                params: { id: entry.mediumId },
-              }"
-            >
-              {{ getMedium(entry.mediumId)?.title }}
-            </router-link>
-          </td>
-          <td>
-            <button
-              class="btn"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
-              @click.left="changeReadStatus(entry)"
-            >
-              <i
-                class="fas fa-check"
-                aria-hidden="true"
-                :class="{
-                  'text-success': entry.progress === 1,
-                }"
-              />
-            </button>
-            <button
-              class="btn"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              title="Ignore Medium"
-              @click.left="ignoreMedium(getMedium(entry.mediumId))"
-            >
-              <i class="fas fa-ban text-warning" aria-hidden="true" />
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <DataTable :value="computedReleases" :loading="fetching" striped-rows>
+      <template #empty> No records found </template>
+      <template #loading> Loading records, please wait... </template>
+      <Column field="date" header="Date">
+        <template #body="slotProps">
+          {{ dateToString(slotProps.data.date) }}
+        </template>
+      </Column>
+      <Column field="title" header="Chapter">
+        <template #body="slotProps">
+          <template v-if="slotProps.data.locked">
+            <i class="fas fa-lock" aria-hidden="true" />
+          </template>
+          <a :href="slotProps.data.link" target="_blank" rel="noopener noreferrer">
+            {{ slotProps.data.title }}
+          </a>
+        </template>
+      </Column>
+      <Column field="mediumId" header="Medium">
+        <template #body="slotProps">
+          <router-link
+            :to="{
+              name: 'medium',
+              params: { id: slotProps.data.mediumId },
+            }"
+          >
+            {{ getMedium(slotProps.data.mediumId)?.title }}
+          </router-link>
+        </template>
+      </Column>
+      <Column header="Action" autolayout>
+        <template #body="slotProps">
+          <Button
+            class="p-button-text"
+            :class="{
+              'p-button-success': slotProps.data.progress === 1,
+              'p-button-plain': slotProps.data.progress !== 1,
+            }"
+            :icon="slotProps.data.progress === 1 ? 'pi pi-check' : 'pi pi-check'"
+            style="margin: -0.5rem 0"
+            @click.left="changeReadStatus(slotProps.data)"
+          />
+          <Button
+            icon="pi pi-ban"
+            class="p-button-text p-button-warning"
+            style="margin: -0.5rem 0"
+            @click.left="ignoreMedium(getMedium(slotProps.data.mediumId))"
+          />
+        </template>
+      </Column>
+    </DataTable>
     <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
     <div id="progress-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="toast-header">
@@ -172,7 +133,6 @@ import MediaFilter from "../components/media-filter.vue";
 import ToolTip from "bootstrap/js/dist/tooltip";
 import Toast from "bootstrap/js/dist/toast";
 import AppLabel from "../components/label.vue";
-import Pagination from "../components/pagination.vue";
 
 interface DisplayMediumRelease extends DisplayRelease {
   medium: MediaType;
@@ -180,6 +140,10 @@ interface DisplayMediumRelease extends DisplayRelease {
 
 interface Value<T> {
   value: T;
+}
+
+interface SearchEvent {
+  query: string;
 }
 
 interface Data {
@@ -201,11 +165,13 @@ interface Data {
   isFetching: boolean;
   isRefreshing: boolean;
   readFilterValues: [Value<true>, Value<false>];
+  mediumSuggestions: SimpleMedium[];
+  listSuggestions: List[];
 }
 
 export default defineComponent({
   name: "Releases",
-  components: { MediaFilter, AppLabel, Pagination },
+  components: { MediaFilter, AppLabel },
 
   data(): Data {
     const latest = new Date();
@@ -235,6 +201,8 @@ export default defineComponent({
       until: undefined,
       pages: [{ latest, until }],
       readFilterValues: [{ value: true }, { value: false }],
+      mediumSuggestions: [],
+      listSuggestions: [],
     };
   },
   computed: {
@@ -420,8 +388,28 @@ export default defineComponent({
       }
       this.fetchReleases(true);
     },
-    searchMedium() {},
-    searchList() {},
+    searchMedium(event: SearchEvent) {
+      const query = event.query.toLowerCase();
+
+      if (!query.trim()) {
+        this.mediumSuggestions = Object.values(this.$store.state.media.media);
+        return;
+      }
+      this.mediumSuggestions = Object.values(this.$store.state.media.media).filter((medium) => {
+        return medium.title.toLowerCase().includes(query);
+      });
+    },
+    searchList(event: SearchEvent) {
+      const query = event.query.toLowerCase();
+
+      if (!query.trim()) {
+        this.listSuggestions = Object.values(this.$store.state.lists.lists);
+        return;
+      }
+      this.listSuggestions = Object.values(this.$store.state.lists.lists).filter((list) => {
+        return list.name.toLowerCase().includes(query);
+      });
+    },
     requireMedium(item: SimpleMedium): void {
       if (item) {
         this.$store.commit("releases/requireMedium", item.id);
