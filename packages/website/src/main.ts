@@ -6,10 +6,13 @@ import AppComponent from "./App.vue";
 import "./registerServiceWorker";
 import VueObserveVisibility from "vue-observe-visibility";
 import { store } from "./store/store";
+import { Quasar } from "quasar";
+import quasarUserOptions from "./quasar-user-options";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
 app.config.devtools = true;
+app.use(Quasar, quasarUserOptions);
 app.use(VueObserveVisibility);
 app.use(Router);
 app.use(store);

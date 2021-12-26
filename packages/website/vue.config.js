@@ -7,6 +7,7 @@ module.exports = {
   configureWebpack: {
     devtool: "source-map",
   },
+
   pwa: {
     workboxOptions: {
       navigateFallback: "/index.html",
@@ -15,4 +16,15 @@ module.exports = {
       ],
     },
   },
+
+  pluginOptions: {
+    quasar: {
+      importStrategy: 'kebab',
+      rtlSupport: true
+    }
+  },
+
+  transpileDependencies: [
+    'quasar'
+  ]
 };

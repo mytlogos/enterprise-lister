@@ -1,11 +1,13 @@
 <template>
-  <div>This is Home.</div>
+  <q-page class="flex flex-center">
+    <img alt="Quasar logo" src="../assets/logo.svg" style="width: 200px; height: 200px" />
+  </q-page>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<style></style>
 
-export default defineComponent({
-  name: "Home",
-});
+<script>
+export default {
+  name: "PageHome",
+};
 </script>
