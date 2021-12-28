@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/mytlogos/enterprise-lister/compare/v1.25.0...v1.25.1) (2021-12-28)
+
+
+### Bug Fixes
+
+* **scraper:** normalize links ([4ae80bc](https://github.com/mytlogos/enterprise-lister/commit/4ae80bc570df40afee5a75b471831a35edc79be0))
+
 # [1.25.0](https://github.com/mytlogos/enterprise-lister/compare/v1.24.12...v1.25.0) (2021-12-24)
 
 
