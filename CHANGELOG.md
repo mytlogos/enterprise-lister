@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/mytlogos/enterprise-lister/compare/v1.25.1...v1.26.0) (2021-12-28)
+
+
+### Features
+
+* **scraper:** delete invalid releases ([0243c4e](https://github.com/mytlogos/enterprise-lister/commit/0243c4e415cc4b0f8d9c6f01e77419e73122e3d7))
+
 ## [1.25.1](https://github.com/mytlogos/enterprise-lister/compare/v1.25.0...v1.25.1) (2021-12-28)
 
 
