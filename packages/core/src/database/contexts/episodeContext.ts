@@ -666,19 +666,30 @@ export class EpisodeContext extends SubContext {
     );
   }
 
-  public async deleteRelease(release: EpisodeRelease): EmptyPromise {
-    const result = await this.delete(
-      "episode_release",
-      {
-        column: "episode_id",
-        value: release.episodeId,
-      },
-      {
-        column: "url",
-        value: release.url,
-      },
-    );
-    storeModifications("release", "delete", result);
+  public async deleteRelease(release: EpisodeRelease | EpisodeRelease[]): EmptyPromise {
+    if (Array.isArray(release)) {
+      await Promise.all(
+        batch(release, 100).map((releaseBatch) => {
+          return this.query(
+            `DELETE FROM episode_release WHERE (episode_id, url) in (${releaseBatch.map(() => "(?,?)").join(",")})`,
+            releaseBatch.flatMap((item) => [item.episodeId, item.url]),
+          );
+        }),
+      );
+    } else {
+      const result = await this.delete(
+        "episode_release",
+        {
+          column: "episode_id",
+          value: release.episodeId,
+        },
+        {
+          column: "url",
+          value: release.url,
+        },
+      );
+      storeModifications("release", "delete", result);
+    }
   }
 
   public async getEpisodeContentData(chapterLink: string): Promise<EpisodeContentData> {

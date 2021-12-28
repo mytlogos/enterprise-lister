@@ -312,6 +312,8 @@ async function addPartEpisodes(
 
   if (knownEpisodeIds.length) {
     const updateReleases: EpisodeRelease[] = [];
+    const episodeReleasesMap = new Map<number, EpisodeRelease[]>();
+    let tocId = 0;
 
     const newReleases = nonNewIndices
       .map((index): Optional<EpisodeRelease> => {
@@ -326,10 +328,20 @@ async function addPartEpisodes(
           throw Error("known episode has no episode from storage");
         }
         const id = currentEpisode.id;
+
         const foundRelease = storageReleases.find(
           (release) => release.url === episodeValue.tocEpisode.url && release.episodeId === id,
         );
 
+        const episodeTocId = episodeValue.tocEpisode.tocId;
+        if (episodeTocId) {
+          if (!tocId) {
+            tocId = episodeTocId;
+          } else if (tocId !== episodeTocId) {
+            tocId = -1; // disable using the tocId
+            logger.warn(`Different TocIds on episodes, Expected ${tocId} but got ${episodeTocId} instead`);
+          }
+        }
         const tocRelease: EpisodeRelease = {
           episodeId: id,
           releaseDate: getLatestDate(episodeValue.tocEpisode.releaseDate || new Date()),
@@ -338,6 +350,10 @@ async function addPartEpisodes(
           locked: episodeValue.tocEpisode.locked,
           tocId: episodeValue.tocEpisode.tocId,
         };
+
+        // map scraped toc
+        getElseSet(episodeReleasesMap, id, () => []).push(tocRelease);
+
         if (foundRelease) {
           const date =
             foundRelease.releaseDate < tocRelease.releaseDate ? foundRelease.releaseDate : tocRelease.releaseDate;
@@ -358,11 +374,32 @@ async function addPartEpisodes(
       })
       .filter((v) => v) as EpisodeRelease[];
 
+    const deleteReleases: EpisodeRelease[] = [];
+
+    // only delete releases if the toc is not empty and all episodes have the same valid tocId
+    if (episodeReleasesMap.size && tocId > 0) {
+      for (const release of storageReleases) {
+        if (release.tocId !== tocId) {
+          continue;
+        }
+        const tocReleases = episodeReleasesMap.get(release.episodeId);
+
+        // to delete the release either the episode of it should not be defined or the release
+        // (same url only, as same episodeId and tocId is already given) should not be available
+        if (!tocReleases || !tocReleases.find((other) => other.url === release.url)) {
+          deleteReleases.push(release);
+        }
+      }
+    }
+
     if (newReleases.length) {
       await episodeStorage.addRelease(newReleases);
     }
     if (updateReleases.length) {
       await episodeStorage.updateRelease(updateReleases);
+    }
+    if (deleteReleases.length) {
+      await episodeStorage.deleteRelease(deleteReleases);
     }
   }
   if (allEpisodes.length) {
