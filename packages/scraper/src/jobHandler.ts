@@ -27,6 +27,7 @@ import {
   Optional,
   NewsResult,
   CombinedEpisode,
+  FullMediumToc,
 } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult, ScrapeItem } from "./externals/types";
@@ -112,6 +113,7 @@ interface MediumTocContent {
   parts: TocPart[];
   episodes: TocEpisode[];
   url: string;
+  tocId: number;
 }
 
 /**
@@ -192,6 +194,7 @@ async function getTocMedia(tocs: Toc[], uuid?: Uuid): Promise<Map<SimpleMedium, 
           episodes: [],
           parts: [],
           url: toc.link,
+          tocId: (currentToc as FullMediumToc).id,
         };
       });
 
@@ -243,11 +246,18 @@ interface TocPartMapping {
   >;
 }
 
-async function addPartEpisodes(
+interface PartChanges {
+  newEpisodes: SimpleEpisode[];
+  newReleases: EpisodeRelease[];
+  updateReleases: EpisodeRelease[];
+  unchangedReleases: EpisodeRelease[];
+}
+
+function partEpisodesReleaseChanges(
   value: TocPartMapping,
   storageEpisodes: Readonly<CombinedEpisode[]>,
   storageReleases: Readonly<EpisodeRelease[]>,
-): EmptyPromise {
+): PartChanges {
   if (!value.part || !value.part.id) {
     throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
   }
@@ -310,12 +320,15 @@ async function addPartEpisodes(
       .filter((episode) => episode != null) as SimpleEpisode[]
   ).map((episode: SimpleEpisode) => episode.id);
 
-  if (knownEpisodeIds.length) {
-    const updateReleases: EpisodeRelease[] = [];
-    const episodeReleasesMap = new Map<number, EpisodeRelease[]>();
-    let tocId = 0;
+  const result: PartChanges = {
+    newEpisodes: [...allEpisodes],
+    newReleases: [],
+    updateReleases: [],
+    unchangedReleases: [],
+  };
 
-    const newReleases = nonNewIndices
+  if (knownEpisodeIds.length) {
+    result.newReleases = nonNewIndices
       .map((index): Optional<EpisodeRelease> => {
         const episodeValue = value.episodeMap.get(index);
 
@@ -333,15 +346,6 @@ async function addPartEpisodes(
           (release) => release.url === episodeValue.tocEpisode.url && release.episodeId === id,
         );
 
-        const episodeTocId = episodeValue.tocEpisode.tocId;
-        if (episodeTocId) {
-          if (!tocId) {
-            tocId = episodeTocId;
-          } else if (tocId !== episodeTocId) {
-            tocId = -1; // disable using the tocId
-            logger.warn(`Different TocIds on episodes, Expected ${tocId} but got ${episodeTocId} instead`);
-          }
-        }
         const tocRelease: EpisodeRelease = {
           episodeId: id,
           releaseDate: getLatestDate(episodeValue.tocEpisode.releaseDate || new Date()),
@@ -350,9 +354,6 @@ async function addPartEpisodes(
           locked: episodeValue.tocEpisode.locked,
           tocId: episodeValue.tocEpisode.tocId,
         };
-
-        // map scraped toc
-        getElseSet(episodeReleasesMap, id, () => []).push(tocRelease);
 
         if (foundRelease) {
           const date =
@@ -366,45 +367,17 @@ async function addPartEpisodes(
           if (tocRelease.releaseDate < foundRelease.releaseDate || !equalsRelease(foundRelease, tocRelease)) {
             // use the earliest release date as value
             tocRelease.releaseDate = date;
-            updateReleases.push(tocRelease);
+            result.updateReleases.push(tocRelease);
+          } else {
+            result.unchangedReleases.push(tocRelease);
           }
           return;
         }
         return tocRelease;
       })
       .filter((v) => v) as EpisodeRelease[];
-
-    const deleteReleases: EpisodeRelease[] = [];
-
-    // only delete releases if the toc is not empty and all episodes have the same valid tocId
-    if (episodeReleasesMap.size && tocId > 0) {
-      for (const release of storageReleases) {
-        if (release.tocId !== tocId) {
-          continue;
-        }
-        const tocReleases = episodeReleasesMap.get(release.episodeId);
-
-        // to delete the release either the episode of it should not be defined or the release
-        // (same url only, as same episodeId and tocId is already given) should not be available
-        if (!tocReleases || !tocReleases.find((other) => other.url === release.url)) {
-          deleteReleases.push(release);
-        }
-      }
-    }
-
-    if (newReleases.length) {
-      await episodeStorage.addRelease(newReleases);
-    }
-    if (updateReleases.length) {
-      await episodeStorage.updateRelease(updateReleases);
-    }
-    if (deleteReleases.length) {
-      await episodeStorage.deleteRelease(deleteReleases);
-    }
   }
-  if (allEpisodes.length) {
-    await episodeStorage.addEpisode(allEpisodes);
-  }
+  return result;
 }
 
 export async function tocHandler(result: TocResult): EmptyPromise {
@@ -427,15 +400,15 @@ export async function tocHandler(result: TocResult): EmptyPromise {
   // map tocs contents to medium
   const media: Map<SimpleMedium, MediumTocContent> = await getTocMedia(tocs, uuid);
 
-  const promises: Array<Promise<EmptyPromise[]>> = Array.from(media.entries())
+  const promises: EmptyPromise[] = Array.from(media.entries())
     .filter((entry) => entry[0].id)
-    .map(async (entry) => {
+    .map(async (entry): EmptyPromise => {
       const mediumId = entry[0].id as number;
       const tocContent = entry[1];
       const tocParts = tocContent.parts;
 
       if (!tocParts.length && !tocContent.episodes.length) {
-        return [];
+        return;
       }
 
       const indexPartsMap: Map<number, TocPartMapping> = new Map();
@@ -506,13 +479,79 @@ export async function tocHandler(result: TocResult): EmptyPromise {
         throw Error("invalid url for release: " + tocContent.url);
       }
       const releases: EpisodeRelease[] = await episodeStorage.getMediumReleasesByHost(mediumId, exec[0]);
-      return [...indexPartsMap.values()].map((value) => addPartEpisodes(value, episodes, releases));
+      const settledChanges = await Promise.allSettled(
+        [...indexPartsMap.values()].map((value) => partEpisodesReleaseChanges(value, episodes, releases)),
+      );
+
+      const changes = settledChanges
+        .map((settled) => {
+          if (settled.status === "fulfilled") {
+            return settled.value;
+          } else {
+            logger.error(settled.reason);
+          }
+        })
+        .filter((value) => value) as PartChanges[];
+
+      const mergedChanges = changes.reduce((previous, current) => {
+        previous.newEpisodes.push(...current.newEpisodes);
+        previous.newReleases.push(...current.newReleases);
+        previous.updateReleases.push(...current.updateReleases);
+        previous.unchangedReleases.push(...current.unchangedReleases);
+        return previous;
+      });
+
+      const deleteReleases: EpisodeRelease[] = [];
+      const episodeReleasesMap = new Map<number, EpisodeRelease[]>();
+
+      mergedChanges.newReleases.forEach((release) => {
+        // map scraped toc
+        getElseSet(episodeReleasesMap, release.episodeId, () => []).push(release);
+      });
+
+      mergedChanges.updateReleases.forEach((release) => {
+        // map scraped toc
+        getElseSet(episodeReleasesMap, release.episodeId, () => []).push(release);
+      });
+
+      mergedChanges.unchangedReleases.forEach((release) => {
+        // map scraped toc
+        getElseSet(episodeReleasesMap, release.episodeId, () => []).push(release);
+      });
+
+      // only delete releases if the toc is not empty
+      if (episodeReleasesMap.size) {
+        for (const release of releases) {
+          if (release.tocId !== tocContent.tocId) {
+            continue;
+          }
+          const tocReleases = episodeReleasesMap.get(release.episodeId);
+
+          // to delete the release either the episode of it should not be defined or the release
+          // (same url only, as same episodeId and tocId is already given) should not be available
+          if (!tocReleases || !tocReleases.find((other) => other.url === release.url)) {
+            deleteReleases.push(release);
+          }
+        }
+      }
+
+      if (mergedChanges.newReleases.length) {
+        await episodeStorage.addRelease(mergedChanges.newReleases);
+      }
+      if (mergedChanges.updateReleases.length) {
+        await episodeStorage.updateRelease(mergedChanges.updateReleases);
+      }
+      if (deleteReleases.length) {
+        await episodeStorage.deleteRelease(deleteReleases);
+      }
+      if (mergedChanges.newEpisodes.length) {
+        await episodeStorage.addEpisode(mergedChanges.newEpisodes);
+      }
       // catch all errors from promises, so it will not affect others
     })
     .map((value) =>
       value.catch((reason) => {
         logger.error(reason);
-        return [];
       }),
     );
   await Promise.all((await Promise.all(promises)).flat());
