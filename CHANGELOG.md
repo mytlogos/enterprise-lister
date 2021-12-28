@@ -1,3 +1,10 @@
+## [1.26.1](https://github.com/mytlogos/enterprise-lister/compare/v1.26.0...v1.26.1) (2021-12-28)
+
+
+### Bug Fixes
+
+* **scraper:** fix deleting wrong releases ([8b1d4de](https://github.com/mytlogos/enterprise-lister/commit/8b1d4de3be73724a8c41f71cdb82df4967af502d))
+
 # [1.26.0](https://github.com/mytlogos/enterprise-lister/compare/v1.25.1...v1.26.0) (2021-12-28)
 
 
