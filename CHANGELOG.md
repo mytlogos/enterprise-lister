@@ -1,3 +1,10 @@
+## [1.26.2](https://github.com/mytlogos/enterprise-lister/compare/v1.26.1...v1.26.2) (2021-12-28)
+
+
+### Bug Fixes
+
+* **website:** add missing store implementation ([b808483](https://github.com/mytlogos/enterprise-lister/commit/b8084832d459ee57ef3c1363e9282bc634f3448e))
+
 ## [1.26.1](https://github.com/mytlogos/enterprise-lister/compare/v1.26.0...v1.26.1) (2021-12-28)
 
 
