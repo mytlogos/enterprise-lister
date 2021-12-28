@@ -1,6 +1,7 @@
 import { createApp } from "vue";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "@fortawesome/fontawesome-free/css/all.css";
+import "@coreui/coreui/dist/css/coreui.min.css";
 import Router from "./router";
 import AppComponent from "./App.vue";
 import "./registerServiceWorker";
