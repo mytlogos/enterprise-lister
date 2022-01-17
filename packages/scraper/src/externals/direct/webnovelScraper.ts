@@ -12,15 +12,16 @@ import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
-import * as request from "request-promise-native";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
+import { Cookie, CookieJar } from "tough-cookie";
+import axios from "axios";
+import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import * as cheerio from "cheerio";
 
-const jar = request.jar();
-const defaultRequest = request.defaults({
-  jar,
-});
+const jar = new CookieJar();
+const defaultRequest = axiosCookieJarSupport(axios.create() as any);
+defaultRequest.defaults.jar = jar;
 
 const BASE_URI = "https://www.webnovel.com/";
 
@@ -28,7 +29,7 @@ const initPromise = queueRequest(
   BASE_URI,
   {
     method: "HEAD",
-    uri: BASE_URI,
+    url: BASE_URI,
   },
   defaultRequest,
 ).then(ignore);
@@ -120,8 +121,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   return scrapeTocPage(bookId);
 }
 
+function getCookies(): Promise<Cookie[]> {
+  return new Promise((resolve, reject) => {
+    jar.getCookies(BASE_URI, (error, cookies) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(cookies);
+      }
+    });
+  });
+}
+
 async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> {
-  const csrfCookie = jar.getCookies(BASE_URI).find((value) => value.key === "_csrfToken");
+  const csrfCookie = (await getCookies()).find((value) => value.key === "_csrfToken");
 
   if (!csrfCookie) {
     logger.warn("csrf cookie not found for webnovel");

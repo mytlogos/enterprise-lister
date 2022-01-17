@@ -1,10 +1,9 @@
 import { Cheerio, CheerioAPI, Element } from "cheerio";
-import { Options } from "cloudscraper";
 import { getStore } from "enterprise-core/dist/asyncStorage";
 import logger from "enterprise-core/dist/logger";
 import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import * as url from "url";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { queueCheerioRequest, queueRequest, RequestConfig as QueueRequestConfig } from "../queueManager";
 import { CustomHookError, CustomHookErrorCodes } from "./errors";
 import {
   JsonRegex,
@@ -979,8 +978,7 @@ export const makeRequest = traceWrap(function makeRequest(
   context: Context,
   requestConfig?: RequestConfig,
 ): Promise<CheerioAPI | any> {
-  // @ts-expect-error
-  const options: Options = {};
+  const options: QueueRequestConfig = {};
 
   if (requestConfig) {
     if (requestConfig.regexUrl && requestConfig.transformUrl) {
@@ -999,13 +997,12 @@ export const makeRequest = traceWrap(function makeRequest(
       targetUrl = templateString(requestConfig.templateUrl, context);
     }
     if (requestConfig.templateBody) {
-      options.body = templateString(requestConfig.templateBody, context);
+      options.data = templateString(requestConfig.templateBody, context);
     }
     if (requestConfig.options) {
       Object.assign(options, requestConfig.options);
     }
   }
-  // @ts-expect-error
   options.url = targetUrl;
 
   console.log("Requesting url: " + targetUrl);

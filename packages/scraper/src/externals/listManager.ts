@@ -1,4 +1,5 @@
-import request from "request-promise-native";
+import axios from "axios";
+import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import url from "url";
 import { Errors, isString, MediaType, unique } from "enterprise-core/dist/tools";
 import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "./queueManager";
@@ -199,12 +200,12 @@ class SimpleNovelUpdates implements ListManager {
   private async scrapeList(page: number): Promise<[ScrapeList, number]> {
     const uri = "https://www.novelupdates.com/wp-admin/admin-ajax.php";
     const response = await queueRequest(uri, {
-      uri,
+      url: uri,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       method: "POST",
-      body: `action=nu_prevew&pagenum=${page}&intUserID=${this.id}&isMobile=`,
+      data: `action=nu_prevew&pagenum=${page}&intUserID=${this.id}&isMobile=`,
     });
 
     const lastIndexOf = response.lastIndexOf("}");
@@ -455,10 +456,9 @@ class NovelUpdates implements ListManager {
     //     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
     //         "(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36",
     // };
-    this.defaults = request.defaults({
-      jar: request.jar(this.jar.store),
-      simple: false,
-    });
+    this.defaults = axios.create({ withCredentials: true });
+    axiosCookieJarSupport(this.defaults);
+    this.defaults.defaults.jar = this.jar;
   }
 
   /**

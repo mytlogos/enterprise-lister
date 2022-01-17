@@ -8,16 +8,15 @@ import {
   Optional,
 } from "enterprise-core/dist/types";
 import * as url from "url";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest, RequestConfig } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError } from "../errors";
-import { Options } from "cloudscraper";
 import * as cheerio from "cheerio";
 
-async function tryRequest(link: string, options?: Options, retry = 0): Promise<cheerio.CheerioAPI> {
+async function tryRequest(link: string, options?: RequestConfig, retry = 0): Promise<cheerio.CheerioAPI> {
   try {
     return await queueCheerioRequest(link);
   } catch (error) {
@@ -377,7 +376,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
       "Content-Type": "application/x-www-form-urlencoded",
     },
     method: "POST",
-    body,
+    data: body,
   });
 
   const links = $("a.a-item");
@@ -412,7 +411,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     method: "POST",
-    body,
+    data: body,
   });
   const searchResults: SearchResult[] = [];
   const links = $("a.a-item");

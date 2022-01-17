@@ -24,6 +24,7 @@ import { MissingResourceError, UrlError } from "../errors";
 import { StatusCodeError } from "cloudscraper/errors";
 import { StatusCodeError as RequestStatusCodeError } from "request-promise-native/errors";
 import * as cheerio from "cheerio";
+import { AxiosError } from "axios";
 
 interface NovelSearchResponse {
   success: boolean;
@@ -52,7 +53,7 @@ async function search(text: string): Promise<SearchResult[]> {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       method: "POST",
-      body: "action=wp-manga-search-manga&title=" + text,
+      data: "action=wp-manga-search-manga&title=" + text,
     });
   } catch (e) {
     logger.error(e);
@@ -82,7 +83,7 @@ export async function searchAjax(searchWords: string, medium: TocSearchMedium): 
         "Content-Type": "application/x-www-form-urlencoded",
       },
       method: "POST",
-      body: "action=wp-manga-search-manga&title=" + searchWords,
+      data: "action=wp-manga-search-manga&title=" + searchWords,
     });
   } catch (e) {
     logger.error(e);
@@ -163,8 +164,10 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
   try {
     $ = await queueCheerioRequest(tocLink);
   } catch (e) {
-    if (e instanceof StatusCodeError || e instanceof RequestStatusCodeError) {
-      if (e.statusCode === 404) {
+    if (typeof e === "object" && e && "isAxiosError" in e && (e as AxiosError).isAxiosError) {
+      const error = e as AxiosError;
+
+      if (error.code === "404") {
         throw new MissingResourceError("Toc not found on BoxNovel", tocLink);
       } else {
         throw e;

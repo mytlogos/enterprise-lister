@@ -11,6 +11,8 @@
     "lintfix": "eslint --fix 'src/**/*.{js,ts,vue}'"
   },
   "dependencies": {
+    "axios": "^0.24.0",
+    "axios-cookiejar-support": "^2.0.3",
     "bcryptjs": "^2.4.3",
     "cheerio": "^1.0.0-rc.10",
     "cloudscraper": "^4.6.0",

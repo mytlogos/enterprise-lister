@@ -50,7 +50,6 @@ import * as url from "url";
 import { Cache } from "enterprise-core/dist/cache";
 import * as validate from "validate.js";
 import request from "request";
-import { FullResponse } from "cloudscraper";
 import { queueFastRequestFullResponse } from "./queueManager";
 import env from "enterprise-core/dist/env";
 import { sourceType } from "./direct/undergroundScraper";
@@ -73,6 +72,7 @@ import {
   tocDiscoveryEntries,
   tocScraperEntries,
 } from "./hookManager";
+import axios, { AxiosResponse } from "axios";
 
 interface ScrapeableFilterResult {
   available: string[];
@@ -897,21 +897,8 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
   return [...downloadContents.values()];
 }
 
-function checkLinkWithInternet(link: string): Promise<FullResponse> {
-  return new Promise((resolve, reject) => {
-    request
-      .head(link)
-      .on("response", (res) => {
-        // noinspection TypeScriptValidateJSTypes
-        if (res.caseless.get("server") === "cloudflare") {
-          resolve(queueFastRequestFullResponse(link));
-        } else {
-          resolve(res);
-        }
-      })
-      .on("error", reject)
-      .end();
-  });
+function checkLinkWithInternet(link: string): Promise<AxiosResponse> {
+  return axios.head(link);
 }
 
 function checkLink(link: string, linkKey?: string): Promise<string> {

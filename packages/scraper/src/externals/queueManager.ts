@@ -1,13 +1,5 @@
-import request, { FullResponse, Options } from "cloudscraper";
-import requestNative, { RequestAPI } from "request";
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import * as cheerio from "cheerio";
-import ParserStream from "parse5-parser-stream";
-import * as htmlparser2 from "htmlparser2";
-import { WritableStream as WritableParseStream } from "htmlparser2/lib/WritableStream";
-import { BufferToStringStream } from "enterprise-core/dist/transform";
-import { StatusCodeError } from "request-promise-native/errors";
-import requestPromise from "request-promise-native";
-import { MissingResourceError } from "./errors";
 import { setContext, removeContext, getStore, bindContext } from "enterprise-core/dist/asyncStorage";
 import http from "http";
 import https from "https";
@@ -18,6 +10,7 @@ import { AsyncResource } from "async_hooks";
 import { Optional } from "enterprise-core/dist/types";
 import { channel } from "diagnostics_channel";
 import { RequestQueueChannelMessage } from "./types";
+import { CookieJar } from "tough-cookie";
 
 const queueChannel = channel("enterprise-requestqueue");
 
@@ -44,7 +37,7 @@ function patchRequest(module: HttpModule, protocol: string) {
           if (clientRequest.socket) {
             socket = clientRequest.socket;
           } else {
-            console.error("No sockets available on request" + stringify(res) + stringify(request));
+            console.error("No sockets available on request" + stringify(res) + stringify(clientRequest));
             return;
           }
           const bytesSend = socket.bytesWritten;
@@ -179,26 +172,24 @@ const fastQueues: Map<string, Queue> = new Map();
 
 export type Callback = () => Promise<any>;
 
-function methodToRequest(options: Optional<Options>, toUseRequest: Request) {
+function methodToRequest(url: string, options: Optional<RequestConfig>, toUseRequest: Request) {
   const method = options && options.method ? options.method : "";
 
   switch (method.toLowerCase()) {
     case "get":
-      return toUseRequest.get(options);
+      return toUseRequest.get(url, options);
     case "head":
-      return toUseRequest.head(options);
+      return toUseRequest.head(url, options);
     case "put":
-      return toUseRequest.put(options);
+      return toUseRequest.put(url, options);
     case "post":
-      return toUseRequest.post(options);
+      return toUseRequest.post(url, options);
     case "patch":
-      return toUseRequest.patch(options);
-    case "del":
-      return toUseRequest.del(options);
+      return toUseRequest.patch(url, options);
     case "delete":
-      return toUseRequest.delete(options);
+      return toUseRequest.delete(url, options);
     default:
-      return toUseRequest.get(options);
+      return toUseRequest.get(url, options);
   }
 }
 
@@ -235,19 +226,20 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
     queueToUse.set(host, (queue = new Queue(host, limit)));
   }
 
-  const toUseRequest: Request = otherRequest || request;
+  const toUseRequest: Request = otherRequest || axios;
   return { toUseRequest, queue };
 }
 
 export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): Promise<string> => {
   const { toUseRequest, queue } = processRequest(uri, otherRequest);
   if (!options) {
-    options = { uri };
+    options = { url: uri };
   } else {
-    // @ts-expect-error
     options.url = uri;
   }
-  return queue.push(() => methodToRequest(options, toUseRequest));
+  return queue
+    .push(() => methodToRequest(uri, options, toUseRequest))
+    .then((response: AxiosResponse<string>) => response.data);
 };
 
 export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
@@ -258,16 +250,18 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
   const { toUseRequest, queue } = processRequest(uri, otherRequest);
 
   if (!options) {
-    options = { uri };
+    options = { url: uri };
   }
-  options.transform = transformCheerio;
-  // only transform 2xx to get full response on error
-  options.transform2xxOnly = true;
+  options.transformResponse = transformCheerio;
 
   return queue.push(async () => {
     for (let tryAgain = 0; tryAgain < 4; tryAgain++) {
       try {
-        return await methodToRequest(options, toUseRequest);
+        return await queue
+          .push(() => methodToRequest(uri, options, toUseRequest))
+          .then((response: AxiosResponse<CheerioStatic>) => {
+            return response.data;
+          });
       } catch (error) {
         // retry at most 3 times for 429 - Too many Requests error
         if (hasProps(error, "statusCode", "response") && error.statusCode === 429 && tryAgain < 3) {
@@ -299,112 +293,9 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
   });
 };
 
-export type QueueRequest<T> = (uri: string, options?: Options, otherRequest?: Request) => Promise<T>;
+export type RequestConfig = AxiosRequestConfig & { jar?: CookieJar };
 
-type Resolve<T> = (value?: T | PromiseLike<T>) => void;
-type Reject = (reason?: any) => void;
-
-function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: string, options?: Options) {
-  // i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly
-  // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
-  //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
-  //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
-  // @ts-expect-error
-  const parser = new ParserStream<CheerioElement>({ treeAdapter: ParserStream.treeAdapters.htmlparser2 });
-  parser.on("finish", () => {
-    if (parser.document && parser.document.children) {
-      const load = cheerio.load(parser.document.children);
-      if (load) {
-        resolve(load);
-      } else {
-        reject("Document could not be loaded");
-      }
-    } else {
-      reject("No Document parsed");
-    }
-  });
-  const stream = new BufferToStringStream();
-  stream.on("data", (chunk: string) => console.log("first chunk:\n " + chunk.substring(0, 100)));
-  requestNative(uri, options)
-    .on("response", (resp) => {
-      resp.pause();
-
-      if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
-        resp.destroy();
-
-        if (!options) {
-          options = { uri };
-        }
-        options.transform = transformCheerio;
-        resolve(request(options));
-        return;
-      }
-      resp.pipe(stream).pipe(parser);
-    })
-    .on("error", (e) => {
-      reject(e);
-    });
-  return options;
-}
-
-function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri: string, options?: Options) {
-  // TODO: 22.06.2019 seems to produce sth bad, maybe some error in how i stream the buffer to string?
-  // TODO: 22.06.2019 seems to produce this error primarily (noticed there only) on webnovel.com, parts are messed up
-  const parser = new WritableParseStream(
-    new htmlparser2.DomHandler(
-      (error, dom) => {
-        const load = cheerio.load(dom, { decodeEntities: false });
-        resolve(load);
-      },
-      {
-        // FIXME: 02.09.2019 why does it not accept this property?
-        // @ts-expect-error
-        withDomLvl1: true,
-        normalizeWhitespace: false,
-      },
-    ),
-    {
-      decodeEntities: false,
-    },
-  ).on("error", (err) => reject(err));
-  const stream = new BufferToStringStream();
-
-  requestNative(uri, options)
-    .on("response", (resp) => {
-      resp.pause();
-
-      if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
-        resp.destroy();
-
-        if (!options) {
-          options = { uri };
-        }
-        options.transform = transformCheerio;
-        resolve(request(options));
-        return;
-      } else if (resp.statusCode === 404) {
-        resp.destroy();
-        reject(new MissingResourceError(uri, uri));
-      } else if (resp.statusCode >= 400 || resp.statusCode < 200) {
-        resp.destroy();
-        reject(new StatusCodeError(resp.statusCode, "", options as requestPromise.Options, resp));
-      }
-      resp.pipe(stream).pipe(parser);
-    })
-    .on("error", (e) => {
-      reject(e);
-    });
-  return options;
-}
-
-export const queueCheerioRequestStream: QueueRequest<CheerioStatic> = (uri, options): Promise<CheerioStatic> => {
-  const { queue } = processRequest(uri);
-
-  if (!options) {
-    options = { uri };
-  }
-  return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
-};
+export type QueueRequest<T> = (uri: string, options?: RequestConfig, otherRequest?: Request) => Promise<T>;
 
 export const queueCheerioRequest = queueCheerioRequestBuffered;
 
@@ -412,43 +303,40 @@ const transformCheerio = (body: string): CheerioStatic => cheerio.load(body, { d
 
 const queueFullResponseWithLimit = (
   uri: string,
-  options?: Options,
+  options?: RequestConfig,
   otherRequest?: Request,
   queueToUse = queues,
   limit?: number,
-): Promise<FullResponse> => {
+): Promise<AxiosResponse> => {
   const { toUseRequest, queue } = processRequest(uri, otherRequest, queueToUse, limit);
 
-  // @ts-expect-error
-  const requestOptions: Options = options || {};
-  requestOptions.resolveWithFullResponse = true;
-  // @ts-expect-error
-  requestOptions.uri = uri;
+  const requestOptions: RequestConfig = options || {};
+  requestOptions.url = uri;
 
   return queue
-    .push(() => (requestOptions.method ? toUseRequest(requestOptions) : toUseRequest.get(requestOptions)))
-    .then((value: FullResponse) => {
+    .push(() => (requestOptions.method ? toUseRequest(requestOptions) : toUseRequest.get(uri, requestOptions)))
+    .then((value: AxiosResponse) => {
       return value;
     });
 };
 
 // TODO: 21.06.2019 use stream to load with parse5 streamer with request into cheerio
 
-export const queueRequestFullResponse: QueueRequest<FullResponse> = (
+export const queueRequestFullResponse: QueueRequest<AxiosResponse> = (
   uri,
   options,
   otherRequest,
-): Promise<FullResponse> => {
+): Promise<AxiosResponse> => {
   return queueFullResponseWithLimit(uri, options, otherRequest);
 };
 
-export type Request = RequestAPI<any, any, any>;
+export type Request = AxiosInstance;
 
-export const queueFastRequestFullResponse: QueueRequest<FullResponse> = (
+export const queueFastRequestFullResponse: QueueRequest<AxiosResponse> = (
   uri,
   options,
   otherRequest,
-): Promise<FullResponse> => {
+): Promise<AxiosResponse> => {
   return queueFullResponseWithLimit(uri, options, otherRequest, fastQueues, 100);
 };
 
@@ -470,18 +358,3 @@ export const queueWork = (key: string, callback: Callback): Promise<any> => {
 export const queueFastWork = (key: string, callback: Callback): Promise<any> => {
   return queueWithLimit(key, callback, 50, fastQueues);
 };
-
-/*
-parse5-parser-stream
-
-// Fetch the page content and obtain it's <head> node
-http.get('http://inikulin.github.io/parse5/', res => {
-    const parser = new ParserStream();
-
-    parser.once('finish', () => {
-        console.log(parser.document.childNodes[1].childNodes[0].tagName); //> 'head'
-    });
-
-    res.pipe(parser);
-});
- */

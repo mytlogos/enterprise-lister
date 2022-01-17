@@ -3,18 +3,23 @@ import { EpisodeContentData, EpisodeNews, ReleaseState, Optional } from "enterpr
 import * as url from "url";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
-import { extractIndices, hasProp, MediaType, sanitizeString } from "enterprise-core/dist/tools";
-import * as request from "request";
+import { extractIndices, ignore, hasProp, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, UrlError } from "../errors";
 import { extractLinkable } from "./directTools";
+import { CookieJar } from "tough-cookie";
 
 const BASE_URI = "https://mangadex.org/";
-const jar = request.jar();
-jar.setCookie("mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;", BASE_URI, {
-  secure: false,
-});
+const jar = new CookieJar();
+jar.setCookie(
+  "mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;",
+  BASE_URI,
+  {
+    secure: false,
+  },
+  ignore,
+);
 
 function loadJson(urlString: string): Promise<any> {
   return queueRequest(urlString).then((body) => JSON.parse(body));
@@ -140,7 +145,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
   const uri = BASE_URI;
   const requestLink = uri + "updates";
-  const $ = await queueCheerioRequest(requestLink, { jar, uri: requestLink });
+  const $ = await queueCheerioRequest(requestLink, { jar, url: requestLink });
   const newsRows = $(".table tbody tr");
 
   const episodeNews: EpisodeNews[] = [];

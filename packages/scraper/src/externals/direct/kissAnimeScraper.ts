@@ -4,23 +4,19 @@ import * as url from "url";
 import { queueCheerioRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
 import { extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
-import * as request from "cloudscraper";
-import { CloudScraper, CloudscraperOptions } from "cloudscraper";
-import * as normalRequest from "request";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
 import * as cheerio from "cheerio";
+import { CookieJar } from "tough-cookie";
+import axios, { AxiosRequestConfig } from "axios";
+import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 
-// @ts-expect-error
-const jar = request.jar();
-type RequestAPI = normalRequest.RequestAPI<CloudScraper, CloudscraperOptions, normalRequest.RequiredUriUrl>;
-// @ts-expect-error
-const defaultRequest: RequestAPI = request.defaults({
-  jar,
-});
+const jar = new CookieJar();
 
-function loadBody(urlString: string, options?: CloudscraperOptions): Promise<cheerio.CheerioAPI> {
-  // @ts-expect-error
+const defaultRequest = axiosCookieJarSupport(axios.create() as any);
+defaultRequest.defaults.jar = jar;
+
+function loadBody(urlString: string, options?: AxiosRequestConfig): Promise<cheerio.CheerioAPI> {
   return queueCheerioRequest(urlString, options, defaultRequest);
 }
 
@@ -284,7 +280,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     method: "POST",
-    body,
+    data: body,
   });
   const searchResults: SearchResult[] = [];
   const links = $("a");
