@@ -47,7 +47,7 @@ import os from "os";
 import { readFile } from "fs/promises";
 import path from "path";
 import appConfig from "enterprise-core/dist/env";
-import requestPromise from "request-promise-native";
+import { queueRequest } from "enterprise-scraper/dist/externals/queueManager";
 
 export const authenticate: Handler = (req, res, next) => {
   let { uuid, session } = req.body;
@@ -315,8 +315,7 @@ async function getDatabaseStatus(): Promise<DatabaseStatus> {
 
 async function getCrawlerStatus(): Promise<CrawlerStatus> {
   try {
-    const status = await requestPromise.get({
-      url: `http://${appConfig.crawlerHost}:${appConfig.crawlerPort}/status`,
+    const status = await queueRequest(`http://${appConfig.crawlerHost}:${appConfig.crawlerPort}/status`, {
       timeout: 500, // milliseconds
     });
 

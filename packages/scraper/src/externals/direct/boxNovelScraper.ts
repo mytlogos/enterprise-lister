@@ -21,8 +21,6 @@ import logger from "enterprise-core/dist/logger";
 import { getTextContent, SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
 import { checkTocContent } from "../scraperTools";
 import { MissingResourceError, UrlError } from "../errors";
-import { StatusCodeError } from "cloudscraper/errors";
-import { StatusCodeError as RequestStatusCodeError } from "request-promise-native/errors";
 import * as cheerio from "cheerio";
 import { AxiosError } from "axios";
 

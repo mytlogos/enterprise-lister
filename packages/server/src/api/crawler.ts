@@ -1,11 +1,11 @@
 import { Router } from "express";
-import request from "request-promise-native";
 import { createHandler } from "./apiTools";
 import env from "enterprise-core/dist/env";
 import Websocket from "ws";
+import { queueRequest } from "enterprise-scraper/dist/externals/queueManager";
 
 const getJobs = createHandler(async () => {
-  const result = await request.get("http://" + env.crawlerHost + ":" + env.crawlerPort + "/");
+  const result = await queueRequest("http://" + env.crawlerHost + ":" + env.crawlerPort + "/");
   return JSON.parse(result);
 });
 

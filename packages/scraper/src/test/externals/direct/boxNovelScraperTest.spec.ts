@@ -1,5 +1,5 @@
 "use strict";
-jest.mock("request-promise-native");
+jest.mock("axios");
 
 import fs from "fs";
 import * as cheerio from "cheerio";

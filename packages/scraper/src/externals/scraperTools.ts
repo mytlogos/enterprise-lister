@@ -49,8 +49,6 @@ import {
 import * as url from "url";
 import { Cache } from "enterprise-core/dist/cache";
 import * as validate from "validate.js";
-import request from "request";
-import { queueFastRequestFullResponse } from "./queueManager";
 import env from "enterprise-core/dist/env";
 import { sourceType } from "./direct/undergroundScraper";
 import {

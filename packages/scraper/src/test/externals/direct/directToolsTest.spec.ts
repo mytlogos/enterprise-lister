@@ -1,5 +1,5 @@
 "use strict";
-jest.mock("request-promise-native");
+jest.mock("axios");
 import * as directTools from "../../../externals/direct/directTools";
 import * as tools from "enterprise-core/dist/tools";
 import fs from "fs";
