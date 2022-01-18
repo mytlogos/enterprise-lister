@@ -11,28 +11,16 @@ import {
 import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
-import { Cookie, CookieJar } from "tough-cookie";
-import axios from "axios";
-import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
+import { Cookie } from "tough-cookie";
 import * as cheerio from "cheerio";
+import { Requestor } from "../request";
 
-const jar = new CookieJar();
-const defaultRequest = axiosCookieJarSupport(axios.create() as any);
-defaultRequest.defaults.jar = jar;
-
+const request = new Requestor(undefined, true);
 const BASE_URI = "https://www.webnovel.com/";
 
-const initPromise = queueRequest(
-  BASE_URI,
-  {
-    method: "HEAD",
-    url: BASE_URI,
-  },
-  defaultRequest,
-).then(ignore);
+const initPromise = request.head({ url: BASE_URI }).then(ignore);
 
 function toReleaseLink(bookId: string, chapterId: string): Link {
   return `${BASE_URI}book/${bookId}/${chapterId}/`;
@@ -44,7 +32,7 @@ function toTocLink(bookId: string): Link {
 
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
   const uri = BASE_URI;
-  const $ = await queueCheerioRequest(uri);
+  const $ = await request.getCheerio({ url: uri });
   const newsRows = $("#LatUpdate tbody > tr");
 
   const news: EpisodeNews[] = [];
@@ -123,7 +111,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
 function getCookies(): Promise<Cookie[]> {
   return new Promise((resolve, reject) => {
-    jar.getCookies(BASE_URI, (error, cookies) => {
+    request.jar.getCookies(BASE_URI, (error, cookies) => {
       if (error) {
         reject(error);
       } else {
@@ -217,24 +205,21 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
 }
 
 function loadBody(urlString: string): Promise<cheerio.CheerioAPI> {
-  return initPromise.then(() => queueCheerioRequest(urlString, undefined, defaultRequest));
+  return initPromise.then(() => request.getCheerio({ url: urlString }));
 }
 
-function loadJson(urlString: string, retry = 0): Promise<any> {
-  return initPromise
-    .then(() => queueRequest(urlString, undefined, defaultRequest))
-    .then((body) => {
-      try {
-        return JSON.parse(body);
-      } catch (error) {
-        // sometimes the response body is incomplete for whatever reason
-        // so retry once to get it right, else forget it
-        if (retry >= 2) {
-          throw error;
-        }
-        return loadJson(urlString, retry + 1);
-      }
-    });
+async function loadJson(urlString: string, retry = 0): Promise<any> {
+  await initPromise;
+  try {
+    return await request.getJson({ url: urlString });
+  } catch (error) {
+    // sometimes the response body is incomplete for whatever reason
+    // so retry once to get it right, else forget it
+    if (retry >= 2) {
+      throw error;
+    }
+    return loadJson(urlString, retry + 1);
+  }
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {

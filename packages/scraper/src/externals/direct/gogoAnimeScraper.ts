@@ -1,19 +1,19 @@
 import { EpisodeContent, Hook, Toc, TocEpisode, NewsScrapeResult } from "../types";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise } from "enterprise-core/dist/types";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
 import * as cheerio from "cheerio";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
 import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc } from "./directTools";
 import { UrlError } from "../errors";
+import request from "../request";
 
 const BASE_URI = "https://www.gogoanime.vc/";
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
   const uri = BASE_URI;
-  const $ = await queueCheerioRequest(uri);
+  const $ = await request.getCheerio({ url: uri });
 
   const newsRows = $(".items li");
 
@@ -80,7 +80,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   }
   const animeAlias = aliasExec[3];
 
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
   const contentElement = $(".content_left .main_body");
 
   const animeTitle = sanitizeString(contentElement.find("h1").text());
@@ -178,8 +178,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     searchWords,
   )}&id=-1&link_web=https%3A%2F%2Fwww.gogoanime.vc%2F`;
 
-  const response: string = await queueRequest(urlString);
-  const responseJson: { content: string } = JSON.parse(response);
+  const responseJson: { content: string } = await request.getJson({ url: urlString });
   const $ = cheerio.load(responseJson.content);
   const links = $("a");
 
@@ -222,10 +221,10 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
     logger.warn(`invalid gogoanime episode link: '${link}'`);
     return [];
   }
-  const $ = await queueCheerioRequest(link);
+  const $ = await request.getCheerio({ url: link });
 
   const outSideLink = $(".download-anime + a");
-  const downloadPage = await queueCheerioRequest(outSideLink.attr("href") as string);
+  const downloadPage = await request.getCheerio({ url: outSideLink.attr("href") as string });
 
   const downloadLink = downloadPage(".dowload a").first().attr("href") as string;
   const mediumTitle = sanitizeString($(".anime-info a").text());

@@ -1,13 +1,11 @@
-import axios from "axios";
-import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import url from "url";
 import { Errors, isString, MediaType, unique } from "enterprise-core/dist/tools";
-import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "./queueManager";
 import { CookieJar } from "tough-cookie";
 import { Hook, Toc } from "./types";
 import logger from "enterprise-core/dist/logger";
 import * as cheerio from "cheerio";
 import { ReleaseState, EmptyPromise, Optional } from "enterprise-core/dist/types";
+import request, { Requestor } from "./request";
 
 interface SimpleReadingList {
   menu: string;
@@ -38,7 +36,7 @@ class SimpleNovelUpdates implements ListManager {
   }
 
   private static loadCheerio(link: string): Promise<cheerio.CheerioAPI> {
-    return queueCheerioRequest(link, { url: link });
+    return request.getCheerio({ url: link });
   }
 
   private static getStatusCoo(s: string): ReleaseState {
@@ -181,9 +179,8 @@ class SimpleNovelUpdates implements ListManager {
     const identifier = isString(credentials) ? credentials : credentials.identifier;
     const urlString = "https://www.novelupdates.com/readlist/?uname=" + encodeURIComponent(identifier);
     try {
-      const response = await queueRequestFullResponse(urlString, {
+      const response = await request.post({
         url: urlString,
-        method: "POST",
       });
       const href = response.request.uri.href;
       if (href && /^https?:\/\/www\.novelupdates\.com\/user\/\d+/.test(href)) {
@@ -199,7 +196,7 @@ class SimpleNovelUpdates implements ListManager {
 
   private async scrapeList(page: number): Promise<[ScrapeList, number]> {
     const uri = "https://www.novelupdates.com/wp-admin/admin-ajax.php";
-    const response = await queueRequest(uri, {
+    const response = await request.get({
       url: uri,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -208,11 +205,11 @@ class SimpleNovelUpdates implements ListManager {
       data: `action=nu_prevew&pagenum=${page}&intUserID=${this.id}&isMobile=`,
     });
 
-    const lastIndexOf = response.lastIndexOf("}");
+    const lastIndexOf = response.data.lastIndexOf("}");
     if (!lastIndexOf) {
       throw Error("expected a json object contained in message, got " + response);
     }
-    const listData: SimpleReadingList = JSON.parse(response.substring(0, lastIndexOf + 1));
+    const listData: SimpleReadingList = JSON.parse(response.data.substring(0, lastIndexOf + 1));
     const nameReg = />\s*(\w+)\s*<\s*\/\s*span\s*>/g;
     const lists = [];
     let exec;
@@ -269,7 +266,7 @@ class NovelUpdates implements ListManager {
 
   public jar: any;
 
-  private defaults: any;
+  private defaults: Requestor = request;
   private readonly baseURI: string;
 
   private constructor() {
@@ -283,9 +280,10 @@ class NovelUpdates implements ListManager {
     }
     return (
       this.defaults
-        .get(this.baseURI)
+        .get({ url: this.baseURI })
         .then(() =>
-          this.defaults.post("https://www.novelupdates.com/login", {
+          this.defaults.post({
+            url: "https://www.novelupdates.com/login",
             form: {
               log: credentials.identifier,
               pwd: credentials.password,
@@ -456,9 +454,7 @@ class NovelUpdates implements ListManager {
     //     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
     //         "(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36",
     // };
-    this.defaults = axios.create({ withCredentials: true });
-    axiosCookieJarSupport(this.defaults);
-    this.defaults.defaults.jar = this.jar;
+    this.defaults = new Requestor(undefined, this.jar);
   }
 
   /**
@@ -466,8 +462,9 @@ class NovelUpdates implements ListManager {
    * @param {string} link
    * @return {Promise<cheerio.CheerioAPI>}
    */
-  public loadCheerio(link: string): Promise<cheerio.CheerioAPI> {
-    return queueCheerioRequest(link, { url: link }, this.defaults);
+  public async loadCheerio(link: string): Promise<cheerio.CheerioAPI> {
+    const response = await this.defaults.get({ url: link });
+    return response.toCheerio();
   }
 
   public scrapeList($: cheerio.CheerioAPI, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {

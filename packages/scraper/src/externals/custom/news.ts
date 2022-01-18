@@ -1,10 +1,10 @@
 import { EpisodeNews } from "enterprise-core/dist/types";
-import { queueCheerioRequest } from "../queueManager";
 import { NewsScraper } from "../types";
 import { defaultContext, extract } from "./common";
 import { HookConfig } from "./types";
 import { Cheerio, Element } from "cheerio";
 import { CustomHookError } from "./errors";
+import request from "../request";
 
 function validateEpisodeNews(episodes: Array<Partial<EpisodeNews>>): EpisodeNews[] {
   for (const episode of episodes) {
@@ -51,7 +51,7 @@ export function createNewsScraper(config: HookConfig): NewsScraper | undefined {
   const newsConfig = config.news;
 
   const scraper: NewsScraper = async () => {
-    const $ = await queueCheerioRequest(newsConfig.newsUrl);
+    const $ = await request.getCheerio({ url: newsConfig.newsUrl });
     const baseUri = newsConfig.base || config.base;
     const context = defaultContext();
 

@@ -1,9 +1,9 @@
 import { EpisodeContent, Hook, NewsScrapeResult } from "../types";
 import { EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
-import { queueCheerioRequest } from "../queueManager";
 import { max, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist/database/storages/storage";
+import request from "../request";
 
 export const sourceType = "qidian_underground";
 
@@ -12,7 +12,7 @@ const BASE_URI = "https://toc.qidianunderground.org/";
 async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
   const uri = BASE_URI;
 
-  const $ = await queueCheerioRequest(uri);
+  const $ = await request.getCheerio({ url: uri });
   const tocRows = $(".content p + ul");
 
   const chapterReg = /(\d+)(\s*-\s*(\d+))?/;
@@ -189,7 +189,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
 
   const contents = $(".center-block .well");
 

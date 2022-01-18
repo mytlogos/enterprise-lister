@@ -2,11 +2,10 @@ import { Router } from "express";
 import { createHandler } from "./apiTools";
 import env from "enterprise-core/dist/env";
 import Websocket from "ws";
-import { queueRequest } from "enterprise-scraper/dist/externals/queueManager";
+import request from "enterprise-scraper/dist/externals/request";
 
-const getJobs = createHandler(async () => {
-  const result = await queueRequest("http://" + env.crawlerHost + ":" + env.crawlerPort + "/");
-  return JSON.parse(result);
+const getJobs = createHandler(() => {
+  return request.getJson({ url: "http://" + env.crawlerHost + ":" + env.crawlerPort + "/" });
 });
 
 const liveSockets = [] as Websocket[];

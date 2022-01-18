@@ -8,17 +8,19 @@ import {
   Optional,
 } from "enterprise-core/dist/types";
 import * as url from "url";
-import { queueCheerioRequest, RequestConfig } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError } from "../errors";
 import * as cheerio from "cheerio";
+import request, { RequestConfig } from "../request";
 
-async function tryRequest(link: string, options?: RequestConfig, retry = 0): Promise<cheerio.CheerioAPI> {
+async function tryRequest(link: string, options?: RequestConfig<any>, retry = 0): Promise<cheerio.CheerioAPI> {
   try {
-    return await queueCheerioRequest(link);
+    options = options || { url: link };
+    options.url = link;
+    return await request.getCheerio(options);
   } catch (error) {
     // mangahasu likes to throw an Internal Server Error every now and then
     if (hasProp(error, "statusCode") && error.statusCode === 500) {

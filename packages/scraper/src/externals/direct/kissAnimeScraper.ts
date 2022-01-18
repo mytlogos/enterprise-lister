@@ -1,31 +1,20 @@
 import { Hook, Toc, TocEpisode, NewsScrapeResult } from "../types";
 import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/types";
 import * as url from "url";
-import { queueCheerioRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
 import { extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
-import * as cheerio from "cheerio";
-import { CookieJar } from "tough-cookie";
-import axios, { AxiosRequestConfig } from "axios";
-import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
+import { Requestor } from "../request";
 
-const jar = new CookieJar();
-
-const defaultRequest = axiosCookieJarSupport(axios.create() as any);
-defaultRequest.defaults.jar = jar;
-
-function loadBody(urlString: string, options?: AxiosRequestConfig): Promise<cheerio.CheerioAPI> {
-  return queueCheerioRequest(urlString, options, defaultRequest);
-}
+const request = new Requestor(undefined, true);
 
 const BASE_URI = "https://kissanime.ru/";
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
   const uri = BASE_URI;
   // const $ = await loadBody("https://kissanime.ru/Home/GetNextUpdatedAnime", {method: "POST"});
-  const $ = await loadBody(uri);
+  const $ = await request.getCheerio({ url: uri });
 
   const newsRows = $(".bigBarContainer .barContent a");
 
@@ -146,7 +135,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   if (!urlRegex.test(urlString)) {
     throw new UrlError("invalid toc url for KissAnime: " + urlString, urlString);
   }
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
   const contentElement = $("#container > #leftside");
   const animeTitle = contentElement.find(".bigBarContainer > .barContent > div > a:first-child").first().text().trim();
 
@@ -273,7 +262,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
   const urlString = BASE_URI + "Search/SearchSuggestx";
 
   const body = "type=Anime&keyword=" + searchWords;
-  const $ = await queueCheerioRequest(urlString, {
+  const $ = await request.getCheerio({
     url: urlString,
     headers: {
       Host: "kissanime.ru",

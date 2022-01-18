@@ -1,6 +1,6 @@
 import { EpisodeNews, SearchResult } from "enterprise-core/dist/types";
 import { EpisodeContent, Toc } from "../types";
-import { AxiosRequestConfig } from "axios";
+import { BasicRequestConfig } from "../request";
 
 export type AttributeSelector = BasicAttributeSelector | AttributeRegexSelector;
 
@@ -123,7 +123,7 @@ export interface RequestConfig {
   templateUrl?: string;
   templateBody?: string;
   jsonResponse?: boolean;
-  options?: Omit<AxiosRequestConfig, "url" | "uri">;
+  options?: Omit<BasicRequestConfig<never>, "url" | "uri">;
 }
 
 export type TocConfig = BasicScraperConfig<Selector<Toc>>;

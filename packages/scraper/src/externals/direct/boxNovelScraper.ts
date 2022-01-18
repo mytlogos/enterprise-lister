@@ -8,7 +8,6 @@ import {
   VoidablePromise,
   Nullable,
 } from "enterprise-core/dist/types";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
 import * as url from "url";
 import {
   equalsIgnore,
@@ -22,7 +21,7 @@ import { getTextContent, SearchResult as TocSearchResult, searchToc, extractLink
 import { checkTocContent } from "../scraperTools";
 import { MissingResourceError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
-import { AxiosError } from "axios";
+import request, { ResponseError } from "../request";
 
 interface NovelSearchResponse {
   success: boolean;
@@ -42,10 +41,10 @@ async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
 
 async function search(text: string): Promise<SearchResult[]> {
   const urlString = BASE_URI + "wp-admin/admin-ajax.php";
-  let response: string;
+  let response: NovelSearchResponse;
   const searchResults: SearchResult[] = [];
   try {
-    response = await queueRequest(urlString, {
+    response = await request.getJson({
       url: urlString,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -57,10 +56,9 @@ async function search(text: string): Promise<SearchResult[]> {
     logger.error(e);
     return searchResults;
   }
-  const parsed: NovelSearchResponse = JSON.parse(response);
 
-  if (parsed.success && parsed.data && parsed.data.length) {
-    for (const datum of parsed.data) {
+  if (response.success && response.data && response.data.length) {
+    for (const datum of response.data) {
       searchResults.push({
         link: datum.url.replace("-boxnovel", ""),
         title: datum.title,
@@ -73,9 +71,9 @@ async function search(text: string): Promise<SearchResult[]> {
 
 export async function searchAjax(searchWords: string, medium: TocSearchMedium): Promise<TocSearchResult> {
   const urlString = BASE_URI + "wp-admin/admin-ajax.php";
-  let response: string;
+  let response: NovelSearchResponse;
   try {
-    response = await queueRequest(urlString, {
+    response = await request.getJson({
       url: urlString,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -87,13 +85,12 @@ export async function searchAjax(searchWords: string, medium: TocSearchMedium): 
     logger.error(e);
     return { done: true };
   }
-  const parsed: NovelSearchResponse = JSON.parse(response);
 
-  if (parsed.success && parsed.data && parsed.data.length) {
-    if (!parsed.data.length) {
+  if (response.success && response.data && response.data.length) {
+    if (!response.data.length) {
       return { done: true };
     }
-    for (const datum of parsed.data) {
+    for (const datum of response.data) {
       if (equalsIgnore(datum.title, medium.title) || medium.synonyms.some((s) => equalsIgnore(datum.title, s))) {
         return { value: datum.url.replace("-boxnovel", ""), done: true };
       }
@@ -109,7 +106,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     return [];
   }
 
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
   const novelTitle = sanitizeString(mediumTitleElement.text());
 
@@ -160,10 +157,10 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
   }
   let $: cheerio.CheerioAPI;
   try {
-    $ = await queueCheerioRequest(tocLink);
+    $ = await request.getCheerio({ url: tocLink });
   } catch (e) {
-    if (typeof e === "object" && e && "isAxiosError" in e && (e as AxiosError).isAxiosError) {
-      const error = e as AxiosError;
+    if (typeof e === "object" && e && "isAxiosError" in e && (e as ResponseError).isAxiosError) {
+      const error = e as ResponseError;
 
       if (error.code === "404") {
         throw new MissingResourceError("Toc not found on BoxNovel", tocLink);
@@ -298,7 +295,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 
 async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: EpisodeNews[] }> {
   const uri = BASE_URI;
-  const $ = await queueCheerioRequest(uri);
+  const $ = await request.getCheerio({ url: uri });
   const items = $(".page-item-detail");
 
   const episodeNews: EpisodeNews[] = [];

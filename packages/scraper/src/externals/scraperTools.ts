@@ -70,7 +70,7 @@ import {
   tocDiscoveryEntries,
   tocScraperEntries,
 } from "./hookManager";
-import axios, { AxiosResponse } from "axios";
+import request, { Response } from "./request";
 
 interface ScrapeableFilterResult {
   available: string[];
@@ -895,8 +895,8 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
   return [...downloadContents.values()];
 }
 
-function checkLinkWithInternet(link: string): Promise<AxiosResponse> {
-  return axios.head(link);
+function checkLinkWithInternet(link: string): Promise<Response> {
+  return request.head({ url: link });
 }
 
 function checkLink(link: string, linkKey?: string): Promise<string> {

@@ -1,9 +1,10 @@
 import * as cheerio from "cheerio";
-import { queueRequest } from "./queueManager";
 import { EmptyPromise } from "enterprise-core/dist/types";
+import request from "./request";
 
 async function loadBody(link: string): Promise<string> {
-  return queueRequest(link);
+  const response = await request.get({ url: link });
+  return response.data;
 }
 
 export const analyze = async ({ link, body }: { link?: string; body?: string }): EmptyPromise => {
