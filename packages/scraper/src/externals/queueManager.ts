@@ -258,11 +258,8 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
   return queue.push(async () => {
     for (let tryAgain = 0; tryAgain < 4; tryAgain++) {
       try {
-        return await queue
-          .push(() => methodToRequest(uri, options, toUseRequest))
-          .then((response: AxiosResponse<CheerioStatic>) => {
-            return response.data;
-          });
+        const response = await methodToRequest(uri, options, toUseRequest);
+        return response.data;
       } catch (error) {
         // retry at most 3 times for 429 - Too many Requests error
         if (hasProps(error, "statusCode", "response") && error.statusCode === 429 && tryAgain < 3) {
