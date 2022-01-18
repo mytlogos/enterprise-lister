@@ -220,10 +220,11 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
     throw Error("not a valid url: " + uri);
   }
 
-  let queue: any = queueToUse.get(host);
+  let queue: Queue | undefined = queueToUse.get(host);
 
   if (!queue) {
-    queueToUse.set(host, (queue = new Queue(host, limit)));
+    queue = new Queue(host, limit);
+    queueToUse.set(host, queue);
   }
 
   const toUseRequest: Request = otherRequest || axios;
