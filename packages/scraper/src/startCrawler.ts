@@ -71,6 +71,7 @@ const server: Server = createServer((req, res) => {
     } catch (error) {
       packageJson = { project_version: "Error" };
     }
+    res.setHeader("Content-Type", "	application/json; charset=utf-8");
     res.write(
       stringify({
         cpu_average: os.loadavg(),
