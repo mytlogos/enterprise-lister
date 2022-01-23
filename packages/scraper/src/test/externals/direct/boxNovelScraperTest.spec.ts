@@ -41,6 +41,8 @@ describe.skip("testing boxNovel Hook toc", () => {
 
   beforeAll(() => {
     hookMocks.push(
+      // FIXME: spy on request
+      // @ts-expect-error
       jest.spyOn(queueManager, "queueCheerioRequest").mockImplementation((args) => {
         let path;
         if (args === "https://boxnovel.com/novel/i-am-a-missing-resource") {
