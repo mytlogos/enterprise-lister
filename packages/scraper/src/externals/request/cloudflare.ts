@@ -372,10 +372,14 @@ function validateRequest(options: ByPassRequestConfig) {
 // This function is wrapped to ensure that we get new options on first call.
 // The options object is reused in subsequent calls when calling it directly.
 async function performRequest(options: ByPassRequestConfig, requester: Requester) {
-  // @ts-expect-error
-  if (options.headers?.host === HOST) {
-    // We must define the host header ourselves to preserve case and order.
-    options.headers.host = new URL(options.url as string).host;
+  const headers = options.headers;
+  if (headers) {
+    Object.keys(headers).forEach((key) => {
+      // @ts-expect-error
+      if (key.toLowerCase() === "host" && headers[key] === HOST) {
+        headers[key] = new URL(options.url as string).host;
+      }
+    });
   }
 
   let response;
