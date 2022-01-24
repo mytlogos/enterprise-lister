@@ -38,29 +38,11 @@ export class Requestor {
       return Promise.reject(new Error("invalid url: " + config.url));
     }
 
-    let response: AxiosResponse;
-
     if (config.disableRetry) {
-      response = await queueWork(key, () => this.performRequest<P, T, R>(config));
+      return queueWork(key, () => this.performRequest<P, T, R>(config));
     } else {
-      response = await queueWork(key, () => this.requestWithRetry<P, T, R>(config));
+      return queueWork(key, () => this.requestWithRetry<P, T, R>(config));
     }
-
-    return {
-      config: response.config as RequestConfig<T>,
-      data: response.data,
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-      request: response.request,
-
-      toCheerio(): CheerioAPI {
-        return load(response.data, { decodeEntities: false });
-      },
-      toJson(): any {
-        return JSON.parse(response.data);
-      },
-    };
   }
 
   private async performRequest<P = any, T = any, R extends RequestConfig<T> = RequestConfig<T>>(
