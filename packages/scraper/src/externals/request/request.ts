@@ -3,10 +3,29 @@ import { CookieJar } from "tough-cookie";
 import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import { CheerioAPI, load } from "cheerio";
 import { getQueueKey, queueWork } from "../queueManager";
-import { delay, hasProps } from "enterprise-core/dist/tools";
+import { delay } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import { BasicRequestConfig, RequestConfig, Response } from "./types";
 import { handleCloudflare } from "./cloudflare";
+import { RequestError } from "./error";
+
+function transformAxiosResponse(response: AxiosResponse): Response {
+  return {
+    config: response.config as RequestConfig<any>,
+    data: response.data,
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+    request: response.request,
+
+    toCheerio(): CheerioAPI {
+      return load(response.data, { decodeEntities: false });
+    },
+    toJson(): any {
+      return JSON.parse(response.data);
+    },
+  };
+}
 
 export class Requestor {
   #instance: AxiosInstance;
@@ -49,23 +68,19 @@ export class Requestor {
     config: R,
   ): Promise<Response<P, T>> {
     return handleCloudflare(config, async (requestConfig) => {
-      const response = await this.#instance.request<string, AxiosResponse, T>(requestConfig);
+      let response: AxiosResponse;
+      try {
+        response = await this.#instance.request<string, AxiosResponse, T>(requestConfig);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          const transformed = error.response ? transformAxiosResponse(error.response) : undefined;
+          throw new RequestError(error.message, requestConfig, transformed);
+        } else {
+          throw error;
+        }
+      }
 
-      return {
-        config: response.config as RequestConfig<T>,
-        data: response.data,
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-        request: response.request,
-
-        toCheerio(): CheerioAPI {
-          return load(response.data, { decodeEntities: false });
-        },
-        toJson(): any {
-          return JSON.parse(response.data);
-        },
-      };
+      return transformAxiosResponse(response);
     });
   }
 
@@ -83,8 +98,8 @@ export class Requestor {
         return response;
       } catch (error) {
         // retry at most 3 times for 429 - Too many Requests error
-        if (hasProps(error, "statusCode", "response") && error.statusCode === 429 && tryAgain < 3) {
-          const retryAfterValue = (error.response as any)?.headers["retry-after"];
+        if (error instanceof RequestError && error.response?.status === 429 && tryAgain < 3) {
+          const retryAfterValue = (error.response?.headers || {})["retry-after"];
           const retryAfterSeconds = Number.parseInt(retryAfterValue);
 
           if (Number.isInteger(retryAfterSeconds) && retryAfterSeconds > 0) {

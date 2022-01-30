@@ -1,159 +1,14 @@
 import { brotliDecompressSync } from "zlib";
 import vm from "vm";
-import { EOL } from "os";
-import http from "http";
 import https from "https";
 import crypto from "crypto";
 import { readFileSync } from "fs";
 import { BasicRequestConfig, RequestConfig, Response, ResponseType } from "./types";
 import { URL, URLSearchParams } from "url";
 import { delay } from "enterprise-core/dist/tools";
+import { RequestError, CloudflareError, CaptchaError, ParserError } from "./error";
 
 const { chrome: chromeData } = JSON.parse(readFileSync("./browsers.json", { encoding: "utf-8" }));
-
-// The purpose of this library:
-// 1. Have errors consistent with request/promise-core
-// 2. Prevent request/promise core from wrapping our errors
-// 3. Create descriptive errors.
-
-// There are two differences between these errors and the originals.
-// 1. There is a non-enumerable errorType attribute.
-// 2. The error constructor is hidden from the stacktrace.
-const BUG_REPORT = format([
-  "### Cloudflare may have changed their technique, or there may be a bug.",
-  "### Bug Reports: https://github.com/codemanki/cloudscraper/issues",
-  "### Check the detailed exception message that follows for the cause.",
-]);
-
-const ERROR_CODES: { [key: number]: string } = {
-  // Non-standard 5xx server error HTTP status codes
-  520: "Web server is returning an unknown error",
-  521: "Web server is down",
-  522: "Connection timed out",
-  523: "Origin is unreachable",
-  524: "A timeout occurred",
-  525: "SSL handshake failed",
-  526: "Invalid SSL certificate",
-  527: "Railgun Listener to Origin Error",
-  530: "Origin DNS error",
-  // Other codes
-  1000: "DNS points to prohibited IP",
-  1001: "DNS resolution error",
-  1002: "Restricted or DNS points to Prohibited IP",
-  1003: "Access Denied: Direct IP Access Not Allowed",
-  1004: "Host Not Configured to Serve Web Traffic",
-  1005: "Access Denied: IP of banned ASN/ISP",
-  1006: "Access Denied: Your IP address has been banned",
-  1007: "Access Denied: Your IP address has been banned",
-  1008: "Access Denied: Your IP address has been banned",
-  1010: "The owner of this website has banned your access based on your browser's signature",
-  1011: "Access Denied (Hotlinking Denied)",
-  1012: "Access Denied",
-  1013: "HTTP hostname and TLS SNI hostname mismatch",
-  1016: "Origin DNS error",
-  1018: "Domain is misconfigured",
-  1020: "Access Denied (Custom Firewall Rules)",
-};
-
-export class RequestError extends Error {
-  public readonly errorType = 0;
-  public readonly name = "RequestError";
-  public readonly cause: any;
-  public readonly options: any;
-  public readonly response: any;
-
-  public constructor(cause: any, options: any, response: any) {
-    super();
-    this.cause = cause;
-    this.options = options;
-    this.response = response;
-  }
-}
-
-export class CaptchaError extends Error {
-  public readonly errorType = 1;
-  public readonly name = "CaptchaError";
-  public readonly cause: any;
-  public readonly options: any;
-  public readonly response: any;
-
-  public constructor(cause: any, options: any, response: any) {
-    super();
-    this.cause = cause;
-    this.options = options;
-    this.response = response;
-  }
-}
-
-export class CloudflareError extends Error {
-  public readonly errorType = 2;
-  public readonly name = "CloudflareError";
-  public readonly cause: any;
-  public readonly options: any;
-  public readonly response: any;
-
-  // errorType 4 is a CloudflareError so this constructor is reused.
-  public constructor(cause: any, options: any, response: any) {
-    super();
-    this.cause = cause;
-    this.options = options;
-    this.response = response;
-
-    if (!isNaN(cause)) {
-      const description = ERROR_CODES[cause] || http.STATUS_CODES[cause];
-      if (description) {
-        this.message = cause + ", " + description;
-      }
-    }
-  }
-}
-
-export class ParserError extends Error {
-  public readonly errorType = 3;
-  public readonly name = "ParserError";
-  public readonly cause: any;
-  public readonly options: any;
-  public readonly response: any;
-
-  // errorType 4 is a CloudflareError so this constructor is reused.
-  public constructor(cause: any, options: any, response: any) {
-    super();
-    this.cause = cause;
-    this.options = options;
-    this.response = response;
-    this.message = BUG_REPORT + this.message;
-  }
-}
-
-export class StatusCodeError extends Error {
-  public readonly errorType = 5;
-  public readonly name = "StatusCodeError";
-  public readonly cause: any;
-  public readonly options: any;
-  public readonly response: any;
-
-  public constructor(cause: any, options: any, response: any) {
-    super();
-    this.cause = cause;
-    this.options = options;
-    this.response = response;
-  }
-}
-
-export class TransformError extends Error {
-  public readonly errorType = 6;
-  public readonly name = "TransformError";
-  public readonly cause: any;
-  public readonly options: any;
-  public readonly response: any;
-
-  public constructor(cause: any, options: any, response: any) {
-    super();
-    this.cause = cause;
-    this.options = options;
-    this.response = response;
-  }
-}
 
 interface ByPassRequestConfig<D = any> extends BasicRequestConfig<D> {
   // Reduce Cloudflare's timeout to cloudflareMaxTimeout if it is excessive
@@ -189,10 +44,6 @@ export async function handleCloudflare(config: RequestConfig<any>, requestor: Re
   const params = Object.assign(defaultParams, config);
   validateRequest(params);
   return performRequest(params, requestor);
-}
-
-function format(lines: string[]) {
-  return EOL + lines.join(EOL) + EOL + EOL;
 }
 
 const VM_OPTIONS = {
@@ -387,20 +238,33 @@ async function performRequest(options: ByPassRequestConfig, requester: Requester
   try {
     response = await requester(options as RequestConfig<any>);
   } catch (error) {
-    return onRequestResponse(options, error, requester);
+    if (error instanceof RequestError) {
+      return onRequestResponse(options, error, requester, error.response);
+    } else {
+      return onRequestResponse(options, error, requester);
+    }
   }
   return onRequestResponse(options, null, requester, response);
 }
 
 // The argument convention is options first where possible, options
 // always before response, and body always after response.
-async function onRequestResponse(options: ByPassRequestConfig, error: any, requester: Requester, response?: Response) {
+async function onRequestResponse(
+  options: ByPassRequestConfig,
+  error: RequestError | any | null,
+  requester: Requester,
+  response?: Response,
+) {
   let body = response?.data;
 
   // Encoding is null so body should be a buffer object
-  if (error || !body || !body.toString || !response) {
+  if (!response || !body?.toString) {
     // Pure request error (bad connection, wrong url, etc)
-    throw new RequestError(error, options, response);
+    if (error && error instanceof RequestError) {
+      throw error;
+    } else {
+      throw new RequestError(error, options, response);
+    }
   }
 
   const headers = caseless(response.headers);
