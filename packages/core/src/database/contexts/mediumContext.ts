@@ -466,6 +466,16 @@ export class MediumContext extends SubContext {
     ) as Promise<FullMediumToc[]>;
   }
 
+  public getTocs(tocIds: number[]): Promise<FullMediumToc[]> {
+    return this.queryInList(
+      "SELECT id, medium_id as mediumId, link, " +
+        "countryOfOrigin, languageOfOrigin, author, title," +
+        "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+        "FROM medium_toc WHERE id IN (??);",
+      [tocIds],
+    ) as Promise<FullMediumToc[]>;
+  }
+
   public async removeMediumToc(mediumId: number, link: string): Promise<boolean> {
     const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(link);
 

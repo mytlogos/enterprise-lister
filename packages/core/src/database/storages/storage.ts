@@ -13,6 +13,8 @@ import {
   Nullable,
   DataStats,
   NewData,
+  QueryItems,
+  QueryItemsResult,
 } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
@@ -339,6 +341,10 @@ export class Storage {
 
   public getNew(uuid: Uuid, date?: Date): Promise<NewData> {
     return inContext((context) => context.getNew(uuid, date));
+  }
+
+  public queryItems(uuid: Uuid, query: QueryItems): Promise<QueryItemsResult> {
+    return inContext((context) => context.queryItems(uuid, query));
   }
 
   /**

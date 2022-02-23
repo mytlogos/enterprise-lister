@@ -152,22 +152,25 @@ export class PartContext extends SubContext {
   /**
    * Returns all parts of an medium.
    */
-  public async getParts<T extends MultiSingleNumber>(partId: T, uuid: Uuid): Promise<Part[]> {
+  public async getParts<T extends MultiSingleNumber>(partId: T, uuid: Uuid, full = true): Promise<Part[]> {
     const parts: Optional<any[]> = await this.queryInList("SELECT * FROM part WHERE id IN (??);", [partId]);
     if (!parts || !parts.length) {
       return [];
     }
     const partIdMap = new Map<number, any>();
-    const episodesResult: Optional<any[]> = await this.queryInList("SELECT id FROM episode WHERE part_id IN (??);", [
-      parts.map((value) => {
-        partIdMap.set(value.id, value);
-        return value.id;
-      }),
-    ]);
+    const episodesResult: Optional<any[]> = await this.queryInList(
+      "SELECT id, part_id FROM episode WHERE part_id IN (??);",
+      [
+        parts.map((value) => {
+          partIdMap.set(value.id, value);
+          return value.id;
+        }),
+      ],
+    );
 
-    const episodes = episodesResult || [];
+    const episodes: Array<{ id: number; part_id: number }> = episodesResult || [];
 
-    if (episodes) {
+    if (full) {
       const episodeIds = episodes.map((value) => value.id);
       const fullEpisodes = await this.parentContext.episodeContext.getEpisode(episodeIds, uuid);
       fullEpisodes.forEach((value) => {
@@ -179,6 +182,11 @@ export class PartContext extends SubContext {
           part.episodes = [];
         }
         part.episodes.push(value);
+      });
+    } else {
+      episodes.forEach((value) => {
+        const part: Part = partIdMap.get(value.part_id);
+        (part.episodes as number[]).push(value.id);
       });
     }
     return parts.map((part) => {

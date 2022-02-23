@@ -1,5 +1,5 @@
 import { SubContext } from "./subContext";
-import { List, Medium, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia } from "../../types";
+import { List, Medium, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
 import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 
@@ -49,6 +49,14 @@ export class InternalListContext extends SubContext {
     const loadedMedia = await this.parentContext.mediumContext.getMedium([...toLoadMedia], uuid);
 
     return { list: lists, media: loadedMedia };
+  }
+
+  public async getShallowList<T extends MultiSingleNumber>(listId: T, uuid: Uuid): PromiseMultiSingle<T, List> {
+    // TODO: 29.06.2019 replace with id IN (...)
+    return promiseMultiSingle(listId, async (id: number) => {
+      const result = await this.query("SELECT * FROM reading_list WHERE uuid = ? AND id = ?;", [uuid, id]);
+      return this.createShallowList(result[0]);
+    });
   }
 
   /**
