@@ -49,7 +49,7 @@
     "@types/debug": "^4.1.5",
     "@types/htmlparser2": "^3.10.2",
     "@types/http-errors": "^1.8.0",
-    "@types/jest": "^27.0.3",
+    "@types/jest": "^27.4.1",
     "@types/js-yaml": "^4.0.5",
     "@types/localtunnel": "^2.0.1",
     "@types/node": "^16.11.17",
