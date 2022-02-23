@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/mytlogos/enterprise-lister/compare/v1.26.2...v1.27.0) (2022-02-23)
+
+
+### Features
+
+* add /user/load api ([1736395](https://github.com/mytlogos/enterprise-lister/commit/17363959864054a0668fa100285ea2c2f042b72a))
+
 ## [1.26.2](https://github.com/mytlogos/enterprise-lister/compare/v1.26.1...v1.26.2) (2021-12-28)
 
 

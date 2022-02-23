@@ -1,6 +1,6 @@
 {
   "name": "enterprise-other",
-  "version": "1.26.2",
+  "version": "1.27.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -50,7 +50,7 @@
     "prettier": "^2.5.1",
     "semantic-release": "^18.0.1",
     "ts-jest": "^27.1.2",
-    "ts-node": "^10.4.0"
+    "ts-node": "^10.5.0"
   },
   "jest-junit": {
     "outputDirectory": "reports",
