@@ -31,6 +31,9 @@ import {
   AppEventProgram,
   AppEventType,
   AppEvent,
+  QueryItems,
+  QueryItemsResult,
+  Uuid,
 } from "enterprise-core/dist/types";
 import { Handler, Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";
@@ -384,6 +387,11 @@ const getStatus = createHandler(async (): Promise<Status> => {
       },
     },
   };
+});
+
+const postLoad = createHandler(async (request): Promise<QueryItemsResult> => {
+  const { items, uuid }: { items: QueryItems; uuid: Uuid } = request.body;
+  return storage.queryItems(uuid, items);
 });
 
 /**
@@ -891,6 +899,7 @@ export function userRouter(): Router {
    */
   router.get("/events", getAllAppEvents);
   router.get("/status", getStatus);
+  router.post("/load", postLoad);
 
   router.use("/medium", mediumRouter());
   router.use("/jobs", jobsRouter());

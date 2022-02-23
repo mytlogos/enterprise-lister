@@ -14,6 +14,8 @@ import {
   Primitive,
   DataStats,
   NewData,
+  QueryItems,
+  QueryItemsResult,
 } from "../../types";
 import { Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
 import logger from "../../logger";
@@ -727,6 +729,48 @@ export class QueryContext implements ConnectionContext {
       lists,
       extLists,
       extUser,
+    };
+  }
+
+  public async queryItems(uuid: Uuid, query: QueryItems): Promise<QueryItemsResult> {
+    const [
+      externalUser,
+      externalMediaLists,
+      mediaLists,
+      mediaTocs,
+      tocs,
+      media,
+      parts,
+      partReleases,
+      partEpisodes,
+      episodes,
+      episodeReleases,
+    ] = await Promise.all([
+      this.externalUserContext.getExternalUser(query.externalUser),
+      Promise.all(query.externalMediaLists.map((id) => this.externalListContext.getExternalList(id))),
+      this.internalListContext.getShallowList(query.mediaLists, uuid),
+      this.mediumContext.getMediumTocs(query.mediaTocs),
+      this.mediumContext.getTocs(query.tocs),
+      this.mediumContext.getSimpleMedium(query.media),
+      this.partContext.getParts(query.parts, uuid, false),
+      this.partContext.getPartReleases(query.partReleases),
+      this.partContext.getPartItems(query.partEpisodes),
+      this.episodeContext.getEpisode(query.episodes, uuid),
+      this.episodeContext.getReleases(query.episodeReleases),
+    ]);
+
+    return {
+      episodeReleases, // by episode id
+      episodes,
+      partEpisodes, // by part id
+      partReleases, // by part id
+      parts,
+      media,
+      tocs, // by toc id
+      mediaTocs, // by medium id
+      mediaLists,
+      externalMediaLists,
+      externalUser,
     };
   }
 
