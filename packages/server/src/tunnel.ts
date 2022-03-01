@@ -36,6 +36,7 @@ export function startTunneling(): void {
     requestTunnel("http://serverless.social");
   });
   internetTester.on("offline", closeTunnel);
+  internetTester.start();
   process.on("beforeExit", closeTunnel);
 }
 

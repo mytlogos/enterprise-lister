@@ -900,6 +900,8 @@ export interface InternetTester extends EventEmitter.EventEmitter {
   isOnline(): boolean;
 
   stop(): void;
+
+  start(): void;
 }
 
 export function getDate(value: string): Nullable<Date> {
@@ -955,12 +957,6 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
   private since: Date = new Date();
   private stopLoop = false;
 
-  public constructor() {
-    super();
-    // should never call catch callback
-    this.checkInternet().catch(console.error);
-  }
-
   public on(evt: "online" | "offline", listener: (previousSince: Date) => void): this {
     super.on(evt, listener);
 
@@ -977,6 +973,12 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
 
   public isOnline() {
     return !this.offline;
+  }
+
+  public start() {
+    this.stopLoop = false;
+    // should never call catch callback
+    this.checkInternet().catch(console.error);
   }
 
   public stop() {

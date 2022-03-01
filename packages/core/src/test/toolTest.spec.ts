@@ -117,10 +117,12 @@ describe("testing tool.js", () => {
       jest.spyOn(dns.promises, "lookup").mockImplementation(() => (up ? Promise.resolve() : Promise.reject()));
       jest.spyOn(tools.internetTester, "isOnline").mockImplementation(() => up);
     });
+    beforeEach(() => tools.internetTester.stop());
     afterAll(() => internetMocks.forEach((value) => value.mockRestore()));
 
     it("should fire online event within time limit", () => {
       jest.setTimeout(3000);
+      tools.internetTester.start();
       return tools.delay(500).then(() => {
         return new Promise<void>((resolve, reject) => {
           try {
@@ -138,6 +140,7 @@ describe("testing tool.js", () => {
     });
     it("should fire offline event within time limit", () => {
       jest.setTimeout(3000);
+      tools.internetTester.start();
       return tools.delay(500).then(() => {
         return new Promise<void>((resolve, reject) => {
           try {
@@ -154,6 +157,7 @@ describe("testing tool.js", () => {
       });
     });
     it("should be called at least once", async () => {
+      tools.internetTester.start();
       await tools.delay(1100);
       expect(dns.promises.lookup).toBeCalled();
     });
