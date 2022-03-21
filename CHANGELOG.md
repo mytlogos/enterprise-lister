@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/mytlogos/enterprise-lister/compare/v1.27.0...v1.28.0) (2022-03-14)
+
+
+### Features
+
+* disable internetTester by default ([0e7eed4](https://github.com/mytlogos/enterprise-lister/commit/0e7eed4279ad78782340c7ddcc0af15b22a8e585))
+
 # [1.27.0](https://github.com/mytlogos/enterprise-lister/compare/v1.26.2...v1.27.0) (2022-02-23)
 
 
