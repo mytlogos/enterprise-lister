@@ -1,5 +1,5 @@
 import { SubContext } from "./subContext";
-import { List, Medium, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
+import { List, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
 import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 
