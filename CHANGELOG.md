@@ -1,3 +1,14 @@
+## [1.28.1](https://github.com/mytlogos/enterprise-lister/compare/v1.28.0...v1.28.1) (2022-03-21)
+
+
+### Bug Fixes
+
+* **core:** upgrade deps ([b03331d](https://github.com/mytlogos/enterprise-lister/commit/b03331df35aa98f4390d2eed84fcb6447ca340e5))
+* **scraper:** upgrade deps ([1b730f9](https://github.com/mytlogos/enterprise-lister/commit/1b730f91dd12cb9b56cad8e67c47408b340ea4c4))
+* **server:** upgrade deps ([1396e4c](https://github.com/mytlogos/enterprise-lister/commit/1396e4c2cbe12129c83f35c3b226704fe13ea148))
+* update browserslist ([e18163a](https://github.com/mytlogos/enterprise-lister/commit/e18163ad5c4c1a79b7de2af2b2cd609e02a14a7a))
+* **website:** upgrade deps ([f74261a](https://github.com/mytlogos/enterprise-lister/commit/f74261a675ffc4b404a1c0dadb291f63dba4f406))
+
 # [1.28.0](https://github.com/mytlogos/enterprise-lister/compare/v1.27.0...v1.28.0) (2022-03-14)
 
 
