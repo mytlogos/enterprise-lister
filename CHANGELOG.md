@@ -1,3 +1,11 @@
+## [1.28.2](https://github.com/mytlogos/enterprise-lister/compare/v1.28.1...v1.28.2) (2022-03-21)
+
+
+### Bug Fixes
+
+* npm audit fix ([20f8b6b](https://github.com/mytlogos/enterprise-lister/commit/20f8b6be8bdf59ecc0d8faa6c0bcfed2092976b6))
+* **website:** add missing dependency ([2574730](https://github.com/mytlogos/enterprise-lister/commit/2574730f9b9792174cb3c66359c53a8e5bde57f5))
+
 ## [1.28.1](https://github.com/mytlogos/enterprise-lister/compare/v1.28.0...v1.28.1) (2022-03-21)
 
 
