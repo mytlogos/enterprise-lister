@@ -1,3 +1,10 @@
+## [1.28.3](https://github.com/mytlogos/enterprise-lister/compare/v1.28.2...v1.28.3) (2022-03-21)
+
+
+### Bug Fixes
+
+* create zips after version update ([57de362](https://github.com/mytlogos/enterprise-lister/commit/57de362006209d954b27f34c8407ef91b3e9b7ba))
+
 ## [1.28.2](https://github.com/mytlogos/enterprise-lister/compare/v1.28.1...v1.28.2) (2022-03-21)
 
 
