@@ -15,12 +15,12 @@
   "dependencies": {
     "brotli": "^1.3.2",
     "compression": "^1.7.4",
-    "debug": "^4.3.3",
-    "express": "^4.17.2",
+    "debug": "^4.3.4",
+    "express": "^4.17.3",
     "express-prom-bundle": "^6.4.1",
     "express-ws": "^5.0.2",
     "handlebars": "^4.7.7",
-    "helmet": "^4.4.1",
+    "helmet": "^5.0.2",
     "http-errors": "^2.0.0",
     "localtunnel": "^2.0.2",
     "morgan": "^1.10.0",
@@ -31,23 +31,23 @@
     "swagger-ui-express": "^4.3.0",
     "tslib": "^2.3.1",
     "validate.js": "^0.13.1",
-    "yargs": "^17.3.1"
+    "yargs": "^17.4.0"
   },
   "devDependencies": {
     "@types/compression": "^1.7.2",
     "@types/debug": "^4.1.5",
     "@types/http-errors": "^1.8.2",
-    "@types/jest": "^27.4.0",
+    "@types/jest": "^27.4.1",
     "@types/js-yaml": "^4.0.5",
     "@types/localtunnel": "^2.0.1",
     "@types/morgan": "^1.9.3",
-    "@types/node": "^16.11.20",
+    "@types/node": "^16.11.26",
     "@types/request-promise-native": "^1.0.17",
     "@types/swagger-jsdoc": "^6.0.1",
     "@types/swagger-ui": "^3.52.0",
     "@types/swagger-ui-express": "^4.1.3",
     "@types/express-ws": "3.0.1",
-    "@types/yargs": "^17.0.8",
+    "@types/yargs": "^17.0.10",
     "js-yaml": "^4.1.0",
     "typescript": "^4.5.4"
   }
