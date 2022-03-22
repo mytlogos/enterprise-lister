@@ -33,6 +33,6 @@
     "@types/parse5-parser-stream": "^5.0.1",
     "@types/request-promise-native": "^1.0.18",
     "@types/ws": "^8.5.3",
-    "typescript": "^4.5.4"
+    "typescript": "^4.6.2"
   }
 }
