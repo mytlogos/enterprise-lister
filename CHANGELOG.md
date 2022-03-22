@@ -1,3 +1,10 @@
+## [1.28.4](https://github.com/mytlogos/enterprise-lister/compare/v1.28.3...v1.28.4) (2022-03-22)
+
+
+### Bug Fixes
+
+* **deps:** upgrade to typescript 4.6.2 ([5c7bc11](https://github.com/mytlogos/enterprise-lister/commit/5c7bc110dc630dbbd0b10a1fda16319e0f91e63e))
+
 ## [1.28.3](https://github.com/mytlogos/enterprise-lister/compare/v1.28.2...v1.28.3) (2022-03-21)
 
 
