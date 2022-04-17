@@ -1,3 +1,10 @@
+## [1.28.5](https://github.com/mytlogos/enterprise-lister/compare/v1.28.4...v1.28.5) (2022-04-17)
+
+
+### Bug Fixes
+
+* add missing property ([0bfb439](https://github.com/mytlogos/enterprise-lister/commit/0bfb4392ef28ee89df0613a17b1bad2e44e51703))
+
 ## [1.28.4](https://github.com/mytlogos/enterprise-lister/compare/v1.28.3...v1.28.4) (2022-03-22)
 
 
