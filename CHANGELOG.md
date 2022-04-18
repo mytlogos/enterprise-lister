@@ -1,3 +1,10 @@
+## [1.28.6](https://github.com/mytlogos/enterprise-lister/compare/v1.28.5...v1.28.6) (2022-04-18)
+
+
+### Bug Fixes
+
+* add missing whitespace ([4daa5d8](https://github.com/mytlogos/enterprise-lister/commit/4daa5d870830a8b7c7ef3c2b421a39be06fa0000))
+
 ## [1.28.5](https://github.com/mytlogos/enterprise-lister/compare/v1.28.4...v1.28.5) (2022-04-17)
 
 
