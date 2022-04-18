@@ -584,7 +584,7 @@ export class QueryContext implements ConnectionContext {
 
   public async getNew(uuid: Uuid, date = new Date(0)): Promise<NewData> {
     const episodeReleasePromise = this.query(
-      "SELECT episode_id as episodeId, title, url, releaseDate, locked, toc_id as tocId" + "FROM episode_release WHERE updated_at > ?",
+      "SELECT episode_id as episodeId, title, url, releaseDate, locked, toc_id as tocId " + "FROM episode_release WHERE updated_at > ?",
       date,
     );
     const episodePromise = this.query(
