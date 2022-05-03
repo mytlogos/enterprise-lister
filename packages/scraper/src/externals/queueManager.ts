@@ -309,8 +309,12 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
   const parser = new WritableParseStream(
     new htmlparser2.DomHandler(
       (error, dom) => {
-        const load = cheerio.load(dom, { decodeEntities: false });
-        resolve(load);
+        if (error) {
+          reject(error);
+        } else {
+          const load = cheerio.load(dom as cheerio.Node[], { decodeEntities: false });
+          resolve(load);
+        }
       },
       {
         // FIXME: 02.09.2019 why does it not accept this property?
