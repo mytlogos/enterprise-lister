@@ -1,7 +1,6 @@
 import request, { FullResponse, Options } from "cloudscraper";
 import requestNative, { RequestAPI } from "request";
 import * as cheerio from "cheerio";
-import ParserStream from "parse5-parser-stream";
 import * as htmlparser2 from "htmlparser2";
 import { WritableStream as WritableParseStream } from "htmlparser2/lib/WritableStream";
 import { BufferToStringStream } from "enterprise-core/dist/transform";
@@ -303,49 +302,6 @@ export type QueueRequest<T> = (uri: string, options?: Options, otherRequest?: Re
 
 type Resolve<T> = (value?: T | PromiseLike<T>) => void;
 type Reject = (reason?: any) => void;
-
-function streamParse5(resolve: Resolve<CheerioStatic>, reject: Reject, uri: string, options?: Options) {
-  // i dont know which class it is from, (named 'Node' in debugger), but it matches with CheerioElement Api mostly
-  // TODO: 22.06.2019 parse5 seems to have problems with parse-streaming,
-  //  as it seems to add '"' quotes multiple times in the dom and e.g. <!DOCTYPE html PUBLIC "" ""> in the root,
-  //  even though <!DOCTYPE html> is given as input (didnt look that close at the input down the lines)
-  // @ts-expect-error
-  const parser = new ParserStream<CheerioElement>({ treeAdapter: ParserStream.treeAdapters.htmlparser2 });
-  parser.on("finish", () => {
-    if (parser.document && parser.document.children) {
-      const load = cheerio.load(parser.document.children);
-      if (load) {
-        resolve(load);
-      } else {
-        reject("Document could not be loaded");
-      }
-    } else {
-      reject("No Document parsed");
-    }
-  });
-  const stream = new BufferToStringStream();
-  stream.on("data", (chunk: string) => console.log("first chunk:\n " + chunk.substring(0, 100)));
-  requestNative(uri, options)
-    .on("response", (resp) => {
-      resp.pause();
-
-      if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
-        resp.destroy();
-
-        if (!options) {
-          options = { uri };
-        }
-        options.transform = transformCheerio;
-        resolve(request(options));
-        return;
-      }
-      resp.pipe(stream).pipe(parser);
-    })
-    .on("error", (e) => {
-      reject(e);
-    });
-  return options;
-}
 
 function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri: string, options?: Options) {
   // TODO: 22.06.2019 seems to produce sth bad, maybe some error in how i stream the buffer to string?
