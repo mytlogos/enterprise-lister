@@ -1,3 +1,11 @@
+# [1.29.0](https://github.com/mytlogos/enterprise-lister/compare/v1.28.6...v1.29.0) (2022-05-03)
+
+
+### Features
+
+* split logs ([8c8e041](https://github.com/mytlogos/enterprise-lister/commit/8c8e041f65605f2a07cd03e6a13bc8b919e669bb))
+* **website:** only necessary progress updates ([2f54e8f](https://github.com/mytlogos/enterprise-lister/commit/2f54e8f1f1a2a0f2d705f8b46c7de008bae5e03c))
+
 ## [1.28.6](https://github.com/mytlogos/enterprise-lister/compare/v1.28.5...v1.28.6) (2022-04-18)
 
 
