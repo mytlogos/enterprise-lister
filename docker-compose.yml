@@ -50,6 +50,7 @@ services:
       dbHost: mariadb
       TZ: Europe/Berlin
       TIME_ZONE: Europe/Berlin
+      NODE_APP_NAME: crawler
   web:
     restart: always
     image: enterprise-server:v1.28.6
@@ -77,6 +78,7 @@ services:
       dbHost: mariadb
       TZ: Europe/Berlin
       TIME_ZONE: Europe/Berlin
+      NODE_APP_NAME: server
 volumes:
   db-data:
 networks:
