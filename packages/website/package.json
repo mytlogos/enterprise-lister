@@ -23,7 +23,7 @@
     "mitt": "^3.0.0",
     "@popperjs/core": "^2.11.5",
     "register-service-worker": "^1.7.2",
-    "tslib": "^2.3.1",
+    "tslib": "^2.4.0",
     "vue": "^3.2.33",
     "vue-observe-visibility": "^1.0.0",
     "vue-prism-editor": "^2.0.0-alpha.2",
@@ -48,7 +48,7 @@
     "@vue/test-utils": "^2.0.0-rc.21",
     "babel-core": "6.26.3",
     "babel-plugin-prismjs": "^2.1.0",
-    "typescript": "^4.6.2",
+    "typescript": "^4.6.4",
     "webpack": "^5.72.0"
   },
   "postcss": {
