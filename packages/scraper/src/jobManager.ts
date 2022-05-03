@@ -451,7 +451,6 @@ export class JobQueue {
    */
   private publish() {
     if (queueChannel.hasSubscribers) {
-      // @ts-expect-error
       queueChannel.publish({
         messageType: "jobqueue",
         active: this.activeJobs.length,
