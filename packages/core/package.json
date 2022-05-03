@@ -14,14 +14,14 @@
     "cloudscraper": "^4.6.0",
     "debug": "^4.3.4",
     "dotenv": "^16.0.0",
-    "emoji-regex": "^10.0.1",
+    "emoji-regex": "^10.1.0",
     "mysql": "^2.18.1",
     "node-cache": "^5.1.2",
-    "promise-mysql": "^5.1.0",
+    "promise-mysql": "^5.2.0",
     "tslib": "^2.3.1",
     "uuid": "^8.3.2",
     "validate.js": "^0.13.1",
-    "winston": "^3.6.0",
+    "winston": "^3.7.2",
     "winston-daily-rotate-file": "^4.6.1"
   },
   "devDependencies": {
