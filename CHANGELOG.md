@@ -1,3 +1,11 @@
+## [1.29.1](https://github.com/mytlogos/enterprise-lister/compare/v1.29.0...v1.29.1) (2022-05-03)
+
+
+### Bug Fixes
+
+* **scraper:** remove unnecessary expect error ([70bee6a](https://github.com/mytlogos/enterprise-lister/commit/70bee6a8b4badc84e9f73cfb309d351c44a6b5e9))
+* use debug logger instead of console ([cc3369c](https://github.com/mytlogos/enterprise-lister/commit/cc3369cb31fff23b963fc83a37c4772d4a46181a))
+
 # [1.29.0](https://github.com/mytlogos/enterprise-lister/compare/v1.28.6...v1.29.0) (2022-05-03)
 
 
