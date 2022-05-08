@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/mytlogos/enterprise-lister/compare/v1.29.1...v1.30.0) (2022-05-08)
+
+
+### Features
+
+* displayrelease query speedup ([b0478b9](https://github.com/mytlogos/enterprise-lister/commit/b0478b971f749b87a23cb844104e5e9587336d05))
+
 ## [1.29.1](https://github.com/mytlogos/enterprise-lister/compare/v1.29.0...v1.29.1) (2022-05-03)
 
 
