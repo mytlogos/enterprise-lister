@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(16);
+const dataBaseBuilder = new DataBaseBuilder(17);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -181,6 +181,7 @@ dataBaseBuilder
 dataBaseBuilder
   .getTableBuilder()
   .setName("episode_release")
+  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
   .parseColumn("episode_id INT UNSIGNED NOT NULL")
   // TODO: look through all ~35000 releases without toc_id and set this to "not null" if possible
   .parseColumn("toc_id INT UNSIGNED")
@@ -190,7 +191,8 @@ dataBaseBuilder
   .parseColumn("releaseDate DATETIME NOT NULL")
   .parseColumn("locked BOOLEAN DEFAULT 0")
   .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(episode_id, url)")
+  .parseMeta("PRIMARY KEY(id)")
+  .parseMeta("UNIQUE (episode_id, url)")
   .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
   .parseMeta("FOREIGN KEY(toc_id) REFERENCES medium_toc(id)")
   .build();
