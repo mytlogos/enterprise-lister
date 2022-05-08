@@ -1,3 +1,33 @@
+## [1.29.1](https://github.com/mytlogos/enterprise-lister/compare/v1.29.0...v1.29.1) (2022-05-03)
+
+
+### Bug Fixes
+
+* **scraper:** remove unnecessary expect error ([70bee6a](https://github.com/mytlogos/enterprise-lister/commit/70bee6a8b4badc84e9f73cfb309d351c44a6b5e9))
+* use debug logger instead of console ([cc3369c](https://github.com/mytlogos/enterprise-lister/commit/cc3369cb31fff23b963fc83a37c4772d4a46181a))
+
+# [1.29.0](https://github.com/mytlogos/enterprise-lister/compare/v1.28.6...v1.29.0) (2022-05-03)
+
+
+### Features
+
+* split logs ([8c8e041](https://github.com/mytlogos/enterprise-lister/commit/8c8e041f65605f2a07cd03e6a13bc8b919e669bb))
+* **website:** only necessary progress updates ([2f54e8f](https://github.com/mytlogos/enterprise-lister/commit/2f54e8f1f1a2a0f2d705f8b46c7de008bae5e03c))
+
+## [1.28.6](https://github.com/mytlogos/enterprise-lister/compare/v1.28.5...v1.28.6) (2022-04-18)
+
+
+### Bug Fixes
+
+* add missing whitespace ([4daa5d8](https://github.com/mytlogos/enterprise-lister/commit/4daa5d870830a8b7c7ef3c2b421a39be06fa0000))
+
+## [1.28.5](https://github.com/mytlogos/enterprise-lister/compare/v1.28.4...v1.28.5) (2022-04-17)
+
+
+### Bug Fixes
+
+* add missing property ([0bfb439](https://github.com/mytlogos/enterprise-lister/commit/0bfb4392ef28ee89df0613a17b1bad2e44e51703))
+
 ## [1.28.4](https://github.com/mytlogos/enterprise-lister/compare/v1.28.3...v1.28.4) (2022-03-22)
 
 

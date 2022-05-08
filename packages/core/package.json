@@ -1,6 +1,6 @@
 {
   "name": "enterprise-core",
-  "version": "1.28.4",
+  "version": "1.29.1",
   "private": true,
   "scripts": {
     "build": "tsc -p ./",
@@ -17,11 +17,11 @@
     "emoji-regex": "^10.1.0",
     "mysql": "^2.18.1",
     "node-cache": "^5.1.2",
-    "promise-mysql": "^5.1.0",
-    "tslib": "^2.3.1",
+    "promise-mysql": "^5.2.0",
+    "tslib": "^2.4.0",
     "uuid": "^8.3.2",
     "validate.js": "^0.13.1",
-    "winston": "^3.6.0",
+    "winston": "^3.7.2",
     "winston-daily-rotate-file": "^4.6.1"
   },
   "devDependencies": {
@@ -29,9 +29,9 @@
     "@types/debug": "^4.1.5",
     "@types/dotenv": "^8.2.0",
     "@types/mysql": "^2.15.21",
-    "@types/node": "^16.11.26",
+    "@types/node": "^16.11.33",
     "@types/node-cache": "^4.2.5",
     "@types/uuid": "^8.3.0",
-    "typescript": "^4.6.2"
+    "typescript": "^4.6.4"
   }
 }
