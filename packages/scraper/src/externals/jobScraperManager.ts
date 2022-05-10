@@ -572,6 +572,7 @@ export class JobScraperManager {
           type: "finished",
           jobName: item.name,
           jobId: item.id,
+          jobType: item.type,
           jobTrack: {
             modifications: store.get("modifications") || {},
             network: store.get("network") || {
