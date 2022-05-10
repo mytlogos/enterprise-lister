@@ -1,3 +1,11 @@
+# [1.31.0](https://github.com/mytlogos/enterprise-lister/compare/v1.30.0...v1.31.0) (2022-05-10)
+
+
+### Features
+
+* **core:** speedup sql query ([0d3841d](https://github.com/mytlogos/enterprise-lister/commit/0d3841d0ce6d1ba5092123fd5328afca4c22924e))
+* use custom errors ([6d45198](https://github.com/mytlogos/enterprise-lister/commit/6d45198892d536e19d48654762aa981918bc767b))
+
 # [1.30.0](https://github.com/mytlogos/enterprise-lister/compare/v1.29.1...v1.30.0) (2022-05-08)
 
 
