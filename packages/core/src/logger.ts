@@ -109,8 +109,19 @@ function log(level: string, value: any, meta?: any) {
   logger.log(level, stringify(value), meta);
 }
 
+function sanitizeError(value: any) {
+  if (!("response" in value)) {
+    return;
+  }
+  // do not log response body
+  if ("body" in value.response) {
+    delete value.response.body;
+  }
+}
+
 export default {
   error(value: any, ...meta: any): void {
+    sanitizeError(value);
     log("error", value, meta);
   },
 
