@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/mytlogos/enterprise-lister/compare/v1.31.3...v1.32.0) (2022-05-10)
+
+
+### Features
+
+* **scraper:** add job metrics ([4f3eb89](https://github.com/mytlogos/enterprise-lister/commit/4f3eb89818a3be7a4f09f4d7c89a6c086d3330db))
+
 ## [1.31.3](https://github.com/mytlogos/enterprise-lister/compare/v1.31.2...v1.31.3) (2022-05-10)
 
 
