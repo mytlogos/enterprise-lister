@@ -27,6 +27,7 @@ import mysql from "promise-mysql";
 import { escapeLike } from "../storages/storageTools";
 import { getStore } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
+import { DatabaseError, JobError, ValidationError } from "@/error";
 
 interface CountValue<T> {
   count: number;
@@ -260,7 +261,7 @@ export class JobContext extends SubContext {
     }
     if (["type", "name", "arguments"].includes(column)) {
       if (!isString(value)) {
-        throw Error(`trying to delete jobs from column '${column}' without a string value: ${value}`);
+        throw new TypeError(`trying to delete jobs from column '${column}' without a string value: ${value}`);
       }
       const like = escapeLike(value, {
         noBoundaries: true,
@@ -356,7 +357,7 @@ export class JobContext extends SubContext {
         );
         // the only reason it should fail to insert is when its name constraint is violated
         if (!result.insertId) {
-          throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
+          throw new DatabaseError("could not add job: " + JSON.stringify(value) + " nor find it");
         } else {
           // @ts-expect-error
           value.id = result.insertId;
@@ -404,7 +405,7 @@ export class JobContext extends SubContext {
           // for now updateJobs is used only to switch between the running states running and waiting
           updates.push("runningSince = ?");
           if (value.state === JobState.RUNNING && !value.runningSince) {
-            throw Error("No running since value on running job!");
+            throw new ValidationError("No running_since value on running job!");
           }
           values.push(value.runningSince);
 
@@ -468,7 +469,7 @@ export class JobContext extends SubContext {
       }
       const store = getStore();
       if (!store) {
-        throw Error("missing store - is this running outside a AsyncLocalStorage Instance?");
+        throw new JobError("missing store - is this running outside a AsyncLocalStorage Instance?");
       }
       const context = store.get("history");
       const result = store.get("result") || "success";

@@ -1,6 +1,7 @@
 import { ColumnType, Modifier, SqlFunction } from "./databaseTypes";
 import { TableBuilder } from "./tableBuilder";
 import { ColumnSchema } from "./columnSchema";
+import { SchemaError } from "../error";
 
 export class ColumnBuilder {
   private readonly tableBuilder: TableBuilder;
@@ -88,19 +89,19 @@ export class ColumnBuilder {
 
   public build(): ColumnSchema {
     if (!this.type) {
-      throw Error("no column type set");
+      throw new SchemaError("no column type set");
     }
     if (!this.tableBuilder) {
-      throw Error("got not table for column");
+      throw new SchemaError("got not table for column");
     }
     if (!this.name) {
-      throw Error("column has no name");
+      throw new SchemaError("column has no name");
     }
     if (!this.type) {
-      throw Error("column has no type");
+      throw new SchemaError("column has no type");
     }
     if (this.type === ColumnType.TEXT && this.primaryKey && !this.primaryKeyTypeSize) {
-      throw Error("column is type 'TEXT' and primary key but has no key length");
+      throw new SchemaError("column is type 'TEXT' and primary key but has no key length");
     }
     const column = new ColumnSchema(
       this.name,

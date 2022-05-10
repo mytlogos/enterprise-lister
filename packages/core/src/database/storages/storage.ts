@@ -40,6 +40,7 @@ import { SubContext } from "../contexts/subContext";
 import { AppEventContext } from "../contexts/appEventContext";
 import { CustomHookContext } from "../contexts/customHookContext";
 import { DatabaseContext } from "../contexts/databaseContext";
+import { DatabaseConnectionError } from "@/error";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -56,10 +57,12 @@ export async function storageInContext<T, C extends ConnectionContext>(
 ): Promise<T> {
   if (!poolProvider.running) {
     // if inContext is called without Storage being active
-    return Promise.reject(new Error("Not started"));
+    return Promise.reject(new DatabaseConnectionError("Not started"));
   }
   if (poolProvider.errorAtStart) {
-    return Promise.reject(new Error("Error occurred while starting Database. Database may not be accessible"));
+    return Promise.reject(
+      new DatabaseConnectionError("Error occurred while starting Database. Database may not be accessible"),
+    );
   }
   if (poolProvider.startPromise) {
     await poolProvider.startPromise;
@@ -112,7 +115,9 @@ async function getConnection(pool: mySql.Pool): Promise<mySql.PoolConnection> {
       attempt++;
     }
   }
-  throw new Error(`Could not connect to Database, Maximum Attempts reached: ${attempt}/${maxAttempts}`);
+  throw new DatabaseConnectionError(
+    `Could not connect to Database, Maximum Attempts reached: ${attempt}/${maxAttempts}`,
+  );
 }
 
 async function catchTransactionError<T, C extends ConnectionContext>(

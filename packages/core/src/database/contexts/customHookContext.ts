@@ -1,12 +1,13 @@
 import { SubContext } from "./subContext";
-import { Errors, isInvalidId } from "../../tools";
+import { isInvalidId } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { CustomHook } from "@/types";
+import { ValidationError } from "@/error";
 
 export class CustomHookContext extends SubContext {
   public async addHook(value: CustomHook): Promise<CustomHook> {
     if (value.id) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      throw new ValidationError("Cannot add Hook with id already defined");
     }
     if (typeof value.state === "object") {
       value.state = JSON.stringify(value.state);
@@ -17,7 +18,7 @@ export class CustomHookContext extends SubContext {
       [value.name, value.state, value.hookState, value.comment],
     );
     if (!Number.isInteger(result.insertId) || result.insertId === 0) {
-      throw Error(`invalid ID ${result.insertId}`);
+      throw new ValidationError(`invalid ID ${result.insertId}`);
     }
     storeModifications("custom_hook", "insert", result);
 
@@ -31,9 +32,8 @@ export class CustomHookContext extends SubContext {
 
   public async updateHook(value: CustomHook): Promise<CustomHook> {
     if (isInvalidId(value.id)) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      throw new ValidationError(`Invalid id: '${value.id}'`);
     }
-    console.log(value);
     const updateResult = await this.update(
       "custom_hook",
       (updates, values) => {

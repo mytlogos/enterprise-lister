@@ -5,6 +5,7 @@ import { getStore, runAsync, setContext, removeContext } from "enterprise-core/d
 import Timeout = NodeJS.Timeout;
 import diagnostics_channel from "diagnostics_channel";
 import { JobQueueChannelMessage } from "./externals/types";
+import { JobError } from "enterprise-core/dist/error";
 
 const queueChannel = diagnostics_channel.channel("enterprise-jobqueue");
 
@@ -290,7 +291,7 @@ export class JobQueue {
       const store = getStore();
 
       if (!store) {
-        throw Error("Missing Store! Are you sure this was running in an AsyncResource?");
+        throw new JobError("Missing Store! Are you sure this was running in an AsyncResource?");
       }
       const running = store.get("running");
       const waiting = store.get("waiting");
@@ -338,7 +339,7 @@ export class JobQueue {
     }
     const nextInternJob = this.waitingJobs.shift();
     if (!nextInternJob) {
-      throw Error("no Job not found even though it should not be empty");
+      throw new JobError("no Job not found even though it should not be empty");
     }
     if (this.schedulableJobs > this.runningJobs) {
       this.setInterval(500);

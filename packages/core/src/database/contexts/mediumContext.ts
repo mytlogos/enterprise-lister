@@ -23,6 +23,7 @@ import { count, Errors, getElseSet, isInvalidId, multiSingle, promiseMultiSingle
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
+import { DatabaseError, MissingEntityError, ValidationError } from "@/error";
 
 export class MediumContext extends SubContext {
   public async getSpecificToc(id: number, link: string): VoidablePromise<FullMediumToc> {
@@ -50,11 +51,11 @@ export class MediumContext extends SubContext {
    */
   public async addMedium(medium: SimpleMedium, uuid?: Uuid): Promise<SimpleMedium> {
     if (!medium || !medium.medium || !medium.title) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError(`Invalid Medium: ${medium?.title}-${medium?.medium}`));
     }
     const result = await this.query("INSERT INTO medium(medium, title) VALUES (?,?);", [medium.medium, medium.title]);
     if (!Number.isInteger(result.insertId)) {
-      throw Error(`invalid ID: ${result.insertId}`);
+      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId}`);
     }
     storeModifications("medium", "insert", result);
 
@@ -80,7 +81,7 @@ export class MediumContext extends SubContext {
       const result = resultArray[0];
 
       if (!result) {
-        throw Error(`Medium with id ${mediumId} does not exist`);
+        throw new MissingEntityError(`Medium with id ${mediumId} does not exist`);
       }
       return {
         id: result.id,
@@ -139,7 +140,7 @@ export class MediumContext extends SubContext {
     synonyms.forEach((value) => {
       const medium = idMap.get(value.mediumId);
       if (!medium) {
-        throw Error("missing medium for queried synonyms");
+        throw new MissingEntityError("missing medium for queried synonyms");
       }
 
       if (!medium.synonyms) {
@@ -311,7 +312,7 @@ export class MediumContext extends SubContext {
     ];
 
     if (isInvalidId(mediumToc.mediumId) || !mediumToc.link) {
-      throw Error("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
+      throw new ValidationError("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
     }
     const conditions = [];
 
@@ -366,7 +367,7 @@ export class MediumContext extends SubContext {
       delete medium.medium;
     }
     if (!Number.isInteger(medium.id) || medium.id <= 0) {
-      throw Error("invalid medium, id, title or medium is invalid: " + JSON.stringify(medium));
+      throw new ValidationError("invalid medium, id, title or medium is invalid: " + JSON.stringify(medium));
     }
     const result = await this.update(
       "medium",
@@ -479,7 +480,7 @@ export class MediumContext extends SubContext {
     const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(link);
 
     if (!domainRegMatch) {
-      throw Error("Invalid Toc, Unable to extract Domain: " + link);
+      throw new ValidationError("Invalid ink, Unable to extract Domain: " + link);
     }
 
     await this.parentContext.jobContext.removeJobLike("name", `toc-${mediumId}-${link}`);
@@ -655,14 +656,16 @@ export class MediumContext extends SubContext {
 
   public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<Id> {
     if (!destMedium || !destMedium.medium || !destMedium.title) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(
+        new ValidationError(`Invalid destination Medium: ${destMedium?.title}-${destMedium?.medium}`),
+      );
     }
     const result = await this.query("INSERT IGNORE INTO medium(medium, title) VALUES (?,?);", [
       destMedium.medium,
       destMedium.title,
     ]);
     if (!Number.isInteger(result.insertId)) {
-      throw Error(`invalid ID: ${result.insertId}`);
+      throw new ValidationError(`insert failed, invalid ID: ${result.insertId}`);
     }
     storeModifications("medium", "insert", result);
     let mediumId: number;
@@ -675,7 +678,7 @@ export class MediumContext extends SubContext {
         destMedium.title,
       ]);
       if (!realMedium.length) {
-        throw Error("Expected a MediumId, but got nothing");
+        throw new MissingEntityError("Expected a MediumId, but got nothing");
       }
       mediumId = realMedium[0].id;
     } else {
@@ -690,7 +693,7 @@ export class MediumContext extends SubContext {
     const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(toc);
 
     if (!domainRegMatch) {
-      throw Error("Invalid Toc, Unable to extract Domain: " + toc);
+      throw new ValidationError("Invalid TocLink, Unable to extract Domain: " + toc);
     }
 
     const domain = domainRegMatch[1];
@@ -699,7 +702,7 @@ export class MediumContext extends SubContext {
     const standardPartId = await this.parentContext.partContext.getStandardPartId(destMediumId);
 
     if (!standardPartId) {
-      throw Error("medium does not have a standard part");
+      throw new DatabaseError("medium does not have a standard part");
     }
 
     const updatedTocResult = await this.query(

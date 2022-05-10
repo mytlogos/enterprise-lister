@@ -39,6 +39,7 @@ import { MysqlServerError } from "../mysqlError";
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications, toSqlList } from "../sqlTools";
+import { DatabaseError, ValidationError } from "@/error";
 
 export class EpisodeContext extends SubContext {
   /**
@@ -293,7 +294,7 @@ export class EpisodeContext extends SubContext {
     readDate: Nullable<Date>,
   ): Promise<boolean> {
     if (progress < 0 || progress > 1) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError(`Invalid Progress: ${progress}`));
     }
     const results = await this.multiInsert(
       "REPLACE INTO user_episode " + "(user_uuid, episode_id, progress, read_date) " + "VALUES ",
@@ -486,7 +487,7 @@ export class EpisodeContext extends SubContext {
       }
 
       if (!Number.isInteger(volumeId) || volumeId <= 0) {
-        throw Error("no volume id available");
+        throw new ValidationError("no volume id available");
       }
 
       const episodeSelectArray: Array<{ id: number; part_id: number; link: string }> = await this.query(
@@ -577,7 +578,7 @@ export class EpisodeContext extends SubContext {
       releases,
       (release) => {
         if (!release.episodeId) {
-          throw Error("missing episodeId on release");
+          throw new ValidationError("missing episodeId on release");
         }
         return [
           release.episodeId,
@@ -728,7 +729,7 @@ export class EpisodeContext extends SubContext {
     // @ts-expect-error
     return promiseMultiSingle(episodes, async (episode: SimpleEpisode): Promise<Episode> => {
       if (episode.partId == null || episode.partId <= 0) {
-        throw Error("episode without partId");
+        throw new ValidationError(`episode without partId: ${episode.partId}`);
       }
       let insertId: Optional<number>;
       const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
@@ -757,7 +758,7 @@ export class EpisodeContext extends SubContext {
         insertId = result[0].id;
       }
       if (!Number.isInteger(insertId)) {
-        throw Error(`invalid ID ${insertId}`);
+        throw new ValidationError(`invalid ID ${insertId}`);
       }
 
       if (episode.releases) {
@@ -809,7 +810,7 @@ export class EpisodeContext extends SubContext {
     releases.forEach((value) => {
       const episode = idMap.get(value.episodeId);
       if (!episode) {
-        throw Error("episode missing for queried release");
+        throw new DatabaseError("episode missing for queried release");
       }
       if (!episode.releases) {
         episode.releases = [];
@@ -853,7 +854,7 @@ export class EpisodeContext extends SubContext {
     releases.forEach((value) => {
       const episode = idMap.get(value.episodeId);
       if (!episode) {
-        throw Error("missing episode for release");
+        throw new DatabaseError("missing episode for release");
       }
       if (!episode.releases) {
         episode.releases = [];
@@ -934,7 +935,7 @@ export class EpisodeContext extends SubContext {
     releases.forEach((value) => {
       const episode = idMap.get(value.episodeId);
       if (!episode) {
-        throw Error("missing episode for release");
+        throw new DatabaseError("missing episode for release");
       }
       if (!episode.releases) {
         episode.releases = [];

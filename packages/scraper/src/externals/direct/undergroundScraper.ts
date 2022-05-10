@@ -4,6 +4,7 @@ import logger from "enterprise-core/dist/logger";
 import { queueCheerioRequest } from "../queueManager";
 import { max, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist/database/storages/storage";
+import { ScraperError } from "../errors";
 
 export const sourceType = "qidian_underground";
 
@@ -163,7 +164,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
   const newEpisodes = news.map((value): SimpleEpisode => {
     const exec = chapIndexReg.exec(value.title);
     if (!exec) {
-      throw Error(`'${value.title}' does not end with chapter number`);
+      throw new ScraperError(`'${value.title}' does not end with chapter number`);
     }
     const totalIndex = Number(exec[1]);
     return {

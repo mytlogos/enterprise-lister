@@ -1,6 +1,8 @@
 export class ScraperError extends Error {
-  public constructor() {
-    super();
+  public constructor(message?: string) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, ScraperError);
   }
 }
 

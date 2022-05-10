@@ -13,7 +13,7 @@ import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
-import { MissingResourceError, UrlError, UnreachableError } from "../errors";
+import { MissingResourceError, UrlError, UnreachableError, ScraperError } from "../errors";
 import { Options } from "cloudscraper";
 import * as cheerio from "cheerio";
 
@@ -277,7 +277,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       const volIndices = extractIndices(volChapGroups, 1, 2, 4);
 
       if (!volIndices) {
-        throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
+        throw new ScraperError(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
       }
 
       const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
@@ -323,7 +323,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       const chapIndices = extractIndices(chapGroups, 1, 2, 4);
 
       if (!chapIndices) {
-        throw Error(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
+        throw new ScraperError(`changed format on mangahasu, got no indices for: '${chapterTitle}'`);
       }
       const link = normalizeLink(new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href);
 

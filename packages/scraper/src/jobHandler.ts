@@ -46,6 +46,7 @@ import {
 } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, UrlError } from "./externals/errors";
 import { getStore } from "enterprise-core/dist/asyncStorage";
+import { MissingEntityError, ValidationError } from "enterprise-core/dist/error";
 import { DisabledHookError } from "./externals/hookManager";
 
 const scraper = DefaultJobScraper;
@@ -56,7 +57,7 @@ const scraper = DefaultJobScraper;
  */
 async function processNews({ link, rawNews }: NewsResult): EmptyPromise {
   if (!link || !validate.isString(link)) {
-    throw Errors.INVALID_INPUT;
+    throw new ValidationError("link is not a string: " + typeof link);
   }
   multiSingle(rawNews, (item: News) => delete item.id);
 
@@ -197,7 +198,7 @@ async function getTocMedium(toc: Toc, uuid?: Uuid): Promise<MediumTocContent> {
   // map toc contents to their medium
   toc.content.forEach((content) => {
     if (!content || content.totalIndex == null) {
-      throw Error(`invalid tocContent for mediumId:'${mediumId}' and link:'${toc.link}'`);
+      throw new ValidationError(`invalid tocContent for mediumId:'${mediumId}' and link:'${toc.link}'`);
     }
     checkTocContent(content, isTocPart(content));
 
@@ -222,7 +223,7 @@ async function getTocMedium(toc: Toc, uuid?: Uuid): Promise<MediumTocContent> {
       });
       result.parts.push(content);
     } else {
-      throw Error("content neither part nor episode");
+      throw new ValidationError("content neither part nor episode");
     }
   });
   return result;
@@ -246,7 +247,7 @@ function partEpisodesReleaseChanges(
   storageReleases: Readonly<EpisodeRelease[]>,
 ): PartChanges {
   if (!value.part || !value.part.id) {
-    throw Error(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
+    throw new ValidationError(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
   }
   const episodeMap = new Map<
     number,
@@ -272,7 +273,7 @@ function partEpisodesReleaseChanges(
     const tocEpisode = episodeMap.get(combiIndex(episode));
 
     if (!tocEpisode) {
-      throw Error("something went wrong. got no value at this episode index");
+      throw new ValidationError("something went wrong. got no value at this episode index");
     }
     tocEpisode.episode = episode;
   });
@@ -291,7 +292,7 @@ function partEpisodesReleaseChanges(
       const episodeToc = episodeMap.get(episodeIndex);
 
       if (!episodeToc) {
-        throw Error("something went wrong. got no value at this episode index");
+        throw new ValidationError("something went wrong. got no value at this episode index");
       }
       return {
         id: 0,
@@ -327,12 +328,12 @@ function partEpisodesReleaseChanges(
       const episodeValue = episodeMap.get(index);
 
       if (!episodeValue) {
-        throw Error(`no episodeValue for index ${index} of medium ${value.part && value.part.mediumId}`);
+        throw new ValidationError(`no episodeValue for index ${index} of medium ${value.part && value.part.mediumId}`);
       }
       const currentEpisode = episodeValue.episode;
 
       if (!currentEpisode) {
-        throw Error("known episode has no episode from storage");
+        throw new MissingEntityError("known episode has no episode from storage");
       }
       const id = currentEpisode.id;
 
@@ -423,7 +424,7 @@ export async function saveToc(tocContent: MediumTocContent): EmptyPromise {
   tocParts.forEach((value) => {
     checkTocContent(value, true);
     if (value.totalIndex == null) {
-      throw Error(`totalIndex should not be null! mediumId: '${mediumId}'`);
+      throw new ValidationError(`totalIndex should not be null! mediumId: '${mediumId}'`);
     }
     indexPartsMap.set(value.combiIndex, { tocPart: value });
   });
@@ -445,7 +446,7 @@ export async function saveToc(tocContent: MediumTocContent): EmptyPromise {
     const tocPart = indexPartsMap.get(combiIndex(value));
 
     if (!tocPart) {
-      throw Error(`got no value at this part index: ${combiIndex(value)} of ${JSON.stringify(value)}`);
+      throw new ValidationError(`got no value at this part index: ${combiIndex(value)} of ${JSON.stringify(value)}`);
     }
     tocPart.part = value;
   });
@@ -457,7 +458,7 @@ export async function saveToc(tocContent: MediumTocContent): EmptyPromise {
         const partToc = indexPartsMap.get(index);
 
         if (!partToc) {
-          throw Error(`got no value at this part index: ${index}`);
+          throw new ValidationError(`got no value at this part index: ${index}`);
         }
         checkTocContent(partToc.tocPart, true);
 
@@ -482,7 +483,7 @@ export async function saveToc(tocContent: MediumTocContent): EmptyPromise {
   const exec = /https?:\/\/([^/]+)/.exec(tocContent.url);
 
   if (!exec) {
-    throw Error("invalid url for release: " + tocContent.url);
+    throw new ValidationError("invalid url for release: " + tocContent.url);
   }
 
   const releases: EpisodeRelease[] = await episodeStorage.getMediumReleasesByHost(mediumId, exec[0]);
@@ -827,7 +828,7 @@ async function listHandler(result: ExternalListResult): EmptyPromise {
         return like && like.link === scrapeMedium.title.link;
       });
       if (!likeMedium || !likeMedium.medium) {
-        throw Error("missing medium in storage for " + scrapeMedium.title.link);
+        throw new MissingEntityError("missing medium in storage for " + scrapeMedium.title.link);
       }
       return likeMedium.medium.id;
     });

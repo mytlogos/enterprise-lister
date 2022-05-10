@@ -3,6 +3,7 @@ import { ExternalList, Uuid } from "../../types";
 import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { OkPacket } from "mysql";
+import { DatabaseError, ValidationError } from "@/error";
 
 export class ExternalListContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<ExternalList[]> {
@@ -33,7 +34,7 @@ export class ExternalListContext extends SubContext {
     const insertId = result.insertId;
 
     if (!Number.isInteger(insertId)) {
-      throw Error(`invalid ID ${insertId}`);
+      throw new DatabaseError(`invalid ID ${insertId}`);
     }
 
     return {
@@ -158,7 +159,7 @@ export class ExternalListContext extends SubContext {
     // then take it as uuid from user and get the standard listId of 'Standard' list
     if (medium.listId == null || !Number.isInteger(medium.listId)) {
       if (!uuid) {
-        throw Error(Errors.INVALID_INPUT);
+        throw new ValidationError("missing uuid parameter");
       }
       const idResult = await this.query(
         "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",

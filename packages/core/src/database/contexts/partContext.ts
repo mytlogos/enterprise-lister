@@ -16,6 +16,7 @@ import {
 import { combiIndex, getElseSetObj, hasPropType, multiSingle, separateIndex } from "../../tools";
 import { MysqlServerError } from "../mysqlError";
 import { storeModifications } from "../sqlTools";
+import { DatabaseError, MissingEntityError } from "@/error";
 
 interface MinEpisode {
   id: number;
@@ -100,7 +101,9 @@ export class PartContext extends SubContext {
         episodes.forEach((value) => {
           const part = idMap.get(value.partId);
           if (!part) {
-            throw Error(`no part ${value.partId} found even though only available episodes were queried`);
+            throw new MissingEntityError(
+              `no part ${value.partId} found even though only available episodes were queried`,
+            );
           }
           part.episodes.push(value);
         });
@@ -108,7 +111,9 @@ export class PartContext extends SubContext {
         episodesIds.forEach((value) => {
           const part = idMap.get(value.partId);
           if (!part) {
-            throw Error(`no part ${value.partId} found even though only available episodes were queried`);
+            throw new MissingEntityError(
+              `no part ${value.partId} found even though only available episodes were queried`,
+            );
           }
           // @ts-expect-error
           part.episodes.push(value.id);
@@ -176,7 +181,7 @@ export class PartContext extends SubContext {
       fullEpisodes.forEach((value) => {
         const part = partIdMap.get(value.partId);
         if (!part) {
-          throw Error("missing part for queried episode");
+          throw new MissingEntityError("missing part for queried episode");
         }
         if (!part.episodes) {
           part.episodes = [];
@@ -302,7 +307,7 @@ export class PartContext extends SubContext {
     }
 
     if (!Number.isInteger(partId) || partId <= 0) {
-      throw Error(`invalid ID ${partId}`);
+      throw new DatabaseError(`invalid ID ${partId}`);
     }
     let episodes: Episode[];
 

@@ -14,7 +14,7 @@ import * as url from "url";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
 import * as request from "request-promise-native";
 import { checkTocContent } from "../scraperTools";
-import { UrlError } from "../errors";
+import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 
 const jar = request.jar();
@@ -163,11 +163,11 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
         }
 
         if (!date) {
-          throw Error(`invalid date: '${item.createTime}'`);
+          throw new ScraperError(`invalid date: '${item.createTime}'`);
         }
 
         if (!idPattern.test(item.id)) {
-          throw Error("invalid chapterId: " + item.id);
+          throw new ScraperError("invalid chapterId: " + item.id);
         }
 
         const chapterContent: TocEpisode = {
@@ -358,7 +358,7 @@ async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
   const idPattern = /^\d+$/;
 
   if (!idPattern.test(bookId)) {
-    throw Error("invalid bookId");
+    throw new ScraperError("invalid bookId");
   }
   const [toc] = await scrapeTocPage(bookId, searchMedium.mediumId);
   logger.info("scraping toc on webnovel successfully " + searchMedium.mediumId);

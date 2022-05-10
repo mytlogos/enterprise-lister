@@ -11,6 +11,7 @@ import {
 import { Errors, promiseMultiSingle } from "../../tools";
 import { v1 as uuidGenerator } from "uuid";
 import { storeModifications } from "../sqlTools";
+import { DatabaseError, DuplicateEntityError, MissingEntityError } from "@/error";
 
 export class ExternalUserContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<TypedQuery<DisplayExternalUser>> {
@@ -38,7 +39,7 @@ export class ExternalUserContext extends SubContext {
       [externalUser.identifier, localUuid, externalUser.type],
     );
     if (result.length) {
-      throw Error(Errors.USER_EXISTS_ALREADY);
+      throw new DuplicateEntityError("Duplicate ExternalUser");
     }
     const uuid = uuidGenerator();
 
@@ -49,7 +50,7 @@ export class ExternalUserContext extends SubContext {
     storeModifications("external_user", "insert", result);
 
     if (!result.affectedRows) {
-      return Promise.reject(new Error(Errors.UNKNOWN));
+      return Promise.reject(new DatabaseError("Insert failed"));
     }
     externalUser.localUuid = localUuid;
     return externalUser;
@@ -91,7 +92,7 @@ export class ExternalUserContext extends SubContext {
     return promiseMultiSingle(externalUuid, async (value) => {
       const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
       if (!resultArray.length) {
-        throw Error("No result found for given uuid");
+        throw new MissingEntityError("No result found for given uuid");
       }
       return this.createShallowExternalUser(resultArray[0]);
     });

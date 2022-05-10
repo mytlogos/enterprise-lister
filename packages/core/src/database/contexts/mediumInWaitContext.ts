@@ -11,6 +11,7 @@ import {
 import { equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { escapeLike } from "../storages/storageTools";
+import { DatabaseError } from "@/error";
 
 export class MediumInWaitContext extends SubContext {
   public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {
@@ -22,7 +23,7 @@ export class MediumInWaitContext extends SubContext {
 
     const id = newMedium.id;
     if (!id) {
-      throw Error("no medium id available");
+      throw new DatabaseError("no medium id available");
     }
     const toDeleteMediaInWaits = [medium];
 
