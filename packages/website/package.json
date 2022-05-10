@@ -28,7 +28,7 @@
     "vue-observe-visibility": "^1.0.0",
     "vue-prism-editor": "^2.0.0-alpha.2",
     "prismjs": "1.28.0",
-    "vue-router": "^4.0.14",
+    "vue-router": "^4.0.15",
     "vuex": "^4.0.2",
     "vuex-persistedstate": "^4.1.0"
   },
