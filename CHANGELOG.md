@@ -1,3 +1,10 @@
+## [1.31.3](https://github.com/mytlogos/enterprise-lister/compare/v1.31.2...v1.31.3) (2022-05-10)
+
+
+### Bug Fixes
+
+* **core:** do not log error response body ([9cec3d9](https://github.com/mytlogos/enterprise-lister/commit/9cec3d96f54c86d233128d107d60b3afb4ff73cd))
+
 ## [1.31.2](https://github.com/mytlogos/enterprise-lister/compare/v1.31.1...v1.31.2) (2022-05-10)
 
 
