@@ -40,6 +40,7 @@ const logger = winston.createLogger({
       filename: filePrefix + "exception.log",
       maxsize: 10_000_000,
     }),
+    new winston.transports.Console(),
   ],
   transports: [
     //
