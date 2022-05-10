@@ -11,7 +11,7 @@ import {
 import { equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { escapeLike } from "../storages/storageTools";
-import { DatabaseError } from "@/error";
+import { DatabaseError } from "../../error";
 
 export class MediumInWaitContext extends SubContext {
   public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {

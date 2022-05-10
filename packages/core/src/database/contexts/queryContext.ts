@@ -39,7 +39,7 @@ import { storeCount } from "../sqlTools";
 import { ScraperHookContext } from "./scraperHookContext";
 import { AppEventContext } from "./appEventContext";
 import { CustomHookContext } from "./customHookContext";
-import { DatabaseError, NotImplementedError, UnsupportedError, ValidationError } from "@/error";
+import { DatabaseError, NotImplementedError, UnsupportedError, ValidationError } from "../../error";
 
 const database = "enterprise";
 

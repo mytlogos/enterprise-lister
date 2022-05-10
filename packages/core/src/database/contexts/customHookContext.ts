@@ -2,7 +2,7 @@ import { SubContext } from "./subContext";
 import { isInvalidId } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { CustomHook } from "@/types";
-import { ValidationError } from "@/error";
+import { ValidationError } from "../../error";
 
 export class CustomHookContext extends SubContext {
   public async addHook(value: CustomHook): Promise<CustomHook> {

@@ -5,7 +5,7 @@ import { MediaType } from "../../../tools";
 import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "../../../types";
 import { escapeId, Query } from "mysql";
 import bcrypt from "bcryptjs";
-import { MissingEntityError } from "@/error";
+import { MissingEntityError } from "../../../error";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
   return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);

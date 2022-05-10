@@ -27,7 +27,7 @@ import mysql from "promise-mysql";
 import { escapeLike } from "../storages/storageTools";
 import { getStore } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
-import { DatabaseError, JobError, ValidationError } from "@/error";
+import { DatabaseError, JobError, ValidationError } from "../../error";
 
 interface CountValue<T> {
   count: number;

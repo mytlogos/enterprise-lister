@@ -2,7 +2,7 @@ import { SubContext } from "./subContext";
 import { List, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
 import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
-import { DatabaseError, MissingEntityError, ValidationError } from "@/error";
+import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
 
 export class InternalListContext extends SubContext {
   /**

@@ -1,9 +1,9 @@
 import { SubContext } from "./subContext";
 import { ExternalList, Uuid } from "../../types";
-import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
+import { promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { OkPacket } from "mysql";
-import { DatabaseError, ValidationError } from "@/error";
+import { DatabaseError, ValidationError } from "../../error";
 
 export class ExternalListContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<ExternalList[]> {

@@ -16,7 +16,7 @@ import {
 import { combiIndex, getElseSetObj, hasPropType, multiSingle, separateIndex } from "../../tools";
 import { MysqlServerError } from "../mysqlError";
 import { storeModifications } from "../sqlTools";
-import { DatabaseError, MissingEntityError } from "@/error";
+import { DatabaseError, MissingEntityError } from "../../error";
 
 interface MinEpisode {
   id: number;

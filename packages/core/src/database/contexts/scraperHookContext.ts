@@ -2,7 +2,7 @@ import { SubContext } from "./subContext";
 import { ScraperHook, TypedQuery } from "../../types";
 import { storeModifications } from "../sqlTools";
 import { escapeLike } from "../storages/storageTools";
-import { ValidationError } from "@/error";
+import { ValidationError } from "../../error";
 
 export class ScraperHookContext extends SubContext {
   public async getAllStream(): Promise<TypedQuery<ScraperHook>> {

@@ -23,7 +23,7 @@ import { count, Errors, getElseSet, isInvalidId, multiSingle, promiseMultiSingle
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
-import { DatabaseError, MissingEntityError, ValidationError } from "@/error";
+import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
 
 export class MediumContext extends SubContext {
   public async getSpecificToc(id: number, link: string): VoidablePromise<FullMediumToc> {

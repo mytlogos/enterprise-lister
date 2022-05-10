@@ -40,7 +40,7 @@ import { SubContext } from "../contexts/subContext";
 import { AppEventContext } from "../contexts/appEventContext";
 import { CustomHookContext } from "../contexts/customHookContext";
 import { DatabaseContext } from "../contexts/databaseContext";
-import { DatabaseConnectionError } from "@/error";
+import { DatabaseConnectionError } from "../../error";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);

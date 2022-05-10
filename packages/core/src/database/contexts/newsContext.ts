@@ -2,7 +2,7 @@ import { SubContext } from "./subContext";
 import { News, Uuid, MultiSingleValue, PromiseMultiSingle, Optional } from "../../types";
 import { Errors, promiseMultiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
-import { DatabaseError, ValidationError } from "@/error";
+import { DatabaseError, ValidationError } from "../../error";
 
 export class NewsContext extends SubContext {
   /**

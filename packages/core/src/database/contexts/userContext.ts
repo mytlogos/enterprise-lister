@@ -9,7 +9,7 @@ import {
   MissingEntityError,
   SessionError,
   ValidationError,
-} from "@/error";
+} from "../../error";
 
 /**
  * Checks whether the password equals to the given hash

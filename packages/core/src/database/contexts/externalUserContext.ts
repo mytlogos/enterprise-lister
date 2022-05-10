@@ -11,7 +11,7 @@ import {
 import { Errors, promiseMultiSingle } from "../../tools";
 import { v1 as uuidGenerator } from "uuid";
 import { storeModifications } from "../sqlTools";
-import { DatabaseError, DuplicateEntityError, MissingEntityError } from "@/error";
+import { DatabaseError, DuplicateEntityError, MissingEntityError } from "../../error";
 
 export class ExternalUserContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<TypedQuery<DisplayExternalUser>> {
