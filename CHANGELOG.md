@@ -1,3 +1,11 @@
+## [1.31.1](https://github.com/mytlogos/enterprise-lister/compare/v1.31.0...v1.31.1) (2022-05-10)
+
+
+### Bug Fixes
+
+* **core:** fix imports ([1099008](https://github.com/mytlogos/enterprise-lister/commit/10990084e61890c1bb2f25a71aa93bc617b8e2ac))
+* **core:** print exceptions to console ([d248e2a](https://github.com/mytlogos/enterprise-lister/commit/d248e2a865ad7e355b22fe7c67bdaa231a22f862))
+
 # [1.31.0](https://github.com/mytlogos/enterprise-lister/compare/v1.30.0...v1.31.0) (2022-05-10)
 
 
