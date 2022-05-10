@@ -1,3 +1,10 @@
+## [1.31.2](https://github.com/mytlogos/enterprise-lister/compare/v1.31.1...v1.31.2) (2022-05-10)
+
+
+### Bug Fixes
+
+* support node 17 ([0fcb249](https://github.com/mytlogos/enterprise-lister/commit/0fcb249f5f2dde5337798896b3e48888ac894eeb))
+
 ## [1.31.1](https://github.com/mytlogos/enterprise-lister/compare/v1.31.0...v1.31.1) (2022-05-10)
 
 
