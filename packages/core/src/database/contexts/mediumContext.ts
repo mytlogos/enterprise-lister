@@ -230,10 +230,9 @@ export class MediumContext extends SubContext {
 
   public async getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
     const readStatsPromise = this.query(
-      "SELECT part.medium_id as id, COUNT(part.medium_id) as totalEpisodes, COUNT(user.episode_id) as readEpisodes " +
+      "SELECT part.medium_id as id, COUNT(*) as totalEpisodes , COUNT(case when episode.id in (select episode_id from user_episode where ? = user_uuid and progress = 1) then 1 else null end) as readEpisodes " +
         "FROM part " +
         "INNER JOIN episode ON part.id=episode.part_id " +
-        "LEFT JOIN (SELECT * FROM user_episode WHERE ? = user_uuid AND progress = 1) as user ON user.episode_id=episode.id " +
         "GROUP BY part.medium_id;",
       uuid,
     );
