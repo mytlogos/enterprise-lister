@@ -1,3 +1,10 @@
+## [1.32.1](https://github.com/mytlogos/enterprise-lister/compare/v1.32.0...v1.32.1) (2022-05-18)
+
+
+### Bug Fixes
+
+* **website:** handle invalid_session error ([5914e54](https://github.com/mytlogos/enterprise-lister/commit/5914e5479dc0a5c8fd89460f45dddb6591907aa5))
+
 # [1.32.0](https://github.com/mytlogos/enterprise-lister/compare/v1.31.3...v1.32.0) (2022-05-10)
 
 
