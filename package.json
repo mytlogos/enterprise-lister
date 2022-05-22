@@ -84,8 +84,5 @@
   },
   "workspaces": [
     "./packages/*"
-  ],
-  "dependencies": {
-    "@coreui/vue": "^4.1.1"
-  }
+  ]
 }
