@@ -64,6 +64,7 @@ import {
 } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, ScraperError, UrlError } from "./errors";
 import {
+  DisabledHookError,
   episodeDownloaderEntries,
   getHook,
   getHooks,
@@ -761,7 +762,8 @@ export function checkHooks(): EmptyPromise {
 
 export async function search(title: string, medium: number): Promise<SearchResult[]> {
   await checkHooks();
-  const promises: Array<Promise<SearchResult[]>> = getSearcher(medium).map((searcher) => searcher(title, medium));
+  // use async to wrap possible errors in a promise
+  const promises: Array<Promise<SearchResult[]>> = getSearcher(medium).map(async (searcher) => searcher(title, medium));
 
   const results = await Promise.allSettled(promises);
   return results
@@ -770,7 +772,10 @@ export async function search(title: string, medium: number): Promise<SearchResul
       if (value.status === "fulfilled") {
         return value.value;
       }
-      logger.error(value.reason);
+      // log only non trivial error
+      if (!(value.reason instanceof Error) || !["StatusCodeError", "DisabledHookError"].includes(value.reason.name)) {
+        logger.error(value.reason);
+      }
       return null;
     })
     .filter((value) => value) as unknown as SearchResult[];
