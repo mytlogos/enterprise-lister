@@ -5,6 +5,7 @@ import { MediaType } from "enterprise-core/dist/tools";
 import { queueRequest } from "../queueManager";
 import { UrlError } from "../errors";
 import { SearchResult } from "enterprise-core/dist/types";
+import { ValidationError } from "enterprise-core/dist/error";
 
 const BASE_URI = "https://openlibrary.org/";
 
@@ -78,7 +79,7 @@ async function toc(tocLink: string): Promise<Toc[]> {
     const publishDate = new Date(data.publish_date);
 
     if (Number.isNaN(publishDate.getDate())) {
-      throw Error("Invalid Time: " + data.publish_date);
+      throw new ValidationError("Invalid Time: " + data.publish_date);
     }
 
     const tocContent: TocEpisode[] = data?.table_of_contents?.map((value, index) => {

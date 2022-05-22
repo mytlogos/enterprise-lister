@@ -14,6 +14,8 @@ import {
   Primitive,
   DataStats,
   NewData,
+  QueryItems,
+  QueryItemsResult,
 } from "../../types";
 import { Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
 import logger from "../../logger";
@@ -37,6 +39,7 @@ import { storeCount } from "../sqlTools";
 import { ScraperHookContext } from "./scraperHookContext";
 import { AppEventContext } from "./appEventContext";
 import { CustomHookContext } from "./customHookContext";
+import { DatabaseError, NotImplementedError, UnsupportedError, ValidationError } from "../../error";
 
 const database = "enterprise";
 
@@ -215,7 +218,7 @@ export class QueryContext implements ConnectionContext {
 
   public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
     if (!result.preliminary) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid Result: missing preliminary value"));
     }
     return promiseMultiSingle(result.result, async (value: MetaResult) => {
       const resultArray: any[] = await this.query(
@@ -232,7 +235,7 @@ export class QueryContext implements ConnectionContext {
 
   public saveResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
     if (!result.preliminary) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid Result: missing preliminary value"));
     }
     return promiseMultiSingle(result.result, async (value) => {
       if (!result.accept) {
@@ -247,7 +250,7 @@ export class QueryContext implements ConnectionContext {
 
   public async getPageInfo(link: string, key: string): Promise<PageInfo> {
     if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
-      return Promise.reject(Errors.INVALID_INPUT);
+      throw new ValidationError("invalid link or key");
     }
     const query: any[] = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
     return {
@@ -259,14 +262,14 @@ export class QueryContext implements ConnectionContext {
 
   public async updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): EmptyPromise {
     if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
-      return Promise.reject(Errors.INVALID_INPUT);
+      throw new ValidationError("invalid link or key");
     }
     await this.removePageInfo(link, key, toDeleteValues);
 
     await Promise.all(
       values.map((value) => {
         if (!value || !validate.isString(value)) {
-          throw Errors.INVALID_INPUT;
+          throw new TypeError("value is not a string: " + typeof value);
         }
         return this.query("INSERT INTO page_info (link, keyString, value) VALUES(?,?,?)", [link, key, value]);
       }),
@@ -275,14 +278,14 @@ export class QueryContext implements ConnectionContext {
 
   public async removePageInfo(link: string, key?: string, toDeleteValues?: string[]): EmptyPromise {
     if (!validate.isString(link) || !link || (key && !validate.isString(key))) {
-      return Promise.reject(Errors.INVALID_INPUT);
+      throw new ValidationError("invalid link or key");
     }
     if (key) {
       if (toDeleteValues) {
         await Promise.all(
           toDeleteValues.map((value) => {
             if (!value || !validate.isString(value)) {
-              throw Errors.INVALID_INPUT;
+              throw new ValidationError("value not a string: " + typeof value);
             }
             // TODO: 29.06.2019 use 'value IN (list)'
             return this.query("DELETE FROM page_info WHERE link=? AND keyString=? AND value=?", [link, key, value]);
@@ -297,7 +300,7 @@ export class QueryContext implements ConnectionContext {
   }
 
   public async queueNewTocs(): EmptyPromise {
-    throw Error("not supported");
+    throw new NotImplementedError("queueNewTocs not supported");
   }
 
   public async getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
@@ -344,6 +347,7 @@ export class QueryContext implements ConnectionContext {
     if (query.length > 20 && env.development) {
       logger.debug(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
     }
+    const start = Date.now();
     let result;
     try {
       setContext("sql-query");
@@ -353,8 +357,8 @@ export class QueryContext implements ConnectionContext {
       removeContext("sql-query");
     }
 
-    if (Array.isArray(result) && result.length > 1000) {
-      logger.debug(`${result.length} Results for ${query}`);
+    if (Array.isArray(result) && result.length > 10) {
+      logger.debug(`[${Date.now() - start}ms] ${result.length} Results for ${query} - Parameter: '${parameter}'`);
     }
     return result;
   }
@@ -376,7 +380,7 @@ export class QueryContext implements ConnectionContext {
    */
   public async delete(table: string, ...condition: Condition[]): Promise<OkPacket> {
     if (!condition || (Array.isArray(condition) && !condition.length)) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid delete condition"));
     }
     let query = `DELETE FROM ${mySql.escapeId(table)} WHERE `;
     const values: any[] = [];
@@ -400,7 +404,7 @@ export class QueryContext implements ConnectionContext {
    */
   public async update(table: string, cb: UpdateCallback, ...condition: Condition[]): Promise<OkPacket> {
     if (!condition || (Array.isArray(condition) && !condition.length)) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid update condition"));
     }
     const updates: string[] = [];
     const values: any[] = [];
@@ -528,7 +532,7 @@ export class QueryContext implements ConnectionContext {
     const listPlaceholderIndex = query.indexOf("??");
 
     if (listPlaceholderIndex !== query.lastIndexOf("??")) {
-      throw Error("Invalid Query: multiple Listplaceholder are currently not allowed");
+      throw new UnsupportedError("Invalid Query: multiple Listplaceholder are currently not allowed");
     }
     const params: Array<[string, any[]]> = [];
     const listParams = placeHolderValues
@@ -536,7 +540,7 @@ export class QueryContext implements ConnectionContext {
       .filter((v) => v) as Array<[any[], number]>;
 
     if (listParams.length > 1) {
-      throw Error("Using multiple ListParams is not supported");
+      throw new UnsupportedError("Using multiple ListParams is not supported");
     }
     if (listParams.length) {
       const [listParam, index] = listParams[0];
@@ -561,7 +565,7 @@ export class QueryContext implements ConnectionContext {
       params.push([placeholder, placeHolderValues]);
     }
     if (!params.length) {
-      throw Error(`no params for '${query}'`);
+      throw new DatabaseError(`no params for '${query}'`);
     }
     const result: any[][] = await Promise.all(
       params.map((param) => {
@@ -582,7 +586,8 @@ export class QueryContext implements ConnectionContext {
 
   public async getNew(uuid: Uuid, date = new Date(0)): Promise<NewData> {
     const episodeReleasePromise = this.query(
-      "SELECT episode_id as episodeId, title, url, releaseDate, locked " + "FROM episode_release WHERE updated_at > ?",
+      "SELECT episode_id as episodeId, title, url, releaseDate, locked, toc_id as tocId " +
+        "FROM episode_release WHERE updated_at > ?",
       date,
     );
     const episodePromise = this.query(
@@ -727,6 +732,48 @@ export class QueryContext implements ConnectionContext {
       lists,
       extLists,
       extUser,
+    };
+  }
+
+  public async queryItems(uuid: Uuid, query: QueryItems): Promise<QueryItemsResult> {
+    const [
+      externalUser,
+      externalMediaLists,
+      mediaLists,
+      mediaTocs,
+      tocs,
+      media,
+      parts,
+      partReleases,
+      partEpisodes,
+      episodes,
+      episodeReleases,
+    ] = await Promise.all([
+      this.externalUserContext.getExternalUser(query.externalUser),
+      Promise.all(query.externalMediaLists.map((id) => this.externalListContext.getExternalList(id))),
+      this.internalListContext.getShallowList(query.mediaLists, uuid),
+      this.mediumContext.getMediumTocs(query.mediaTocs),
+      this.mediumContext.getTocs(query.tocs),
+      this.mediumContext.getSimpleMedium(query.media),
+      this.partContext.getParts(query.parts, uuid, false),
+      this.partContext.getPartReleases(query.partReleases),
+      this.partContext.getPartItems(query.partEpisodes),
+      this.episodeContext.getEpisode(query.episodes, uuid),
+      this.episodeContext.getReleases(query.episodeReleases),
+    ]);
+
+    return {
+      episodeReleases, // by episode id
+      episodes,
+      partEpisodes, // by part id
+      partReleases, // by part id
+      parts,
+      media,
+      tocs, // by toc id
+      mediaTocs, // by medium id
+      mediaLists,
+      externalMediaLists,
+      externalUser,
     };
   }
 

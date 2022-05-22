@@ -62,14 +62,14 @@ const module: Module<ListsStore, VuexStore> = {
           })
           .catch((error) => commit("addListModalError", String(error)));
       }
-      // TODO implement addList
     },
 
     deleteList({ commit }, id: number) {
       HttpClient.deleteList(id)
-        .then(() => console.log("success"))
+        .then(() => {
+          commit("deleteList", id);
+        })
         .catch((error) => console.log(error));
-      // TODO implement deleteList
     },
   },
 };

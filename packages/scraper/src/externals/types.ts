@@ -11,6 +11,7 @@ import {
   Id,
   ExternalStorageUser,
   JobTrack,
+  ScrapeName,
 } from "enterprise-core/dist/types";
 import { MediaType } from "enterprise-core/dist/tools";
 import { JobCallback } from "../jobManager";
@@ -74,6 +75,7 @@ export type JobChannelMessage = StartJobChannelMessage | EndJobChannelMessage;
 export interface EndJobChannelMessage extends BasicJobChannelMessage {
   messageType: "jobs";
   type: "finished";
+  jobType: ScrapeName;
   jobName: string;
   jobId: number;
   timestamp: number;

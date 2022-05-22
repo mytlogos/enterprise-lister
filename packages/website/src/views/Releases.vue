@@ -3,7 +3,7 @@
     <h1 id="releases-title">Releases</h1>
     <div class="p-1">
       <button class="btn btn-dark" @click.left="fetchReleases(true)">Refresh</button>
-      <button class="btn btn-dark ms-1" @click.left="fetchReleases">Fetch new Releases</button>
+      <button class="btn btn-dark ms-1" @click.left="fetchReleases()">Fetch new Releases</button>
       <triple-filter v-model:state="readFilter" class="ms-1" />
       <media-filter :state="typeFilter" class="ms-1" @update:state="typeFilter = $event">
         <template #additional="{ value }">
@@ -81,7 +81,6 @@
     <table class="table table-striped table-hover table-sm align-middle" aria-describedby="releases-title">
       <thead class="table-dark">
         <tr>
-          <th scope="col">#</th>
           <th scope="col">Date</th>
           <th scope="col">Chapter</th>
           <th scope="col">Medium</th>
@@ -89,44 +88,34 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(entry, index) in computedReleases" :key="entry.episodeId + entry.link">
+        <tr v-for="entry in computedReleases" :key="entry.key">
           <td class="">
-            {{ index + 1 }}
-          </td>
-          <td class="">
-            {{ dateToString(entry.date) }}
+            {{ entry.date }}
           </td>
           <td>
-            <template v-if="entry.locked">
-              <i class="fas fa-lock" aria-hidden="true" />
-            </template>
+            <i v-if="entry.locked" class="fas fa-lock" aria-hidden="true" />
             <a :href="entry.link" target="_blank" rel="noopener noreferrer">
               {{ entry.title }}
             </a>
           </td>
           <td>
-            <router-link
-              :to="{
-                name: 'medium',
-                params: { id: entry.mediumId },
-              }"
-            >
-              {{ getMedium(entry.mediumId)?.title }}
-            </router-link>
+            <a :href="'/medium/' + entry.mediumId">
+              {{ entry.mediumTitle }}
+            </a>
           </td>
           <td>
             <button
               class="btn"
               data-bs-toggle="tooltip"
               data-bs-placement="top"
-              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
+              :title="entry.read ? 'Mark unread' : 'Mark read'"
               @click.left="changeReadStatus(entry)"
             >
               <i
                 class="fas fa-check"
                 aria-hidden="true"
                 :class="{
-                  'text-success': entry.progress === 1,
+                  'text-success': entry.read,
                 }"
               />
             </button>
@@ -163,7 +152,7 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, List, MediaType, SimpleMedium } from "../siteTypes";
+import { DisplayRelease, List, MediaType, MinMedium, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
@@ -175,8 +164,22 @@ import AutoComplete from "../components/auto-complete.vue";
 import AppLabel from "../components/label.vue";
 import Pagination from "../components/pagination.vue";
 
+interface DisplayReleaseItem {
+  episodeId: number;
+  title: string;
+  link: string;
+  mediumId: number;
+  medium: number;
+  mediumTitle: string;
+  locked?: boolean;
+  date: string;
+  time: number;
+  read: boolean;
+  key: string;
+}
+
 interface Data {
-  releases: DisplayRelease[];
+  releases: DisplayReleaseItem[];
   currentDate: Date;
   fetching: boolean;
   unmounted: boolean;
@@ -196,15 +199,6 @@ interface Data {
 export default defineComponent({
   name: "Releases",
   components: { TripleFilter, MediaFilter, AutoComplete, AppLabel, Pagination },
-
-  props: {
-    read: Boolean,
-    type: {
-      type: Number,
-      default: 0,
-    },
-  },
-
   data(): Data {
     const latest = new Date();
     latest.setFullYear(latest.getFullYear() + 1);
@@ -263,13 +257,12 @@ export default defineComponent({
     lists(): List[] {
       return this.$store.state.lists.lists;
     },
-    computedReleases(): DisplayRelease[] {
-      let copy = [...this.releases] as DisplayRelease[];
-
+    computedReleases(): DisplayReleaseItem[] {
       if (this.typeFilter) {
-        copy = copy.filter((value) => (this.$store.state.media.media[value.mediumId]?.medium || 0) & this.typeFilter);
+        return this.releases.filter((value) => value.medium & this.typeFilter);
+      } else {
+        return this.releases;
       }
-      return copy.sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
     },
     readFilter: {
       get(): boolean | undefined {
@@ -290,12 +283,6 @@ export default defineComponent({
   },
   watch: {
     readFilter() {
-      this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
-    },
-    typeFilter() {
-      this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
-    },
-    read() {
       // when release filter changed, set replace current items flag and fetch anew
       this.replace = true;
       this.fetchReleases();
@@ -324,7 +311,7 @@ export default defineComponent({
       },
       deep: true,
     },
-    computedReleases() {
+    releases() {
       console.log("i am triggerin");
       const newCount = {
         [MediaType.TEXT]: 0,
@@ -334,10 +321,8 @@ export default defineComponent({
       } as Record<number, number>;
 
       this.releases.forEach((value) => {
-        const medium = this.$store.getters.getMedium(value.mediumId) as SimpleMedium;
-
-        if (medium) {
-          newCount[medium.medium]++;
+        if (value.medium) {
+          newCount[value.medium]++;
         }
       });
 
@@ -349,7 +334,6 @@ export default defineComponent({
     this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
     this.progressToast = new Toast("#progress-toast");
 
-    await this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
     this.unmounted = false;
     // FIXME: why does this property not exist?:
     // @ts-expect-error
@@ -497,14 +481,11 @@ export default defineComponent({
         this.until = this.until || this.defaultUntil();
         this.latest = this.latest || this.defaultLatest();
       }
-      // if (this.releases.length && !replace) {
-      //   this.until = this.computedReleases[0].date;
-      // }
       try {
         const response = await HttpClient.getDisplayReleases(
           this.latest,
           this.until,
-          this.read,
+          this.readFilter,
           this.onlyLists.map((item) => item.id),
           this.onlyMedia.map((item) => item.id) as number[],
           this.ignoreLists.map((item) => item.id),
@@ -518,22 +499,52 @@ export default defineComponent({
             return !this.currentReleases.has(value.episodeId + value.link);
           });
         }
-        response.releases.forEach((value) => {
-          if (!(value.date instanceof Date)) {
-            value.date = new Date(value.date);
-          }
-          this.currentReleases.add(value.episodeId + value.link);
-        });
         this.currentDate = new Date();
         // replace previous releases if necessary
-        const releases: DisplayRelease[] = replace ? reactive([]) : this.releases;
+        const releases: DisplayReleaseItem[] = replace ? [] : [...this.releases];
         this.replace = false;
         // when filter changed while a previous query is still running, it may lead to wrong results
         // should not happen because no two fetches should happen at the same time
 
+        const mediumIdMap = new Map<number, MinMedium>();
         // insert fetched releases at the corresponding place
-        releases.push(...response.releases);
-        this.releases = releases;
+        releases.push(
+          ...response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
+            if (!(item.date instanceof Date)) {
+              item.date = new Date(item.date);
+            }
+            const key = item.episodeId + item.link;
+            this.currentReleases.add(key);
+
+            let medium: SimpleMedium | undefined = this.$store.getters.getMedium(item.mediumId);
+
+            if (!medium) {
+              // build map only if necessary and previously empty
+              if (!mediumIdMap.size) {
+                response.media.forEach((responseMedium) => {
+                  mediumIdMap.set(responseMedium.id, responseMedium);
+                });
+              } else {
+                medium = mediumIdMap.get(item.mediumId);
+              }
+            }
+            return {
+              key: key,
+              date: formatDate(item.date),
+              episodeId: item.episodeId,
+              link: item.link,
+              mediumId: item.mediumId,
+              mediumTitle: medium?.title || "Unknown",
+              medium: medium?.medium || 0,
+              read: item.progress >= 1,
+              time: item.date.getTime(),
+              title: item.title,
+              locked: item.locked,
+            } as DisplayReleaseItem;
+          }),
+        );
+        releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
+        this.releases = reactive(releases);
       } catch (error) {
         console.error(error);
       } finally {
@@ -547,15 +558,15 @@ export default defineComponent({
      * Update the progress of the episode of the release to either 0 or 1.
      * Shows an error toast if it could not update the progress.
      */
-    changeReadStatus(release: DisplayRelease): void {
-      const newProgress = release.progress < 1 ? 1 : 0;
+    changeReadStatus(release: DisplayReleaseItem): void {
+      const newProgress = release.read ? 0 : 1;
       HttpClient.updateProgress(release.episodeId, newProgress)
         .then((success) => {
           if (success) {
             // update progress of all releases for the same episode
-            this.releases.forEach((element: DisplayRelease) => {
+            this.releases.forEach((element: DisplayReleaseItem) => {
               if (release.episodeId === element.episodeId) {
-                element.progress = newProgress;
+                element.read = !!newProgress;
               }
             });
           } else {

@@ -18,7 +18,7 @@ export class BufferToStringStream extends stream.Transform {
     } else if (isString(chunk)) {
       data = chunk;
     } else {
-      throw Error("This transform stream works only with buffer or string");
+      throw new TypeError("This transform stream works only with buffer or string");
     }
     callback(null, data);
   }

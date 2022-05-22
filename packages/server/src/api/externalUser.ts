@@ -4,6 +4,7 @@ import { Errors, isString } from "enterprise-core/dist/tools";
 import { DisplayExternalUser, ExternalUser, ScrapeName } from "enterprise-core/dist/types";
 import { Router } from "express";
 import { createHandler, extractQueryParam } from "./apiTools";
+import { ValidationError } from "enterprise-core/dist/error";
 
 function toDisplayExternalUser(value: ExternalUser): DisplayExternalUser {
   return {
@@ -53,14 +54,15 @@ export const postExternalUser = createHandler((req) => {
     const valid = await listManager.test({ identifier: externalUser.identifier, password: externalUser.pwd });
 
     if (!valid) {
-      return Promise.reject(new Error(Errors.INVALID_DATA));
+      throw new ValidationError(Errors.INVALID_DATA);
     }
     delete externalUser.pwd;
     externalUser.cookies = listManager.stringifyCookies();
 
     return externalUserStorage.addExternalUser(uuid, externalUser).then((value) => {
       if (Array.isArray(value)) {
-        throw Error("Did not expect an Array");
+        // is this check even necessary?
+        throw new ValidationError("Did not expect an Array");
       }
       return toDisplayExternalUser(value);
     });

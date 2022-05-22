@@ -1,3 +1,173 @@
+# [1.34.0](https://github.com/mytlogos/enterprise-lister/compare/v1.33.0...v1.34.0) (2022-05-22)
+
+
+### Features
+
+* **website:** improve Media.vue ([8376fb0](https://github.com/mytlogos/enterprise-lister/commit/8376fb0d64d7ad43c85d28271325b95c0e43e612))
+
+# [1.33.0](https://github.com/mytlogos/enterprise-lister/compare/v1.32.1...v1.33.0) (2022-05-22)
+
+
+### Features
+
+* **website:** improve Releases view ([ef0b489](https://github.com/mytlogos/enterprise-lister/commit/ef0b489f059feda86585144c4626b45b2c38b8cd))
+
+## [1.32.1](https://github.com/mytlogos/enterprise-lister/compare/v1.32.0...v1.32.1) (2022-05-18)
+
+
+### Bug Fixes
+
+* **website:** handle invalid_session error ([5914e54](https://github.com/mytlogos/enterprise-lister/commit/5914e5479dc0a5c8fd89460f45dddb6591907aa5))
+
+# [1.32.0](https://github.com/mytlogos/enterprise-lister/compare/v1.31.3...v1.32.0) (2022-05-10)
+
+
+### Features
+
+* **scraper:** add job metrics ([4f3eb89](https://github.com/mytlogos/enterprise-lister/commit/4f3eb89818a3be7a4f09f4d7c89a6c086d3330db))
+
+## [1.31.3](https://github.com/mytlogos/enterprise-lister/compare/v1.31.2...v1.31.3) (2022-05-10)
+
+
+### Bug Fixes
+
+* **core:** do not log error response body ([9cec3d9](https://github.com/mytlogos/enterprise-lister/commit/9cec3d96f54c86d233128d107d60b3afb4ff73cd))
+
+## [1.31.2](https://github.com/mytlogos/enterprise-lister/compare/v1.31.1...v1.31.2) (2022-05-10)
+
+
+### Bug Fixes
+
+* support node 17 ([0fcb249](https://github.com/mytlogos/enterprise-lister/commit/0fcb249f5f2dde5337798896b3e48888ac894eeb))
+
+## [1.31.1](https://github.com/mytlogos/enterprise-lister/compare/v1.31.0...v1.31.1) (2022-05-10)
+
+
+### Bug Fixes
+
+* **core:** fix imports ([1099008](https://github.com/mytlogos/enterprise-lister/commit/10990084e61890c1bb2f25a71aa93bc617b8e2ac))
+* **core:** print exceptions to console ([d248e2a](https://github.com/mytlogos/enterprise-lister/commit/d248e2a865ad7e355b22fe7c67bdaa231a22f862))
+
+# [1.31.0](https://github.com/mytlogos/enterprise-lister/compare/v1.30.0...v1.31.0) (2022-05-10)
+
+
+### Features
+
+* **core:** speedup sql query ([0d3841d](https://github.com/mytlogos/enterprise-lister/commit/0d3841d0ce6d1ba5092123fd5328afca4c22924e))
+* use custom errors ([6d45198](https://github.com/mytlogos/enterprise-lister/commit/6d45198892d536e19d48654762aa981918bc767b))
+
+# [1.30.0](https://github.com/mytlogos/enterprise-lister/compare/v1.29.1...v1.30.0) (2022-05-08)
+
+
+### Features
+
+* displayrelease query speedup ([b0478b9](https://github.com/mytlogos/enterprise-lister/commit/b0478b971f749b87a23cb844104e5e9587336d05))
+
+## [1.29.1](https://github.com/mytlogos/enterprise-lister/compare/v1.29.0...v1.29.1) (2022-05-03)
+
+
+### Bug Fixes
+
+* **scraper:** remove unnecessary expect error ([70bee6a](https://github.com/mytlogos/enterprise-lister/commit/70bee6a8b4badc84e9f73cfb309d351c44a6b5e9))
+* use debug logger instead of console ([cc3369c](https://github.com/mytlogos/enterprise-lister/commit/cc3369cb31fff23b963fc83a37c4772d4a46181a))
+
+# [1.29.0](https://github.com/mytlogos/enterprise-lister/compare/v1.28.6...v1.29.0) (2022-05-03)
+
+
+### Features
+
+* split logs ([8c8e041](https://github.com/mytlogos/enterprise-lister/commit/8c8e041f65605f2a07cd03e6a13bc8b919e669bb))
+* **website:** only necessary progress updates ([2f54e8f](https://github.com/mytlogos/enterprise-lister/commit/2f54e8f1f1a2a0f2d705f8b46c7de008bae5e03c))
+
+## [1.28.6](https://github.com/mytlogos/enterprise-lister/compare/v1.28.5...v1.28.6) (2022-04-18)
+
+
+### Bug Fixes
+
+* add missing whitespace ([4daa5d8](https://github.com/mytlogos/enterprise-lister/commit/4daa5d870830a8b7c7ef3c2b421a39be06fa0000))
+
+## [1.28.5](https://github.com/mytlogos/enterprise-lister/compare/v1.28.4...v1.28.5) (2022-04-17)
+
+
+### Bug Fixes
+
+* add missing property ([0bfb439](https://github.com/mytlogos/enterprise-lister/commit/0bfb4392ef28ee89df0613a17b1bad2e44e51703))
+
+## [1.28.4](https://github.com/mytlogos/enterprise-lister/compare/v1.28.3...v1.28.4) (2022-03-22)
+
+
+### Bug Fixes
+
+* **deps:** upgrade to typescript 4.6.2 ([5c7bc11](https://github.com/mytlogos/enterprise-lister/commit/5c7bc110dc630dbbd0b10a1fda16319e0f91e63e))
+
+## [1.28.3](https://github.com/mytlogos/enterprise-lister/compare/v1.28.2...v1.28.3) (2022-03-21)
+
+
+### Bug Fixes
+
+* create zips after version update ([57de362](https://github.com/mytlogos/enterprise-lister/commit/57de362006209d954b27f34c8407ef91b3e9b7ba))
+
+## [1.28.2](https://github.com/mytlogos/enterprise-lister/compare/v1.28.1...v1.28.2) (2022-03-21)
+
+
+### Bug Fixes
+
+* npm audit fix ([20f8b6b](https://github.com/mytlogos/enterprise-lister/commit/20f8b6be8bdf59ecc0d8faa6c0bcfed2092976b6))
+* **website:** add missing dependency ([2574730](https://github.com/mytlogos/enterprise-lister/commit/2574730f9b9792174cb3c66359c53a8e5bde57f5))
+
+## [1.28.1](https://github.com/mytlogos/enterprise-lister/compare/v1.28.0...v1.28.1) (2022-03-21)
+
+
+### Bug Fixes
+
+* **core:** upgrade deps ([b03331d](https://github.com/mytlogos/enterprise-lister/commit/b03331df35aa98f4390d2eed84fcb6447ca340e5))
+* **scraper:** upgrade deps ([1b730f9](https://github.com/mytlogos/enterprise-lister/commit/1b730f91dd12cb9b56cad8e67c47408b340ea4c4))
+* **server:** upgrade deps ([1396e4c](https://github.com/mytlogos/enterprise-lister/commit/1396e4c2cbe12129c83f35c3b226704fe13ea148))
+* update browserslist ([e18163a](https://github.com/mytlogos/enterprise-lister/commit/e18163ad5c4c1a79b7de2af2b2cd609e02a14a7a))
+* **website:** upgrade deps ([f74261a](https://github.com/mytlogos/enterprise-lister/commit/f74261a675ffc4b404a1c0dadb291f63dba4f406))
+
+# [1.28.0](https://github.com/mytlogos/enterprise-lister/compare/v1.27.0...v1.28.0) (2022-03-14)
+
+
+### Features
+
+* disable internetTester by default ([0e7eed4](https://github.com/mytlogos/enterprise-lister/commit/0e7eed4279ad78782340c7ddcc0af15b22a8e585))
+
+# [1.27.0](https://github.com/mytlogos/enterprise-lister/compare/v1.26.2...v1.27.0) (2022-02-23)
+
+
+### Features
+
+* add /user/load api ([1736395](https://github.com/mytlogos/enterprise-lister/commit/17363959864054a0668fa100285ea2c2f042b72a))
+
+## [1.26.2](https://github.com/mytlogos/enterprise-lister/compare/v1.26.1...v1.26.2) (2021-12-28)
+
+
+### Bug Fixes
+
+* **website:** add missing store implementation ([b808483](https://github.com/mytlogos/enterprise-lister/commit/b8084832d459ee57ef3c1363e9282bc634f3448e))
+
+## [1.26.1](https://github.com/mytlogos/enterprise-lister/compare/v1.26.0...v1.26.1) (2021-12-28)
+
+
+### Bug Fixes
+
+* **scraper:** fix deleting wrong releases ([8b1d4de](https://github.com/mytlogos/enterprise-lister/commit/8b1d4de3be73724a8c41f71cdb82df4967af502d))
+
+# [1.26.0](https://github.com/mytlogos/enterprise-lister/compare/v1.25.1...v1.26.0) (2021-12-28)
+
+
+### Features
+
+* **scraper:** delete invalid releases ([0243c4e](https://github.com/mytlogos/enterprise-lister/commit/0243c4e415cc4b0f8d9c6f01e77419e73122e3d7))
+
+## [1.25.1](https://github.com/mytlogos/enterprise-lister/compare/v1.25.0...v1.25.1) (2021-12-28)
+
+
+### Bug Fixes
+
+* **scraper:** normalize links ([4ae80bc](https://github.com/mytlogos/enterprise-lister/commit/4ae80bc570df40afee5a75b471831a35edc79be0))
+
 # [1.25.0](https://github.com/mytlogos/enterprise-lister/compare/v1.24.12...v1.25.0) (2021-12-24)
 
 

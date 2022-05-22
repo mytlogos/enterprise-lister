@@ -7,7 +7,7 @@ import { extractIndices, hasProp, MediaType, sanitizeString } from "enterprise-c
 import * as request from "request";
 import { checkTocContent } from "../scraperTools";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
-import { MissingResourceError, UrlError } from "../errors";
+import { MissingResourceError, ScraperError, UrlError } from "../errors";
 import { extractLinkable } from "./directTools";
 
 const BASE_URI = "https://mangadex.org/";
@@ -160,7 +160,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     }
 
     if (!currentMedium) {
-      throw Error("episode without medium");
+      throw new ScraperError("episode without medium");
     }
     const children = newsRow.children("td");
 
@@ -366,7 +366,7 @@ async function scrapeTocPage(
       const volIndices = extractIndices(volChapGroups, 1, 2, 4);
 
       if (!volIndices) {
-        throw Error(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
+        throw new ScraperError(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
       }
 
       const chapIndices = extractIndices(volChapGroups, 5, 6, 8);
@@ -408,7 +408,7 @@ async function scrapeTocPage(
       const chapIndices = extractIndices(chapGroups, 1, 2, 4);
 
       if (!chapIndices) {
-        throw Error(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
+        throw new ScraperError(`changed format on mangadex, got no indices for: '${chapterTitle}'`);
       }
       const link = new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href;
 

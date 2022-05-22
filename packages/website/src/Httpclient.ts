@@ -28,7 +28,7 @@ import {
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 import { HookTest, Status } from "enterprise-server/src/types";
-import { CustomHook } from "enterprise-core/dist/types";
+import { CustomHook, Nullable, SimpleUser } from "enterprise-core/dist/types";
 
 /**
  * Allowed Methods for the API.
@@ -597,11 +597,25 @@ export const HttpClient = {
     const response = await fetch(url.toString(), init);
     const result = await response.json();
 
-    if (!response.ok) {
+    if (!response.ok && result.error) {
+      if (result.error === "INVALID_SESSION") {
+        const sessionResponse = await fetch(`${window.location.origin}/api/`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+          },
+        });
+        if (sessionResponse.ok) {
+          const sessionResult: Nullable<SimpleUser> = await sessionResponse.json();
+
+          if (sessionResult) {
+            store.dispatch("changeUser", { user: sessionResult });
+          } else {
+            store.commit("immediateLogout");
+          }
+        }
+      }
       return Promise.reject(result);
-    }
-    if (result.error) {
-      return Promise.reject(result.error);
     }
     return result;
   },

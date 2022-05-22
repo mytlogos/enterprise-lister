@@ -4,6 +4,7 @@ import { TableSchema } from "./tableSchema";
 import { ColumnSchema } from "./columnSchema";
 import { TableParser } from "./tableParser";
 import { InvalidationType } from "./databaseTypes";
+import { SchemaError } from "../error";
 
 export class TableBuilder {
   private columns: ColumnSchema[] = [];
@@ -28,7 +29,7 @@ export class TableBuilder {
   public parseColumn(column: string): this {
     const dataColumn = TableParser.parseDataColumn(this.stubTable, this.databaseBuilder.tables, column);
     if (!dataColumn) {
-      throw Error("could not parse column");
+      throw new SchemaError("could not parse column");
     }
     this.stubTable.columns.push(dataColumn);
     return this;
@@ -48,7 +49,7 @@ export class TableBuilder {
     } else if (uppedData.startsWith("UNIQUE")) {
       TableParser.parseUnique(this.stubTable, this.databaseBuilder.tables, data);
     } else {
-      throw Error(`unknown meta: ${data}`);
+      throw new SchemaError(`unknown meta: ${data}`);
     }
     return this;
   }
@@ -79,7 +80,7 @@ export class TableBuilder {
 
   public build(): TableSchema {
     if (!this.name) {
-      throw Error("table has no name");
+      throw new SchemaError("table has no name");
     }
     const table = new TableSchema(
       [...this.columns, ...this.stubTable.columns],

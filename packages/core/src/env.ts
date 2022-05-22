@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { ConfigurationError } from "./error";
 import { findProjectDirPath } from "./tools";
 
 let config;
@@ -18,7 +19,7 @@ if (config.error) {
 }
 
 if (!config.parsed) {
-  throw Error("env variables missing");
+  throw new ConfigurationError("env variables missing");
 }
 
 interface Config {
@@ -57,7 +58,7 @@ const appConfig: Config = {
 // this should not output sensitive information
 for (const [key, value] of Object.entries(appConfig)) {
   if (value == null || Number.isNaN(value)) {
-    throw Error(`Config Error: ${key} has invalid Value: ${value}`);
+    throw new ConfigurationError(`Config Error: ${key} has invalid Value: ${value}`);
   }
 }
 

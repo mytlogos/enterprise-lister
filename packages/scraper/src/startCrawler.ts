@@ -19,6 +19,7 @@ import {
 } from "./externals/hookManager";
 import path from "path";
 import { readFileSync } from "fs";
+import "./metrics";
 
 collectDefaultMetrics({
   labels: {

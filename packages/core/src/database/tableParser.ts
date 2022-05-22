@@ -3,6 +3,7 @@ import logger from "../logger";
 import { ColumnSchema } from "./columnSchema";
 import { ColumnType, Modifier } from "./databaseTypes";
 import { Optional, Nullable } from "../types";
+import { SchemaError } from "../error";
 
 export class TableParser {
   public static parseForeignKey(table: TableSchema, tables: TableSchema[], scheme: string): void {
@@ -155,7 +156,7 @@ export class TableParser {
       }
     }
     if (!uniqueIndex.length) {
-      throw Error(`unique index without any columns: '${data}'`);
+      throw new SchemaError(`unique index without any columns: '${data}'`);
     }
     table.uniqueIndices.push(uniqueIndex);
   }
@@ -290,7 +291,7 @@ export class TableParser {
     let defaultValue = columnParts[index];
 
     if (!defaultValue) {
-      throw Error(`missing defaultValue in: '${columnParts.join(" ")}'`);
+      throw new SchemaError(`missing defaultValue in: '${columnParts.join(" ")}'`);
     }
     if (defaultValue.startsWith("(")) {
       index++;
@@ -308,7 +309,7 @@ export class TableParser {
         }
       }
       if (!foundClosingParenthesis) {
-        throw Error(`invalid default value: no closing parenthesis in '${columnParts.join(" ")}'`);
+        throw new SchemaError(`invalid default value: no closing parenthesis in '${columnParts.join(" ")}'`);
       }
     }
     return { index, value: defaultValue };

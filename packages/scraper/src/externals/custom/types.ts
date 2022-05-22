@@ -18,6 +18,9 @@ type Transfer<Target extends object> = SimpleTransfer<Target> | RegexTransfer<Ta
 export type TransferType = "string" | "decimal" | "integer" | "date";
 export type ArrayType = "[*]";
 
+// @ts-expect-error
+type NewType<K extends keyof O & (string | number), O extends object> = `${K}.${RecursiveKeyOf<O[K]>}`;
+
 /**
  * Modified from https://stackoverflow.com/a/65333050
  * to infer element type of arrays.
@@ -28,7 +31,7 @@ export type RecursiveKeyOf<TObj extends object> = {
       ? `${TKey}` | `${TKey}.${ArrayType}.${RecursiveKeyOf<U>}`
       : `${TKey}`
     : TObj[TKey] extends object
-    ? `${TKey}` | `${TKey}.${RecursiveKeyOf<TObj[TKey]>}`
+    ? `${TKey}` | NewType<TKey, TObj>
     : `${TKey}`;
 }[keyof TObj & (string | number)];
 

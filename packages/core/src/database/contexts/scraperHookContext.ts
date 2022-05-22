@@ -2,6 +2,7 @@ import { SubContext } from "./subContext";
 import { ScraperHook, TypedQuery } from "../../types";
 import { storeModifications } from "../sqlTools";
 import { escapeLike } from "../storages/storageTools";
+import { ValidationError } from "../../error";
 
 export class ScraperHookContext extends SubContext {
   public async getAllStream(): Promise<TypedQuery<ScraperHook>> {
@@ -36,13 +37,13 @@ export class ScraperHookContext extends SubContext {
           updates.push("message = ?");
           values.push(scraperHook.message);
         } else if (scraperHook.message === null) {
-          throw Error("Cannot set the message of scraper_hook to null");
+          throw new ValidationError("Cannot set the message of scraper_hook to null");
         }
         if (scraperHook.state) {
           updates.push("state = ?");
           values.push(scraperHook.state);
         } else if (scraperHook.state === null) {
-          throw Error("Cannot set the state of scraper_hook to null");
+          throw new ValidationError("Cannot set the state of scraper_hook to null");
         }
       },
       {

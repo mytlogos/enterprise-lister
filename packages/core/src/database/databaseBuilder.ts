@@ -3,6 +3,7 @@ import { DatabaseSchema, InvalidationType, Migration } from "./databaseTypes";
 import { TableSchema } from "./tableSchema";
 import { Trigger } from "./trigger";
 import { TriggerBuilder } from "./triggerBuilder";
+import { DatabaseError, SchemaError } from "../error";
 
 interface InvalidationSchema {
   table: TableSchema;
@@ -23,7 +24,7 @@ export class DataBaseBuilder {
 
   public build(): DatabaseSchema {
     if (this.version <= 0 || !Number.isInteger(this.version)) {
-      throw Error("invalid database version");
+      throw new TypeError("invalid database version");
     }
     this.invalidations.forEach((value) => {
       let table: TableSchema;
@@ -31,7 +32,7 @@ export class DataBaseBuilder {
         const foundTable = this.tables.find((t) => t.name === value.tableName);
 
         if (!foundTable) {
-          throw Error(`table '${value.tableName}' not found`);
+          throw new DatabaseError(`table '${value.tableName}' not found`);
         }
         table = foundTable;
       } else {
@@ -45,28 +46,28 @@ export class DataBaseBuilder {
     for (const table of this.tables) {
       if (table.main) {
         if (mainTable) {
-          throw Error("only one main table allowed");
+          throw new SchemaError("only one main table allowed");
         }
         mainTable = table;
       } else if (table.invalidationTable) {
         if (invalidationTable) {
-          throw Error("only one invalidation table allowed");
+          throw new SchemaError("only one invalidation table allowed");
         }
         invalidationTable = table;
       }
     }
 
     if (!mainTable) {
-      throw Error("no main table specified");
+      throw new SchemaError("no main table specified");
     }
     if (mainTable.primaryKeys.length !== 1) {
-      throw Error("main table does not have exact one primary key");
+      throw new SchemaError("main table does not have exact one primary key");
     }
     if (!invalidationTable) {
-      throw Error("no invalidation table specified");
+      throw new SchemaError("no invalidation table specified");
     }
     if (invalidationTable === mainTable) {
-      throw Error("invalidation table and main table cannot be the same");
+      throw new SchemaError("invalidation table and main table cannot be the same");
     }
     const mainPrimaryKey = mainTable.primaryKeys[0];
 
@@ -87,7 +88,7 @@ export class DataBaseBuilder {
             if (foreignKey) {
               if (!foreignKey.table) {
                 const name = foreignKey.name;
-                throw Error(`foreign key '${name}' of '${column.name}' in '${table.name}' has no table`);
+                throw new SchemaError(`foreign key '${name}' of '${column.name}' in '${table.name}' has no table`);
               }
               if (foreignKey.table.mainDependent && !table.mainDependent) {
                 marked = table.mainDependent = true;
