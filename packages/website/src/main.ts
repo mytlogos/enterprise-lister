@@ -19,6 +19,7 @@ import SelectButton from "primevue/selectbutton";
 import AutoComplete from "primevue/autocomplete";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
+import Tooltip from "primevue/tooltip";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
@@ -36,6 +37,7 @@ app.component("DataTable", DataTable);
 app.component("Column", Column);
 app.component("Badge", Badge);
 app.directive("badge", BadgeDirective);
+app.directive("tooltip", Tooltip);
 Router.isReady().then(() => app.mount("#app"));
 // For debugging purposes?
 // @ts-expect-error

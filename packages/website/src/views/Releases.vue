@@ -9,9 +9,38 @@
           <i class="fas fa-check" :class="{ 'text-success': slotProps.option.value }" aria-hidden="true" />
         </template>
       </SelectButton>
-      <media-filter :state="typeFilter" class="ms-1" :state-count="typeReleases" @update:state="typeFilter = $event" />
-      <AutoComplete force-selection :suggestions="mediumSuggestions" field="title" @complete="searchMedium($event)" />
-      <AutoComplete :suggestions="listSuggestions" field="name" @complete="searchList($event)" />
+      <SelectButton
+        v-model="typeFilter"
+        class="d-inline-block ms-1"
+        :options="typeFilterValues"
+        data-key="value"
+        option-value="value"
+      >
+        <template #option="slotProps">
+          <i
+            v-badge="slotProps.option.count"
+            v-tooltip.top="slotProps.option.tooltip"
+            :class="slotProps.option.icon"
+            aria-hidden="true"
+          />
+        </template>
+      </SelectButton>
+      <AutoComplete
+        v-model="mediumSuggestion"
+        force-selection
+        :suggestions="mediumSuggestions"
+        field="title"
+        @item-select="ignoreMedium($event.value)"
+        @complete="searchMedium($event)"
+      />
+      <AutoComplete
+        v-model="listSuggestion"
+        force-selection
+        :suggestions="listSuggestions"
+        field="name"
+        @item-select="ignoreList($event.value)"
+        @complete="searchList($event)"
+      />
     </div>
     <div v-if="onlyMedia.length">
       <div class="px-1">Required Media:</div>
@@ -53,19 +82,24 @@
         @delete="unignoreList(list)"
       />
     </div>
-    <DataTable :value="computedReleases" :loading="fetching" striped-rows>
+    <DataTable
+      :value="computedReleases"
+      scrollable
+      scroll-height="800px"
+      :virtual-scroller-options="{ itemSize: 50 }"
+      :loading="fetching"
+      striped-rows
+    >
       <template #empty> No records found </template>
       <template #loading> Loading records, please wait... </template>
       <Column field="date" header="Date">
         <template #body="slotProps">
-          {{ dateToString(slotProps.data.date) }}
+          {{ slotProps.data.date }}
         </template>
       </Column>
       <Column field="title" header="Chapter">
         <template #body="slotProps">
-          <template v-if="slotProps.data.locked">
-            <i class="fas fa-lock" aria-hidden="true" />
-          </template>
+          <i v-if="slotProps.data.locked" class="fas fa-lock" aria-hidden="true" />
           <a :href="slotProps.data.link" target="_blank" rel="noopener noreferrer">
             {{ slotProps.data.title }}
           </a>
@@ -79,23 +113,25 @@
               params: { id: slotProps.data.mediumId },
             }"
           >
-            {{ getMedium(slotProps.data.mediumId)?.title }}
+            {{ slotProps.data.mediumTitle }}
           </router-link>
         </template>
       </Column>
       <Column header="Action" autolayout>
         <template #body="slotProps">
           <Button
+            v-tooltip.top="slotProps.data.read ? 'Mark unread' : 'Mark read'"
             class="p-button-text"
             :class="{
               'p-button-success': slotProps.data.read,
               'p-button-plain': !slotProps.data.read,
             }"
-            :icon="slotProps.data.progress === 1 ? 'pi pi-check' : 'pi pi-check'"
+            icon="pi pi-check"
             style="margin: -0.5rem 0"
             @click.left="changeReadStatus(slotProps.data)"
           />
           <Button
+            v-tooltip.top="'Ignore Medium'"
             icon="pi pi-ban"
             class="p-button-text p-button-warning"
             style="margin: -0.5rem 0"
@@ -104,23 +140,6 @@
         </template>
       </Column>
     </DataTable>
-    <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
-    <div id="progress-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="toast-header">
-        <i class="fas fa-exclamation-circle rounded me-2 text-danger" aria-hidden="true" />
-        <strong class="me-auto">Error</strong>
-        <button
-          type="button"
-          class="ms-2 mb-1 btn-close"
-          data-bs-dismiss="toast"
-          aria-label="Close"
-          @click.left="closeProgressToast"
-        >
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="toast-body">Could not update Progress</div>
-    </div>
     <Toast />
   </div>
 </template>
@@ -128,14 +147,10 @@
 import { DisplayRelease, List, MediaType, MinMedium, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
-import { formatDate, timeDifference } from "../init";
-import MediaFilter from "../components/media-filter.vue";
+import { formatDate } from "../init";
 import ToolTip from "bootstrap/js/dist/tooltip";
-import Toast from "bootstrap/js/dist/toast";
 import AppLabel from "../components/label.vue";
-import TripleFilter from "../components/triple-filter.vue";
-import AutoComplete from "../components/auto-complete.vue";
-import Pagination from "../components/pagination.vue";
+import { PrimeIcons } from "primevue/api";
 
 interface Value<T> {
   value: T;
@@ -171,20 +186,27 @@ interface Data {
   typeReleases: Record<MediaType | number, number>;
   currentReleases: Set<string>;
   tooltips: ToolTip[];
-  progressToast: null | Toast;
   latest: Date;
   until?: Date;
   pages: Array<{ latest: Date; until: Date }>;
   isFetching: boolean;
   isRefreshing: boolean;
   readFilterValues: [Value<true>, Value<false>];
+  typeFilterValues: Array<{
+    tooltip: string;
+    count: number;
+    icon: string;
+    value: number;
+  }>;
+  mediumSuggestion?: SimpleMedium;
   mediumSuggestions: SimpleMedium[];
   listSuggestions: List[];
+  listSuggestion?: List;
 }
 
 export default defineComponent({
   name: "Releases",
-  components: { MediaFilter, AutoComplete, AppLabel },
+  components: { AppLabel },
   data(): Data {
     const latest = new Date();
     latest.setFullYear(latest.getFullYear() + 1);
@@ -208,13 +230,40 @@ export default defineComponent({
       },
       currentReleases: new Set(),
       tooltips: [],
-      progressToast: null,
       latest: new Date(),
       until: undefined,
       pages: [{ latest, until }],
       readFilterValues: [{ value: true }, { value: false }],
+      typeFilterValues: [
+        {
+          tooltip: "Search Text Media",
+          count: 0,
+          icon: PrimeIcons.BOOK,
+          value: MediaType.TEXT,
+        },
+        {
+          tooltip: "Search Image Media",
+          count: 0,
+          icon: PrimeIcons.IMAGE,
+          value: MediaType.IMAGE,
+        },
+        {
+          tooltip: "Search Video Media",
+          count: 0,
+          icon: PrimeIcons.YOUTUBE,
+          value: MediaType.VIDEO,
+        },
+        {
+          tooltip: "Search Audio Media",
+          count: 0,
+          icon: PrimeIcons.VOLUME_OFF,
+          value: MediaType.AUDIO,
+        },
+      ],
       mediumSuggestions: [],
       listSuggestions: [],
+      mediumSuggestion: undefined,
+      listSuggestion: undefined,
     };
   },
   computed: {
@@ -268,6 +317,7 @@ export default defineComponent({
         return this.$store.state.releases.typeFilter;
       },
       set(type: number) {
+        console.log("typeFilter", type);
         this.$store.commit("releases/typeFilter", type);
       },
     },
@@ -317,13 +367,12 @@ export default defineComponent({
       });
 
       Object.assign(this.typeReleases, newCount);
+      this.typeFilterValues.forEach((item) => {
+        item.count = newCount[item.value];
+      });
     },
   },
   async mounted() {
-    // eslint-disable-next-line @typescript-eslint/quotes
-    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
-    this.progressToast = new Toast("#progress-toast");
-
     this.unmounted = false;
     // FIXME: why does this property not exist?:
     // @ts-expect-error
@@ -435,6 +484,7 @@ export default defineComponent({
     },
     ignoreMedium(item: SimpleMedium): void {
       if (item) {
+        this.mediumSuggestion = undefined;
         this.$store.commit("releases/ignoreMedium", item.id);
       } else {
         console.trace("Got event without value!");
@@ -442,6 +492,7 @@ export default defineComponent({
     },
     ignoreList(item: List): void {
       if (item) {
+        this.listSuggestion = undefined;
         this.$store.commit("releases/ignoreList", item.id);
       } else {
         console.trace("Got event without value!");
@@ -477,9 +528,6 @@ export default defineComponent({
     },
     getMedium(id: number): SimpleMedium {
       return this.$store.getters.getMedium(id);
-    },
-    timeDifference(date: Date): string {
-      return timeDifference(this.currentDate, date);
     },
     async fetchReleases(replace = false) {
       // do not fetch if already fetching or this component is already unmounted
@@ -520,11 +568,6 @@ export default defineComponent({
 
         const mediumIdMap = new Map<number, MinMedium>();
         // insert fetched releases at the corresponding place
-        this.$toast.add({
-          severity: "success",
-          summary: "Loaded Releases",
-          life: 1000,
-        });
         releases.push(
           ...response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
             if (!(item.date instanceof Date)) {
@@ -561,6 +604,11 @@ export default defineComponent({
           }),
         );
         releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
+        this.$toast.add({
+          severity: "success",
+          summary: "Loaded Releases",
+          life: 1000,
+        });
         this.releases = reactive(releases);
       } catch (error) {
         this.$toast.add({
@@ -576,8 +624,6 @@ export default defineComponent({
         if (replace) {
           this.isRefreshing = false;
         }
-        // fetch again in a minute
-        // setTimeout(() => this.fetchReleases(), 60000);
       }
     },
 
@@ -600,21 +646,13 @@ export default defineComponent({
             return Promise.reject();
           }
         })
-        .catch(() => this.progressToast?.show());
-    },
-
-    /**
-     * Hide progress error toast.
-     */
-    closeProgressToast() {
-      this.progressToast?.hide();
-    },
-
-    /**
-     * Format a given Date to a german locale string.
-     */
-    dateToString(date: Date): string {
-      return formatDate(date);
+        .catch((error) => {
+          this.$toast.add({
+            severity: "error",
+            summary: "Could not update Progress",
+            detail: error + "",
+          });
+        });
     },
     refresh() {
       this.isRefreshing = true;
@@ -623,6 +661,9 @@ export default defineComponent({
     fetchNew() {
       this.isFetching = true;
       this.fetchReleases(false).finally(() => (this.isFetching = false));
+    },
+    log(value: any) {
+      console.log(value);
     },
   },
 });
