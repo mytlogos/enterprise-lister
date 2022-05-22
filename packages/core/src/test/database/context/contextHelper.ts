@@ -5,6 +5,7 @@ import { MediaType } from "../../../tools";
 import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "../../../types";
 import { escapeId, Query } from "mysql";
 import bcrypt from "bcryptjs";
+import { MissingEntityError } from "../../../error";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
   return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);
@@ -179,7 +180,7 @@ export function getEpisode(episodeId: number): ArrayElement<StaticData["episodes
   const episode = databaseData[1].episodes.find((value) => value.id === episodeId);
 
   if (!episode) {
-    throw Error("No Episode for episodeId: " + episodeId);
+    throw new MissingEntityError("No Episode for episodeId: " + episodeId);
   }
   return episode;
 }
@@ -188,17 +189,17 @@ export function getMediumOfEpisode(episodeId: number): ArrayElement<StaticData["
   const episode = databaseData[1].episodes.find((value) => value.id === episodeId);
 
   if (!episode) {
-    throw Error("No Episode for episodeId: " + episodeId);
+    throw new MissingEntityError("No Episode for episodeId: " + episodeId);
   }
   const part = databaseData[1].parts.find((value) => value.id === episode.partId);
 
   if (!part) {
-    throw Error("No Part for episodeId: " + episodeId);
+    throw new MissingEntityError("No Part for episodeId: " + episodeId);
   }
   const medium = databaseData[1].media.find((value) => value.id === part.mediumId);
 
   if (!medium) {
-    throw Error("No Medium for episodeId: " + episodeId);
+    throw new MissingEntityError("No Medium for episodeId: " + episodeId);
   }
   return medium;
 }

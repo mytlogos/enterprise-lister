@@ -130,15 +130,14 @@ export interface CustomHookErrorTypes {
 }
 
 export class CustomHookError<T extends CustomHookErrorCodes = CustomHookErrorCodes> extends Error {
-  public readonly msg: string;
   public readonly code: CustomHookErrorCodes;
   public readonly data: CustomHookErrorTypes[T];
 
-  public constructor(msg: string, code: T, data: Omit<CustomHookErrorTypes[T], keyof ErrorData>) {
-    super();
-    this.name = "CustomHookError";
-    this.msg = msg;
+  public constructor(message: string, code: T, data: Omit<CustomHookErrorTypes[T], keyof ErrorData>) {
+    super(message);
+    this.name = this.constructor.name;
     this.code = code;
+
     // properties of ErrorData are set when rethrowing from the scrape-function
     this.data = data as CustomHookErrorTypes[T];
   }

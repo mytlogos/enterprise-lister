@@ -281,4 +281,25 @@ export const Migrations: Migration[] = [
       );
     },
   },
+  {
+    fromVersion: 16,
+    toVersion: 17,
+    async migrate(context: DatabaseContext): EmptyPromise {
+      // add columns and ignore duplicate column error
+      await ignoreError(
+        () => context.dropForeignKey("episode_release", "episode_release_ibfk_1"),
+        [MysqlServerError.ER_CANT_DROP_FIELD_OR_KEY],
+      );
+      await ignoreError(() => context.dropPrimaryKey("episode_release"), [MysqlServerError.ER_CANT_DROP_FIELD_OR_KEY]);
+
+      await context.addForeignKey("episode_release", "episode_release_ibfk_1", "episode_id", "episode", "id");
+      await context.addUnique("episode_release", "UNIQUE_RELEASE", "episode_id", "url");
+
+      await Promise.all(
+        ["id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY"].map((value) =>
+          ignoreError(() => context.addColumn("episode_release", value), [MysqlServerError.ER_DUP_FIELDNAME]),
+        ),
+      );
+    },
+  },
 ];

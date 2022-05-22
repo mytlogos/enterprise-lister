@@ -5,6 +5,7 @@ import { delay, equalsIgnore, getElseSet } from "../tools";
 import { DatabaseContext } from "./contexts/databaseContext";
 import logger from "../logger";
 import { EmptyPromise, Nullable } from "../types";
+import { MigrationError } from "../error";
 
 export class SchemaManager {
   private databaseName = "";
@@ -30,7 +31,7 @@ export class SchemaManager {
     if (!canMigrate) {
       await (async function wait(retry = 0) {
         if (retry > 9) {
-          throw Error("cannot start migration check, as migration flag is still set after 10 retries");
+          throw new MigrationError("cannot start migration check, as migration flag is still set after 10 retries");
         }
         await delay(1000);
 
@@ -126,7 +127,7 @@ export class SchemaManager {
       logger.info("Storage Version is up-to-date");
       return;
     } else if (currentVersion < previousVersion) {
-      throw Error("database version is smaller in code than in database");
+      throw new MigrationError("database version is smaller in code than in database");
     }
 
     if (previousVersion === 0) {
@@ -152,11 +153,11 @@ export class SchemaManager {
           break;
         }
         if (!foundMigration) {
-          throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
+          throw new MigrationError(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
         }
       }
       if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
-        throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
+        throw new MigrationError(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
       }
       logger.info(`Starting Migration of Storage from ${previousVersion} to ${currentVersion}`);
       if (directMigration) {

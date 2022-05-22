@@ -88,8 +88,8 @@
           <Button
             class="p-button-text"
             :class="{
-              'p-button-success': slotProps.data.progress === 1,
-              'p-button-plain': slotProps.data.progress !== 1,
+              'p-button-success': slotProps.data.read,
+              'p-button-plain': !slotProps.data.read,
             }"
             :icon="slotProps.data.progress === 1 ? 'pi pi-check' : 'pi pi-check'"
             style="margin: -0.5rem 0"
@@ -125,7 +125,7 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, List, MediaType, SimpleMedium } from "../siteTypes";
+import { DisplayRelease, List, MediaType, MinMedium, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate, timeDifference } from "../init";
@@ -133,10 +133,9 @@ import MediaFilter from "../components/media-filter.vue";
 import ToolTip from "bootstrap/js/dist/tooltip";
 import Toast from "bootstrap/js/dist/toast";
 import AppLabel from "../components/label.vue";
-
-interface DisplayMediumRelease extends DisplayRelease {
-  medium: MediaType;
-}
+import TripleFilter from "../components/triple-filter.vue";
+import AutoComplete from "../components/auto-complete.vue";
+import Pagination from "../components/pagination.vue";
 
 interface Value<T> {
   value: T;
@@ -146,8 +145,22 @@ interface SearchEvent {
   query: string;
 }
 
+interface DisplayReleaseItem {
+  episodeId: number;
+  title: string;
+  link: string;
+  mediumId: number;
+  medium: number;
+  mediumTitle: string;
+  locked?: boolean;
+  date: string;
+  time: number;
+  read: boolean;
+  key: string;
+}
+
 interface Data {
-  releases: DisplayMediumRelease[];
+  releases: DisplayReleaseItem[];
   currentDate: Date;
   fetching: boolean;
   unmounted: boolean;
@@ -171,8 +184,7 @@ interface Data {
 
 export default defineComponent({
   name: "Releases",
-  components: { MediaFilter, AppLabel },
-
+  components: { MediaFilter, AutoComplete, AppLabel },
   data(): Data {
     const latest = new Date();
     latest.setFullYear(latest.getFullYear() + 1);
@@ -236,13 +248,12 @@ export default defineComponent({
     lists(): List[] {
       return this.$store.state.lists.lists;
     },
-    computedReleases(): DisplayMediumRelease[] {
-      let copy = [...this.releases] as DisplayMediumRelease[];
-
+    computedReleases(): DisplayReleaseItem[] {
       if (this.typeFilter) {
-        copy = copy.filter((value) => value.medium & this.typeFilter);
+        return this.releases.filter((value) => value.medium & this.typeFilter);
+      } else {
+        return this.releases;
       }
-      return copy;
     },
     readFilter: {
       get(): Value<boolean> {
@@ -290,7 +301,7 @@ export default defineComponent({
       },
       deep: true,
     },
-    computedReleases() {
+    releases() {
       console.log("i am triggerin");
       const newCount = {
         [MediaType.TEXT]: 0,
@@ -300,10 +311,8 @@ export default defineComponent({
       } as Record<number, number>;
 
       this.releases.forEach((value) => {
-        const medium = value.medium;
-
-        if (medium) {
-          newCount[medium]++;
+        if (value.medium) {
+          newCount[value.medium]++;
         }
       });
 
@@ -502,30 +511,57 @@ export default defineComponent({
             return !this.currentReleases.has(value.episodeId + value.link);
           });
         }
-        response.releases.forEach((value) => {
-          if (!(value.date instanceof Date)) {
-            value.date = new Date(value.date);
-          }
-          const medium = this.getMedium(value.mediumId);
-          // @ts-expect-error
-          value.medium = medium?.medium || 0;
-          this.currentReleases.add(value.episodeId + value.link);
-        });
         this.currentDate = new Date();
         // replace previous releases if necessary
-        const releases: DisplayMediumRelease[] = replace ? reactive([]) : this.releases;
+        const releases: DisplayReleaseItem[] = replace ? [] : [...this.releases];
+        this.replace = false;
         // when filter changed while a previous query is still running, it may lead to wrong results
         // should not happen because no two fetches should happen at the same time
 
+        const mediumIdMap = new Map<number, MinMedium>();
         // insert fetched releases at the corresponding place
-        releases.push(...(response.releases as DisplayMediumRelease[]));
-        releases.sort((a: DisplayMediumRelease, b: DisplayMediumRelease) => b.date.getTime() - a.date.getTime());
-        this.releases = releases;
         this.$toast.add({
           severity: "success",
           summary: "Loaded Releases",
           life: 1000,
         });
+        releases.push(
+          ...response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
+            if (!(item.date instanceof Date)) {
+              item.date = new Date(item.date);
+            }
+            const key = item.episodeId + item.link;
+            this.currentReleases.add(key);
+
+            let medium: SimpleMedium | undefined = this.$store.getters.getMedium(item.mediumId);
+
+            if (!medium) {
+              // build map only if necessary and previously empty
+              if (!mediumIdMap.size) {
+                response.media.forEach((responseMedium) => {
+                  mediumIdMap.set(responseMedium.id, responseMedium);
+                });
+              } else {
+                medium = mediumIdMap.get(item.mediumId);
+              }
+            }
+            return {
+              key: key,
+              date: formatDate(item.date),
+              episodeId: item.episodeId,
+              link: item.link,
+              mediumId: item.mediumId,
+              mediumTitle: medium?.title || "Unknown",
+              medium: medium?.medium || 0,
+              read: item.progress >= 1,
+              time: item.date.getTime(),
+              title: item.title,
+              locked: item.locked,
+            } as DisplayReleaseItem;
+          }),
+        );
+        releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
+        this.releases = reactive(releases);
       } catch (error) {
         this.$toast.add({
           severity: "error",
@@ -549,15 +585,15 @@ export default defineComponent({
      * Update the progress of the episode of the release to either 0 or 1.
      * Shows an error toast if it could not update the progress.
      */
-    changeReadStatus(release: DisplayMediumRelease): void {
-      const newProgress = release.progress < 1 ? 1 : 0;
+    changeReadStatus(release: DisplayReleaseItem): void {
+      const newProgress = release.read ? 0 : 1;
       HttpClient.updateProgress(release.episodeId, newProgress)
         .then((success) => {
           if (success) {
             // update progress of all releases for the same episode
-            this.releases.forEach((element: DisplayMediumRelease) => {
+            this.releases.forEach((element: DisplayReleaseItem) => {
               if (release.episodeId === element.episodeId) {
-                element.progress = newProgress;
+                element.read = !!newProgress;
               }
             });
           } else {

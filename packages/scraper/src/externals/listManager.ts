@@ -7,6 +7,8 @@ import { Hook, Toc } from "./types";
 import logger from "enterprise-core/dist/logger";
 import * as cheerio from "cheerio";
 import { ReleaseState, EmptyPromise, Optional } from "enterprise-core/dist/types";
+import { ValidationError } from "enterprise-core/dist/error";
+import { ScraperError } from "./errors";
 
 interface SimpleReadingList {
   menu: string;
@@ -81,7 +83,7 @@ class SimpleNovelUpdates implements ListManager {
 
   public async scrapeLists(): Promise<ListScrapeResult> {
     if (!this.profile || !this.id) {
-      throw Error("no valid user data injected");
+      throw new ValidationError("no valid user data injected");
     }
     const result: ListScrapeResult = { feed: [], lists: [], media: [] };
     const [list, numberLists] = await this.scrapeList(0);
@@ -209,7 +211,7 @@ class SimpleNovelUpdates implements ListManager {
 
     const lastIndexOf = response.lastIndexOf("}");
     if (!lastIndexOf) {
-      throw Error("expected a json object contained in message, got " + response);
+      throw new ScraperError("expected a json object contained in message, got " + response);
     }
     const listData: SimpleReadingList = JSON.parse(response.substring(0, lastIndexOf + 1));
     const nameReg = />\s*(\w+)\s*<\s*\/\s*span\s*>/g;
@@ -308,7 +310,7 @@ class NovelUpdates implements ListManager {
     const listElement = $(".l-content #cssmenu ul li");
 
     if (!listElement.length) {
-      return Promise.reject(new Error(Errors.INVALID_SESSION));
+      return Promise.reject(new ScraperError(Errors.INVALID_SESSION));
     }
 
     const lists = [];
@@ -334,7 +336,7 @@ class NovelUpdates implements ListManager {
     }
 
     if (!currentList) {
-      throw Error("Current Novelupdates List not found!");
+      throw new ScraperError("Current Novelupdates List not found!");
     }
 
     const feed: string[] = [];
@@ -607,7 +609,7 @@ export function factory(type: number, cookies?: string): ListManager {
     instance = new SimpleNovelUpdates();
   }
   if (!instance) {
-    throw Error("unknown list manager");
+    throw new ValidationError("unknown list manager");
   }
   instance.parseAndReplaceCookies(cookies);
   return instance;

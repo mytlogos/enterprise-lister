@@ -62,7 +62,7 @@ import {
   partStorage,
   storage,
 } from "enterprise-core/dist/database/storages/storage";
-import { MissingResourceError, UrlError } from "./errors";
+import { MissingResourceError, ScraperError, UrlError } from "./errors";
 import {
   episodeDownloaderEntries,
   getHook,
@@ -73,6 +73,7 @@ import {
   tocDiscoveryEntries,
   tocScraperEntries,
 } from "./hookManager";
+import { DatabaseError, MissingEntityError, ValidationError } from "enterprise-core/dist/error";
 
 interface ScrapeableFilterResult {
   available: string[];
@@ -111,7 +112,7 @@ export const scrapeNewsJob = async (name: string): Promise<NewsResult> => {
   const hook = getHook(name);
 
   if (!hook.newsAdapter) {
-    throw Error(`expected hook '${name}' to have newsAdapter`);
+    throw new ValidationError(`expected hook '${name}' to have newsAdapter`);
   }
 
   return scrapeNews(hook.newsAdapter);
@@ -119,7 +120,7 @@ export const scrapeNewsJob = async (name: string): Promise<NewsResult> => {
 
 export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
   if (!adapter.link || !validate.isString(adapter.link)) {
-    throw Error("missing link on newsScraper");
+    throw new ValidationError("missing link on newsScraper");
   }
   logger.info(`Scraping for News with Adapter on '${adapter.link}'`);
   const rawNews = await adapter();
@@ -186,7 +187,7 @@ async function processMediumNews(
   }
 
   if (!standardPart || !standardPart.id) {
-    throw Error(`could not create standard part for mediumId: '${mediumId}'`);
+    throw new DatabaseError(`could not create standard part for mediumId: '${mediumId}'`);
   }
 
   let newEpisodeNews: EpisodeNews[];
@@ -221,7 +222,9 @@ async function processMediumNews(
         const release = indexReleaseMap.get(index);
 
         if (!release) {
-          throw Error(`missing release, queried for episode but got no release source for: '${index}'`);
+          throw new MissingEntityError(
+            `missing release, queried for episode but got no release source for: '${index}'`,
+          );
         }
         if (value.releases.find((prevRelease) => prevRelease.url === release.url)) {
           return Promise.resolve();
@@ -320,7 +323,7 @@ export async function searchForTocJob(name: string, item: TocSearchMedium): Prom
   const hook = getHook(name);
 
   if (!hook.tocSearchAdapter) {
-    throw Error("expected hook with tocSearchAdapter");
+    throw new ValidationError("expected hook with tocSearchAdapter");
   }
   return searchForToc(item, hook.tocSearchAdapter);
 }
@@ -328,7 +331,7 @@ export async function searchForTocJob(name: string, item: TocSearchMedium): Prom
 export async function searchForToc(item: TocSearchMedium, searcher: TocSearchScraper): Promise<TocResult> {
   const link = searcher.link;
   if (!link) {
-    throw Error("TocSearcher of mediumType: " + item.medium + " has no link");
+    throw new ValidationError(`TocSearcher of mediumType: ${item.medium} has no link`);
   }
 
   const pageInfoKey = "search" + item.mediumId;
@@ -586,7 +589,7 @@ export const news = async (link: string): Promise<{ link: string; result: News[]
 export const toc = async (value: TocRequest): Promise<TocResult> => {
   const result = await oneTimeToc(value);
   if (!result.tocs.length) {
-    throw Error("could not find toc for: " + JSON.stringify(value));
+    throw new ScraperError("could not find toc for: " + JSON.stringify(value));
   }
   // TODO implement toc scraping which requires page analyzing
   return {
@@ -687,12 +690,12 @@ export const feed = async (feedLink: string): Promise<NewsResult> => {
 
 export function checkTocContent(content: TocContent, allowMinusOne = false): void {
   if (!content) {
-    throw Error("empty toc content");
+    throw new ValidationError("empty toc content");
   }
 
   const index = content.combiIndex;
   if (index == null || (index < 0 && (index !== -1 || !allowMinusOne))) {
-    throw Error("invalid toc content, combiIndex invalid: '" + index + "'");
+    throw new ValidationError("invalid toc content, combiIndex invalid: '" + index + "'");
   }
 
   const totalIndex = content.totalIndex;
@@ -701,11 +704,11 @@ export function checkTocContent(content: TocContent, allowMinusOne = false): voi
     !Number.isInteger(totalIndex) ||
     (totalIndex < 0 && (totalIndex !== -1 || !allowMinusOne))
   ) {
-    throw Error(`invalid toc content, totalIndex invalid: '${totalIndex}' of ${index}`);
+    throw new ValidationError(`invalid toc content, totalIndex invalid: '${totalIndex}' of ${index}`);
   }
   const partialIndex = content.partialIndex;
   if (partialIndex != null && (partialIndex < 0 || !Number.isInteger(partialIndex))) {
-    throw Error(`invalid toc content, partialIndex invalid: '${partialIndex}' of ${index}`);
+    throw new ValidationError(`invalid toc content, partialIndex invalid: '${partialIndex}' of ${index}`);
   }
 }
 

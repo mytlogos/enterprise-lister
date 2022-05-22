@@ -108,17 +108,8 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     });
   }
 
-  const news: News[] = [];
-  const translatorNewsElements = $(".section >.section-content .col-sm-6.clearfix");
-  for (let i = 0; i < translatorNewsElements.length; i++) {
-    const tlNews = translatorNewsElements.eq(i);
-  }
-  const pageNewsElements = $(".section >.section-content .col-sm-6 > .caption > div:not([class])");
-  for (let i = 0; i < pageNewsElements.length; i++) {
-    const pageNewsElement = pageNewsElements.eq(i);
-  }
   // TODO: 07.07.2019 scrape news (not new episodes)
-  return { episodes: episodeNews, news };
+  return { episodes: episodeNews, news: [] };
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
