@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/mytlogos/enterprise-lister/compare/v1.33.0...v1.34.0) (2022-05-22)
+
+
+### Features
+
+* **website:** improve Media.vue ([8376fb0](https://github.com/mytlogos/enterprise-lister/commit/8376fb0d64d7ad43c85d28271325b95c0e43e612))
+
 # [1.33.0](https://github.com/mytlogos/enterprise-lister/compare/v1.32.1...v1.33.0) (2022-05-22)
 
 
