@@ -8,7 +8,7 @@ import * as request from "cloudscraper";
 import { CloudScraper, CloudscraperOptions } from "cloudscraper";
 import * as normalRequest from "request";
 import { checkTocContent } from "../scraperTools";
-import { UrlError } from "../errors";
+import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 
 // @ts-expect-error
@@ -192,7 +192,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const indices = extractIndices(episodeGroups, 1, 2, 4);
 
     if (!indices) {
-      throw Error(`changed format on kissAnime, got no indices for: '${titleString}'`);
+      throw new ScraperError(`changed format on kissAnime, got no indices for: '${titleString}'`);
     }
 
     let title = "Episode " + indices.combi;
@@ -201,7 +201,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       const multiIndices = extractIndices(episodeGroups, 6, 7, 9);
 
       if (!multiIndices) {
-        throw Error(`changed format on kissAnime, got no indices for multi: '${titleString}'`);
+        throw new ScraperError(`changed format on kissAnime, got no indices for multi: '${titleString}'`);
       }
       if (indices.total < multiIndices.total) {
         for (let totalIndex = indices.total + 1; totalIndex <= multiIndices.total; totalIndex++) {

@@ -64,8 +64,6 @@ jobs:
           test-script: npx jest --silent --ci --coverage --coverageReporters="text" --coverageReporters="text-summary" --testLocationInResults --json --outputFile="report.json" --forceExit
         continue-on-error: true
 
-      - run: zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist
-      - run: zip -r dist-src.zip package.json package-lock.json packages/
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

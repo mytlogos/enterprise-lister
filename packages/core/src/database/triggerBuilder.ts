@@ -1,6 +1,7 @@
 import { Trigger, TriggerEvent, TriggerTiming } from "./trigger";
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Nullable } from "../types";
+import { SchemaError } from "../error";
 
 export class TriggerBuilder {
   private _name: Nullable<string> = null;
@@ -41,7 +42,7 @@ export class TriggerBuilder {
 
   public build(): Trigger {
     if (!this._name || !this._body || !this._table || !this._event || !this._timing) {
-      throw Error("invalid trigger");
+      throw new SchemaError("invalid trigger");
     }
     const trigger = new Trigger(this._name, this._timing, this._event, this._table, this._body);
     this.databaseBuilder.addTrigger(trigger);

@@ -536,8 +536,23 @@ export default defineComponent({
       const newProgress = read ? 1 : 0;
       const batchSize = 50;
 
+      let updateReleases = [];
+
+      if (read) {
+        updateReleases = this.releases.filter((value) => value.progress < 1);
+      } else {
+        updateReleases = this.releases.filter((value) => value.progress >= 1);
+      }
+
+      if (!updateReleases.length) {
+        this.markToast.message = "No Releases available for marking.";
+        this.markToast.success = true;
+        this.markToast.show = true;
+        return;
+      }
+
       Promise.allSettled(
-        batch(this.releases, batchSize).map((releases: MediumRelease[]) => {
+        batch(updateReleases, batchSize).map((releases: MediumRelease[]) => {
           const episodeIds: number[] = releases.map((value) => value.episodeId);
           return HttpClient.updateProgress(episodeIds, newProgress);
         }),

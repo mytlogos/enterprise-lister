@@ -13,6 +13,7 @@ import * as url from "url";
 import { ReleaseState, TocSearchMedium, Optional, Nullable } from "enterprise-core/dist/types";
 import { checkTocContent } from "../scraperTools";
 import * as cheerio from "cheerio";
+import { ValidationError } from "enterprise-core/dist/error";
 
 export function getTextContent(
   novelTitle: string,
@@ -555,7 +556,7 @@ type IndexCalc = (reg: RegExpExecArray) => number;
 
 function markWithRegex(regExp: RegExp, title: string, type: TocMatchType, matches: TocMatch[], matchAfter?: IndexCalc) {
   if (!regExp.flags.includes("g")) {
-    throw Error("Need a Regex with global Flag enabled, else it will crash");
+    throw new ValidationError("Need a Regex with global Flag enabled, else it will crash");
   }
   for (let match = regExp.exec(title); match; match = regExp.exec(title)) {
     matches.push({

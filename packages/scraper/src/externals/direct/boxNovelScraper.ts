@@ -24,6 +24,7 @@ import { MissingResourceError, UrlError } from "../errors";
 import { StatusCodeError } from "cloudscraper/errors";
 import { StatusCodeError as RequestStatusCodeError } from "request-promise-native/errors";
 import * as cheerio from "cheerio";
+import { ValidationError } from "enterprise-core/dist/error";
 
 interface NovelSearchResponse {
   success: boolean;
@@ -251,7 +252,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }
 
     if (!episodeIndices) {
-      throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
+      throw new ValidationError(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
     }
     const previousTitle = seenEpisodes.get(episodeIndices.combi);
     if (previousTitle && previousTitle === episodeTitle) {

@@ -4,6 +4,7 @@ import { getElseSet, stringify } from "enterprise-core/dist/tools";
 import { JobQueue } from "../jobManager";
 import { getQueueKey } from "./queueManager";
 import { writeFile } from "fs/promises";
+import { ValidationError } from "enterprise-core/dist/error";
 
 export type SchedulingStrategy = (queue: JobQueue, items: JobItem[]) => Promise<JobItem[]>;
 
@@ -79,7 +80,7 @@ async function requestQueueBalanced(queue: JobQueue, currentItems: JobItem[]): P
     const items = sharesToStake.get(queueKey);
 
     if (!items) {
-      throw new Error(`Expected Key${queueKey}to exist in sharesToStake!`);
+      throw new ValidationError(`Expected Key${queueKey}to exist in sharesToStake!`);
     }
     const firstItem = items.shift();
 

@@ -1,7 +1,8 @@
 import { SubContext } from "./subContext";
-import { List, Medium, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia } from "../../types";
+import { List, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
 import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
+import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
 
 export class InternalListContext extends SubContext {
   /**
@@ -16,7 +17,7 @@ export class InternalListContext extends SubContext {
     ]);
     storeModifications("list", "insert", result);
     if (!Number.isInteger(result.insertId)) {
-      throw Error(`invalid ID: ${result.insertId}`);
+      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId}`);
     }
     return {
       id: result.insertId,
@@ -51,12 +52,20 @@ export class InternalListContext extends SubContext {
     return { list: lists, media: loadedMedia };
   }
 
+  public async getShallowList<T extends MultiSingleNumber>(listId: T, uuid: Uuid): PromiseMultiSingle<T, List> {
+    // TODO: 29.06.2019 replace with id IN (...)
+    return promiseMultiSingle(listId, async (id: number) => {
+      const result = await this.query("SELECT * FROM reading_list WHERE uuid = ? AND id = ?;", [uuid, id]);
+      return this.createShallowList(result[0]);
+    });
+  }
+
   /**
    * Recreates a list from storage.
    */
   public async createShallowList(storageList: StorageList): Promise<List> {
     if (!storageList.name) {
-      throw Error(Errors.INVALID_INPUT);
+      throw new ValidationError("Missing List Name");
     }
 
     const list: List = {
@@ -78,7 +87,7 @@ export class InternalListContext extends SubContext {
    */
   public async updateList(list: List): Promise<boolean> {
     if (!list.userUuid) {
-      throw new Error(Errors.INVALID_INPUT);
+      throw new ValidationError("Missing List User Uuid");
     }
     const result = await this.update(
       "reading_list",
@@ -110,7 +119,7 @@ export class InternalListContext extends SubContext {
 
     // first check if such a list does exist for the given user
     if (!result.length) {
-      return Promise.reject(new Error(Errors.DOES_NOT_EXIST));
+      return Promise.reject(new MissingEntityError(`List ${listId}-${uuid} does not exist`));
     }
     // first remove all links between a list and their media
     let deleteResult = await this.delete("list_medium", { column: "list_id", value: listId });
@@ -147,7 +156,7 @@ export class InternalListContext extends SubContext {
     // then take it as uuid from user and get the standard listId of 'Standard' list
     if (medium.listId == null || !Number.isInteger(medium.listId)) {
       if (!uuid) {
-        throw Error(Errors.INVALID_INPUT);
+        throw new ValidationError("Missing uuid");
       }
       const idResult = await this.query(
         "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",

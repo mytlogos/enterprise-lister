@@ -623,8 +623,8 @@ export const extractJSON = traceWrap(function extractJSON<Target extends object,
     }
   }
 
-  console.log(`Matched selector ${selector.selector} found ${found.length} matches`);
-  console.log(`Has multiple: ${!!selector.multiple}`);
+  logger.debug(`Matched selector ${selector.selector} found ${found.length} matches`);
+  logger.debug(`Has multiple: ${!!selector.multiple}`);
 
   let results: Array<Partial<Target>> = [];
 
@@ -712,7 +712,7 @@ export const extract = traceWrap(function extract<Target extends object>(
   context: Context = defaultContext(),
 ): Array<Partial<Target>> {
   const found = element.find(selector.selector);
-  console.log(`Matched selector ${selector.selector} found ${found.length} matches`);
+  logger.debug(`Matched selector ${selector.selector} found ${found.length} matches`);
   let results: Array<Partial<Target>> = [];
 
   if ((selector.multiple && found.length > 1) || found.length === 1) {
@@ -970,7 +970,7 @@ const templateString = traceWrap(function templateString(value: string, context:
   for (const [replaceName, replaceValue] of Object.entries(replaceables)) {
     value = value.replaceAll(`{${replaceName}}`, replaceValue);
   }
-  console.log(`Templated Value '${originalValue}' into ${value}`);
+  logger.debug(`Templated Value '${originalValue}' into ${value}`);
   return value;
 });
 
@@ -1008,7 +1008,7 @@ export const makeRequest = traceWrap(function makeRequest(
   // @ts-expect-error
   options.url = targetUrl;
 
-  console.log("Requesting url: " + targetUrl);
+  logger.debug("Requesting url: " + targetUrl);
   if (requestConfig?.jsonResponse) {
     return queueRequest(targetUrl, options).then((value) => JSON.parse(value));
   }

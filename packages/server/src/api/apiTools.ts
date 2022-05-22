@@ -3,6 +3,7 @@ import logger from "enterprise-core/dist/logger";
 import { isQuery, Errors, isError, isString } from "enterprise-core/dist/tools";
 import { Handler, NextFunction, Request, Response } from "express";
 import stringify from "stringify-stream";
+import { ValidationError } from "enterprise-core/dist/error";
 
 export function stopper(req: Request, res: Response, next: NextFunction): any {
   return next();
@@ -22,10 +23,14 @@ export function sendResult(res: Response, promise: Promise<any>): void {
     })
     .catch((error) => {
       if (error instanceof RestResponseError) {
-        res.status(400).json({ message: error.errorMessage, code: error.errorCode, data: error.errorData });
+        res.status(400).json({ message: error.message, code: error.errorCode, data: error.errorData });
       } else {
-        const errorCode = isError(error);
-        res.status(errorCode ? 400 : 500).json({ error: errorCode ? error : Errors.INVALID_MESSAGE });
+        if (error instanceof ValidationError) {
+          res.status(400).json({ error: Errors.INVALID_INPUT });
+        } else {
+          const errorCode = isError(error);
+          res.status(errorCode ? 400 : 500).json({ error: errorCode ? error : Errors.INVALID_MESSAGE });
+        }
         logger.error(error);
       }
     });
@@ -44,10 +49,9 @@ export function extractQueryParam<T extends boolean = false>(
   }
 
   if (isString(value)) {
-    // @ts-ignore-error
     return value;
   } else {
-    throw Error(`Expected a String for "${key}" but got an object of type: ${typeof value}`);
+    throw new TypeError(`Expected a String for "${key}" but got an object of type: ${typeof value}`);
   }
 }
 

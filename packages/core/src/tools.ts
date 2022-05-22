@@ -21,6 +21,7 @@ import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { setTimeout as setTimeoutPromise } from "timers/promises";
+import { ParseError, ValidationError } from "./error";
 
 export function isNumberOrArray(value: number | any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
@@ -409,7 +410,7 @@ export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
 
   // should not happen?
   if (Number.isNaN(timeValue)) {
-    throw new Error(`'${value}' is not a number`);
+    throw new TypeError(`'${value}' is not a number`);
   }
 
   if (/^(s|secs?|seconds?)$/.test(unit)) {
@@ -427,7 +428,7 @@ export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
   } else if (/^(years?)$/.test(unit)) {
     absolute.setFullYear(absolute.getFullYear() - timeValue);
   } else {
-    throw new Error(`unknown time unit: '${unit}'`);
+    throw new ParseError(`unknown time unit: '${unit}'`);
   }
   return absolute;
 }
@@ -725,7 +726,7 @@ export function promisify<T>(callback: () => T): Promise<T> {
 export function combiIndex(value: Indexable): number {
   const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
   if (Number.isNaN(combi)) {
-    throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
+    throw new ParseError(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
   }
   return combi;
 }
@@ -739,10 +740,10 @@ export function combiIndex(value: Indexable): number {
  */
 export function checkIndices(value: Indexable): void {
   if (value.totalIndex == null || value.totalIndex < -1 || !Number.isInteger(value.totalIndex)) {
-    throw Error("invalid toc content, totalIndex invalid");
+    throw new ValidationError("invalid toc content, totalIndex invalid");
   }
   if (value.partialIndex != null && (value.partialIndex < 0 || !Number.isInteger(value.partialIndex))) {
-    throw Error("invalid toc content, partialIndex invalid");
+    throw new ValidationError("invalid toc content, partialIndex invalid");
   }
 }
 
@@ -778,17 +779,17 @@ const indexRegex = /(-?\d+)(\.(\d+))?/;
  */
 export function separateIndex(value: number): Indexable {
   if (!isNumber(value)) {
-    throw Error("not a number");
+    throw new TypeError("not a number");
   }
   const exec = indexRegex.exec(value + "");
   if (!exec) {
-    throw Error("not a number");
+    throw new TypeError("not a number");
   }
   const totalIndex = Number(exec[1]);
   const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
 
   if (Number.isNaN(totalIndex) || Number.isNaN(partialIndex)) {
-    throw Error("invalid number");
+    throw new TypeError("invalid number");
   }
   return { totalIndex, partialIndex };
 }
@@ -900,6 +901,8 @@ export interface InternetTester extends EventEmitter.EventEmitter {
   isOnline(): boolean;
 
   stop(): void;
+
+  start(): void;
 }
 
 export function getDate(value: string): Nullable<Date> {
@@ -955,12 +958,6 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
   private since: Date = new Date();
   private stopLoop = false;
 
-  public constructor() {
-    super();
-    // should never call catch callback
-    this.checkInternet().catch(console.error);
-  }
-
   public on(evt: "online" | "offline", listener: (previousSince: Date) => void): this {
     super.on(evt, listener);
 
@@ -977,6 +974,12 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
 
   public isOnline() {
     return !this.offline;
+  }
+
+  public start() {
+    this.stopLoop = false;
+    // should never call catch callback
+    this.checkInternet().catch(console.error);
   }
 
   public stop() {

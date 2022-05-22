@@ -20,6 +20,7 @@ import { getNewsAdapter, load } from "./hookManager";
 import { ScrapeJob } from "./scrapeJobs";
 import diagnostic_channel from "diagnostics_channel";
 import { SchedulingStrategy, Strategies } from "./scheduling";
+import { JobError } from "enterprise-core/dist/error";
 
 const missingConnections = new Set<Date>();
 const jobChannel = diagnostic_channel.channel("enterprise-jobs");
@@ -237,7 +238,6 @@ export class JobScraperManager {
         timestamp: job.startRun || 0,
         type: "started",
       } as StartJobChannelMessage;
-      // @ts-expect-error
       jobChannel.publish(message);
     });
   }
@@ -521,7 +521,6 @@ export class JobScraperManager {
       logger.info(`Job ${item.name ? item.name : item.id} is running now`);
 
       if (jobChannel.hasSubscribers) {
-        // @ts-expect-error
         jobChannel.publish({
           messageType: "jobs",
           type: "started",
@@ -564,16 +563,16 @@ export class JobScraperManager {
       if (jobChannel.hasSubscribers) {
         const store = getStore();
         if (!store) {
-          throw Error("missing store - is this running outside a AsyncLocalStorage Instance?");
+          throw new JobError("missing store - is this running outside a AsyncLocalStorage Instance?");
         }
 
         const result = store.get("result");
-        // @ts-expect-error
         jobChannel.publish({
           messageType: "jobs",
           type: "finished",
           jobName: item.name,
           jobId: item.id,
+          jobType: item.type,
           jobTrack: {
             modifications: store.get("modifications") || {},
             network: store.get("network") || {

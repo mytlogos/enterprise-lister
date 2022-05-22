@@ -23,7 +23,7 @@ import {
   extractLinkable,
 } from "./directTools";
 import { checkTocContent } from "../scraperTools";
-import { UrlError } from "../errors";
+import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 
 const BASE_URI = "https://novelfull.com/";
@@ -151,7 +151,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
 
         // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
         if (i > 300) {
-          logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
+          logger.error(new ScraperError(`Could not reach end of TOC '${toc.link}'`));
           break;
         }
       }
@@ -234,7 +234,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }
     // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
     if (i > 300) {
-      logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
+      logger.error(new ScraperError(`Could not reach end of TOC '${toc.link}'`));
       break;
     }
   }
@@ -274,7 +274,7 @@ async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromis
     const episodeIndices = extractIndices(regexResult, 10, 11, 13);
 
     if (!episodeIndices) {
-      throw Error(`title format changed on fullNovel, got no indices for '${episodeTitle}'`);
+      throw new ScraperError(`title format changed on fullNovel, got no indices for '${episodeTitle}'`);
     }
 
     const episode = {

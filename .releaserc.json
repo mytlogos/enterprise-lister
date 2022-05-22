@@ -119,6 +119,12 @@
           "packages/*/package.json"
         ]
       }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "zip -r dist.zip package.json package-lock.json packages/core/dist packages/server/dist packages/scraper/dist packages/website/dist && zip -r dist-src.zip package.json package-lock.json packages/"
+      }
     ]
   ]
 }

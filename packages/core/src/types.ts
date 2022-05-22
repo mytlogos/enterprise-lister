@@ -1871,3 +1871,31 @@ export interface CustomHook {
   hookState: HookState;
   comment: string;
 }
+
+export interface QueryItems {
+  episodeReleases: number[]; // by episode id
+  episodes: number[];
+  partEpisodes: number[]; // by part id
+  partReleases: number[]; // by part id
+  parts: number[];
+  media: number[];
+  tocs: number[]; // by toc id
+  mediaTocs: number[]; // by medium id
+  mediaLists: number[];
+  externalMediaLists: number[];
+  externalUser: string[];
+}
+
+export interface QueryItemsResult {
+  episodeReleases: EpisodeRelease[]; // by episode id
+  episodes: Episode[];
+  partEpisodes: Record<number, number[]>; // by part id
+  partReleases: Record<number, SimpleRelease[]>; // by part id
+  parts: Part[];
+  media: SimpleMedium[];
+  tocs: FullMediumToc[]; // by toc id
+  mediaTocs: FullMediumToc[]; // by medium id
+  mediaLists: List[];
+  externalMediaLists: ExternalList[];
+  externalUser: ExternalUser[];
+}
