@@ -170,36 +170,18 @@ export default defineComponent({
     },
   },
 
+  watch: {
+    "$store.state.media.secondaryMedia"() {
+      this.mergeMedia();
+    },
+  },
+
   /**
    * Load all media once when mounted.
    */
   mounted() {
     console.log("Media: Mounted");
-    // TODO: set properties:
-    //     for (const medium of media) {
-    //         medium.readEpisodes = 0;
-    //         medium.totalEpisode = 0;
-    //     }
-    HttpClient.getAllSecondaryMedia()
-      .then((result) => {
-        const idMap = new Map();
-        for (const medium of result) {
-          idMap.set(medium.id, medium);
-        }
-        for (const medium of this.media) {
-          const secondary: SecondaryMedium | undefined = idMap.get(medium.id);
-
-          if (!secondary) {
-            continue;
-          }
-
-          medium.totalEpisodes = secondary.totalEpisodes;
-          medium.readEpisodes = secondary.readEpisodes;
-
-          mergeMediaToc(medium, secondary.tocs);
-        }
-      })
-      .catch(console.error);
+    this.mergeMedia();
   },
 
   methods: {
@@ -209,6 +191,20 @@ export default defineComponent({
         this.showStatesTL.push(state);
       } else {
         this.showStatesTL.splice(index, 1);
+      }
+    },
+    mergeMedia() {
+      for (const medium of this.media) {
+        const secondary: SecondaryMedium | undefined = this.$store.state.media.secondaryMedia[medium.id as number];
+
+        if (!secondary) {
+          continue;
+        }
+
+        medium.totalEpisodes = secondary.totalEpisodes;
+        medium.readEpisodes = secondary.readEpisodes;
+
+        mergeMediaToc(medium, secondary.tocs);
       }
     },
   },
