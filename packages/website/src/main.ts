@@ -20,6 +20,8 @@ import AutoComplete from "primevue/autocomplete";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import Tooltip from "primevue/tooltip";
+import DataView from "primevue/dataview";
+import Card from "primevue/card";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
