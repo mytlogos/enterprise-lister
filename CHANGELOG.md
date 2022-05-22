@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/mytlogos/enterprise-lister/compare/v1.32.1...v1.33.0) (2022-05-22)
+
+
+### Features
+
+* **website:** improve Releases view ([ef0b489](https://github.com/mytlogos/enterprise-lister/commit/ef0b489f059feda86585144c4626b45b2c38b8cd))
+
 ## [1.32.1](https://github.com/mytlogos/enterprise-lister/compare/v1.32.0...v1.32.1) (2022-05-18)
 
 
