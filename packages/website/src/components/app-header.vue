@@ -82,17 +82,6 @@ export default defineComponent({
             },
           ],
         },
-        {
-          label: this.name,
-          icon: "pi pi-fw pi-user",
-          to: { name: "settings" },
-        },
-        {
-          label: "Logout",
-          to: { name: "home" },
-          command: () => this.logout(),
-          icon: "pi pi-fw pi-power-off",
-        },
       ],
       loggedOffItems: [
         {
@@ -118,7 +107,20 @@ export default defineComponent({
       ];
 
       if (this.loggedIn) {
-        items.push(...this.loggedInItems);
+        items.push(
+          ...this.loggedInItems,
+          {
+            label: this.name,
+            icon: "pi pi-fw pi-user",
+            to: { name: "settings" },
+          },
+          {
+            label: "Logout",
+            to: { name: "home" },
+            command: () => this.logout(),
+            icon: "pi pi-fw pi-power-off",
+          },
+        );
       } else {
         items.push(...this.loggedOffItems);
       }
