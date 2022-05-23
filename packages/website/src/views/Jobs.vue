@@ -57,153 +57,62 @@
       <span class="col-2">Deleted: </span>
       <span class="col">{{ totalJobsStats.alldelete }}</span>
     </div>
-    <table class="table" aria-describedby="jobs-title">
-      <thead>
-        <tr>
-          <th scope="col">Nr.</th>
-          <th scope="col" @click.left="toggleOrder('name')">
-            Name
-            <i class="fas" :class="sortedClass('name')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('state')">
-            Status
-            <i class="fas" :class="sortedClass('state')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('runningSince')">
-            Time Running
-            <i class="fas" :class="sortedClass('runningSince')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('runningSince')">
-            Running Since
-            <i class="fas" :class="sortedClass('runningSince')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('nextRun')">
-            Next Run
-            <i class="fas" :class="sortedClass('nextRun')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('failed')">
-            Failure Rate
-            <i class="fas" :class="sortedClass('failed')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('duration')">
-            Avg Duration
-            <i class="fas" :class="sortedClass('duration')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('network_requests')">
-            Avg Network
-            <i class="fas" :class="sortedClass('network_requests')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('network_received')">
-            Avg Received
-            <i class="fas" :class="sortedClass('network_received')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('sql_queries')">
-            Avg Queries
-            <i class="fas" :class="sortedClass('sql_queries')" aria-hidden="true" />
-          </th>
-          <th scope="col" @click.left="toggleOrder('count')">
-            Total Times Run
-            <i class="fas" :class="sortedClass('count')" aria-hidden="true" />
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <template v-for="(job, index) in computedJobs" :key="job.name">
-          <tr
-            data-bs-toggle="collapse"
-            :data-bs-target="'.collapse-' + index"
-            :class="{ 'bg-light': job.job_state === 'disabled' }"
-          >
-            <td>{{ index + 1 }}</td>
-            <td>{{ nameToString(job.name) }}</td>
-            <td>{{ job.state }}</td>
-            <td>{{ absoluteToRelative(job.runningSince) }}</td>
-            <td>{{ dateToString(job.runningSince) }}</td>
-            <td>{{ dateToString(job.nextRun) }}</td>
-            <td>{{ round(job.failed) }}</td>
-            <td>
-              {{ round(job.duration) }}
-            </td>
-            <td>
-              {{ round(job.network_requests) }}
-            </td>
-            <td>
-              {{ round(job.network_received) }}
-            </td>
-            <td>
-              {{ round(job.lagging) }}
-            </td>
-            <td>{{ round(job.sql_queries) }}</td>
-            <td>{{ job.count }}</td>
-          </tr>
-          <tr class="collapse" :class="'collapse-' + index">
-            <!-- empty td as a natural margin left for index column -->
-            <td />
-            <td colspan="11">
-              <router-link :to="{ name: 'job', params: { jobId: job.id } }" tag="a" class="btn btn-dark mb-2">
-                View Job
-              </router-link>
-              <template v-if="job.id && liveJobs[job.id]">
-                <table class="table table-sm table-hover">
-                  <caption class="sr-only">
-                    Time spent in Running or Waiting depending on contexts
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th class="fit" scope="col">Context</th>
-                      <th scope="col">Running</th>
-                      <th scope="col">Waiting</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="row in totalRow(liveJobs[job.id])" :key="row">
-                      <td class="fit">
-                        {{ row.context }}
-                      </td>
-                      <td>
-                        <div
-                          class="bg-success"
-                          style="padding: 3px 0"
-                          :style="{
-                            width: row.runningWidth + '%',
-                          }"
-                        >
-                          {{ row.running }}ms
-                        </div>
-                      </td>
-                      <td>
-                        <div
-                          class="bg-danger"
-                          style="padding: 3px 0"
-                          :style="{
-                            width: row.waitingWidth + '%',
-                          }"
-                        >
-                          {{ row.waiting }}ms
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td />
-                      <td class="bg-success">
-                        {{ liveJobs[job.id].running }}
-                      </td>
-                      <td class="bg-danger">
-                        {{ liveJobs[job.id].waiting }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div class="row">
-                  <span class="col">Current: {{ liveJobs[job.id].context[liveJobs[job.id].context.length - 1] }}</span>
-                </div>
-              </template>
-              <template v-else> No Live Jobs Data available </template>
-            </td>
-          </tr>
+    <data-table
+      v-model:filters="filters"
+      class="p-datatable-sm"
+      :loading="isLoading"
+      :value="computedJobs"
+      striped-rows
+      paginator-position="both"
+      :paginator="true"
+      :rows="20"
+      paginator-template="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+      :rows-per-page-options="[20, 40, 60]"
+      responsive-layout="scroll"
+      current-page-report-template="Showing {first} to {last} of {totalRecords}"
+    >
+      <template #empty> No records found </template>
+      <template #loading> Loading records, please wait... </template>
+      <column field="name" header="Name" sortable>
+        <template #body="slotProps">
+          <router-link :to="{ name: 'job', params: { jobId: slotProps.data.id } }">
+            {{ nameToString(slotProps.data.name) }}
+          </router-link>
         </template>
-      </tbody>
-    </table>
+        <template #filter="{ filterModel }">
+          <InputText v-model="filterModel.value" type="text" class="p-column-filter" placeholder="Search by Name" />
+        </template>
+      </column>
+      <column field="state" header="Status" sortable />
+      <column field="runningSince" header="Time Running" sortable>
+        <template #body="slotProps">{{ absoluteToRelative(slotProps.data.runningSince) }}</template>
+      </column>
+      <column field="runningSince" header="Running Since" sortable>
+        <template #body="slotProps">{{ dateToString(slotProps.data.runningSince) }}</template>
+      </column>
+      <column field="nextRun" header="Next Run" sortable>
+        <template #body="slotProps">{{ dateToString(slotProps.data.nextRun) }}</template>
+      </column>
+      <column field="failed" header="Failed" sortable>
+        <template #body="slotProps">{{ round(slotProps.data.failed) }}</template>
+      </column>
+      <column field="duration" header="Avg Duration" sortable>
+        <template #body="slotProps">{{ round(slotProps.data.duration) }}</template>
+      </column>
+      <column field="network_requests" header="Network" sortable>
+        <template #body="slotProps">{{ round(slotProps.data.network_requests) }}</template>
+      </column>
+      <column field="network_received" header="Received" sortable>
+        <template #body="slotProps">{{ round(slotProps.data.network_received) }}</template>
+      </column>
+      <column field="lagging" header="Lagging" sortable>
+        <template #body="slotProps">{{ round(slotProps.data.lagging) }}</template>
+      </column>
+      <column field="sql_queries" header="SQL Queries" sortable>
+        <template #body="slotProps">{{ round(slotProps.data.sql_queries) }}</template>
+      </column>
+      <column field="count" header="Count" sortable />
+    </data-table>
   </div>
 </template>
 
@@ -213,6 +122,7 @@ import { defineComponent } from "vue";
 import { AllJobStats, Job } from "../siteTypes";
 import { absoluteToRelative, formatDate, round } from "../init";
 import { JobStatSummary } from "enterprise-core/src/types";
+import { FilterMatchMode, FilterOperator } from "primevue/api";
 
 interface LiveJob {
   /**
@@ -268,23 +178,55 @@ interface Data {
   summary: JobsSummary;
   totalJobsStats: AllJobStats;
   jobStats: JobItem[];
+  filters: Record<string, any>;
+  isLoading: boolean;
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
 const domainRegex = /https?:\/\/(.+\.)?(\w+)(\.\w+)\/?.*/;
 
-interface ContextPart {
-  waiting: number;
-  waitingWidth: number;
-  running: number;
-  runningWidth: number;
-  context: string;
+function getDefaultJobStatSummmary() {
+  return {
+    name: "",
+    type: "",
+    count: 0,
+    failed: 0,
+    succeeded: 0,
+    network_requests: 0,
+    network_send: 0,
+    network_received: 0,
+    duration: 0,
+    updated: 0,
+    created: 0,
+    deleted: 0,
+    sql_queries: 0,
+    lagging: 0,
+    min_network_requests: 0,
+    min_network_send: 0,
+    min_network_received: 0,
+    min_duration: 0,
+    min_updated: 0,
+    min_created: 0,
+    min_deleted: 0,
+    min_sql_queries: 0,
+    min_lagging: 0,
+    max_network_requests: 0,
+    max_network_send: 0,
+    max_network_received: 0,
+    max_duration: 0,
+    max_updated: 0,
+    max_created: 0,
+    max_deleted: 0,
+    max_sql_queries: 0,
+    max_lagging: 0,
+  } as JobStatSummary;
 }
 
 export default defineComponent({
   name: "Jobs",
   data(): Data {
     return {
+      isLoading: false,
       jobs: [],
       sortedOn: {
         state: 1,
@@ -322,6 +264,9 @@ export default defineComponent({
         waiting: 0,
         running: 0,
         lagging: 0,
+      },
+      filters: {
+        name: { value: null, matchMode: FilterMatchMode.CONTAINS },
       },
     };
   },
@@ -369,132 +314,80 @@ export default defineComponent({
     },
   },
   async mounted() {
-    // fetch storage jobs data
-    const [data, stats] = await Promise.all([HttpClient.getJobs(), HttpClient.getJobsStatsSummary()]);
-
-    let running = 0;
-    let waiting = 0;
-    let lagging = 0;
-    const now = new Date();
-    const nameMap = {} as Record<string, JobItem>;
-    const defaultJobStatSummmary = {
-      name: "",
-      type: "",
-      count: 0,
-      failed: 0,
-      succeeded: 0,
-      network_requests: 0,
-      network_send: 0,
-      network_received: 0,
-      duration: 0,
-      updated: 0,
-      created: 0,
-      deleted: 0,
-      sql_queries: 0,
-      lagging: 0,
-      min_network_requests: 0,
-      min_network_send: 0,
-      min_network_received: 0,
-      min_duration: 0,
-      min_updated: 0,
-      min_created: 0,
-      min_deleted: 0,
-      min_sql_queries: 0,
-      min_lagging: 0,
-      max_network_requests: 0,
-      max_network_send: 0,
-      max_network_received: 0,
-      max_duration: 0,
-      max_updated: 0,
-      max_created: 0,
-      max_deleted: 0,
-      max_sql_queries: 0,
-      max_lagging: 0,
-    } as JobStatSummary;
-
-    for (const datum of data) {
-      if (datum.runningSince) {
-        datum.runningSince = new Date(datum.runningSince);
-      }
-      if (datum.nextRun) {
-        datum.nextRun = new Date(datum.nextRun);
-      }
-      if (datum.state === "running") {
-        running++;
-      } else {
-        waiting++;
-        // only enabled jobs can lag
-        if (datum.nextRun && datum.nextRun < now && datum.job_state !== "disabled") {
-          lagging++;
-        }
-        // waiting jobs should not have this value set
-        datum.runningSince = null;
-      }
-      if (datum.job_state !== "disabled") {
-        nameMap[datum.name] = Object.assign({}, defaultJobStatSummmary, datum);
-      }
-    }
-    this.summary.running = running;
-    this.summary.waiting = waiting;
-    this.summary.lagging = lagging;
-
-    for (const value of stats) {
-      if (value.name in nameMap) {
-        Object.assign(nameMap[value.name], value);
-      }
-    }
-    this.jobStats = Object.values(nameMap);
-
-    // fetch live jobs data
-    await HttpClient.getCrawlerJobs()
-      .then((data: Record<number, LiveJob>) => {
-        for (const datum of Object.values(data)) {
-          for (const key of [...Object.keys(datum)]) {
-            const newKey = key.replaceAll('"', "");
-            // remap key if it contained quotes
-            if (newKey !== key) {
-              // @ts-expect-error
-              datum[newKey] = datum[key];
-              // @ts-expect-error
-              delete datum[key];
-            }
-          }
-          // maintain rough stack like order
-          const contexts: string[] = [];
-          for (const item of datum.history) {
-            const itemContexts = item.context.split("--");
-            item.contexts = itemContexts;
-
-            for (const context of itemContexts) {
-              if (!contexts.includes(context)) {
-                contexts.push(context);
-              }
-            }
-          }
-          datum.context = contexts;
-        }
-        this.liveJobs = data;
-        console.log("finished loading live data");
-      })
-      .catch(console.error);
+    // TODO: add filtering
+    this.loadData();
   },
   methods: {
-    sortedClass(key: keyof JobItem) {
-      const value = this.sortedOn[key];
-      if (!value) {
-        return "fa-sort";
+    async loadData() {
+      if (this.isLoading) {
+        return;
       }
-      return value > 0 ? "fa-sort-up" : value < 0 ? "fa-sort-down" : "fa-sort";
-    },
-    toggleOrder(key: keyof JobItem): void {
-      const order = this.sortedOn[key];
+      this.isLoading = true;
+      const summaryPromise = HttpClient.getJobsStatsSummary();
+      const jobPromise = HttpClient.getJobs();
+      const nameMap = {} as Record<string, JobItem>;
 
-      if (order === 1 || order == null) {
-        this.sortedOn[key] = -1;
-      } else {
-        // @ts-expect-error
-        this.sortedOn[key] += 1;
+      try {
+        let running = 0;
+        let waiting = 0;
+        let lagging = 0;
+        const now = new Date();
+        const defaultJobStatSummmary = getDefaultJobStatSummmary();
+        const jobs = await jobPromise;
+
+        for (const datum of jobs) {
+          if (datum.runningSince) {
+            datum.runningSince = new Date(datum.runningSince);
+          }
+          if (datum.nextRun) {
+            datum.nextRun = new Date(datum.nextRun);
+          }
+          if (datum.state === "running") {
+            running++;
+          } else {
+            waiting++;
+            // only enabled jobs can lag
+            if (datum.nextRun && datum.nextRun < now && datum.job_state !== "disabled") {
+              lagging++;
+            }
+            // waiting jobs should not have this value set
+            datum.runningSince = null;
+          }
+          if (datum.job_state !== "disabled") {
+            nameMap[datum.name] = Object.assign({}, defaultJobStatSummmary, datum);
+          }
+        }
+        this.summary.running = running;
+        this.summary.waiting = waiting;
+        this.summary.lagging = lagging;
+      } catch (error) {
+        this.$toast.add({
+          summary: "Error quering Jobs",
+          detail: error + "",
+          closable: true,
+          severity: "error",
+        });
       }
+      try {
+        const stats = await summaryPromise;
+
+        for (const value of stats) {
+          if (value.name in nameMap) {
+            Object.assign(nameMap[value.name], value);
+          }
+        }
+        this.jobStats = Object.values(nameMap);
+      } catch (error) {
+        this.$toast.add({
+          summary: "Error quering JobsSummaries",
+          detail: error + "",
+          closable: true,
+          severity: "error",
+        });
+      }
+
+      this.jobStats = Object.values(nameMap);
+      this.isLoading = false;
     },
     dateToString(date?: Date | null): string {
       if (!date) {
@@ -520,45 +413,9 @@ export default defineComponent({
       }
       return absoluteToRelative(date, this.now);
     },
-    totalRow(liveJob: LiveJob): ContextPart[] {
-      const map = new Map<string, ContextPart>();
-      for (const item of liveJob.history) {
-        const context = item.contexts[item.contexts.length - 1];
-        let value = map.get(context);
-
-        if (!value) {
-          value = { waiting: 0, waitingWidth: 0, running: 0, runningWidth: 0, context };
-          map.set(context, value);
-        }
-        if (item.type === "waiting") {
-          value.waiting += item.duration;
-        } else {
-          value.running += item.duration;
-        }
-      }
-      const values = [...map.values()];
-      const total = liveJob.waiting + liveJob.running;
-
-      for (const value of values) {
-        value.waitingWidth = (value.waiting / total) * 100;
-        value.runningWidth = (value.running / total) * 100;
-      }
-      return values;
-    },
     round(value: number): number {
       return round(value, 2);
     },
   },
 });
 </script>
-<style scoped>
-tr[data-bs-toggle] {
-  cursor: pointer;
-}
-
-.table td.fit,
-.table th.fit {
-  width: 1%;
-  white-space: nowrap;
-}
-</style>
