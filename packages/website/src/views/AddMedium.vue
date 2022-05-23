@@ -1,10 +1,10 @@
 <template>
-  <div>
+  <div class="container add-medium">
     <h1>Add Medium</h1>
-    <form class="row mx-3 px-2">
-      <label>
+    <form class="row mb-2">
+      <label class="col-sm">
         Load from Toc Link:
-        <input
+        <input-text
           v-model="toc"
           class="form-control ms-1"
           name="toc"
@@ -13,11 +13,11 @@
           placeholder="URL of the ToC"
         />
       </label>
-      <button class="btn btn-dark ms-1" type="button" @click.left="loadToc()">Load</button>
+      <Button label="Load" class="col-sm-2 mt-auto" :loading="isLoading" type="button" @click.left="loadToc()" />
     </form>
-    <form>
-      <div class="row mx-3">
-        <div class="row col-md-3">
+    <form class="row mb-2">
+      <div class="row mx-1 py-1">
+        <div class="row col-md pe-3">
           <label> Title </label>
           <input
             v-model="medium.title"
@@ -29,18 +29,34 @@
             placeholder="Title of the Medium"
           />
         </div>
-        <div class="row col-md-3">
+        <div class="row col-md">
           <label>Medium</label>
-          <select v-model="medium.medium" class="form-select">
-            <option :value="1"><type-icon :type="1" class="form-control-plaintext" /> Text</option>
-            <option :value="2"><type-icon :type="2" class="form-control-plaintext" /> Audio</option>
-            <option :value="4"><type-icon :type="4" class="form-control-plaintext" /> Video</option>
-            <option :value="8"><type-icon :type="8" class="form-control-plaintext" /> Image</option>
-          </select>
+          <dropdown
+            v-model="selectedMediumOption"
+            :options="mediumOptions"
+            option-label="name"
+            placeholder="Select a Medium Type"
+          >
+            <template #value="slotProps">
+              <div v-if="slotProps.value">
+                <type-icon :type="slotProps.value.value" class="pe-1" />
+                <span>{{ slotProps.value.name }}</span>
+              </div>
+              <span v-else>
+                {{ slotProps.placeholder }}
+              </span>
+            </template>
+            <template #option="slotProps">
+              <div>
+                <type-icon :type="slotProps.option.value" class="pe-1" />
+                <span>{{ slotProps.option.name }}</span>
+              </div>
+            </template>
+          </dropdown>
         </div>
       </div>
-      <div class="row mx-3">
-        <div class="row col-md-3">
+      <div class="row mx-1 py-1">
+        <div class="row col-md pe-3">
           <label> Author </label>
           <input
             v-model="medium.author"
@@ -51,7 +67,7 @@
             placeholder="One or multiple Authors of the Medium"
           />
         </div>
-        <div class="row col-md-3">
+        <div class="row col-md">
           <label>Artist</label>
           <input
             v-model="medium.artist"
@@ -63,8 +79,8 @@
           />
         </div>
       </div>
-      <div class="row mx-3">
-        <div class="row col-md-3">
+      <div class="row mx-1 py-1">
+        <div class="row col-md pe-3">
           <label>Series</label>
           <input
             v-model="medium.series"
@@ -75,7 +91,7 @@
             placeholder="Series of the Medium"
           />
         </div>
-        <div class="row col-md-3">
+        <div class="row col-md">
           <label>Universe</label>
           <input
             v-model="medium.universe"
@@ -87,7 +103,7 @@
           />
         </div>
       </div>
-      <div class="row col-md-3 mx-3 px-1">
+      <div class="row col-md mx-1 pe-1">
         <label>Language</label>
         <input
           v-model="medium.lang"
@@ -98,8 +114,8 @@
           placeholder="Translated Language"
         />
       </div>
-      <div class="row mx-3">
-        <div class="row col-md-3">
+      <div class="row mx-1 py-1">
+        <div class="row col-md pe-3">
           <label>Country Of Origin</label>
           <input
             v-model="medium.countryOfOrigin"
@@ -110,7 +126,7 @@
             placeholder="Country of Origin"
           />
         </div>
-        <div class="row col-md-3">
+        <div class="row col-md">
           <label>Language Of Origin</label>
           <input
             v-model="medium.languageOfOrigin"
@@ -122,82 +138,89 @@
           />
         </div>
       </div>
-      <div class="row mx-3">
-        <div class="row col-md-3">
+      <div class="row mx-1 py-1">
+        <div class="row col-md pe-3">
           <label>Status of Translator</label>
-          <release-state
-            :state="medium.stateTL"
-            class="ms-1"
-            name="stateTl"
-            title="Status of Translator"
-            placeholder="Status of the Translation"
-          />
+          <dropdown v-model="medium.stateTL" :options="stateOptions" placeholder="Status of the Translation">
+            <template #value="slotProps">
+              <release-state
+                v-if="slotProps.value != null"
+                :state="slotProps.value"
+                class="ms-1"
+                name="stateTl"
+                title="Status of Translator"
+                placeholder="Status of the Translation"
+              />
+              <span v-else>
+                {{ slotProps.placeholder }}
+              </span>
+            </template>
+            <template #option="slotProps">
+              <release-state
+                :state="slotProps.option"
+                class="ms-1"
+                name="stateTl"
+                title="Status of Translator"
+                placeholder="Status of the Translation"
+              />
+            </template>
+          </dropdown>
         </div>
-        <div class="row col-md-3">
+        <div class="row col-md">
           <label>Status in COO</label>
-          <release-state
-            :state="medium.stateOrigin"
-            class="ms-1"
-            name="stateCOO"
-            title="Status in COO"
-            placeholder="Publishing Status of the Medium"
-          />
+          <dropdown v-model="medium.stateOrigin" :options="stateOptions" placeholder="Status in COO">
+            <template #value="slotProps">
+              <release-state
+                v-if="slotProps.value != null"
+                :state="slotProps.value"
+                class="ms-1"
+                name="stateCOO"
+                title="Status in COO"
+                placeholder="Publishing Status of the Medium"
+              />
+              <span v-else>
+                {{ slotProps.placeholder }}
+              </span>
+            </template>
+            <template #option="slotProps">
+              <release-state
+                :state="slotProps.option"
+                class="ms-1"
+                name="stateCOO"
+                title="Status in COO"
+                placeholder="Publishing Status of the Medium"
+              />
+            </template>
+          </dropdown>
         </div>
       </div>
-      <div class="row mx-3 px-1">
-        <select class="form-control col-md-3" title="Select list to add medium to:">
+      <div class="row mx-1 py-1">
+        <select class="form-control col-md" title="Select list to add medium to:">
           <option disabled selected value="">Select list to add medium to</option>
           <option v-for="list in lists" :key="list.id" :value="list.id">
             {{ list.name }}
           </option>
         </select>
       </div>
-      <button class="btn btn-dark mx-3 px-1" type="button" @click="send()">Add Medium</button>
-      <div class="error" />
+      <Button label="Add Medium" class="mx-1 px-1" :loading="creating" type="button" @click="send()" />
     </form>
-    <div
-      id="alert-toast"
-      class="toast"
-      role="alert"
-      aria-live="assertive"
-      aria-atomic="true"
-      data-bs-autohide="false"
-      style="position: relative; top: -10em; left: 1em"
-    >
-      <div class="toast-header">
-        <i class="fas fa-exclamation-circle rounded me-2 text-danger" aria-hidden="true" />
-        <strong class="me-auto">{{ toastTitle }}</strong>
-        <button
-          type="button"
-          class="ms-2 mb-1 btn-close"
-          data-bs-dismiss="toast"
-          aria-label="Close"
-          @click.left="closeProgressToast"
-        >
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="toast-body">
-        {{ toastMessage }}
-      </div>
-    </div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { AddMedium, List } from "../siteTypes";
+import { AddMedium, List, MediaType, ReleaseState as ReleaseStateType } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
-import Toast from "bootstrap/js/dist/toast";
 
 interface Data {
   medium: AddMedium;
   toc: string;
-  toastMessage: string;
-  toastTitle: string;
-  toast: null | Toast;
+  isLoading: boolean;
+  mediumOptions: Array<{ name: string; value: MediaType }>;
+  stateOptions: number[];
+  creating: boolean;
 }
 
 export default defineComponent({
@@ -206,10 +229,6 @@ export default defineComponent({
     TypeIcon,
     ReleaseState,
   },
-  props: {
-    show: Boolean,
-  },
-
   data(): Data {
     return {
       medium: {
@@ -222,13 +241,26 @@ export default defineComponent({
         lang: "",
         countryOfOrigin: "",
         languageOfOrigin: "",
-        stateTL: 0,
-        stateOrigin: 0,
+        stateTL: ReleaseStateType.Unknown,
+        stateOrigin: ReleaseStateType.Unknown,
       },
       toc: "",
-      toastMessage: "",
-      toastTitle: "",
-      toast: null,
+      isLoading: false,
+      mediumOptions: [
+        { name: "Text", value: MediaType.TEXT },
+        { name: "Image", value: MediaType.IMAGE },
+        { name: "Video", value: MediaType.VIDEO },
+        { name: "Audio", value: MediaType.AUDIO },
+      ],
+      stateOptions: [
+        ReleaseStateType.Unknown,
+        ReleaseStateType.Ongoing,
+        ReleaseStateType.Hiatus,
+        ReleaseStateType.Complete,
+        ReleaseStateType.Discontinued,
+        ReleaseStateType.Dropped,
+      ],
+      creating: false,
     };
   },
 
@@ -236,47 +268,81 @@ export default defineComponent({
     lists(): List[] {
       return this.$store.state.lists.lists;
     },
-  },
-  mounted() {
-    this.toast = new Toast("#alert-toast");
+    selectedMediumOption: {
+      get() {
+        // @ts-expect-error
+        return (this.mediumOptions as Data["mediumOptions"]).find((item) => item.value === this.medium.medium);
+      },
+      set(value: { name: string; value: MediaType }) {
+        this.medium.medium = value.value;
+      },
+    },
   },
   methods: {
-    closeProgressToast() {
-      // TODO: implement?
-    },
     send(): void {
       const result: AddMedium = { ...this.medium };
       if (!result.medium || !result.title) {
-        this.showMessage("Invalid Medium, either title or medium type missing", "Invalid");
+        this.$toast.add({
+          summary: "Invalid",
+          detail: "Invalid Medium, either title or medium type missing",
+          life: 3000,
+          severity: "warn",
+        });
         return;
       }
+      if (this.creating) {
+        return;
+      }
+      this.creating = true;
+
       HttpClient.createMedium(result)
         .then((medium) => {
           if (this.toc) {
-            return HttpClient.addToc(this.toc, medium.id);
+            return HttpClient.addToc(this.toc, medium.id).catch((error) => {
+              this.$toast.add({
+                summary: "Failed in creating ToC",
+                detail: error + "",
+                closable: true,
+                severity: "error",
+              });
+              return true;
+            });
           } else {
             return true;
           }
         })
         .then((success) => {
           if (success) {
-            this.showMessage("Successfully created Medium", "Success");
+            this.$toast.add({
+              summary: "Successfully created Medium",
+              severity: "success",
+              life: 3000,
+            });
           } else {
             // should never happen, success is always true if there is no error
-            this.showMessage("Failed in creating Medium", "Failure");
+            this.$toast.add({
+              summary: "Failed in creating Medium",
+              detail: "Unknown Error",
+              closable: true,
+              severity: "error",
+            });
           }
         })
-        .catch(() => {
-          this.showMessage("Failed in creating Medium", "Failure");
-        });
-    },
-    showMessage(message: string, title: string) {
-      this.toastMessage = message;
-      this.toastTitle = title;
-      this.toast?.show();
-      console.log(`Showing Message: ${title}: ${message}`);
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Failed in creating Medium",
+            detail: error + "",
+            closable: true,
+            severity: "error",
+          });
+        })
+        .finally(() => (this.creating = false));
     },
     loadToc(): void {
+      if (this.isLoading) {
+        return;
+      }
+      this.isLoading = true;
       HttpClient.getToc(this.toc)
         .then((value) => {
           // look only at first value for now
@@ -288,13 +354,30 @@ export default defineComponent({
             this.medium.medium = toc.mediumType;
             this.medium.title = toc.title;
             this.medium.lang = toc.langTL || "";
+            this.medium.series = "";
+            this.medium.universe = "";
             this.medium.languageOfOrigin = toc.langCOO || "";
-            this.medium.author = toc.authors ? toc.authors.join(", ") : "";
-            this.medium.artist = toc.artists ? toc.artists.join(", ") : "";
+            this.medium.author = toc.authors ? toc.authors.map((item) => item.name).join(", ") : "";
+            this.medium.artist = toc.artists ? toc.artists.map((item) => item.name).join(", ") : "";
           }
         })
-        .catch(console.error);
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Failed to load the ToC",
+            detail: error + "",
+            closable: true,
+            severity: "error",
+          });
+        })
+        .finally(() => (this.isLoading = false));
     },
   },
 });
 </script>
+<style scoped>
+@media (min-width: 576px) {
+  .add-medium {
+    max-width: 560px;
+  }
+}
+</style>
