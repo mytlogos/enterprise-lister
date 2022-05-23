@@ -26,10 +26,6 @@ export default defineComponent({
           to: { name: "addList" },
         },
         {
-          label: "News",
-          to: { name: "news" },
-        },
-        {
           label: "Read History",
           to: { name: "readHistory" },
         },
