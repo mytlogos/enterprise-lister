@@ -26,76 +26,88 @@ export default defineComponent({
       ];
 
       if (this.loggedIn) {
-        items.push({
-          label: "Add Medium",
-          to: { name: "addMedium" },
-        });
-        items.push({
-          label: "Add List",
-          to: { name: "addList" },
-        });
-        items.push({
-          label: "News",
-          to: { name: "news" },
-        });
-        items.push({
-          label: "Read History",
-          to: { name: "readHistory" },
-        });
-        items.push({
-          label: "Lists",
-          to: { name: "lists" },
-        });
-        items.push({
-          label: "Releases",
-          to: { name: "releases" },
-        });
-        items.push({
-          label: "Media",
-          to: { name: "media" },
-        });
-        items.push({
-          label: "Unused Media",
-          to: { name: "media-in-wait" },
-        });
-        items.push({
-          label: "Search",
-          to: { name: "search" },
-        });
-        items.push({
-          label: "Administration",
-          to: { name: "status" },
-        });
-        items.push({
-          label: "Settings",
-          to: { name: "settings" },
-        });
-        items.push({
-          label: this.name,
-          icon: "pi pi-fw pi-user",
-        });
-        items.push({
-          label: "Logout",
-          to: { name: "home" },
-          command: () => this.logout(),
-          icon: "pi pi-fw pi-power-off",
-        });
+        items.push(
+          ...[
+            {
+              label: "Add Medium",
+              to: { name: "addMedium" },
+            },
+            {
+              label: "Add List",
+              to: { name: "addList" },
+            },
+            {
+              label: "News",
+              to: { name: "news" },
+            },
+            {
+              label: "Read History",
+              to: { name: "readHistory" },
+            },
+            {
+              label: "Lists",
+              to: { name: "lists" },
+            },
+            {
+              label: "Releases",
+              to: { name: "releases" },
+            },
+            {
+              label: "Media",
+              to: { name: "media" },
+            },
+            {
+              label: "Unused Media",
+              to: { name: "media-in-wait" },
+            },
+            {
+              label: "Search",
+              to: { name: "search" },
+            },
+            {
+              label: "Administration",
+              to: { name: "status" },
+            },
+            {
+              label: this.name,
+              icon: "pi pi-fw pi-user",
+              to: { name: "settings" },
+            },
+            {
+              label: "Logout",
+              to: { name: "home" },
+              command: () => this.logout(),
+              icon: "pi pi-fw pi-power-off",
+            },
+          ],
+        );
       } else {
-        items.push({
-          label: "Register",
-          to: { name: "register" },
-        });
-        items.push({
-          label: "Login",
-          to: { name: "login" },
-        });
+        items.push(
+          ...[
+            {
+              label: "Register",
+              to: { name: "register" },
+            },
+            {
+              label: "Login",
+              to: { name: "login" },
+            },
+          ],
+        );
       }
       return items;
     },
   },
   methods: {
     logout(): void {
-      this.$store.dispatch("logout");
+      this.$store.dispatch("logout").catch((error) => {
+        this.$toast.add({
+          summary: "Logout failed",
+          detail: error + "",
+          closable: true,
+          severity: "error",
+        });
+      });
     },
   },
 });
