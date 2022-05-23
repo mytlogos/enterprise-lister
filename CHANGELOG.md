@@ -1,3 +1,31 @@
+# [1.35.0](https://github.com/mytlogos/enterprise-lister/compare/v1.34.0...v1.35.0) (2022-05-23)
+
+
+### Bug Fixes
+
+* **scraper:** handle error correctly ([ec8e4e7](https://github.com/mytlogos/enterprise-lister/commit/ec8e4e717473979105e5c042b34da114a018f73b))
+* **website:** add missing changes ([0dccbeb](https://github.com/mytlogos/enterprise-lister/commit/0dccbebbecc8eb4b2870dd1dceb9769182b63b56))
+* **website:** fix user name not shown ([9ad72d6](https://github.com/mytlogos/enterprise-lister/commit/9ad72d63597f1233b8bd29dfdbab4b4e0cae5661))
+* **website:** remove link to broken News.vue ([bcfddd5](https://github.com/mytlogos/enterprise-lister/commit/bcfddd590e63744fe042092d21ea418f575e7217))
+
+
+### Features
+
+* **website:** BREAK: introduce primevue ([3e1f33b](https://github.com/mytlogos/enterprise-lister/commit/3e1f33b48d99dd71a2a8f62628cd5c2fdbd83122))
+* **website:** enable marking ([23451ff](https://github.com/mytlogos/enterprise-lister/commit/23451ff836a5fb163aa6e7a76369ca416d6a5c86))
+* **website:** improve add-episode-modal.vue ([3b0562f](https://github.com/mytlogos/enterprise-lister/commit/3b0562f739fa95aad1a5a1832d3c75500701f851))
+* **website:** improve AddList.vue ([80192c9](https://github.com/mytlogos/enterprise-lister/commit/80192c93975dcb3d2e1ac0e13748e57040f49485))
+* **website:** improve AddMedium.vue ([e76080c](https://github.com/mytlogos/enterprise-lister/commit/e76080c0f8d13ae98d09b818041d2b3bcad2c733))
+* **website:** improve app-header ([079dab0](https://github.com/mytlogos/enterprise-lister/commit/079dab0ef98fa730f525f175e7b3fd3b6dc758c7))
+* **website:** improve Home.vue ([e19fd5d](https://github.com/mytlogos/enterprise-lister/commit/e19fd5d8b2d10ac2b47bcd5afbd1aae08dd06f9c))
+* **website:** improve Jobs.vue ([b0dbcd0](https://github.com/mytlogos/enterprise-lister/commit/b0dbcd0d54064dcd52f5d1f443f249e9b2a6b227))
+* **website:** improve Media.vue ([3799e6d](https://github.com/mytlogos/enterprise-lister/commit/3799e6dfc46aad15c9f0fb985e903f080597c425))
+* **website:** improve MediumDetail.vue ([2a087f5](https://github.com/mytlogos/enterprise-lister/commit/2a087f5aa218002ca6bf6e76d96cd0882db6babd))
+* **website:** improve Releases.vue ([4665d92](https://github.com/mytlogos/enterprise-lister/commit/4665d92b8b19ddcd11c02075078d3402e08925b3))
+* **website:** improve Search.vue ([46a13fe](https://github.com/mytlogos/enterprise-lister/commit/46a13fe81de58a08e616a989946075b1397126a6))
+* **website:** move administration links to header ([5b3e7d9](https://github.com/mytlogos/enterprise-lister/commit/5b3e7d99f8c00bfafa4ac4aa995469fbe85d1383))
+* **website:** use primevue for a full view ([25806a9](https://github.com/mytlogos/enterprise-lister/commit/25806a91e37773380a3be4dbd802147511746dc6))
+
 # [1.34.0](https://github.com/mytlogos/enterprise-lister/compare/v1.33.0...v1.34.0) (2022-05-22)
 
 
