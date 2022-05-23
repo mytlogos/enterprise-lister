@@ -24,6 +24,8 @@ import InputText from "primevue/inputtext";
 import Checkbox from "primevue/checkbox";
 import DataView from "primevue/dataview";
 import Card from "primevue/card";
+import Toolbar from "primevue/toolbar";
+import TriStateCheckbox from "primevue/tristatecheckbox";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
@@ -44,6 +46,8 @@ app.component("InputText", InputText);
 app.component("Checkbox", Checkbox);
 app.component("DataView", DataView);
 app.component("Card", Card);
+app.component("Toolbar", Toolbar);
+app.component("TriStateCheckbox", TriStateCheckbox);
 app.directive("badge", BadgeDirective);
 app.directive("tooltip", Tooltip);
 Router.isReady().then(() => app.mount("#app"));
