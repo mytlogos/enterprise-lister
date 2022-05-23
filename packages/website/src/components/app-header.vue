@@ -1,96 +1,138 @@
 <template>
-  <nav class="navbar navbar-expand-xl navbar-dark bg-dark">
-    <div class="container-fluid">
-      <!-- TODO: set active dynamically via router? -->
-      <router-link :to="{ name: 'home' }" tag="a" class="nav-link navbar-brand active"> Enterprise </router-link>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#navbarSupportedContent"
-        aria-controls="navbarSupportedContent"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div id="navbarSupportedContent" class="collapse navbar-collapse">
-        <ul class="navbar-nav me-auto">
-          <template v-if="loggedIn">
-            <li class="nav-item">
-              <router-link :to="{ name: 'addMedium' }" tag="a" class="nav-link"> Add Medium </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'addList' }" tag="a" class="nav-link"> Add List </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'news' }" tag="a" class="nav-link"> News </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'readHistory' }" tag="a" class="nav-link"> Read History </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'lists' }" tag="a" class="nav-link"> Lists </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'releases' }" tag="a" class="nav-link"> Releases </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'media' }" tag="a" class="nav-link"> Media </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'media-in-wait' }" tag="a" class="nav-link"> Unused Media </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'search' }" tag="a" class="nav-link"> Search </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'status' }" tag="a" class="nav-link"> Administration </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'settings' }" tag="a" class="nav-link">
-                <img alt="Settings" src="../assets/config_icon.png" />
-              </router-link>
-            </li>
-          </template>
-          <template v-else>
-            <li class="nav-item">
-              <router-link :to="{ name: 'register' }" tag="a" class="nav-link"> Register </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'login' }" tag="a" class="nav-link"> Login </router-link>
-            </li>
-          </template>
-        </ul>
-        <ul class="navbar-nav">
-          <template v-if="loggedIn">
-            <li class="nav-item my-auto">
-              <span class="text-light">{{ name }}</span>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'home' }" tag="a" class="nav-link" @click="logout"> Logout </router-link>
-            </li>
-          </template>
-        </ul>
-      </div>
-    </div>
-  </nav>
+  <Menubar :model="menuItems" />
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
 import { mapGetters, mapState } from "vuex";
 import "bootstrap/js/dist/collapse";
+import Menubar from "primevue/menubar";
+import { MenuItem as OriginalMenuItem } from "primevue/menuitem";
+
+type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | undefined | { name: string } };
 
 export default defineComponent({
   name: "AppHeader",
+  components: { Menubar },
+  data() {
+    return {
+      loggedInItems: [
+        {
+          label: "Add Medium",
+          to: { name: "addMedium" },
+        },
+        {
+          label: "Add List",
+          to: { name: "addList" },
+        },
+        {
+          label: "Read History",
+          to: { name: "readHistory" },
+        },
+        {
+          label: "Lists",
+          to: { name: "lists" },
+        },
+        {
+          label: "Releases",
+          to: { name: "releases" },
+        },
+        {
+          label: "Media",
+          to: { name: "media" },
+        },
+        {
+          label: "Unused Media",
+          to: { name: "media-in-wait" },
+        },
+        {
+          label: "Search",
+          to: { name: "search" },
+        },
+        {
+          label: "Administration",
+          items: [
+            {
+              label: "Status",
+              to: { name: "status" },
+            },
+            {
+              label: "Jobs",
+              to: { name: "jobs" },
+            },
+            {
+              label: "Job Statistics",
+              to: { name: "job-stats" },
+            },
+            {
+              label: "Hooks",
+              to: { name: "hooks" },
+            },
+            {
+              label: "Job History",
+              to: { name: "jobhistory" },
+            },
+            {
+              label: "Live Jobs",
+              to: { name: "joblive" },
+            },
+          ],
+        },
+      ],
+      loggedOffItems: [
+        {
+          label: "Register",
+          to: { name: "register" },
+        },
+        {
+          label: "Login",
+          to: { name: "login" },
+        },
+      ],
+    };
+  },
   computed: {
     ...mapState(["name"]),
     ...mapGetters(["loggedIn"]),
+    menuItems() {
+      const items: MenuItem[] = [
+        {
+          label: "Home",
+          to: { name: "home" },
+        },
+      ];
+
+      if (this.loggedIn) {
+        items.push(
+          ...this.loggedInItems,
+          {
+            label: this.name,
+            icon: "pi pi-fw pi-user",
+            to: { name: "settings" },
+          },
+          {
+            label: "Logout",
+            to: { name: "home" },
+            command: () => this.logout(),
+            icon: "pi pi-fw pi-power-off",
+          },
+        );
+      } else {
+        items.push(...this.loggedOffItems);
+      }
+      return items as OriginalMenuItem[];
+    },
   },
   methods: {
     logout(): void {
-      this.$store.dispatch("logout");
+      this.$store.dispatch("logout").catch((error) => {
+        this.$toast.add({
+          summary: "Logout failed",
+          detail: error + "",
+          closable: true,
+          severity: "error",
+        });
+      });
     },
   },
 });

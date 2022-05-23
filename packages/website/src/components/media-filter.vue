@@ -1,15 +1,22 @@
 <template>
-  <toggle-buttons :values="values" :state="selected" @update:state="selected = $event">
-    <template #additional="{ value }">
-      <slot name="additional" :value="value"></slot>
+  <SelectButton v-model="selected" class="d-inline-block" :options="values" data-key="value" multiple>
+    <template #option="slotProps">
+      <i
+        v-if="stateCount"
+        v-badge="stateCount[slotProps.option.value]"
+        class="fas"
+        :class="slotProps.option.class"
+        aria-hidden="true"
+      />
+      <i v-else class="fas" :class="slotProps.option.class" aria-hidden="true" />
     </template>
-  </toggle-buttons>
+  </SelectButton>
 </template>
 
 <script lang="ts">
 import { MediaType } from "../siteTypes";
-import { defineComponent } from "vue";
-import toggleButtons from "./toggle-buttons.vue";
+import { defineComponent, PropType } from "vue";
+import SelectButton from "primevue/selectbutton";
 
 /*
 Currently for some reason the prop values are not updated via the event.
@@ -22,12 +29,16 @@ on this Component.
 export default defineComponent({
   name: "MediaFilter",
   components: {
-    toggleButtons: toggleButtons,
+    SelectButton,
   },
   props: {
     state: {
       type: Number,
       default: 0,
+    },
+    stateCount: {
+      type: Object as PropType<{ [key: number]: number } | null>,
+      default: null,
     },
   },
   emits: ["update:state"],
@@ -55,17 +66,20 @@ export default defineComponent({
       },
     ];
     return {
-      selected: filter.find((value) => this.state & value.value),
+      selected: filter.filter((value) => this.state & value.value),
       values: filter,
     };
   },
   watch: {
     state() {
-      const found = this.values.find((value) => value.value & this.state);
+      const found = this.values.filter((value) => value.value & this.state);
       this.selected = found;
     },
     selected() {
-      this.$emit("update:state", this.selected ? this.selected.value : 0);
+      this.$emit(
+        "update:state",
+        this.selected.reduce((previous, next) => previous + next.value, 0),
+      );
     },
   },
 });

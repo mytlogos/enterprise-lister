@@ -49,18 +49,16 @@ const module: Module<ListsStore, VuexStore> = {
       }
     },
 
-    addList({ commit }, data: { name: string; type: number }) {
+    async addList({ commit }, data: { name: string; type: number }) {
       if (!data.name) {
         commit("addListModalError", "Missing name");
       } else if (!data.type) {
         commit("addListModalError", "Missing type");
       } else {
-        HttpClient.createList(data)
-          .then((list) => {
-            commit("addList", list);
-            commit("resetModal", "addList");
-          })
-          .catch((error) => commit("addListModalError", String(error)));
+        return HttpClient.createList(data).then((list) => {
+          commit("addList", list);
+          commit("resetModal", "addList");
+        });
       }
     },
 

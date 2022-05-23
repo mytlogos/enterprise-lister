@@ -115,17 +115,12 @@ export const store = createStore({
       userClear(commit);
     },
     async logout({ commit }) {
-      try {
-        const loggedOut = await HttpClient.logout();
-        userClear(commit);
+      const loggedOut = await HttpClient.logout();
+      userClear(commit);
 
-        if (!loggedOut) {
-          commit("errorModalError", "An error occurred while logging out");
-        }
-      } catch (error) {
-        commit("errorModalError", String(error));
+      if (!loggedOut) {
+        throw Error("An error occurred while logging out");
       }
-      // TODO implement logout
     },
     async register({ commit, dispatch }, data: { user: string; pw: string; pwRepeat: string }) {
       if (!data.user) {

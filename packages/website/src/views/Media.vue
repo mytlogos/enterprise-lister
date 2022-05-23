@@ -3,102 +3,69 @@
     <h1 id="media-title">Media</h1>
     <div>
       <form class="row mx-auto">
-        <div class="col-2">
-          <input v-model="titleSearch" class="form-control" placeholder="Search in Media Title..." type="text" />
-        </div>
-        <div class="btn-group col-4" aria-label="Select which Releasestate of TL to show">
-          <button
-            class="btn btn-secondary active"
-            type="button"
-            data-bs-toggle="button"
-            aria-pressed="true"
-            @click.left="toggleReleaseStateTL(0)"
-          >
-            Unknown
-          </button>
-          <button
-            class="btn btn-secondary active"
-            type="button"
-            data-bs-toggle="button"
-            aria-pressed="true"
-            @click.left="toggleReleaseStateTL(1)"
-          >
-            Ongoing
-          </button>
-          <button
-            class="btn btn-secondary active"
-            type="button"
-            data-bs-toggle="button"
-            aria-pressed="true"
-            @click.left="toggleReleaseStateTL(5)"
-          >
-            Complete
-          </button>
-          <button
-            class="btn btn-secondary active"
-            type="button"
-            data-bs-toggle="button"
-            aria-pressed="true"
-            @click.left="toggleReleaseStateTL(2)"
-          >
-            Hiatus
-          </button>
-          <button
-            class="btn btn-secondary active"
-            type="button"
-            data-bs-toggle="button"
-            aria-pressed="true"
-            @click.left="toggleReleaseStateTL(3)"
-          >
-            Discontinued
-          </button>
-          <button
-            class="btn btn-secondary active"
-            type="button"
-            data-bs-toggle="button"
-            aria-pressed="true"
-            @click.left="toggleReleaseStateTL(4)"
-          >
-            Dropped
-          </button>
-        </div>
-        <div class="form-check form-switch my-auto col-2">
-          <input id="hideCompleted" v-model="hideCompleted" type="checkbox" class="form-check-input" />
-          <label class="form-check-label" for="hideCompleted">Hide Completed Media</label>
+        <span class="p-float-label">
+          <input-text id="title" v-model="titleSearch" type="text" />
+          <label for="title">Title</label>
+        </span>
+        <SelectButton
+          v-model="showStatesTL"
+          :options="showStatesTLOptions"
+          option-value="value"
+          option-label="name"
+          multiple
+        />
+        <div class="field-checkbox">
+          <checkbox id="hide-completed" v-model="hideCompleted" :binary="true" />
+          <label for="hide-completed">Hide Completed Media</label>
         </div>
       </form>
     </div>
-    <table class="table table-striped table-hover" aria-describedby="media-title">
-      <thead class="table-dark">
-        <tr>
-          <th scope="col">Title</th>
-          <th scope="col">Type</th>
-          <th scope="col">Progress</th>
-          <th scope="col">State in COO</th>
-          <th scope="col">State from TL</th>
-          <th scope="col">Author</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="medium of filteredMedia" :key="medium.id">
-          <td>
-            <router-link :to="{ name: 'medium', params: { id: medium.id } }">
-              {{ medium.title }}
-            </router-link>
-          </td>
-          <td><type-icon :type="medium.medium" /></td>
-          <td>{{ medium.readEpisodes || 0 }}/{{ medium.totalEpisodes || 0 }}</td>
-          <td><release-state :state="medium.stateOrigin" /></td>
-          <td><release-state :state="medium.stateTL" /></td>
-          <td>{{ medium.author }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <data-table
+      class="p-datatable-sm"
+      :value="filteredMedia"
+      striped-rows
+      :paginator="true"
+      :rows="10"
+      paginator-template="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+      :rows-per-page-options="[10, 20, 50]"
+      responsive-layout="scroll"
+      current-page-report-template="Showing {first} to {last} of {totalRecords}"
+    >
+      <template #empty> No records found </template>
+      <template #loading> Loading records, please wait... </template>
+      <Column field="title" header="Title">
+        <template #body="slotProps">
+          <router-link :to="{ name: 'medium', params: { id: slotProps.data.id } }">
+            {{ slotProps.data.title }}
+          </router-link>
+        </template>
+      </Column>
+      <Column field="type" header="Type">
+        <template #body="slotProps">
+          <type-icon :type="slotProps.data.medium" />
+        </template>
+      </Column>
+      <Column field="progress" header="Progress">
+        <template #body="slotProps">
+          {{ slotProps.data.readEpisodes || 0 }}/{{ slotProps.data.totalEpisodes || 0 }}
+        </template>
+      </Column>
+      <Column field="stateCOO" header="State in COO">
+        <template #body="slotProps">
+          <release-state :state="slotProps.data.stateOrigin" />
+        </template>
+      </Column>
+      <Column field="stateTL" header="State from TL">
+        <template #body="slotProps">
+          <release-state :state="slotProps.data.stateTL" />
+        </template>
+      </Column>
+      <Column field="author" header="Author" />
+    </data-table>
   </div>
 </template>
 
 <script lang="ts">
-import { HttpClient } from "../Httpclient";
 import { SimpleMedium, ReleaseState, SecondaryMedium } from "../siteTypes";
 import releaseState from "../components/release-state.vue";
 import typeIcon from "../components/type-icon.vue";
@@ -113,6 +80,7 @@ interface Medium extends SimpleMedium {
 interface Data {
   titleSearch: string;
   showStatesTL: ReleaseState[];
+  showStatesTLOptions: Array<{ name: string; value: ReleaseState }>;
   media: SimpleMedium[];
   hideCompleted: boolean;
 }
@@ -127,6 +95,32 @@ export default defineComponent({
   data(): Data {
     return {
       titleSearch: "",
+      showStatesTLOptions: [
+        {
+          name: "Unknown",
+          value: ReleaseState.Unknown,
+        },
+        {
+          name: "Ongoing",
+          value: ReleaseState.Ongoing,
+        },
+        {
+          name: "Hiatus",
+          value: ReleaseState.Hiatus,
+        },
+        {
+          name: "Discontinued",
+          value: ReleaseState.Discontinued,
+        },
+        {
+          name: "Dropped",
+          value: ReleaseState.Dropped,
+        },
+        {
+          name: "Complete",
+          value: ReleaseState.Complete,
+        },
+      ],
       showStatesTL: [
         ReleaseState.Unknown,
         ReleaseState.Ongoing,
