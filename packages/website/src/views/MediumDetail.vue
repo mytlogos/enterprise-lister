@@ -100,6 +100,10 @@
       <template #start>
         <Button label="Add Episodes" class="me-2" @click.left="addEpisodesModal = details" />
         <Button label="Mark all read" class="me-2" @click.left="markAll(true)" />
+        <Button label="Mark between" class="me-2" @click.left="markBetween" />
+        <Button label="Delete marked" class="me-2" @click.left="actionOnMarked('delete')" />
+        <Button label="Set marked read" class="me-2" @click.left="actionOnMarked('read')" />
+        <Button label="Set marked unread" class="me-2" @click.left="actionOnMarked('unread')" />
         <div class="form-check form-switch">
           <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="form-check-input" />
           <label class="form-check-label" for="collapseToEpisode">Display Episodes only</label>
@@ -111,7 +115,10 @@
       </template>
     </toolbar>
     <data-table
+      v-model:selection="selectedRows"
       class="p-datatable-sm"
+      selection-mode="multiple"
+      :meta-key-selection="false"
       paginator-position="both"
       :paginator="true"
       :rows="100"
@@ -189,6 +196,7 @@ interface Data {
   loadingTocs: boolean;
   loadingReleases: boolean;
   readFilter: boolean | null;
+  selectedRows: MediumRelease[] | EpisodeRelease[];
 }
 
 const domainReg = /(https?:\/\/([^/]+))/;
@@ -235,6 +243,7 @@ export default defineComponent({
       loadingTocs: false,
       loadingReleases: false,
       readFilter: null,
+      selectedRows: [],
     };
   },
 
@@ -350,6 +359,42 @@ export default defineComponent({
     this.loadReleases();
   },
   methods: {
+    actionOnMarked(action: "delete" | "read" | "unread") {
+      if (action === "delete") {
+        this.$toast.add({
+          summary: "Not implemented",
+          severity: "warn",
+          life: 3000,
+        });
+      } else if (action === "read") {
+        this.markRead(true, this.selectedRows);
+        this.selectedRows.length = 0;
+      } else if (action === "unread") {
+        this.markRead(false, this.selectedRows);
+        this.selectedRows.length = 0;
+      }
+    },
+    markBetween() {
+      let lowest: MediumRelease | EpisodeRelease | undefined = undefined;
+      let highest: MediumRelease | EpisodeRelease | undefined = undefined;
+
+      this.selectedRows.forEach((item) => {
+        if (!lowest || lowest.combiIndex > item.combiIndex) {
+          lowest = item;
+        }
+        if (!highest || highest.combiIndex < item.combiIndex) {
+          highest = item;
+        }
+      });
+      if (!lowest || !highest) {
+        return;
+      }
+      const highestIndex = (highest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
+      const lowestIndex = (lowest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
+      this.selectedRows = this.releases.filter(
+        (item) => item.combiIndex <= highestIndex && item.combiIndex >= lowestIndex,
+      );
+    },
     loadLocalData() {
       const medium = this.$store.state.media.media[this.id];
 
@@ -586,15 +631,18 @@ export default defineComponent({
     },
 
     markAll(read: boolean) {
+      this.markRead(read, this.releases);
+    },
+    markRead(read: boolean, readReleases: MediumRelease[] | EpisodeRelease[]) {
       const newProgress = read ? 1 : 0;
       const batchSize = 50;
 
       let updateReleases = [];
 
       if (read) {
-        updateReleases = this.releases.filter((value) => value.progress < 1);
+        updateReleases = readReleases.filter((value) => value.progress < 1);
       } else {
-        updateReleases = this.releases.filter((value) => value.progress >= 1);
+        updateReleases = readReleases.filter((value) => value.progress >= 1);
       }
 
       if (!updateReleases.length) {
@@ -616,16 +664,15 @@ export default defineComponent({
 
         settled.forEach((result, index) => {
           const releaseStart = index * batchSize;
-          const releaseEnd =
-            releaseStart + (index >= settled.length - 1 ? this.releases.length % batchSize : batchSize);
+          const releaseEnd = releaseStart + (index >= settled.length - 1 ? readReleases.length % batchSize : batchSize);
 
           if (result.status === "rejected" || !result.value) {
             failed += releaseEnd - releaseStart;
           } else {
             succeeded += releaseEnd - releaseStart;
             // set new progress for all releases in this batch result
-            for (let i = releaseStart; i < releaseEnd && i < this.releases.length; i++) {
-              const element = this.releases[i];
+            for (let i = releaseStart; i < releaseEnd && i < readReleases.length; i++) {
+              const element = readReleases[i];
 
               if (element) {
                 element.progress = newProgress;
