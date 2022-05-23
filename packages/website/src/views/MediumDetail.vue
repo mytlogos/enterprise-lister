@@ -162,7 +162,7 @@
         </template>
       </column>
     </data-table>
-    <add-episode-modal :medium="addEpisodesModal" />
+    <add-episode-modal v-model:medium="addEpisodesModal" />
   </div>
 </template>
 
@@ -185,7 +185,7 @@ interface Data {
   tocs: FullMediumToc[];
   dirty: boolean;
   addTocUrl: string;
-  addEpisodesModal: SimpleMedium | null;
+  addEpisodesModal?: SimpleMedium;
   loadingTocs: boolean;
   loadingReleases: boolean;
   readFilter: boolean | null;
@@ -231,7 +231,7 @@ export default defineComponent({
       tocs: [],
       dirty: false,
       addTocUrl: "",
-      addEpisodesModal: null,
+      addEpisodesModal: undefined,
       loadingTocs: false,
       loadingReleases: false,
       readFilter: null,
