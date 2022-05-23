@@ -14,6 +14,98 @@ type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | undefined | { nam
 export default defineComponent({
   name: "AppHeader",
   components: { Menubar },
+  data() {
+    return {
+      loggedInItems: [
+        {
+          label: "Add Medium",
+          to: { name: "addMedium" },
+        },
+        {
+          label: "Add List",
+          to: { name: "addList" },
+        },
+        {
+          label: "News",
+          to: { name: "news" },
+        },
+        {
+          label: "Read History",
+          to: { name: "readHistory" },
+        },
+        {
+          label: "Lists",
+          to: { name: "lists" },
+        },
+        {
+          label: "Releases",
+          to: { name: "releases" },
+        },
+        {
+          label: "Media",
+          to: { name: "media" },
+        },
+        {
+          label: "Unused Media",
+          to: { name: "media-in-wait" },
+        },
+        {
+          label: "Search",
+          to: { name: "search" },
+        },
+        {
+          label: "Administration",
+          items: [
+            {
+              label: "Status",
+              to: { name: "status" },
+            },
+            {
+              label: "Jobs",
+              to: { name: "jobs" },
+            },
+            {
+              label: "Job Statistics",
+              to: { name: "job-stats" },
+            },
+            {
+              label: "Hooks",
+              to: { name: "hooks" },
+            },
+            {
+              label: "Job History",
+              to: { name: "jobhistory" },
+            },
+            {
+              label: "Live Jobs",
+              to: { name: "joblive" },
+            },
+          ],
+        },
+        {
+          label: this.name,
+          icon: "pi pi-fw pi-user",
+          to: { name: "settings" },
+        },
+        {
+          label: "Logout",
+          to: { name: "home" },
+          command: () => this.logout(),
+          icon: "pi pi-fw pi-power-off",
+        },
+      ],
+      loggedOffItems: [
+        {
+          label: "Register",
+          to: { name: "register" },
+        },
+        {
+          label: "Login",
+          to: { name: "login" },
+        },
+      ],
+    };
+  },
   computed: {
     ...mapState(["name"]),
     ...mapGetters(["loggedIn"]),
@@ -26,76 +118,11 @@ export default defineComponent({
       ];
 
       if (this.loggedIn) {
-        items.push(
-          ...[
-            {
-              label: "Add Medium",
-              to: { name: "addMedium" },
-            },
-            {
-              label: "Add List",
-              to: { name: "addList" },
-            },
-            {
-              label: "News",
-              to: { name: "news" },
-            },
-            {
-              label: "Read History",
-              to: { name: "readHistory" },
-            },
-            {
-              label: "Lists",
-              to: { name: "lists" },
-            },
-            {
-              label: "Releases",
-              to: { name: "releases" },
-            },
-            {
-              label: "Media",
-              to: { name: "media" },
-            },
-            {
-              label: "Unused Media",
-              to: { name: "media-in-wait" },
-            },
-            {
-              label: "Search",
-              to: { name: "search" },
-            },
-            {
-              label: "Administration",
-              to: { name: "status" },
-            },
-            {
-              label: this.name,
-              icon: "pi pi-fw pi-user",
-              to: { name: "settings" },
-            },
-            {
-              label: "Logout",
-              to: { name: "home" },
-              command: () => this.logout(),
-              icon: "pi pi-fw pi-power-off",
-            },
-          ],
-        );
+        items.push(...this.loggedInItems);
       } else {
-        items.push(
-          ...[
-            {
-              label: "Register",
-              to: { name: "register" },
-            },
-            {
-              label: "Login",
-              to: { name: "login" },
-            },
-          ],
-        );
+        items.push(...this.loggedOffItems);
       }
-      return items;
+      return items as OriginalMenuItem[];
     },
   },
   methods: {
