@@ -7,6 +7,11 @@ services:
     environment:
       TZ: Europe/Berlin
       TIME_ZONE: Europe/Berlin
+    mem_limit: 300m
+    deploy:
+      resources:
+        limits:
+          memory: 300m
     expose:
       - 3306
     ports:
