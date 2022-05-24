@@ -237,7 +237,7 @@ export class PartContext extends SubContext {
       return {};
     }
     const episodesResult: Array<SimpleRelease & { part_id: number }> = await this.queryInList(
-      "SELECT id as episodeId, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id IN (??);",
+      "SELECT episode.id as episodeId, part_id, url FROM episode_release INNER JOIN episode ON id = episode_id WHERE part_id IN (??);",
       [partIds],
     );
 
