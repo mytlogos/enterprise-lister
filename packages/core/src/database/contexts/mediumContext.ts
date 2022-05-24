@@ -180,7 +180,7 @@ export class MediumContext extends SubContext {
       const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
 
       const currentReadResult = await this.query(
-        "SELECT * FROM " +
+        "SELECT user_episode.episode_id FROM " +
           "(SELECT * FROM user_episode " +
           "WHERE episode_id IN (SELECT id from episode " +
           "WHERE part_id IN (SELECT id FROM part " +

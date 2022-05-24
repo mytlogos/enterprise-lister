@@ -591,7 +591,7 @@ export class QueryContext implements ConnectionContext {
       date,
     );
     const episodePromise = this.query(
-      "SELECT id, part_id as partId, totalIndex, partialIndex, " +
+      "SELECT episode.id, part_id as partId, totalIndex, partialIndex, " +
         "user_episode.progress, user_episode.read_date as readDate " +
         "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
         "WHERE (user_episode.user_uuid IS NULL OR user_episode.user_uuid = ?) " +

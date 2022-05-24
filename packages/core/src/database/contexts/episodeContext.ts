@@ -791,7 +791,7 @@ export class EpisodeContext extends SubContext {
    */
   public async getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
     const episodes: Optional<any[]> = await this.queryInList(
-      "SELECT * FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
+      "SELECT episode.*, ue.progress, ue.read_date FROM episode LEFT JOIN user_episode ue ON episode.id=ue.episode_id " +
         "WHERE (user_uuid IS NULL OR user_uuid=?) AND episode.id IN (??);",
       [uuid, id],
     );
