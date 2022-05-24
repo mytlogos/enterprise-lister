@@ -865,7 +865,7 @@ async function tocErrorHandler(error: Error) {
     } else {
       store.set("result", "failed");
     }
-    store.set("message", error.message);
+    store.set("error", error);
   }
   // TODO: 10.03.2020 remove any releases associated? with this toc
   //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
@@ -898,7 +898,7 @@ function defaultErrorHandler(errorValue: any): void {
     } else {
       store.set("result", "failed");
     }
-    store.set("message", errorValue.message);
+    store.set("error", errorValue);
   }
   if (errorValue instanceof DisabledHookError) {
     logger.warn(errorValue.message);

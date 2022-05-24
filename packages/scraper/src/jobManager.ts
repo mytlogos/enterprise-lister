@@ -9,6 +9,32 @@ import { JobError } from "enterprise-core/dist/error";
 
 const queueChannel = diagnostics_channel.channel("enterprise-jobqueue");
 
+function createJobMessage(store: Map<string, any>) {
+  const message = {
+    modifications: store.get("modifications") || {},
+    queryCount: store.get("queryCount") || 0,
+    network: store.get("network") || {},
+    originalMessage: store.get("message"),
+    error: undefined as unknown,
+  };
+  if (store.has("error")) {
+    const storeError = store.get("error");
+
+    if (
+      storeError instanceof Error ||
+      (typeof storeError === "object" && storeError && "name" in storeError && "message" in storeError)
+    ) {
+      message.error = {
+        name: storeError.name,
+        message: storeError.message,
+      };
+    } else {
+      message.error = storeError;
+    }
+  }
+  return message;
+}
+
 /**
  * Memory Units with their Values in Bytes.
  */
@@ -370,27 +396,18 @@ export class JobQueue {
           logger.info("executing job: " + toExecute.jobId);
           return toExecute.job(() => this._done(toExecute));
         });
+        // set default result value if not already set
         getElseSet(store, "result", () => "success");
-        if (!store.get("message")) {
-          const message = {
-            modifications: store.get("modifications") || {},
-            queryCount: store.get("queryCount") || 0,
-            network: store.get("network") || {},
-          };
-          store.set("message", JSON.stringify(message));
-        }
+        const message = createJobMessage(store);
+        store.set("message", stringify(message));
       } catch (error) {
         remove(this.waitingJobs, toExecute);
         store.set("result", "failed");
-        if (!store.get("message")) {
-          const message = {
-            modifications: store.get("modifications") || {},
-            queryCount: store.get("queryCount") || 0,
-            network: store.get("network") || {},
-            reason: typeof error === "object" && error && (error as any).message,
-          };
-          store.set("message", JSON.stringify(message));
-        }
+        const message = {
+          ...createJobMessage(store),
+          reason: typeof error === "object" && error && (error as Error).message,
+        };
+        store.set("message", stringify(message));
         logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(error)}`);
       } finally {
         removeContext("Job");

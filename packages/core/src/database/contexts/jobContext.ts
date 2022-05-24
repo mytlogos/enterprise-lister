@@ -471,9 +471,8 @@ export class JobContext extends SubContext {
       if (!store) {
         throw new JobError("missing store - is this running outside a AsyncLocalStorage Instance?");
       }
-      const context = store.get("history");
       const result = store.get("result") || "success";
-      const message = store.get("message") || "Missing Message";
+      const message = store.get("message") || JSON.stringify({ message: "No Message" });
 
       const jobTrack = {
         modifications: store.get("modifications") || {},
