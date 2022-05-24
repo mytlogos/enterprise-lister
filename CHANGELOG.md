@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/mytlogos/enterprise-lister/compare/v1.35.0...v1.36.0) (2022-05-24)
+
+
+### Features
+
+* **scraper:** improve error for job message ([8c8027f](https://github.com/mytlogos/enterprise-lister/commit/8c8027f01da33f9daa4157ca889c93a2fb60e34e))
+
 # [1.35.0](https://github.com/mytlogos/enterprise-lister/compare/v1.34.0...v1.35.0) (2022-05-23)
 
 
