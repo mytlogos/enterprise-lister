@@ -77,8 +77,8 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const titleElement = children.eq(1);
     const link = normalizeLink(new url.URL(titleElement.attr("href") as string, baseUri).href);
     const mediumTocLink = normalizeLink(new url.URL(mediumElement.attr("href") as string, baseUri).href);
-    const mediumTitle = sanitizeString(mediumElement.text());
-    const title = sanitizeString(titleElement.text());
+    const mediumTitle = sanitizeString(mediumElement.prop("innerText") as string);
+    const title = sanitizeString(titleElement.prop("innerText") as string);
 
     // ignore oneshots, they are not 'interesting' enough, e.g. too short
     if (title === "Oneshot") {
@@ -159,14 +159,14 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
   const $ = await tryRequest(chapterLink);
-  if ($("head > title").text() === "Page not found!") {
+  if ($("head > title").prop("innerText") === "Page not found!") {
     throw new MissingResourceError("Missing Toc on NovelFull", chapterLink);
   }
   const mediumTitleElement = $(".breadcrumb li:nth-child(2) a");
   const titleElement = $(".breadcrumb span");
 
-  const episodeTitle = sanitizeString(titleElement.text());
-  const mediumTitle = sanitizeString(mediumTitleElement.text());
+  const episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
+  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
   if (!episodeTitle || !mediumTitle) {
     logger.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
@@ -208,11 +208,11 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
   }
   const $ = await tryRequest(enforceHttps(urlString));
-  if ($("head > title").text() === "Page not found!") {
+  if ($("head > title").prop("innerText") === "Page not found!") {
     throw new MissingResourceError("Missing Toc on NovelFull", urlString);
   }
   const contentElement = $(".wrapper_content");
-  const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().text());
+  const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().prop("innerText") as string);
   // TODO process metadata and get more (like author)
 
   const chapters = contentElement.find(".list-chapter tbody > tr");
@@ -233,7 +233,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   let releaseState: ReleaseState = ReleaseState.Unknown;
   const releaseStateElement = $('a[href^="/advanced-search.html?status="]');
 
-  const releaseStateString = releaseStateElement.text().toLowerCase();
+  const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
   if (releaseStateString.includes("complete")) {
     releaseState = ReleaseState.Complete;
   } else if (releaseStateString.includes("ongoing")) {
@@ -257,7 +257,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < chapters.length; i++) {
     const chapterElement = chapters.eq(i);
 
-    const timeString = chapterElement.find(".date-updated").text().trim();
+    const timeString = (chapterElement.find(".date-updated").prop("innerText") as string).trim();
     const time = new Date(timeString);
 
     if (!timeString || Number.isNaN(time.getTime())) {
@@ -265,7 +265,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       return [];
     }
     const chapterTitleElement = chapterElement.find(".name");
-    const chapterTitle = sanitizeString(chapterTitleElement.text());
+    const chapterTitle = sanitizeString(chapterTitleElement.prop("innerText") as string);
 
     if (endReg.test(chapterTitle)) {
       toc.end = true;
@@ -389,7 +389,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
     const linkElement = links.eq(i);
 
     const titleElement = linkElement.find(".name");
-    const text = sanitizeString(titleElement.text());
+    const text = sanitizeString(titleElement.prop("innerText") as string);
 
     if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
       const tocLink = normalizeLink(linkElement.attr("href") as string);
@@ -427,9 +427,9 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     const authorElement = linkElement.find(".author");
     const coverElement = linkElement.find("img");
 
-    const text = sanitizeString(titleElement.text());
+    const text = sanitizeString(titleElement.prop("innerText") as string);
     const link = normalizeLink(new url.URL(linkElement.attr("href") as string, BASE_URI).href);
-    const author = sanitizeString(authorElement.text());
+    const author = sanitizeString(authorElement.prop("innerText") as string);
     const coverLink = coverElement.attr("src");
 
     searchResults.push({ coverUrl: coverLink, author, link, title: text, medium: MediaType.IMAGE });

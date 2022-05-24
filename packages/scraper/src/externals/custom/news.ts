@@ -3,7 +3,6 @@ import { queueCheerioRequest } from "../queueManager";
 import { NewsScraper } from "../types";
 import { defaultContext, extract } from "./common";
 import { HookConfig } from "./types";
-import { Cheerio, Element } from "cheerio";
 import { CustomHookError } from "./errors";
 import { ValidationError } from "enterprise-core/dist/error";
 
@@ -60,11 +59,9 @@ export function createNewsScraper(config: HookConfig): NewsScraper | undefined {
 
     try {
       if (Array.isArray(newsConfig.selector)) {
-        result = newsConfig.selector.flatMap((selector) =>
-          extract($.root() as Cheerio<Element>, selector, baseUri, context),
-        );
+        result = newsConfig.selector.flatMap((selector) => extract($("html"), selector, baseUri, context));
       } else {
-        result = extract($.root() as Cheerio<Element>, newsConfig.selector, baseUri, context);
+        result = extract($("html"), newsConfig.selector, baseUri, context);
       }
     } catch (error) {
       if (error instanceof CustomHookError) {

@@ -113,7 +113,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 
   const $ = await queueCheerioRequest(urlString);
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
-  const novelTitle = sanitizeString(mediumTitleElement.text());
+  const novelTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
   const chaTit = $(".cha-tit h3");
   let directContentElement: cheerio.Cheerio<cheerio.Element>;
@@ -126,7 +126,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     if (firstChild.is(".cha-words")) {
       directContentElement = firstChild;
     }
-    episodeTitle = sanitizeString(chaTit.text());
+    episodeTitle = sanitizeString(chaTit.prop("innerText") as string);
   } else {
     const entryTitle = $("h1.entry-title").remove();
 
@@ -137,9 +137,9 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
         logger.warn("changed title format for chapters on boxNovel for " + urlString);
         return [];
       }
-      episodeTitle = sanitizeString(currentChapter.text());
+      episodeTitle = sanitizeString(currentChapter.prop("innerText") as string);
     } else {
-      episodeTitle = sanitizeString(entryTitle.text());
+      episodeTitle = sanitizeString(entryTitle.prop("innerText") as string);
     }
     directContentElement = $(".reading-content");
   }
@@ -181,7 +181,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 
   const mediumTitleElement = $(".post-title h3");
   mediumTitleElement.find("span").remove();
-  const mediumTitle = sanitizeString(mediumTitleElement.text());
+  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
   const content: TocContent[] = [];
   const items = $(".wp-manga-chapter");
@@ -198,10 +198,10 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const titleElement = newsRow.find("a");
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
-    let episodeTitle = sanitizeString(titleElement.text());
+    let episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
 
     const timeStampElement = newsRow.find(".chapter-release-date");
-    const dateString = timeStampElement.text().trim();
+    const dateString = (timeStampElement.prop("innerText") as string).trim();
     const lowerDate = dateString.toLowerCase();
 
     let date;
@@ -271,7 +271,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     content.push(chapterContent);
   }
   const releaseStateElement = $("div.post-content_item:nth-child(2) > div:nth-child(2)");
-  const releaseStateString = releaseStateElement.text().toLowerCase();
+  const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateString.includes("complete")) {
@@ -310,7 +310,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
     const mediumTitleElement = newsRow.find(".post-title a");
     const tocLink = new url.URL(mediumTitleElement.attr("href") as string, uri).href.replace("-boxnovel", "");
 
-    const mediumTitle = sanitizeString(mediumTitleElement.text());
+    const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
     const titleElement = newsRow.find(".chapter-item .chapter a");
     const timeElements = newsRow.find(".chapter-item .post-on");
@@ -319,9 +319,9 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
       const chapterTitleElement = titleElement.eq(j);
       const link = new url.URL(chapterTitleElement.attr("href") as string, uri).href;
 
-      const episodeTitle = sanitizeString(chapterTitleElement.text());
+      const episodeTitle = sanitizeString(chapterTitleElement.prop("innerText") as string);
       const timeStampElement = timeElements.eq(j);
-      const dateString = timeStampElement.text().trim();
+      const dateString = (timeStampElement.prop("innerText") as string).trim();
       const lowerDate = dateString.toLowerCase();
 
       let date: Nullable<Date>;

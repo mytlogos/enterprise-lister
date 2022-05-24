@@ -63,12 +63,12 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
       continue;
     }
     const mediumTocLink = toTocLink(mediumTocLinkGroup[3]);
-    const mediumTitle = sanitizeString(mediumElement.text());
+    const mediumTitle = sanitizeString(mediumElement.prop("innerText") as string);
 
     const titleElement = tableData.eq(2).children("a").first();
-    const episodeTitle = sanitizeString(titleElement.text());
+    const episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
 
-    const textTime = tableData.eq(5).text().trim();
+    const textTime = (tableData.eq(5).prop("innerText") as string).trim();
     const time = relativeToAbsoluteTime(textTime);
 
     if (!time) {
@@ -236,10 +236,10 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
   const contentElement = $(".chapter_content");
 
   const titleElement = $(".cha-hd-mn-text a").first();
-  const novelTitle = sanitizeString(titleElement.text().replace(/\/\s*$/, ""));
+  const novelTitle = sanitizeString((titleElement.prop("innerText") as string).replace(/\/\s*$/, ""));
   titleElement.remove();
 
-  const episodeTitle = sanitizeString($(".cha-hd-mn-text").text());
+  const episodeTitle = sanitizeString($(".cha-hd-mn-text").prop("innerText") as string);
   const content = contentElement.find(".cha-words").first().html();
 
   const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
@@ -345,7 +345,7 @@ async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
     const titleElement = titles.eq(i);
     const possibleTitles = [searchMedium.title, ...searchMedium.synonyms];
 
-    const title = sanitizeString(titleElement.text());
+    const title = sanitizeString(titleElement.prop("innerText") as string);
     if (possibleTitles.some((value) => equalsIgnore(title, value))) {
       bookId = titleElement.attr("data-bookid");
       break;
@@ -382,7 +382,7 @@ async function search(text: string): Promise<SearchResult[]> {
 
     const titleElement = result.find("h3 > a");
     const coverElement = result.find("img");
-    const title = sanitizeString(titleElement.text());
+    const title = sanitizeString(titleElement.prop("innerText") as string);
     const coverUrl = new url.URL(coverElement.attr("src") as string, uri).href;
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 

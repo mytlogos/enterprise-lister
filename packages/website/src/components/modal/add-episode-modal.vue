@@ -2,7 +2,7 @@
   <Dialog v-model:visible="visible" header="Add Episodes" @hide="$emit('update:medium', null)">
     <div class="row">
       Current Items: {{ parts.length }}
-      <Button label="Next" @click="createPart" />
+      <p-button label="Next" @click="createPart" />
     </div>
     <div class="row">
       <input-text v-model="newPartPrefix" class="form-input col-3" @keyup.enter="createPart" />
@@ -18,8 +18,8 @@
       </li>
     </ul>
     <template #footer>
-      <Button label="Close" icon="pi pi-times" class="p-button-text" @click="$emit('update:medium', null)" />
-      <Button label="Add" icon="pi pi-check" autofocus @click="send()" />
+      <p-button label="Close" icon="pi pi-times" class="p-button-text" @click="$emit('update:medium', null)" />
+      <p-button label="Add" icon="pi pi-check" autofocus @click="send()" />
     </template>
   </Dialog>
 </template>

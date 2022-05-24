@@ -22,7 +22,7 @@
             </template>
           </SelectButton>
         </div>
-        <Button class="mt-1" label="Add List" :loading="creating" type="button" @click="send" />
+        <p-button class="mt-1" label="Add List" :loading="creating" type="button" @click="send" />
       </div>
     </div>
   </div>

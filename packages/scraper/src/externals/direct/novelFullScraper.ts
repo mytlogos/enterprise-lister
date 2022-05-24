@@ -53,8 +53,8 @@ async function search(text: string): Promise<SearchResult[]> {
     const coverElement = resultElement.find("img.cover");
 
     const coverLink = new url.URL(coverElement.attr("src") as string, uri).href;
-    const author = sanitizeString(authorElement.text());
-    const title = sanitizeString(linkElement.text());
+    const author = sanitizeString(authorElement.prop("innerText") as string);
+    const title = sanitizeString(linkElement.prop("innerText") as string);
     let tocLink = linkElement.attr("href") as string;
     tocLink = new url.URL(tocLink, uri).href;
 
@@ -71,9 +71,9 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 
   const $ = await queueCheerioRequest(urlString);
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
-  const novelTitle = sanitizeString(mediumTitleElement.text());
+  const novelTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
-  const episodeTitle = sanitizeString($(".chapter-title").text());
+  const episodeTitle = sanitizeString($(".chapter-title").prop("innerText") as string);
   const directContentElement = $("#chapter-content");
   directContentElement.find("script, ins").remove();
 
@@ -92,7 +92,7 @@ function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
   let releaseState: ReleaseState = ReleaseState.Unknown;
   const releaseStateElement = $('a[href^="/status/"]');
 
-  const releaseStateString = releaseStateElement.text().toLowerCase();
+  const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
   if (releaseStateString.includes("complete")) {
     end = true;
     releaseState = ReleaseState.Complete;
@@ -101,7 +101,7 @@ function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
     releaseState = ReleaseState.Ongoing;
   }
   const mediumTitleElement = $(".desc .title").first();
-  const mediumTitle = sanitizeString(mediumTitleElement.text());
+  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
   const authors = extractLinkable($, 'a[href^="/author/"]', BASE_URI);
 
@@ -141,7 +141,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
         for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
           const newsRow = items.eq(itemIndex);
           const link = new url.URL(newsRow.attr("href") as string, uri).href;
-          const episodeTitle = sanitizeString(newsRow.text());
+          const episodeTitle = sanitizeString(newsRow.prop("innerText") as string);
           yield { title: episodeTitle, url: link, releaseDate: now } as EpisodePiece;
         }
 
@@ -248,7 +248,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromise<Toc> {
   // TODO: 20.07.2019 scrape alternative titles and author too
   const mediumTitleElement = $(".desc .title").first();
-  const mediumTitle = sanitizeString(mediumTitleElement.text());
+  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
   const content: TocContent[] = [];
   const indexPartMap: Map<number, TocPart> = new Map<number, TocPart>();
@@ -262,7 +262,7 @@ async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromis
 
     const link = new url.URL(newsRow.attr("href") as string, uri).href;
 
-    const episodeTitle = sanitizeString(newsRow.text());
+    const episodeTitle = sanitizeString(newsRow.prop("innerText") as string);
 
     const regexResult = titleRegex.exec(episodeTitle);
 
@@ -330,18 +330,22 @@ async function newsAdapter(): Promise<NewsScrapeResult> {
 
     const mediumTitleElement = newsRow.find(".col-title a");
     const tocLink = new url.URL(mediumTitleElement.attr("href") as string, uri).href;
-    const mediumTitle = sanitizeString(mediumTitleElement.text());
+    const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
     const titleElement = newsRow.find(".col-chap a");
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
-    const episodeTitle = sanitizeString(titleElement.text());
+    const episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
 
     const timeStampElement = newsRow.find(".col-time");
-    const date = relativeToAbsoluteTime(timeStampElement.text().trim());
+    const date = relativeToAbsoluteTime((timeStampElement.prop("innerText") as string).trim());
 
     if (!date || date > new Date()) {
-      logger.warn(`changed time format on novelFull: '${date}' from '${timeStampElement.text().trim()}': news`);
+      logger.warn(
+        `changed time format on novelFull: '${date}' from '${(
+          timeStampElement.prop("innerText") as string
+        ).trim()}': news`,
+      );
       continue;
     }
     let regexResult: Nullable<string[]> = titleRegex.exec(episodeTitle);

@@ -155,7 +155,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     if (!newsRow.has(".flag").length) {
       const mediumLinkElement = newsRow.find("a.manga_title");
       currentMediumLink = new url.URL(mediumLinkElement.attr("href") as string, uri).href;
-      currentMedium = sanitizeString(mediumLinkElement.text());
+      currentMedium = sanitizeString(mediumLinkElement.prop("innerText") as string);
       continue;
     }
 
@@ -170,7 +170,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     }
     const titleElement = children.eq(1);
     const link = new url.URL(titleElement.children("a").attr("href") as string, uri).href;
-    const title = sanitizeString(titleElement.text());
+    const title = sanitizeString(titleElement.prop("innerText") as string);
 
     // ignore oneshots, they are not 'interesting' enough, e.g. too short
     if (title === "Oneshot") {
@@ -288,14 +288,13 @@ async function scrapeTocPage(
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $("#content");
   if (
-    contentElement
-      .find(".alert-danger")
-      .text()
-      .match(/Manga .+? (not available)|(does not exist)/i)
+    (contentElement.find(".alert-danger").prop("innerText") as string).match(
+      /Manga .+? (not available)|(does not exist)/i,
+    )
   ) {
     throw new MissingResourceError("Missing ToC on MangaDex", urlString);
   }
-  const mangaTitle = sanitizeString(contentElement.find("h6.card-header").first().text());
+  const mangaTitle = sanitizeString(contentElement.find("h6.card-header").first().prop("innerText") as string);
   // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");
   if (!mangaTitle) {
     logger.warn("toc link with no novel title: " + urlString);
@@ -309,7 +308,7 @@ async function scrapeTocPage(
     const infoElement = tocInfoElements.eq(i);
     const children = infoElement.children();
 
-    if (children.eq(0).text().toLocaleLowerCase().includes("status:")) {
+    if ((children.eq(0).prop("innerText") as string).toLocaleLowerCase().includes("status:")) {
       releaseStateElement = children.eq(1);
       break;
     }
@@ -317,7 +316,7 @@ async function scrapeTocPage(
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = releaseStateElement.text().toLowerCase();
+    const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {
@@ -355,10 +354,10 @@ async function scrapeTocPage(
     const chapterTitleElement = columns.eq(1);
     const endBadgeElement = chapterTitleElement.find(".badge").first().remove();
 
-    if (endBadgeElement.length && endReg.test(sanitizeString(endBadgeElement.text()))) {
+    if (endBadgeElement.length && endReg.test(sanitizeString(endBadgeElement.prop("innerText") as string))) {
       toc.end = true;
     }
-    const chapterTitle = sanitizeString(chapterTitleElement.text());
+    const chapterTitle = sanitizeString(chapterTitleElement.prop("innerText") as string);
     const volChapGroups = volChapReg.exec(chapterTitle);
     const chapGroups = chapReg.exec(chapterTitle);
 

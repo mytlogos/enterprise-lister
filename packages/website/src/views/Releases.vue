@@ -2,8 +2,8 @@
   <div class="container-fluid p-0">
     <h1 id="releases-title">Releases</h1>
     <div class="p-1">
-      <Button :loading="isRefreshing" label="Refresh" @click.left="refresh"></Button>
-      <Button class="ms-1" :loading="isFetching" label="Fetch new Releases" @click.left="fetchNew"></Button>
+      <p-button :loading="isRefreshing" label="Refresh" @click.left="refresh" />
+      <p-button class="ms-1" :loading="isFetching" label="Fetch new Releases" @click.left="fetchNew" />
       <SelectButton v-model="readFilter" class="d-inline-block ms-1" :options="readFilterValues" data-key="value">
         <template #option="slotProps">
           <i class="fas fa-check" :class="{ 'text-success': slotProps.option.value }" aria-hidden="true" />
@@ -119,7 +119,7 @@
       </Column>
       <Column header="Action" autolayout>
         <template #body="slotProps">
-          <Button
+          <p-button
             v-tooltip.top="slotProps.data.read ? 'Mark unread' : 'Mark read'"
             class="p-button-text"
             :class="{
@@ -130,7 +130,7 @@
             style="margin: -0.5rem 0"
             @click.left="changeReadStatus(slotProps.data)"
           />
-          <Button
+          <p-button
             v-tooltip.top="'Ignore Medium'"
             icon="pi pi-ban"
             class="p-button-text p-button-warning"

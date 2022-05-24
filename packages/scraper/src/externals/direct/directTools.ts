@@ -63,7 +63,7 @@ export function extractLinkable($: cheerio.CheerioAPI, selector: string, uri: st
   for (let i = 0; i < elements.length; i++) {
     const element = elements.eq(i);
 
-    const name = sanitizeString(element.text());
+    const name = sanitizeString(element.prop("innerText") as string);
     const link = new url.URL(element.attr("href") as string, uri).href;
 
     result.push({ name, link });
@@ -104,7 +104,7 @@ export async function searchTocCheerio(
     for (let i = 0; i < links.length; i++) {
       const linkElement = links.eq(i);
 
-      const text = sanitizeString(linkElement.text());
+      const text = sanitizeString(linkElement.prop("innerText") as string);
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         tocLink = linkElement.attr("href") as string;
@@ -153,7 +153,7 @@ function searchForWords(
     for (let i = 0; i < links.length; i++) {
       const linkElement = links.eq(i);
 
-      const text = sanitizeString(linkElement.text());
+      const text = sanitizeString(linkElement.prop("innerText") as string);
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         const tocLink = linkElement.attr("href") as string;

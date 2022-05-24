@@ -13,7 +13,7 @@
           placeholder="URL of the ToC"
         />
       </label>
-      <Button label="Load" class="col-sm-2 mt-auto" :loading="isLoading" type="button" @click.left="loadToc()" />
+      <p-button label="Load" class="col-sm-2 mt-auto" :loading="isLoading" type="button" @click.left="loadToc()" />
     </form>
     <form class="row mb-2">
       <div class="row mx-1 py-1">
@@ -202,7 +202,7 @@
           </option>
         </select>
       </div>
-      <Button label="Add Medium" class="mx-1 px-1" :loading="creating" type="button" @click="send()" />
+      <p-button label="Add Medium" class="mx-1 px-1" :loading="creating" type="button" @click="send()" />
     </form>
   </div>
 </template>

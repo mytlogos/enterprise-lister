@@ -42,14 +42,14 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const span = newsRow.children("span").eq(0);
     span.remove();
 
-    const mediumTitle = sanitizeString(newsRow.text());
+    const mediumTitle = sanitizeString(newsRow.prop("innerText") as string);
 
-    const rawTitle = sanitizeString(span.text());
+    const rawTitle = sanitizeString(span.prop("innerText") as string);
     const groups = titlePattern.exec(rawTitle);
 
     if (!groups) {
       // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
-      logger.warn(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
+      logger.warn(`Unknown KissAnime News Format: '${span.prop("innerText")}' for '${mediumTitle}'`);
       continue;
     }
 
@@ -152,7 +152,9 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   }
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $("#container > #leftside");
-  const animeTitle = contentElement.find(".bigBarContainer > .barContent > div > a:first-child").first().text().trim();
+  const animeTitle = (
+    contentElement.find(".bigBarContainer > .barContent > div > a:first-child").first().prop("innerText") as string
+  ).trim();
 
   const episodeElements = contentElement.find(".episodeList .listing > tbody > tr:has(td)");
 
@@ -174,10 +176,10 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const episodeElement = episodeElements.eq(i);
     const columns = episodeElement.children();
 
-    const date = new Date(columns.eq(1).text().trim());
+    const date = new Date((columns.eq(1).prop("innerText") as string).trim());
 
     const titleElement = columns.eq(0).find("a");
-    const titleString = sanitizeString(titleElement.text());
+    const titleString = sanitizeString(titleElement.prop("innerText") as string);
     const episodeGroups = chapReg.exec(titleString);
 
     if (Number.isNaN(date.getDate()) || !episodeGroups) {
@@ -246,14 +248,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < infoElements.length; i++) {
     const element = infoElements.eq(i);
 
-    if (element.text().toLocaleLowerCase().includes("status")) {
+    if ((element.prop("innerText") as string).toLocaleLowerCase().includes("status")) {
       releaseStateElement = element.parent();
     }
   }
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = releaseStateElement.text().toLowerCase();
+    const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {
@@ -295,7 +297,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
   for (let i = 0; i < links.length; i++) {
     const linkElement = links.eq(i);
 
-    const text = sanitizeString(linkElement.text());
+    const text = sanitizeString(linkElement.prop("innerText") as string);
     const link = new url.URL(linkElement.attr("href") as string, BASE_URI).href;
 
     searchResults.push({ link, title: text, medium: MediaType.IMAGE });

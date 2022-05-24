@@ -78,17 +78,17 @@
     </data-table>
     <div class="my-2">
       <input-text v-model="addTocUrl" class="me-2" type="url" @keyup.enter="addToc" />
-      <Button label="Add Toc" @click="addToc" />
+      <p-button label="Add Toc" @click="addToc" />
     </div>
     <p>
-      <Button
+      <p-button
         data-bs-toggle="collapse"
         data-bs-target="#collapseChart"
         aria-expanded="false"
         aria-controls="collapseChart"
       >
         Show Release Chart
-      </Button>
+      </p-button>
     </p>
     <div id="collapseChart" class="collapse">
       <div class="chart-container w-75">
@@ -98,12 +98,12 @@
     <h1 id="medium-releases-title">Releases</h1>
     <toolbar>
       <template #start>
-        <Button label="Add Episodes" class="me-2" @click.left="addEpisodesModal = details" />
-        <Button label="Mark all read" class="me-2" @click.left="markAll(true)" />
-        <Button label="Mark between" class="me-2" @click.left="markBetween" />
-        <Button label="Delete marked" class="me-2" @click.left="actionOnMarked('delete')" />
-        <Button label="Set marked read" class="me-2" @click.left="actionOnMarked('read')" />
-        <Button label="Set marked unread" class="me-2" @click.left="actionOnMarked('unread')" />
+        <p-button label="Add Episodes" class="me-2" @click.left="addEpisodesModal = details" />
+        <p-button label="Mark all read" class="me-2" @click.left="markAll(true)" />
+        <p-button label="Mark between" class="me-2" @click.left="markBetween" />
+        <p-button label="Delete marked" class="me-2" @click.left="actionOnMarked('delete')" />
+        <p-button label="Set marked read" class="me-2" @click.left="actionOnMarked('read')" />
+        <p-button label="Set marked unread" class="me-2" @click.left="actionOnMarked('unread')" />
         <div class="form-check form-switch">
           <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="form-check-input" />
           <label class="form-check-label" for="collapseToEpisode">Display Episodes only</label>

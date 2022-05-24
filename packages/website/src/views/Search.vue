@@ -9,10 +9,10 @@
         style="max-width: 20em"
         @keyup.enter="search"
       />
-      <Button class="btn btn-dark me-2" :loading="isSearching" label="Search" @click.left="search"></Button>
+      <p-button class="btn btn-dark me-2" :loading="isSearching" label="Search" @click.left="search" />
       <media-filter :state="type" @update:state="type = $event" />
     </div>
-    <data-view :value="result" layout="grid" :paginator="true" :rows="35">
+    <data-view :value="result" layout="grid" :paginator="true" :rows="35" data-key="link">
       <template #empty>No records found.</template>
       <template #grid="slotProps">
         <Card>
@@ -36,7 +36,7 @@
             <img :src="slotProps.data.coverUrl" class="card-img" alt="Cover Image" />
           </template>
           <template #footer>
-            <Button
+            <p-button
               class="pi pi-plus"
               label="Add"
               data-bs-toggle="modal"

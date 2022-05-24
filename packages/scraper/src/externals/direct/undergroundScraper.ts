@@ -24,7 +24,7 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
   for (let tocRowIndex = 0; tocRowIndex < tocRows.length; tocRowIndex++) {
     const tocRow = tocRows.eq(tocRowIndex);
     const mediumElement = tocRow.prev();
-    const mediumTitle = sanitizeString(mediumElement.contents().first().text().trim());
+    const mediumTitle = sanitizeString((mediumElement.contents().first().prop("innerText") as string).trim());
 
     if (!mediumTitle) {
       logger.warn("changed format on qidianUnderground");
@@ -56,7 +56,7 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
         logger.warn(`missing href attribute for '${mediumTitle}' on qidianUnderground`);
         continue;
       }
-      const exec = chapterReg.exec(sanitizeString(titleElement.text()));
+      const exec = chapterReg.exec(sanitizeString(titleElement.prop("innerText") as string));
 
       if (!exec) {
         logger.warn("changed format on qidianUnderground");
@@ -201,7 +201,9 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
 
     const contentChildren = contentElement.children();
 
-    const episodeTitle = sanitizeString(contentChildren.find("h2").first().remove().text().trim());
+    const episodeTitle = sanitizeString(
+      (contentChildren.find("h2").first().remove().prop("innerText") as string).trim(),
+    );
     const content = contentChildren.html();
 
     if (!episodeTitle) {

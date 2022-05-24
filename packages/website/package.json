@@ -22,20 +22,20 @@
     "d3-scale-chromatic": "^3.0.0",
     "mitt": "^3.0.0",
     "@popperjs/core": "^2.11.5",
-    "primevue": "^3.10.0",
+    "primevue": "^3.12.6",
     "primeicons": "^5.0.0",
     "register-service-worker": "^1.7.2",
     "tslib": "^2.4.0",
-    "vue": "^3.2.33",
+    "vue": "^3.2.36",
     "vue-observe-visibility": "^1.0.0",
     "vue-prism-editor": "^2.0.0-alpha.2",
     "prismjs": "1.28.0",
-    "vue-router": "^4.0.14",
+    "vue-router": "^4.0.15",
     "vuex": "^4.0.2",
     "vuex-persistedstate": "^4.1.0"
   },
   "devDependencies": {
-    "@types/bootstrap": "^5.1.10",
+    "@types/bootstrap": "^5.1.12",
     "@types/chart.js": "^2.9.37",
     "@types/d3-scale-chromatic": "^3.0.0",
     "@types/prismjs": "1.26.0",
@@ -47,12 +47,12 @@
     "@vue/cli-plugin-typescript": "^5.0.4",
     "@vue/cli-plugin-vuex": "^5.0.4",
     "@vue/cli-service": "^5.0.4",
-    "@vue/test-utils": "^2.0.0-rc.21",
+    "@vue/test-utils": "^2.0.0",
     "babel-core": "6.26.3",
     "babel-loader": "^8.2.5",
     "babel-plugin-prismjs": "^2.1.0",
     "typescript": "^4.6.4",
-    "webpack": "^5.72.0"
+    "webpack": "^5.72.1"
   },
   "postcss": {
     "plugins": {
