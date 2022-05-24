@@ -1,3 +1,10 @@
+## [1.36.1](https://github.com/mytlogos/enterprise-lister/compare/v1.36.0...v1.36.1) (2022-05-24)
+
+
+### Bug Fixes
+
+* **scraper:** fix error description ([57c264f](https://github.com/mytlogos/enterprise-lister/commit/57c264fba2e21d08a52b361d20637da838ec72bc))
+
 # [1.36.0](https://github.com/mytlogos/enterprise-lister/compare/v1.35.0...v1.36.0) (2022-05-24)
 
 
