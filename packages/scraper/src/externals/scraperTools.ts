@@ -64,7 +64,6 @@ import {
 } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, ScraperError, UrlError } from "./errors";
 import {
-  DisabledHookError,
   episodeDownloaderEntries,
   getHook,
   getHooks,
@@ -590,7 +589,7 @@ export const news = async (link: string): Promise<{ link: string; result: News[]
 export const toc = async (value: TocRequest): Promise<TocResult> => {
   const result = await oneTimeToc(value);
   if (!result.tocs.length) {
-    throw new ScraperError("could not find toc for: " + JSON.stringify(value));
+    throw new ScraperError(`could not find toc for: url=${value.url} mediumId=${value.mediumId}`);
   }
   // TODO implement toc scraping which requires page analyzing
   return {
