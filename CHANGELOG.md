@@ -1,3 +1,10 @@
+## [1.36.2](https://github.com/mytlogos/enterprise-lister/compare/v1.36.1...v1.36.2) (2022-05-24)
+
+
+### Bug Fixes
+
+* **core:** fix possible ambigious columns ([c91fedb](https://github.com/mytlogos/enterprise-lister/commit/c91fedb8b5afdd58a0fe1d97de4ccc0b82a6ff46))
+
 ## [1.36.1](https://github.com/mytlogos/enterprise-lister/compare/v1.36.0...v1.36.1) (2022-05-24)
 
 
