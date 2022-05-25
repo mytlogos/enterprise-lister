@@ -1,3 +1,131 @@
+## [1.36.4](https://github.com/mytlogos/enterprise-lister/compare/v1.36.3...v1.36.4) (2022-05-24)
+
+
+### Bug Fixes
+
+* **core:** fix ambigious column ([b172fb9](https://github.com/mytlogos/enterprise-lister/commit/b172fb9695bb677041b4e888cee8f5140a89224b))
+
+## [1.36.3](https://github.com/mytlogos/enterprise-lister/compare/v1.36.2...v1.36.3) (2022-05-24)
+
+
+### Bug Fixes
+
+* **core:** fix ambigious column ([d2a6f57](https://github.com/mytlogos/enterprise-lister/commit/d2a6f579c56aef2fb775de0a39f29af2d0e573ba))
+
+## [1.36.2](https://github.com/mytlogos/enterprise-lister/compare/v1.36.1...v1.36.2) (2022-05-24)
+
+
+### Bug Fixes
+
+* **core:** fix possible ambigious columns ([c91fedb](https://github.com/mytlogos/enterprise-lister/commit/c91fedb8b5afdd58a0fe1d97de4ccc0b82a6ff46))
+
+## [1.36.1](https://github.com/mytlogos/enterprise-lister/compare/v1.36.0...v1.36.1) (2022-05-24)
+
+
+### Bug Fixes
+
+* **scraper:** fix error description ([57c264f](https://github.com/mytlogos/enterprise-lister/commit/57c264fba2e21d08a52b361d20637da838ec72bc))
+
+# [1.36.0](https://github.com/mytlogos/enterprise-lister/compare/v1.35.0...v1.36.0) (2022-05-24)
+
+
+### Features
+
+* **scraper:** improve error for job message ([8c8027f](https://github.com/mytlogos/enterprise-lister/commit/8c8027f01da33f9daa4157ca889c93a2fb60e34e))
+
+# [1.35.0](https://github.com/mytlogos/enterprise-lister/compare/v1.34.0...v1.35.0) (2022-05-23)
+
+
+### Bug Fixes
+
+* **scraper:** handle error correctly ([ec8e4e7](https://github.com/mytlogos/enterprise-lister/commit/ec8e4e717473979105e5c042b34da114a018f73b))
+* **website:** add missing changes ([0dccbeb](https://github.com/mytlogos/enterprise-lister/commit/0dccbebbecc8eb4b2870dd1dceb9769182b63b56))
+* **website:** fix user name not shown ([9ad72d6](https://github.com/mytlogos/enterprise-lister/commit/9ad72d63597f1233b8bd29dfdbab4b4e0cae5661))
+* **website:** remove link to broken News.vue ([bcfddd5](https://github.com/mytlogos/enterprise-lister/commit/bcfddd590e63744fe042092d21ea418f575e7217))
+
+
+### Features
+
+* **website:** BREAK: introduce primevue ([3e1f33b](https://github.com/mytlogos/enterprise-lister/commit/3e1f33b48d99dd71a2a8f62628cd5c2fdbd83122))
+* **website:** enable marking ([23451ff](https://github.com/mytlogos/enterprise-lister/commit/23451ff836a5fb163aa6e7a76369ca416d6a5c86))
+* **website:** improve add-episode-modal.vue ([3b0562f](https://github.com/mytlogos/enterprise-lister/commit/3b0562f739fa95aad1a5a1832d3c75500701f851))
+* **website:** improve AddList.vue ([80192c9](https://github.com/mytlogos/enterprise-lister/commit/80192c93975dcb3d2e1ac0e13748e57040f49485))
+* **website:** improve AddMedium.vue ([e76080c](https://github.com/mytlogos/enterprise-lister/commit/e76080c0f8d13ae98d09b818041d2b3bcad2c733))
+* **website:** improve app-header ([079dab0](https://github.com/mytlogos/enterprise-lister/commit/079dab0ef98fa730f525f175e7b3fd3b6dc758c7))
+* **website:** improve Home.vue ([e19fd5d](https://github.com/mytlogos/enterprise-lister/commit/e19fd5d8b2d10ac2b47bcd5afbd1aae08dd06f9c))
+* **website:** improve Jobs.vue ([b0dbcd0](https://github.com/mytlogos/enterprise-lister/commit/b0dbcd0d54064dcd52f5d1f443f249e9b2a6b227))
+* **website:** improve Media.vue ([3799e6d](https://github.com/mytlogos/enterprise-lister/commit/3799e6dfc46aad15c9f0fb985e903f080597c425))
+* **website:** improve MediumDetail.vue ([2a087f5](https://github.com/mytlogos/enterprise-lister/commit/2a087f5aa218002ca6bf6e76d96cd0882db6babd))
+* **website:** improve Releases.vue ([4665d92](https://github.com/mytlogos/enterprise-lister/commit/4665d92b8b19ddcd11c02075078d3402e08925b3))
+* **website:** improve Search.vue ([46a13fe](https://github.com/mytlogos/enterprise-lister/commit/46a13fe81de58a08e616a989946075b1397126a6))
+* **website:** move administration links to header ([5b3e7d9](https://github.com/mytlogos/enterprise-lister/commit/5b3e7d99f8c00bfafa4ac4aa995469fbe85d1383))
+* **website:** use primevue for a full view ([25806a9](https://github.com/mytlogos/enterprise-lister/commit/25806a91e37773380a3be4dbd802147511746dc6))
+
+# [1.34.0](https://github.com/mytlogos/enterprise-lister/compare/v1.33.0...v1.34.0) (2022-05-22)
+
+
+### Features
+
+* **website:** improve Media.vue ([8376fb0](https://github.com/mytlogos/enterprise-lister/commit/8376fb0d64d7ad43c85d28271325b95c0e43e612))
+
+# [1.33.0](https://github.com/mytlogos/enterprise-lister/compare/v1.32.1...v1.33.0) (2022-05-22)
+
+
+### Features
+
+* **website:** improve Releases view ([ef0b489](https://github.com/mytlogos/enterprise-lister/commit/ef0b489f059feda86585144c4626b45b2c38b8cd))
+
+## [1.32.1](https://github.com/mytlogos/enterprise-lister/compare/v1.32.0...v1.32.1) (2022-05-18)
+
+
+### Bug Fixes
+
+* **website:** handle invalid_session error ([5914e54](https://github.com/mytlogos/enterprise-lister/commit/5914e5479dc0a5c8fd89460f45dddb6591907aa5))
+
+# [1.32.0](https://github.com/mytlogos/enterprise-lister/compare/v1.31.3...v1.32.0) (2022-05-10)
+
+
+### Features
+
+* **scraper:** add job metrics ([4f3eb89](https://github.com/mytlogos/enterprise-lister/commit/4f3eb89818a3be7a4f09f4d7c89a6c086d3330db))
+
+## [1.31.3](https://github.com/mytlogos/enterprise-lister/compare/v1.31.2...v1.31.3) (2022-05-10)
+
+
+### Bug Fixes
+
+* **core:** do not log error response body ([9cec3d9](https://github.com/mytlogos/enterprise-lister/commit/9cec3d96f54c86d233128d107d60b3afb4ff73cd))
+
+## [1.31.2](https://github.com/mytlogos/enterprise-lister/compare/v1.31.1...v1.31.2) (2022-05-10)
+
+
+### Bug Fixes
+
+* support node 17 ([0fcb249](https://github.com/mytlogos/enterprise-lister/commit/0fcb249f5f2dde5337798896b3e48888ac894eeb))
+
+## [1.31.1](https://github.com/mytlogos/enterprise-lister/compare/v1.31.0...v1.31.1) (2022-05-10)
+
+
+### Bug Fixes
+
+* **core:** fix imports ([1099008](https://github.com/mytlogos/enterprise-lister/commit/10990084e61890c1bb2f25a71aa93bc617b8e2ac))
+* **core:** print exceptions to console ([d248e2a](https://github.com/mytlogos/enterprise-lister/commit/d248e2a865ad7e355b22fe7c67bdaa231a22f862))
+
+# [1.31.0](https://github.com/mytlogos/enterprise-lister/compare/v1.30.0...v1.31.0) (2022-05-10)
+
+
+### Features
+
+* **core:** speedup sql query ([0d3841d](https://github.com/mytlogos/enterprise-lister/commit/0d3841d0ce6d1ba5092123fd5328afca4c22924e))
+* use custom errors ([6d45198](https://github.com/mytlogos/enterprise-lister/commit/6d45198892d536e19d48654762aa981918bc767b))
+
+# [1.30.0](https://github.com/mytlogos/enterprise-lister/compare/v1.29.1...v1.30.0) (2022-05-08)
+
+
+### Features
+
+* displayrelease query speedup ([b0478b9](https://github.com/mytlogos/enterprise-lister/commit/b0478b971f749b87a23cb844104e5e9587336d05))
+
 ## [1.29.1](https://github.com/mytlogos/enterprise-lister/compare/v1.29.0...v1.29.1) (2022-05-03)
 
 

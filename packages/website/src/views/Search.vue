@@ -9,46 +9,44 @@
         style="max-width: 20em"
         @keyup.enter="search"
       />
-      <button class="btn btn-dark me-2" @click.left="search">Search</button>
+      <p-button class="btn btn-dark me-2" :loading="isSearching" label="Search" @click.left="search" />
       <media-filter :state="type" @update:state="type = $event" />
     </div>
-    <div class="d-flex flex-wrap">
-      <div v-for="item of result" :key="item.link" class="card mb-3 tile me-3 bg-light">
-        <div class="row no-gutters h-100">
-          <div class="col-md-4">
-            <img :src="item.coverUrl" class="card-img" alt="Cover Image" />
-          </div>
-          <div class="col-md-8">
-            <div class="card-body h-100">
-              <a
-                :href="item.link"
-                target="_blank"
-                rel="noopener noreferrer"
-                style="overflow: hidden; max-height: 40%"
-                class="d-block text-body card-title h5"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                :title="item.title"
-              >
-                {{ item.title }}
-              </a>
-              <type-icon :type="item.medium" />
-              <small class="text-muted">{{ item.author || "N/A" }}</small>
-              <div class="d-flex" style="bottom: 1em; position: absolute">
-                <button
-                  class="btn btn-dark me-2"
-                  data-bs-toggle="modal"
-                  data-bs-target="#add-modal"
-                  @click.left="select(item)"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <data-view :value="result" layout="grid" :paginator="true" :rows="35" data-key="link">
+      <template #empty>No records found.</template>
+      <template #grid="slotProps">
+        <Card>
+          <template #title>
+            <a
+              v-tooltip.top="slotProps.data.title"
+              :href="slotProps.data.link"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="overflow: hidden; max-height: 40%"
+              class="d-block text-body card-title h5"
+            >
+              {{ slotProps.data.title }}
+            </a>
+          </template>
+          <template #subtitle>
+            <type-icon :type="slotProps.data.medium" />
+            <small class="text-muted">{{ slotProps.data.author || "N/A" }}</small>
+          </template>
+          <template #content>
+            <img :src="slotProps.data.coverUrl" class="card-img" alt="Cover Image" />
+          </template>
+          <template #footer>
+            <p-button
+              class="pi pi-plus"
+              label="Add"
+              data-bs-toggle="modal"
+              data-bs-target="#add-modal"
+              @click.left="select(slotProps.data)"
+            />
+          </template>
+        </Card>
+      </template>
+    </data-view>
     <!-- Modal -->
     <div id="add-modal" class="modal fade" tabindex="-1" aria-labelledby="add-modal-label" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
@@ -115,6 +113,7 @@ interface Data {
   selectedList: number;
   tooltips: ToolTip[];
   addModal: null | Modal;
+  isSearching: boolean;
 }
 
 export default defineComponent({
@@ -136,6 +135,7 @@ export default defineComponent({
       selectedList: 0,
       tooltips: [],
       addModal: null,
+      isSearching: false,
     };
   },
   computed: {
@@ -150,7 +150,13 @@ export default defineComponent({
   },
   methods: {
     search() {
-      HttpClient.search(this.title, this.type).then((result) => (this.result = result.flat()));
+      if (this.isSearching) {
+        return;
+      }
+      this.isSearching = true;
+      HttpClient.search(this.title, this.type)
+        .then((result) => (this.result = result.flat()))
+        .finally(() => (this.isSearching = false));
     },
     select(result: SearchResult) {
       this.medium.title = result.title;

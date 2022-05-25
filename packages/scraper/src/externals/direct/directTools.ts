@@ -13,6 +13,7 @@ import * as url from "url";
 import { ReleaseState, TocSearchMedium, Optional, Nullable } from "enterprise-core/dist/types";
 import { checkTocContent } from "../scraperTools";
 import * as cheerio from "cheerio";
+import { ValidationError } from "enterprise-core/dist/error";
 
 export function getTextContent(
   novelTitle: string,
@@ -62,7 +63,7 @@ export function extractLinkable($: cheerio.CheerioAPI, selector: string, uri: st
   for (let i = 0; i < elements.length; i++) {
     const element = elements.eq(i);
 
-    const name = sanitizeString(element.text());
+    const name = sanitizeString(element.prop("innerText") as string);
     const link = new url.URL(element.attr("href") as string, uri).href;
 
     result.push({ name, link });
@@ -103,7 +104,7 @@ export async function searchTocCheerio(
     for (let i = 0; i < links.length; i++) {
       const linkElement = links.eq(i);
 
-      const text = sanitizeString(linkElement.text());
+      const text = sanitizeString(linkElement.prop("innerText") as string);
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         tocLink = linkElement.attr("href") as string;
@@ -152,7 +153,7 @@ function searchForWords(
     for (let i = 0; i < links.length; i++) {
       const linkElement = links.eq(i);
 
-      const text = sanitizeString(linkElement.text());
+      const text = sanitizeString(linkElement.prop("innerText") as string);
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         const tocLink = linkElement.attr("href") as string;
@@ -555,7 +556,7 @@ type IndexCalc = (reg: RegExpExecArray) => number;
 
 function markWithRegex(regExp: RegExp, title: string, type: TocMatchType, matches: TocMatch[], matchAfter?: IndexCalc) {
   if (!regExp.flags.includes("g")) {
-    throw Error("Need a Regex with global Flag enabled, else it will crash");
+    throw new ValidationError("Need a Regex with global Flag enabled, else it will crash");
   }
   for (let match = regExp.exec(title); match; match = regExp.exec(title)) {
     matches.push({

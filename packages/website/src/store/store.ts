@@ -80,7 +80,10 @@ export const store = createStore({
     async changeUser({ commit, dispatch, state }, { user, modal }: { user: User; modal: string }) {
       const userChanged = user && state.uuid !== user.uuid;
       setUser(commit, user);
-      commit("resetModal", modal);
+
+      if (modal) {
+        commit("resetModal", modal);
+      }
 
       if (userChanged) {
         await dispatch("load");
@@ -108,18 +111,16 @@ export const store = createStore({
         commit("loginModalError", String(error));
       }
     },
+    immediateLogout({ commit }) {
+      userClear(commit);
+    },
     async logout({ commit }) {
-      try {
-        const loggedOut = await HttpClient.logout();
-        userClear(commit);
+      const loggedOut = await HttpClient.logout();
+      userClear(commit);
 
-        if (!loggedOut) {
-          commit("errorModalError", "An error occurred while logging out");
-        }
-      } catch (error) {
-        commit("errorModalError", String(error));
+      if (!loggedOut) {
+        throw Error("An error occurred while logging out");
       }
-      // TODO implement logout
     },
     async register({ commit, dispatch }, data: { user: string; pw: string; pwRepeat: string }) {
       if (!data.user) {

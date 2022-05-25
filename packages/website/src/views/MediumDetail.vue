@@ -50,49 +50,45 @@
       </div>
     </div>
     <h1 id="tocs-title">Tocs</h1>
-    <table class="table table-striped table-hover table-sm" aria-describedby="tocs-title">
-      <thead class="table-dark">
-        <tr>
-          <th scope="col">Title</th>
-          <th scope="col">Host</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="toc of tocs" :key="toc.id">
-          <td>
-            <a :href="toc.link" target="_blank" rel="noopener noreferrer">
-              {{ toc.title || details.title }}
-            </a>
-            <i
-              v-if="toc.medium != details.medium"
-              class="fas fa-exclamation-triangle text-warning ms-1"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              :title="`Expected ${mediumToString(details.medium)} but got ${mediumToString(toc.medium)}`"
-              aria-hidden="true"
-            />
-          </td>
-          <td>
-            <a :href="getHome(toc.link)" target="_blank" rel="noopener noreferrer">{{ getDomain(toc.link) }}</a>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <div>
-      <input v-model="addTocUrl" type="url" @keyup.enter="addToc" />
-      <button class="btn btn-primary" type="button" @click="addToc">Add Toc</button>
+    <data-table :loading="loadingTocs" :value="tocs" striped-rows>
+      <template #empty> No records found </template>
+      <template #loading> Loading records, please wait... </template>
+      <Column field="title" header="Title">
+        <template #body="slotProps">
+          <a :href="slotProps.data.link" target="_blank" rel="noopener noreferrer">
+            {{ slotProps.data.title || "Unknown" }}
+          </a>
+          <i
+            v-if="slotProps.data.medium != details.medium"
+            v-tooltip.top="
+              `Expected ${mediumToString(details.medium)} but got ${mediumToString(slotProps.data.medium)}`
+            "
+            class="fas fa-exclamation-triangle text-warning ms-1"
+            aria-hidden="true"
+          />
+        </template>
+      </Column>
+      <Column field="host" header="Host">
+        <template #body="slotProps">
+          <a :href="getHome(slotProps.data.link)" target="_blank" rel="noopener noreferrer">{{
+            getDomain(slotProps.data.link)
+          }}</a>
+        </template>
+      </Column>
+    </data-table>
+    <div class="my-2">
+      <input-text v-model="addTocUrl" class="me-2" type="url" @keyup.enter="addToc" />
+      <p-button label="Add Toc" @click="addToc" />
     </div>
     <p>
-      <button
-        class="btn btn-primary"
-        type="button"
+      <p-button
         data-bs-toggle="collapse"
         data-bs-target="#collapseChart"
         aria-expanded="false"
         aria-controls="collapseChart"
       >
         Show Release Chart
-      </button>
+      </p-button>
     </p>
     <div id="collapseChart" class="collapse">
       <div class="chart-container w-75">
@@ -100,81 +96,80 @@
       </div>
     </div>
     <h1 id="medium-releases-title">Releases</h1>
-    <toast
-      id="mark-toast"
-      title="Marked read"
-      :message="markToast.message"
-      :error="!markToast.success"
-      :success="markToast.success"
-      :show="markToast.show"
-      data-bs-autohide="false"
-      style="position: absolute; margin-top: -7em"
-    />
-    <div class="d-flex">
-      <button class="btn btn-dark" @click.left="addEpisodesModal = details">Add Episodes</button>
-      <button class="btn btn-dark" @click.left="markAll(true)">Mark all read</button>
-      <div class="form-check form-switch">
-        <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="form-check-input" />
-        <label class="form-check-label" for="collapseToEpisode">Display Episodes only</label>
-      </div>
-    </div>
-    <table class="table table-striped table-hover table-sm" aria-describedby="medium-releases-title">
-      <thead class="table-dark">
-        <tr>
-          <th scope="col">#</th>
-          <th scope="col">Date</th>
-          <th scope="col">Chapter</th>
-          <th scope="col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="entry of computedReleases" :key="episodesOnly ? entry.episodeId : entry.episodeId + entry.link">
-          <td class="">
-            {{ entry.combiIndex }}
-          </td>
-          <td class="">
-            {{ dateToString(entry.date) }}
-          </td>
-          <td>
-            <template v-if="entry.locked">
-              <i class="fas fa-lock" aria-hidden="true" />
-            </template>
-            <a :href="entry.link" target="_blank" rel="noopener noreferrer">
-              {{ entry.title }}
-            </a>
-            <template v-if="entry.others && entry.others.length">
-              <span :title="entry.others.length + ' other Releases available'"> + {{ entry.others.length }} </span>
-            </template>
-          </td>
-          <td>
-            <button
-              class="btn"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
-              @click.left="changeReadStatus(entry)"
-            >
-              <i
-                class="fas fa-check"
-                :class="{
-                  'text-success': entry.progress === 1,
-                }"
-                aria-hidden="true"
-              />
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
-    <toast
-      id="progress-toast"
-      title="Error"
-      :message="'Could not update Progress'"
-      :show="progressToast"
-      @close="closeProgressToast"
-    />
-    <add-episode-modal :medium="addEpisodesModal" />
+    <toolbar>
+      <template #start>
+        <p-button label="Add Episodes" class="me-2" @click.left="addEpisodesModal = details" />
+        <p-button label="Mark all read" class="me-2" @click.left="markAll(true)" />
+        <p-button label="Mark between" class="me-2" @click.left="markBetween" />
+        <p-button label="Delete marked" class="me-2" @click.left="actionOnMarked('delete')" />
+        <p-button label="Set marked read" class="me-2" @click.left="actionOnMarked('read')" />
+        <p-button label="Set marked unread" class="me-2" @click.left="actionOnMarked('unread')" />
+        <div class="form-check form-switch">
+          <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="form-check-input" />
+          <label class="form-check-label" for="collapseToEpisode">Display Episodes only</label>
+        </div>
+        <div class="field-checkbox m-0">
+          <tri-state-checkbox v-model="readFilter" />
+          <label>Filter by Progress</label>
+        </div>
+      </template>
+    </toolbar>
+    <data-table
+      v-model:selection="selectedRows"
+      class="p-datatable-sm"
+      selection-mode="multiple"
+      :meta-key-selection="false"
+      paginator-position="both"
+      :paginator="true"
+      :rows="100"
+      paginator-template="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+      :rows-per-page-options="[100, 200, 500]"
+      responsive-layout="scroll"
+      current-page-report-template="Showing {first} to {last} of {totalRecords}"
+      :loading="loadingReleases"
+      :value="computedReleases"
+      sort-field="combiIndex"
+      :sort-order="-1"
+      striped-rows
+    >
+      <column field="combiIndex" header="#" sortable />
+      <column field="date" header="Date" sortable>
+        <template #body="slotProps">
+          {{ dateToString(slotProps.data.date) }}
+        </template>
+      </column>
+      <column header="Chapter">
+        <template #body="slotProps">
+          <i v-if="slotProps.data.locked" class="fas fa-lock" aria-hidden="true" />
+          <a :href="slotProps.data.link" target="_blank" rel="noopener noreferrer">
+            {{ slotProps.data.title }}
+          </a>
+          <template v-if="slotProps.data.others && slotProps.data.others.length">
+            <span :title="slotProps.data.others.length + ' other Releases available'">
+              + {{ slotProps.data.others.length }}
+            </span>
+          </template>
+        </template>
+      </column>
+      <column field="progress" header="Actions" sortable>
+        <template #body="slotProps">
+          <button
+            v-tooltip.top="slotProps.data.progress < 1 ? 'Mark read' : 'Mark unread'"
+            class="btn"
+            @click.left="changeReadStatus(slotProps.data)"
+          >
+            <i
+              class="fas fa-check"
+              :class="{
+                'text-success': slotProps.data.progress === 1,
+              }"
+              aria-hidden="true"
+            />
+          </button>
+        </template>
+      </column>
+    </data-table>
+    <add-episode-modal v-model:medium="addEpisodesModal" />
   </div>
 </template>
 
@@ -184,15 +179,8 @@ import { defineComponent, reactive } from "vue";
 import { SimpleMedium, MediumRelease, FullMediumToc, MediaType } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
-import toast from "../components/toast.vue";
-import ToolTip from "bootstrap/js/dist/tooltip";
 import { batch, formatDate, mergeMediaToc, hexToRgbA } from "../init";
-// @ts-ignore
-import { Chart, LineController, LineElement, PointElement, LinearScale, Title } from "chart.js";
 import AddEpisodeModal from "../components/modal/add-episode-modal.vue";
-
-// @ts-ignore
-Chart.register(LineController, LineElement, PointElement, LinearScale, Title);
 
 interface EpisodeRelease extends MediumRelease {
   others: MediumRelease[];
@@ -202,12 +190,13 @@ interface Data {
   releases: MediumRelease[] | EpisodeRelease[];
   details: SimpleMedium;
   tocs: FullMediumToc[];
-  markToast: { message: string; success: boolean; show: boolean };
   dirty: boolean;
   addTocUrl: string;
-  addEpisodesModal: SimpleMedium | null;
-  tooltips: ToolTip[];
-  progressToast: boolean;
+  addEpisodesModal?: SimpleMedium;
+  loadingTocs: boolean;
+  loadingReleases: boolean;
+  readFilter: boolean | null;
+  selectedRows: MediumRelease[] | EpisodeRelease[];
 }
 
 const domainReg = /(https?:\/\/([^/]+))/;
@@ -215,14 +204,12 @@ const domainReg = /(https?:\/\/([^/]+))/;
 const colorPalette = ["#003f5c", "#2f4b7c", "#665191", "#a05195", "#d45087", "#f95d6a", "#ff7c43", "#ffa600"];
 
 const bgColorPalette = colorPalette.map((color) => hexToRgbA(color, 0.5));
-let chart: Chart;
 
 export default defineComponent({
   name: "MediumDetail",
   components: {
     releaseState,
     typeIcon,
-    toast,
     AddEpisodeModal,
   },
   props: {
@@ -250,28 +237,37 @@ export default defineComponent({
         universe: "N/A",
       },
       tocs: [],
-      markToast: {
-        message: "",
-        success: false,
-        show: false,
-      },
       dirty: false,
       addTocUrl: "",
-      addEpisodesModal: null,
-      tooltips: [],
-      progressToast: false,
+      addEpisodesModal: undefined,
+      loadingTocs: false,
+      loadingReleases: false,
+      readFilter: null,
+      selectedRows: [],
     };
   },
 
   computed: {
     computedReleases(): MediumRelease[] | EpisodeRelease[] {
-      const sorted = [...this.releases].sort((first, second) => second.combiIndex - first.combiIndex);
+      let filtered;
+
+      if (this.readFilter != null) {
+        filtered = this.releases.filter((item) => {
+          if (this.readFilter) {
+            return item.progress >= 1;
+          } else {
+            return item.progress < 1;
+          }
+        });
+      } else {
+        filtered = [...this.releases];
+      }
 
       if (this.episodesOnly) {
         const episodes = [] as EpisodeRelease[];
 
-        for (let i = 1; i < sorted.length; i++) {
-          const previous = sorted[i - 1];
+        for (let i = 1; i < filtered.length; i++) {
+          const previous = filtered[i - 1];
 
           const others = [] as MediumRelease[];
           const episode: EpisodeRelease = {
@@ -279,8 +275,8 @@ export default defineComponent({
             ...previous,
           };
 
-          for (; i < sorted.length && sorted[i].episodeId === previous.episodeId; i++) {
-            const element = sorted[i];
+          for (; i < filtered.length && filtered[i].episodeId === previous.episodeId; i++) {
+            const element = filtered[i];
 
             if (!element.locked) {
               episode.locked = false;
@@ -295,7 +291,7 @@ export default defineComponent({
         }
         return episodes;
       }
-      return sorted;
+      return filtered;
     },
     computedMedium(): SimpleMedium {
       // merge tocs to a single display result
@@ -326,9 +322,7 @@ export default defineComponent({
   },
 
   mounted() {
-    // eslint-disable-next-line @typescript-eslint/quotes
-    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
-
+    // TODO: use chart
     //chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
     //type: "line",
     //data: {
@@ -359,23 +353,102 @@ export default defineComponent({
     //  },
     //},
     //});
-    HttpClient.getMedia(this.id)
-      .then((medium) => {
-        if (Array.isArray(medium)) {
-          this.$store.commit("errorModalError", "Error while loading Details");
-          console.error("Expected a single Medium Item but got an Array");
-          return;
-        }
-        this.details = reactive(medium);
-        return HttpClient.getTocs(medium.id)
-          .then((tocs) => (this.tocs = tocs))
-          .catch(console.error);
-      })
-      .catch(console.error);
+    this.loadLocalData();
+    this.loadMedium();
+    this.loadTocs();
     this.loadReleases();
   },
   methods: {
+    actionOnMarked(action: "delete" | "read" | "unread") {
+      if (action === "delete") {
+        this.$toast.add({
+          summary: "Not implemented",
+          severity: "warn",
+          life: 3000,
+        });
+      } else if (action === "read") {
+        this.markRead(true, this.selectedRows);
+        this.selectedRows.length = 0;
+      } else if (action === "unread") {
+        this.markRead(false, this.selectedRows);
+        this.selectedRows.length = 0;
+      }
+    },
+    markBetween() {
+      let lowest: MediumRelease | EpisodeRelease | undefined = undefined;
+      let highest: MediumRelease | EpisodeRelease | undefined = undefined;
+
+      this.selectedRows.forEach((item) => {
+        if (!lowest || lowest.combiIndex > item.combiIndex) {
+          lowest = item;
+        }
+        if (!highest || highest.combiIndex < item.combiIndex) {
+          highest = item;
+        }
+      });
+      if (!lowest || !highest) {
+        return;
+      }
+      const highestIndex = (highest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
+      const lowestIndex = (lowest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
+      this.selectedRows = this.releases.filter(
+        (item) => item.combiIndex <= highestIndex && item.combiIndex >= lowestIndex,
+      );
+    },
+    loadLocalData() {
+      const medium = this.$store.state.media.media[this.id];
+
+      if (medium) {
+        this.details = reactive({ ...medium });
+      }
+      const secondaryMedium = this.$store.state.media.secondaryMedia[this.id];
+
+      if (secondaryMedium) {
+        this.tocs = [...secondaryMedium.tocs];
+      }
+    },
+    loadMedium() {
+      HttpClient.getMedia(this.id)
+        .then((medium) => {
+          if (Array.isArray(medium)) {
+            this.$toast.add({
+              summary: "Error while loading Details",
+              detail: "Please contact the developer",
+              severity: "error",
+            });
+            console.error("Expected a single Medium Item but got an Array");
+            return;
+          }
+          this.details = reactive(medium);
+        })
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Unknown Error",
+            detail: error + "",
+            severity: "error",
+          });
+          console.log(error);
+        });
+    },
+    loadTocs() {
+      this.loadingTocs = true;
+      HttpClient.getTocs(this.id)
+        .then((tocs) => (this.tocs = tocs))
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Error while loading Tocs",
+            detail: error + "",
+            severity: "error",
+          });
+          console.log(error);
+        })
+        .finally(() => (this.loadingTocs = false));
+    },
     loadReleases() {
+      if (this.loadingReleases) {
+        return;
+      }
+      this.loadingReleases = true;
       HttpClient.getReleases(this.id)
         .then((releases) => {
           // ensure that date is a 'Date' object
@@ -384,10 +457,35 @@ export default defineComponent({
           }
           this.releases = reactive(releases);
         })
-        .catch(console.error);
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Error while loading Releases",
+            detail: error + "",
+            severity: "error",
+          });
+          console.log(error);
+        })
+        .finally(() => {
+          this.loadingReleases = false;
+        });
     },
     addToc() {
-      HttpClient.addToc(this.addTocUrl, this.id);
+      HttpClient.addToc(this.addTocUrl, this.id)
+        .then(() => {
+          this.$toast.add({
+            summary: "Successfully added the TocRequest",
+            severity: "success",
+            life: 3000,
+          });
+        })
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Error while adding the Toc",
+            detail: error + "",
+            severity: "error",
+          });
+          console.log(error);
+        });
       this.addTocUrl = "";
     },
     startUpdate() {
@@ -522,32 +620,36 @@ export default defineComponent({
             return Promise.reject();
           }
         })
-        .catch(() => (this.progressToast = true));
-    },
-
-    /**
-     * Hide progress error toast.
-     */
-    closeProgressToast() {
-      this.progressToast = false;
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Error updating Progress",
+            detail: error + "",
+            severity: "error",
+          });
+          console.log(error);
+        });
     },
 
     markAll(read: boolean) {
+      this.markRead(read, this.releases);
+    },
+    markRead(read: boolean, readReleases: MediumRelease[] | EpisodeRelease[]) {
       const newProgress = read ? 1 : 0;
       const batchSize = 50;
 
       let updateReleases = [];
 
       if (read) {
-        updateReleases = this.releases.filter((value) => value.progress < 1);
+        updateReleases = readReleases.filter((value) => value.progress < 1);
       } else {
-        updateReleases = this.releases.filter((value) => value.progress >= 1);
+        updateReleases = readReleases.filter((value) => value.progress >= 1);
       }
 
       if (!updateReleases.length) {
-        this.markToast.message = "No Releases available for marking.";
-        this.markToast.success = true;
-        this.markToast.show = true;
+        this.$toast.add({
+          summary: "No Releases available for marking.",
+          severity: "warn",
+        });
         return;
       }
 
@@ -556,36 +658,36 @@ export default defineComponent({
           const episodeIds: number[] = releases.map((value) => value.episodeId);
           return HttpClient.updateProgress(episodeIds, newProgress);
         }),
-      )
-        // @ts-ignore
-        .then((settled: Array<PromiseSettledResult<boolean>>) => {
-          let failed = 0;
-          let succeeded = 0;
+      ).then((settled: Array<PromiseSettledResult<boolean>>) => {
+        let failed = 0;
+        let succeeded = 0;
 
-          settled.forEach((result, index) => {
-            const releaseStart = index * batchSize;
-            const releaseEnd =
-              releaseStart + (index >= settled.length - 1 ? this.releases.length % batchSize : batchSize);
+        settled.forEach((result, index) => {
+          const releaseStart = index * batchSize;
+          const releaseEnd = releaseStart + (index >= settled.length - 1 ? readReleases.length % batchSize : batchSize);
 
-            if (result.status === "rejected" || !result.value) {
-              failed += releaseEnd - releaseStart;
-            } else {
-              succeeded += releaseEnd - releaseStart;
-              // set new progress for all releases in this batch result
-              for (let i = releaseStart; i < releaseEnd && i < this.releases.length; i++) {
-                const element = this.releases[i];
+          if (result.status === "rejected" || !result.value) {
+            failed += releaseEnd - releaseStart;
+          } else {
+            succeeded += releaseEnd - releaseStart;
+            // set new progress for all releases in this batch result
+            for (let i = releaseStart; i < releaseEnd && i < readReleases.length; i++) {
+              const element = readReleases[i];
 
-                if (element) {
-                  element.progress = newProgress;
-                }
+              if (element) {
+                element.progress = newProgress;
               }
             }
-          });
-          this.markToast.message = `Marking as read succeeded for ${succeeded} and failed for ${failed}`;
-          this.markToast.success = failed === 0;
-          this.markToast.show = true;
-          console.log(`succeeded=${succeeded}, failed=${failed}`);
+          }
         });
+        this.$toast.add({
+          summary: "Mark all",
+          detail: `Marking as read succeeded for ${succeeded} and failed for ${failed}`,
+          severity: failed ? "error" : "success",
+          life: failed ? undefined : 3000,
+        });
+        console.log(`succeeded=${succeeded}, failed=${failed}`);
+      });
     },
   },
 });

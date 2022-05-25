@@ -57,7 +57,7 @@ const testHook = createHandler(async (req) => {
       // translate custom hook errors into RestResponseError for informing user
       if (error instanceof CustomHookError) {
         error.data.trace = Object.fromEntries(store);
-        throw new RestResponseError(error.code, error.msg, error.data);
+        throw new RestResponseError(error.code, error.message, error.data);
       } else {
         throw error;
       }

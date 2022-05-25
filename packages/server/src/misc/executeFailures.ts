@@ -15,7 +15,7 @@ const hookMap = new Map();
 for (let i = 0; i < suites.length; i++) {
   const suite = suites.eq(i);
   const title = suite.children().first();
-  const text = title.text();
+  const text = title.prop("innerText") as string;
 
   if (!text.includes("download")) {
     continue;
@@ -34,7 +34,7 @@ for (let i = 0; i < suites.length; i++) {
     const failedTest = failedTests.eq(j);
     const testTitleElement = failedTest.children().first();
     testTitleElement.find(".status, .time").remove();
-    const url = testTitleElement.text();
+    const url = testTitleElement.prop("innerText");
     failedLinks.push(url);
   }
 }

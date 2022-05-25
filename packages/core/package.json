@@ -1,6 +1,6 @@
 {
   "name": "enterprise-core",
-  "version": "1.29.1",
+  "version": "1.36.4",
   "private": true,
   "scripts": {
     "build": "tsc -p ./",
@@ -13,7 +13,7 @@
     "bcryptjs": "^2.4.3",
     "cloudscraper": "^4.6.0",
     "debug": "^4.3.4",
-    "dotenv": "^16.0.0",
+    "dotenv": "^16.0.1",
     "emoji-regex": "^10.1.0",
     "mysql": "^2.18.1",
     "node-cache": "^5.1.2",
@@ -29,7 +29,7 @@
     "@types/debug": "^4.1.5",
     "@types/dotenv": "^8.2.0",
     "@types/mysql": "^2.15.21",
-    "@types/node": "^16.11.33",
+    "@types/node": "^16.11.36",
     "@types/node-cache": "^4.2.5",
     "@types/uuid": "^8.3.0",
     "typescript": "^4.6.4"

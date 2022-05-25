@@ -7,6 +7,8 @@ import { Hook, Toc } from "./types";
 import logger from "enterprise-core/dist/logger";
 import * as cheerio from "cheerio";
 import { ReleaseState, EmptyPromise, Optional } from "enterprise-core/dist/types";
+import { ValidationError } from "enterprise-core/dist/error";
+import { ScraperError } from "./errors";
 
 interface SimpleReadingList {
   menu: string;
@@ -81,7 +83,7 @@ class SimpleNovelUpdates implements ListManager {
 
   public async scrapeLists(): Promise<ListScrapeResult> {
     if (!this.profile || !this.id) {
-      throw Error("no valid user data injected");
+      throw new ValidationError("no valid user data injected");
     }
     const result: ListScrapeResult = { feed: [], lists: [], media: [] };
     const [list, numberLists] = await this.scrapeList(0);
@@ -112,19 +114,19 @@ class SimpleNovelUpdates implements ListManager {
     const link = medium.title.link;
 
     const $ = await SimpleNovelUpdates.loadCheerio(link);
-    medium.title.text = $(".seriestitlenu").text().trim();
+    medium.title.text = ($(".seriestitlenu").prop("innerText") as string).trim();
     const synonyms = $("#editassociated").contents();
 
-    const lang = $("#showlang").text().trim();
+    const lang = ($("#showlang").prop("innerText") as string).trim();
     const authors = $("#showauthors a");
     const artists = $("#showartists a");
-    const statusCoo = $("#editstatus").text().trim();
-    const statusTL = $("#showtranslated").text().trim();
+    const statusCoo = ($("#editstatus").prop("innerText") as string).trim();
+    const statusTL = ($("#showtranslated").prop("innerText") as string).trim();
 
     medium.synonyms = [];
 
     for (let i = 0; i < synonyms.length; i += 2) {
-      const synonym = synonyms.eq(i).text().trim();
+      const synonym = (synonyms.eq(i).prop("innerText") as string).trim();
       medium.synonyms.push(synonym);
     }
 
@@ -146,7 +148,7 @@ class SimpleNovelUpdates implements ListManager {
         const authorElement = authors.eq(i);
         const author = {
           link: authorElement.attr("href") as string,
-          name: authorElement.text().trim(),
+          name: (authorElement.prop("innerText") as string).trim(),
         };
         medium.authors.push(author);
       }
@@ -158,7 +160,7 @@ class SimpleNovelUpdates implements ListManager {
         const artistElement = artists.eq(i);
         const artist = {
           link: artistElement.attr("href") as string,
-          name: artistElement.text().trim(),
+          name: (artistElement.prop("innerText") as string).trim(),
         };
         medium.artists.push(artist);
       }
@@ -169,7 +171,7 @@ class SimpleNovelUpdates implements ListManager {
       medium.latest = NovelUpdates.scrapeListRow(3, tableData);
     }
     // @ts-expect-error
-    medium.latest.date = tableData.first().text().trim();
+    medium.latest.date = (tableData.first().prop("innerText") as string).trim();
   }
 
   public stringifyCookies(): string {
@@ -209,7 +211,7 @@ class SimpleNovelUpdates implements ListManager {
 
     const lastIndexOf = response.lastIndexOf("}");
     if (!lastIndexOf) {
-      throw Error("expected a json object contained in message, got " + response);
+      throw new ScraperError("expected a json object contained in message, got " + response);
     }
     const listData: SimpleReadingList = JSON.parse(response.substring(0, lastIndexOf + 1));
     const nameReg = />\s*(\w+)\s*<\s*\/\s*span\s*>/g;
@@ -230,8 +232,8 @@ class SimpleNovelUpdates implements ListManager {
       const tableData = row.children();
 
       const link = tableData.eq(1).children("a").first();
-      const title = { text: link.text().trim(), link: link.attr("href") as string };
-      const stand = tableData.eq(2).text();
+      const title = { text: (link.prop("innerText") as string).trim(), link: link.attr("href") as string };
+      const stand = tableData.eq(2).prop("innerText") as string;
 
       const progressExec = progressReg.exec(stand);
 
@@ -263,7 +265,7 @@ class SimpleNovelUpdates implements ListManager {
 class NovelUpdates implements ListManager {
   public static scrapeListRow(i: number, tableData: cheerio.Cheerio<cheerio.Element>) {
     const link = tableData.eq(i).children("a").first();
-    return { text: link.text().trim(), link: link.attr("href") as string };
+    return { text: (link.prop("innerText") as string).trim(), link: link.attr("href") as string };
   }
 
   public jar: any;
@@ -308,7 +310,7 @@ class NovelUpdates implements ListManager {
     const listElement = $(".l-content #cssmenu ul li");
 
     if (!listElement.length) {
-      return Promise.reject(new Error(Errors.INVALID_SESSION));
+      return Promise.reject(new ScraperError(Errors.INVALID_SESSION));
     }
 
     const lists = [];
@@ -321,7 +323,7 @@ class NovelUpdates implements ListManager {
       link = new url.URL(link, this.baseURI).href;
 
       const list: ScrapeList = {
-        name: element.text().trim(),
+        name: (element.prop("innerText") as string).trim(),
         link,
         medium: MediaType.TEXT,
         media: [],
@@ -334,7 +336,7 @@ class NovelUpdates implements ListManager {
     }
 
     if (!currentList) {
-      throw Error("Current Novelupdates List not found!");
+      throw new ScraperError("Current Novelupdates List not found!");
     }
 
     const feed: string[] = [];
@@ -384,15 +386,15 @@ class NovelUpdates implements ListManager {
     const $ = await this.loadCheerio(link);
     const synonyms = $("#editassociated").contents();
 
-    const lang = $("#showlang").text().trim();
+    const lang = ($("#showlang").prop("innerText") as string).trim();
     const authors = $("#showauthors a");
     const artists = $("#showartists a");
-    // const statusCOO = $("#editstatus").text().trim();
+    // const statusCOO = ($("#editstatus").prop("innerText") as string).trim();
 
     medium.synonyms = [];
 
     for (let i = 0; i < synonyms.length; i += 2) {
-      const synonym = synonyms.eq(i).text().trim();
+      const synonym = (synonyms.eq(i).prop("innerText") as string).trim();
       medium.synonyms.push(synonym);
     }
 
@@ -408,7 +410,7 @@ class NovelUpdates implements ListManager {
         const authorElement = authors.eq(i);
         const author = {
           link: authorElement.attr("href") as string,
-          name: authorElement.text().trim(),
+          name: (authorElement.prop("innerText") as string).trim(),
         };
         medium.authors.push(author);
       }
@@ -420,7 +422,7 @@ class NovelUpdates implements ListManager {
         const artistElement = artists.eq(i);
         const artist = {
           link: artistElement.attr("href") as string,
-          name: artistElement.text().trim(),
+          name: (artistElement.prop("innerText") as string).trim(),
         };
         medium.artists.push(artist);
       }
@@ -431,7 +433,7 @@ class NovelUpdates implements ListManager {
       medium.latest = NovelUpdates.scrapeListRow(3, tableData);
     }
     // @ts-expect-error
-    medium.latest.date = tableData.first().text().trim();
+    medium.latest.date = (tableData.first().prop("innerText") as string).trim();
   }
 
   public stringifyCookies() {
@@ -607,7 +609,7 @@ export function factory(type: number, cookies?: string): ListManager {
     instance = new SimpleNovelUpdates();
   }
   if (!instance) {
-    throw Error("unknown list manager");
+    throw new ValidationError("unknown list manager");
   }
   instance.parseAndReplaceCookies(cookies);
   return instance;

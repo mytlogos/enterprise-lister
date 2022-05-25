@@ -1,6 +1,6 @@
 {
   "name": "enterprise-server",
-  "version": "1.29.1",
+  "version": "1.36.4",
   "private": true,
   "scripts": {
     "build": "tsc -p ./",
@@ -20,7 +20,7 @@
     "express-prom-bundle": "^6.4.1",
     "express-ws": "^5.0.2",
     "handlebars": "^4.7.7",
-    "helmet": "^5.0.2",
+    "helmet": "^5.1.0",
     "http-errors": "^2.0.0",
     "localtunnel": "^2.0.2",
     "morgan": "^1.10.0",
@@ -28,20 +28,20 @@
     "request-promise-native": "^1.0.9",
     "stringify-stream": "^1.0.5",
     "swagger-jsdoc": "^6.2.1",
-    "swagger-ui-express": "^4.3.0",
+    "swagger-ui-express": "^4.4.0",
     "tslib": "^2.4.0",
     "validate.js": "^0.13.1",
-    "yargs": "^17.4.1"
+    "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@types/compression": "^1.7.2",
     "@types/debug": "^4.1.5",
     "@types/http-errors": "^1.8.2",
-    "@types/jest": "^27.5.0",
+    "@types/jest": "^27.5.1",
     "@types/js-yaml": "^4.0.5",
     "@types/localtunnel": "^2.0.1",
     "@types/morgan": "^1.9.3",
-    "@types/node": "^16.11.33",
+    "@types/node": "^16.11.36",
     "@types/request-promise-native": "^1.0.17",
     "@types/swagger-jsdoc": "^6.0.1",
     "@types/swagger-ui": "^3.52.0",

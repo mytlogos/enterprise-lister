@@ -16,14 +16,6 @@ const router = createRouter({
       component: () => import(/* webpackChunkName: "lists" */ "./views/Lists.vue"),
     },
     {
-      path: "/news",
-      name: "news",
-      // route level code-splitting
-      // this generates a separate chunk (news.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import(/* webpackChunkName: "news" */ "./views/News.vue"),
-    },
-    {
       path: "/settings",
       name: "settings",
       // route level code-splitting
@@ -74,12 +66,6 @@ const router = createRouter({
     {
       path: "/releases",
       name: "releases",
-      props: (to) => {
-        return {
-          read: to.query.read ? to.query.read === "true" : undefined,
-          type: to.query.type ? Number(to.query.type) : 0,
-        };
-      },
       // route level code-splitting
       // this generates a separate chunk (login.[hash].js) for this route
       // which is lazy-loaded when the route is visited.

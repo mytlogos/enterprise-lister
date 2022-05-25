@@ -311,7 +311,7 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
         if (error) {
           reject(error);
         } else {
-          const load = cheerio.load(dom as cheerio.Node[], { decodeEntities: false });
+          const load = cheerio.load(dom, { decodeEntities: false });
           resolve(load);
         }
       },

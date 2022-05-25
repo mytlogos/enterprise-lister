@@ -36,13 +36,13 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
     const episodeTitleElement = newsRow.children(".episode");
 
-    const mediumTitle = sanitizeString(mediumElement.text());
+    const mediumTitle = sanitizeString(mediumElement.prop("innerText") as string);
 
-    const rawTitle = sanitizeString(episodeTitleElement.text());
+    const rawTitle = sanitizeString(episodeTitleElement.prop("innerText") as string);
     const groups = titlePattern.exec(rawTitle);
 
     if (!groups) {
-      logger.warn(`Unknown GogoAnime News Format: '${episodeTitleElement.text()}' for '${mediumTitle}'`);
+      logger.warn(`Unknown GogoAnime News Format: '${episodeTitleElement.prop("innerText")}' for '${mediumTitle}'`);
       continue;
     }
 
@@ -83,7 +83,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $(".content_left .main_body");
 
-  const animeTitle = sanitizeString(contentElement.find("h1").text());
+  const animeTitle = sanitizeString(contentElement.find("h1").prop("innerText") as string);
 
   if (!animeTitle) {
     logger.warn("toc link with no title: " + urlString);
@@ -101,7 +101,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
   for (let i = 0; i < episodePages.length; i++) {
     const episodePage = episodePages.eq(i);
-    const exec = pageReg.exec(episodePage.text());
+    const exec = pageReg.exec(episodePage.prop("innerText") as string);
 
     if (!exec) {
       logger.warn(`could not match toc episode Page text on '${urlString}'`);
@@ -128,14 +128,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < infoElements.length; i++) {
     const element = infoElements.eq(i);
 
-    if (element.text().toLocaleLowerCase().includes("status")) {
+    if ((element.prop("innerText") as string).toLocaleLowerCase().includes("status")) {
       releaseStateElement = element.parent();
     }
   }
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = releaseStateElement.text().toLowerCase();
+    const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {
@@ -190,7 +190,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
 
     const coverElement = linkElement.find("[style]");
 
-    const text = sanitizeString(linkElement.text());
+    const text = sanitizeString(linkElement.prop("innerText") as string);
     const link = linkElement.attr("href") as string;
     const coverStyle = coverElement.attr("style") as string;
     const exec = coverRegex.exec(coverStyle);
@@ -228,7 +228,7 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
   const downloadPage = await queueCheerioRequest(outSideLink.attr("href") as string);
 
   const downloadLink = downloadPage(".dowload a").first().attr("href") as string;
-  const mediumTitle = sanitizeString($(".anime-info a").text());
+  const mediumTitle = sanitizeString($(".anime-info a").prop("innerText") as string);
 
   return [
     {

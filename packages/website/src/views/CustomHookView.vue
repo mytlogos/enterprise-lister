@@ -97,9 +97,9 @@ import "vue-prism-editor/dist/prismeditor.min.css"; // import the styles somewhe
 import { highlight, languages } from "prismjs/components/prism-core";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
-import type { BasicScraperConfig, HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
+import type { HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
 import { HttpClient } from "../Httpclient";
-import { defineComponent } from "@vue/runtime-core";
+import { defineComponent } from "vue";
 import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/custom-hook-form.vue";

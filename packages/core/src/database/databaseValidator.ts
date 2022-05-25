@@ -9,6 +9,7 @@ import { Uuid, MultiSingleValue, EmptyPromise, Optional, Nullable } from "../typ
 import { DatabaseContext } from "./contexts/databaseContext";
 import * as validate from "validate.js";
 import { Counter } from "../counter";
+import { DatabaseError, SchemaError } from "../error";
 
 interface StateProcessor {
   addSql<T>(query: string, parameter: MultiSingleValue<any>, value: T, uuid?: Uuid): T;
@@ -329,11 +330,11 @@ function createTrigger(
   triggerType: InvalidationType,
 ): Trigger {
   if (targetTable.primaryKeys.length !== 1) {
-    throw Error("targeted table does not has exact one primary key");
+    throw new SchemaError("targeted table does not has exact one primary key");
   }
 
   if (invalidationTable === watchTable || invalidationTable === targetTable) {
-    throw Error("invalidation table is not valid");
+    throw new SchemaError("invalidation table is not valid");
   }
   return {
     table: watchTable,
@@ -363,7 +364,7 @@ function createTrigger(
 
       if (watchTable.mainDependent) {
         if (!query.uuid) {
-          throw Error("missing uuid on dependant table");
+          throw new SchemaError("missing uuid on dependant table");
         }
         invalidation.uuid = mySql.escape(query.uuid);
       }
@@ -401,7 +402,7 @@ const StateProcessorImpl: StateProcessorImpl = {
     const tables = [];
     while (tableExec) {
       if (tables.length > this.tables.length * 5) {
-        throw Error("too many tables: regExp is faulty");
+        throw new SchemaError("too many tables: regExp is faulty");
       }
       if (tableExec[7]) {
         tables.push(tableExec[7]);
@@ -426,7 +427,7 @@ const StateProcessorImpl: StateProcessorImpl = {
           const foundTable = this.tables.find((value) => equalsIgnore(value.name, name));
 
           if (!foundTable) {
-            throw Error(`Unknown Table: '${name}'`);
+            throw new DatabaseError(`Unknown Table: '${name}'`);
           }
 
           return foundTable;
@@ -445,7 +446,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         const foundTable = this.tables.find((value) => equalsIgnore(value.name, tableName));
 
         if (!foundTable) {
-          throw Error(`Unknown Table: '${tableName}'`);
+          throw new DatabaseError(`Unknown Table: '${tableName}'`);
         }
         const realColumnName = columnName.substring(separator + 1);
         columnSchema = foundTable.columns.find((schema) => {
@@ -477,7 +478,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         if (i === 0) {
           columnValue = parameter;
         } else {
-          throw Error("Number of Values and Placeholders do not match, one value but multiple placeholders");
+          throw new SchemaError("Number of Values and Placeholders do not match, one value but multiple placeholders");
         }
       }
       const columnTable = columnSchema.table && columnSchema.table.name;
@@ -485,15 +486,15 @@ const StateProcessorImpl: StateProcessorImpl = {
       const notNull = columnValue != null;
 
       if (columnSchema.type === ColumnType.INT && notNull && !Number.isInteger(columnValue)) {
-        throw Error(`non integer value on int column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`non integer value on int column: '${columnName}' in table '${columnTable}'`);
       }
 
       if (columnSchema.type === ColumnType.FLOAT && notNull && !validate.isNumber(columnValue)) {
-        throw Error(`non number value on float column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`non number value on float column: '${columnName}' in table '${columnTable}'`);
       }
 
       if (columnSchema.type === ColumnType.BOOLEAN && notNull && !validate.isBoolean(columnValue)) {
-        throw Error(`non boolean value on boolean column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`non boolean value on boolean column: '${columnName}' in table '${columnTable}'`);
       }
 
       if (
@@ -501,7 +502,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         notNull &&
         (!validate.isDate(columnValue) || Number.isNaN(columnValue.getDate()))
       ) {
-        throw Error(`no valid date value on date column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`no valid date value on date column: '${columnName}' in table '${columnTable}'`);
       }
 
       if (
@@ -509,15 +510,15 @@ const StateProcessorImpl: StateProcessorImpl = {
         notNull &&
         !isString(columnValue)
       ) {
-        throw Error(`no string value on string column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`no string value on string column: '${columnName}' in table '${columnTable}'`);
       }
 
       if (columnSchema.modifiers.includes(Modifier.NOT_NULL) && !notNull) {
-        throw Error(`null/undefined on not nullable column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`null/undefined on not nullable column: '${columnName}' in table '${columnTable}'`);
       }
 
       if (columnSchema.modifiers.includes(Modifier.UNSIGNED) && notNull && columnValue < 0) {
-        throw Error(`negative number on unsigned column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`negative number on unsigned column: '${columnName}' in table '${columnTable}'`);
       }
     }
   },
@@ -628,7 +629,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         (column) => column.foreignKey === tableKey || column.foreignKey === tableKey.foreignKey,
       );
       if (!found) {
-        throw Error(`no corresponding foreign key in invalidationTable for column '${tableKey.name}'`);
+        throw new SchemaError(`no corresponding foreign key in invalidationTable for column '${tableKey.name}'`);
       }
       return { column: found.name, value };
     };

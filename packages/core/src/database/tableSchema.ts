@@ -1,5 +1,6 @@
 import { InvalidationType } from "./databaseTypes";
 import { ColumnSchema } from "./columnSchema";
+import { SchemaError } from "../error";
 
 export class TableSchema {
   public readonly columns: ColumnSchema[];
@@ -41,10 +42,10 @@ export class TableSchema {
           ...this.foreignKeys.map((value) => {
             const foreignKey = value.foreignKey;
             if (!foreignKey) {
-              throw Error("invalid foreign key: is undefined");
+              throw new SchemaError("invalid foreign key: is undefined");
             }
             if (!foreignKey.table || !foreignKey.table.name) {
-              throw Error("invalid foreign key: empty table");
+              throw new SchemaError("invalid foreign key: empty table");
             }
             return `FOREIGN KEY (${value.name}) REFERENCES ${foreignKey.table.name}(${foreignKey.name})`;
           }),

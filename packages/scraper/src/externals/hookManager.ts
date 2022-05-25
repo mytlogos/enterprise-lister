@@ -16,6 +16,7 @@ import { getListManagerHooks } from "./listManager";
 import { MediaType, multiSingle } from "enterprise-core/dist/tools";
 import { HookConfig } from "./custom/types";
 import { createHook } from "./custom/customScraper";
+import { ValidationError } from "enterprise-core/dist/error";
 
 function getRawHooks(): Hook[] {
   return [
@@ -174,10 +175,10 @@ function disableHook(hook: Hook): Hook {
 function registerHooks(hook: Hook[] | Hook): void {
   multiSingle(hook, (value: Hook) => {
     if (!value.name) {
-      throw Error("hook without name!");
+      throw new ValidationError("hook without name!");
     }
     if (nameHookMap.has(value.name)) {
-      throw Error(`encountered hook with name '${value.name}' twice`);
+      throw new ValidationError(`encountered hook with name '${value.name}' twice`);
     }
     nameHookMap.set(value.name, value);
 
@@ -250,7 +251,7 @@ export function getHooks(): Hook[] {
 export function getHook(name: string): Hook {
   const hook = nameHookMap.get(name);
   if (!hook) {
-    throw Error(`there is no hook with name: '${name}'`);
+    throw new ValidationError(`there is no hook with name: '${name}'`);
   }
   return hook;
 }

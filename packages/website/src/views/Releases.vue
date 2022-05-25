@@ -2,40 +2,45 @@
   <div class="container-fluid p-0">
     <h1 id="releases-title">Releases</h1>
     <div class="p-1">
-      <button class="btn btn-dark" @click.left="fetchReleases(true)">Refresh</button>
-      <button class="btn btn-dark ms-1" @click.left="fetchReleases">Fetch new Releases</button>
-      <triple-filter v-model:state="readFilter" class="ms-1" />
-      <media-filter :state="typeFilter" class="ms-1" @update:state="typeFilter = $event">
-        <template #additional="{ value }">
-          <span
-            class="badge bg-primary rounded-pill"
-            aria-hidden="true"
-            style="bottom: 26px; position: absolute; top: -10px; right: -10px; z-index: 10"
-          >
-            {{ typeReleases[value] }}
-          </span>
+      <p-button :loading="isRefreshing" label="Refresh" @click.left="refresh" />
+      <p-button class="ms-1" :loading="isFetching" label="Fetch new Releases" @click.left="fetchNew" />
+      <SelectButton v-model="readFilter" class="d-inline-block ms-1" :options="readFilterValues" data-key="value">
+        <template #option="slotProps">
+          <i class="fas fa-check" :class="{ 'text-success': slotProps.option.value }" aria-hidden="true" />
         </template>
-      </media-filter>
-      <div class="d-inline ms-1">
-        <auto-complete
-          thing-key="id"
-          class="d-inline"
-          :items="media"
-          title-key="title"
-          placeholder="Ignore Medium"
-          @input="ignoreMedium"
-        />
-      </div>
-      <div class="d-inline ms-1">
-        <auto-complete
-          thing-key="id"
-          class="d-inline"
-          :items="lists"
-          title-key="name"
-          placeholder="Ignore List"
-          @input="ignoreList"
-        />
-      </div>
+      </SelectButton>
+      <SelectButton
+        v-model="typeFilter"
+        class="d-inline-block ms-1"
+        :options="typeFilterValues"
+        data-key="value"
+        option-value="value"
+      >
+        <template #option="slotProps">
+          <i
+            v-badge="slotProps.option.count"
+            v-tooltip.top="slotProps.option.tooltip"
+            :class="slotProps.option.icon"
+            aria-hidden="true"
+          />
+        </template>
+      </SelectButton>
+      <AutoComplete
+        v-model="mediumSuggestion"
+        force-selection
+        :suggestions="mediumSuggestions"
+        field="title"
+        @item-select="ignoreMedium($event.value)"
+        @complete="searchMedium($event)"
+      />
+      <AutoComplete
+        v-model="listSuggestion"
+        force-selection
+        :suggestions="listSuggestions"
+        field="name"
+        @item-select="ignoreList($event.value)"
+        @complete="searchList($event)"
+      />
     </div>
     <div v-if="onlyMedia.length">
       <div class="px-1">Required Media:</div>
@@ -77,106 +82,100 @@
         @delete="unignoreList(list)"
       />
     </div>
-    <pagination class="m-1" :pages="50" @page="paginate" />
-    <table class="table table-striped table-hover table-sm align-middle" aria-describedby="releases-title">
-      <thead class="table-dark">
-        <tr>
-          <th scope="col">#</th>
-          <th scope="col">Date</th>
-          <th scope="col">Chapter</th>
-          <th scope="col">Medium</th>
-          <th scope="col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(entry, index) in computedReleases" :key="entry.episodeId + entry.link">
-          <td class="">
-            {{ index + 1 }}
-          </td>
-          <td class="">
-            {{ dateToString(entry.date) }}
-          </td>
-          <td>
-            <template v-if="entry.locked">
-              <i class="fas fa-lock" aria-hidden="true" />
-            </template>
-            <a :href="entry.link" target="_blank" rel="noopener noreferrer">
-              {{ entry.title }}
-            </a>
-          </td>
-          <td>
-            <router-link
-              :to="{
-                name: 'medium',
-                params: { id: entry.mediumId },
-              }"
-            >
-              {{ getMedium(entry.mediumId)?.title }}
-            </router-link>
-          </td>
-          <td>
-            <button
-              class="btn"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              :title="entry.progress < 1 ? 'Mark read' : 'Mark unread'"
-              @click.left="changeReadStatus(entry)"
-            >
-              <i
-                class="fas fa-check"
-                aria-hidden="true"
-                :class="{
-                  'text-success': entry.progress === 1,
-                }"
-              />
-            </button>
-            <button
-              class="btn"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              title="Ignore Medium"
-              @click.left="ignoreMedium(getMedium(entry.mediumId))"
-            >
-              <i class="fas fa-ban text-warning" aria-hidden="true" />
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <!-- TODO: make bootstrap toast to a vue component with message (toast) queue -->
-    <div id="progress-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="toast-header">
-        <i class="fas fa-exclamation-circle rounded me-2 text-danger" aria-hidden="true" />
-        <strong class="me-auto">Error</strong>
-        <button
-          type="button"
-          class="ms-2 mb-1 btn-close"
-          data-bs-dismiss="toast"
-          aria-label="Close"
-          @click.left="closeProgressToast"
-        >
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="toast-body">Could not update Progress</div>
-    </div>
+    <DataTable
+      :value="computedReleases"
+      scrollable
+      scroll-height="800px"
+      :virtual-scroller-options="{ itemSize: 50 }"
+      :loading="fetching"
+      striped-rows
+    >
+      <template #empty> No records found </template>
+      <template #loading> Loading records, please wait... </template>
+      <Column field="date" header="Date">
+        <template #body="slotProps">
+          {{ slotProps.data.date }}
+        </template>
+      </Column>
+      <Column field="title" header="Chapter">
+        <template #body="slotProps">
+          <i v-if="slotProps.data.locked" class="fas fa-lock" aria-hidden="true" />
+          <a :href="slotProps.data.link" target="_blank" rel="noopener noreferrer">
+            {{ slotProps.data.title }}
+          </a>
+        </template>
+      </Column>
+      <Column field="mediumId" header="Medium">
+        <template #body="slotProps">
+          <router-link
+            :to="{
+              name: 'medium',
+              params: { id: slotProps.data.mediumId },
+            }"
+          >
+            {{ slotProps.data.mediumTitle }}
+          </router-link>
+        </template>
+      </Column>
+      <Column header="Action" autolayout>
+        <template #body="slotProps">
+          <p-button
+            v-tooltip.top="slotProps.data.read ? 'Mark unread' : 'Mark read'"
+            class="p-button-text"
+            :class="{
+              'p-button-success': slotProps.data.read,
+              'p-button-plain': !slotProps.data.read,
+            }"
+            icon="pi pi-check"
+            style="margin: -0.5rem 0"
+            @click.left="changeReadStatus(slotProps.data)"
+          />
+          <p-button
+            v-tooltip.top="'Ignore Medium'"
+            icon="pi pi-ban"
+            class="p-button-text p-button-warning"
+            style="margin: -0.5rem 0"
+            @click.left="ignoreMedium(getMedium(slotProps.data.mediumId))"
+          />
+        </template>
+      </Column>
+    </DataTable>
+    <Toast />
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, List, MediaType, SimpleMedium } from "../siteTypes";
+import { DisplayRelease, List, MediaType, MinMedium, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
-import { formatDate, timeDifference } from "../init";
-import TripleFilter from "../components/triple-filter.vue";
-import MediaFilter from "../components/media-filter.vue";
+import { formatDate } from "../init";
 import ToolTip from "bootstrap/js/dist/tooltip";
-import Toast from "bootstrap/js/dist/toast";
-import AutoComplete from "../components/auto-complete.vue";
 import AppLabel from "../components/label.vue";
-import Pagination from "../components/pagination.vue";
+import { PrimeIcons } from "primevue/api";
+
+interface Value<T> {
+  value: T;
+}
+
+interface SearchEvent {
+  query: string;
+}
+
+interface DisplayReleaseItem {
+  episodeId: number;
+  title: string;
+  link: string;
+  mediumId: number;
+  medium: number;
+  mediumTitle: string;
+  locked?: boolean;
+  date: string;
+  time: number;
+  read: boolean;
+  key: string;
+}
 
 interface Data {
-  releases: DisplayRelease[];
+  releases: DisplayReleaseItem[];
   currentDate: Date;
   fetching: boolean;
   unmounted: boolean;
@@ -187,24 +186,27 @@ interface Data {
   typeReleases: Record<MediaType | number, number>;
   currentReleases: Set<string>;
   tooltips: ToolTip[];
-  progressToast: null | Toast;
   latest: Date;
   until?: Date;
   pages: Array<{ latest: Date; until: Date }>;
+  isFetching: boolean;
+  isRefreshing: boolean;
+  readFilterValues: [Value<true>, Value<false>];
+  typeFilterValues: Array<{
+    tooltip: string;
+    count: number;
+    icon: string;
+    value: number;
+  }>;
+  mediumSuggestion?: SimpleMedium;
+  mediumSuggestions: SimpleMedium[];
+  listSuggestions: List[];
+  listSuggestion?: List;
 }
 
 export default defineComponent({
   name: "Releases",
-  components: { TripleFilter, MediaFilter, AutoComplete, AppLabel, Pagination },
-
-  props: {
-    read: Boolean,
-    type: {
-      type: Number,
-      default: 0,
-    },
-  },
-
+  components: { AppLabel },
   data(): Data {
     const latest = new Date();
     latest.setFullYear(latest.getFullYear() + 1);
@@ -215,7 +217,9 @@ export default defineComponent({
     return {
       releases: [],
       currentDate: new Date(),
-      fetching: false,
+      fetching: false, // for the method
+      isFetching: false, // for the button
+      isRefreshing: false, // for the button
       unmounted: false,
       replace: false,
       typeReleases: {
@@ -226,10 +230,40 @@ export default defineComponent({
       },
       currentReleases: new Set(),
       tooltips: [],
-      progressToast: null,
       latest: new Date(),
       until: undefined,
       pages: [{ latest, until }],
+      readFilterValues: [{ value: true }, { value: false }],
+      typeFilterValues: [
+        {
+          tooltip: "Search Text Media",
+          count: 0,
+          icon: PrimeIcons.BOOK,
+          value: MediaType.TEXT,
+        },
+        {
+          tooltip: "Search Image Media",
+          count: 0,
+          icon: PrimeIcons.IMAGE,
+          value: MediaType.IMAGE,
+        },
+        {
+          tooltip: "Search Video Media",
+          count: 0,
+          icon: PrimeIcons.YOUTUBE,
+          value: MediaType.VIDEO,
+        },
+        {
+          tooltip: "Search Audio Media",
+          count: 0,
+          icon: PrimeIcons.VOLUME_OFF,
+          value: MediaType.AUDIO,
+        },
+      ],
+      mediumSuggestions: [],
+      listSuggestions: [],
+      mediumSuggestion: undefined,
+      listSuggestion: undefined,
     };
   },
   computed: {
@@ -263,20 +297,19 @@ export default defineComponent({
     lists(): List[] {
       return this.$store.state.lists.lists;
     },
-    computedReleases(): DisplayRelease[] {
-      let copy = [...this.releases] as DisplayRelease[];
-
+    computedReleases(): DisplayReleaseItem[] {
       if (this.typeFilter) {
-        copy = copy.filter((value) => (this.$store.state.media.media[value.mediumId]?.medium || 0) & this.typeFilter);
+        return this.releases.filter((value) => value.medium & this.typeFilter);
+      } else {
+        return this.releases;
       }
-      return copy.sort((a: DisplayRelease, b: DisplayRelease) => b.date.getTime() - a.date.getTime());
     },
     readFilter: {
-      get(): boolean | undefined {
-        return this.$store.state.releases.readFilter;
+      get(): Value<boolean> {
+        return { value: !!this.$store.state.releases.readFilter };
       },
-      set(read?: boolean) {
-        this.$store.commit("releases/readFilter", read);
+      set(read?: Value<boolean>) {
+        this.$store.commit("releases/readFilter", read?.value);
       },
     },
     typeFilter: {
@@ -284,21 +317,15 @@ export default defineComponent({
         return this.$store.state.releases.typeFilter;
       },
       set(type: number) {
+        console.log("typeFilter", type);
         this.$store.commit("releases/typeFilter", type);
       },
     },
   },
   watch: {
     readFilter() {
-      this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
-    },
-    typeFilter() {
-      this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
-    },
-    read() {
       // when release filter changed, set replace current items flag and fetch anew
-      this.replace = true;
-      this.fetchReleases();
+      this.fetchReleases(true);
     },
     onlyMedia: {
       handler() {
@@ -324,7 +351,7 @@ export default defineComponent({
       },
       deep: true,
     },
-    computedReleases() {
+    releases() {
       console.log("i am triggerin");
       const newCount = {
         [MediaType.TEXT]: 0,
@@ -334,22 +361,18 @@ export default defineComponent({
       } as Record<number, number>;
 
       this.releases.forEach((value) => {
-        const medium = this.$store.getters.getMedium(value.mediumId) as SimpleMedium;
-
-        if (medium) {
-          newCount[medium.medium]++;
+        if (value.medium) {
+          newCount[value.medium]++;
         }
       });
 
       Object.assign(this.typeReleases, newCount);
+      this.typeFilterValues.forEach((item) => {
+        item.count = newCount[item.value];
+      });
     },
   },
   async mounted() {
-    // eslint-disable-next-line @typescript-eslint/quotes
-    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
-    this.progressToast = new Toast("#progress-toast");
-
-    await this.$router.push({ query: { read: String(this.readFilter), type: this.typeFilter } });
     this.unmounted = false;
     // FIXME: why does this property not exist?:
     // @ts-expect-error
@@ -423,6 +446,28 @@ export default defineComponent({
       }
       this.fetchReleases(true);
     },
+    searchMedium(event: SearchEvent) {
+      const query = event.query.toLowerCase();
+
+      if (!query.trim()) {
+        this.mediumSuggestions = Object.values(this.$store.state.media.media);
+        return;
+      }
+      this.mediumSuggestions = Object.values(this.$store.state.media.media).filter((medium) => {
+        return medium.title.toLowerCase().includes(query);
+      });
+    },
+    searchList(event: SearchEvent) {
+      const query = event.query.toLowerCase();
+
+      if (!query.trim()) {
+        this.listSuggestions = Object.values(this.$store.state.lists.lists);
+        return;
+      }
+      this.listSuggestions = Object.values(this.$store.state.lists.lists).filter((list) => {
+        return list.name.toLowerCase().includes(query);
+      });
+    },
     requireMedium(item: SimpleMedium): void {
       if (item) {
         this.$store.commit("releases/requireMedium", item.id);
@@ -439,6 +484,7 @@ export default defineComponent({
     },
     ignoreMedium(item: SimpleMedium): void {
       if (item) {
+        this.mediumSuggestion = undefined;
         this.$store.commit("releases/ignoreMedium", item.id);
       } else {
         console.trace("Got event without value!");
@@ -446,6 +492,7 @@ export default defineComponent({
     },
     ignoreList(item: List): void {
       if (item) {
+        this.listSuggestion = undefined;
         this.$store.commit("releases/ignoreList", item.id);
       } else {
         console.trace("Got event without value!");
@@ -482,29 +529,23 @@ export default defineComponent({
     getMedium(id: number): SimpleMedium {
       return this.$store.getters.getMedium(id);
     },
-    timeDifference(date: Date): string {
-      return timeDifference(this.currentDate, date);
-    },
     async fetchReleases(replace = false) {
       // do not fetch if already fetching or this component is already unmounted
       if (this.fetching || this.unmounted) {
         return;
       }
-      replace = replace || this.replace;
       this.fetching = true;
 
       if (replace) {
         this.until = this.until || this.defaultUntil();
         this.latest = this.latest || this.defaultLatest();
+        this.isRefreshing = true;
       }
-      // if (this.releases.length && !replace) {
-      //   this.until = this.computedReleases[0].date;
-      // }
       try {
         const response = await HttpClient.getDisplayReleases(
           this.latest,
           this.until,
-          this.read,
+          this.readFilter.value,
           this.onlyLists.map((item) => item.id),
           this.onlyMedia.map((item) => item.id) as number[],
           this.ignoreLists.map((item) => item.id),
@@ -518,28 +559,71 @@ export default defineComponent({
             return !this.currentReleases.has(value.episodeId + value.link);
           });
         }
-        response.releases.forEach((value) => {
-          if (!(value.date instanceof Date)) {
-            value.date = new Date(value.date);
-          }
-          this.currentReleases.add(value.episodeId + value.link);
-        });
         this.currentDate = new Date();
         // replace previous releases if necessary
-        const releases: DisplayRelease[] = replace ? reactive([]) : this.releases;
+        const releases: DisplayReleaseItem[] = replace ? [] : [...this.releases];
         this.replace = false;
         // when filter changed while a previous query is still running, it may lead to wrong results
         // should not happen because no two fetches should happen at the same time
 
+        const mediumIdMap = new Map<number, MinMedium>();
         // insert fetched releases at the corresponding place
-        releases.push(...response.releases);
-        this.releases = releases;
+        releases.push(
+          ...response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
+            if (!(item.date instanceof Date)) {
+              item.date = new Date(item.date);
+            }
+            const key = item.episodeId + item.link;
+            this.currentReleases.add(key);
+
+            let medium: SimpleMedium | undefined = this.$store.getters.getMedium(item.mediumId);
+
+            if (!medium) {
+              // build map only if necessary and previously empty
+              if (!mediumIdMap.size) {
+                response.media.forEach((responseMedium) => {
+                  mediumIdMap.set(responseMedium.id, responseMedium);
+                });
+              } else {
+                medium = mediumIdMap.get(item.mediumId);
+              }
+            }
+            return {
+              key: key,
+              date: formatDate(item.date),
+              episodeId: item.episodeId,
+              link: item.link,
+              mediumId: item.mediumId,
+              mediumTitle: medium?.title || "Unknown",
+              medium: medium?.medium || 0,
+              read: item.progress >= 1,
+              time: item.date.getTime(),
+              title: item.title,
+              locked: item.locked,
+            } as DisplayReleaseItem;
+          }),
+        );
+        releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
+        this.$toast.add({
+          severity: "success",
+          summary: "Loaded Releases",
+          life: 1000,
+        });
+        this.releases = reactive(releases);
       } catch (error) {
+        this.$toast.add({
+          severity: "error",
+          summary: "Could not load Releases",
+          detail: error + "",
+          // life: 1000,
+        });
         console.error(error);
       } finally {
         this.fetching = false;
-        // fetch again in a minute
-        // setTimeout(() => this.fetchReleases(), 60000);
+
+        if (replace) {
+          this.isRefreshing = false;
+        }
       }
     },
 
@@ -547,36 +631,39 @@ export default defineComponent({
      * Update the progress of the episode of the release to either 0 or 1.
      * Shows an error toast if it could not update the progress.
      */
-    changeReadStatus(release: DisplayRelease): void {
-      const newProgress = release.progress < 1 ? 1 : 0;
+    changeReadStatus(release: DisplayReleaseItem): void {
+      const newProgress = release.read ? 0 : 1;
       HttpClient.updateProgress(release.episodeId, newProgress)
         .then((success) => {
           if (success) {
             // update progress of all releases for the same episode
-            this.releases.forEach((element: DisplayRelease) => {
+            this.releases.forEach((element: DisplayReleaseItem) => {
               if (release.episodeId === element.episodeId) {
-                element.progress = newProgress;
+                element.read = !!newProgress;
               }
             });
           } else {
             return Promise.reject();
           }
         })
-        .catch(() => this.progressToast?.show());
+        .catch((error) => {
+          this.$toast.add({
+            severity: "error",
+            summary: "Could not update Progress",
+            detail: error + "",
+          });
+        });
     },
-
-    /**
-     * Hide progress error toast.
-     */
-    closeProgressToast() {
-      this.progressToast?.hide();
+    refresh() {
+      this.isRefreshing = true;
+      this.fetchReleases(true).finally(() => (this.isRefreshing = false));
     },
-
-    /**
-     * Format a given Date to a german locale string.
-     */
-    dateToString(date: Date): string {
-      return formatDate(date);
+    fetchNew() {
+      this.isFetching = true;
+      this.fetchReleases(false).finally(() => (this.isFetching = false));
+    },
+    log(value: any) {
+      console.log(value);
     },
   },
 });

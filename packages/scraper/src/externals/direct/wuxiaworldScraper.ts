@@ -32,12 +32,12 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
 
     const mediumLinkElement = newsRow.find("td:first-child .title a:first-child");
     const tocLink = new url.URL(mediumLinkElement.attr("href") as string, uri).href;
-    const mediumTitle = sanitizeString(mediumLinkElement.text());
+    const mediumTitle = sanitizeString(mediumLinkElement.prop("innerText") as string);
 
     const titleLink = newsRow.find("td:nth-child(2) a:first-child");
     const link = new url.URL(titleLink.attr("href") as string, uri).href;
 
-    let episodeTitle = sanitizeString(titleLink.text());
+    let episodeTitle = sanitizeString(titleLink.prop("innerText") as string);
 
     const timeStampElement = newsRow.find("td:last-child [data-timestamp]");
     const date = new Date(Number(timeStampElement.attr("data-timestamp")) * 1000);
@@ -121,7 +121,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   }
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $(".content");
-  const novelTitle = sanitizeString(contentElement.find("h2").first().text());
+  const novelTitle = sanitizeString(contentElement.find("h2").first().prop("innerText") as string);
   const volumes = contentElement.find("#accordion > .panel");
 
   if (!volumes.length) {
@@ -140,8 +140,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const chapLinkReg = /https?:\/\/(www\.)?wuxiaworld\.com\/novel\/.+-chapter-((\d+)([.-](\d+))?)\/?$/;
   for (let vIndex = 0; vIndex < volumes.length; vIndex++) {
     const volumeElement = volumes.eq(vIndex);
-    const volumeIndex = Number(volumeElement.find(".panel-heading .book").first().text().trim());
-    const volumeTitle = sanitizeString(volumeElement.find(".panel-heading .title").first().text());
+    const volumeIndex = Number((volumeElement.find(".panel-heading .book").first().prop("innerText") as string).trim());
+    const volumeTitle = sanitizeString(volumeElement.find(".panel-heading .title").first().prop("innerText") as string);
 
     const volumeChapters = volumeElement.find(".chapter-item a");
     if (Number.isNaN(volumeIndex)) {
@@ -161,7 +161,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       const chapterElement = volumeChapters.eq(cIndex);
       const link = new url.URL(chapterElement.attr("href") as string, uri).href;
 
-      const title = sanitizeString(chapterElement.text());
+      const title = sanitizeString(chapterElement.prop("innerText") as string);
       const linkGroups = chapLinkReg.exec(link);
 
       let indices: { combi: number; total: number; fraction?: number } | null = null;
@@ -245,8 +245,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
   const $ = await queueCheerioRequest(urlString);
   const mainElement = $(".content");
-  const novelTitle = sanitizeString(mainElement.find(".top-bar-area .caption a").first().text());
-  const episodeTitle = sanitizeString(mainElement.find(".panel .caption h4").first().text());
+  const novelTitle = sanitizeString(mainElement.find(".top-bar-area .caption a").first().prop("innerText") as string);
+  const episodeTitle = sanitizeString(mainElement.find(".panel .caption h4").first().prop("innerText") as string);
   const directContentElement = mainElement.find(".top-bar-area + .panel .fr-view").first();
   // remove teaser (especially the teaser button)
   directContentElement.find("button, img, div#spoiler_teaser").remove();

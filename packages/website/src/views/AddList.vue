@@ -1,24 +1,28 @@
 <template>
-  <div class="container">
+  <div class="container add-list">
     <div class="card m-1">
       <div class="card-body">
         <div class="card-title">Add Reading List</div>
         <div class="input-name">
-          <label>
-            Name:
-            <input v-model="name" name="name" required title="List Name" type="text" />
-          </label>
+          <h5>Name</h5>
+          <input-text v-model="name" name="name" required title="List Name" type="text" />
         </div>
         <div class="input-medium">
-          <label>Medium:</label>
-          <span v-for="type of mediaTypes" :key="type.name" class="medium-check-container">
-            <label>
-              <input v-model="type.checked" type="checkbox" />
-              {{ type.name }}
-            </label>
-          </span>
+          <h5>Medium:</h5>
+          <SelectButton
+            v-model="typeFilter"
+            class="d-inline-block"
+            :options="typeFilterValues"
+            data-key="value"
+            option-value="value"
+            multiple
+          >
+            <template #option="slotProps">
+              <i v-tooltip.top="slotProps.option.tooltip" :class="slotProps.option.icon" aria-hidden="true" />
+            </template>
+          </SelectButton>
         </div>
-        <button class="btn btn-primary" type="button" @click="send">Add List</button>
+        <p-button class="mt-1" label="Add List" :loading="creating" type="button" @click="send" />
       </div>
     </div>
   </div>
@@ -26,53 +30,86 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { PrimeIcons } from "primevue/api";
+import { MediaType } from "../siteTypes";
 
-interface GuiMediaType {
-  value: number;
+interface Data {
   name: string;
-  checked: boolean;
+  creating: boolean;
+  typeFilter: number[];
+  typeFilterValues: Array<{
+    tooltip: string;
+    icon: string;
+    value: number;
+  }>;
 }
 
 export default defineComponent({
   name: "AddList",
-  data(): { mediaTypes: GuiMediaType[]; name: string } {
+  data(): Data {
     return {
-      mediaTypes: [
+      typeFilter: [],
+      typeFilterValues: [
         {
-          name: "Text",
-          checked: false,
-          value: 0x1,
+          tooltip: "Search Text Media",
+          icon: PrimeIcons.BOOK,
+          value: MediaType.TEXT,
         },
         {
-          name: "Audio",
-          checked: false,
-          value: 0x2,
+          tooltip: "Search Image Media",
+          icon: PrimeIcons.IMAGE,
+          value: MediaType.IMAGE,
         },
         {
-          name: "Video",
-          checked: false,
-          value: 0x4,
+          tooltip: "Search Video Media",
+          icon: PrimeIcons.YOUTUBE,
+          value: MediaType.VIDEO,
         },
         {
-          name: "Image",
-          checked: false,
-          value: 0x8,
+          tooltip: "Search Audio Media",
+          icon: PrimeIcons.VOLUME_OFF,
+          value: MediaType.AUDIO,
         },
       ],
       name: "",
+      creating: false,
     };
   },
 
   methods: {
     send(): void {
       let mediumType = 0;
-      this.mediaTypes.forEach((value) => {
-        if (value.checked) {
-          mediumType |= value.value;
+      this.typeFilter.forEach((value) => {
+        if (value) {
+          mediumType |= value;
         }
       });
-      this.$store.dispatch("addList", { name: this.name, type: mediumType });
+      this.$store
+        .dispatch("addList", { name: this.name, type: mediumType })
+        .then(() => {
+          this.$toast.add({
+            summary: "Success",
+            detail: "Successful created List",
+            severity: "success",
+            life: 3000,
+          });
+        })
+        .catch((error) => {
+          this.$toast.add({
+            summary: "Error",
+            detail: error + "",
+            severity: "error",
+            closable: true,
+          });
+        });
     },
   },
 });
 </script>
+<style scoped>
+@media (min-width: 576px) {
+  .add-list {
+    max-width: 560px;
+  }
+}
+</style>

@@ -1,28 +1,36 @@
 <template>
-  <modal error="" :show="!!medium" @finish="send()" @close="$emit('update:medium', null)">
-    <template #title> Add Episodes </template>
-    <template #input>
+  <Dialog v-model:visible="visible" header="Add Episodes" @hide="$emit('update:medium', null)">
+    <div class="row">
       Current Items: {{ parts.length }}
-      <div class="row">
-        <input v-model="newPartPrefix" class="form-input col-3" @keyup.enter="createPart" />
-        <input v-model.number="newPartIndex" type="number" class="form-input col-3" @keyup.enter="createPart" />
-        <input v-model="newEpisodePrefix" class="form-input col-3" @keyup.enter="createPart" />
-        <input v-model.number="newEpisodeCount" type="number" class="form-input col-3" @keyup.enter="createPart" />
-      </div>
+      <p-button label="Next" @click="createPart" />
+    </div>
+    <div class="row">
+      <input-text v-model="newPartPrefix" class="form-input col-3" @keyup.enter="createPart" />
+      <input-number v-model.number="newPartIndex" type="number" class="form-input col-3" @keyup.enter="createPart" />
+    </div>
+    <div class="row">
+      <input-text v-model="newEpisodePrefix" class="form-input col-3" @keyup.enter="createPart" />
+      <input-number v-model.number="newEpisodeCount" type="number" class="form-input col-3" @keyup.enter="createPart" />
+    </div>
+    <ul class="list-group">
+      <li v-for="part in parts" :key="part.title" class="list-group-item">
+        {{ part.title }}: {{ part.episodes.length }} Items
+      </li>
+    </ul>
+    <template #footer>
+      <p-button label="Close" icon="pi pi-times" class="p-button-text" @click="$emit('update:medium', null)" />
+      <p-button label="Add" icon="pi pi-check" autofocus @click="send()" />
     </template>
-    <template #finish> Submit </template>
-  </modal>
+  </Dialog>
 </template>
 <script lang="ts">
 import { MediaType, SimpleMedium, Part } from "../../siteTypes";
 import { defineComponent, PropType } from "vue";
-import modal from "./modal.vue";
 import { HttpClient } from "../../Httpclient";
 import { AddPart, SimpleEpisode } from "enterprise-core/src/types";
 
 export default defineComponent({
   name: "AddEpisodeModal",
-  components: { modal },
   props: {
     medium: { type: Object as PropType<SimpleMedium>, required: false, default: null },
   },
@@ -36,6 +44,18 @@ export default defineComponent({
       newEpisodePrefix: "",
       newEpisodeCount: 1,
     };
+  },
+  computed: {
+    visible: {
+      get() {
+        return !!this.medium;
+      },
+      set(visible: boolean) {
+        if (!visible) {
+          this.$emit("update:medium", null);
+        }
+      },
+    },
   },
   watch: {
     medium(newValue?: SimpleMedium): void {
@@ -140,11 +160,31 @@ export default defineComponent({
       if (!mediumId) {
         return;
       }
-      await Promise.allSettled(
+      const alreadyAddedPart = this.parts.find((item) => item.totalIndex === this.newPartIndex);
+
+      if (!alreadyAddedPart) {
+        this.createPart();
+      }
+
+      const result = await Promise.allSettled(
         this.parts.map((part) => {
           return HttpClient.createPart(part, mediumId);
         }),
       );
+
+      let failed = 0;
+      result.forEach((item) => {
+        if (item.status === "rejected") {
+          failed++;
+          console.error(item.reason);
+        }
+      });
+      this.$emit("update:medium", null);
+      this.$toast.add({
+        summary: "Created Parts",
+        detail: `Created ${result.length - failed} and failed ${failed}`,
+        life: 3000,
+      });
     },
   },
 });

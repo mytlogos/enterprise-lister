@@ -12,7 +12,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 export default defineComponent({
-  name: "Label",
+  name: "LabelTag",
   props: {
     value: {
       type: String,
