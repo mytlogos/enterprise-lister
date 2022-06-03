@@ -1,3 +1,10 @@
+## [1.36.5](https://github.com/mytlogos/enterprise-lister/compare/v1.36.4...v1.36.5) (2022-06-03)
+
+
+### Bug Fixes
+
+* **core:** fix typeerror for 'in' operator ([6c5fadd](https://github.com/mytlogos/enterprise-lister/commit/6c5fadd69374689d3568532d651c36915f87ebf9))
+
 ## [1.36.4](https://github.com/mytlogos/enterprise-lister/compare/v1.36.3...v1.36.4) (2022-05-24)
 
 
