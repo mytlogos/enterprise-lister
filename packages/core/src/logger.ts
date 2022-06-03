@@ -110,7 +110,7 @@ function log(level: string, value: any, meta?: any) {
 }
 
 function sanitizeError(value: any) {
-  if (!("response" in value)) {
+  if (typeof value !== "object" || !value || !("response" in value)) {
     return;
   }
   // do not log response body
