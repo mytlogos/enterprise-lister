@@ -4,6 +4,7 @@ import { join as joinPath } from "path";
 import env from "./env";
 import { getStore } from "./asyncStorage";
 import DailyRotateFile from "winston-daily-rotate-file";
+import LokiTransport from "winston-loki";
 
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
@@ -82,6 +83,18 @@ const logger = winston.createLogger({
     }),
   ],
 });
+
+if (env.lokiUrl) {
+  logger.add(new LokiTransport({
+    host: env.lokiUrl,
+    json: true,
+    replaceTimestamp: true,
+    labels: {
+      job: "enterpriselogs",
+      program: env.program || "unknown",
+    }
+  }));
+}
 
 process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
   logger.error(`Unhandled Rejection - Reason: ${stringify(reason)} - Promise: ${stringify(promise)}`);

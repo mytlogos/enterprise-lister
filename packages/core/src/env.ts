@@ -35,6 +35,8 @@ interface Config {
   measure: boolean;
   development: boolean;
   stopScrapeEvents: boolean;
+  lokiUrl?: string;
+  program?: string;
 }
 
 /**
@@ -53,6 +55,8 @@ const appConfig: Config = {
   measure: !!Number(process.env.measure || config.parsed.measure),
   development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",
   stopScrapeEvents: !!Number(process.env.stopScrapeEvents || config.parsed.stopScrapeEvents),
+  lokiUrl: process.env.LOKI_URL || config.parsed.lokiUrl,
+  program: process.env.ENTERPRISE_PROGRAM || config.parsed.program,
 };
 
 // this should not output sensitive information
