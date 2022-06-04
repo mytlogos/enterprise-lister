@@ -91,7 +91,7 @@ if (env.lokiUrl) {
     replaceTimestamp: true,
     labels: {
       job: "enterpriselogs",
-      program: env.program || "unknown",
+      program: appName || "unknown",
     }
   }));
 }
