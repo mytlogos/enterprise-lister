@@ -1,3 +1,15 @@
+# [1.37.0](https://github.com/mytlogos/enterprise-lister/compare/v1.36.5...v1.37.0) (2022-06-04)
+
+
+### Bug Fixes
+
+* **core:** remove unnecessary env variable ([e6f244b](https://github.com/mytlogos/enterprise-lister/commit/e6f244b75493c5ddff7db9e4c3fb0fe10b213205))
+
+
+### Features
+
+* **core:** add loki logger transport ([dd84111](https://github.com/mytlogos/enterprise-lister/commit/dd84111f9715f9acbf84a5532b52079c038024c7))
+
 ## [1.36.5](https://github.com/mytlogos/enterprise-lister/compare/v1.36.4...v1.36.5) (2022-06-03)
 
 
