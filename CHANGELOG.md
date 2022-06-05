@@ -1,3 +1,10 @@
+## [1.37.1](https://github.com/mytlogos/enterprise-lister/compare/v1.37.0...v1.37.1) (2022-06-05)
+
+
+### Bug Fixes
+
+* **core:** ignore html body of error in logger ([ab81226](https://github.com/mytlogos/enterprise-lister/commit/ab81226eaef168806a028fc15d60e181ad429db6))
+
 # [1.37.0](https://github.com/mytlogos/enterprise-lister/compare/v1.36.5...v1.37.0) (2022-06-04)
 
 
