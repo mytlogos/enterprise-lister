@@ -125,11 +125,15 @@ function log(level: string, value: any, meta?: any) {
 }
 
 function sanitizeError(value: any) {
-  if (typeof value !== "object" || !value || !("response" in value)) {
+  if (typeof value !== "object" || !value) {
     return;
   }
+  // for custom hook error, ignore the html body
+  if (value instanceof Error && value.name === "CustomHookError") {
+    delete (value as any).data.body;
+  }
   // do not log response body
-  if ("body" in value.response) {
+  if (!("response" in value) && "body" in value.response) {
     delete value.response.body;
   }
 }
