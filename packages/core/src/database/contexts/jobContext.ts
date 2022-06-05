@@ -25,7 +25,7 @@ import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
 import { escapeLike } from "../storages/storageTools";
-import { getStore } from "../../asyncStorage";
+import { getStore, StoreKey } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, JobError, ValidationError } from "../../error";
 
@@ -471,18 +471,18 @@ export class JobContext extends SubContext {
       if (!store) {
         throw new JobError("missing store - is this running outside a AsyncLocalStorage Instance?");
       }
-      const result = store.get("result") || "success";
-      const message = store.get("message") || JSON.stringify({ message: "No Message" });
+      const result = store.get(StoreKey.RESULT) || "success";
+      const message = store.get(StoreKey.MESSAGE) || JSON.stringify({ message: "No Message" });
 
       const jobTrack = {
-        modifications: store.get("modifications") || {},
-        network: store.get("network") || {
+        modifications: store.get(StoreKey.MODIFICATIONS) || {},
+        network: store.get(StoreKey.NETWORK) || {
           count: 0,
           sent: 0,
           received: 0,
           history: [],
         },
-        queryCount: store.get("queryCount") || 0,
+        queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
       } as JobTrack;
 
       let [item] = (await this.query("SELECT * FROM job_stat_summary WHERE name = ?", [

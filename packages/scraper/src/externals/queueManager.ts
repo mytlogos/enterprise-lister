@@ -7,7 +7,7 @@ import { BufferToStringStream } from "enterprise-core/dist/transform";
 import { StatusCodeError } from "request-promise-native/errors";
 import requestPromise from "request-promise-native";
 import { MissingResourceError } from "./errors";
-import { setContext, removeContext, getStore, bindContext } from "enterprise-core/dist/asyncStorage";
+import { setContext, removeContext, getStore, bindContext, StoreKey } from "enterprise-core/dist/asyncStorage";
 import http from "http";
 import https from "https";
 import { Socket } from "net";
@@ -55,7 +55,7 @@ function patchRequest(module: HttpModule, protocol: string) {
             return;
           }
 
-          const stats = getElseSet(store, "network", () => {
+          const stats = getElseSet(store, StoreKey.NETWORK, () => {
             return { count: 0, sent: 0, received: 0, history: [] };
           });
           stats.count += 1;

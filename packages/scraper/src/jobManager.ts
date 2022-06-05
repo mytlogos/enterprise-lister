@@ -1,7 +1,7 @@
 import { remove, removeLike, stringify, getElseSet } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import { JobRequest, EmptyPromise, Optional, Nullable } from "enterprise-core/dist/types";
-import { getStore, runAsync, setContext, removeContext } from "enterprise-core/dist/asyncStorage";
+import { getStore, runAsync, setContext, removeContext, StoreKey } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
 import diagnostics_channel from "diagnostics_channel";
 import { JobQueueChannelMessage } from "./externals/types";
@@ -319,8 +319,8 @@ export class JobQueue {
       if (!store) {
         throw new JobError("Missing Store! Are you sure this was running in an AsyncResource?");
       }
-      const running = store.get("running");
-      const waiting = store.get("waiting");
+      const running = store.get(StoreKey.RUNNING);
+      const waiting = store.get(StoreKey.WAITING);
       logger.info(
         `Job ${job.jobId} executed in running ${running} ms and waiting ${waiting} ms, ${job.executed} times`,
       );

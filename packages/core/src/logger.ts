@@ -2,7 +2,7 @@ import winston, { format } from "winston";
 import { isString, jsonReplacer, stringify } from "./tools";
 import { join as joinPath } from "path";
 import env from "./env";
-import { getStore } from "./asyncStorage";
+import { getStore, StoreKey } from "./asyncStorage";
 import DailyRotateFile from "winston-daily-rotate-file";
 import LokiTransport from "winston-loki";
 
@@ -118,8 +118,8 @@ function log(level: string, value: any, meta?: any) {
   }
   const store = getStore();
 
-  if (store && store.get("label")) {
-    meta.label.push(...store.get("label"));
+  if (store && store.get(StoreKey.LABEL)) {
+    meta.label.push(...store.get(StoreKey.LABEL));
   }
   logger.log(level, stringify(value), meta);
 }

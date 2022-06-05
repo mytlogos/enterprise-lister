@@ -11,29 +11,29 @@ interface HistoryItem {
 
 createHook({
   before() {
-    const store: Map<any, any> | any = localStorage.getStore();
+    const store: Store | any = localStorage.getStore();
 
     if (!store || !store.has) {
       return;
     }
-    const running = store.get("running");
-    let history: HistoryItem[] = store.get("history");
+    const running = store.get(StoreKey.RUNNING);
+    let history: HistoryItem[] = store.get(StoreKey.HISTORY);
 
     if (running == null) {
-      store.set("running", 0);
+      store.set(StoreKey.RUNNING, 0);
     }
     if (!history) {
       history = [];
-      store.set("history", history);
+      store.set(StoreKey.HISTORY, history);
     }
-    let waiting = store.get("waiting");
+    let waiting = store.get(StoreKey.WAITING);
 
     if (waiting == null) {
-      store.set("waiting", 0);
+      store.set(StoreKey.WAITING, 0);
       waiting = 0;
     }
-    store.set("runStart", Date.now());
-    const waitStart = store.get("waitStart");
+    store.set(StoreKey.RUN_START, Date.now());
+    const waitStart = store.get(StoreKey.WAIT_START);
 
     if (waitStart) {
       const now = Date.now();
@@ -46,42 +46,42 @@ createHook({
         if (lastEntry && lastEntry.type === "waiting") {
           lastEntry.duration += waitingDuration;
         } else {
-          let context = store.get("context");
+          let context = store.get(StoreKey.CONTEXT);
 
           if (!context) {
             context = [defaultContext];
-            store.set("context", context);
+            store.set(StoreKey.CONTEXT, context);
           }
           history.push({ duration: waitingDuration, type: "waiting", context: context.join("--") });
         }
-        store.set("waiting", waiting);
+        store.set(StoreKey.WAITING, waiting);
       }
     }
   },
   after() {
-    const store: Map<any, any> | any = localStorage.getStore();
+    const store: Store | unknown = localStorage.getStore();
 
-    if (!store || !store.has) {
+    if (!store || !(store instanceof Map)) {
       return;
     }
-    let running = store.get("running");
+    let running = store.get(StoreKey.RUNNING);
 
     if (running == null) {
-      store.set("running", 0);
+      store.set(StoreKey.RUNNING, 0);
       running = 0;
     }
-    let history: HistoryItem[] = store.get("history");
+    let history: HistoryItem[] = store.get(StoreKey.HISTORY);
     if (!history) {
       history = [];
-      store.set("history", history);
+      store.set(StoreKey.HISTORY, history);
     }
-    const waiting = store.get("waiting");
+    const waiting = store.get(StoreKey.WAITING);
 
     if (waiting == null) {
-      store.set("waiting", 0);
+      store.set(StoreKey.WAITING, 0);
     }
-    store.set("waitStart", Date.now());
-    const runStart = store.get("runStart");
+    store.set(StoreKey.WAIT_START, Date.now());
+    const runStart = store.get(StoreKey.RUN_START);
 
     if (runStart) {
       const now = Date.now();
@@ -94,32 +94,33 @@ createHook({
         if (lastEntry && lastEntry.type === "running") {
           lastEntry.duration += runningDuration;
         } else {
-          let context = store.get("context") as string[];
+          let context = store.get(StoreKey.CONTEXT) as string[];
 
           if (!context) {
             context = [defaultContext];
-            store.set("context", context);
+            store.set(StoreKey.CONTEXT, context);
           }
 
           history.push({ duration: runningDuration, type: "running", context: context.join("--") });
         }
-        store.set("running", running);
+        store.set(StoreKey.RUNNING, running);
       }
     }
   },
 }).enable();
 
-const stores = new Map<number, Map<string, any>>();
+export type Store = Map<StoreKey, any>;
+const stores = new Map<number, Store>();
 const defaultContext = "base";
 
-export function getStore(): Optional<Map<string, any>> {
-  return localStorage.getStore() as Optional<Map<string, any>>;
+export function getStore(): Optional<Store> {
+  return localStorage.getStore() as Optional<Store>;
 }
 
 /**
  * Returns a quite shallow copy of all available stores.
  */
-export function getStores(): Map<number, Map<string, any>> {
+export function getStores(): Map<number, Store> {
   const map = new Map();
   for (const [key, store] of stores.entries()) {
     map.set(key, new Map(store));
@@ -128,29 +129,29 @@ export function getStores(): Map<number, Map<string, any>> {
 }
 
 export function setContext(name: string): void {
-  const store = localStorage.getStore() as Optional<Map<string, any>>;
+  const store = localStorage.getStore() as Optional<Store>;
   if (!store) {
     return;
   }
-  let context = store.get("context");
+  let context = store.get(StoreKey.CONTEXT);
 
   if (!context) {
     context = [defaultContext];
-    store.set("context", context);
+    store.set(StoreKey.CONTEXT, context);
   }
   context.push(name);
 }
 
 export function removeContext(name: string): void {
-  const store = localStorage.getStore() as Optional<Map<string, any>>;
+  const store = localStorage.getStore() as Optional<Store>;
   if (!store) {
     return;
   }
-  let context = store.get("context");
+  let context = store.get(StoreKey.CONTEXT);
 
   if (!context) {
     context = [defaultContext];
-    store.set("context", context);
+    store.set(StoreKey.CONTEXT, context);
   }
   // remove the last element only if it has the same name as the context to remove
   if (context[context.length - 1] === name) {
@@ -173,7 +174,7 @@ type TakeManyFunction<T = any> = (...args: any[]) => T;
  */
 export function runAsync<T extends (...fArgs: any[]) => any>(
   id: number,
-  store: Map<string, any>,
+  store: Store,
   callback: T,
   ...args: Parameters<T>
 ): Promise<ReturnType<T>> {
@@ -207,4 +208,24 @@ export function runAsync<T extends (...fArgs: any[]) => any>(
  */
 export function bindContext<Func extends TakeManyFunction>(func: Func): Func & { asyncResource: AsyncResource } {
   return AsyncResource.bind(func) as Func & { asyncResource: AsyncResource };
+}
+
+/**
+ * Possible keys for the Store.
+ */
+export enum StoreKey {
+  RUNNING = "running",
+  HISTORY = "history",
+  WAITING = "waiting",
+  RUN_START = "runStart",
+  WAIT_START = "waitStart",
+  CONTEXT = "context",
+  LABEL = "label",
+  QUERY_COUNT = "queryCount",
+  MODIFICATIONS = "modifications",
+  RESULT = "result",
+  MESSAGE = "message",
+  NETWORK = "network",
+  LAST_RUN = "lastRun",
+  ERROR = "error",
 }

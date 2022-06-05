@@ -34,7 +34,7 @@ import { JobContext } from "./jobContext";
 import { MediumInWaitContext } from "./mediumInWaitContext";
 import { ConnectionContext } from "../databaseTypes";
 import env from "../../env";
-import { setContext, removeContext } from "../../asyncStorage";
+import { setContext, removeContext, StoreKey } from "../../asyncStorage";
 import { storeCount } from "../sqlTools";
 import { ScraperHookContext } from "./scraperHookContext";
 import { AppEventContext } from "./appEventContext";
@@ -352,7 +352,7 @@ export class QueryContext implements ConnectionContext {
     try {
       setContext("sql-query");
       result = await this.con.query(query, parameter);
-      storeCount("queryCount");
+      storeCount(StoreKey.QUERY_COUNT);
     } finally {
       removeContext("sql-query");
     }

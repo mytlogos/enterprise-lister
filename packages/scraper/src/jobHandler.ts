@@ -45,7 +45,7 @@ import {
   storage,
 } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, UrlError } from "./externals/errors";
-import { getStore } from "enterprise-core/dist/asyncStorage";
+import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { MissingEntityError, ValidationError } from "enterprise-core/dist/error";
 import { DisabledHookError } from "./externals/hookManager";
 
@@ -560,7 +560,7 @@ export async function tocHandler(result: TocResult): EmptyPromise {
  */
 function getLatestDate(date: Date): Date {
   const store = getStore();
-  const lastRun = store?.get("lastRun") as Date | undefined;
+  const lastRun = store?.get(StoreKey.LAST_RUN) as Date | undefined;
 
   // check if lastrun does not exist or is earlier than given date
   if (!lastRun || lastRun < date) {
@@ -861,11 +861,11 @@ async function tocErrorHandler(error: Error) {
   const store = getStore();
   if (store) {
     if (error instanceof DisabledHookError) {
-      store.set("result", "warning");
+      store.set(StoreKey.RESULT, "warning");
     } else {
-      store.set("result", "failed");
+      store.set(StoreKey.RESULT, "failed");
     }
-    store.set("error", error);
+    store.set(StoreKey.ERROR, error);
   }
   // TODO: 10.03.2020 remove any releases associated? with this toc
   //  to do that, it needs to be checked if there are other toc from this domain (unlikely)
@@ -894,11 +894,11 @@ function defaultErrorHandler(errorValue: any): void {
   const store = getStore();
   if (store) {
     if (errorValue instanceof DisabledHookError) {
-      store.set("result", "warning");
+      store.set(StoreKey.RESULT, "warning");
     } else {
-      store.set("result", "failed");
+      store.set(StoreKey.RESULT, "failed");
     }
-    store.set("error", errorValue);
+    store.set(StoreKey.ERROR, errorValue);
   }
   if (errorValue instanceof DisabledHookError) {
     logger.warn(errorValue.message);

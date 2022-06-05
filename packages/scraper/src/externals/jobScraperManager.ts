@@ -13,7 +13,7 @@ import {
 } from "enterprise-core/dist/types";
 import { jobStorage } from "enterprise-core/dist/database/storages/storage";
 import * as dns from "dns";
-import { getStore } from "enterprise-core/dist/asyncStorage";
+import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
 import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "./types";
 import { getNewsAdapter, load } from "./hookManager";
@@ -29,8 +29,8 @@ export class JobScraperManager {
   private static initStore(item: JobItem) {
     const store = getStore();
     if (store) {
-      store.set("label", [`job-${item.id}-${item.name}`]);
-      store.set("lastRun", item.lastRun);
+      store.set(StoreKey.LABEL, [`job-${item.id}-${item.name}`]);
+      store.set(StoreKey.LAST_RUN, item.lastRun);
     }
   }
 
@@ -566,7 +566,7 @@ export class JobScraperManager {
           throw new JobError("missing store - is this running outside a AsyncLocalStorage Instance?");
         }
 
-        const result = store.get("result");
+        const result = store.get(StoreKey.RESULT);
         jobChannel.publish({
           messageType: "jobs",
           type: "finished",
@@ -574,17 +574,17 @@ export class JobScraperManager {
           jobId: item.id,
           jobType: item.type,
           jobTrack: {
-            modifications: store.get("modifications") || {},
-            network: store.get("network") || {
+            modifications: store.get(StoreKey.MODIFICATIONS) || {},
+            network: store.get(StoreKey.NETWORK) || {
               count: 0,
               sent: 0,
               received: 0,
               history: [],
             },
-            queryCount: store.get("queryCount") || 0,
+            queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
           },
           result,
-          reason: result !== "success" ? store.get("message") : undefined,
+          reason: result !== "success" ? store.get(StoreKey.MESSAGE) : undefined,
           timestamp: Date.now(),
         } as EndJobChannelMessage);
       }
