@@ -85,15 +85,17 @@ const logger = winston.createLogger({
 });
 
 if (env.lokiUrl) {
-  logger.add(new LokiTransport({
-    host: env.lokiUrl,
-    json: true,
-    replaceTimestamp: true,
-    labels: {
-      job: "enterpriselogs",
-      program: appName || "unknown",
-    }
-  }));
+  logger.add(
+    new LokiTransport({
+      host: env.lokiUrl,
+      json: true,
+      replaceTimestamp: true,
+      labels: {
+        job: "enterpriselogs",
+        program: appName || "unknown",
+      },
+    }),
+  );
 }
 
 process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
