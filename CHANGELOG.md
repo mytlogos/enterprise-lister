@@ -1,3 +1,10 @@
+## [1.37.2](https://github.com/mytlogos/enterprise-lister/compare/v1.37.1...v1.37.2) (2022-06-06)
+
+
+### Bug Fixes
+
+* **core:** fix typeerror on undefined ([0b3958c](https://github.com/mytlogos/enterprise-lister/commit/0b3958cc0c2bdc16ff3dbea23abe217a46fbb9e2))
+
 ## [1.37.1](https://github.com/mytlogos/enterprise-lister/compare/v1.37.0...v1.37.1) (2022-06-05)
 
 
