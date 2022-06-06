@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/mytlogos/enterprise-lister/compare/v1.38.0...v1.39.0) (2022-06-06)
+
+
+### Features
+
+* add more logfmt in logging ([af4855d](https://github.com/mytlogos/enterprise-lister/commit/af4855dc026a4fce5c838a66cf224d55955df718))
+
 # [1.38.0](https://github.com/mytlogos/enterprise-lister/compare/v1.37.2...v1.38.0) (2022-06-06)
 
 
