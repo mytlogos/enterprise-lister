@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/mytlogos/enterprise-lister/compare/v1.37.2...v1.38.0) (2022-06-06)
+
+
+### Features
+
+* use logfmt format for logging ([c977f35](https://github.com/mytlogos/enterprise-lister/commit/c977f35c3da21f1f6d0a390d89a558e17f4ac5b5))
+
 ## [1.37.2](https://github.com/mytlogos/enterprise-lister/compare/v1.37.1...v1.37.2) (2022-06-06)
 
 
