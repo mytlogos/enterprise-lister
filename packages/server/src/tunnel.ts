@@ -15,14 +15,19 @@ function requestTunnel(host?: string) {
   localtunnel({ port, host })
     .then((tunnel) => {
       tunnels.push(tunnel);
-      logger.info(`opening tunnel to ${tunnel.url}`);
+      logger.info("opening tunnel", { dst: tunnel.url });
       tunnel.on("close", () => {
         remove(tunnels, tunnel);
-        logger.info(`tunnel to ${tunnel.url} is closed`);
+        logger.info("tunnel closed", { dst: tunnel.url });
       });
-      tunnel.on("error", (args) => logger.error(`error for tunnel to ${tunnel.url}: ${args.message}`));
+      tunnel.on("error", (args) => {
+        logger.error("error for tunnel", {
+          tunnel: tunnel.url,
+          reason: args.message,
+        });
+      });
     })
-    .catch((reason) => logger.error("failed opening a tunnel: " + stringify(reason)));
+    .catch((reason) => logger.error("failed opening a tunnel", { reason: stringify(reason) }));
 }
 
 let started = false;

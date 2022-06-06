@@ -134,9 +134,10 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
         const lastTrace = callStack[callStack.length - 1];
 
         if (lastTrace !== functionTrace) {
-          logger.warn(
-            `Last Call trace does not match expected one: Expected: ${functionTrace.name}-${functionTrace.callCount}, Found: ${lastTrace?.name}-${lastTrace?.callCount}`,
-          );
+          logger.warn("Last Call trace does not match expected one", {
+            expected: `${functionTrace.name}-${functionTrace.callCount}`,
+            found: `${lastTrace?.name}-${lastTrace?.callCount}`,
+          });
         } else {
           callStack.pop();
         }
@@ -148,9 +149,10 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
       const lastTrace = callStack[callStack.length - 1];
 
       if (lastTrace !== functionTrace) {
-        logger.warn(
-          `Last Call trace does not match expected one: Expected: ${functionTrace.name}-${functionTrace.callCount}, Found: ${lastTrace?.name}-${lastTrace?.callCount}`,
-        );
+        logger.warn("Last Call trace does not match expected one", {
+          expected: `${functionTrace.name}-${functionTrace.callCount}`,
+          found: `${lastTrace?.name}-${lastTrace?.callCount}`,
+        });
       } else {
         callStack.pop();
       }

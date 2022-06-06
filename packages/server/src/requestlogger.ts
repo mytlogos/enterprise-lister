@@ -25,7 +25,7 @@ export function logRequest(req: Request, res: Response, next: () => void) {
       method: req.method,
       status: res.statusCode,
       url: req.originalUrl || req.path || req.url,
-      elapsed: elapsedMillis,
+      elapsed: elapsedMillis + "ms",
       contentLength: res.get("content-length"),
       contentType: res.get("content-type"),
     };

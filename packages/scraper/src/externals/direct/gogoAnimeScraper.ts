@@ -6,7 +6,7 @@ import * as cheerio from "cheerio";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
 import { checkTocContent } from "../scraperTools";
-import { SearchResult as TocSearchResult, searchToc } from "./directTools";
+import { LogType, scraperLog, SearchResult as TocSearchResult, searchToc } from "./directTools";
 import { UrlError } from "../errors";
 
 const BASE_URI = "https://www.gogoanime.vc/";
@@ -29,7 +29,9 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const linkMatch = linkPattern.exec(link);
 
     if (!linkMatch) {
-      logger.warn(`Unknown GogoAnime News Link Format: '${link}'`);
+      scraperLog("warn", LogType.CONTENT_FORMAT, "gogoanime", {
+        url: link,
+      });
       continue;
     }
     const tocLink = linkMatch[1] + "category/" + linkMatch[2];
@@ -42,14 +44,20 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const groups = titlePattern.exec(rawTitle);
 
     if (!groups) {
-      logger.warn(`Unknown GogoAnime News Format: '${episodeTitleElement.prop("innerText")}' for '${mediumTitle}'`);
+      scraperLog("warn", LogType.TITLE_FORMAT, "gogoanime", {
+        url: link,
+        unknown_title: rawTitle,
+      });
       continue;
     }
 
     const episodeTitle = sanitizeString(groups[0]);
     const episodeIndices = extractIndices(groups, 1, 2, 4);
     if (!episodeIndices) {
-      logger.warn(`unknown news format on gogoAnime: ${episodeTitle}`);
+      scraperLog("warn", LogType.INDEX_FORMAT, "gogoanime", {
+        url: link,
+        unknown_index: episodeTitle,
+      });
       continue;
     }
     news.push({
@@ -86,13 +94,17 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const animeTitle = sanitizeString(contentElement.find("h1").prop("innerText") as string);
 
   if (!animeTitle) {
-    logger.warn("toc link with no title: " + urlString);
+    scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "gogoanime", {
+      url: urlString,
+    });
     return [];
   }
 
   const episodePages = contentElement.find("#episode_page li");
   if (episodePages.length < 1) {
-    logger.warn("toc link with no episodes: " + urlString);
+    scraperLog("warn", LogType.NO_EPISODES, "gogoanime", {
+      url: urlString,
+    });
     return [];
   }
   const content: TocEpisode[] = [];
@@ -104,7 +116,10 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const exec = pageReg.exec(episodePage.prop("innerText") as string);
 
     if (!exec) {
-      logger.warn(`could not match toc episode Page text on '${urlString}'`);
+      logger.warn("could not match toc episode Page text", {
+        scraper: "gogoanime",
+        url: urlString,
+      });
       continue;
     }
     const pageMaxIndex = Number(exec[1]);
@@ -195,7 +210,9 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     const coverStyle = coverElement.attr("style") as string;
     const exec = coverRegex.exec(coverStyle);
     if (!exec) {
-      logger.warn(`On search gogoanime: Style with coverLink not matchable '${coverStyle}'`);
+      logger.warn(`on search: Style with coverLink not matchable '${coverStyle}'`, {
+        scraper: "gogoanime",
+      });
       continue;
     }
     searchResults.push({
@@ -219,7 +236,9 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
   const episodeRegex = /https:\/\/www\d*\.gogoanime\.(vc|wiki)\/.+-episode-(\d+)/;
   const exec = episodeRegex.exec(link);
   if (!exec) {
-    logger.warn(`invalid gogoanime episode link: '${link}'`);
+    scraperLog("warn", LogType.INVALID_LINK, "gogoanime", {
+      url: link,
+    });
     return [];
   }
   const $ = await queueCheerioRequest(link);

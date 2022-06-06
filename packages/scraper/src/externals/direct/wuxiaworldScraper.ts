@@ -1,12 +1,5 @@
 import { EpisodeContent, Hook, Toc, TocPart, NewsScrapeResult } from "../types";
-import {
-  EpisodeNews,
-  News,
-  SearchResult,
-  TocSearchMedium,
-  VoidablePromise,
-  Nullable,
-} from "enterprise-core/dist/types";
+import { EpisodeNews, SearchResult, TocSearchMedium, VoidablePromise, Nullable } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
 import { queueCheerioRequest, queueRequest } from "../queueManager";

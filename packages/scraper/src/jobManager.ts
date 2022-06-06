@@ -321,13 +321,16 @@ export class JobQueue {
       }
       const running = store.get(StoreKey.RUNNING);
       const waiting = store.get(StoreKey.WAITING);
-      logger.info(
-        `Job ${job.jobId} executed in running ${running} ms and waiting ${waiting} ms, ${job.executed} times`,
-      );
+      logger.info("Job finished running", {
+        job_id: job.jobId,
+        job_running: running + "ms",
+        job_waiting: waiting + "ms",
+        job_times_executed: job.executed,
+      });
       job.lastRun = Date.now();
       job.startRun = 0;
     } else {
-      logger.info(`Cancelling already finished job ${job.jobId}`);
+      logger.info("Cancelling already finished job", { job_id: job.jobId });
     }
   }
 
@@ -359,7 +362,7 @@ export class JobQueue {
       } else if (this._overMemoryLimit()) {
         reason = "Over Memory Limit";
       }
-      logger.info(`queue will not execute a new job this tick: '${reason}'`);
+      logger.info("queue will not execute a new job this tick", { reason });
       this.setInterval(1000);
       return;
     }
@@ -385,7 +388,7 @@ export class JobQueue {
             setContext("Job-OnStart");
             await this.executeCallback(toExecute.jobInfo.onStart);
           } catch (error) {
-            logger.error(`Job ${toExecute.jobId} onStart threw an error!: ${stringify(error)}`);
+            logger.error("onStart threw an error", { job_id: toExecute.jobId, reason: stringify(error) });
           } finally {
             removeContext("Job-OnStart");
           }
@@ -393,7 +396,7 @@ export class JobQueue {
         setContext("Job");
         await this.executeCallback(async () => {
           toExecute.executed++;
-          logger.info("executing job: " + toExecute.jobId);
+          logger.info("executing job", { job_id: toExecute.jobId });
           return toExecute.job(() => this._done(toExecute));
         });
         // set default result value if not already set
@@ -408,7 +411,7 @@ export class JobQueue {
           reason: typeof error === "object" && error && (error as Error).message,
         };
         store.set("message", stringify(message));
-        logger.error(`Job ${toExecute.jobId} threw an error somewhere ${stringify(error)}`);
+        logger.error("Job threw an error", { job_id: toExecute.jobId, reason: stringify(error) });
       } finally {
         removeContext("Job");
         this._done(toExecute);
@@ -418,7 +421,7 @@ export class JobQueue {
             setContext("Job-OnDone");
             await this.executeCallback(toExecute.jobInfo.onDone);
           } catch (error) {
-            logger.error(`Job ${toExecute.jobId} onDone threw an error!: ${stringify(error)}`);
+            logger.error("onDone threw an error", { job_id: toExecute.jobId, reason: stringify(error) });
           } finally {
             removeContext("Job-OnDone");
           }

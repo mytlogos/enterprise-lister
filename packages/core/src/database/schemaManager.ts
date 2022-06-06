@@ -111,7 +111,11 @@ export class SchemaManager {
         .filter((value) => this.tables.find((table) => table.name === value.Table))
         .map((value) => context.dropTrigger(value.Trigger).then(() => triggerDeleted++)),
     );
-    logger.info(`Created ${triggerCreated} Triggers, ${tablesCreated} Tables and dropped ${triggerDeleted} Triggers`);
+    logger.info("db check missing", {
+      created_trigger: triggerCreated,
+      deleted_trigger: triggerDeleted,
+      tables_created: tablesCreated,
+    });
   }
 
   private async migrate(context: DatabaseContext) {
@@ -159,7 +163,7 @@ export class SchemaManager {
       if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
         throw new MigrationError(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
       }
-      logger.info(`Starting Migration of Storage from ${previousVersion} to ${currentVersion}`);
+      logger.info("Starting Migration of Storage", { from: previousVersion, to: currentVersion });
       if (directMigration) {
         await directMigration.migrate(context);
       } else {
@@ -170,7 +174,7 @@ export class SchemaManager {
     }
     // FIXME: 10.08.2019 inserting new database version does not seem to work
     await context.updateDatabaseVersion(currentVersion);
-    logger.info(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
+    logger.info("successfully migrated storage", { from: previousVersion, to: currentVersion });
   }
 
   private getShortest(previousVersion: number) {

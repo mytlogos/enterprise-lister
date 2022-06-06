@@ -66,7 +66,7 @@ async function loadCustomHooks(): Promise<Hook[]> {
     try {
       hookConfig = JSON.parse(hookEntity.state);
     } catch (error) {
-      logger.warn("Could not parse HookState of CustomHook " + hookEntity.name);
+      logger.warn("Could not parse HookState of CustomHook", { hook_name: hookEntity.name });
       continue;
     }
 

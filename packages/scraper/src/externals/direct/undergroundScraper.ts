@@ -5,6 +5,7 @@ import { queueCheerioRequest } from "../queueManager";
 import { max, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist/database/storages/storage";
 import { ScraperError } from "../errors";
+import { scraperLog, LogType } from "./directTools";
 
 export const sourceType = "qidian_underground";
 
@@ -27,7 +28,7 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
     const mediumTitle = sanitizeString((mediumElement.contents().first().prop("innerText") as string).trim());
 
     if (!mediumTitle) {
-      logger.warn("changed format on qidianUnderground");
+      scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "underground", { url: uri });
       return;
     }
 
@@ -39,7 +40,10 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
       // but normally qidianUnderground thinks we have utc+1, also winter time all around?
       date.setHours(date.getHours() - 1);
       if (date > now) {
-        logger.warn("changed time format on qidianUnderground");
+        scraperLog("warn", LogType.TIME_FORMAT, "underground", {
+          url: uri,
+          unknown_time: timeStampElement.attr("title"),
+        });
         continue;
       }
     }
@@ -59,7 +63,10 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
       const exec = chapterReg.exec(sanitizeString(titleElement.prop("innerText") as string));
 
       if (!exec) {
-        logger.warn("changed format on qidianUnderground");
+        scraperLog("warn", LogType.TITLE_FORMAT, "underground", {
+          url: uri,
+          unknown_title: titleElement.prop("innerText") || undefined,
+        });
         continue;
       }
 

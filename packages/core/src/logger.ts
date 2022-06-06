@@ -192,11 +192,19 @@ export function stringifyLogFmt(data: Record<any, any>): string {
   return line.substring(0, line.length - 1);
 }
 
-interface LogMeta {
+export interface LogMeta {
   [key: string]: string | number | boolean | undefined;
 }
 
+export type LogLevel = "error" | "warn" | "info" | "http" | "verbose" | "debug" | "silly";
+
 export default {
+  log(level: LogLevel, value: any, meta?: LogMeta) {
+    if (level === "error") {
+      sanitizeError(value);
+    }
+    log(level, value, meta);
+  },
   error(value: any, meta?: LogMeta): void {
     sanitizeError(value);
     log("error", value, meta);

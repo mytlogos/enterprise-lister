@@ -8,7 +8,7 @@ import * as request from "request";
 import { checkTocContent } from "../scraperTools";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, ScraperError, UrlError } from "../errors";
-import { extractLinkable } from "./directTools";
+import { extractLinkable, LogType, scraperLog } from "./directTools";
 
 const BASE_URI = "https://mangadex.org/";
 const jar = request.jar();
@@ -79,7 +79,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
   const linkReg = /^https:\/\/mangadex\.org\/chapter\/(\d+)/;
   const exec = linkReg.exec(chapterLink);
   if (!exec) {
-    logger.warn("changed chapter link format on mangadex for " + chapterLink);
+    scraperLog("warn", LogType.LINK_FORMAT, "mangadex", { url: chapterLink });
     return [];
   }
   const chapterId = exec[1];
@@ -89,9 +89,12 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 
   if (!contentData.mediumTitle || !contentData.episodeTitle || contentData.index == null) {
     logger.warn(
-      "incoherent data, did not find any release with given url link, " +
-        "which has a title, index and mediumTitle on: " +
-        urlString,
+      "incoherent data, did not find any release with given url link, which has a title, index and mediumTitle",
+      {
+        scraper: "mangadex",
+        url: chapterLink,
+        contentLink: urlString,
+      },
     );
     return [];
   }
@@ -114,7 +117,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
   }
 
   if (jsonResponse.status !== "OK" || !jsonResponse.hash || !jsonResponse.page_array.length) {
-    logger.warn("changed chapter api format on mangadex " + urlString);
+    scraperLog("warn", LogType.API_CHANGED, "mangadex", { url: urlString });
     return [];
   }
   const imageUrls = [];
@@ -183,7 +186,11 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const groups = titlePattern.exec(title);
 
     if (!groups) {
-      logger.warn(`Unknown News Format on mangadex: '${title}' for '${currentMedium}'`);
+      scraperLog("warn", LogType.TITLE_FORMAT, "mangadex", {
+        url: requestLink,
+        unknown_title: title,
+        medium_title: currentMedium,
+      });
       continue;
     }
 
@@ -198,7 +205,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
       episodeIndices = extractIndices(groups, 6, 7, 9);
 
       if (!episodeIndices) {
-        logger.info(`unknown news format on mangadex: ${title}`);
+        scraperLog("warn", LogType.INDEX_FORMAT, "mangadex", { url: requestLink, unknown_index: title });
         continue;
       }
 
@@ -208,7 +215,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
         episodeTitle = `Ch. ${episodeIndices.combi}`;
       }
     } else {
-      logger.info(`unknown news format on mangadex: ${title}`);
+      scraperLog("warn", LogType.INDEX_FORMAT, "mangadex", { url: requestLink, unknown_index: title });
       continue;
     }
     let partIndices;
@@ -218,7 +225,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
       partIndices = extractIndices(groups, 2, 3, 5);
 
       if (!partIndices) {
-        logger.info(`unknown news format on mangadex: ${title}`);
+        scraperLog("warn", LogType.INDEX_FORMAT, "mangadex", { url: requestLink, unknown_index: title });
         continue;
       }
 
@@ -297,7 +304,7 @@ async function scrapeTocPage(
   const mangaTitle = sanitizeString(contentElement.find("h6.card-header").first().prop("innerText") as string);
   // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");
   if (!mangaTitle) {
-    logger.warn("toc link with no novel title: " + urlString);
+    scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "mangadex", { url: urlString });
     return true;
   }
 
@@ -333,7 +340,7 @@ async function scrapeTocPage(
   const chapters = contentElement.find(".chapter-container .chapter-row");
 
   if (!chapters.length) {
-    logger.warn("toc link with no chapters: " + urlString);
+    scraperLog("warn", LogType.NO_EPISODES, "mangadex", { url: urlString });
     return true;
   }
 
@@ -348,7 +355,7 @@ async function scrapeTocPage(
     const time = new Date(timeString);
 
     if (!timeString || Number.isNaN(time.getTime())) {
-      logger.warn("no time in title in mangadex toc for " + urlString);
+      scraperLog("warn", LogType.TIME_FORMAT, "mangadex", { url: urlString, unknown_time: timeString });
       return true;
     }
     const chapterTitleElement = columns.eq(1);
@@ -375,7 +382,7 @@ async function scrapeTocPage(
       let part: Optional<TocPart> = indexPartMap.get(volIndices.combi);
 
       if (!chapIndices) {
-        logger.warn("changed episode format on mangadex toc: got no index " + urlString);
+        scraperLog("warn", LogType.INDEX_FORMAT, "mangadex", { url: urlString, unknown_index: chapterTitle });
         return true;
       }
       const title = `Chapter ${chapIndices.combi}${volChapGroups[9] ? " - " + volChapGroups[11] : ""}`;
@@ -425,9 +432,7 @@ async function scrapeTocPage(
       checkTocContent(chapterContent);
       toc.content.push(chapterContent);
     } else {
-      logger.warn(
-        `volume - chapter format changed on mangadex: recognized neither of them: '${chapterTitle}', ${urlString}`,
-      );
+      scraperLog("warn", LogType.TITLE_FORMAT, "mangadex", { url: urlString, unknown_title: chapterTitle });
       continue;
     }
   }

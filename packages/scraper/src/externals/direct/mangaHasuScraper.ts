@@ -12,7 +12,7 @@ import { queueCheerioRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
-import { SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
+import { SearchResult as TocSearchResult, searchToc, extractLinkable, LogType, scraperLog } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError, ScraperError } from "../errors";
 import { Options } from "cloudscraper";
 import * as cheerio from "cheerio";
@@ -42,7 +42,7 @@ function normalizeLink(link: string): string {
   const match = regex.exec(link);
 
   if (!match) {
-    logger.warn("Could not normalize Link: " + link);
+    logger.warn("Could not normalize Link", { scraper: "mangahasu", link });
     return link;
   } else {
     return `https://mangahasu.se/${match[1]}-${match[3]}`;
@@ -62,7 +62,8 @@ function enforceHttps(link: string): string {
 async function scrapeNews(): Promise<NewsScrapeResult> {
   // TODO scrape more than just the first page if there is an open end
   const baseUri = BASE_URI;
-  const $ = await tryRequest(baseUri + "latest-releases.html");
+  const requestUrl = baseUri + "latest-releases.html";
+  const $ = await tryRequest(requestUrl);
   const newsRows = $("ul.list_manga  .info-manga");
 
   const news: EpisodeNews[] = [];
@@ -88,7 +89,11 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const groups = titlePattern.exec(title);
 
     if (!groups) {
-      logger.warn(`Unknown News Format on mangahasu: '${title}' for '${mediumTitle}'`);
+      scraperLog("warn", LogType.TITLE_FORMAT, "mangahasu", {
+        url: requestUrl,
+        unknown_title: title,
+        medium_title: mediumTitle,
+      });
       continue;
     }
 
@@ -103,7 +108,10 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
       episodeIndices = extractIndices(groups, 6, 7, 9);
 
       if (!episodeIndices) {
-        logger.warn("unknown news title format on mangahasu: " + episodeTitle);
+        scraperLog("warn", LogType.INDEX_FORMAT, "mangahasu", {
+          url: requestUrl,
+          unknown_title: title,
+        });
         continue;
       }
 
@@ -113,7 +121,10 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
         episodeTitle = `Ch. ${episodeIndices.combi}`;
       }
     } else {
-      logger.info(`unknown news format on mangahasu: ${title}`);
+      scraperLog("warn", LogType.TITLE_FORMAT, "mangahasu", {
+        url: requestUrl,
+        unknown_title: title,
+      });
       continue;
     }
     let partIndices;
@@ -123,7 +134,10 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
       partIndices = extractIndices(groups, 2, 3, 5);
 
       if (!partIndices) {
-        logger.warn("unknown news title format on mangahasu: " + episodeTitle);
+        scraperLog("warn", LogType.INDEX_FORMAT, "mangahasu", {
+          url: requestUrl,
+          unknown_title: title,
+        });
         continue;
       }
       partTitle = `Vol. ${partIndices.combi}`;
@@ -169,14 +183,14 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
   const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
   if (!episodeTitle || !mediumTitle) {
-    logger.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
+    scraperLog("warn", LogType.TITLE_FORMAT, "mangahasu", { url: chapterLink });
     return [];
   }
   const chapReg = /Chapter\s*(\d+(\.\d+)?)(:\s*(.+))?/i;
   const exec = chapReg.exec(episodeTitle);
 
-  if (!exec || !mediumTitle) {
-    logger.warn(`chapter format changed on mangahasu, did not find any titles for content extraction: ${chapterLink}`);
+  if (!exec) {
+    scraperLog("warn", LogType.TITLE_FORMAT, "mangahasu", { url: chapterLink, unknown_title: episodeTitle });
     return [];
   }
   const index = Number(exec[1]);
@@ -189,7 +203,11 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     const src = imageElement.attr("src");
 
     if (!src || !imageUrlReg.test(src)) {
-      logger.warn("image link format changed on mangahasu: " + chapterLink);
+      scraperLog("warn", LogType.INVALID_LINK, "mangahasu", {
+        url: chapterLink,
+        link: src,
+        expected: imageUrlReg.source,
+      });
       return [];
     }
     imageUrls.push(enforceHttps(src));
@@ -218,11 +236,11 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const chapters = contentElement.find(".list-chapter tbody > tr");
 
   if (!chapters.length) {
-    logger.warn("toc link with no chapters: " + urlString);
+    scraperLog("warn", LogType.NO_EPISODES, "mangahasu", { url: urlString });
     return [];
   }
   if (!mangaTitle) {
-    logger.warn("toc link with no novel title: " + urlString);
+    scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "mangahasu", { url: urlString });
     return [];
   }
   const uri = BASE_URI;
@@ -261,7 +279,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const time = new Date(timeString);
 
     if (!timeString || Number.isNaN(time.getTime())) {
-      logger.warn("no time in title in mangahasu toc: " + urlString);
+      scraperLog("warn", LogType.TIME_FORMAT, "mangahasu", { url: urlString, unknown_time: timeString });
       return [];
     }
     const chapterTitleElement = chapterElement.find(".name");
@@ -285,7 +303,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       const link = normalizeLink(new url.URL(chapterTitleElement.find("a").first().attr("href") as string, uri).href);
 
       if (!chapIndices) {
-        logger.warn("changed episode format on mangaHasu toc: got no index " + urlString);
+        scraperLog("warn", LogType.INDEX_FORMAT, "mangahasu", { url: urlString, unknown_index: chapterTitle });
         return [];
       }
       let title = "Chapter " + chapIndices.combi;
@@ -343,12 +361,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         noTime: true,
       });
     } else {
-      logger.warn(
-        "volume - chapter format changed on mangahasu: recognized neither of them: " +
-          chapterTitle +
-          " on " +
-          urlString,
-      );
+      scraperLog("warn", LogType.TITLE_FORMAT, "mangahasu", { url: urlString, unknown_title: chapterTitle });
     }
   }
   partContents.forEach((value) => {

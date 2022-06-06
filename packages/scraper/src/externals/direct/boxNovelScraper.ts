@@ -18,7 +18,14 @@ import {
   sanitizeString,
 } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
-import { getTextContent, SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
+import {
+  getTextContent,
+  SearchResult as TocSearchResult,
+  searchToc,
+  extractLinkable,
+  scraperLog,
+  LogType,
+} from "./directTools";
 import { checkTocContent } from "../scraperTools";
 import { MissingResourceError, UrlError } from "../errors";
 import { StatusCodeError } from "cloudscraper/errors";
@@ -134,7 +141,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
       const currentChapter = $("option[selected]").first();
 
       if (!currentChapter.length) {
-        logger.warn("changed title format for chapters on boxNovel for " + urlString);
+        scraperLog("warn", LogType.TITLE_FORMAT, "boxnovel", { url: urlString });
         return [];
       }
       episodeTitle = sanitizeString(currentChapter.prop("innerText") as string);
@@ -147,7 +154,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
   const content = directContentElement.html();
 
   if (!content) {
-    logger.warn("changed content format for chapters on boxNovel: " + urlString);
+    scraperLog("warn", LogType.CONTENT_FORMAT, "boxnovel", { url: urlString });
     return [];
   }
 
@@ -212,7 +219,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }
 
     if (!date || date > new Date()) {
-      logger.warn("changed time format on boxNovel: " + tocLink);
+      scraperLog("warn", LogType.TIME_FORMAT, "boxnovel", { url: tocLink });
       return [];
     }
     let regexResult = titleRegex.exec(episodeTitle) || numberTitleRegex.exec(episodeTitle);
@@ -226,9 +233,11 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         if (lowerTitle.startsWith("extra")) {
           continue;
         }
-        logger.warn(
-          `changed title format on boxNovel: ${tocLink}, unknown title: ${episodeTitle}, unknown link: ${link}`,
-        );
+        scraperLog("warn", LogType.TITLE_FORMAT, "boxnovel", {
+          url: tocLink,
+          unknown_title: episodeTitle,
+          unknown_link: link,
+        });
         return [];
       }
     } else if (regexResult.index) {
@@ -333,12 +342,12 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
       }
 
       if (!date || date > new Date()) {
-        logger.warn("changed time format on boxNovel: news");
+        scraperLog("warn", LogType.TIME_FORMAT, "boxnovel", { url: uri });
         return;
       }
       const regexResult = titleRegex.exec(episodeTitle);
       if (!regexResult) {
-        logger.warn("changed title format on boxNovel: news");
+        scraperLog("warn", LogType.TITLE_FORMAT, "boxnovel", { url: uri, unknown_title: episodeTitle });
         return;
       }
       let partIndices;
@@ -347,7 +356,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
         partIndices = extractIndices(regexResult, 3, 4, 6);
 
         if (!partIndices) {
-          logger.info(`unknown news format on boxnovel: ${episodeTitle}`);
+          scraperLog("warn", LogType.INDEX_FORMAT, "boxnovel", { url: uri, unknown_index: episodeTitle });
           continue;
         }
       }
@@ -357,12 +366,12 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
         episodeIndices = extractIndices(regexResult, 8, 9, 11);
 
         if (!episodeIndices) {
-          logger.info(`unknown news format on boxnovel: ${episodeTitle}`);
+          scraperLog("warn", LogType.INDEX_FORMAT, "boxnovel", { url: uri, unknown_index: episodeTitle });
           continue;
         }
       }
       if (episodeIndices == null || episodeIndices.combi == null) {
-        logger.warn("changed title format on boxNovel: news");
+        scraperLog("warn", LogType.INDEX_FORMAT, "boxnovel", { url: uri, unknown_index: episodeTitle });
         return;
       }
       episodeNews.push({

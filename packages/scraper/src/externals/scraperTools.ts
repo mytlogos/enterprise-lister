@@ -122,11 +122,12 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
   if (!adapter.link || !validate.isString(adapter.link)) {
     throw new ValidationError("missing link on newsScraper");
   }
-  logger.info(`Scraping for News with Adapter on '${adapter.link}'`);
+  logger.info("Scraping for News", { url: adapter.link });
   const rawNews = await adapter();
 
   if (rawNews && rawNews.episodes && rawNews.episodes.length) {
-    logger.info(`Scraped ${rawNews.episodes.length} Episode News on '${adapter.link}'`);
+    logger.info("Scraped Episode News", { count: rawNews.episodes.length, url: adapter.link });
+
     const episodeMap: Map<string, EpisodeNews[]> = rawNews.episodes.reduce((map, currentValue) => {
       const episodeNews = getElseSet(map, currentValue.mediumTitle + "%" + currentValue.mediumType, () => []);
       episodeNews.push(currentValue);
@@ -263,7 +264,7 @@ async function processMediumNews(
           const foundRelease = sourcedReleases.find((release) => release.title === value.title);
 
           if (!foundRelease) {
-            logger.warn("wanted to update an unavailable release");
+            logger.warn("wanted to update an unavailable release", { release_title: value.title });
             return false;
           }
           return foundRelease.url !== value.url;
@@ -318,7 +319,7 @@ export async function loadToc(link: string): Promise<Toc[]> {
 }
 
 export async function searchForTocJob(name: string, item: TocSearchMedium): Promise<TocResult> {
-  logger.info(`searching for toc on ${name} with ${JSON.stringify(item)}`);
+  logger.info("searching for toc", { name, search: JSON.stringify(item) });
 
   const hook = getHook(name);
 
@@ -403,7 +404,7 @@ function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: s
     }
   }
   if (!searchJobs.length) {
-    logger.info(`did not find anything for: ${id} of ${JSON.stringify(tocSearch)}`);
+    logger.info("did not find any tocdiscoveries", { medium_id: id, search: JSON.stringify(tocSearch) });
     return [];
   }
   for (let i = 0; i < searchJobs.length; i++) {
@@ -513,7 +514,7 @@ export const queueTocs = async (): EmptyPromise => {
 };
 
 export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: TocRequest): Promise<TocResult> => {
-  logger.info("scraping one time toc: " + link);
+  logger.info("scraping one time toc", { url: link });
   const path = new url.URL(link).pathname;
 
   if (!path) {
@@ -533,7 +534,7 @@ export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: Toc
 
   if (!allTocPromise) {
     // TODO use the default scraper here, after creating it
-    logger.warn(`no scraper found for: '${link}'`);
+    logger.warn("no scraper found", { url: link });
     return { tocs: [], uuid };
   }
 
@@ -549,13 +550,13 @@ export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: Toc
   }
 
   if (!allTocs.length) {
-    logger.warn(`no tocs found on: '${link}'`);
+    logger.warn("no tocs found", { url: link });
     return { tocs: [], uuid };
   }
   if (mediumId && allTocs.length === 1) {
     allTocs[0].mediumId = mediumId;
   }
-  logger.info("toc scraped successfully: " + link);
+  logger.info("toc scraped successfully", { url: link });
   const today = new Date().toDateString();
   if (lastRequest && lastRequest.toDateString() === today) {
     for (const tocResult of allTocs) {
@@ -658,7 +659,7 @@ export const list = async (value: { info: string; uuid: Uuid }): Promise<Externa
 };
 
 export const feed = async (feedLink: string): Promise<NewsResult> => {
-  logger.info(`scraping feed: ${feedLink}`);
+  logger.info("scraping feed", { url: feedLink });
   const startTime = Date.now();
   // noinspection JSValidateTypes
   return feedParserPromised
@@ -679,7 +680,7 @@ export const feed = async (feedLink: string): Promise<NewsResult> => {
     )
     .then((value) => {
       const duration = Date.now() - startTime;
-      logger.info(`scraping feed: ${feedLink} took ${duration} ms`);
+      logger.info("scraped feed", { url: feedLink, duration: duration + "ms" });
       return {
         link: feedLink,
         rawNews: value,
@@ -795,13 +796,13 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
         title: "",
         content: [],
       });
-      logger.warn(`no releases available for episodeId: ${episode.id} with ${episode.releases.length} Releases`);
+      logger.warn("no releases available", { episode_id: episode.id });
       continue;
     }
     const downloadValue = downloadContents.get(indexKey);
 
     if (downloadValue && downloadValue.content.length) {
-      logger.warn(`downloaded episode with index: ${indexKey} and id ${episode.id} already`);
+      logger.warn("downloaded episode already", { episode_index: indexKey, episode_id: episode.id });
       continue;
     }
     let downloadedContent: Optional<EpisodeContent[]>;
@@ -873,7 +874,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
         title: "",
         content: [],
       });
-      logger.warn(`nothing downloaded for episodeId: ${episode.id}`);
+      logger.warn("nothing downloaded", { episode_id: episode.id });
     } else if (downloadedContent.length === 1) {
       const episodeContent = downloadedContent[0];
       downloadContents.set(indexKey, {
@@ -896,7 +897,10 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
             episodeId: foundEpisode.id,
           });
         } else {
-          logger.warn(`could not find any episode for downloaded content '${episodeContent.episodeTitle}'`);
+          logger.warn("could not find any episode for downloaded content", {
+            episode_title: episodeContent.episodeTitle,
+            episode_index: episodeContent.index,
+          });
         }
       }
     }

@@ -1,4 +1,4 @@
-import logger from "enterprise-core/dist/logger";
+import logger, { LogLevel, LogMeta } from "enterprise-core/dist/logger";
 import { EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson } from "../types";
 import { queueCheerioRequest } from "../queueManager";
 import {
@@ -15,6 +15,25 @@ import { checkTocContent } from "../scraperTools";
 import * as cheerio from "cheerio";
 import { ValidationError } from "enterprise-core/dist/error";
 
+export enum LogType {
+  INDEX_FORMAT = "unknown index format",
+  TIME_FORMAT = "changed time format",
+  TITLE_FORMAT = "changed title format",
+  CONTENT_FORMAT = "changed content format",
+  LINK_FORMAT = "changed link format",
+  MEDIUM_TITLE_FORMAT = "changed medium title format",
+  NO_EPISODES = "no episodes found",
+  INVALID_LINK = "invalid link",
+  API_CHANGED = "api changed",
+}
+
+export function scraperLog(level: LogLevel, value: LogType, scraper: string, meta?: LogMeta) {
+  logger.log(level, value, {
+    ...(meta || {}),
+    scraper,
+  });
+}
+
 export function getTextContent(
   novelTitle: string,
   episodeTitle: string,
@@ -22,11 +41,11 @@ export function getTextContent(
   content: string,
 ): EpisodeContent[] {
   if (!novelTitle || !episodeTitle) {
-    logger.warn("episode link with no novel or episode title: " + urlString);
+    logger.warn("episode link with no novel or episode title", { url: urlString });
     return [];
   }
   if (!content) {
-    logger.warn("episode link with no content: " + urlString);
+    logger.warn("episode link with no content", { url: urlString });
     return [];
   }
   const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
@@ -78,7 +97,7 @@ export async function searchTocCheerio(
   searchLink: (parameter: string) => string,
   linkSelector: string,
 ): Promise<undefined | Toc> {
-  logger.info(`searching for ${medium.title} on ${uri}`);
+  logger.info("searching for toc", { medium_title: medium.title, url: uri });
   const words = medium.title.split(/\s+/).filter((value) => value);
   let tocLink = "";
   let searchWords = "";
@@ -123,12 +142,11 @@ export async function searchTocCheerio(
     if (tocs && tocs.length) {
       return tocs[0];
     } else {
-      logger.warn("a possible toc link could not be scraped: " + tocLink);
+      logger.warn("a possible toc link could not be scraped", { url: tocLink });
     }
   } else {
-    logger.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+    logger.info("no toc link found", { medium_id: medium.mediumId, medium_title: medium.title, url: uri });
   }
-  return;
 }
 
 export interface SearchResult {
@@ -170,7 +188,7 @@ export async function searchToc(
   uri: string,
   searchLink: (searchString: string) => Promise<SearchResult>,
 ): Promise<undefined | Toc> {
-  logger.info(`searching for ${medium.title} on ${uri}`);
+  logger.info("searching for toc", { medium_title: medium.title, url: uri });
   const words = medium.title.split(/\s+/).filter((value) => value);
   let tocLink = "";
   let searchString = "";
@@ -201,12 +219,11 @@ export async function searchToc(
     if (tocs && tocs.length) {
       return tocs[0];
     } else {
-      logger.warn("a possible toc link could not be scraped: " + tocLink);
+      logger.warn("a possible toc link could not be scraped", { url: tocLink });
     }
   } else {
-    logger.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+    logger.info("no toc link found", { medium_id: medium.mediumId, medium_title: medium.title, url: uri });
   }
-  return;
 }
 
 export interface TocPiece {
@@ -700,13 +717,14 @@ function adjustPartialIndicesLinked(node: InternalTocEpisode, ascending: boolean
       break;
     }
     if (content.partialIndex != null && content.partialIndex !== currentPartialIndex) {
-      logger.warn(
-        `trying to overwrite partialIndex on existing one with ${currentPartialIndex}: ${stringify({
+      logger.warn("trying to overwrite partialIndex on existing one", {
+        newPartialIndex: currentPartialIndex,
+        previous: stringify({
           ...content,
           next: null,
           previous: null,
-        })}`,
-      );
+        }),
+      });
     } else {
       content.partialIndex = currentPartialIndex;
       content.combiIndex = combiIndex(content);

@@ -873,11 +873,11 @@ async function tocErrorHandler(error: Error) {
   //  if there aren't any other tocs on this domain, remove all releases from that domain
   try {
     if (error instanceof MissingResourceError) {
-      logger.warn("toc will be removed, resource was seemingly deleted from: " + error.resource);
+      logger.warn("toc will be removed", { reason: "resource was seemingly deleted", resource: error.resource });
       await mediumStorage.removeToc(error.resource);
       await jobStorage.removeJobLike("name", error.resource);
     } else if (error instanceof UrlError) {
-      logger.warn("toc will be removed, url is not what the scraper expected: " + error.url);
+      logger.warn("toc will be removed", { reason: "url is not what the scraper expected", url: error.url });
       await mediumStorage.removeToc(error.url);
       await jobStorage.removeJobLike("name", error.url);
     } else if (error instanceof DisabledHookError) {
