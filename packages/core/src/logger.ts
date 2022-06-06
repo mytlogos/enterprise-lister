@@ -133,7 +133,7 @@ function sanitizeError(value: any) {
     delete (value as any).data.body;
   }
   // do not log response body
-  if (!("response" in value) && "body" in value.response) {
+  if ("response" in value && "body" in value.response) {
     delete value.response.body;
   }
 }
