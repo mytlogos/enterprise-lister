@@ -1,3 +1,10 @@
+## [1.39.1](https://github.com/mytlogos/enterprise-lister/compare/v1.39.0...v1.39.1) (2022-06-06)
+
+
+### Bug Fixes
+
+* **core:** fix logger sending null lines to loki ([ed5f1b1](https://github.com/mytlogos/enterprise-lister/commit/ed5f1b16781fd578f5f3d9880cd7a2ed298a3192))
+
 # [1.39.0](https://github.com/mytlogos/enterprise-lister/compare/v1.38.0...v1.39.0) (2022-06-06)
 
 
