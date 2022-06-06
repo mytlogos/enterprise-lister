@@ -32,6 +32,24 @@ if (logLevel) {
   logLevel = env.development ? "debug" : "info";
 }
 
+const formatLogFmt = winston.format((info) => {
+  const { label, timestamp, level, message, ...rest } = info;
+
+  // return stringified objects as-is
+  if (isString(message) && (message.startsWith("{") || message.startsWith("["))) {
+    return info;
+  }
+
+  rest.msg = message;
+
+  return {
+    label,
+    timestamp,
+    level,
+    message: stringifyLogFmt(rest),
+  };
+});
+
 const logger = winston.createLogger({
   levels: winston.config.npm.levels,
   level: logLevel,
@@ -59,25 +77,10 @@ const logger = winston.createLogger({
       format: format.combine(
         format.colorize(),
         format.timestamp({ format: "DD.MM.YYYY HH:mm:ss" }),
+        formatLogFmt(),
+        // use logfmt here too
         format.printf((info) => {
-          if (!info.message) {
-            const timestamp = info.timestamp;
-            const label = info.label;
-            const level = info.level;
-            // @ts-expect-error
-            delete info.level;
-            delete info.label;
-            delete info.timestamp;
-            return `${timestamp} [${label || ""}] ${level}: ${stringify(info)}`;
-          } else {
-            if (!isString(info.message)) {
-              info.message = stringify(info.message);
-            }
-            // truncate for console output
-            info.message = info.message.substring(0, 2000);
-            const label = info.label || [];
-            return `${info.timestamp} ${info.level}: ${info.message} [${label.join(",") || ""}]`;
-          }
+          return `${info.timestamp} ${info.level}: ${info.message}`;
         }),
       ),
     }),
@@ -89,39 +92,39 @@ if (env.lokiUrl) {
     new LokiTransport({
       host: env.lokiUrl,
       json: true,
-      replaceTimestamp: true,
+      replaceTimestamp: true, // or use format.timestamp
       labels: {
         job: "enterpriselogs",
         program: appName || "unknown",
       },
+      level: "info", // never allow debug logs or less
+      format: formatLogFmt(),
     }),
   );
 }
 
-process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
-  logger.error(`Unhandled Rejection - Reason: ${stringify(reason)} - Promise: ${stringify(promise)}`);
+process.on("unhandledRejection", (reason: any) => {
+  logger.error("unhandled rejection", {
+    reason: stringify(reason),
+  });
 });
 let exitHandled = false;
-process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info(`Exit Program with Code: ${code}.`));
+process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info("Exit Program", { code }));
 
-function log(level: string, value: any, meta?: any) {
-  if (Object.prototype.toString.call(meta) !== "[object Object]") {
-    let label;
-    if (Array.isArray(meta)) {
-      label = meta;
-    } else {
-      label = [stringify(meta)];
-    }
-    meta = { label };
-  } else if (!meta.label) {
-    meta.label = [];
-  }
+function log(level: string, value: any, meta: LogMeta = {}) {
   const store = getStore();
 
-  if (store && store.get(StoreKey.LABEL)) {
-    meta.label.push(...store.get(StoreKey.LABEL));
+  if (store) {
+    const label = store.get(StoreKey.LABEL);
+
+    if (typeof label === "object" && label) {
+      Object.assign(meta, label);
+    }
   }
-  logger.log(level, stringify(value), meta);
+  if (!isString(value)) {
+    value = stringify(value);
+  }
+  logger.log(level, value, meta);
 }
 
 function sanitizeError(value: any) {
@@ -130,7 +133,8 @@ function sanitizeError(value: any) {
   }
   // for custom hook error, ignore the html body
   if (value instanceof Error && value.name === "CustomHookError") {
-    delete (value as any).data.body;
+    delete (value as any).data.body; // body is too big
+    delete (value as any).data.element; // element may be too big
   }
   // do not log response body
   if ("response" in value && "body" in value.response) {
@@ -138,33 +142,87 @@ function sanitizeError(value: any) {
   }
 }
 
+/**
+ * Modified from https://github.com/csquared/node-logfmt/blob/master/lib/stringify.js
+ *
+ * @param data data to stringify
+ * @returns a string
+ */
+export function stringifyLogFmt(data: Record<any, any>): string {
+  let line = "";
+
+  // sort alphabetically asc, except that msg is always first
+  const keys = Object.keys(data).sort((a, b) => {
+    if (a === "msg" || a < b) {
+      return -1;
+    }
+    if (b === "msg" || b < a) {
+      return 1;
+    }
+    return 0;
+  });
+
+  for (const key of keys) {
+    let value = data[key];
+    let is_null = false;
+
+    if (value == null) {
+      is_null = true;
+      value = "";
+    } else {
+      if (typeof value.toString === "function") {
+        value = value.toString();
+      } else {
+        console.log("value=", value, "has no toString");
+        value = `${value}`;
+      }
+    }
+
+    const needs_quoting = value.indexOf(" ") > -1 || value.indexOf("=") > -1;
+    const needs_escaping = value.indexOf('"') > -1 || value.indexOf("\\") > -1;
+
+    if (needs_escaping) value = value.replace(/["\\]/g, "\\$&");
+    if (needs_quoting) value = `"${value}"`;
+    if (value === "" && !is_null) value = '""';
+
+    line += key + "=" + value + " ";
+  }
+
+  //trim trailing space
+  return line.substring(0, line.length - 1);
+}
+
+interface LogMeta {
+  [key: string]: string | number | boolean | undefined;
+}
+
 export default {
-  error(value: any, ...meta: any): void {
+  error(value: any, meta?: LogMeta): void {
     sanitizeError(value);
     log("error", value, meta);
   },
 
-  warn(value: any, ...meta: any): void {
+  warn(value: any, meta?: LogMeta): void {
     log("warn", value, meta);
   },
 
-  info(value: any, ...meta: any): void {
+  info(value: any, meta?: LogMeta): void {
     log("info", value, meta);
   },
 
-  http(value: any, ...meta: any): void {
+  http(value: any, meta?: LogMeta): void {
     log("http", value, meta);
   },
 
-  verbose(value: any, ...meta: any): void {
+  verbose(value: any, meta?: LogMeta): void {
     log("verbose", value, meta);
   },
 
-  debug(value: any, ...meta: any): void {
+  debug(value: any, meta?: LogMeta): void {
     log("debug", value, meta);
   },
 
-  silly(value: any, ...meta: any): void {
+  silly(value: any, meta?: LogMeta): void {
     log("silly", value, meta);
   },
 };

@@ -28,8 +28,11 @@ const jobChannel = diagnostic_channel.channel("enterprise-jobs");
 export class JobScraperManager {
   private static initStore(item: JobItem) {
     const store = getStore();
+
     if (store) {
-      store.set(StoreKey.LABEL, [`job-${item.id}-${item.name}`]);
+      const label = getElseSet(store, StoreKey.LABEL, () => ({}));
+      label.job_id = item.id;
+      label.job_name = item.name;
       store.set(StoreKey.LAST_RUN, item.lastRun);
     }
   }

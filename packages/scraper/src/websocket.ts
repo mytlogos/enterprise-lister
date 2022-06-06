@@ -102,7 +102,7 @@ class SocketChannelListener {
       if (channel.unsubscribe) {
         channel.unsubscribe(this.getListener());
       } else {
-        logger.warn("Tried to unsubscribe from an inactive channel", channel);
+        logger.warn("Tried to unsubscribe from an inactive channel", { channel_name: channel.name });
       }
     }
   }

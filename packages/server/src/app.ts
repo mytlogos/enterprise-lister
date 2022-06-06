@@ -1,12 +1,10 @@
 import createError, { HttpError } from "http-errors";
 import express, { Request, Response } from "express";
 import path from "path";
-import logger from "morgan";
 import compression from "compression";
 // helps by preventing some known http vulnerabilities by setting http headers appropriately
 import helmet from "helmet";
 // own router
-import log from "enterprise-core/dist/logger";
 import { apiRouter } from "./api";
 import { blockRequests } from "./timer";
 import { isString, emojiStrip } from "enterprise-core/dist/tools";
@@ -14,6 +12,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
 import enableWS from "express-ws";
 import promBundle from "express-prom-bundle";
+import { logRequest } from "./requestlogger";
 
 // Add the options to the prometheus middleware most option are for http_request_duration_seconds histogram metric
 const metricsMiddleware = promBundle({
@@ -46,15 +45,7 @@ enableWS(app); // allow router/app to use *.ws
 const parentDirName = path.dirname(path.dirname(__dirname));
 
 app.use(blockRequests);
-app.use(
-  logger(":method :url :status :response-time ms - :res[content-length]", {
-    stream: {
-      write(str: string): void {
-        log.info(str.trim());
-      },
-    },
-  }),
-);
+app.use(logRequest);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
