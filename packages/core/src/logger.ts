@@ -5,6 +5,7 @@ import env from "./env";
 import { getStore, StoreKey } from "./asyncStorage";
 import DailyRotateFile from "winston-daily-rotate-file";
 import LokiTransport from "winston-loki";
+import { MESSAGE } from "triple-beam";
 
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
@@ -32,7 +33,7 @@ if (logLevel) {
   logLevel = env.development ? "debug" : "info";
 }
 
-const formatLogFmt = winston.format((info) => {
+const formatLogFmt = winston.format((info, overwriteMessage) => {
   const { label, timestamp, level, message, ...rest } = info;
 
   // return stringified objects as-is
@@ -41,13 +42,19 @@ const formatLogFmt = winston.format((info) => {
   }
 
   rest.msg = message;
+  const line = stringifyLogFmt(rest);
 
-  return {
+  const newInfo = {
     label,
     timestamp,
     level,
-    message: stringifyLogFmt(rest),
+    message: line,
   };
+  if (overwriteMessage) {
+    // @ts-expect-error
+    newInfo[MESSAGE] = line;
+  }
+  return newInfo;
 });
 
 const logger = winston.createLogger({
@@ -98,7 +105,7 @@ if (env.lokiUrl) {
         program: appName || "unknown",
       },
       level: "info", // never allow debug logs or less
-      format: formatLogFmt(),
+      format: formatLogFmt(true),
     }),
   );
 }
