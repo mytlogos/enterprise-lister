@@ -1,3 +1,10 @@
+## [1.39.2](https://github.com/mytlogos/enterprise-lister/compare/v1.39.1...v1.39.2) (2022-06-07)
+
+
+### Bug Fixes
+
+* **core:** fix undefined property error ([390df5e](https://github.com/mytlogos/enterprise-lister/commit/390df5ebdee55c40dceb3d483a6f39d96d17df0d))
+
 ## [1.39.1](https://github.com/mytlogos/enterprise-lister/compare/v1.39.0...v1.39.1) (2022-06-06)
 
 
