@@ -144,7 +144,7 @@ function sanitizeError(value: any) {
     delete (value as any).data.element; // element may be too big
   }
   // do not log response body
-  if ("response" in value && "body" in value.response) {
+  if ("response" in value && value.response && "body" in value.response) {
     delete value.response.body;
   }
 }
