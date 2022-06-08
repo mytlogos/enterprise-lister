@@ -4,6 +4,7 @@ import { getStore } from "enterprise-core/dist/asyncStorage";
 import logger from "enterprise-core/dist/logger";
 import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import * as url from "url";
+import { getText } from "../direct/directTools";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
 import { CustomHookError, CustomHookErrorCodes } from "./errors";
 import {
@@ -463,7 +464,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
       value = html;
     } else {
       if (text == undefined) {
-        text = sanitizeString(getText((element)).trim());
+        text = sanitizeString(getText(element).trim());
       }
       value = text;
     }
@@ -478,7 +479,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
       value = getAttributeValue(element, variable.extract, base);
     } else {
       if (text == undefined) {
-        text = sanitizeString(getText((element)).trim());
+        text = sanitizeString(getText(element).trim());
       }
       value = text;
     }
@@ -505,7 +506,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
       value = getAttributeValue(element, transfer.extract, base);
     } else if (typeof transfer.extract === "string") {
       if (match === undefined) {
-        const text = sanitizeString(getText((element)).trim());
+        const text = sanitizeString(getText(element).trim());
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {
@@ -538,7 +539,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
       value = getAttributeValue(element, variable.extract, base);
     } else if (variable.value) {
       if (match === undefined) {
-        const text = sanitizeString(getText((element)).trim());
+        const text = sanitizeString(getText(element).trim());
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {
