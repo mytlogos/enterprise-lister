@@ -237,7 +237,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
   const contentElement = $(".chapter_content");
 
   const titleElement = $(".cha-hd-mn-text a").first();
-  const novelTitle = sanitizeString(getText((titleElement)).replace(/\/\s*$/, ""));
+  const novelTitle = sanitizeString(getText(titleElement).replace(/\/\s*$/, ""));
   titleElement.remove();
 
   const episodeTitle = sanitizeString(getText($(".cha-hd-mn-text")));
