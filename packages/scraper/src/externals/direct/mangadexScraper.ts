@@ -158,7 +158,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     if (!newsRow.has(".flag").length) {
       const mediumLinkElement = newsRow.find("a.manga_title");
       currentMediumLink = new url.URL(mediumLinkElement.attr("href") as string, uri).href;
-      currentMedium = sanitizeString(mediumLinkElement.prop("innerText") as string);
+      currentMedium = sanitizeString(getText(mediumLinkElement));
       continue;
     }
 
@@ -173,7 +173,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     }
     const titleElement = children.eq(1);
     const link = new url.URL(titleElement.children("a").attr("href") as string, uri).href;
-    const title = sanitizeString(titleElement.prop("innerText") as string);
+    const title = sanitizeString(getText(titleElement));
 
     // ignore oneshots, they are not 'interesting' enough, e.g. too short
     if (title === "Oneshot") {
@@ -359,10 +359,10 @@ async function scrapeTocPage(
     const chapterTitleElement = columns.eq(1);
     const endBadgeElement = chapterTitleElement.find(".badge").first().remove();
 
-    if (endBadgeElement.length && endReg.test(sanitizeString(endBadgeElement.prop("innerText") as string))) {
+    if (endBadgeElement.length && endReg.test(sanitizeString(getText(endBadgeElement)))) {
       toc.end = true;
     }
-    const chapterTitle = sanitizeString(chapterTitleElement.prop("innerText") as string);
+    const chapterTitle = sanitizeString(getText(chapterTitleElement));
     const volChapGroups = volChapReg.exec(chapterTitle);
     const chapGroups = chapReg.exec(chapterTitle);
 

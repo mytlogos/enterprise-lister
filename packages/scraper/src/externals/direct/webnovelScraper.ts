@@ -64,10 +64,10 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
       continue;
     }
     const mediumTocLink = toTocLink(mediumTocLinkGroup[3]);
-    const mediumTitle = sanitizeString(mediumElement.prop("innerText") as string);
+    const mediumTitle = sanitizeString(getText(mediumElement));
 
     const titleElement = tableData.eq(2).children("a").first();
-    const episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
+    const episodeTitle = sanitizeString(getText(titleElement));
 
     const textTime = getText(tableData.eq(5)).trim();
     const time = relativeToAbsoluteTime(textTime);
@@ -237,7 +237,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
   const contentElement = $(".chapter_content");
 
   const titleElement = $(".cha-hd-mn-text a").first();
-  const novelTitle = sanitizeString((titleElement.prop("innerText") as string).replace(/\/\s*$/, ""));
+  const novelTitle = sanitizeString(getText((titleElement)).replace(/\/\s*$/, ""));
   titleElement.remove();
 
   const episodeTitle = sanitizeString(getText($(".cha-hd-mn-text")));
@@ -346,7 +346,7 @@ async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
     const titleElement = titles.eq(i);
     const possibleTitles = [searchMedium.title, ...searchMedium.synonyms];
 
-    const title = sanitizeString(titleElement.prop("innerText") as string);
+    const title = sanitizeString(getText(titleElement));
     if (possibleTitles.some((value) => equalsIgnore(title, value))) {
       bookId = titleElement.attr("data-bookid");
       break;
@@ -383,7 +383,7 @@ async function search(text: string): Promise<SearchResult[]> {
 
     const titleElement = result.find("h3 > a");
     const coverElement = result.find("img");
-    const title = sanitizeString(titleElement.prop("innerText") as string);
+    const title = sanitizeString(getText(titleElement));
     const coverUrl = new url.URL(coverElement.attr("src") as string, uri).href;
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 

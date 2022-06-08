@@ -35,13 +35,11 @@ async function* novelfullGenerator(pages: string[], mediumType = tools.MediaType
     const content = await fs.promises.readFile(page, "utf8");
     const $ = cheerio.load(content);
     const mediumTitleElement = $(".desc .title").first();
-    const mediumTitle = tools.sanitizeString(mediumTitleElement.prop("innerText") as string);
+    const mediumTitle = tools.sanitizeString(directTools.getText(mediumTitleElement));
 
     const items = $(".list-chapter li a");
 
-    const releaseStatusString = ($(".info-holder .info div:nth-child(4) a").prop("innerText") as string)
-      .trim()
-      .toLowerCase();
+    const releaseStatusString = directTools.getText($(".info-holder .info div:nth-child(4) a")).trim().toLowerCase();
 
     let end = false;
     if (releaseStatusString === "ongoing") {
@@ -62,7 +60,7 @@ async function* novelfullGenerator(pages: string[], mediumType = tools.MediaType
     for (let i = 0; i < items.length; i++) {
       const newsRow = items.eq(i);
       const link = newsRow.attr("href");
-      const episodeTitle = tools.sanitizeString(newsRow.prop("innerText") as string);
+      const episodeTitle = tools.sanitizeString(directTools.getText(newsRow));
       yield {
         title: episodeTitle,
         url: link as string,
@@ -82,13 +80,12 @@ async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType
   const $ = cheerio.load(content);
   const mediumTitleElement = $(".post-title h3");
   mediumTitleElement.find("span").remove();
-  const mediumTitle = tools.sanitizeString(mediumTitleElement.prop("innerText") as string);
+  const mediumTitle = tools.sanitizeString(directTools.getText(mediumTitleElement));
 
   const items = $(".wp-manga-chapter");
 
-  const releaseStatusString = (
-    $(".post-status .post-content_item:nth-child(2) .summary-content").prop("innerText") as string
-  )
+  const releaseStatusString = directTools
+    .getText($(".post-status .post-content_item:nth-child(2) .summary-content"))
     .trim()
     .toLowerCase();
 

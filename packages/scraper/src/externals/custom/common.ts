@@ -463,7 +463,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
       value = html;
     } else {
       if (text == undefined) {
-        text = sanitizeString((element.prop("innerText") as string).trim());
+        text = sanitizeString(getText((element)).trim());
       }
       value = text;
     }
@@ -478,7 +478,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
       value = getAttributeValue(element, variable.extract, base);
     } else {
       if (text == undefined) {
-        text = sanitizeString((element.prop("innerText") as string).trim());
+        text = sanitizeString(getText((element)).trim());
       }
       value = text;
     }
@@ -505,7 +505,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
       value = getAttributeValue(element, transfer.extract, base);
     } else if (typeof transfer.extract === "string") {
       if (match === undefined) {
-        const text = sanitizeString((element.prop("innerText") as string).trim());
+        const text = sanitizeString(getText((element)).trim());
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {
@@ -538,7 +538,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
       value = getAttributeValue(element, variable.extract, base);
     } else if (variable.value) {
       if (match === undefined) {
-        const text = sanitizeString((element.prop("innerText") as string).trim());
+        const text = sanitizeString(getText((element)).trim());
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {

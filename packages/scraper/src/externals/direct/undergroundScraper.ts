@@ -60,12 +60,12 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
         logger.warn(`missing href attribute for '${mediumTitle}' on qidianUnderground`);
         continue;
       }
-      const exec = chapterReg.exec(sanitizeString(titleElement.prop("innerText") as string));
+      const exec = chapterReg.exec(sanitizeString(getText(titleElement)));
 
       if (!exec) {
         scraperLog("warn", LogType.TITLE_FORMAT, "underground", {
           url: uri,
-          unknown_title: titleElement.prop("innerText") || undefined,
+          unknown_title: getText(titleElement),
         });
         continue;
       }
@@ -208,9 +208,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
 
     const contentChildren = contentElement.children();
 
-    const episodeTitle = sanitizeString(
-      (contentChildren.find("h2").first().remove().prop("innerText") as string).trim(),
-    );
+    const episodeTitle = sanitizeString(getText(contentChildren.find("h2").first().remove()).trim());
     const content = contentChildren.html();
 
     if (!episodeTitle) {

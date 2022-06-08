@@ -85,8 +85,8 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const titleElement = children.eq(1);
     const link = normalizeLink(new url.URL(titleElement.attr("href") as string, baseUri).href);
     const mediumTocLink = normalizeLink(new url.URL(mediumElement.attr("href") as string, baseUri).href);
-    const mediumTitle = sanitizeString(mediumElement.prop("innerText") as string);
-    const title = sanitizeString(titleElement.prop("innerText") as string);
+    const mediumTitle = sanitizeString(getText(mediumElement));
+    const title = sanitizeString(getText(titleElement));
 
     // ignore oneshots, they are not 'interesting' enough, e.g. too short
     if (title === "Oneshot") {
@@ -180,14 +180,14 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
   const $ = await tryRequest(chapterLink);
-  if ($("head > title").prop("innerText") === "Page not found!") {
+  if (getText($("head > title")) === "Page not found!") {
     throw new MissingResourceError("Missing Toc on NovelFull", chapterLink);
   }
   const mediumTitleElement = $(".breadcrumb li:nth-child(2) a");
   const titleElement = $(".breadcrumb span");
 
-  const episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
-  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+  const episodeTitle = sanitizeString(getText(titleElement));
+  const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
   if (!episodeTitle || !mediumTitle) {
     scraperLog("warn", LogType.TITLE_FORMAT, "mangahasu", { url: chapterLink });
@@ -233,7 +233,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
   }
   const $ = await tryRequest(enforceHttps(urlString));
-  if ($("head > title").prop("innerText") === "Page not found!") {
+  if (getText($("head > title")) === "Page not found!") {
     throw new MissingResourceError("Missing Toc on NovelFull", urlString);
   }
   const contentElement = $(".wrapper_content");
@@ -290,7 +290,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       return [];
     }
     const chapterTitleElement = chapterElement.find(".name");
-    const chapterTitle = sanitizeString(chapterTitleElement.prop("innerText") as string);
+    const chapterTitle = sanitizeString(getText(chapterTitleElement));
 
     if (endReg.test(chapterTitle)) {
       toc.end = true;
@@ -409,7 +409,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
     const linkElement = links.eq(i);
 
     const titleElement = linkElement.find(".name");
-    const text = sanitizeString(titleElement.prop("innerText") as string);
+    const text = sanitizeString(getText(titleElement));
 
     if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
       const tocLink = normalizeLink(linkElement.attr("href") as string);
@@ -447,9 +447,9 @@ async function search(searchWords: string): Promise<SearchResult[]> {
     const authorElement = linkElement.find(".author");
     const coverElement = linkElement.find("img");
 
-    const text = sanitizeString(titleElement.prop("innerText") as string);
+    const text = sanitizeString(getText(titleElement));
     const link = normalizeLink(new url.URL(linkElement.attr("href") as string, BASE_URI).href);
-    const author = sanitizeString(authorElement.prop("innerText") as string);
+    const author = sanitizeString(getText(authorElement));
     const coverLink = coverElement.attr("src");
 
     searchResults.push({ coverUrl: coverLink, author, link, title: text, medium: MediaType.IMAGE });

@@ -121,7 +121,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 
   const $ = await queueCheerioRequest(urlString);
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
-  const novelTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+  const novelTitle = sanitizeString(getText(mediumTitleElement));
 
   const chaTit = $(".cha-tit h3");
   let directContentElement: cheerio.Cheerio<cheerio.Element>;
@@ -134,7 +134,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     if (firstChild.is(".cha-words")) {
       directContentElement = firstChild;
     }
-    episodeTitle = sanitizeString(chaTit.prop("innerText") as string);
+    episodeTitle = sanitizeString(getText(chaTit));
   } else {
     const entryTitle = $("h1.entry-title").remove();
 
@@ -145,9 +145,9 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
         scraperLog("warn", LogType.TITLE_FORMAT, "boxnovel", { url: urlString });
         return [];
       }
-      episodeTitle = sanitizeString(currentChapter.prop("innerText") as string);
+      episodeTitle = sanitizeString(getText(currentChapter));
     } else {
-      episodeTitle = sanitizeString(entryTitle.prop("innerText") as string);
+      episodeTitle = sanitizeString(getText(entryTitle));
     }
     directContentElement = $(".reading-content");
   }
@@ -189,7 +189,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 
   const mediumTitleElement = $(".post-title h3");
   mediumTitleElement.find("span").remove();
-  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+  const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
   const content: TocContent[] = [];
   const items = $(".wp-manga-chapter");
@@ -206,7 +206,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const titleElement = newsRow.find("a");
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
-    let episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
+    let episodeTitle = sanitizeString(getText(titleElement));
 
     const timeStampElement = newsRow.find(".chapter-release-date");
     const dateString = getText(timeStampElement).trim();
@@ -320,7 +320,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
     const mediumTitleElement = newsRow.find(".post-title a");
     const tocLink = new url.URL(mediumTitleElement.attr("href") as string, uri).href.replace("-boxnovel", "");
 
-    const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+    const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
     const titleElement = newsRow.find(".chapter-item .chapter a");
     const timeElements = newsRow.find(".chapter-item .post-on");
@@ -329,7 +329,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
       const chapterTitleElement = titleElement.eq(j);
       const link = new url.URL(chapterTitleElement.attr("href") as string, uri).href;
 
-      const episodeTitle = sanitizeString(chapterTitleElement.prop("innerText") as string);
+      const episodeTitle = sanitizeString(getText(chapterTitleElement));
       const timeStampElement = timeElements.eq(j);
       const dateString = getText(timeStampElement).trim();
       const lowerDate = dateString.toLowerCase();

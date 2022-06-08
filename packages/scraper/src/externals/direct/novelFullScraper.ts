@@ -56,8 +56,8 @@ async function search(text: string): Promise<SearchResult[]> {
     const coverElement = resultElement.find("img.cover");
 
     const coverLink = new url.URL(coverElement.attr("src") as string, uri).href;
-    const author = sanitizeString(authorElement.prop("innerText") as string);
-    const title = sanitizeString(linkElement.prop("innerText") as string);
+    const author = sanitizeString(getText(authorElement));
+    const title = sanitizeString(getText(linkElement));
     let tocLink = linkElement.attr("href") as string;
     tocLink = new url.URL(tocLink, uri).href;
 
@@ -75,7 +75,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 
   const $ = await queueCheerioRequest(urlString);
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
-  const novelTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+  const novelTitle = sanitizeString(getText(mediumTitleElement));
 
   const episodeTitle = sanitizeString(getText($(".chapter-title")));
   const directContentElement = $("#chapter-content");
@@ -105,7 +105,7 @@ function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
     releaseState = ReleaseState.Ongoing;
   }
   const mediumTitleElement = $(".desc .title").first();
-  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+  const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
   const authors = extractLinkable($, 'a[href^="/author/"]', BASE_URI);
 
@@ -145,7 +145,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
         for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
           const newsRow = items.eq(itemIndex);
           const link = new url.URL(newsRow.attr("href") as string, uri).href;
-          const episodeTitle = sanitizeString(newsRow.prop("innerText") as string);
+          const episodeTitle = sanitizeString(getText(newsRow));
           yield { title: episodeTitle, url: link, releaseDate: now } as EpisodePiece;
         }
 
@@ -255,7 +255,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromise<Toc> {
   // TODO: 20.07.2019 scrape alternative titles and author too
   const mediumTitleElement = $(".desc .title").first();
-  const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+  const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
   const content: TocContent[] = [];
   const indexPartMap: Map<number, TocPart> = new Map<number, TocPart>();
@@ -269,7 +269,7 @@ async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromis
 
     const link = new url.URL(newsRow.attr("href") as string, uri).href;
 
-    const episodeTitle = sanitizeString(newsRow.prop("innerText") as string);
+    const episodeTitle = sanitizeString(getText(newsRow));
 
     const regexResult = titleRegex.exec(episodeTitle);
 
@@ -337,20 +337,20 @@ async function newsAdapter(): Promise<NewsScrapeResult> {
 
     const mediumTitleElement = newsRow.find(".col-title a");
     const tocLink = new url.URL(mediumTitleElement.attr("href") as string, uri).href;
-    const mediumTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
+    const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
     const titleElement = newsRow.find(".col-chap a");
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
-    const episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
+    const episodeTitle = sanitizeString(getText(titleElement));
 
     const timeStampElement = newsRow.find(".col-time");
-    const date = relativeToAbsoluteTime((timeStampElement.prop("innerText") as string).trim());
+    const date = relativeToAbsoluteTime(getText(timeStampElement).trim());
 
     if (!date || date > new Date()) {
       scraperLog("warn", LogType.TIME_FORMAT, "novelfull", {
         url: uri,
-        unknown_time: timeStampElement.prop("innerText") || undefined,
+        unknown_time: getText(timeStampElement) || undefined,
       });
       continue;
     }

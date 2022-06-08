@@ -43,14 +43,14 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const span = newsRow.children("span").eq(0);
     span.remove();
 
-    const mediumTitle = sanitizeString(newsRow.prop("innerText") as string);
+    const mediumTitle = sanitizeString(getText(newsRow));
 
-    const rawTitle = sanitizeString(span.prop("innerText") as string);
+    const rawTitle = sanitizeString(getText(span));
     const groups = titlePattern.exec(rawTitle);
 
     if (!groups) {
       // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
-      logger.warn(`Unknown KissAnime News Format: '${span.prop("innerText")}' for '${mediumTitle}'`);
+      logger.warn(`Unknown KissAnime News Format: '${rawTitle}' for '${mediumTitle}'`);
       continue;
     }
 
@@ -153,8 +153,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   }
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $("#container > #leftside");
-  const animeTitle = (
-    contentElement.find(".bigBarContainer > .barContent > div > a:first-child").first().prop("innerText") as string
+  const animeTitle = getText(
+    contentElement.find(".bigBarContainer > .barContent > div > a:first-child").first(),
   ).trim();
 
   const episodeElements = contentElement.find(".episodeList .listing > tbody > tr:has(td)");
@@ -180,7 +180,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const date = new Date(getText(columns.eq(1)).trim());
 
     const titleElement = columns.eq(0).find("a");
-    const titleString = sanitizeString(titleElement.prop("innerText") as string);
+    const titleString = sanitizeString(getText(titleElement));
     const episodeGroups = chapReg.exec(titleString);
 
     if (Number.isNaN(date.getDate()) || !episodeGroups) {
@@ -298,7 +298,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
   for (let i = 0; i < links.length; i++) {
     const linkElement = links.eq(i);
 
-    const text = sanitizeString(linkElement.prop("innerText") as string);
+    const text = sanitizeString(getText(linkElement));
     const link = new url.URL(linkElement.attr("href") as string, BASE_URI).href;
 
     searchResults.push({ link, title: text, medium: MediaType.IMAGE });

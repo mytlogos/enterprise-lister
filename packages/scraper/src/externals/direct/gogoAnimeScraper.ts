@@ -38,9 +38,9 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
     const episodeTitleElement = newsRow.children(".episode");
 
-    const mediumTitle = sanitizeString(mediumElement.prop("innerText") as string);
+    const mediumTitle = sanitizeString(getText(mediumElement));
 
-    const rawTitle = sanitizeString(episodeTitleElement.prop("innerText") as string);
+    const rawTitle = sanitizeString(getText(episodeTitleElement));
     const groups = titlePattern.exec(rawTitle);
 
     if (!groups) {
@@ -113,7 +113,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
   for (let i = 0; i < episodePages.length; i++) {
     const episodePage = episodePages.eq(i);
-    const exec = pageReg.exec(episodePage.prop("innerText") as string);
+    const exec = pageReg.exec(getText(episodePage));
 
     if (!exec) {
       logger.warn("could not match toc episode Page text", {
@@ -205,7 +205,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
 
     const coverElement = linkElement.find("[style]");
 
-    const text = sanitizeString(linkElement.prop("innerText") as string);
+    const text = sanitizeString(getText(linkElement));
     const link = linkElement.attr("href") as string;
     const coverStyle = coverElement.attr("style") as string;
     const exec = coverRegex.exec(coverStyle);

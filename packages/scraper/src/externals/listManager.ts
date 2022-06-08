@@ -234,7 +234,7 @@ class SimpleNovelUpdates implements ListManager {
 
       const link = tableData.eq(1).children("a").first();
       const title = { text: getText(link).trim(), link: link.attr("href") as string };
-      const stand = tableData.eq(2).prop("innerText") as string;
+      const stand = getText(tableData.eq(2));
 
       const progressExec = progressReg.exec(stand);
 
