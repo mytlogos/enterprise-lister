@@ -111,7 +111,7 @@ async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType
     const link = titleElement.attr("href");
 
     const timeStampElement = newsRow.find(".chapter-release-date");
-    const dateString = (timeStampElement.prop("innerText") as string).trim();
+    const dateString = directTools.getText(timeStampElement).trim();
     const lowerDate = dateString.toLowerCase();
 
     let date;
@@ -122,7 +122,7 @@ async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType
     }
 
     yield {
-      title: titleElement.prop("innerText") as string,
+      title: directTools.getText(titleElement),
       url: link as string,
       releaseDate: date as Date,
     };

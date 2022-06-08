@@ -5,7 +5,7 @@ import { queueCheerioRequest } from "../queueManager";
 import { max, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist/database/storages/storage";
 import { ScraperError } from "../errors";
-import { scraperLog, LogType } from "./directTools";
+import { scraperLog, LogType, getText } from "./directTools";
 
 export const sourceType = "qidian_underground";
 
@@ -25,7 +25,7 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
   for (let tocRowIndex = 0; tocRowIndex < tocRows.length; tocRowIndex++) {
     const tocRow = tocRows.eq(tocRowIndex);
     const mediumElement = tocRow.prev();
-    const mediumTitle = sanitizeString((mediumElement.contents().first().prop("innerText") as string).trim());
+    const mediumTitle = sanitizeString(getText(mediumElement.contents().first()).trim());
 
     if (!mediumTitle) {
       scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "underground", { url: uri });

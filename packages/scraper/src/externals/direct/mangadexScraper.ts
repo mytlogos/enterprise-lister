@@ -8,7 +8,7 @@ import * as request from "request";
 import { checkTocContent } from "../scraperTools";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, ScraperError, UrlError } from "../errors";
-import { extractLinkable, LogType, scraperLog } from "./directTools";
+import { extractLinkable, getText, LogType, scraperLog } from "./directTools";
 
 const BASE_URI = "https://mangadex.org/";
 const jar = request.jar();
@@ -294,14 +294,12 @@ async function scrapeTocPage(
 ): Promise<boolean> {
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $("#content");
-  if (
-    (contentElement.find(".alert-danger").prop("innerText") as string).match(
-      /Manga .+? (not available)|(does not exist)/i,
-    )
-  ) {
+
+  if (getText(contentElement.find(".alert-danger")).match(/Manga .+? (not available)|(does not exist)/i)) {
     throw new MissingResourceError("Missing ToC on MangaDex", urlString);
   }
-  const mangaTitle = sanitizeString(contentElement.find("h6.card-header").first().prop("innerText") as string);
+  const mangaTitle = sanitizeString(getText(contentElement.find("h6.card-header").first()));
+
   // const metaRows = contentElement.find(".col-xl-9.col-lg-8.col-md-7 > .row");
   if (!mangaTitle) {
     scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "mangadex", { url: urlString });
@@ -315,7 +313,7 @@ async function scrapeTocPage(
     const infoElement = tocInfoElements.eq(i);
     const children = infoElement.children();
 
-    if ((children.eq(0).prop("innerText") as string).toLocaleLowerCase().includes("status:")) {
+    if (getText(children.eq(0)).toLocaleLowerCase().includes("status:")) {
       releaseStateElement = children.eq(1);
       break;
     }
@@ -323,7 +321,7 @@ async function scrapeTocPage(
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
+    const releaseStateString = getText(releaseStateElement).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {

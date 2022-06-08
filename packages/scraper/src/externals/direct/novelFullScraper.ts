@@ -23,6 +23,7 @@ import {
   extractLinkable,
   LogType,
   scraperLog,
+  getText,
 } from "./directTools";
 import { checkTocContent } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";
@@ -76,7 +77,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
   const novelTitle = sanitizeString(mediumTitleElement.prop("innerText") as string);
 
-  const episodeTitle = sanitizeString($(".chapter-title").prop("innerText") as string);
+  const episodeTitle = sanitizeString(getText($(".chapter-title")));
   const directContentElement = $("#chapter-content");
   directContentElement.find("script, ins").remove();
 
@@ -95,7 +96,7 @@ function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
   let releaseState: ReleaseState = ReleaseState.Unknown;
   const releaseStateElement = $('a[href^="/status/"]');
 
-  const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
+  const releaseStateString = getText(releaseStateElement).toLowerCase();
   if (releaseStateString.includes("complete")) {
     end = true;
     releaseState = ReleaseState.Complete;

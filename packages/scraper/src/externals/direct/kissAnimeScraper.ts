@@ -10,6 +10,7 @@ import * as normalRequest from "request";
 import { checkTocContent } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
+import { getText } from "./directTools";
 
 // @ts-expect-error
 const jar = request.jar();
@@ -176,7 +177,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const episodeElement = episodeElements.eq(i);
     const columns = episodeElement.children();
 
-    const date = new Date((columns.eq(1).prop("innerText") as string).trim());
+    const date = new Date(getText(columns.eq(1)).trim());
 
     const titleElement = columns.eq(0).find("a");
     const titleString = sanitizeString(titleElement.prop("innerText") as string);
@@ -248,14 +249,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < infoElements.length; i++) {
     const element = infoElements.eq(i);
 
-    if ((element.prop("innerText") as string).toLocaleLowerCase().includes("status")) {
+    if (getText(element).toLocaleLowerCase().includes("status")) {
       releaseStateElement = element.parent();
     }
   }
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
+    const releaseStateString = getText(releaseStateElement).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {

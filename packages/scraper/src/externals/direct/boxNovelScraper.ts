@@ -25,6 +25,7 @@ import {
   extractLinkable,
   scraperLog,
   LogType,
+  getText,
 } from "./directTools";
 import { checkTocContent } from "../scraperTools";
 import { MissingResourceError, UrlError } from "../errors";
@@ -208,7 +209,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     let episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
 
     const timeStampElement = newsRow.find(".chapter-release-date");
-    const dateString = (timeStampElement.prop("innerText") as string).trim();
+    const dateString = getText(timeStampElement).trim();
     const lowerDate = dateString.toLowerCase();
 
     let date;
@@ -280,7 +281,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     content.push(chapterContent);
   }
   const releaseStateElement = $("div.post-content_item:nth-child(2) > div:nth-child(2)");
-  const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
+  const releaseStateString = getText(releaseStateElement).toLowerCase();
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateString.includes("complete")) {
@@ -330,7 +331,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
 
       const episodeTitle = sanitizeString(chapterTitleElement.prop("innerText") as string);
       const timeStampElement = timeElements.eq(j);
-      const dateString = (timeStampElement.prop("innerText") as string).trim();
+      const dateString = getText(timeStampElement).trim();
       const lowerDate = dateString.toLowerCase();
 
       let date: Nullable<Date>;

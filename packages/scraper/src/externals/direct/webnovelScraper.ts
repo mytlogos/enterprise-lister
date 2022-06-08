@@ -16,6 +16,7 @@ import * as request from "request-promise-native";
 import { checkTocContent } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
+import { getText } from "./directTools";
 
 const jar = request.jar();
 const defaultRequest = request.defaults({
@@ -68,7 +69,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
     const titleElement = tableData.eq(2).children("a").first();
     const episodeTitle = sanitizeString(titleElement.prop("innerText") as string);
 
-    const textTime = (tableData.eq(5).prop("innerText") as string).trim();
+    const textTime = getText(tableData.eq(5)).trim();
     const time = relativeToAbsoluteTime(textTime);
 
     if (!time) {
@@ -239,7 +240,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
   const novelTitle = sanitizeString((titleElement.prop("innerText") as string).replace(/\/\s*$/, ""));
   titleElement.remove();
 
-  const episodeTitle = sanitizeString($(".cha-hd-mn-text").prop("innerText") as string);
+  const episodeTitle = sanitizeString(getText($(".cha-hd-mn-text")));
   const content = contentElement.find(".cha-words").first().html();
 
   const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);

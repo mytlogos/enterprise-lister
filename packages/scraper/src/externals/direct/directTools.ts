@@ -27,6 +27,17 @@ export enum LogType {
   API_CHANGED = "api changed",
 }
 
+/**
+ * Get the text of element and all its descendants, except data nodes like style and script.
+ */
+export function getText(element: cheerio.Cheerio<cheerio.AnyNode>): string {
+  // workaround till commit https://github.com/cheeriojs/cheerio/commit/03a28fa1d975685a9a07648bed5ba250e265fd64 lands
+  if (!element.length) {
+    return "";
+  }
+  return element.prop("innerText") || "";
+}
+
 export function scraperLog(level: LogLevel, value: LogType, scraper: string, meta?: LogMeta) {
   logger.log(level, value, {
     ...(meta || {}),

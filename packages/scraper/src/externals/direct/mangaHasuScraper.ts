@@ -12,7 +12,14 @@ import { queueCheerioRequest } from "../queueManager";
 import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
-import { SearchResult as TocSearchResult, searchToc, extractLinkable, LogType, scraperLog } from "./directTools";
+import {
+  SearchResult as TocSearchResult,
+  searchToc,
+  extractLinkable,
+  LogType,
+  scraperLog,
+  getText,
+} from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError, ScraperError } from "../errors";
 import { Options } from "cloudscraper";
 import * as cheerio from "cheerio";
@@ -230,7 +237,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     throw new MissingResourceError("Missing Toc on NovelFull", urlString);
   }
   const contentElement = $(".wrapper_content");
-  const mangaTitle = sanitizeString(contentElement.find(".info-title h1").first().prop("innerText") as string);
+  const mangaTitle = sanitizeString(getText(contentElement.find(".info-title h1").first()));
   // TODO process metadata and get more (like author)
 
   const chapters = contentElement.find(".list-chapter tbody > tr");
@@ -251,7 +258,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   let releaseState: ReleaseState = ReleaseState.Unknown;
   const releaseStateElement = $('a[href^="/advanced-search.html?status="]');
 
-  const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
+  const releaseStateString = getText(releaseStateElement).toLowerCase();
   if (releaseStateString.includes("complete")) {
     releaseState = ReleaseState.Complete;
   } else if (releaseStateString.includes("ongoing")) {
@@ -275,7 +282,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < chapters.length; i++) {
     const chapterElement = chapters.eq(i);
 
-    const timeString = (chapterElement.find(".date-updated").prop("innerText") as string).trim();
+    const timeString = getText(chapterElement.find(".date-updated")).trim();
     const time = new Date(timeString);
 
     if (!timeString || Number.isNaN(time.getTime())) {

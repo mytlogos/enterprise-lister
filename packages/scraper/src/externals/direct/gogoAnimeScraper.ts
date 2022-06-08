@@ -6,7 +6,7 @@ import * as cheerio from "cheerio";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
 import { checkTocContent } from "../scraperTools";
-import { LogType, scraperLog, SearchResult as TocSearchResult, searchToc } from "./directTools";
+import { getText, LogType, scraperLog, SearchResult as TocSearchResult, searchToc } from "./directTools";
 import { UrlError } from "../errors";
 
 const BASE_URI = "https://www.gogoanime.vc/";
@@ -91,7 +91,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const $ = await queueCheerioRequest(urlString);
   const contentElement = $(".content_left .main_body");
 
-  const animeTitle = sanitizeString(contentElement.find("h1").prop("innerText") as string);
+  const animeTitle = sanitizeString(getText(contentElement.find("h1")));
 
   if (!animeTitle) {
     scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "gogoanime", {
@@ -143,14 +143,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < infoElements.length; i++) {
     const element = infoElements.eq(i);
 
-    if ((element.prop("innerText") as string).toLocaleLowerCase().includes("status")) {
+    if (getText(element).toLocaleLowerCase().includes("status")) {
       releaseStateElement = element.parent();
     }
   }
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = (releaseStateElement.prop("innerText") as string).toLowerCase();
+    const releaseStateString = getText(releaseStateElement).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {
@@ -247,7 +247,7 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
   const downloadPage = await queueCheerioRequest(outSideLink.attr("href") as string);
 
   const downloadLink = downloadPage(".dowload a").first().attr("href") as string;
-  const mediumTitle = sanitizeString($(".anime-info a").prop("innerText") as string);
+  const mediumTitle = sanitizeString(getText($(".anime-info a")));
 
   return [
     {
