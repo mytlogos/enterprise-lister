@@ -1,3 +1,10 @@
+## [1.39.3](https://github.com/mytlogos/enterprise-lister/compare/v1.39.2...v1.39.3) (2022-06-08)
+
+
+### Bug Fixes
+
+* **scraper:** workaround of cheerio typeerror ([0352a7d](https://github.com/mytlogos/enterprise-lister/commit/0352a7dcbebcf958b9c7f34eb9f15640798ac6b3))
+
 ## [1.39.2](https://github.com/mytlogos/enterprise-lister/compare/v1.39.1...v1.39.2) (2022-06-07)
 
 
