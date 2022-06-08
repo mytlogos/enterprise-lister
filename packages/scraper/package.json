@@ -1,6 +1,6 @@
 {
   "name": "enterprise-scraper",
-  "version": "1.39.3",
+  "version": "1.39.4",
   "private": true,
   "scripts": {
     "test:unit": "vue-cli-service test:unit",

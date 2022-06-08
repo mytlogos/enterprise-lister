@@ -1,3 +1,11 @@
+## [1.39.4](https://github.com/mytlogos/enterprise-lister/compare/v1.39.3...v1.39.4) (2022-06-08)
+
+
+### Bug Fixes
+
+* **scraper:** fix missing imports ([bda3036](https://github.com/mytlogos/enterprise-lister/commit/bda3036f9da00588e534869e93152e7f4b91d3b3))
+* **scraper:** workaround of cheerio typeerror ([1fa2337](https://github.com/mytlogos/enterprise-lister/commit/1fa233778a1dfd966f97d4ceda08285e8ea309ae))
+
 ## [1.39.3](https://github.com/mytlogos/enterprise-lister/compare/v1.39.2...v1.39.3) (2022-06-08)
 
 
