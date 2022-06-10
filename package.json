@@ -48,7 +48,7 @@
     "eslint-plugin-vue": "^9.0.1",
     "jest-junit": "^13.2.0",
     "prettier": "^2.6.2",
-    "semantic-release": "^19.0.2",
+    "semantic-release": "^19.0.3",
     "ts-jest": "^28.0.3",
     "ts-node": "^10.8.1"
   },
