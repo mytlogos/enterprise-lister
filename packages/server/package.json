@@ -41,7 +41,7 @@
     "@types/js-yaml": "^4.0.5",
     "@types/localtunnel": "^2.0.1",
     "@types/morgan": "^1.9.3",
-    "@types/node": "^16.11.36",
+    "@types/node": "^18.0.1",
     "@types/request-promise-native": "^1.0.17",
     "@types/swagger-jsdoc": "^6.0.1",
     "@types/swagger-ui": "^3.52.0",
