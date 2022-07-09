@@ -65,11 +65,11 @@ export default defineComponent({
       const [hooks, customHooks] = await Promise.all([HttpClient.getHooks(), HttpClient.getCustomHooks()]);
 
       hooks.sort((a, b) => {
-        let compare = a.state.localeCompare(b.state);
+        const compare = a.state.localeCompare(b.state);
         return compare ? compare : a.name.localeCompare(b.name);
       });
       customHooks.sort((a, b) => {
-        let compare = a.state.localeCompare(b.state);
+        const compare = a.state.localeCompare(b.state);
         return compare ? compare : a.name.localeCompare(b.name);
       });
       this.hooks = hooks;

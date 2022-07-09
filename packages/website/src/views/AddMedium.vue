@@ -270,8 +270,7 @@ export default defineComponent({
     },
     selectedMediumOption: {
       get() {
-        // @ts-expect-error
-        return (this.mediumOptions as Data["mediumOptions"]).find((item) => item.value === this.medium.medium);
+        return this.mediumOptions.find((item) => item.value === this.medium.medium);
       },
       set(value: { name: string; value: MediaType }) {
         this.medium.medium = value.value;

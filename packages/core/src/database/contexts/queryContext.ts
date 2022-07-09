@@ -410,7 +410,7 @@ export class QueryContext implements ConnectionContext {
     const values: any[] = [];
 
     const updatePromise = cb(updates, values);
-    if (updatePromise && updatePromise.then) {
+    if (updatePromise) {
       await updatePromise;
     }
 

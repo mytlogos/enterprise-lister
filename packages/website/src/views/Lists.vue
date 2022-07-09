@@ -34,7 +34,7 @@ export default defineComponent({
     items(): Medium[] {
       const multiKeys: number[] = this.lists.filter((value) => value.show).flatMap((value) => value.items);
       let missingMedia: number[] = [];
-      let uniqueMedia: Medium[] = [...new Set(multiKeys)]
+      const uniqueMedia: Medium[] = [...new Set(multiKeys)]
         .map((id) => {
           const medium = this.$store.getters.getMedium(id);
 
