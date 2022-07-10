@@ -13,11 +13,11 @@
     "lintfix": "eslint --fix '*/**/*.{js,ts,vue}'"
   },
   "dependencies": {
-    "brotli": "^1.3.2",
+    "brotli": "^1.3.3",
     "compression": "^1.7.4",
     "debug": "^4.3.4",
     "express": "^4.18.1",
-    "express-prom-bundle": "^6.4.1",
+    "express-prom-bundle": "^6.5.0",
     "express-ws": "^5.0.2",
     "handlebars": "^4.7.7",
     "helmet": "^5.1.0",
@@ -37,7 +37,7 @@
     "@types/compression": "^1.7.2",
     "@types/debug": "^4.1.5",
     "@types/http-errors": "^1.8.2",
-    "@types/jest": "^27.5.1",
+    "@types/jest": "^27.5.2",
     "@types/js-yaml": "^4.0.5",
     "@types/localtunnel": "^2.0.1",
     "@types/morgan": "^1.9.3",
@@ -50,6 +50,6 @@
     "@types/express-ws": "3.0.1",
     "@types/yargs": "^17.0.10",
     "js-yaml": "^4.1.0",
-    "typescript": "^4.6.4"
+    "typescript": "^4.7.4"
   }
 }
