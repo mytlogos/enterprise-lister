@@ -4,7 +4,7 @@ import { MediaType } from "enterprise-core/dist/tools";
 export interface NewsNested {
   type: "nested";
   _$: string;
-  _request: RequestConfig;
+  _request?: RequestConfig;
   mediumTitle: string;
   mediumTocLink: string;
 
@@ -25,7 +25,7 @@ export interface NewsNested {
 export interface NewsSingle {
   type: "single";
   _$: string;
-  _request: RequestConfig;
+  _request?: RequestConfig;
   mediumTitle: string;
   mediumTocLink: string;
   partIndex: string;
@@ -39,9 +39,9 @@ export interface NewsSingle {
   date: string;
 }
 
-interface SearchSingle {
+export interface SearchSingle {
   _$: string;
-  _request: RequestConfig;
+  _request?: RequestConfig;
   coverUrl?: string;
   link: string;
   title: string;
@@ -49,9 +49,9 @@ interface SearchSingle {
   medium: string;
 }
 
-interface DownloadSingle {
+export interface DownloadSingle {
   _$: string;
-  _request: RequestConfig;
+  _request?: RequestConfig;
   mediumTitle: string;
   episodeTitle: string;
   index?: string;
@@ -59,9 +59,9 @@ interface DownloadSingle {
   content: string;
 }
 
-interface TocSingle {
+export interface TocSingle {
   _$: string;
-  _request: RequestConfig;
+  _request?: RequestConfig;
   title: string;
   content: {
     _$: string;
@@ -75,11 +75,7 @@ interface TocSingle {
     locked?: string;
     tocId?: string;
   };
-  mediumId?: string;
   synonyms?: string;
-  mediumType: string;
-  partsOnly?: string;
-  end?: string;
   link: string;
   langCOO?: string;
   langTL?: string;
@@ -103,26 +99,29 @@ export interface RequestConfig {
   options?: Omit<Options, "url" | "uri">;
 }
 
-interface NewsConfig {
-  data: Array<NewsNested | NewsSingle>;
+export interface NewsConfig {
   regexes: Record<string, JsonRegex>;
+  data: Array<NewsNested | NewsSingle>;
   newsUrl: string;
 }
 
-interface SearchConfig {
+export interface SearchConfig {
   regexes: Record<string, JsonRegex>;
+  data: SearchSingle[];
+  searchUrl: string;
 }
 
-interface TocConfig {
+export interface TocConfig {
   regexes: Record<string, JsonRegex>;
   data: TocSingle[];
 }
 
-interface DownloadConfig {
+export interface DownloadConfig {
   regexes: Record<string, JsonRegex>;
+  data: DownloadSingle[];
 }
 
-export interface Config {
+export interface HookConfig {
   name: string;
   base: string;
   medium: MediaType;

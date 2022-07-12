@@ -47,34 +47,6 @@
       </div>
       <span v-else-if="result" style="white-space: pre">{{ result }}</span>
     </div>
-    <ul class="nav nav-tabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button
-          data-bs-toggle="tab"
-          class="nav-link"
-          :class="{ active: isActiveTab('form') }"
-          data-bs-target="#hook-form"
-          type="button"
-          role="tab"
-          @click.prevent="setActiveTab('form')"
-        >
-          Form
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button
-          data-bs-toggle="tab"
-          class="nav-link"
-          :class="{ active: isActiveTab('editor') }"
-          data-bs-target="#hook-editor"
-          type="button"
-          role="tab"
-          @click.prevent="setActiveTab('editor')"
-        >
-          JSON Editor
-        </button>
-      </li>
-    </ul>
     <custom-hook-form v-model:hook="hook" v-model:config="value" />
   </div>
 </template>
@@ -87,16 +59,15 @@ import "vue-prism-editor/dist/prismeditor.min.css"; // import the styles somewhe
 import { highlight, languages } from "prismjs/components/prism-core";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
-import type { HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
+import type { HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/customv2/types";
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
-import CustomHookForm from "../components/customHook/custom-hook-form-v2.vue";
+import CustomHookForm from "../components/customHook/v2/custom-hook-form-v2.vue";
 import { clone, deepEqual, Logger } from "../init";
 
 interface Data {
-  code: string;
   invalid: string;
   param: string;
   result: string;
@@ -104,7 +75,6 @@ interface Data {
   createResult?: "success" | "failed";
   value: Partial<HookConfig>;
   hook: Partial<CustomHook>;
-  activeTab: "form" | "editor";
   logger: Logger;
 }
 
@@ -127,7 +97,6 @@ export default defineComponent({
     return {
       loading: false,
       logger: new Logger("CustomHookView"),
-      code: "",
       invalid: "",
       param: "",
       result: "",
@@ -140,26 +109,7 @@ export default defineComponent({
         state: "",
       },
       createResult: undefined,
-      activeTab: "form",
     };
-  },
-  watch: {
-    code(newValue: string) {
-      try {
-        // TODO: debounce this
-        this.setConfig(JSON.parse(newValue));
-        this.invalid = "";
-      } catch (e) {
-        if (e && typeof e === "object" && "message" in e) {
-          this.invalid = (e as Record<string, any>).message;
-        } else {
-          this.invalid = e + "";
-        }
-      }
-    },
-    value(newValue: any) {
-      this.code = JSON.stringify(newValue, undefined, 2);
-    },
   },
   created() {
     this.load();
@@ -180,12 +130,6 @@ export default defineComponent({
       if (value.children) {
         value.children.forEach((child: BasicSelector) => this.validateSelector(child));
       }
-    },
-    isActiveTab(tab: Data["activeTab"]) {
-      return this.activeTab === tab;
-    },
-    setActiveTab(tab: Data["activeTab"]) {
-      this.activeTab = tab;
     },
     highlighter(code: string) {
       return highlight(code, languages.json); // languages.<insert language> to return html with markup
@@ -286,7 +230,6 @@ export default defineComponent({
         // simple but stupid way to clone the hook, firefox went off alone in 94 and introduced "structuredClone" (with Node 17 support at this time)
         // when there is wider support, maybe use that, else if lodash is ever used use that cloneDeep
         this.hook = clone(this.$store.state.hooks.hooks[this.id]);
-        this.code = this.hook.state || "";
       }
     },
 
@@ -300,7 +243,7 @@ export default defineComponent({
         return;
       }
 
-      this.hook.state = this.code;
+      this.hook.state = "this.code";
 
       const action = this.hook.id ? "updateHook" : "createHook";
 
@@ -309,7 +252,6 @@ export default defineComponent({
         .then((value: CustomHook) => {
           console.log(value);
           this.hook = value;
-          this.code = value.state;
           this.createResult = "success";
         })
         .catch((value: any) => {

@@ -1,17 +1,18 @@
 import { MediaType, relativeToAbsoluteTime } from "enterprise-core/dist/tools";
-import { NewsScraper, TocScraper, TocSearchScraper, SearchScraper, ContentDownloader, Toc } from "../types";
-import { Config, JsonRegex, NewsNested, NewsSingle, RequestConfig } from "./types";
+import { NewsScraper, TocScraper, TocSearchScraper, SearchScraper, ContentDownloader } from "../types";
+import { HookConfig, JsonRegex, RequestConfig } from "./types";
 import Xray, { Selector } from "x-ray";
-import { CheerioAPI } from "cheerio";
+import jsonpath from "jsonpath";
 import logger from "enterprise-core/dist/logger";
 import { Context } from "vm";
 import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
-import { queueRequest, queueCheerioRequest } from "../queueManager";
+import { queueRequest } from "../queueManager";
+import { SearchResult } from "enterprise-core/dist/types";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
 
-export interface CustomHook<T extends Config = Config> {
+export interface CustomHook<T extends HookConfig = HookConfig> {
   name: string;
   medium: MediaType;
   disabled?: boolean;
@@ -25,7 +26,7 @@ export interface CustomHook<T extends Config = Config> {
   contentDownloadAdapter: Conditional<T["download"], ContentDownloader>;
 }
 
-export function createHook<T extends Config>(config: T): CustomHook<T> {
+export function createHook<T extends HookConfig>(config: T): CustomHook<T> {
   return {
     medium: config.medium,
     name: config.name,
@@ -84,7 +85,7 @@ function createScraper(regexes: Record<string, JsonRegex>) {
   });
 }
 
-function createNewsScraper(config: Config): NewsScraper | undefined {
+function createNewsScraper(config: HookConfig): NewsScraper | undefined {
   const newsConfig = config.news;
   if (!newsConfig) {
     return;
@@ -112,7 +113,7 @@ function createNewsScraper(config: Config): NewsScraper | undefined {
   return scraper;
 }
 
-function createTocScraper(config: Config): TocScraper | undefined {
+function createTocScraper(config: HookConfig): TocScraper | undefined {
   const tocConfig = config.toc;
   if (!tocConfig) {
     return;
@@ -173,28 +174,72 @@ function merge<T>(results: T[]): T {
   });
 }
 
-function createDownloadScraper(config: Config): ContentDownloader | undefined {
-  if (!config.download) {
+function createDownloadScraper(config: HookConfig): ContentDownloader | undefined {
+  const downloadConfig = config.download;
+  if (!downloadConfig) {
     return;
   }
-  const scraper: ContentDownloader = async () => {
-    return [];
+
+  const x = createScraper(downloadConfig.regexes);
+
+  const scraper: ContentDownloader = async (link) => {
+    const results = [];
+    for (const datum of downloadConfig.data) {
+      const selector = {
+        ...datum,
+        _$: undefined,
+        _request: undefined,
+        content: [datum.content],
+      };
+      if (datum._request) {
+        const html = await makeRequest(link, {}, datum._request);
+        results.push(await x(html, datum._$, [selector as unknown as Selector]));
+      } else {
+        results.push(await x(link, datum._$, [selector as unknown as Selector]));
+      }
+    }
+    return merge(results);
   };
   scraper.hookName = config.name;
   return scraper;
 }
 
-function createSearchScraper(config: Config): SearchScraper | undefined {
-  if (!config.search) {
+function createSearchScraper(config: HookConfig): SearchScraper | undefined {
+  const searchConfig = config.search;
+  if (!searchConfig) {
     return;
   }
   const scraper: SearchScraper = async (text) => {
-    return [];
+    const results = [];
+    for (const datum of searchConfig.data) {
+      if (datum._request) {
+        const json = await makeRequest(searchConfig.searchUrl, { variables: { search: text } }, datum._request);
+
+        const array = jsonpath.query(json, datum._$);
+        results.push(
+          array.map((value): SearchResult => {
+            return {
+              link: jsonpath.query(value, datum.link)[0],
+              medium: config.medium,
+              title: jsonpath.query(value, datum.title)[0],
+              author: datum.author && jsonpath.query(value, datum.author)[0],
+              coverUrl: datum.coverUrl && jsonpath.query(value, datum.coverUrl)[0],
+            };
+          }),
+        );
+      }
+    }
+    return merge(results);
   };
   scraper.medium = config.medium;
   return scraper;
 }
 
+/**
+ * Template the string 'value' with the values of context.
+ * A Template is something like: '{search}', it is whitespace sensitive.
+ * So '{search}' != '{ search }'
+ */
 function templateString(value: string, context: Context): string {
   const originalValue = value;
   const braces: Array<{ type: string; index: number }> = [];

@@ -16,6 +16,7 @@
     "debug": "^4.3.4",
     "feedparser-promised": "^2.0.1",
     "htmlparser2": "^8.0.1",
+    "jsonpath": "^1.1.1",
     "jsonschema": "^1.4.1",
     "request": "^2.88.2",
     "request-promise-native": "^1.0.9",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@types/debug": "^4.1.7",
     "@types/htmlparser2": "^3.10.3",
+    "@types/jsonpath": "0.2.0",
     "@types/json-schema": "^7.0.11",
     "@types/node": "^16.11.43",
     "@types/request-promise-native": "^1.0.18",

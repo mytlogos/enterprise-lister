@@ -50,7 +50,6 @@
           required
         />
       </div>
-      <regex v-model="domain" regex-name="Valid domain regex" />
     </div>
     <div>
       <div>
@@ -65,80 +64,43 @@
           Create Download Scraper
         </button>
       </div>
-      <template v-for="(item, index) in tocConfig" :key="index">
-        <scraper-config
-          v-model="tocConfig[index]"
-          :id-prefix="'tocConfig' + index + '-'"
-          :name="'TocConfig ' + index"
-          @delete="remove(tocConfig, index)"
-        />
-      </template>
-      <template v-if="searchConfig">
-        <scraper-config
-          v-model="searchConfig"
-          id-prefix="searchConfig"
-          name="SearchConfig"
-          @delete="removeConfig('searchConfig')"
-        >
-          <div class="col">
-            <label for="newsUrl" class="form-label">Search URL</label>
-            <input
-              id="newsUrl"
-              v-model="searchConfig.searchUrl"
-              type="text"
-              class="form-control"
-              placeholder="https://iamanewspage.com/"
-              required
-            />
-          </div>
-        </scraper-config>
-      </template>
-      <template v-if="newsConfig">
-        <scraper-config
-          v-model="newsConfig"
-          id-prefix="newsConfig"
-          name="NewsConfig"
-          @delete="removeConfig('newsConfig')"
-        >
-          <div class="col">
-            <label for="newsUrl" class="form-label">News URL</label>
-            <input
-              id="newsUrl"
-              v-model="newsConfig.newsUrl"
-              type="text"
-              class="form-control"
-              placeholder="https://iamanewspage.com/"
-              required
-            />
-          </div>
-        </scraper-config>
-      </template>
-      <template v-if="downloadConfig">
-        <scraper-config
-          v-model="downloadConfig"
-          id-prefix="downloadConfig"
-          name="DownloadConfig"
-          @delete="removeConfig('downloadConfig')"
-        />
-      </template>
+      <template v-for="(item, index) in tocConfig" :key="index"> </template>
+      <toc-config v-if="tocConfig" v-model="tocConfig" id-prefix="'tocConfig'" @delete="removeConfig('tocConfig')" />
+      <search-config
+        v-if="searchConfig"
+        v-model="searchConfig"
+        id-prefix="searchConfig"
+        @delete="removeConfig('searchConfig')"
+      />
+      <news-config v-if="newsConfig" v-model="newsConfig" id-prefix="newsConfig" @delete="removeConfig('newsConfig')" />
+      <download-config
+        v-if="downloadConfig"
+        v-model="downloadConfig"
+        id-prefix="downloadConfig"
+        @delete="removeConfig('downloadConfig')"
+      />
     </div>
   </div>
 </template>
 <script lang="ts">
 import { CustomHook, HookState } from "enterprise-core/dist/types";
-import { HookConfig, Selector as SelectorType, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
+import { HookConfig, NewsConfig, TocConfig } from "enterprise-scraper/dist/externals/customv2/types";
 import { defineComponent, PropType } from "vue";
-import ScraperConfig from "./scraper-config.vue";
-import Regex from "./regex.vue";
 import "bootstrap/js/dist/collapse";
-import { toArray, deepEqual, Logger } from "../../init";
-import { MediaType } from "../../siteTypes";
+import { deepEqual, Logger } from "../../../init";
+import { MediaType } from "../../../siteTypes";
+import NewsConfigComp from "./news-config.vue";
+import TocConfigComp from "./toc-config.vue";
+import SearchConfigComp from "./search-config.vue";
+import DownloadConfigComp from "./download-config.vue";
 
 export default defineComponent({
   name: "CustomHookForm",
   components: {
-    ScraperConfig,
-    Regex,
+    SearchConfig: SearchConfigComp,
+    DownloadConfig: DownloadConfigComp,
+    TocConfig: TocConfigComp,
+    NewsConfig: NewsConfigComp,
   },
   props: {
     hook: {
@@ -158,10 +120,9 @@ export default defineComponent({
       comment: this.hook.comment,
       baseUrl: this.config.base,
       medium: MediaType.TEXT,
-      domain: this.config.domain || ({ pattern: "", flags: "" } as JsonRegex),
-      tocConfig: toArray(this.config.toc),
+      tocConfig: undefined as undefined | TocConfig,
       searchConfig: this.config.search && { ...this.config.search },
-      newsConfig: this.config.news && { ...this.config.news },
+      newsConfig: undefined as undefined | NewsConfig,
       downloadConfig: this.config.download && { ...this.config.download },
       logger: new Logger("custom-hook-form"),
     };
@@ -175,14 +136,14 @@ export default defineComponent({
         hookState: this.enabled ? HookState.ENABLED : HookState.DISABLED,
       };
     },
-    configModel(): HookConfig {
+    configModel(): any {
       return {
         name: this.name,
-        domain: this.domain,
+        domain: {},
         base: this.baseUrl,
         medium: Number(this.medium),
         download: this.downloadConfig,
-        news: this.newsConfig,
+        news: {},
         toc: this.tocConfig,
         search: this.searchConfig,
       };
@@ -237,14 +198,11 @@ export default defineComponent({
         if (newValue.name !== this.name) {
           this.name = newValue.name;
         }
-        if (!deepEqual(newValue.domain, this.domain)) {
-          this.domain = newValue.domain;
-        }
         if (!deepEqual(newValue.news, this.newsConfig)) {
-          this.newsConfig = newValue.news;
+          this.newsConfig = newValue.news as any;
         }
         if (!deepEqual(newValue.toc, this.tocConfig)) {
-          this.tocConfig = toArray(newValue.toc);
+          this.tocConfig = newValue.toc as any;
         }
         if (!deepEqual(newValue.download, this.downloadConfig)) {
           this.downloadConfig = newValue.download;
@@ -260,46 +218,32 @@ export default defineComponent({
     remove(array: any[], index: number) {
       array.splice(index, 1);
     },
-    removeConfig(prop: "searchConfig" | "newsConfig" | "downloadConfig") {
+    removeConfig(prop: "searchConfig" | "newsConfig" | "downloadConfig" | "tocConfig") {
       this[prop] = undefined;
     },
     addToc() {
-      this.tocConfig.push({
-        selector: [{ selector: "" }],
-        prefix: undefined,
-        base: undefined,
-        request: undefined,
-      });
+      this.tocConfig = {
+        data: [],
+        regexes: {},
+      };
     },
     addNews() {
       this.newsConfig = {
         newsUrl: "",
-        selector: [{ selector: "" }],
+        regexes: {},
+        data: [],
       };
     },
     addSearch() {
       this.searchConfig = {
         searchUrl: "",
-        base: undefined,
-        request: undefined,
-        selector: [{ selector: "" }],
+        regexes: {},
       };
     },
     addDownload() {
       this.downloadConfig = {
-        prefix: undefined,
-        base: undefined,
-        request: undefined,
-        selector: [{ selector: "" }],
+        regexes: {},
       };
-    },
-    addSelector(config: any) {
-      if (!Array.isArray(config.selector)) {
-        config.selector = toArray(config.selector);
-      }
-      config.selector.push({
-        selector: "",
-      } as SelectorType<any>);
     },
   },
 });
