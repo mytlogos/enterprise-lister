@@ -23,22 +23,22 @@
         <div class="row mb-3">
           <div class="col">
             <label for="hookBase" class="form-label">Search URL</label>
-            <input id="hookBase" v-model="base" type="text" class="form-control" placeholder="Search URL" />
+            <input id="hookBase" v-model="data.searchUrl" type="text" class="form-control" placeholder="Search URL" />
           </div>
         </div>
         <div class="row mb-3">
           <div class="col">
-            <regex-map v-model="regex" id-prefix="search" />
+            <regex-map v-model="data.regexes" id-prefix="search" />
           </div>
         </div>
         <button class="btn btn-primary mt-3" role="button" @click="addSchema">Add Config</button>
-        <div v-for="(item, index) in data" :key="index" class="row mb-3">
+        <div v-for="(item, index) in data.data" :key="index" class="row mb-3">
           <div class="d-flex">
             <i
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data, index)"
+              @click="remove(data.data, index)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -75,7 +75,7 @@
 </template>
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import { createComputedProperty, idGenerator } from "../../../init";
+import { clone, deepEqual, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { SearchSingle, SearchConfig } from "enterprise-scraper/dist/externals/customv2/types";
@@ -113,13 +113,30 @@ export default defineComponent({
   emits: ["update:modelValue", "delete"],
   data: () => ({
     id: nextId(),
-    regex: {},
-    data: [] as SearchConfig["data"],
+    data: {} as SearchConfig,
+    logger: new Logger("search-config"),
   }),
-  computed: {
-    prefix: createComputedProperty("modelValue", "prefix"),
-    base: createComputedProperty("modelValue", "base"),
-    request: createComputedProperty("modelValue", "request"),
+  watch: {
+    data: {
+      handler(newValue: SearchConfig) {
+        if (deepEqual(newValue, this.modelValue)) {
+          this.logger.info("Did not update search-config");
+        } else {
+          this.logger.info("Updated search-config");
+          this.$emit("update:modelValue", newValue);
+        }
+      },
+      deep: true,
+    },
+    modelValue: {
+      handler(newValue: SearchConfig) {
+        if (!deepEqual(newValue, this.data)) {
+          this.data = clone(newValue);
+        }
+      },
+      deep: true,
+      immediate: true,
+    },
   },
   methods: {
     remove(array: any[], index: number) {
@@ -133,7 +150,7 @@ export default defineComponent({
       }
     },
     addSchema() {
-      this.data.push(defaultSingle());
+      this.data.data.push(defaultSingle());
     },
   },
 });

@@ -22,17 +22,17 @@
       <div class="mt-3">
         <div class="row mb-3">
           <div class="col">
-            <regex-map v-model="regex" id-prefix="download" />
+            <regex-map v-model="data.regexes" id-prefix="download" />
           </div>
         </div>
         <button class="btn btn-primary mt-3" role="button" @click="addSchema">Add Config</button>
-        <div v-for="(item, index) in data" :key="index" class="row mb-3">
+        <div v-for="(item, index) in modelValue.data" :key="index" class="row mb-3">
           <div class="d-flex">
             <i
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data, index)"
+              @click="removeSchema(index)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -48,11 +48,23 @@
           </div>
           <div>
             <label for="hookBase" class="form-label">Medium Title</label>
-            <input id="hookBase" v-model="item.mediumTitle" type="text" class="form-control" placeholder="Medium Title" />
+            <input
+              id="hookBase"
+              v-model="item.mediumTitle"
+              type="text"
+              class="form-control"
+              placeholder="Medium Title"
+            />
           </div>
           <div>
             <label for="hookBase" class="form-label">Episode Title</label>
-            <input id="hookBase" v-model="item.episodeTitle" type="text" class="form-control" placeholder="Episode Title" />
+            <input
+              id="hookBase"
+              v-model="item.episodeTitle"
+              type="text"
+              class="form-control"
+              placeholder="Episode Title"
+            />
           </div>
           <div>
             <label for="hookBase" class="form-label">Index</label>
@@ -69,7 +81,7 @@
 </template>
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import { createComputedProperty, idGenerator } from "../../../init";
+import { clone, deepEqual, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { DownloadSingle, DownloadConfig } from "enterprise-scraper/dist/externals/customv2/types";
@@ -107,18 +119,32 @@ export default defineComponent({
   emits: ["update:modelValue", "delete"],
   data: () => ({
     id: nextId(),
-    regex: {},
-    data: [] as DownloadConfig["data"],
+    data: {} as DownloadConfig,
+    logger: new Logger("download-config"),
   }),
-  computed: {
-    prefix: createComputedProperty("modelValue", "prefix"),
-    base: createComputedProperty("modelValue", "base"),
-    request: createComputedProperty("modelValue", "request"),
+  watch: {
+    data: {
+      handler(newValue: DownloadConfig) {
+        if (deepEqual(newValue, this.modelValue)) {
+          this.logger.info("Did not update download-config");
+        } else {
+          this.logger.info("Updated download-config");
+          this.$emit("update:modelValue", newValue);
+        }
+      },
+      deep: true,
+    },
+    modelValue: {
+      handler(newValue: DownloadConfig) {
+        if (!deepEqual(newValue, this.data)) {
+          this.data = clone(newValue);
+        }
+      },
+      deep: true,
+      immediate: true,
+    },
   },
   methods: {
-    remove(array: any[], index: number) {
-      array.splice(index, 1);
-    },
     toggleCustomRequest(item: DownloadConfig["data"][0]) {
       if (item._request) {
         item._request = undefined;
@@ -126,8 +152,17 @@ export default defineComponent({
         item._request = {};
       }
     },
+    update(value: DownloadConfig) {
+      this.$emit("update:modelValue", value);
+    },
+    removeSchema(index: number) {
+      const value = { ...this.modelValue, data: [...this.modelValue.data] };
+      value.data.splice(index, 1);
+      this.update(value);
+    },
     addSchema() {
-      this.data.push(defaultSingle());
+      const value = { ...this.modelValue, data: [...this.modelValue.data, defaultSingle()] };
+      this.update(value);
     },
   },
 });

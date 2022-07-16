@@ -59,7 +59,7 @@ import "vue-prism-editor/dist/prismeditor.min.css"; // import the styles somewhe
 import { highlight, languages } from "prismjs/components/prism-core";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
-import type { HookConfig, JsonRegex } from "enterprise-scraper/dist/externals/customv2/types";
+import type { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import { HookState } from "../siteTypes";
@@ -73,14 +73,9 @@ interface Data {
   result: string;
   loading: boolean;
   createResult?: "success" | "failed";
-  value: Partial<HookConfig>;
-  hook: Partial<CustomHook>;
+  value: HookConfig;
+  hook: CustomHook;
   logger: Logger;
-}
-
-interface BasicSelector {
-  regex?: JsonRegex;
-  children: BasicSelector[];
 }
 
 export default defineComponent({
@@ -100,7 +95,11 @@ export default defineComponent({
       invalid: "",
       param: "",
       result: "",
-      value: {},
+      value: {
+        name: "",
+        base: "",
+        medium: 0,
+      },
       hook: {
         id: 0,
         name: "",
@@ -115,7 +114,7 @@ export default defineComponent({
     this.load();
   },
   methods: {
-    setConfig(value: Partial<HookConfig>) {
+    setConfig(value: HookConfig) {
       if (deepEqual(value, this.value)) {
         this.logger.info("No config update required");
         return;
@@ -123,83 +122,8 @@ export default defineComponent({
       this.logger.info("Updated HookConfig");
       this.value = value;
     },
-    validateSelector<T extends BasicSelector>(value: T) {
-      if (!value.regex) {
-        value.regex = { pattern: "", flags: "" };
-      }
-      if (value.children) {
-        value.children.forEach((child: BasicSelector) => this.validateSelector(child));
-      }
-    },
     highlighter(code: string) {
       return highlight(code, languages.json); // languages.<insert language> to return html with markup
-    },
-    cleanSelector(value: any) {
-      if (!value) {
-        return;
-      }
-      if (typeof value.regex === "object" && !value.regex.pattern && !value.regex.flags) {
-        delete value.regex;
-
-        for (const transfer of value.transfers || []) {
-          if (!transfer.extract) {
-            delete transfer.extract;
-          }
-        }
-        for (const variable of value.variables || []) {
-          if (!variable.value) {
-            delete variable.value;
-          }
-        }
-      }
-      for (const child of value.children || []) {
-        this.cleanSelector(child);
-      }
-    },
-    cleanEmptyObject(value: any) {
-      if (typeof value !== "object") {
-        return;
-      }
-      if (Array.isArray(value)) {
-        for (let index = 0; index < value.length; index++) {
-          const keyValue = value[index];
-
-          if (typeof keyValue === "object" && keyValue) {
-            this.cleanEmptyObject(keyValue);
-
-            if (!Object.keys(keyValue).length) {
-              value.splice(index, 1);
-              index--;
-            }
-          } else if (typeof keyValue === "string" && !keyValue) {
-            value.splice(index, 1);
-            index--;
-          }
-        }
-        return;
-      }
-      for (const [key, keyValue] of Object.entries(value)) {
-        if (typeof keyValue === "object" && keyValue) {
-          this.cleanEmptyObject(keyValue);
-
-          if (!Object.keys(keyValue).length) {
-            delete value[key];
-          }
-        } else if (typeof keyValue === "string" && !keyValue) {
-          delete value[key];
-        }
-      }
-    },
-    clean(value: any) {
-      if (!value) {
-        return;
-      }
-      if (Array.isArray(value.selector)) {
-        value.selector.forEach((selector: any) => this.cleanSelector(selector));
-      } else {
-        this.cleanSelector(value.selector);
-      }
-      this.cleanEmptyObject(value);
     },
     testHook(hookKey: keyof HookConfig) {
       if (this.loading) {
@@ -208,10 +132,6 @@ export default defineComponent({
       this.loading = true;
 
       const hookConfig = clone(this.value);
-      this.clean(hookConfig.news);
-      this.clean(hookConfig.toc);
-      this.clean(hookConfig.download);
-      this.clean(hookConfig.search);
 
       HttpClient.testHook({
         config: hookConfig as any,

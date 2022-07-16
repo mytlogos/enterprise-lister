@@ -19,36 +19,26 @@
           @click="$emit('delete')"
         ></i>
       </div>
-      <div class="row mb-3">
-        <div class="col">
-          <label for="hookBase" class="form-label">Base URL for Links</label>
-          <input id="hookBase" v-model="base" type="text" class="form-control" placeholder="Base URL for Links" />
-        </div>
-        <div class="col">
-          <label for="prefix" class="form-label">Prefix</label>
-          <input id="prefix" v-model="prefix" type="text" class="form-control" placeholder="Prefix" />
-        </div>
-      </div>
       <div class="mt-3">
         <div class="row mb-3">
           <div class="col">
             <label for="hookBase" class="form-label">News URL</label>
-            <input id="hookBase" v-model="base" type="text" class="form-control" placeholder="News URL" />
+            <input id="hookBase" v-model="data.newsUrl" type="text" class="form-control" placeholder="News URL" />
           </div>
         </div>
         <div class="row mb-3">
           <div class="col">
-            <regex-map v-model="regex" id-prefix="news" />
+            <regex-map v-model="data.regexes" id-prefix="news" />
           </div>
         </div>
         <button class="btn btn-primary mt-3" role="button" @click="addSchema">Add Config</button>
-        <div v-for="(item, index) in data" :key="index" class="row mb-3">
+        <div v-for="(item, index) in data.data" :key="index" class="row mb-3">
           <div class="d-flex">
             <i
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data, index)"
+              @click="remove(data.data, index)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -61,7 +51,7 @@
           <select-button
             :model-value="item.type"
             :options="types"
-            @update:model-value="convertConfig($event, data, index)"
+            @update:model-value="convertConfig($event, data.data, index)"
           />
           <div>
             <label for="hookBase" class="form-label">Root Selector</label>
@@ -258,7 +248,7 @@
 </template>
 <script lang="ts">
 import { defineComponent, PropType } from "vue";
-import { createComputedProperty, idGenerator } from "../../../init";
+import { clone, deepEqual, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { NewsConfig, NewsNested, NewsSingle } from "enterprise-scraper/dist/externals/customv2/types";
@@ -332,10 +322,6 @@ export default defineComponent({
     RegexMap,
   },
   props: {
-    name: {
-      type: String,
-      required: true,
-    },
     idPrefix: {
       type: String,
       required: true,
@@ -348,14 +334,31 @@ export default defineComponent({
   emits: ["update:modelValue", "delete"],
   data: () => ({
     id: nextId(),
-    regex: {},
-    data: [] as NewsConfig["data"],
     types: ["nested", "single"] as Array<NewsConfig["data"][0]["type"]>,
+    data: {} as NewsConfig,
+    logger: new Logger("news-config"),
   }),
-  computed: {
-    prefix: createComputedProperty("modelValue", "prefix"),
-    base: createComputedProperty("modelValue", "base"),
-    request: createComputedProperty("modelValue", "request"),
+  watch: {
+    data: {
+      handler(newValue: NewsConfig) {
+        if (deepEqual(newValue, this.modelValue)) {
+          this.logger.info("Did not update news-config");
+        } else {
+          this.logger.info("Updated news-config");
+          this.$emit("update:modelValue", newValue);
+        }
+      },
+      deep: true,
+    },
+    modelValue: {
+      handler(newValue: NewsConfig) {
+        if (!deepEqual(newValue, this.data)) {
+          this.data = clone(newValue);
+        }
+      },
+      deep: true,
+      immediate: true,
+    },
   },
   methods: {
     remove(array: any[], index: number) {
@@ -369,7 +372,7 @@ export default defineComponent({
       }
     },
     addSchema() {
-      this.data.push(defaultSingle());
+      this.data.data.push(defaultSingle());
     },
     convertConfig(type: NewsConfig["data"][0]["type"], data: any[], index: number) {
       if (type === "nested") {

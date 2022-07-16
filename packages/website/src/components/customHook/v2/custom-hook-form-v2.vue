@@ -1,10 +1,12 @@
 <template>
   <div class="container p-4">
     <div class="row mb-3 align-items-center">
+      <p-button label="Show Hook Model" @click="showHookModel = true" />
+      <p-button class="mt-1" label="Show Config Model" @click="showConfigModel = true" />
       <label for="validationCustom01" class="form-label" style="flex: 0.12 0 0%">Hook name</label>
       <input
         id="validationCustom01"
-        v-model="name"
+        v-model="hookModel.name"
         type="text"
         class="col form-control"
         placeholder="Name required"
@@ -25,13 +27,13 @@
     <div class="form-floating mb-3">
       <textarea
         id="floatingTextarea"
-        v-model="comment"
+        v-model="hookModel.comment"
         class="form-control"
         placeholder="Leave a comment here"
       ></textarea>
       <label for="floatingTextarea">Comments</label>
     </div>
-    <select v-model="medium" class="form-select mb-3" aria-label="Select Hook Medium">
+    <select v-model="configModel.medium" class="form-select mb-3" aria-label="Select Hook Medium">
       <option value="" disabled selected>Select Medium</option>
       <option :value="1">Text</option>
       <option :value="2">Audio</option>
@@ -43,7 +45,7 @@
         <label for="hookBase" class="form-label">Base URL</label>
         <input
           id="hookBase"
-          v-model="baseUrl"
+          v-model="configModel.base"
           type="text"
           class="form-control"
           placeholder="Base URL for Links"
@@ -53,42 +55,59 @@
     </div>
     <div>
       <div>
-        <button class="btn btn-primary me-1" role="button" @click="addToc">Create Toc Scraper</button>
-        <button class="btn btn-primary me-1" role="button" :disabled="!!searchConfig" @click="addSearch">
+        <button class="btn btn-primary me-1" role="button" :disabled="!!configModel.toc" @click="addToc">
+          Create Toc Scraper
+        </button>
+        <button class="btn btn-primary me-1" role="button" :disabled="!!configModel.search" @click="addSearch">
           Create Search Scraper
         </button>
-        <button class="btn btn-primary me-1" role="button" :disabled="!!newsConfig" @click="addNews">
+        <button class="btn btn-primary me-1" role="button" :disabled="!!configModel.news" @click="addNews">
           Create News Scraper
         </button>
-        <button class="btn btn-primary" role="button" :disabled="!!downloadConfig" @click="addDownload">
+        <button class="btn btn-primary" role="button" :disabled="!!configModel.download" @click="addDownload">
           Create Download Scraper
         </button>
       </div>
-      <template v-for="(item, index) in tocConfig" :key="index"> </template>
-      <toc-config v-if="tocConfig" v-model="tocConfig" id-prefix="'tocConfig'" @delete="removeConfig('tocConfig')" />
+      <toc-config v-if="configModel.toc" v-model="configModel.toc" id-prefix="'toc'" @delete="removeConfig('toc')" />
       <search-config
-        v-if="searchConfig"
-        v-model="searchConfig"
-        id-prefix="searchConfig"
-        @delete="removeConfig('searchConfig')"
+        v-if="configModel.search"
+        v-model="configModel.search"
+        id-prefix="search"
+        @delete="removeConfig('search')"
       />
-      <news-config v-if="newsConfig" v-model="newsConfig" id-prefix="newsConfig" @delete="removeConfig('newsConfig')" />
+      <news-config v-if="configModel.news" v-model="configModel.news" id-prefix="news" @delete="removeConfig('news')" />
       <download-config
-        v-if="downloadConfig"
-        v-model="downloadConfig"
-        id-prefix="downloadConfig"
-        @delete="removeConfig('downloadConfig')"
+        v-if="configModel.download"
+        v-model="configModel.download"
+        id-prefix="download"
+        @delete="removeConfig('download')"
       />
     </div>
   </div>
+  <p-dialog v-model:visible="showHookModel" class="container-fluid" header="Hook Model" @hide="showHookModel = false">
+    <div>
+      <p-button label="Save" @click="saveHookStringModel" />
+      <textarea v-model="hookModelString" class="w-100" style="min-height: 500px"></textarea>
+    </div>
+  </p-dialog>
+  <p-dialog
+    v-model:visible="showConfigModel"
+    class="container-fluid"
+    header="Config Model"
+    @hide="showConfigModel = false"
+  >
+    <div>
+      <p-button label="Save" @click="saveConfigStringModel" />
+      <textarea v-model="configModelString" class="w-100" style="min-height: 500px"></textarea>
+    </div>
+  </p-dialog>
 </template>
 <script lang="ts">
 import { CustomHook, HookState } from "enterprise-core/dist/types";
-import { HookConfig, NewsConfig, TocConfig } from "enterprise-scraper/dist/externals/customv2/types";
+import { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
 import { defineComponent, PropType } from "vue";
 import "bootstrap/js/dist/collapse";
 import { deepEqual, Logger } from "../../../init";
-import { MediaType } from "../../../siteTypes";
 import NewsConfigComp from "./news-config.vue";
 import TocConfigComp from "./toc-config.vue";
 import SearchConfigComp from "./search-config.vue";
@@ -115,41 +134,36 @@ export default defineComponent({
   emits: ["update:hook", "update:config"],
   data() {
     return {
-      name: this.hook.name,
-      enabled: this.hook.hookState ? this.hook.hookState === HookState.ENABLED : true,
-      comment: this.hook.comment,
-      baseUrl: this.config.base,
-      medium: MediaType.TEXT,
-      tocConfig: undefined as undefined | TocConfig,
-      searchConfig: this.config.search && { ...this.config.search },
-      newsConfig: undefined as undefined | NewsConfig,
-      downloadConfig: this.config.download && { ...this.config.download },
+      hookModel: { ...this.hook },
+      configModel: { ...this.config },
       logger: new Logger("custom-hook-form"),
+      showHookModel: false,
+      showConfigModel: false,
+      configModelString: "",
+      hookModelString: "",
     };
   },
   computed: {
-    hookModel(): CustomHook {
-      return {
-        ...this.hook,
-        name: this.name,
-        comment: this.comment,
-        hookState: this.enabled ? HookState.ENABLED : HookState.DISABLED,
-      };
-    },
-    configModel(): any {
-      return {
-        name: this.name,
-        domain: {},
-        base: this.baseUrl,
-        medium: Number(this.medium),
-        download: this.downloadConfig,
-        news: {},
-        toc: this.tocConfig,
-        search: this.searchConfig,
-      };
+    enabled: {
+      get() {
+        return this.hookModel.hookState ? this.hook.hookState === HookState.ENABLED : true;
+      },
+      set(value: boolean) {
+        this.hookModel.hookState = value ? HookState.ENABLED : HookState.DISABLED;
+      },
     },
   },
   watch: {
+    showHookModel() {
+      if (this.showHookModel) {
+        this.hookModelString = JSON.stringify(this.hook, undefined, 2);
+      }
+    },
+    showConfigModel() {
+      if (this.showConfigModel) {
+        this.configModelString = JSON.stringify(this.config, undefined, 2);
+      }
+    },
     hookModel: {
       handler(newValue: CustomHook) {
         if (deepEqual(newValue, this.hook)) {
@@ -174,75 +188,63 @@ export default defineComponent({
     },
     hook: {
       handler(newValue: CustomHook) {
-        if (newValue.comment !== this.comment) {
-          this.comment = newValue.comment;
-        }
-        const enabled = newValue.hookState === HookState.ENABLED;
-        if (enabled !== this.enabled) {
-          this.enabled = enabled;
-        }
-        if (newValue.name !== this.name) {
-          this.name = newValue.name;
+        if (!deepEqual(newValue, this.hookModel)) {
+          this.hookModel = { ...newValue };
         }
       },
       deep: true,
     },
     config: {
       handler(newValue: HookConfig) {
-        if (newValue.base !== this.baseUrl) {
-          this.baseUrl = newValue.base;
-        }
-        if (newValue.medium != this.medium) {
-          this.medium = newValue.medium;
-        }
-        if (newValue.name !== this.name) {
-          this.name = newValue.name;
-        }
-        if (!deepEqual(newValue.news, this.newsConfig)) {
-          this.newsConfig = newValue.news as any;
-        }
-        if (!deepEqual(newValue.toc, this.tocConfig)) {
-          this.tocConfig = newValue.toc as any;
-        }
-        if (!deepEqual(newValue.download, this.downloadConfig)) {
-          this.downloadConfig = newValue.download;
-        }
-        if (!deepEqual(newValue.search, this.searchConfig)) {
-          this.searchConfig = newValue.search;
+        if (!deepEqual(newValue, this.configModel)) {
+          this.configModel = { ...newValue };
         }
       },
       deep: true,
     },
   },
   methods: {
-    remove(array: any[], index: number) {
-      array.splice(index, 1);
+    saveHookStringModel() {
+      try {
+        this.$emit("update:hook", JSON.parse(this.hookModelString));
+      } catch (error) {
+        this.logger.error(error);
+      }
     },
-    removeConfig(prop: "searchConfig" | "newsConfig" | "downloadConfig" | "tocConfig") {
-      this[prop] = undefined;
+    saveConfigStringModel() {
+      try {
+        this.$emit("update:config", JSON.parse(this.configModelString));
+      } catch (error) {
+        this.logger.error(error);
+      }
+    },
+    removeConfig(prop: "search" | "news" | "download" | "toc") {
+      this.configModel[prop] = undefined;
     },
     addToc() {
-      this.tocConfig = {
+      this.configModel.toc = {
         data: [],
         regexes: {},
       };
     },
     addNews() {
-      this.newsConfig = {
+      this.configModel.news = {
         newsUrl: "",
         regexes: {},
         data: [],
       };
     },
     addSearch() {
-      this.searchConfig = {
+      this.configModel.search = {
         searchUrl: "",
         regexes: {},
+        data: [],
       };
     },
     addDownload() {
-      this.downloadConfig = {
+      this.configModel.download = {
         regexes: {},
+        data: [],
       };
     },
   },
