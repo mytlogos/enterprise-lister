@@ -33,7 +33,7 @@
       ></textarea>
       <label for="floatingTextarea">Comments</label>
     </div>
-    <select v-model="configModel.medium" class="form-select mb-3" aria-label="Select Hook Medium">
+    <select v-model.number="configModel.medium" class="form-select mb-3" aria-label="Select Hook Medium">
       <option value="" disabled selected>Select Medium</option>
       <option :value="1">Text</option>
       <option :value="2">Audio</option>
@@ -98,12 +98,16 @@
   >
     <div>
       <p-button label="Save" @click="saveConfigStringModel" />
+      <div>
+        <p v-for="line in dialogError" :key="line">{{ line }}</p>
+      </div>
       <textarea v-model="configModelString" class="w-100" style="min-height: 500px"></textarea>
     </div>
   </p-dialog>
 </template>
 <script lang="ts">
 import { CustomHook, HookState } from "enterprise-core/dist/types";
+import { validateHookConfig, ValidationError } from "enterprise-scraper/dist/externals/customv2/validation";
 import { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
 import { defineComponent, PropType } from "vue";
 import "bootstrap/js/dist/collapse";
@@ -141,6 +145,7 @@ export default defineComponent({
       showConfigModel: false,
       configModelString: "",
       hookModelString: "",
+      dialogError: [] as string[],
     };
   },
   computed: {
@@ -156,11 +161,13 @@ export default defineComponent({
   watch: {
     showHookModel() {
       if (this.showHookModel) {
+        this.dialogError = [];
         this.hookModelString = JSON.stringify(this.hook, undefined, 2);
       }
     },
     showConfigModel() {
       if (this.showConfigModel) {
+        this.dialogError = [];
         this.configModelString = JSON.stringify(this.config, undefined, 2);
       }
     },
@@ -206,15 +213,31 @@ export default defineComponent({
   methods: {
     saveHookStringModel() {
       try {
-        this.$emit("update:hook", JSON.parse(this.hookModelString));
+        const value = JSON.parse(this.hookModelString);
+        this.$emit("update:hook", value);
       } catch (error) {
         this.logger.error(error);
       }
     },
     saveConfigStringModel() {
       try {
-        this.$emit("update:config", JSON.parse(this.configModelString));
+        const value = JSON.parse(this.configModelString);
+        const validated = validateHookConfig(value);
+
+        if (validated.errors.length) {
+          this.dialogError = validated.errors.map((v) => {
+            if (v instanceof ValidationError) {
+              return v.stack;
+            } else {
+              return v.message;
+            }
+          });
+        } else {
+          this.dialogError = [];
+          this.$emit("update:config", value);
+        }
       } catch (error) {
+        this.dialogError = [error + ""];
         this.logger.error(error);
       }
     },
