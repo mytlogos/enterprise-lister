@@ -11,6 +11,9 @@
     <div v-else-if="createResult === 'failed'" class="alert alert-danger" role="alert">
       Failed saving CustomHook {{ value.name }}
     </div>
+    <div v-if="invalid.length" class="alert alert-danger" role="alert">
+      <p v-for="line in invalid" :key="line">{{ line }}</p>
+    </div>
     <div class="row">
       <div class="col">
         <div class="row g-3 align-items-center">
@@ -55,8 +58,7 @@
 import "vue-prism-editor/dist/prismeditor.min.css"; // import the styles somewhere
 
 // import highlighting library (you can use any library you want just return html string)
-// @ts-expect-error
-import { highlight, languages } from "prismjs/components/prism-core";
+import "prismjs/components/prism-core";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
 import type { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
@@ -65,10 +67,11 @@ import { defineComponent } from "vue";
 import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/v2/custom-hook-form-v2.vue";
-import { clone, deepEqual, Logger } from "../init";
+import { clone, Logger } from "../init";
+import { validateHookConfig, ValidationError } from "enterprise-scraper/dist/externals/customv2/validation";
 
 interface Data {
-  invalid: string;
+  invalid: string[];
   param: string;
   result: string;
   loading: boolean;
@@ -92,7 +95,7 @@ export default defineComponent({
     return {
       loading: false,
       logger: new Logger("CustomHookView"),
-      invalid: "",
+      invalid: [],
       param: "",
       result: "",
       value: {
@@ -114,17 +117,6 @@ export default defineComponent({
     this.load();
   },
   methods: {
-    setConfig(value: HookConfig) {
-      if (deepEqual(value, this.value)) {
-        this.logger.info("No config update required");
-        return;
-      }
-      this.logger.info("Updated HookConfig");
-      this.value = value;
-    },
-    highlighter(code: string) {
-      return highlight(code, languages.json); // languages.<insert language> to return html with markup
-    },
     testHook(hookKey: keyof HookConfig) {
       if (this.loading) {
         return;
@@ -133,8 +125,31 @@ export default defineComponent({
 
       const hookConfig = clone(this.value);
 
-      HttpClient.testHook({
-        config: hookConfig as any,
+      // only set value if it is a valid config
+      try {
+        const result = validateHookConfig(hookConfig);
+
+        if (result.valid) {
+          this.value = hookConfig;
+          this.invalid = [];
+        } else {
+          this.invalid = result.errors.map((v) => {
+            if (v instanceof ValidationError) {
+              return v.stack;
+            } else {
+              return v.message;
+            }
+          });
+          return;
+        }
+      } catch (error) {
+        this.invalid = [error + ""];
+        this.logger.error(error);
+        return;
+      }
+
+      HttpClient.testHookV2({
+        config: hookConfig,
         key: hookKey,
         param: this.param,
       })
@@ -150,6 +165,28 @@ export default defineComponent({
         // simple but stupid way to clone the hook, firefox went off alone in 94 and introduced "structuredClone" (with Node 17 support at this time)
         // when there is wider support, maybe use that, else if lodash is ever used use that cloneDeep
         this.hook = clone(this.$store.state.hooks.hooks[this.id]);
+
+        // only set value if it is a valid config
+        try {
+          const hookConfig = JSON.parse(this.hook.state);
+          const result = validateHookConfig(hookConfig);
+
+          if (result.valid) {
+            this.value = hookConfig;
+            this.invalid = [];
+          } else {
+            this.invalid = result.errors.map((v) => {
+              if (v instanceof ValidationError) {
+                return v.stack;
+              } else {
+                return v.message;
+              }
+            });
+          }
+        } catch (error) {
+          this.invalid = [error + ""];
+          this.logger.error(error);
+        }
       }
     },
 
@@ -163,19 +200,40 @@ export default defineComponent({
         return;
       }
 
-      this.hook.state = "this.code";
+      // only set value if it is a valid config
+      try {
+        const result = validateHookConfig(this.value);
+
+        if (result.valid) {
+          this.hook.state = JSON.stringify(this.value);
+          this.invalid = [];
+        } else {
+          this.invalid = result.errors.map((v) => {
+            if (v instanceof ValidationError) {
+              return v.stack;
+            } else {
+              return v.message;
+            }
+          });
+          return;
+        }
+      } catch (error) {
+        this.invalid = [error + ""];
+        this.logger.error(error);
+        return;
+      }
 
       const action = this.hook.id ? "updateHook" : "createHook";
 
       this.$store
         .dispatch(action, this.hook)
         .then((value: CustomHook) => {
-          console.log(value);
+          this.logger.info(value);
           this.hook = value;
           this.createResult = "success";
         })
         .catch((value: any) => {
-          console.log(value);
+          this.logger.info(value);
           this.createResult = "failed";
         });
     },

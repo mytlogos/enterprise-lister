@@ -138,7 +138,7 @@ const newsConfigSchema = schema({
       },
     },
   },
-  required: ["newsUrl", "data"],
+  required: ["newsUrl", "data", "regexes"],
 });
 const tocConfigSchema = schema({
   $schema: "http://json-schema.org/draft-07/schema#",
@@ -169,11 +169,11 @@ const tocConfigSchema = schema({
             required: ["_$", "title", "url", "combiIndex", "totalIndex", "releaseDate"],
           },
         },
-        required: ["_$", "title", "statusTl", "content"],
+        required: ["_$"],
       },
     },
   },
-  required: ["data"],
+  required: ["data", "regexes"],
 });
 const searchConfigSchema = schema({
   $schema: "http://json-schema.org/draft-07/schema#",
@@ -181,6 +181,7 @@ const searchConfigSchema = schema({
   type: "object",
   properties: {
     searchUrl: schema.string(),
+    regexes: jsonRegexMapSchema,
     data: {
       type: "array",
       items: {
@@ -197,7 +198,7 @@ const searchConfigSchema = schema({
       },
     },
   },
-  required: ["searchUrl", "data"],
+  required: ["searchUrl", "data", "regexes"],
 });
 const downloadConfigSchema = schema({
   $schema: "http://json-schema.org/draft-07/schema#",
