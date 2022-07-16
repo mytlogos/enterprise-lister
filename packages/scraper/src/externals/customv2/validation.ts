@@ -6,8 +6,8 @@ type RequireField<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
 interface SchemaFunc {
   <T extends RequireField<Schema, "id" | "type">>(value: T): T;
-  string(): { type: "string" };
-  link(): Schema;
+  string(schema?: Omit<Schema, "type">): { type: "string" };
+  link(schema?: Omit<Schema, "type" | "format" | "pattern">): Schema;
 }
 
 const schema = function schema<T extends RequireField<Schema, "id" | "type">>(value: T): T {
@@ -20,12 +20,13 @@ const schema = function schema<T extends RequireField<Schema, "id" | "type">>(va
   return value;
 } as SchemaFunc;
 
-schema.string = function string() {
-  return { type: "string" };
+schema.string = function string(value: Schema = {}) {
+  return { ...value, type: "string" };
 };
 
-schema.link = function link() {
+schema.link = function link(value: Schema = {}) {
   return {
+    ...value,
     type: "string",
     format: "uri",
     pattern: "^https?://.+",
@@ -36,17 +37,13 @@ const jsonRegexSchema = schema({
   id: "/JsonRegex",
   type: "object",
   properties: {
-    pattern: {
-      type: "string",
-      format: "regex",
-    },
+    pattern: schema.string({ format: "regex" }),
     flags: schema.string(),
   },
   required: ["pattern", "flags"],
 });
 
 const jsonRegexMapSchema = schema({
-  $schema: "http://json-schema.org/draft-07/schema#",
   id: "/JsonRegexRecord",
   type: "object",
   additionalProperties: jsonRegexSchema,
@@ -125,11 +122,10 @@ const newsSingleSchema = schema({
 });
 
 const newsConfigSchema = schema({
-  $schema: "http://json-schema.org/draft-07/schema#",
   id: "/NewsConfig",
   type: "object",
   properties: {
-    newsUrl: schema.string(),
+    newsUrl: schema.link(),
     regexes: jsonRegexMapSchema,
     data: {
       type: "array",
@@ -141,7 +137,6 @@ const newsConfigSchema = schema({
   required: ["newsUrl", "data", "regexes"],
 });
 const tocConfigSchema = schema({
-  $schema: "http://json-schema.org/draft-07/schema#",
   id: "/TocConfig",
   type: "object",
   properties: {
@@ -176,11 +171,10 @@ const tocConfigSchema = schema({
   required: ["data", "regexes"],
 });
 const searchConfigSchema = schema({
-  $schema: "http://json-schema.org/draft-07/schema#",
   id: "/SearchConfig",
   type: "object",
   properties: {
-    searchUrl: schema.string(),
+    searchUrl: schema.link(),
     regexes: jsonRegexMapSchema,
     data: {
       type: "array",
@@ -201,7 +195,6 @@ const searchConfigSchema = schema({
   required: ["searchUrl", "data", "regexes"],
 });
 const downloadConfigSchema = schema({
-  $schema: "http://json-schema.org/draft-07/schema#",
   id: "/DownloadConfig",
   type: "object",
   properties: {
@@ -233,9 +226,10 @@ const hookConfigSchema = schema({
   properties: {
     base: schema.link(),
     medium: {
-      type: "number",
+      type: "integer",
+      enum: [1, 2, 4, 8],
     },
-    name: schema.string(),
+    name: schema.string({ minLength: 2 }),
     news: newsConfigSchema,
     toc: tocConfigSchema,
     download: downloadConfigSchema,
