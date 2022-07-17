@@ -20,6 +20,26 @@
  * available at: http://code.google.com/p/arc90labs-readability
  */
 
+import "jsdom";
+
+interface ReadabilityOptions {
+  debug?: boolean;
+  maxElemsToParse?: number;
+  nbTopCandidates?: number;
+  charThreshold?: number;
+  classesToPreserve?: string[];
+  keepClasses?: boolean;
+  serializer?: (el: Element) => string;
+  disableJSONLD?: boolean;
+}
+
+interface Metadata {
+  title?: string;
+  byline?: string;
+  excerpt?: string;
+  siteName?: string;
+}
+
 /**
  * Public constructor.
  * @param {Document} doc     The document to parse.
@@ -159,34 +179,32 @@ export class Readability {
     apos: "'",
   };
 
-  private _doc: any;
-  private _docJSDOMParser: any;
-  private _articleTitle: any;
-  private _articleByline: any;
-  private _articleDir: any;
-  private _articleSiteName: any;
-  private _attempts: any;
-  private _debug: any;
-  private _maxElemsToParse: any;
-  private _nbTopCandidates: any;
-  private _charThreshold: any;
-  private _classesToPreserve: any;
-  private _keepClasses: any;
-  private _serializer: any;
-  private _disableJSONLD: any;
-  private _flags: any;
+  private _doc: Document;
+  private _articleTitle: string | null;
+  private _articleByline: unknown | null;
+  private _articleDir: unknown | null;
+  private _articleSiteName: unknown | null;
+  private _attempts: Array<{ articleContent: HTMLElement; textLength: number }>;
+  private _debug: NonNullable<ReadabilityOptions["debug"]>;
+  private _maxElemsToParse: NonNullable<ReadabilityOptions["maxElemsToParse"]>;
+  private _nbTopCandidates: NonNullable<ReadabilityOptions["nbTopCandidates"]>;
+  private _charThreshold: NonNullable<ReadabilityOptions["charThreshold"]>;
+  private _classesToPreserve: NonNullable<ReadabilityOptions["classesToPreserve"]>;
+  private _keepClasses: NonNullable<ReadabilityOptions["keepClasses"]>;
+  private _serializer: NonNullable<ReadabilityOptions["serializer"]>;
+  private _disableJSONLD: NonNullable<ReadabilityOptions["disableJSONLD"]>;
+  private _flags: number;
 
-  private log: (...args: any[]) => void;
-  private _articleLang: any;
+  private log: (...args: unknown[]) => void;
+  private _articleLang?: string | null;
 
-  public constructor(doc: any, options: any) {
+  public constructor(doc: Document, options?: ReadabilityOptions) {
     if (!doc || !doc.documentElement) {
       throw new Error("First argument to Readability constructor should be a document object.");
     }
     options = options || {};
 
     this._doc = doc;
-    this._docJSDOMParser = this._doc.firstChild.__JSDOMParser__;
     this._articleTitle = null;
     this._articleByline = null;
     this._articleDir = null;
@@ -202,7 +220,7 @@ export class Readability {
     this._keepClasses = !!options.keepClasses;
     this._serializer =
       options.serializer ||
-      function (el: any) {
+      function (el: Element) {
         return el.innerHTML;
       };
     this._disableJSONLD = !!options.disableJSONLD;
@@ -212,22 +230,22 @@ export class Readability {
 
     // Control whether log messages are sent to the console
     if (this._debug) {
-      const logNode = function (node: any) {
+      const logNode = function (node: Element) {
         if (node.nodeType == node.TEXT_NODE) {
           return `${node.nodeName} ("${node.textContent}")`;
         }
 
-        const attrPairs = Array.from(node.attributes || [], function (attr: any) {
+        const attrPairs = Array.from(node.attributes || [], function (attr) {
           return `${attr.name}="${attr.value}"`;
         }).join(" ");
 
         return `<${node.localName} ${attrPairs}>`;
       };
-      this.log = function (...values: any[]) {
+      this.log = function (...values: unknown[]) {
         // @ts-expect-error
         if (typeof global.dump !== "undefined") {
           const msg = Array.prototype.map
-            .call(values, function (x: any) {
+            .call(values, function (x) {
               return x && x.nodeName ? logNode(x) : x;
             })
             .join(" ");
@@ -235,7 +253,9 @@ export class Readability {
           dump("Reader: (Readability) " + msg + "\n");
         } else if (typeof console !== "undefined") {
           const args = Array.from(values, (arg) => {
+            // @ts-expect-error
             if (arg && arg.nodeType == this.ELEMENT_NODE) {
+              // @ts-expect-error
               return logNode(arg);
             }
             return arg;
@@ -255,7 +275,7 @@ export class Readability {
    * Run any post-process modifications to article content as necessary.
    *
    **/
-  private _postProcessContent(articleContent: any): void {
+  private _postProcessContent(articleContent: HTMLElement): void {
     // Readability cannot open relative uris so we convert them to absolute uris.
     this._fixRelativeUris(articleContent);
 
@@ -277,14 +297,10 @@ export class Readability {
    * @param Function filterFn the function to use as a filter
    * @return void
    */
-  private _removeNodes(
-    nodeList: any,
-    filterFn?: (this: Readability, node: any, index: number, list: any[]) => boolean,
+  private _removeNodes<T extends Node>(
+    nodeList: ArrayLike<T>,
+    filterFn?: (this: Readability, node: T, index: number, list: ArrayLike<T>) => boolean,
   ) {
-    // Avoid ever operating on live node lists.
-    if (this._docJSDOMParser && nodeList._isLiveNodeList) {
-      throw new Error("Do not pass live node lists to _removeNodes");
-    }
     for (let i = nodeList.length - 1; i >= 0; i--) {
       const node = nodeList[i];
       const parentNode = node.parentNode;
@@ -304,11 +320,7 @@ export class Readability {
    * @param String newTagName the new tag name to use
    * @return void
    */
-  private _replaceNodeTags(nodeList: any, newTagName: any) {
-    // Avoid ever operating on live node lists.
-    if (this._docJSDOMParser && nodeList._isLiveNodeList) {
-      throw new Error("Do not pass live node lists to _replaceNodeTags");
-    }
+  private _replaceNodeTags<T extends Element>(nodeList: T[], newTagName: string) {
     for (const node of nodeList) {
       this._setNodeTag(node, newTagName);
     }
@@ -325,7 +337,10 @@ export class Readability {
    * @param  Function fn       The iterate function.
    * @return void
    */
-  private _forEachNode(nodeList: any, fn: (this: Readability, value: any, index: number, list: any[]) => void) {
+  private _forEachNode<T>(
+    nodeList: ArrayLike<T>,
+    fn: (this: Readability, value: T, index: number, list: ArrayLike<T>) => void,
+  ) {
     Array.prototype.forEach.call(nodeList, fn, this);
   }
 
@@ -340,7 +355,7 @@ export class Readability {
    * @param  Function fn       The test function.
    * @return void
    */
-  private _findNode(nodeList: any, fn: any) {
+  private _findNode<T>(nodeList: ArrayLike<T>, fn: (this: Readability, value: T, index: number, obj: T[]) => unknown) {
     return Array.prototype.find.call(nodeList, fn, this);
   }
 
@@ -355,7 +370,10 @@ export class Readability {
    * @param  Function fn       The iterate function.
    * @return Boolean
    */
-  private _someNode(nodeList: any, fn: (this: Readability, value: any, index: number, array: any[]) => unknown) {
+  private _someNode<T>(
+    nodeList: ArrayLike<T>,
+    fn: (this: Readability, value: T, index: number, array: T[]) => unknown,
+  ) {
     return Array.prototype.some.call(nodeList, fn, this);
   }
 
@@ -370,7 +388,10 @@ export class Readability {
    * @param  Function fn       The iterate function.
    * @return Boolean
    */
-  private _everyNode(nodeList: any, fn: any) {
+  private _everyNode<T>(
+    nodeList: ArrayLike<T>,
+    fn: (this: Readability, value: T, index: number, array: T[]) => unknown,
+  ) {
     return Array.prototype.every.call(nodeList, fn, this);
   }
 
@@ -380,24 +401,24 @@ export class Readability {
    * @return ...NodeList
    * @return Array
    */
-  private _concatNodeLists(...args: any[]) {
+  private _concatNodeLists(...args: unknown[]) {
     const slice = Array.prototype.slice;
-    const nodeLists = args.map(function (list: any) {
+    const nodeLists = args.map(function (list: unknown) {
       return slice.call(list);
     });
     return Array.prototype.concat.apply([], nodeLists);
   }
 
-  private _getAllNodesWithTag(node: any, tagNames: any) {
+  private _getAllNodesWithTag(node: Element | Document, tagNames: string[]): Element[] {
     if (node.querySelectorAll) {
-      return node.querySelectorAll(tagNames.join(","));
+      return Array.from(node.querySelectorAll(tagNames.join(",")));
     }
-    return [].concat(
-      tagNames.map(function (tag: any) {
+    return tagNames
+      .map((tag) => {
         const collection = node.getElementsByTagName(tag);
         return Array.isArray(collection) ? collection : Array.from(collection);
-      }),
-    );
+      })
+      .flat();
   }
 
   /**
@@ -408,11 +429,11 @@ export class Readability {
    * @param Element
    * @return void
    */
-  private _cleanClasses(node: any) {
+  private _cleanClasses(node: Element) {
     const classesToPreserve = this._classesToPreserve;
     const className = (node.getAttribute("class") || "")
       .split(/\s+/)
-      .filter(function (cls: any) {
+      .filter(function (cls: string) {
         return classesToPreserve.indexOf(cls) != -1;
       })
       .join(" ");
@@ -423,6 +444,7 @@ export class Readability {
       node.removeAttribute("class");
     }
 
+    // @ts-expect-error
     for (node = node.firstElementChild; node; node = node.nextElementSibling) {
       this._cleanClasses(node);
     }
@@ -435,10 +457,11 @@ export class Readability {
    * @param Element
    * @return void
    */
-  private _fixRelativeUris(articleContent: any) {
+  private _fixRelativeUris(articleContent: Element) {
     const baseURI = this._doc.baseURI;
     const documentURI = this._doc.documentURI;
-    function toAbsoluteURI(uri: any) {
+
+    function toAbsoluteURI(uri: string) {
       // Leave hash links alone if the base URI matches the document URI:
       if (baseURI == documentURI && uri.charAt(0) == "#") {
         return uri;
@@ -454,7 +477,7 @@ export class Readability {
     }
 
     const links = this._getAllNodesWithTag(articleContent, ["a"]);
-    this._forEachNode(links, function (link: any) {
+    this._forEachNode(links, function (link) {
       const href = link.getAttribute("href");
       if (href) {
         // Remove links with javascript: URIs, since
@@ -462,15 +485,15 @@ export class Readability {
         if (href.indexOf("javascript:") === 0) {
           // if the link only contains simple text content, it can be converted to a text node
           if (link.childNodes.length === 1 && link.childNodes[0].nodeType === this.TEXT_NODE) {
-            const text = this._doc.createTextNode(link.textContent);
-            link.parentNode.replaceChild(text, link);
+            const text = this._doc.createTextNode(link.textContent || "");
+            link.parentNode!.replaceChild(text, link);
           } else {
             // if the link has multiple children, they should all be preserved
             const container = this._doc.createElement("span");
             while (link.firstChild) {
               container.appendChild(link.firstChild);
             }
-            link.parentNode.replaceChild(container, link);
+            link.parentNode!.replaceChild(container, link);
           }
         } else {
           link.setAttribute("href", toAbsoluteURI(href));
@@ -480,7 +503,7 @@ export class Readability {
 
     const medias = this._getAllNodesWithTag(articleContent, ["img", "picture", "figure", "video", "audio", "source"]);
 
-    this._forEachNode(medias, function (media: any) {
+    this._forEachNode(medias, function (media: Element) {
       const src = media.getAttribute("src");
       const poster = media.getAttribute("poster");
       const srcset = media.getAttribute("srcset");
@@ -494,7 +517,7 @@ export class Readability {
       }
 
       if (srcset) {
-        const newSrcset = srcset.replace(this.REGEXPS.srcsetUrl, function (_: any, p1: any, p2: any, p3: any) {
+        const newSrcset = srcset.replace(this.REGEXPS.srcsetUrl, function (_, p1, p2, p3) {
           return toAbsoluteURI(p1) + (p2 || "") + p3;
         });
 
@@ -503,8 +526,8 @@ export class Readability {
     });
   }
 
-  private _simplifyNestedElements(articleContent: any) {
-    let node = articleContent;
+  private _simplifyNestedElements(articleContent: HTMLElement) {
+    let node: HTMLElement | null = articleContent;
 
     while (node) {
       if (
@@ -513,6 +536,7 @@ export class Readability {
         !(node.id && node.id.startsWith("readability"))
       ) {
         if (this._isElementWithoutContent(node)) {
+          // @ts-expect-error
           node = this._removeAndGetNext(node);
           continue;
         } else if (this._hasSingleTagInsideElement(node, "DIV") || this._hasSingleTagInsideElement(node, "SECTION")) {
@@ -521,11 +545,12 @@ export class Readability {
             child.setAttribute(node.attributes[i].name, node.attributes[i].value);
           }
           node.parentNode.replaceChild(child, node);
+          // @ts-expect-error
           node = child;
           continue;
         }
       }
-
+      // @ts-expect-error
       node = this._getNextNode(node);
     }
   }
@@ -535,7 +560,7 @@ export class Readability {
    *
    * @return string
    **/
-  private _getArticleTitle() {
+  private _getArticleTitle(): string {
     const doc = this._doc;
     let curTitle = "";
     let origTitle = "";
@@ -550,7 +575,8 @@ export class Readability {
     }
 
     let titleHadHierarchicalSeparators = false;
-    function wordCount(str: any) {
+
+    function wordCount(str: string) {
       return str.split(/\s+/).length;
     }
 
@@ -567,7 +593,7 @@ export class Readability {
       // could assume it's the full title.
       const headings = this._concatNodeLists(doc.getElementsByTagName("h1"), doc.getElementsByTagName("h2"));
       const trimmedTitle = curTitle.trim();
-      const match = this._someNode(headings, function (heading: any) {
+      const match = this._someNode(headings, function (heading) {
         return heading.textContent.trim() === trimmedTitle;
       });
 
@@ -630,9 +656,10 @@ export class Readability {
    * whitespace in between. If the given node is an element, the same node is
    * returned.
    */
-  private _nextNode(node: any) {
-    let next = node;
-    while (next && next.nodeType != this.ELEMENT_NODE && this.REGEXPS.whitespace.test(next.textContent)) {
+  private _nextNode(node: Node) {
+    let next: Node | null = node;
+
+    while (next && next.nodeType != this.ELEMENT_NODE && this.REGEXPS.whitespace.test(next.textContent || "")) {
       next = next.nextSibling;
     }
     return next;
@@ -645,9 +672,9 @@ export class Readability {
    * will become:
    *   <div>foo<br>bar<p>abc</p></div>
    */
-  private _replaceBrs(elem: any) {
-    this._forEachNode(this._getAllNodesWithTag(elem, ["br"]), function (br: any) {
-      let next = br.nextSibling;
+  private _replaceBrs(elem: Element) {
+    this._forEachNode(this._getAllNodesWithTag(elem, ["br"]), function (br) {
+      let next = br.nextSibling as Node | null;
 
       // Whether 2 or more <br> elements have been found and replaced with a
       // <p> block.
@@ -656,10 +683,11 @@ export class Readability {
       // If we find a <br> chain, remove the <br>s until we hit another node
       // or non-whitespace. This leaves behind the first <br> in the chain
       // (which will be replaced with a <p> later).
-      while ((next = this._nextNode(next)) && next.tagName == "BR") {
+      // @ts-expect-error
+      while (next && (next = this._nextNode(next)) && next.tagName == "BR") {
         replaced = true;
         const brSibling = next.nextSibling;
-        next.parentNode.removeChild(next);
+        next.parentNode!.removeChild(next);
         next = brSibling;
       }
 
@@ -668,16 +696,19 @@ export class Readability {
       // chain.
       if (replaced) {
         const p = this._doc.createElement("p");
-        br.parentNode.replaceChild(p, br);
+        br.parentNode!.replaceChild(p, br);
 
         next = p.nextSibling;
         while (next) {
           // If we've hit another <br><br>, we're done adding children to this <p>.
+          // @ts-expect-error
           if (next.tagName == "BR") {
+            // @ts-expect-error
             const nextElem = this._nextNode(next.nextSibling);
+            // @ts-expect-error
             if (nextElem && nextElem.tagName == "BR") break;
           }
-
+          // @ts-expect-error
           if (!this._isPhrasingContent(next)) break;
 
           // Otherwise, make this node a child of the new <p>.
@@ -685,29 +716,25 @@ export class Readability {
           p.appendChild(next);
           next = sibling;
         }
-
+        // @ts-expect-error
         while (p.lastChild && this._isWhitespace(p.lastChild)) {
           p.removeChild(p.lastChild);
         }
-
+        // @ts-expect-error
         if (p.parentNode.tagName === "P") this._setNodeTag(p.parentNode, "DIV");
       }
     });
   }
 
-  private _setNodeTag(node: any, tag: any) {
+  private _setNodeTag(node: Element, tag: string) {
     this.log("_setNodeTag", node, tag);
-    if (this._docJSDOMParser) {
-      node.localName = tag.toLowerCase();
-      node.tagName = tag.toUpperCase();
-      return node;
-    }
 
-    const replacement = node.ownerDocument.createElement(tag);
+    const replacement = node.ownerDocument!.createElement(tag);
     while (node.firstChild) {
       replacement.appendChild(node.firstChild);
     }
-    node.parentNode.replaceChild(replacement, node);
+    node.parentNode!.replaceChild(replacement, node);
+    // @ts-expect-error
     if (node.readability) replacement.readability = node.readability;
 
     for (let i = 0; i < node.attributes.length; i++) {
@@ -732,7 +759,7 @@ export class Readability {
    * @param Element
    * @return void
    **/
-  private _prepArticle(articleContent: any) {
+  private _prepArticle(articleContent: Element) {
     this._cleanStyles(articleContent);
 
     // Check for data tables before we continue, to avoid removing items in
@@ -756,9 +783,9 @@ export class Readability {
 
     const shareElementThreshold = this.DEFAULT_CHAR_THRESHOLD;
 
-    this._forEachNode(articleContent.children, function (topCandidate: any) {
-      this._cleanMatchedNodes(topCandidate, function (node: any, matchString: any) {
-        return this.REGEXPS.shareElements.test(matchString) && node.textContent.length < shareElementThreshold;
+    this._forEachNode(articleContent.children, function (topCandidate) {
+      this._cleanMatchedNodes(topCandidate, function (node, matchString) {
+        return this.REGEXPS.shareElements.test(matchString) && (node.textContent?.length || 0) < shareElementThreshold;
       });
     });
 
@@ -779,7 +806,7 @@ export class Readability {
     this._replaceNodeTags(this._getAllNodesWithTag(articleContent, ["h1"]), "h2");
 
     // Remove extra paragraphs
-    this._removeNodes(this._getAllNodesWithTag(articleContent, ["p"]), function (paragraph: any) {
+    this._removeNodes(this._getAllNodesWithTag(articleContent, ["p"]), function (paragraph) {
       const imgCount = paragraph.getElementsByTagName("img").length;
       const embedCount = paragraph.getElementsByTagName("embed").length;
       const objectCount = paragraph.getElementsByTagName("object").length;
@@ -790,19 +817,27 @@ export class Readability {
       return totalCount === 0 && !this._getInnerText(paragraph, false);
     });
 
-    this._forEachNode(this._getAllNodesWithTag(articleContent, ["br"]), function (br: any) {
+    this._forEachNode(this._getAllNodesWithTag(articleContent, ["br"]), function (br) {
+      // @ts-expect-error
       const next = this._nextNode(br.nextSibling);
+      // @ts-expect-error
       if (next && next.tagName == "P") br.parentNode.removeChild(br);
     });
 
     // Remove single-cell tables
-    this._forEachNode(this._getAllNodesWithTag(articleContent, ["table"]), function (table: any) {
+    this._forEachNode(this._getAllNodesWithTag(articleContent, ["table"]), function (table) {
       const tbody = this._hasSingleTagInsideElement(table, "TBODY") ? table.firstElementChild : table;
+      // @ts-expect-error
       if (this._hasSingleTagInsideElement(tbody, "TR")) {
+        // @ts-expect-error
         const row = tbody.firstElementChild;
+        // @ts-expect-error
         if (this._hasSingleTagInsideElement(row, "TD")) {
+          // @ts-expect-error
           let cell = row.firstElementChild;
+          // @ts-expect-error
           cell = this._setNodeTag(cell, this._everyNode(cell.childNodes, this._isPhrasingContent) ? "P" : "DIV");
+          // @ts-expect-error
           table.parentNode.replaceChild(cell, table);
         }
       }
@@ -816,17 +851,20 @@ export class Readability {
    * @param Element
    * @return void
    **/
-  private _initializeNode(node: any) {
+  private _initializeNode(node: Element) {
+    // @ts-expect-error
     node.readability = { contentScore: 0 };
 
     switch (node.tagName) {
       case "DIV":
+        // @ts-expect-error
         node.readability.contentScore += 5;
         break;
 
       case "PRE":
       case "TD":
       case "BLOCKQUOTE":
+        // @ts-expect-error
         node.readability.contentScore += 3;
         break;
 
@@ -838,6 +876,7 @@ export class Readability {
       case "DT":
       case "LI":
       case "FORM":
+        // @ts-expect-error
         node.readability.contentScore -= 3;
         break;
 
@@ -848,16 +887,17 @@ export class Readability {
       case "H5":
       case "H6":
       case "TH":
+        // @ts-expect-error
         node.readability.contentScore -= 5;
         break;
     }
-
+    // @ts-expect-error
     node.readability.contentScore += this._getClassWeight(node);
   }
 
-  private _removeAndGetNext(node: any) {
+  private _removeAndGetNext(node: Element) {
     const nextNode = this._getNextNode(node, true);
-    node.parentNode.removeChild(node);
+    node.parentNode!.removeChild(node);
     return nextNode;
   }
 
@@ -868,7 +908,7 @@ export class Readability {
    *
    * Calling this in a loop will traverse the DOM depth-first.
    */
-  private _getNextNode(node: any, ignoreSelfAndKids?: any) {
+  private _getNextNode(node: Element, ignoreSelfAndKids?: unknown) {
     // First check for kids if those aren't being ignored
     if (!ignoreSelfAndKids && node.firstElementChild) {
       return node.firstElementChild;
@@ -881,7 +921,7 @@ export class Readability {
     // (because this is depth-first traversal, we will have already
     // seen the parent nodes themselves).
     do {
-      node = node.parentNode;
+      node = node.parentNode as Element;
     } while (node && !node.nextElementSibling);
     return node && node.nextElementSibling;
   }
@@ -890,18 +930,18 @@ export class Readability {
   // 1 = same text, 0 = completely different text
   // works the way that it splits both texts into words and then finds words that are unique in second text
   // the result is given by the lower length of unique parts
-  private _textSimilarity(textA: any, textB: any) {
+  private _textSimilarity(textA: string, textB: string) {
     const tokensA = textA.toLowerCase().split(this.REGEXPS.tokenize).filter(Boolean);
     const tokensB = textB.toLowerCase().split(this.REGEXPS.tokenize).filter(Boolean);
     if (!tokensA.length || !tokensB.length) {
       return 0;
     }
-    const uniqTokensB = tokensB.filter((token: any) => !tokensA.includes(token));
+    const uniqTokensB = tokensB.filter((token) => !tokensA.includes(token));
     const distanceB = uniqTokensB.join(" ").length / tokensB.join(" ").length;
     return 1 - distanceB;
   }
 
-  private _checkByline(node: any, matchString: any) {
+  private _checkByline(node: Element, matchString: string) {
     if (this._articleByline) {
       return false;
     }
@@ -916,16 +956,16 @@ export class Readability {
 
     if (
       (rel === "author" || (itemprop && itemprop.indexOf("author") !== -1) || this.REGEXPS.byline.test(matchString)) &&
-      this._isValidByline(node.textContent)
+      this._isValidByline(node.textContent || "")
     ) {
-      this._articleByline = node.textContent.trim();
+      this._articleByline = (node.textContent || "").trim();
       return true;
     }
 
     return false;
   }
 
-  private _getNodeAncestors(node: any, maxDepth?: any) {
+  private _getNodeAncestors(node: Node, maxDepth?: number): Node[] {
     maxDepth = maxDepth || 0;
     let i = 0;
     const ancestors = [];
@@ -945,7 +985,7 @@ export class Readability {
    * @param page a document to run upon. Needs to be a full document, complete with body.
    * @return Element
    **/
-  private _grabArticle(page?: any) {
+  private _grabArticle(page?: HTMLElement) {
     this.log("**** grabArticle ****");
     const doc = this._doc;
     const isPaging = page !== null;
@@ -968,7 +1008,7 @@ export class Readability {
       // class name "comment", etc), and turn divs into P tags where they have been
       // used inappropriately (as in, where they contain no other block level elements.)
       const elementsToScore = [];
-      let node = this._doc.documentElement;
+      let node: Element | null = this._doc.documentElement;
 
       let shouldRemoveTitleHeader = true;
 
@@ -978,7 +1018,7 @@ export class Readability {
         }
 
         const matchString = node.className + " " + node.id;
-
+        // @ts-expect-error
         if (!this._isProbablyVisible(node)) {
           this.log("Removing hidden node - " + matchString);
           node = this._removeAndGetNext(node);
@@ -992,7 +1032,7 @@ export class Readability {
         }
 
         if (shouldRemoveTitleHeader && this._headerDuplicatesTitle(node)) {
-          this.log("Removing header: ", node.textContent.trim(), this._articleTitle.trim());
+          this.log("Removing header: ", node.textContent?.trim(), this._articleTitle?.trim());
           shouldRemoveTitleHeader = false;
           node = this._removeAndGetNext(node);
           continue;
@@ -1003,7 +1043,9 @@ export class Readability {
           if (
             this.REGEXPS.unlikelyCandidates.test(matchString) &&
             !this.REGEXPS.okMaybeItsACandidate.test(matchString) &&
+            // @ts-expect-error
             !this._hasAncestorTag(node, "table") &&
+            // @ts-expect-error
             !this._hasAncestorTag(node, "code") &&
             node.tagName !== "BODY" &&
             node.tagName !== "A"
@@ -1013,6 +1055,7 @@ export class Readability {
             continue;
           }
 
+          // @ts-expect-error
           if (this.UNLIKELY_ROLES.includes(node.getAttribute("role"))) {
             this.log("Removing content with role " + node.getAttribute("role") + " - " + matchString);
             node = this._removeAndGetNext(node);
@@ -1048,15 +1091,18 @@ export class Readability {
           let childNode = node.firstChild;
           while (childNode) {
             const nextSibling = childNode.nextSibling;
+            // @ts-expect-error
             if (this._isPhrasingContent(childNode)) {
               if (p !== null) {
                 p.appendChild(childNode);
+                // @ts-expect-error
               } else if (!this._isWhitespace(childNode)) {
                 p = doc.createElement("p");
                 node.replaceChild(p, childNode);
                 p.appendChild(childNode);
               }
             } else if (p !== null) {
+              // @ts-expect-error
               while (p.lastChild && this._isWhitespace(p.lastChild)) {
                 p.removeChild(p.lastChild);
               }
@@ -1071,7 +1117,7 @@ export class Readability {
           // algorithm with DIVs with are, in practice, paragraphs.
           if (this._hasSingleTagInsideElement(node, "P") && this._getLinkDensity(node) < 0.25) {
             const newNode = node.children[0];
-            node.parentNode.replaceChild(newNode, node);
+            node.parentNode!.replaceChild(newNode, node);
             node = newNode;
             elementsToScore.push(node);
           } else if (!this._hasChildBlockElement(node)) {
@@ -1090,7 +1136,8 @@ export class Readability {
        **/
       const candidates = [] as any[];
 
-      this._forEachNode(elementsToScore, function (elementToScore: any) {
+      this._forEachNode(elementsToScore, function (elementToScore) {
+        // @ts-expect-error
         if (!elementToScore.parentNode || typeof elementToScore.parentNode.tagName === "undefined") return;
 
         // If this paragraph is less than 25 characters, don't even count it.
@@ -1113,10 +1160,13 @@ export class Readability {
         contentScore += Math.min(Math.floor(innerText.length / 100), 3);
 
         // Initialize and score ancestors.
-        this._forEachNode(ancestors, function (ancestor: any, level: any) {
+        this._forEachNode(ancestors, function (ancestor, level) {
+          // @ts-expect-error
           if (!ancestor.tagName || !ancestor.parentNode || typeof ancestor.parentNode.tagName === "undefined") return;
 
+          // @ts-expect-error
           if (typeof ancestor.readability === "undefined") {
+            // @ts-expect-error
             this._initializeNode(ancestor);
             candidates.push(ancestor);
           }
@@ -1129,6 +1179,7 @@ export class Readability {
           if (level === 0) scoreDivider = 1;
           else if (level === 1) scoreDivider = 2;
           else scoreDivider = level * 3;
+          // @ts-expect-error
           ancestor.readability.contentScore += contentScore / scoreDivider;
         });
       });
@@ -1370,9 +1421,7 @@ export class Readability {
         } else {
           this._attempts.push({ articleContent: articleContent, textLength: textLength });
           // No luck after removing flags, just return the longest text we found during the different loops
-          this._attempts.sort(function (a: any, b: any) {
-            return b.textLength - a.textLength;
-          });
+          this._attempts.sort((a, b) => b.textLength - a.textLength);
 
           // But first check if we actually have something
           if (!this._attempts[0].textLength) {
@@ -1387,7 +1436,7 @@ export class Readability {
       if (parseSuccessful) {
         // Find out text direction from ancestors of final top candidate.
         const ancestors = [parentOfTopCandidate, topCandidate].concat(this._getNodeAncestors(parentOfTopCandidate));
-        this._someNode(ancestors, function (ancestor: any) {
+        this._someNode(ancestors, function (ancestor: Element) {
           if (!ancestor.tagName) return false;
           const articleDir = ancestor.getAttribute("dir");
           if (articleDir) {
@@ -1409,7 +1458,7 @@ export class Readability {
    * @param possibleByline {string} - a string to check whether its a byline.
    * @return Boolean - whether the input string is a byline.
    */
-  private _isValidByline(byline: any) {
+  private _isValidByline(byline: string | String): boolean {
     if (typeof byline == "string" || byline instanceof String) {
       byline = byline.trim();
       return byline.length > 0 && byline.length < 100;
@@ -1423,18 +1472,18 @@ export class Readability {
    * @param str {string} - a string to unescape.
    * @return string without HTML entity.
    */
-  private _unescapeHtmlEntities(str: any) {
+  private _unescapeHtmlEntities(str: string | null | undefined) {
     if (!str) {
       return str;
     }
 
     const htmlEscapeMap = this.HTML_ESCAPE_MAP;
     return str
-      .replace(/&(quot|amp|apos|lt|gt);/g, function (_: any, tag: any) {
+      .replace(/&(quot|amp|apos|lt|gt);/g, function (_, tag) {
         // @ts-expect-error
         return htmlEscapeMap[tag];
       })
-      .replace(/&#(?:x([0-9a-z]{1,4})|(\d{1,4}));/gi, function (_: any, hex: any, numStr: any) {
+      .replace(/&#(?:x([0-9a-z]{1,4})|(\d{1,4}));/gi, function (_, hex, numStr) {
         const num = parseInt(hex || numStr, hex ? 16 : 10);
         return String.fromCharCode(num);
       });
@@ -1445,23 +1494,23 @@ export class Readability {
    * For now, only Schema.org objects of type Article or its subtypes are supported.
    * @return Object with any metadata that could be extracted (possibly none)
    */
-  private _getJSONLD(doc: any) {
+  private _getJSONLD(doc: Document): Metadata {
     const scripts = this._getAllNodesWithTag(doc, ["script"]);
 
-    let metadata: any;
+    let metadata: Metadata | undefined = undefined;
 
-    this._forEachNode(scripts, function (jsonLdElement: any) {
+    this._forEachNode(scripts, function (jsonLdElement: Element) {
       if (!metadata && jsonLdElement.getAttribute("type") === "application/ld+json") {
         try {
           // Strip CDATA markers if present
-          const content = jsonLdElement.textContent.replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "");
+          const content = jsonLdElement.textContent!.replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "");
           let parsed = JSON.parse(content);
           if (!parsed["@context"] || !parsed["@context"].match(/^https?:\/\/schema\.org$/)) {
             return;
           }
 
           if (!parsed["@type"] && Array.isArray(parsed["@graph"])) {
-            parsed = parsed["@graph"].find((it: any) => {
+            parsed = parsed["@graph"].find((it) => {
               return (it["@type"] || "").match(this.REGEXPS.jsonLdArticleTypes);
             });
           }
@@ -1532,7 +1581,7 @@ export class Readability {
    *
    * @return Object with optional "excerpt" and "byline" properties
    */
-  private _getArticleMetadata(jsonld: any) {
+  private _getArticleMetadata(jsonld: Metadata) {
     const metadata = {} as any;
     const values = {} as any;
     const metaElements = this._doc.getElementsByTagName("meta");
@@ -1545,7 +1594,7 @@ export class Readability {
       /^\s*(?:(dc|dcterm|og|twitter|weibo:(article|webpage))\s*[.:]\s*)?(author|creator|description|title|site_name)\s*$/i;
 
     // Find description tags.
-    this._forEachNode(metaElements, function (element: any) {
+    this._forEachNode(metaElements, function (element) {
       const elementName = element.getAttribute("name");
       const elementProperty = element.getAttribute("property");
       const content = element.getAttribute("content");
@@ -1584,7 +1633,7 @@ export class Readability {
       values["og:title"] ||
       values["weibo:article:title"] ||
       values["weibo:webpage:title"] ||
-      values["title"] ||
+      values.title ||
       values["twitter:title"];
 
     if (!metadata.title) {
@@ -1602,7 +1651,7 @@ export class Readability {
       values["og:description"] ||
       values["weibo:article:description"] ||
       values["weibo:webpage:description"] ||
-      values["description"] ||
+      values.description ||
       values["twitter:description"];
 
     // get site name
@@ -1624,12 +1673,12 @@ export class Readability {
    *
    * @param Element
    **/
-  private _isSingleImage(node: any): any {
+  private _isSingleImage(node: Element): unknown {
     if (node.tagName === "IMG") {
       return true;
     }
 
-    if (node.children.length !== 1 || node.textContent.trim() !== "") {
+    if (node.children.length !== 1 || !node.textContent || node.textContent.trim() !== "") {
       return false;
     }
 
@@ -1644,11 +1693,12 @@ export class Readability {
    *
    * @param Element
    **/
-  private _unwrapNoscriptImages(doc: any) {
+  private _unwrapNoscriptImages(doc: Document) {
     // Find img without source or attributes that might contains image, and remove it.
     // This is done to prevent a placeholder img is replaced by img from noscript in next step.
     const imgs = Array.from(doc.getElementsByTagName("img"));
-    this._forEachNode(imgs, function (img: any) {
+
+    this._forEachNode(imgs, function (img) {
       for (let i = 0; i < img.attributes.length; i++) {
         const attr = img.attributes[i];
         switch (attr.name) {
@@ -1664,12 +1714,12 @@ export class Readability {
         }
       }
 
-      img.parentNode.removeChild(img);
+      img.parentNode?.removeChild(img);
     });
 
     // Next find noscript and try to extract its image
     const noscripts = Array.from(doc.getElementsByTagName("noscript"));
-    this._forEachNode(noscripts, function (noscript: any) {
+    this._forEachNode(noscripts, function (noscript) {
       // Parse content of noscript and make sure it only contains image
       const tmp = doc.createElement("div");
       tmp.innerHTML = noscript.innerHTML;
@@ -1708,7 +1758,9 @@ export class Readability {
           }
         }
 
-        noscript.parentNode.replaceChild(tmp.firstElementChild, prevElement);
+        if (tmp.firstElementChild) {
+          noscript.parentNode?.replaceChild(tmp.firstElementChild, prevElement);
+        }
       }
     });
   }
@@ -1718,8 +1770,8 @@ export class Readability {
    *
    * @param Element
    **/
-  private _removeScripts(doc: any) {
-    this._removeNodes(this._getAllNodesWithTag(doc, ["script"]), function (scriptNode: any) {
+  private _removeScripts(doc: Element | Document) {
+    this._removeNodes(this._getAllNodesWithTag(doc, ["script"]), function (scriptNode) {
       scriptNode.nodeValue = "";
       scriptNode.removeAttribute("src");
       return true;
@@ -1735,22 +1787,22 @@ export class Readability {
    * @param Element
    * @param string tag of child element
    **/
-  private _hasSingleTagInsideElement(element: any, tag: any) {
+  private _hasSingleTagInsideElement(element: Element, tag: string) {
     // There should be exactly 1 element child with given tag
     if (element.children.length != 1 || element.children[0].tagName !== tag) {
       return false;
     }
 
     // And there should be no text nodes with real content
-    return !this._someNode(element.childNodes, function (node: any) {
-      return node.nodeType === this.TEXT_NODE && this.REGEXPS.hasContent.test(node.textContent);
+    return !this._someNode(element.childNodes, function (node) {
+      return node.nodeType === this.TEXT_NODE && this.REGEXPS.hasContent.test(node.textContent || "");
     });
   }
 
-  private _isElementWithoutContent(node: any) {
+  private _isElementWithoutContent(node: Element) {
     return (
       node.nodeType === this.ELEMENT_NODE &&
-      node.textContent.trim().length == 0 &&
+      (!node.textContent || node.textContent.trim().length) == 0 &&
       (node.children.length == 0 ||
         node.children.length == node.getElementsByTagName("br").length + node.getElementsByTagName("hr").length)
     );
@@ -1761,8 +1813,8 @@ export class Readability {
    *
    * @param Element
    */
-  private _hasChildBlockElement(element: any): any {
-    return this._someNode(element.childNodes, function (node: any) {
+  private _hasChildBlockElement(element: Element): boolean {
+    return this._someNode(element.children, function (node) {
       return this.DIV_TO_P_ELEMS.has(node.tagName) || this._hasChildBlockElement(node);
     });
   }
@@ -1771,18 +1823,18 @@ export class Readability {
    * Determine if a node qualifies as phrasing content.
    * https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Content_categories#Phrasing_content
    **/
-  private _isPhrasingContent(node: any) {
+  private _isPhrasingContent(node: Element): boolean {
     return (
       node.nodeType === this.TEXT_NODE ||
       this.PHRASING_ELEMS.indexOf(node.tagName) !== -1 ||
       ((node.tagName === "A" || node.tagName === "DEL" || node.tagName === "INS") &&
-        this._everyNode(node.childNodes, this._isPhrasingContent))
+        this._everyNode(node.children, this._isPhrasingContent))
     );
   }
 
-  private _isWhitespace(node: any) {
+  private _isWhitespace(node: Element) {
     return (
-      (node.nodeType === this.TEXT_NODE && node.textContent.trim().length === 0) ||
+      (node.nodeType === this.TEXT_NODE && (!node.textContent || node.textContent.trim().length === 0)) ||
       (node.nodeType === this.ELEMENT_NODE && node.tagName === "BR")
     );
   }
@@ -1795,9 +1847,9 @@ export class Readability {
    * @param Boolean normalizeSpaces (default: true)
    * @return string
    **/
-  private _getInnerText(e: any, normalizeSpaces?: any) {
+  private _getInnerText(e: Element, normalizeSpaces?: boolean): string {
     normalizeSpaces = typeof normalizeSpaces === "undefined" ? true : normalizeSpaces;
-    const textContent = e.textContent.trim();
+    const textContent = (e.textContent || "").trim();
 
     if (normalizeSpaces) {
       return textContent.replace(this.REGEXPS.normalize, " ");
@@ -1812,7 +1864,7 @@ export class Readability {
    * @param string - what to split on. Default is ","
    * @return number (integer)
    **/
-  private _getCharCount(e: any, s: any) {
+  private _getCharCount(e: Element, s: string) {
     s = s || ",";
     return this._getInnerText(e).split(s).length - 1;
   }
@@ -1824,7 +1876,7 @@ export class Readability {
    * @param Element
    * @return void
    **/
-  private _cleanStyles(e: any) {
+  private _cleanStyles(e: Element): void {
     if (!e || e.tagName.toLowerCase() === "svg") return;
 
     // Remove `style` and deprecated presentational attributes
@@ -1851,14 +1903,14 @@ export class Readability {
    * @param Element
    * @return number (float)
    **/
-  private _getLinkDensity(element: any) {
+  private _getLinkDensity(element: Element): number {
     const textLength = this._getInnerText(element).length;
     if (textLength === 0) return 0;
 
     let linkLength = 0;
 
     // XXX implement _reduceNodeList?
-    this._forEachNode(element.getElementsByTagName("a"), function (linkNode: any) {
+    this._forEachNode(element.getElementsByTagName("a"), function (linkNode) {
       const href = linkNode.getAttribute("href");
       const coefficient = href && this.REGEXPS.hashUrl.test(href) ? 0.3 : 1;
       linkLength += this._getInnerText(linkNode).length * coefficient;
@@ -1874,7 +1926,7 @@ export class Readability {
    * @param Element
    * @return number (Integer)
    **/
-  private _getClassWeight(e: any) {
+  private _getClassWeight(e: Element): number {
     if (!this._flagIsActive(this.FLAG_WEIGHT_CLASSES)) return 0;
 
     let weight = 0;
@@ -1904,10 +1956,10 @@ export class Readability {
    * @param string tag to clean
    * @return void
    **/
-  private _clean(e: any, tag: any) {
+  private _clean(e: Element, tag: string): void {
     const isEmbed = ["object", "embed", "iframe"].indexOf(tag) !== -1;
 
-    this._removeNodes(this._getAllNodesWithTag(e, [tag]), function (element: any) {
+    this._removeNodes(this._getAllNodesWithTag(e, [tag]), function (element) {
       // Allow youtube and vimeo videos through as people usually want to see those.
       if (isEmbed) {
         // First, check the elements attributes to see if any of them contain youtube or vimeo
@@ -1936,13 +1988,20 @@ export class Readability {
    * @param  Function    filterFn a filter to invoke to determine whether this node 'counts'
    * @return Boolean
    */
-  private _hasAncestorTag(node: any, tagName: any, maxDepth?: any, filterFn?: any) {
+  private _hasAncestorTag(
+    node: HTMLElement,
+    tagName: string,
+    maxDepth?: number,
+    filterFn?: (node: ParentNode) => boolean,
+  ) {
     maxDepth = maxDepth || 3;
     tagName = tagName.toUpperCase();
     let depth = 0;
     while (node.parentNode) {
       if (maxDepth > 0 && depth > maxDepth) return false;
+      // @ts-expect-error
       if (node.parentNode.tagName === tagName && (!filterFn || filterFn(node.parentNode))) return true;
+      // @ts-expect-error
       node = node.parentNode;
       depth++;
     }
@@ -1952,16 +2011,17 @@ export class Readability {
   /**
    * Return an object indicating how many rows and columns this table has.
    */
-  private _getRowAndColumnCount(table: any) {
+  private _getRowAndColumnCount(table: Element) {
     let rows = 0;
     let columns = 0;
     const trs = table.getElementsByTagName("tr");
     for (let i = 0; i < trs.length; i++) {
       let rowspan = trs[i].getAttribute("rowspan") || 0;
+
       if (rowspan) {
-        rowspan = parseInt(rowspan, 10);
+        rowspan = parseInt(rowspan as string, 10);
       }
-      rows += rowspan || 1;
+      rows += (rowspan as number) || 1;
 
       // Now look for column-related info
       let columnsInThisRow = 0;
@@ -1969,9 +2029,9 @@ export class Readability {
       for (let j = 0; j < cells.length; j++) {
         let colspan = cells[j].getAttribute("colspan") || 0;
         if (colspan) {
-          colspan = parseInt(colspan, 10);
+          colspan = parseInt(colspan as string, 10);
         }
-        columnsInThisRow += colspan || 1;
+        columnsInThisRow += (colspan as number) || 1;
       }
       columns = Math.max(columns, columnsInThisRow);
     }
@@ -1983,66 +2043,76 @@ export class Readability {
    * similar checks as
    * https://searchfox.org/mozilla-central/rev/f82d5c549f046cb64ce5602bfd894b7ae807c8f8/accessible/generic/TableAccessible.cpp#19
    */
-  private _markDataTables(root: any) {
+  private _markDataTables(root: Element) {
     const tables = root.getElementsByTagName("table");
     for (let i = 0; i < tables.length; i++) {
       const table = tables[i];
       const role = table.getAttribute("role");
       if (role == "presentation") {
+        // @ts-expect-error
         table._readabilityDataTable = false;
         continue;
       }
       const datatable = table.getAttribute("datatable");
       if (datatable == "0") {
+        // @ts-expect-error
         table._readabilityDataTable = false;
         continue;
       }
       const summary = table.getAttribute("summary");
       if (summary) {
+        // @ts-expect-error
         table._readabilityDataTable = true;
         continue;
       }
 
       const caption = table.getElementsByTagName("caption")[0];
       if (caption && caption.childNodes.length > 0) {
+        // @ts-expect-error
         table._readabilityDataTable = true;
         continue;
       }
 
       // If the table has a descendant with any of these tags, consider a data table:
       const dataTableDescendants = ["col", "colgroup", "tfoot", "thead", "th"];
-      const descendantExists = function (tag: any) {
+      const descendantExists = function (tag: string) {
         return !!table.getElementsByTagName(tag)[0];
       };
       if (dataTableDescendants.some(descendantExists)) {
         this.log("Data table because found data-y descendant");
+        // @ts-expect-error
         table._readabilityDataTable = true;
         continue;
       }
 
       // Nested tables indicate a layout table:
       if (table.getElementsByTagName("table")[0]) {
+        // @ts-expect-error
         table._readabilityDataTable = false;
         continue;
       }
 
       const sizeInfo = this._getRowAndColumnCount(table);
       if (sizeInfo.rows >= 10 || sizeInfo.columns > 4) {
+        // @ts-expect-error
         table._readabilityDataTable = true;
         continue;
       }
       // Now just go by size entirely:
+      // @ts-expect-error
       table._readabilityDataTable = sizeInfo.rows * sizeInfo.columns > 10;
     }
   }
 
   /* convert images and figures that have properties like data-src into images that can be loaded without JS */
-  private _fixLazyImages(root: any) {
-    this._forEachNode(this._getAllNodesWithTag(root, ["img", "picture", "figure"]), function (elem: any) {
+  private _fixLazyImages(root: Element) {
+    this._forEachNode(this._getAllNodesWithTag(root, ["img", "picture", "figure"]), function (elem) {
       // In some sites (e.g. Kotaku), they put 1px square image as base64 data uri in the src attribute.
       // So, here we check if the data uri is too short, just might as well remove it.
+      // @ts-expect-error
       if (elem.src && this.REGEXPS.b64DataUrl.test(elem.src)) {
         // Make sure it's not SVG, because SVG can have a meaningful image in under 133 bytes.
+        // @ts-expect-error
         const parts = this.REGEXPS.b64DataUrl.exec(elem.src);
 
         if ((parts as any)[1] === "image/svg+xml") {
@@ -2067,7 +2137,9 @@ export class Readability {
         // Here we assume if image is less than 100 bytes (or 133B after encoded to base64)
         // it will be too small, therefore it might be placeholder image.
         if (srcCouldBeRemoved) {
+          // @ts-expect-error
           const b64starts = elem.src.search(/base64\s*/i) + 7;
+          // @ts-expect-error
           const b64length = elem.src.length - b64starts;
           if (b64length < 133) {
             elem.removeAttribute("src");
@@ -2076,6 +2148,7 @@ export class Readability {
       }
 
       // also check for "null" to work around https://github.com/jsdom/jsdom/issues/2580
+      // @ts-expect-error
       if ((elem.src || (elem.srcset && elem.srcset != "null")) && elem.className.toLowerCase().indexOf("lazy") === -1) {
         return;
       }
@@ -2108,7 +2181,7 @@ export class Readability {
     });
   }
 
-  private _getTextDensity(e: any, tags: any) {
+  private _getTextDensity(e: Element, tags: string[]) {
     const textLength = this._getInnerText(e, true).length;
     if (textLength === 0) {
       return 0;
@@ -2125,7 +2198,7 @@ export class Readability {
    *
    * @return void
    **/
-  private _cleanConditionally(e: any, tag: any) {
+  private _cleanConditionally(e: Element, tag: string) {
     if (!this._flagIsActive(this.FLAG_CLEAN_CONDITIONALLY)) return;
 
     // Gather counts for other typical elements embedded within.
@@ -2133,9 +2206,10 @@ export class Readability {
     // without effecting the traversal.
     //
     // TODO: Consider taking into account original contentScore here.
-    this._removeNodes(this._getAllNodesWithTag(e, [tag]), function (node: any) {
+    this._removeNodes(this._getAllNodesWithTag(e, [tag]), function (node) {
       // First check if this node IS data table, in which case don't remove it.
-      const isDataTable = function (t: any) {
+      const isDataTable = function (t: Element) {
+        // @ts-expect-error
         return t._readabilityDataTable;
       };
 
@@ -2152,10 +2226,12 @@ export class Readability {
       }
 
       // Next check if we're inside a data table, in which case don't remove it as well.
+      // @ts-expect-error
       if (this._hasAncestorTag(node, "table", -1, isDataTable)) {
         return false;
       }
 
+      // @ts-expect-error
       if (this._hasAncestorTag(node, "code")) {
         return false;
       }
@@ -2202,7 +2278,8 @@ export class Readability {
         const linkDensity = this._getLinkDensity(node);
         const contentLength = this._getInnerText(node).length;
 
-        const haveToRemove =
+        return (
+          // @ts-expect-error
           (img > 1 && p / img < 0.5 && !this._hasAncestorTag(node, "figure")) ||
           (!isList && li > p) ||
           input > Math.floor(p / 3) ||
@@ -2210,12 +2287,13 @@ export class Readability {
             headingDensity < 0.9 &&
             contentLength < 25 &&
             (img === 0 || img > 2) &&
+            // @ts-expect-error
             !this._hasAncestorTag(node, "figure")) ||
           (!isList && weight < 25 && linkDensity > 0.2) ||
           (weight >= 25 && linkDensity > 0.5) ||
           (embedCount === 1 && contentLength < 75) ||
-          embedCount > 1;
-        return haveToRemove;
+          embedCount > 1
+        );
       }
       return false;
     });
@@ -2228,7 +2306,7 @@ export class Readability {
    * @param Function determines whether a node should be removed
    * @return void
    **/
-  private _cleanMatchedNodes(e: any, filter: (this: Readability, next: any, value: any) => boolean) {
+  private _cleanMatchedNodes(e: Element, filter: (this: Readability, next: Element, value: string) => boolean) {
     const endOfSearchMarkerNode = this._getNextNode(e, true);
     let next = this._getNextNode(e);
     while (next && next != endOfSearchMarkerNode) {
@@ -2246,9 +2324,9 @@ export class Readability {
    * @param Element
    * @return void
    **/
-  private _cleanHeaders(e: any) {
+  private _cleanHeaders(e: Element) {
     const headingNodes = this._getAllNodesWithTag(e, ["h1", "h2"]);
-    this._removeNodes(headingNodes, function (node: any) {
+    this._removeNodes(headingNodes, function (node) {
       const shouldRemove = this._getClassWeight(node) < 0;
       if (shouldRemove) {
         this.log("Removing header with low class weight:", node);
@@ -2264,24 +2342,25 @@ export class Readability {
    * @param Element  the node to check.
    * @return boolean indicating whether this is a title-like header.
    */
-  private _headerDuplicatesTitle(node: any) {
+  private _headerDuplicatesTitle(node: Element) {
     if (node.tagName != "H1" && node.tagName != "H2") {
       return false;
     }
     const heading = this._getInnerText(node, false);
     this.log("Evaluating similarity of header:", heading, this._articleTitle);
+    // @ts-expect-error
     return this._textSimilarity(this._articleTitle, heading) > 0.75;
   }
 
-  private _flagIsActive(flag: any) {
+  private _flagIsActive(flag: number) {
     return (this._flags & flag) > 0;
   }
 
-  private _removeFlag(flag: any) {
+  private _removeFlag(flag: number) {
     this._flags = this._flags & ~flag;
   }
 
-  private _isProbablyVisible(node: any) {
+  private _isProbablyVisible(node: HTMLElement) {
     // Have to null-check node.style and node.className.indexOf to deal with SVG and MathML nodes.
     return (
       (!node.style || node.style.display != "none") &&
@@ -2305,7 +2384,7 @@ export class Readability {
    *
    * @return void
    **/
-  parse() {
+  public parse() {
     // Avoid parsing too large documents, as per configuration option
     if (this._maxElemsToParse > 0) {
       const numTags = this._doc.getElementsByTagName("*").length;
@@ -2340,12 +2419,14 @@ export class Readability {
     // the article's content.
     if (!metadata.excerpt) {
       const paragraphs = articleContent.getElementsByTagName("p");
+
       if (paragraphs.length > 0) {
-        metadata.excerpt = paragraphs[0].textContent.trim();
+        metadata.excerpt = paragraphs[0].textContent?.trim();
       }
     }
 
-    const textContent = articleContent.textContent;
+    const textContent = articleContent.textContent || "";
+
     return {
       title: this._articleTitle,
       byline: metadata.byline || this._articleByline,
