@@ -40,6 +40,12 @@ interface Metadata {
   siteName?: string;
 }
 
+declare global {
+  interface Node {
+    readability: { contentScore: number };
+  }
+}
+
 /**
  * Public constructor.
  * @param {Document} doc     The document to parse.
@@ -734,7 +740,6 @@ export class Readability {
       replacement.appendChild(node.firstChild);
     }
     node.parentNode!.replaceChild(replacement, node);
-    // @ts-expect-error
     if (node.readability) replacement.readability = node.readability;
 
     for (let i = 0; i < node.attributes.length; i++) {
@@ -852,19 +857,16 @@ export class Readability {
    * @return void
    **/
   private _initializeNode(node: Element) {
-    // @ts-expect-error
     node.readability = { contentScore: 0 };
 
     switch (node.tagName) {
       case "DIV":
-        // @ts-expect-error
         node.readability.contentScore += 5;
         break;
 
       case "PRE":
       case "TD":
       case "BLOCKQUOTE":
-        // @ts-expect-error
         node.readability.contentScore += 3;
         break;
 
@@ -876,7 +878,6 @@ export class Readability {
       case "DT":
       case "LI":
       case "FORM":
-        // @ts-expect-error
         node.readability.contentScore -= 3;
         break;
 
@@ -887,11 +888,9 @@ export class Readability {
       case "H5":
       case "H6":
       case "TH":
-        // @ts-expect-error
         node.readability.contentScore -= 5;
         break;
     }
-    // @ts-expect-error
     node.readability.contentScore += this._getClassWeight(node);
   }
 
@@ -1164,7 +1163,6 @@ export class Readability {
           // @ts-expect-error
           if (!ancestor.tagName || !ancestor.parentNode || typeof ancestor.parentNode.tagName === "undefined") return;
 
-          // @ts-expect-error
           if (typeof ancestor.readability === "undefined") {
             // @ts-expect-error
             this._initializeNode(ancestor);
@@ -1179,7 +1177,7 @@ export class Readability {
           if (level === 0) scoreDivider = 1;
           else if (level === 1) scoreDivider = 2;
           else scoreDivider = level * 3;
-          // @ts-expect-error
+
           ancestor.readability.contentScore += contentScore / scoreDivider;
         });
       });
