@@ -34,7 +34,7 @@ services:
     build:
       context: .
       network: host
-      dockerfile: Dockerfile_Git_Prod
+      dockerfile: Dockerfile
       args:
         PROJECT_VERSION: v1.39.4
     volumes:
@@ -48,9 +48,6 @@ services:
       enterprise:
         aliases:
           - crawler
-      enterprise-crawler:
-        aliases:
-          - enterprisecrawler
     environment:
       dbHost: mariadb
       TZ: Europe/Berlin
@@ -63,7 +60,7 @@ services:
     build:
       context: .
       network: host
-      dockerfile: Dockerfile_Git_Prod
+      dockerfile: Dockerfile
       args:
         PROJECT_VERSION: v1.39.4
     working_dir: /code
@@ -71,7 +68,6 @@ services:
       - /media/data/docker/enterprise/logs:/code/logs
     depends_on:
       - mariadb
-      #- crawler
     ports:
       - "3000:3000"
       - "3001:3001/udp"
@@ -88,5 +84,3 @@ volumes:
   db-data:
 networks:
   enterprise:
-  enterprise-crawler:
-    external: true

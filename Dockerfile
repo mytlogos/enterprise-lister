@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
-FROM node:16.3
+FROM node:18
+ARG PROJECT_VERSION
 
-# INFO: force all container to have german timezone
-# reason: for (wrong) reasons the dates in the database are interpreted
-# and used as local datetimes
-RUN npm install -g npm@latest
-RUN npm install -g @vue/cli typescript
-
+WORKDIR /code
+COPY prepare-docker.sh ./
+# download release and install dependencies
+RUN /bin/bash ./prepare-docker.sh $PROJECT_VERSION
+COPY *.env ./
