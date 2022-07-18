@@ -1,10 +1,17 @@
 import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
+import { HookConfig as HookConfigV2 } from "enterprise-scraper/dist/externals/customv2/types";
 import env from "enterprise-core/dist/env";
 import { memoryUsage } from "process";
 
 export interface HookTest {
   config: HookConfig;
   key: keyof HookConfig;
+  param: string;
+}
+
+export interface HookTestV2 {
+  config: HookConfigV2;
+  key: keyof HookConfigV2;
   param: string;
 }
 

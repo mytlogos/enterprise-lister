@@ -16,21 +16,27 @@
     "debug": "^4.3.4",
     "feedparser-promised": "^2.0.1",
     "htmlparser2": "^8.0.1",
+    "jsdom": "^20.0.0",
+    "jsonpath": "^1.1.1",
     "jsonschema": "^1.4.1",
     "request": "^2.88.2",
     "request-promise-native": "^1.0.9",
     "tough-cookie": "^4.0.0",
     "tslib": "^2.4.0",
     "validate.js": "^0.13.1",
-    "ws": "^8.8.0"
+    "ws": "^8.8.0",
+    "x-ray": "^2.3.4"
   },
   "devDependencies": {
     "@types/debug": "^4.1.7",
     "@types/htmlparser2": "^3.10.3",
+    "@types/jsdom": "16.2.14",
+    "@types/jsonpath": "0.2.0",
     "@types/json-schema": "^7.0.11",
     "@types/node": "^16.11.43",
     "@types/request-promise-native": "^1.0.18",
     "@types/ws": "^8.5.3",
+    "@types/x-ray": "^2.3.3",
     "typescript": "^4.7.4"
   }
 }

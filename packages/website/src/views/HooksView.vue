@@ -4,6 +4,9 @@
       <div class="col text-end">
         <router-link class="btn btn-success" :to="{ name: 'addHook' }"> Add Hook </router-link>
       </div>
+      <div class="col text-end">
+        <router-link class="btn btn-success" :to="{ name: 'addHookV2' }"> Add V2 Hook </router-link>
+      </div>
     </div>
     <div class="d-flex flex-wrap">
       <div v-for="(item, index) in hooks" :key="item.id" class="card card-body" style="width: 20em">

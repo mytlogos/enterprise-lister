@@ -27,7 +27,7 @@ import {
   JobHistoryItem,
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
-import { HookTest, Status } from "enterprise-server/src/types";
+import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
 import { CustomHook, Nullable, SimpleUser } from "enterprise-core/dist/types";
 
 /**
@@ -94,6 +94,9 @@ const restApi = createRestDefinition({
         get: true,
         put: true,
         test: {
+          post: true,
+        },
+        testv2: {
           post: true,
         },
         custom: {
@@ -521,6 +524,10 @@ export const HttpClient = {
 
   testHook(hook: HookTest): Promise<any> {
     return this.queryServer(serverRestApi.api.user.hook.test.post, hook);
+  },
+
+  testHookV2(hook: HookTestV2): Promise<any> {
+    return this.queryServer(serverRestApi.api.user.hook.testv2.post, hook);
   },
 
   createCustomHook(hook: CustomHook): Promise<CustomHook> {

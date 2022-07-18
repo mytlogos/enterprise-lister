@@ -179,6 +179,14 @@ const router = createRouter({
           component: () => import(/* webpackChunkName: "admin" */ "./views/CustomHookView.vue"),
         },
         {
+          path: "addHookV2",
+          name: "addHookV2",
+          // route level code-splitting
+          // this generates a separate chunk (login.[hash].js) for this route
+          // which is lazy-loaded when the route is visited.
+          component: () => import(/* webpackChunkName: "admin" */ "./views/CustomHookViewV2.vue"),
+        },
+        {
           path: "editHook/:hookId(\\d+)",
           name: "editHook",
           props: (to) => {
