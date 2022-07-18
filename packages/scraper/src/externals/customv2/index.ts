@@ -294,7 +294,7 @@ function templateString(value: string, context: Context): string {
     const originalName = value.slice(opening.index + 1, closing.index);
     let variableName = originalName;
 
-    const match = variableName.match(/(.+)\[(\d+)]/);
+    const match = variableName.match(/(\w{1,100})\[(\d{1,5})]/);
 
     if (match) {
       variableName = match[1];
