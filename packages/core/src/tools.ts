@@ -397,7 +397,7 @@ export function min<T>(array: T[], comparator: keyof T | Comparator<T>): Optiona
  * @param relative string to parse to a absolute time
  */
 export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
-  let exec: Nullable<string[]> = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
+  let exec: Nullable<string[]> = /\s*(\d+|an?)\s+(\w+)(\s+(ago))?\s*/i.exec(relative);
   if (!exec) {
     if (!relative || relative.toLowerCase() !== "just now") {
       return null;

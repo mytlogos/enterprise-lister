@@ -3,6 +3,7 @@ import { Options } from "cloudscraper";
 import { getStore } from "enterprise-core/dist/asyncStorage";
 import logger from "enterprise-core/dist/logger";
 import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
+import { Nullable } from "enterprise-core/dist/types";
 import * as url from "url";
 import { getText } from "../direct/directTools";
 import { queueCheerioRequest, queueRequest } from "../queueManager";
@@ -200,14 +201,12 @@ const coerceType = traceWrap(function coerceType(value: string, type: TransferTy
     });
   }
   if (type === "date") {
-    const lowerDate = value.toLowerCase();
-    let date;
+    let date: Nullable<Date> = new Date(value);
 
-    if (lowerDate.includes("now") || lowerDate.includes("ago")) {
+    if (!date || Number.isNaN(date.getTime())) {
       date = relativeToAbsoluteTime(value);
-    } else {
-      date = new Date(value);
     }
+
     if (!date || Number.isNaN(date.getTime())) {
       throw new CustomHookError(
         `Could not coerce value '${value}' into a valid date`,

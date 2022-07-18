@@ -24,7 +24,7 @@
     "tough-cookie": "^4.0.0",
     "tslib": "^2.4.0",
     "validate.js": "^0.13.1",
-    "ws": "^8.8.0",
+    "ws": "^8.8.1",
     "x-ray": "^2.3.4"
   },
   "devDependencies": {
@@ -33,7 +33,7 @@
     "@types/jsdom": "16.2.14",
     "@types/jsonpath": "0.2.0",
     "@types/json-schema": "^7.0.11",
-    "@types/node": "^16.11.43",
+    "@types/node": "^18.0.6",
     "@types/request-promise-native": "^1.0.18",
     "@types/ws": "^8.5.3",
     "@types/x-ray": "^2.3.3",
