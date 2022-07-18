@@ -1,3 +1,25 @@
+# [1.40.0](https://github.com/mytlogos/enterprise-lister/compare/v1.39.4...v1.40.0) (2022-07-18)
+
+
+### Bug Fixes
+
+* **scraper:** better typing ([abdc6f9](https://github.com/mytlogos/enterprise-lister/commit/abdc6f9cad6ac790aa2dcc7561baa9fd6977795c))
+* **scraper:** fix regex ([a8f9ad9](https://github.com/mytlogos/enterprise-lister/commit/a8f9ad962d01234cc1bc1d4ec45f2a90e1fe0e73))
+* **scraper:** restrict variable names ([31dc516](https://github.com/mytlogos/enterprise-lister/commit/31dc5163894537e490e3625caa9996dacc09670a))
+* undefined properties, missing api ([62fa95d](https://github.com/mytlogos/enterprise-lister/commit/62fa95d08d30d36789bbc35829f19a3b456e2101))
+
+
+### Features
+
+* improve views and scraper ([bfbae99](https://github.com/mytlogos/enterprise-lister/commit/bfbae99547e03e8a55fc32016a63037057ae24ab))
+* introduce schema centric scraper ([7acc94f](https://github.com/mytlogos/enterprise-lister/commit/7acc94f50a5ca435302f013c526c319d22cfe483))
+* **scraper:** add more types ([2d1dc85](https://github.com/mytlogos/enterprise-lister/commit/2d1dc8513e608e7ef5269aa1273a1a4d71206b9b))
+* **scraper:** add mozilla readability ([bd4e251](https://github.com/mytlogos/enterprise-lister/commit/bd4e2516e1bd50cee603ac7925d1f3e218ce4e5c))
+* **scraper:** restrict validation ([cd0f5ab](https://github.com/mytlogos/enterprise-lister/commit/cd0f5ab702dac2697a5c99f7ec5ae87f18f10050))
+* **website:** add json model textarea ([181d47a](https://github.com/mytlogos/enterprise-lister/commit/181d47a3c0bb21bb77eced3574f6d6f94c233d83))
+* **website:** add validation ([d22b0e9](https://github.com/mytlogos/enterprise-lister/commit/d22b0e9e86d79774e0e0896fd39f42de1f34d67f))
+* **website:** initial v2 custom hook ([4473031](https://github.com/mytlogos/enterprise-lister/commit/447303176835085559bbed784239af1041973d05))
+
 ## [1.39.4](https://github.com/mytlogos/enterprise-lister/compare/v1.39.3...v1.39.4) (2022-06-08)
 
 
