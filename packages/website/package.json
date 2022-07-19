@@ -37,7 +37,7 @@
     "vuex-persistedstate": "^4.1.0"
   },
   "devDependencies": {
-    "@types/bootstrap": "^5.1.12",
+    "@types/bootstrap": "^5.1.13",
     "@types/chart.js": "^2.9.37",
     "@types/d3-scale-chromatic": "^3.0.0",
     "@types/prismjs": "1.26.0",
