@@ -3,46 +3,59 @@ import { finder } from "./css-selector";
 
 interface Scorer {
   propertyKey: string;
+  stage: "node" | "parent";
+  scoreName: keyof PropertyScore;
+  optional?: boolean;
+  score(node: HTMLElement): number;
 }
 
 interface TagScorer extends Scorer {
   tagName: string;
+  stage: "node";
 }
 
 interface TextScorer extends Scorer {
   pattern: RegExp;
+  minLength: number;
+  maxLength: number;
+  stage: "node";
 }
 
 interface AttributeScorer extends Scorer {
   pattern: RegExp;
-  attr: RegExp;
+  attr: string;
+  stage: "node";
 }
 
 interface DescendantScorer extends Scorer {
   descendantOf: string;
 }
 
-type ArrayScorer = Scorer;
+interface ArrayScorer extends Scorer {
+  stage: "parent";
+}
 
 interface GroupScorer {
   group: string[];
 }
 
+interface TextPropertyConfig {
+  type: "text";
+  pattern: JsonRegex;
+  minLength?: number;
+  maxLength?: number;
+}
+
+interface AttributePropertyConfig {
+  type: "attribute";
+  attr?: string; // either attr or pattern or both, none is illegal
+  pattern?: JsonRegex;
+}
+
 interface PropertyConfig {
   require?: {
     tag?: string;
-    content?:
-      | {
-          type: "text";
-          pattern: JsonRegex;
-          minLength?: number;
-          maxLength?: number;
-        }
-      | {
-          type: "attribute";
-          attr?: string; // either attr or pattern or both, none is illegal
-          pattern?: JsonRegex;
-        };
+    content?: TextPropertyConfig | AttributePropertyConfig;
     descendantOf?: string;
   };
   properties?: Record<string, PropertyConfig>;
@@ -96,6 +109,11 @@ interface PropertyScore {
   siblingScore: number;
 
   /**
+   * A negative score for each missing required score.
+   */
+  missingRequiredScore: number;
+
+  /**
    * Number of children with such a PropertyScore per descendentLevel
    */
   levels: number[];
@@ -105,6 +123,98 @@ declare global {
   interface Node {
     analyzer: Record<string, PropertyScore>;
   }
+}
+
+function initNode(node: HTMLElement, key: string) {
+  if (!node.analyzer) {
+    node.analyzer = {};
+  }
+  if (!node.analyzer[key]) {
+    node.analyzer[key] = {
+      score: 0,
+      levels: [0],
+      generalScore: 0,
+      descendantScore: [0],
+      nodeScore: 0,
+      patternScore: 0,
+      tagScore: 0,
+      childrenScore: 0,
+      siblingScore: 0,
+      missingRequiredScore: 0,
+    } as PropertyScore;
+  }
+  return node.analyzer[key];
+}
+
+function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): Scorer[] {
+  const scorer = [];
+
+  for (const [key, value] of Object.entries(properties)) {
+    const propertyKey = parentKey ? parentKey + "." + key : key;
+
+    const require = value.require;
+
+    if (require) {
+      if (require.tag) {
+        scorer.push({
+          stage: "node",
+          propertyKey: propertyKey,
+          scoreName: "tagScore",
+          tagName: require.tag.toLowerCase(),
+          score(node: HTMLElement) {
+            return this.tagName === node.tagName.toLowerCase() ? 5 : -5;
+          },
+        } as TagScorer);
+      }
+      if (require.content) {
+        if (require.content.type === "text") {
+          if (require.content.pattern) {
+            const pattern = new RegExp(require.content.pattern.pattern, require.content.pattern.flags);
+            scorer.push({
+              stage: "node",
+              propertyKey: propertyKey,
+              scoreName: "patternScore",
+              pattern,
+              minLength: require.content.minLength || 0,
+              maxLength: require.content.maxLength || Number.POSITIVE_INFINITY,
+              score(node: HTMLElement) {
+                const textValue = node.textContent || "";
+                return textValue.length <= this.maxLength &&
+                  textValue.length >= this.minLength &&
+                  this.pattern.test(textValue)
+                  ? 5
+                  : -5;
+              },
+            } as TextScorer);
+          }
+        } else if (require.content.type === "attribute" && require.content.attr && require.content.pattern) {
+          const pattern = new RegExp(require.content.pattern.pattern, require.content.pattern.flags);
+          scorer.push({
+            stage: "node",
+            propertyKey: propertyKey,
+            scoreName: "patternScore",
+            pattern,
+            attr: require.content.attr,
+            score(node: HTMLElement) {
+              const textValue = node.getAttribute(this.attr) || "";
+              return this.pattern.test(textValue) ? 5 : -5;
+            },
+          } as AttributeScorer);
+        }
+      }
+    }
+
+    // if (value.array) {
+    //   scorer.push({
+    //     stage: "parent",
+    //     score() {},
+    //   } as ArrayScorer);
+    // }
+    if (value.properties) {
+      scorer.push(...toScorer(value.properties, propertyKey));
+    }
+  }
+  return scorer;
 }
 
 export class ScrapeAnalyzer {
@@ -143,214 +253,126 @@ export class ScrapeAnalyzer {
     return ancestors.filter((value) => value.nodeType === value.ELEMENT_NODE) as HTMLElement[];
   }
 
-  private initNode(node: HTMLElement, key: string) {
-    if (!node.analyzer) {
-      node.analyzer = {};
-    }
-    if (!node.analyzer[key]) {
-      node.analyzer[key] = {
-        score: 0,
-        levels: [0],
-        generalScore: 0,
-        descendantScore: [0],
-        nodeScore: 0,
-        patternScore: 0,
-        tagScore: 0,
-        childrenScore: 0,
-        siblingScore: 0,
-      } as PropertyScore;
-    }
-    return node.analyzer[key];
-  }
-
-  private scoreProperty(node: HTMLElement, propertyKey: string, generalScore: number, value: PropertyConfig) {
-    if (generalScore) {
-      this.initNode(node, propertyKey).generalScore = generalScore;
-    }
-    const require = value.require;
-
-    if (require) {
-      if (require.tag && require.tag.toLowerCase() === node.tagName.toLowerCase()) {
-        this.initNode(node, propertyKey).tagScore += 5;
-      }
-      if (require.content) {
-        if (require.content.type === "text") {
-          const textValue = node.textContent || "";
-
-          if (require.content.pattern) {
-            const pattern = new RegExp(require.content.pattern.pattern, require.content.pattern.flags);
-            const notTooBig = textValue.length <= (require.content.maxLength || Number.POSITIVE_INFINITY);
-            const notTooSmall = textValue.length >= (require.content.minLength || 0);
-
-            if (notTooBig && notTooSmall && pattern.test(textValue)) {
-              this.initNode(node, propertyKey).patternScore += 5;
-            } else {
-              this.initNode(node, propertyKey).patternScore -= 5;
-            }
-          }
-        } else if (require.content.type === "attribute" && require.content.attr && require.content.pattern) {
-          const textValue = node.getAttribute(require.content.attr) || "";
-
-          const pattern = new RegExp(require.content.pattern.pattern, require.content.pattern.flags);
-
-          if (pattern.test(textValue)) {
-            this.initNode(node, propertyKey).patternScore += 5;
-          } else {
-            this.initNode(node, propertyKey).patternScore -= 5;
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Score a single node based on the characteristics of the properties.
-   *
-   * @param node current node to score
-   * @param candidates array of candidates to add this node to
-   * @param properties properties to score
-   * @param parentKey propertey key of parent
-   */
-  private scoreNode(
-    node: HTMLElement,
-    candidates: HTMLElement[],
-    properties: Record<string, PropertyConfig>,
-    parentKey = "",
-  ) {
-    const matchString = node.className + " " + node.id;
-
-    const unlikelyCandidates =
-      /-ad-|ai2html|banner|breadcrumbs|combx|comment|community|cover-wrap|disqus|extra|footer|gdpr|header|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|pagination|pager|popup|yom-remote/i;
-
-    let generalScore = 0;
-
-    if (unlikelyCandidates.test(matchString)) {
-      generalScore = -5;
-    }
-
-    for (const [key, value] of Object.entries(properties)) {
-      const propertyKey = parentKey ? parentKey + "." + key : key;
-
-      // add score only once
-      if (!node.analyzer || !node.analyzer[propertyKey]) {
-        this.scoreProperty(node, propertyKey, generalScore, value);
-      }
-      if (value.properties) {
-        this.scoreNode(node, candidates, value.properties, propertyKey);
-      }
-    }
-  }
-
-  private propertyMap = new Map<string, PropertyConfig>();
-
-  private getConfigProperty(propertyKey: string, config: Config) {
-    const mapValue = this.propertyMap.get(propertyKey);
-
-    if (mapValue) {
-      return mapValue;
-    }
-    let properties = config.properties;
-    let propertyConfig = null;
-
-    const keyParts = propertyKey.split(".");
-
-    for (let index = 0; index < keyParts.length; index++) {
-      const key = keyParts[index];
-      const value = properties[key];
-
-      if (value) {
-        propertyConfig = value;
-
-        if (value.properties) {
-          properties = value.properties;
-        } else if (index + 1 < keyParts.length) {
-          throw Error(`did not expect another key: '${keyParts[index + 1]}' of ${propertyKey}`);
-        }
-      } else {
-        throw Error(`unknown key part: '${key}' of key '${propertyKey}'`);
-      }
-    }
-
-    if (propertyConfig) {
-      this.propertyMap.set(propertyKey, propertyConfig);
-      return propertyConfig;
-    } else {
-      throw Error("could not find PropertyConfig for " + propertyKey);
-    }
-  }
-
-  private visit(node: HTMLElement, candidates: HTMLElement[], config: Config) {
+  private visit(node: HTMLElement, candidates: HTMLElement[], scorer: Scorer[], config: Config) {
     if (!this.isProbablyVisible(node)) {
       this.log("Skipping hidden node");
       return;
     }
 
+    // const skipCandidate =
+    //   /-ad-|ai2html|banner|combx|comment|community|cover-wrap|disqus|extra|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|popup|yom-remote/i;
+
+    // const matchString = node.className + " " + node.id;
+
+    // if (skipCandidate.test(matchString)) {
+    //   return;
+    // }
+
+    const descendantScored = new Set<string>();
+
     for (let index = 0; index < node.children.length; index++) {
       const child = node.children[index];
-      this.visit(child as HTMLElement, candidates, config);
+      const descendantRequire = this.visit(child as HTMLElement, candidates, scorer, config);
 
-      if (child.analyzer) {
-        for (const [key, value] of Object.entries(child.analyzer)) {
-          this.initNode(node, key);
-          const nodeValue = node.analyzer[key];
-          nodeValue.levels[0]++;
+      if (descendantRequire) {
+        descendantRequire.forEach((value) => descendantScored.add(value));
+      }
 
-          for (let level = 0; level < value.levels.length; level++) {
-            const levelCount = value.levels[level];
+      // if (child.analyzer) {
+      // for (const [key, value] of Object.entries(child.analyzer)) {
+      //   initNode(node, key);
+      //   const nodeValue = node.analyzer[key];
 
-            if (level + 1 >= nodeValue.levels.length) {
-              nodeValue.levels.push(levelCount);
-            } else {
-              nodeValue.levels[level + 1] += levelCount;
-            }
-          }
-          for (let level = 0; level < value.descendantScore.length; level++) {
-            const score = value.descendantScore[level];
+      //     nodeValue.levels[0]++;
 
-            if (level + 1 >= nodeValue.descendantScore.length) {
-              nodeValue.descendantScore.push(score);
-            } else {
-              nodeValue.descendantScore[level + 1] += score;
-            }
-          }
-          nodeValue.descendantScore[0] += value.nodeScore;
+      //     for (let level = 0; level < value.levels.length; level++) {
+      //       const levelCount = value.levels[level];
+
+      //       if (level + 1 >= nodeValue.levels.length) {
+      //         nodeValue.levels.push(levelCount);
+      //       } else {
+      //         nodeValue.levels[level + 1] += levelCount;
+      //       }
+      //     }
+      //     for (let level = 0; level < value.descendantScore.length; level++) {
+      //       const score = value.descendantScore[level];
+
+      //       if (level + 1 >= nodeValue.descendantScore.length) {
+      //         nodeValue.descendantScore.push(score);
+      //       } else {
+      //         nodeValue.descendantScore[level + 1] += score;
+      //       }
+      //     }
+      //     nodeValue.descendantScore[0] += value.nodeScore;
+      //     }
+      // }
+    }
+
+    // for (let index = 0; index < node.children.length; index++) {
+    //   const child = node.children[index];
+
+    //   if (child.analyzer) {
+    //     // siblingScore?
+    //     // descendantOf?
+    //   }
+    // }
+
+    const missingRequired = new Set<string>();
+
+    for (const score of scorer) {
+      // if a descendant already scored this, this may score it too, so prevent it
+      if (descendantScored.has(score.propertyKey)) {
+        continue;
+      }
+      // if any requirements on that propertyKey are already violated, ignore it
+      if (missingRequired.has(score.propertyKey)) {
+        continue;
+      }
+      const value = score.score(node);
+
+      if (value <= 0 && !score.optional) {
+        missingRequired.add(score.propertyKey);
+        // remove propertyScore if any requirements are missing
+        if (node.analyzer && node.analyzer[score.propertyKey]) {
+          delete node.analyzer[score.propertyKey];
         }
+      } else if (value) {
+        const propertyScore = initNode(node, score.propertyKey);
+        // @ts-expect-error
+        propertyScore[score.scoreName] += value;
       }
     }
 
-    for (let index = 0; index < node.children.length; index++) {
-      const child = node.children[index];
-
-      if (child.analyzer) {
-        // siblingScore?
-        // descendantOf?
-      }
-    }
-    this.scoreNode(node, candidates, config.properties);
+    const requireSatisfied = new Set<string>(descendantScored);
 
     if (node.analyzer) {
       candidates.push(node);
+
       Object.entries(node.analyzer).forEach(([key, value]) => {
-        const propertyConfig = this.getConfigProperty(key, config);
+        requireSatisfied.add(key);
+        // const propertyConfig = this.getConfigProperty(key, config);
 
         // only count children for score if property expects an array
-        if (propertyConfig.array) {
-          const count = value.levels[0];
+        // if (propertyConfig.array) {
+        //   const count = value.levels[0];
 
-          if (count) {
-            value.childrenScore += 0.5 * count;
-          }
-        }
+        //   if (count) {
+        //     value.childrenScore += 0.5 * count;
+        //   }
+        // }
 
-        value.nodeScore = value.generalScore + value.patternScore + value.tagScore + value.childrenScore;
-        value.score =
-          value.descendantScore.reduce(
-            // score per descendant level (one- not zero-based), capped at 3
-            (previous, current, index) => previous + current / (index + 1),
-            0,
-          ) + value.nodeScore;
+        value.nodeScore =
+          value.generalScore + value.patternScore + value.tagScore + value.childrenScore + value.missingRequiredScore;
+
+        value.score = value.nodeScore;
+        // value.descendantScore.reduce(
+        //   // score per descendant level (one- not zero-based), capped at 3
+        //   (previous, current, index) => previous + current / (index + 1),
+        //   0,
+        // ) + value.nodeScore;
       });
     }
+    return requireSatisfied;
   }
 
   public configKeyGroups(properties: Record<string, PropertyConfig>, parentKey = "", groups: string[][] = []) {
@@ -371,7 +393,6 @@ export class ScrapeAnalyzer {
   }
 
   public parse(config: Config) {
-    this.propertyMap = new Map<string, PropertyConfig>();
     const result = {} as any;
     this.log("**** grabArticle ****");
     const page = this._doc.body;
@@ -389,7 +410,8 @@ export class ScrapeAnalyzer {
       result.lang = node.getAttribute("lang");
     }
 
-    this.visit(node, candidates, config);
+    const scorer = toScorer(config.properties);
+    this.visit(node, candidates, scorer, config);
     const keyGroups = this.configKeyGroups(config.properties);
 
     candidates
@@ -452,21 +474,26 @@ export class ScrapeAnalyzer {
       .slice(-20) // print the 20 best only
       .forEach((value) => console.log(value.analyzer, value.tagName, finder(value)));
 
+    console.log(candidates.length, "Candidates");
     this.visualizeCandidates(candidates);
     return result;
   }
 
   private visualizeCandidates(candidates: HTMLElement[]) {
     const classes = new Set<string>();
+    let count = 0;
+
     candidates.forEach((node) => {
       Object.entries(node.analyzer).forEach(([key, value]) => {
-        if (value.patternScore || value.tagScore) {
+        if (value.patternScore > 0 || value.tagScore > 0) {
+          count++;
           const keyClass = "analyzer-" + key.replaceAll(".", "_");
           classes.add(keyClass);
           node.classList.add(keyClass);
         }
       });
     });
+    console.log(count, "scored Candidates");
     const style = this._doc.createElement("style");
     const overlay = this._doc.createElement("div");
     this._doc.body.insertBefore(overlay, this._doc.body.firstElementChild);
