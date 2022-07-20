@@ -384,6 +384,7 @@ export class ScrapeAnalyzer {
     if (node.analyzer) {
       candidates.push(node);
       Object.keys(node.analyzer).forEach((key) => requireSatisfied.add(key));
+      this.calculateScore(node);
     }
     return requireSatisfied;
   }
@@ -510,35 +511,28 @@ export class ScrapeAnalyzer {
     }
   }
 
-  private calculateScore(candidates: HTMLElement[]) {
+  private calculateScore(node: HTMLElement) {
+    Object.values(node.analyzer).forEach((value) => {
+      value.nodeScore =
+        value.generalScore +
+        value.patternScore +
+        value.tagScore +
+        value.childrenScore +
+        value.relativeScore +
+        value.groupScore;
+
+      value.score =
+        value.descendantScore.reduce(
+          // score per descendant level (one- not zero-based), capped at 3
+          (previous, current, index) => previous + current / (index + 1),
+          0,
+        ) + value.nodeScore;
+    });
+  }
+
+  private reCalculateScore(candidates: HTMLElement[]) {
     for (const node of candidates) {
-      Object.entries(node.analyzer).forEach(([key, value]) => {
-        const propertyConfig = this.propertyMap.get(key);
-
-        // only count children for score if property expects an array
-        if (propertyConfig?.array) {
-          const count = value.levels[0];
-
-          if (count) {
-            value.childrenScore += 0.5 * count;
-          }
-        }
-
-        value.nodeScore =
-          value.generalScore +
-          value.patternScore +
-          value.tagScore +
-          value.childrenScore +
-          value.relativeScore +
-          value.groupScore;
-
-        value.score =
-          value.descendantScore.reduce(
-            // score per descendant level (one- not zero-based), capped at 3
-            (previous, current, index) => previous + current / (index + 1),
-            0,
-          ) + value.nodeScore;
-      });
+      this.calculateScore(node);
     }
   }
 
@@ -595,7 +589,7 @@ export class ScrapeAnalyzer {
       return value;
     });
     this.visit(node, candidates, scorer, config);
-    this.calculateScore(candidates);
+    this.reCalculateScore(candidates);
 
     for (const relativeConfig of this.getRelativeConfigs(config.properties)) {
       this.scoreRelative(
@@ -668,24 +662,87 @@ export class ScrapeAnalyzer {
       .slice(-20) // print the 20 best only
       .forEach((value) => console.log(value.analyzer, value.tagName, finder(value)));
 
+    Object.entries(config.properties).forEach(([key, value]) => {
+      const mainCandidate = candidates.reduce((previous, current) =>
+        (previous.analyzer[key]?.score || 0) < (current.analyzer[key]?.score || 0) ? current : previous,
+      );
+
+      if (value.array) {
+        const mainCandidateGroups = candidates.filter((candidate) => {
+          return (
+            mainCandidate !== candidate &&
+            mainCandidate.contains(candidate) &&
+            candidate.analyzer[key] &&
+            candidate.analyzer[key].nodeScore > 0
+          );
+        });
+
+        // if all children have groups, then no further inspection should be necessary
+        if (mainCandidate.children.length === mainCandidate.analyzer[key].levels[0]) {
+          const groupContainerSelector = finder(mainCandidate);
+
+          let possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName;
+
+          this.log(`evluating possible group selector: '${possibleSelector}'`);
+
+          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
+          let unusableSelector = false;
+
+          for (let index = 0; index < selected.length; index++) {
+            const element = selected[index];
+            if (!mainCandidateGroups.includes(element)) {
+              unusableSelector = true;
+              break;
+            }
+          }
+          if (unusableSelector) {
+            possibleSelector = groupContainerSelector + " > *";
+          }
+
+          this.log("Group selector: " + possibleSelector);
+        } else {
+          // TODO: handle other cases
+          this.log("No selector found");
+        }
+      } else {
+        this.log("Result selector", finder(mainCandidate));
+      }
+    });
     console.log(candidates.length, "Candidates");
     this.visualizeCandidates(candidates);
     return result;
   }
 
+  /**
+   * Visualize candidates with a border in a different color for each propertyKey.
+   * (Though candidates with multiple propertyScores, get only one color)
+   *
+   * Adds a sticky color legend to the top left corner.
+   * @param candidates candidates to visualize
+   */
   private visualizeCandidates(candidates: HTMLElement[]) {
     const classes = new Set<string>();
     let count = 0;
 
     candidates.forEach((node) => {
+      let score = 0;
+      let highestKey = "";
+
       Object.entries(node.analyzer).forEach(([key, value]) => {
-        if (value.patternScore > 0 || value.tagScore > 0 || value.groupScore > 0) {
+        if (value.nodeScore > 0) {
           count++;
-          const keyClass = "analyzer-" + key.replaceAll(".", "_");
-          classes.add(keyClass);
-          node.classList.add(keyClass);
+          if (value.nodeScore > score) {
+            score = value.nodeScore;
+            highestKey = key;
+          }
+          node.setAttribute(key.replaceAll(".", "_"), value.nodeScore + "");
         }
       });
+      if (highestKey) {
+        const keyClass = "analyzer-" + highestKey.replaceAll(".", "_");
+        classes.add(keyClass);
+        node.classList.add(keyClass);
+      }
     });
     console.log(count, "scored Candidates");
     const style = this._doc.createElement("style");
