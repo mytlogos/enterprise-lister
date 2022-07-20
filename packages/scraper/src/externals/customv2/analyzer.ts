@@ -3,9 +3,10 @@ import { finder } from "./css-selector";
 
 interface Scorer {
   propertyKey: string;
-  stage: "node" | "parent";
+  stage: "node" | "parent" | "post" | "post-node";
   scoreName: keyof PropertyScore;
   optional?: boolean;
+  analyzer: ScrapeAnalyzer;
   score(node: HTMLElement): number;
 }
 
@@ -27,16 +28,19 @@ interface AttributeScorer extends Scorer {
   stage: "node";
 }
 
-interface DescendantScorer extends Scorer {
-  descendantOf: string;
-}
-
 interface ArrayScorer extends Scorer {
   stage: "parent";
 }
 
-interface GroupScorer {
+interface GroupScorer extends Scorer {
+  stage: "node";
   group: string[];
+}
+
+interface RelativeScorer extends Scorer {
+  relativeTo: string;
+  position: "before" | "after";
+  stage: "post";
 }
 
 interface TextPropertyConfig {
@@ -57,7 +61,13 @@ interface PropertyConfig {
     tag?: string;
     content?: TextPropertyConfig | AttributePropertyConfig;
     descendantOf?: string;
+    relative?: {
+      relativeTo: string;
+      position: "before" | "after";
+    };
   };
+  sameAs?: string;
+  extract?: { type: "text" } | { type: "attribute"; attribute: string };
   properties?: Record<string, PropertyConfig>;
   array?: boolean;
 }
@@ -109,9 +119,14 @@ interface PropertyScore {
   siblingScore: number;
 
   /**
-   * A negative score for each missing required score.
+   * Relative score.
    */
-  missingRequiredScore: number;
+  relativeScore: number;
+
+  /**
+   * Whether all keys are satisified.
+   */
+  groupScore: number;
 
   /**
    * Number of children with such a PropertyScore per descendentLevel
@@ -123,6 +138,22 @@ declare global {
   interface Node {
     analyzer: Record<string, PropertyScore>;
   }
+  interface Document {
+    candidates: HTMLElement[];
+  }
+}
+
+function getNodeAncestors(node: Node, maxDepth?: number): HTMLElement[] {
+  maxDepth = maxDepth || 0;
+  let i = 0;
+  const ancestors = [];
+
+  while (node.parentNode) {
+    ancestors.push(node.parentNode);
+    if (maxDepth && ++i === maxDepth) break;
+    node = node.parentNode;
+  }
+  return ancestors.filter((value) => value.nodeType === value.ELEMENT_NODE) as HTMLElement[];
 }
 
 function initNode(node: HTMLElement, key: string) {
@@ -140,7 +171,8 @@ function initNode(node: HTMLElement, key: string) {
       tagScore: 0,
       childrenScore: 0,
       siblingScore: 0,
-      missingRequiredScore: 0,
+      relativeScore: 0,
+      groupScore: 0,
     } as PropertyScore;
   }
   return node.analyzer[key];
@@ -214,6 +246,28 @@ function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): S
       scorer.push(...toScorer(value.properties, propertyKey));
     }
   }
+  if (parentKey) {
+    scorer.push({
+      stage: "node",
+      propertyKey: parentKey,
+      scoreName: "groupScore",
+      group: Object.keys(properties).map((key) => (parentKey ? parentKey + "." + key : key)),
+      score(node: HTMLElement) {
+        const count = this.group.filter((item) => node.analyzer && node.analyzer[item]).length;
+        return count === this.group.length ? 5 : -5;
+      },
+    } as GroupScorer);
+  }
+  for (const [key, value] of Object.entries(properties)) {
+    if (value.sameAs) {
+      const propertyKey = parentKey ? parentKey + "." + key : key;
+      scorer
+        .filter((score) => score.propertyKey === value.sameAs)
+        .forEach((score) => {
+          scorer.push({ ...score, propertyKey } as Scorer);
+        });
+    }
+  }
   return scorer;
 }
 
@@ -240,18 +294,7 @@ export class ScrapeAnalyzer {
     );
   }
 
-  private getNodeAncestors(node: Node, maxDepth?: number): HTMLElement[] {
-    maxDepth = maxDepth || 0;
-    let i = 0;
-    const ancestors = [];
-
-    while (node.parentNode) {
-      ancestors.push(node.parentNode);
-      if (maxDepth && ++i === maxDepth) break;
-      node = node.parentNode;
-    }
-    return ancestors.filter((value) => value.nodeType === value.ELEMENT_NODE) as HTMLElement[];
-  }
+  private propertyMap: Map<string, PropertyConfig> = new Map();
 
   private visit(node: HTMLElement, candidates: HTMLElement[], scorer: Scorer[], config: Config) {
     if (!this.isProbablyVisible(node)) {
@@ -259,14 +302,14 @@ export class ScrapeAnalyzer {
       return;
     }
 
-    // const skipCandidate =
-    //   /-ad-|ai2html|banner|combx|comment|community|cover-wrap|disqus|extra|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|popup|yom-remote/i;
+    const skipCandidate =
+      /-ad-|ai2html|banner|combx|comment|community|cover-wrap|disqus|extra|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|popup|yom-remote/i;
 
-    // const matchString = node.className + " " + node.id;
+    const matchString = node.className + " " + node.id;
 
-    // if (skipCandidate.test(matchString)) {
-    //   return;
-    // }
+    if (skipCandidate.test(matchString)) {
+      return;
+    }
 
     const descendantScored = new Set<string>();
 
@@ -278,48 +321,41 @@ export class ScrapeAnalyzer {
         descendantRequire.forEach((value) => descendantScored.add(value));
       }
 
-      // if (child.analyzer) {
-      // for (const [key, value] of Object.entries(child.analyzer)) {
-      //   initNode(node, key);
-      //   const nodeValue = node.analyzer[key];
+      if (child.analyzer) {
+        for (const [key, value] of Object.entries(child.analyzer)) {
+          initNode(node, key);
+          const nodeValue = node.analyzer[key];
 
-      //     nodeValue.levels[0]++;
+          nodeValue.levels[0]++;
 
-      //     for (let level = 0; level < value.levels.length; level++) {
-      //       const levelCount = value.levels[level];
+          for (let level = 0; level < value.levels.length; level++) {
+            const levelCount = value.levels[level];
 
-      //       if (level + 1 >= nodeValue.levels.length) {
-      //         nodeValue.levels.push(levelCount);
-      //       } else {
-      //         nodeValue.levels[level + 1] += levelCount;
-      //       }
-      //     }
-      //     for (let level = 0; level < value.descendantScore.length; level++) {
-      //       const score = value.descendantScore[level];
+            if (level + 1 >= nodeValue.levels.length) {
+              nodeValue.levels.push(levelCount);
+            } else {
+              nodeValue.levels[level + 1] += levelCount;
+            }
+          }
+          for (let level = 0; level < value.descendantScore.length; level++) {
+            const score = value.descendantScore[level];
 
-      //       if (level + 1 >= nodeValue.descendantScore.length) {
-      //         nodeValue.descendantScore.push(score);
-      //       } else {
-      //         nodeValue.descendantScore[level + 1] += score;
-      //       }
-      //     }
-      //     nodeValue.descendantScore[0] += value.nodeScore;
-      //     }
-      // }
+            if (level + 1 >= nodeValue.descendantScore.length) {
+              nodeValue.descendantScore.push(score);
+            } else {
+              nodeValue.descendantScore[level + 1] += score;
+            }
+          }
+          nodeValue.descendantScore[0] += value.nodeScore;
+        }
+      }
     }
-
-    // for (let index = 0; index < node.children.length; index++) {
-    //   const child = node.children[index];
-
-    //   if (child.analyzer) {
-    //     // siblingScore?
-    //     // descendantOf?
-    //   }
-    // }
-
     const missingRequired = new Set<string>();
 
     for (const score of scorer) {
+      if (score.stage !== "node") {
+        continue;
+      }
       // if a descendant already scored this, this may score it too, so prevent it
       if (descendantScored.has(score.propertyKey)) {
         continue;
@@ -347,35 +383,28 @@ export class ScrapeAnalyzer {
 
     if (node.analyzer) {
       candidates.push(node);
-
-      Object.entries(node.analyzer).forEach(([key, value]) => {
-        requireSatisfied.add(key);
-        // const propertyConfig = this.getConfigProperty(key, config);
-
-        // only count children for score if property expects an array
-        // if (propertyConfig.array) {
-        //   const count = value.levels[0];
-
-        //   if (count) {
-        //     value.childrenScore += 0.5 * count;
-        //   }
-        // }
-
-        value.nodeScore =
-          value.generalScore + value.patternScore + value.tagScore + value.childrenScore + value.missingRequiredScore;
-
-        value.score = value.nodeScore;
-        // value.descendantScore.reduce(
-        //   // score per descendant level (one- not zero-based), capped at 3
-        //   (previous, current, index) => previous + current / (index + 1),
-        //   0,
-        // ) + value.nodeScore;
-      });
+      Object.keys(node.analyzer).forEach((key) => requireSatisfied.add(key));
     }
     return requireSatisfied;
   }
 
-  public configKeyGroups(properties: Record<string, PropertyConfig>, parentKey = "", groups: string[][] = []) {
+  private initConfigPropertyMap(
+    properties: Record<string, PropertyConfig>,
+    parentKey = "",
+    map = new Map<string, PropertyConfig>(),
+  ) {
+    for (const [key, value] of Object.entries(properties)) {
+      const propertyKey = parentKey ? parentKey + "." + key : key;
+      map.set(propertyKey, value);
+
+      if (value.properties) {
+        this.initConfigPropertyMap(value.properties, propertyKey, map);
+      }
+    }
+    return map;
+  }
+
+  private configKeyGroups(properties: Record<string, PropertyConfig>, parentKey = "", groups: string[][] = []) {
     const group: string[] = [];
 
     for (const [key, value] of Object.entries(properties)) {
@@ -392,8 +421,158 @@ export class ScrapeAnalyzer {
     return groups;
   }
 
+  /**
+   * Scores all nodes with the anchorKey within a group whether a specific property key is before/after
+   * any other specific property in the descendant hierarchy of the group.
+   */
+  private scoreRelative(
+    candidates: HTMLElement[],
+    anchorKey: string,
+    relativeToKey: string,
+    position: "before" | "after",
+    parentKey: string,
+  ) {
+    for (const candidate of candidates) {
+      const value = candidate.analyzer[parentKey];
+
+      // ignore candidates without a groupScore
+      if (!value || value.groupScore <= 0) {
+        continue;
+      }
+
+      const anchorCandidates = [];
+      const relativeCandidates = [];
+
+      // get all descendants of candidate with either anchorKey or relativeKey scored
+      for (const possibleDescendant of candidates) {
+        // ignore candidates that are not within this sub tree, excluding root
+        if (candidate === possibleDescendant || !candidate.contains(possibleDescendant)) {
+          continue;
+        }
+        if (possibleDescendant.analyzer[anchorKey]) {
+          anchorCandidates.push(possibleDescendant);
+        }
+        if (possibleDescendant.analyzer[relativeToKey]) {
+          relativeCandidates.push(possibleDescendant);
+        }
+      }
+
+      // scores positive if at least one relativeCandidate satifies the position requirement, else negative
+      for (const anchor of anchorCandidates) {
+        const anchorAncestors = getNodeAncestors(anchor);
+        let positionFound = false;
+
+        for (const relative of relativeCandidates) {
+          const relativeAncestors = getNodeAncestors(relative);
+
+          for (let index = 0; index < anchorAncestors.length && index < relativeAncestors.length; index++) {
+            const anchorAncestor = anchorAncestors[index];
+            const relativeAncestor = relativeAncestors[index];
+
+            // if the ancestors do not match, they must be siblings
+            if (anchorAncestor !== relativeAncestor) {
+              if (position === "after") {
+                for (
+                  let nextSibling = anchorAncestor.nextElementSibling;
+                  nextSibling;
+                  nextSibling = anchorAncestor.nextElementSibling
+                ) {
+                  if (nextSibling === relativeAncestor) {
+                    positionFound = true;
+                    break;
+                  }
+                }
+              } else {
+                for (
+                  let previousSibling = anchorAncestor.previousElementSibling;
+                  previousSibling;
+                  previousSibling = anchorAncestor.previousElementSibling
+                ) {
+                  if (previousSibling === relativeAncestor) {
+                    positionFound = true;
+                    break;
+                  }
+                }
+              }
+              if (positionFound) {
+                break;
+              }
+            }
+          }
+
+          if (positionFound) {
+            break;
+          }
+        }
+
+        anchor.analyzer[anchorKey].relativeScore += positionFound ? 5 : -5;
+      }
+    }
+  }
+
+  private calculateScore(candidates: HTMLElement[]) {
+    for (const node of candidates) {
+      Object.entries(node.analyzer).forEach(([key, value]) => {
+        const propertyConfig = this.propertyMap.get(key);
+
+        // only count children for score if property expects an array
+        if (propertyConfig?.array) {
+          const count = value.levels[0];
+
+          if (count) {
+            value.childrenScore += 0.5 * count;
+          }
+        }
+
+        value.nodeScore =
+          value.generalScore +
+          value.patternScore +
+          value.tagScore +
+          value.childrenScore +
+          value.relativeScore +
+          value.groupScore;
+
+        value.score =
+          value.descendantScore.reduce(
+            // score per descendant level (one- not zero-based), capped at 3
+            (previous, current, index) => previous + current / (index + 1),
+            0,
+          ) + value.nodeScore;
+      });
+    }
+  }
+
+  private getRelativeConfigs(
+    properties: Record<string, PropertyConfig>,
+    parentKey = "",
+    group: Array<{
+      parentKey: string;
+      anchor: string;
+      relativeTo: string;
+      position: "before" | "after";
+    }> = [],
+  ) {
+    for (const [key, value] of Object.entries(properties)) {
+      const propertyKey = parentKey ? parentKey + "." + key : key;
+
+      if (value.require?.relative) {
+        group.push({
+          ...value.require.relative,
+          parentKey,
+          anchor: propertyKey,
+        });
+      }
+
+      if (value.properties) {
+        this.getRelativeConfigs(value.properties, propertyKey, group);
+      }
+    }
+    return group;
+  }
+
   public parse(config: Config) {
     const result = {} as any;
+    this.propertyMap = this.initConfigPropertyMap(config.properties);
     this.log("**** grabArticle ****");
     const page = this._doc.body;
 
@@ -405,13 +584,28 @@ export class ScrapeAnalyzer {
 
     const node: HTMLElement | null = this._doc.documentElement;
     const candidates: HTMLElement[] = [];
+    this._doc.candidates = candidates;
 
     if (node.tagName === "HTML") {
       result.lang = node.getAttribute("lang");
     }
 
-    const scorer = toScorer(config.properties);
+    const scorer = toScorer(config.properties).map((value) => {
+      value.analyzer = this;
+      return value;
+    });
     this.visit(node, candidates, scorer, config);
+    this.calculateScore(candidates);
+
+    for (const relativeConfig of this.getRelativeConfigs(config.properties)) {
+      this.scoreRelative(
+        candidates,
+        relativeConfig.anchor,
+        relativeConfig.relativeTo,
+        relativeConfig.position,
+        relativeConfig.parentKey,
+      );
+    }
     const keyGroups = this.configKeyGroups(config.properties);
 
     candidates
@@ -485,7 +679,7 @@ export class ScrapeAnalyzer {
 
     candidates.forEach((node) => {
       Object.entries(node.analyzer).forEach(([key, value]) => {
-        if (value.patternScore > 0 || value.tagScore > 0) {
+        if (value.patternScore > 0 || value.tagScore > 0 || value.groupScore > 0) {
           count++;
           const keyClass = "analyzer-" + key.replaceAll(".", "_");
           classes.add(keyClass);
