@@ -73,6 +73,7 @@ interface PropertyConfig {
 }
 
 interface Config {
+  verbosity?: 0 | 1 | 2;
   properties: Record<string, PropertyConfig>;
 }
 
@@ -149,11 +150,20 @@ function getNodeAncestors(node: Node, maxDepth?: number): HTMLElement[] {
   const ancestors = [];
 
   while (node.parentNode) {
-    ancestors.push(node.parentNode);
+    ancestors.unshift(node.parentNode);
     if (maxDepth && ++i === maxDepth) break;
     node = node.parentNode;
   }
   return ancestors.filter((value) => value.nodeType === value.ELEMENT_NODE) as HTMLElement[];
+}
+
+function remove<T>(array: T[], item: T): number {
+  const index = array.indexOf(item);
+
+  if (index >= 0) {
+    array.splice(index, 1);
+  }
+  return index;
 }
 
 function initNode(node: HTMLElement, key: string) {
@@ -461,10 +471,15 @@ export class ScrapeAnalyzer {
       // scores positive if at least one relativeCandidate satifies the position requirement, else negative
       for (const anchor of anchorCandidates) {
         const anchorAncestors = getNodeAncestors(anchor);
+        anchorAncestors.push(anchor);
         let positionFound = false;
 
         for (const relative of relativeCandidates) {
+          if (anchor === relative) {
+            continue;
+          }
           const relativeAncestors = getNodeAncestors(relative);
+          relativeAncestors.push(relative);
 
           for (let index = 0; index < anchorAncestors.length && index < relativeAncestors.length; index++) {
             const anchorAncestor = anchorAncestors[index];
@@ -472,7 +487,7 @@ export class ScrapeAnalyzer {
 
             // if the ancestors do not match, they must be siblings
             if (anchorAncestor !== relativeAncestor) {
-              if (position === "after") {
+              if (position === "before") {
                 for (
                   let nextSibling = anchorAncestor.nextElementSibling;
                   nextSibling;
@@ -564,8 +579,108 @@ export class ScrapeAnalyzer {
     return group;
   }
 
+  private generateResult(candidates: HTMLElement[], config: Config) {
+    const result = {} as Record<string, any>;
+
+    Object.entries(config.properties).forEach(([key, value]) => {
+      const mainCandidate = candidates.reduce((previous, current) =>
+        (previous.analyzer[key]?.score || 0) < (current.analyzer[key]?.score || 0) ? current : previous,
+      );
+
+      let groupSelector;
+      let sample: HTMLElement;
+
+      if (value.array) {
+        const mainCandidateGroups = candidates.filter((candidate) => {
+          return (
+            mainCandidate !== candidate &&
+            mainCandidate.contains(candidate) &&
+            candidate.analyzer[key] &&
+            candidate.analyzer[key].nodeScore > 0
+          );
+        });
+
+        // if all children have groups, then no further inspection should be necessary
+        if (mainCandidate.children.length === mainCandidate.analyzer[key].levels[0]) {
+          const groupContainerSelector = finder(mainCandidate);
+
+          let possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName.toLowerCase();
+
+          this.log(`evaluating possible group selector: '${possibleSelector}'`);
+
+          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
+          let unusableSelector = false;
+
+          for (let index = 0; index < selected.length; index++) {
+            const element = selected[index];
+            if (!mainCandidateGroups.includes(element)) {
+              unusableSelector = true;
+              break;
+            }
+          }
+          if (unusableSelector) {
+            possibleSelector = groupContainerSelector + " > *";
+          }
+
+          groupSelector = possibleSelector;
+          sample = mainCandidateGroups[0];
+
+          // remove all "used" candidates from the candidates pool
+          for (const element of mainCandidateGroups) {
+            remove(candidates, element);
+          }
+        } else {
+          // TODO: handle other cases
+          this.log("No selector found");
+          return;
+        }
+      } else {
+        sample = mainCandidate;
+        groupSelector = finder(mainCandidate);
+      }
+      remove(candidates, mainCandidate);
+      this.log(`Group selector for '${key}'${value.array ? " (array)" : ""}: ${groupSelector}`);
+      const keyResult = (result[key] = { selector: groupSelector } as any);
+
+      if (value.properties) {
+        keyResult.properties = {};
+
+        // TODO: do this properly later on, support arbitrary nesting, arrays etc.
+        Object.entries(value.properties).forEach(([subKey, subValue]) => {
+          if (subValue.properties) {
+            throw Error("double nested properties are currently not supported");
+          }
+          const propertyKey = key + "." + subKey;
+
+          // if sameAs, just copy the selector
+          if (subValue.sameAs) {
+            const keyParts = subValue.sameAs.split(".");
+            // assumes that key and subValue.sameAs are on the same level
+            const lastProperty = keyParts[keyParts.length - 1];
+            keyResult.properties[subKey] = keyResult.properties[lastProperty];
+            return;
+          }
+          const subCandidates = candidates.filter((candidate) => sample.contains(candidate));
+
+          // get best candidate within the sample, there must be candidates, else this group should not exist
+          const subMainCandidate = subCandidates.reduce((previous, current) =>
+            (previous.analyzer[propertyKey]?.nodeScore || 0) < (current.analyzer[propertyKey]?.nodeScore || 0)
+              ? current
+              : previous,
+          );
+
+          remove(candidates, subMainCandidate);
+          keyResult.properties[subKey] = finder(subMainCandidate, { root: sample });
+        });
+      }
+    });
+    this.log("Current result:", result);
+    return result;
+  }
+
   public parse(config: Config) {
     const result = {} as any;
+    config.verbosity = config.verbosity || 0;
     this.propertyMap = this.initConfigPropertyMap(config.properties);
     this.log("**** grabArticle ****");
     const page = this._doc.body;
@@ -589,7 +704,6 @@ export class ScrapeAnalyzer {
       return value;
     });
     this.visit(node, candidates, scorer, config);
-    this.reCalculateScore(candidates);
 
     for (const relativeConfig of this.getRelativeConfigs(config.properties)) {
       this.scoreRelative(
@@ -600,116 +714,11 @@ export class ScrapeAnalyzer {
         relativeConfig.parentKey,
       );
     }
-    const keyGroups = this.configKeyGroups(config.properties);
-
-    candidates
-      .filter((value) => {
-        if (["HTML", "BODY"].includes(value.tagName)) {
-          return false;
-        }
-        const groupScore: Array<{ count: number; total: number }> = [];
-
-        keyGroups.forEach((group) => {
-          const score = { count: 0, total: group.length };
-          groupScore.push(score);
-
-          for (const key of group) {
-            const aValue = value.analyzer[key];
-
-            if (aValue) {
-              score.count++;
-            }
-          }
-        });
-
-        // at least one group should be satisfied
-        return groupScore.some((score) => score.count === score.total);
-      })
-      .sort((a, b) => {
-        const groupScoreA: Array<{ score: number; count: number; total: number }> = [];
-        const groupScoreB: Array<{ score: number; count: number; total: number }> = [];
-
-        keyGroups.forEach((group) => {
-          const aScore = { score: 0, count: 0, total: group.length };
-          const bScore = { score: 0, count: 0, total: group.length };
-
-          groupScoreA.push(aScore);
-          groupScoreB.push(bScore);
-
-          for (const key of group) {
-            const aValue = a.analyzer[key];
-            const bValue = b.analyzer[key];
-
-            if (aValue) {
-              aScore.count++;
-              aScore.score += aValue.score;
-            }
-            if (bValue) {
-              bScore.count++;
-              bScore.score += bValue.score;
-            }
-          }
-        });
-
-        const sumA = groupScoreA.reduce((previous, current) => {
-          return previous + current.score * (current.total ? current.count / current.total : 1);
-        }, 0);
-        const sumB = groupScoreB.reduce((previous, current) => {
-          return previous + current.score * (current.total ? current.count / current.total : 1);
-        }, 0);
-        return sumA - sumB;
-      })
-      .slice(-20) // print the 20 best only
-      .forEach((value) => console.log(value.analyzer, value.tagName, finder(value)));
-
-    Object.entries(config.properties).forEach(([key, value]) => {
-      const mainCandidate = candidates.reduce((previous, current) =>
-        (previous.analyzer[key]?.score || 0) < (current.analyzer[key]?.score || 0) ? current : previous,
-      );
-
-      if (value.array) {
-        const mainCandidateGroups = candidates.filter((candidate) => {
-          return (
-            mainCandidate !== candidate &&
-            mainCandidate.contains(candidate) &&
-            candidate.analyzer[key] &&
-            candidate.analyzer[key].nodeScore > 0
-          );
-        });
-
-        // if all children have groups, then no further inspection should be necessary
-        if (mainCandidate.children.length === mainCandidate.analyzer[key].levels[0]) {
-          const groupContainerSelector = finder(mainCandidate);
-
-          let possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName;
-
-          this.log(`evluating possible group selector: '${possibleSelector}'`);
-
-          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
-          let unusableSelector = false;
-
-          for (let index = 0; index < selected.length; index++) {
-            const element = selected[index];
-            if (!mainCandidateGroups.includes(element)) {
-              unusableSelector = true;
-              break;
-            }
-          }
-          if (unusableSelector) {
-            possibleSelector = groupContainerSelector + " > *";
-          }
-
-          this.log("Group selector: " + possibleSelector);
-        } else {
-          // TODO: handle other cases
-          this.log("No selector found");
-        }
-      } else {
-        this.log("Result selector", finder(mainCandidate));
-      }
-    });
+    this.reCalculateScore(candidates);
     console.log(candidates.length, "Candidates");
-    this.visualizeCandidates(candidates);
+
+    Object.assign(result, this.generateResult([...candidates], config));
+    this.visualizeCandidates(candidates, config);
     return result;
   }
 
@@ -720,9 +729,10 @@ export class ScrapeAnalyzer {
    * Adds a sticky color legend to the top left corner.
    * @param candidates candidates to visualize
    */
-  private visualizeCandidates(candidates: HTMLElement[]) {
+  private visualizeCandidates(candidates: HTMLElement[], config: Config) {
     const classes = new Set<string>();
     let count = 0;
+    const verbosity = config.verbosity as number;
 
     candidates.forEach((node) => {
       let score = 0;
@@ -730,16 +740,24 @@ export class ScrapeAnalyzer {
 
       Object.entries(node.analyzer).forEach(([key, value]) => {
         if (value.nodeScore > 0) {
+          const escapedKey = key.replaceAll(".", "_");
           count++;
           if (value.nodeScore > score) {
             score = value.nodeScore;
-            highestKey = key;
+            highestKey = escapedKey;
           }
-          node.setAttribute(key.replaceAll(".", "_"), value.nodeScore + "");
+          if (verbosity >= 2) {
+            Object.entries(value).forEach(([valueKey, valueValue]) =>
+              node.setAttribute(escapedKey + "_" + valueKey, valueValue + ""),
+            );
+          }
+          if (verbosity >= 1) {
+            node.setAttribute(escapedKey, value.nodeScore + "");
+          }
         }
       });
       if (highestKey) {
-        const keyClass = "analyzer-" + highestKey.replaceAll(".", "_");
+        const keyClass = "analyzer-" + highestKey;
         classes.add(keyClass);
         node.classList.add(keyClass);
       }
