@@ -656,25 +656,62 @@ export class ScrapeAnalyzer {
         });
 
         // if all children have groups, then no further inspection should be necessary
-        if (mainCandidate.children.length === mainCandidate.analyzer[key].levels[0]) {
+        if (
+          mainCandidate.analyzer[key].levels[0] > 0 &&
+          mainCandidate.children.length === mainCandidate.analyzer[key].levels[0]
+        ) {
           const groupContainerSelector = finder(mainCandidate);
 
-          let possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName.toLowerCase();
+          const groupAncestors = getNodeAncestors(mainCandidateGroups[0]);
 
-          this.log(`evaluating possible group selector: '${possibleSelector}'`);
+          let possibleSelector;
 
-          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
-          let unusableSelector = false;
+          // if group is direct child of mainCandidate
+          if (mainCandidate === mainCandidateGroups[0].parentElement) {
+            possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName.toLowerCase();
+            this.log(`evaluating possible group selector: '${possibleSelector}'`);
 
-          for (let index = 0; index < selected.length; index++) {
-            const element = selected[index];
-            if (!mainCandidateGroups.includes(element)) {
-              unusableSelector = true;
-              break;
+            const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
+            let unusableSelector = false;
+
+            for (let index = 0; index < selected.length; index++) {
+              const element = selected[index];
+              if (!mainCandidateGroups.includes(element)) {
+                unusableSelector = true;
+                break;
+              }
             }
-          }
-          if (unusableSelector) {
-            possibleSelector = groupContainerSelector + " > *";
+            if (unusableSelector) {
+              possibleSelector = groupContainerSelector + " > *";
+            }
+          } else {
+            // if group is descendant and no direct child, it complicates it a little
+            const mainIndex = groupAncestors.findIndex((node) => node === mainCandidate);
+            const mainChild = groupAncestors[mainIndex + 1];
+
+            // get the selector from the direct child to the group
+            // this assumes that a direct from mainCandidate as a descendant group
+            possibleSelector =
+              groupContainerSelector +
+              " > " +
+              mainChild.tagName.toLowerCase() +
+              " " +
+              finder(mainCandidateGroups[0], { root: mainChild });
+
+            const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
+            let unusableSelector = false;
+
+            for (let index = 0; index < selected.length; index++) {
+              const element = selected[index];
+              if (!mainCandidateGroups.includes(element)) {
+                unusableSelector = true;
+                break;
+              }
+            }
+            if (unusableSelector) {
+              this.log("no usable selector found: " + key);
+              return;
+            }
           }
 
           groupSelector = possibleSelector;
