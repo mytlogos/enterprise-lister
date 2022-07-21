@@ -583,8 +583,14 @@ export class ScrapeAnalyzer {
     const result = {} as Record<string, any>;
 
     Object.entries(config.properties).forEach(([key, value]) => {
-      const mainCandidate = candidates.reduce((previous, current) =>
-        (previous.analyzer[key]?.score || 0) < (current.analyzer[key]?.score || 0) ? current : previous,
+      const keyCandidates = candidates.filter((node) => node.analyzer[key]);
+
+      if (!keyCandidates.length) {
+        this.log("no candidate found for " + key);
+        return;
+      }
+      const mainCandidate = keyCandidates.reduce((previous, current) =>
+        (previous.analyzer[key].score || 0) < (current.analyzer[key].score || 0) ? current : previous,
       );
 
       let groupSelector;
