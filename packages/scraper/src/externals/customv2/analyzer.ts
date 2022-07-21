@@ -738,34 +738,63 @@ export class ScrapeAnalyzer {
 
       if (value.properties) {
         keyResult.properties = {};
+        const usedCandidates = {} as Record<string, HTMLElement>;
 
         // TODO: do this properly later on, support arbitrary nesting, arrays etc.
-        Object.entries(value.properties).forEach(([subKey, subValue]) => {
-          if (subValue.properties) {
-            throw Error("double nested properties are currently not supported");
-          }
-          const propertyKey = key + "." + subKey;
+        Object.entries(value.properties)
+          .filter((entry) => !entry[1].sameAs)
+          .forEach(([subKey, subValue]) => {
+            if (subValue.properties) {
+              throw Error("double nested properties are currently not supported");
+            }
+            const propertyKey = key + "." + subKey;
 
-          // if sameAs, just copy the selector
-          if (subValue.sameAs) {
-            const keyParts = subValue.sameAs.split(".");
-            // assumes that key and subValue.sameAs are on the same level
-            const lastProperty = keyParts[keyParts.length - 1];
-            keyResult.properties[subKey] = keyResult.properties[lastProperty];
-            return;
-          }
-          const subCandidates = candidates.filter((candidate) => sample.contains(candidate));
+            // if sameAs, just copy the selector
+            if (subValue.sameAs) {
+              const keyParts = subValue.sameAs.split(".");
+              // assumes that key and subValue.sameAs are on the same level
+              const lastProperty = keyParts[keyParts.length - 1];
+              keyResult.properties[subKey] = keyResult.properties[lastProperty];
+              return;
+            }
+            const subCandidates = candidates.filter((candidate) => sample.contains(candidate));
 
-          // get best candidate within the sample, there must be candidates, else this group should not exist
-          const subMainCandidate = subCandidates.reduce((previous, current) =>
-            (previous.analyzer[propertyKey]?.nodeScore || 0) < (current.analyzer[propertyKey]?.nodeScore || 0)
-              ? current
-              : previous,
-          );
+            // get best candidate within the sample, there must be candidates, else this group should not exist
+            const subMainCandidate = subCandidates.reduce((previous, current) =>
+              (previous.analyzer[propertyKey]?.nodeScore || 0) < (current.analyzer[propertyKey]?.nodeScore || 0)
+                ? current
+                : previous,
+            );
 
-          remove(candidates, subMainCandidate);
-          keyResult.properties[subKey] = finder(subMainCandidate, { root: sample });
-        });
+            remove(candidates, subMainCandidate);
+            usedCandidates[propertyKey] = subMainCandidate;
+            keyResult.properties[subKey] = finder(subMainCandidate, { root: sample });
+
+            if (subValue.extract?.type === "attribute") {
+              keyResult.properties[subKey] += "@" + subValue.extract.attribute;
+            }
+            keyResult.properties[subKey] += " | trim";
+          });
+        Object.entries(value.properties)
+          .filter((entry) => entry[1].sameAs)
+          .forEach(([subKey, subValue]) => {
+            if (subValue.properties) {
+              throw Error("double nested properties are currently not supported");
+            }
+            const propertyKey = key + "." + subKey;
+            const usedCandidate = usedCandidates[subValue.sameAs as string];
+
+            if (!usedCandidate) {
+              throw Error(`missing used candidate of ${subValue.sameAs} for ${propertyKey}`);
+            }
+
+            keyResult.properties[subKey] = finder(usedCandidate, { root: sample });
+
+            if (subValue.extract?.type === "attribute") {
+              keyResult.properties[subKey] += "@" + subValue.extract.attribute;
+            }
+            keyResult.properties[subKey] += " | trim";
+          });
       }
     });
     this.log("Current result:", result);
