@@ -949,11 +949,9 @@ export class ScrapeAnalyzer {
     Object.assign(result, this.generateResult([...candidates], config));
     this.log("**** visualizing candidates ****");
     this.visualizeCandidates(candidates, config);
-    this.log(
-      `all=${this._doc.getElementsByTagName("*").length}; visited=${this.visited}; skipped=${this.skipped}; scored=${
-        candidates.length
-      }`,
-    );
+
+    const totalNodes = this._doc.getElementsByTagName("*").length;
+    this.log(`all=${totalNodes}; visited=${this.visited}; skipped=${this.skipped}; scored=${candidates.length}`);
     return result;
   }
 
@@ -974,7 +972,7 @@ export class ScrapeAnalyzer {
       let highestKey = "";
 
       Object.entries(node.analyzer).forEach(([key, value]) => {
-        if (value.nodeScore > 0) {
+        if (value.nodeScore != 0) {
           const escapedKey = key.replaceAll(".", "_");
           count++;
           if (value.nodeScore > score) {
@@ -982,8 +980,8 @@ export class ScrapeAnalyzer {
             highestKey = escapedKey;
           }
           if (verbosity >= 2) {
-            Object.entries(value).forEach(([valueKey, valueValue]) =>
-              node.setAttribute(escapedKey + "_" + valueKey, valueValue + ""),
+            Object.entries(value).forEach(
+              ([valueKey, valueValue]) => valueValue && node.setAttribute(escapedKey + "_" + valueKey, valueValue + ""),
             );
           }
           if (verbosity >= 1) {
