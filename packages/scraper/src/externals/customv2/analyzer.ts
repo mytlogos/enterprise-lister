@@ -368,6 +368,9 @@ export class ScrapeAnalyzer {
 
     const matchString = node.className + " " + node.id;
 
+    // never skip body
+    if (skipCandidate.test(matchString) && node.tagName !== "BODY") {
+      this.log("skipping unlikely candidate: " + finder(node));
       this.skipped++;
       return;
     }
