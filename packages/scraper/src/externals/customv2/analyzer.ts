@@ -466,23 +466,6 @@ export class ScrapeAnalyzer {
     return map;
   }
 
-  private configKeyGroups(properties: Record<string, PropertyConfig>, parentKey = "", groups: string[][] = []) {
-    const group: string[] = [];
-
-    for (const [key, value] of Object.entries(properties)) {
-      const propertyKey = parentKey ? parentKey + "." + key : key;
-      group.push(propertyKey);
-
-      if (value.properties) {
-        this.configKeyGroups(value.properties, propertyKey, groups);
-      }
-    }
-    if (group.length) {
-      groups.push(group);
-    }
-    return groups;
-  }
-
   /**
    * Scores all nodes with the anchorKey within a group whether a specific property key is before/after
    * any other specific property in the descendant hierarchy of the group.
