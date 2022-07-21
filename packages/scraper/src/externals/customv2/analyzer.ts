@@ -37,6 +37,11 @@ interface GroupScorer extends Scorer {
   group: string[];
 }
 
+interface DescendantScorer extends Scorer {
+  stage: "post";
+  descendantOf: string;
+}
+
 interface RelativeScorer extends Scorer {
   relativeTo: string;
   position: "before" | "after";
@@ -60,7 +65,7 @@ interface PropertyConfig {
   require?: {
     tag?: string;
     content?: TextPropertyConfig | AttributePropertyConfig;
-    descendantOf?: string;
+    descendantOf?: string; // using descendantOff implies an implicit reverse ancestorOf relationship and is scored as such
     relative?: {
       relativeTo: string;
       position: "before" | "after";
@@ -130,6 +135,16 @@ interface PropertyScore {
   groupScore: number;
 
   /**
+   * Scores whether a node is a descendant of another specifiy scored key.
+   */
+  descendantOfScore: number;
+
+  /**
+   * Scores whether a node is a ancestor of another specifiy scored key.
+   */
+  ancestorOfScore: number;
+
+  /**
    * Number of children with such a PropertyScore per descendentLevel
    */
   levels: number[];
@@ -183,7 +198,9 @@ function initNode(node: HTMLElement, key: string) {
       siblingScore: 0,
       relativeScore: 0,
       groupScore: 0,
-    } as PropertyScore;
+      ancestorOfScore: 0,
+      descendantOfScore: 0,
+    };
   }
   return node.analyzer[key];
 }
@@ -243,6 +260,36 @@ function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): S
             },
           } as AttributeScorer);
         }
+      }
+
+      if (require.descendantOf) {
+        scorer.push({
+          stage: "post",
+          propertyKey: propertyKey,
+          scoreName: "descendantOfScore",
+          descendantOf: require.descendantOf,
+          score(node: HTMLElement) {
+            const ancestors = getNodeAncestors(node);
+            let foundAncestor = null;
+
+            for (const ancestor of ancestors) {
+              if (
+                ancestor.analyzer &&
+                ancestor.analyzer[this.descendantOf] &&
+                ancestor.analyzer[this.descendantOf].nodeScore > 0
+              ) {
+                foundAncestor = ancestor;
+                break;
+              }
+            }
+            const score = foundAncestor ? 5 : -5;
+
+            if (foundAncestor) {
+              foundAncestor.analyzer[this.descendantOf].ancestorOfScore = score;
+            }
+            return score;
+          },
+        } as DescendantScorer);
       }
     }
 
@@ -534,6 +581,8 @@ export class ScrapeAnalyzer {
         value.tagScore +
         value.childrenScore +
         value.relativeScore +
+        value.ancestorOfScore +
+        value.descendantOfScore +
         value.groupScore;
 
       value.score =
@@ -685,10 +734,10 @@ export class ScrapeAnalyzer {
   }
 
   public parse(config: Config) {
+    this.log("**** init ****");
     const result = {} as any;
     config.verbosity = config.verbosity || 0;
     this.propertyMap = this.initConfigPropertyMap(config.properties);
-    this.log("**** grabArticle ****");
     const page = this._doc.body;
 
     // We can't grab an article if we don't have a page!
@@ -704,13 +753,31 @@ export class ScrapeAnalyzer {
     if (node.tagName === "HTML") {
       result.lang = node.getAttribute("lang");
     }
+    this.log("**** generating scorer ****");
 
     const scorer = toScorer(config.properties).map((value) => {
       value.analyzer = this;
       return value;
     });
+    this.log("**** visiting nodes ****");
     this.visit(node, candidates, scorer, config);
 
+    this.log("**** scoring post stage ****");
+    for (const score of scorer) {
+      if (score.stage !== "post") {
+        continue;
+      }
+      for (const candidate of candidates) {
+        const value = score.score(candidate);
+
+        if (value) {
+          const propertyScore = initNode(node, score.propertyKey);
+          // @ts-expect-error
+          propertyScore[score.scoreName] += value;
+        }
+      }
+    }
+    this.log("**** scoring relatives ****");
     for (const relativeConfig of this.getRelativeConfigs(config.properties)) {
       this.scoreRelative(
         candidates,
@@ -720,10 +787,13 @@ export class ScrapeAnalyzer {
         relativeConfig.parentKey,
       );
     }
+    this.log("**** recalculating scores ****");
     this.reCalculateScore(candidates);
     console.log(candidates.length, "Candidates");
 
+    this.log("**** generating result ****");
     Object.assign(result, this.generateResult([...candidates], config));
+    this.log("**** visualizing candidates ****");
     this.visualizeCandidates(candidates, config);
     return result;
   }
