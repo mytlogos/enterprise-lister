@@ -805,9 +805,44 @@ export class ScrapeAnalyzer {
             remove(candidates, element);
           }
         } else {
-          // TODO: handle other cases
-          this.log("No selector found");
-          return;
+          sample = mainCandidateGroups[0];
+          const ancestors = getNodeAncestors(sample);
+          let partialSelector = finder(sample, { root: ancestors[ancestors.length - 1] });
+
+          for (let index = ancestors.length - 1; index >= 0; index--) {
+            const ancestor = ancestors[index];
+
+            // should always encounter mainCandidate in loop, as sample is a descendant
+            if (ancestor === mainCandidate) {
+              break;
+            }
+            partialSelector = ancestor.tagName.toLowerCase() + " > " + partialSelector;
+          }
+
+          partialSelector = finder(mainCandidate) + " > " + partialSelector;
+
+          const selected = this._doc.querySelectorAll<HTMLElement>(partialSelector);
+          let unusableSelector = false;
+
+          for (let index = 0; index < selected.length; index++) {
+            const element = selected[index];
+            if (!mainCandidateGroups.includes(element)) {
+              unusableSelector = true;
+              break;
+            }
+          }
+          if (unusableSelector) {
+            this.log("no usable selector found: " + key);
+            return;
+          }
+
+          groupSelector = partialSelector;
+
+          // remove all "used" candidates from the candidates pool
+          for (const element of mainCandidateGroups) {
+            remove(candidates, element);
+          }
+          // TODO: handle other cases?
         }
       } else {
         sample = mainCandidate;
