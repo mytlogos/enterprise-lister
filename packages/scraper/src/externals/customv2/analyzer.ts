@@ -1,53 +1,6 @@
 import { JsonRegex } from "./types";
 import { finder } from "./css-selector";
 
-interface Scorer {
-  propertyKey: string;
-  stage: "node" | "parent" | "post" | "post-node";
-  scoreName: keyof PropertyScore;
-  optional?: boolean;
-  analyzer: ScrapeAnalyzer;
-  score(node: HTMLElement): number;
-}
-
-interface TagScorer extends Scorer {
-  tagName: string;
-  stage: "node";
-}
-
-interface TextScorer extends Scorer {
-  pattern: RegExp;
-  minLength: number;
-  maxLength: number;
-  stage: "node";
-}
-
-interface AttributeScorer extends Scorer {
-  pattern: RegExp;
-  attr: string;
-  stage: "node";
-}
-
-interface ArrayScorer extends Scorer {
-  stage: "parent";
-}
-
-interface GroupScorer extends Scorer {
-  stage: "node";
-  group: string[];
-}
-
-interface DescendantScorer extends Scorer {
-  stage: "post";
-  descendantOf: string;
-}
-
-interface RelativeScorer extends Scorer {
-  relativeTo: string;
-  position: "before" | "after";
-  stage: "post";
-}
-
 interface TextPropertyConfig {
   type: "text";
   pattern: JsonRegex;
@@ -205,6 +158,115 @@ function initNode(node: HTMLElement, key: string) {
   return node.analyzer[key];
 }
 
+function copyInstance<T>(original: T): T {
+  return Object.assign(Object.create(Object.getPrototypeOf(original)), original);
+}
+
+abstract class Scorer {
+  public stage: "node" | "parent" | "post" | "post-node";
+  public readonly scoreName: keyof PropertyScore;
+  public analyzer!: ScrapeAnalyzer;
+  public readonly optional?: boolean | undefined;
+  public readonly propertyKey: string;
+
+  public constructor(stage: Scorer["stage"], scoreName: keyof PropertyScore, propertyKey: string) {
+    this.stage = stage;
+    this.scoreName = scoreName;
+    this.propertyKey = propertyKey;
+  }
+
+  public abstract score(node: HTMLElement): number;
+}
+
+class TextScorer extends Scorer {
+  public readonly pattern: RegExp;
+  public readonly minLength: number;
+  public readonly maxLength: number;
+
+  public constructor(propertyKey: string, pattern: JsonRegex, minLength?: number, maxLength?: number) {
+    super("node", "patternScore", propertyKey);
+    this.pattern = new RegExp(pattern.pattern, pattern.flags);
+    this.minLength = minLength || 0;
+    this.maxLength = maxLength || Number.POSITIVE_INFINITY;
+  }
+  public score(node: HTMLElement): number {
+    const textValue = node.textContent || "";
+    return textValue.length <= this.maxLength && textValue.length >= this.minLength && this.pattern.test(textValue)
+      ? 5
+      : -5;
+  }
+}
+
+class TagScorer extends Scorer {
+  public readonly tagName: string;
+
+  public constructor(tagName: string, propertyKey: string) {
+    super("node", "tagScore", propertyKey);
+    this.tagName = tagName;
+  }
+  public score(node: HTMLElement): number {
+    return this.tagName === node.tagName.toLowerCase() ? 5 : -5;
+  }
+}
+
+class DescendantScorer extends Scorer {
+  public readonly descendantOf: string;
+
+  public constructor(propertyKey: string, descendantOf: string) {
+    super("post", "descendantOfScore", propertyKey);
+    this.descendantOf = descendantOf;
+  }
+  public score(node: HTMLElement): number {
+    const ancestors = getNodeAncestors(node);
+    let foundAncestor = null;
+
+    for (const ancestor of ancestors) {
+      if (
+        ancestor.analyzer &&
+        ancestor.analyzer[this.descendantOf] &&
+        ancestor.analyzer[this.descendantOf].nodeScore > 0
+      ) {
+        foundAncestor = ancestor;
+        break;
+      }
+    }
+    const score = foundAncestor ? 5 : -5;
+
+    if (foundAncestor) {
+      foundAncestor.analyzer[this.descendantOf].ancestorOfScore = score;
+    }
+    return score;
+  }
+}
+
+class GroupScorer extends Scorer {
+  public readonly group: string[];
+
+  public constructor(propertyKey: string, properties: Record<string, any>, parentKey: string) {
+    super("node", "groupScore", propertyKey);
+    this.group = Object.keys(properties).map((key) => (parentKey ? parentKey + "." + key : key));
+  }
+  public score(node: HTMLElement): number {
+    const count = this.group.filter((item) => node.analyzer && node.analyzer[item]).length;
+    return count === this.group.length ? 5 : -5;
+  }
+}
+
+class AttributeScorer extends Scorer {
+  public readonly attr: string;
+  public readonly pattern: RegExp;
+
+  public constructor(propertyKey: string, attr: string, pattern: JsonRegex) {
+    super("node", "patternScore", propertyKey);
+    this.attr = attr;
+    this.pattern = new RegExp(pattern.pattern, pattern.flags);
+  }
+  public score(node: HTMLElement): number {
+    const textValue = node.getAttribute(this.attr) || "";
+    return this.pattern.test(textValue) ? 5 : -5;
+  }
+}
+
 function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): Scorer[] {
   const scorer = [];
 
@@ -215,81 +277,27 @@ function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): S
 
     if (require) {
       if (require.tag) {
-        scorer.push({
-          stage: "node",
-          propertyKey: propertyKey,
-          scoreName: "tagScore",
-          tagName: require.tag.toLowerCase(),
-          score(node: HTMLElement) {
-            return this.tagName === node.tagName.toLowerCase() ? 5 : -5;
-          },
-        } as TagScorer);
+        scorer.push(new TagScorer(require.tag.toLowerCase(), propertyKey));
       }
       if (require.content) {
         if (require.content.type === "text") {
           if (require.content.pattern) {
-            const pattern = new RegExp(require.content.pattern.pattern, require.content.pattern.flags);
-            scorer.push({
-              stage: "node",
-              propertyKey: propertyKey,
-              scoreName: "patternScore",
-              pattern,
-              minLength: require.content.minLength || 0,
-              maxLength: require.content.maxLength || Number.POSITIVE_INFINITY,
-              score(node: HTMLElement) {
-                const textValue = node.textContent || "";
-                return textValue.length <= this.maxLength &&
-                  textValue.length >= this.minLength &&
-                  this.pattern.test(textValue)
-                  ? 5
-                  : -5;
-              },
-            } as TextScorer);
+            scorer.push(
+              new TextScorer(
+                propertyKey,
+                require.content.pattern,
+                require.content.minLength,
+                require.content.maxLength,
+              ),
+            );
           }
         } else if (require.content.type === "attribute" && require.content.attr && require.content.pattern) {
-          const pattern = new RegExp(require.content.pattern.pattern, require.content.pattern.flags);
-          scorer.push({
-            stage: "node",
-            propertyKey: propertyKey,
-            scoreName: "patternScore",
-            pattern,
-            attr: require.content.attr,
-            score(node: HTMLElement) {
-              const textValue = node.getAttribute(this.attr) || "";
-              return this.pattern.test(textValue) ? 5 : -5;
-            },
-          } as AttributeScorer);
+          scorer.push(new AttributeScorer(propertyKey, require.content.attr, require.content.pattern));
         }
       }
 
       if (require.descendantOf) {
-        scorer.push({
-          stage: "post",
-          propertyKey: propertyKey,
-          scoreName: "descendantOfScore",
-          descendantOf: require.descendantOf,
-          score(node: HTMLElement) {
-            const ancestors = getNodeAncestors(node);
-            let foundAncestor = null;
-
-            for (const ancestor of ancestors) {
-              if (
-                ancestor.analyzer &&
-                ancestor.analyzer[this.descendantOf] &&
-                ancestor.analyzer[this.descendantOf].nodeScore > 0
-              ) {
-                foundAncestor = ancestor;
-                break;
-              }
-            }
-            const score = foundAncestor ? 5 : -5;
-
-            if (foundAncestor) {
-              foundAncestor.analyzer[this.descendantOf].ancestorOfScore = score;
-            }
-            return score;
-          },
-        } as DescendantScorer);
+        scorer.push(new DescendantScorer(propertyKey, require.descendantOf));
       }
     }
 
@@ -304,16 +312,7 @@ function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): S
     }
   }
   if (parentKey) {
-    scorer.push({
-      stage: "node",
-      propertyKey: parentKey,
-      scoreName: "groupScore",
-      group: Object.keys(properties).map((key) => (parentKey ? parentKey + "." + key : key)),
-      score(node: HTMLElement) {
-        const count = this.group.filter((item) => node.analyzer && node.analyzer[item]).length;
-        return count === this.group.length ? 5 : -5;
-      },
-    } as GroupScorer);
+    scorer.push(new GroupScorer(parentKey, properties, parentKey));
   }
   for (const [key, value] of Object.entries(properties)) {
     if (value.sameAs) {
@@ -321,7 +320,10 @@ function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): S
       scorer
         .filter((score) => score.propertyKey === value.sameAs)
         .forEach((score) => {
-          scorer.push({ ...score, propertyKey } as Scorer);
+          const clone = copyInstance(score);
+          // @ts-expect-error
+          clone.propertyKey = propertyKey;
+          scorer.push(clone);
         });
     }
   }
