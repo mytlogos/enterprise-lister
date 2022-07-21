@@ -491,7 +491,7 @@ export class ScrapeAnalyzer {
                 for (
                   let nextSibling = anchorAncestor.nextElementSibling;
                   nextSibling;
-                  nextSibling = anchorAncestor.nextElementSibling
+                  nextSibling = nextSibling.nextElementSibling
                 ) {
                   if (nextSibling === relativeAncestor) {
                     positionFound = true;
@@ -502,7 +502,7 @@ export class ScrapeAnalyzer {
                 for (
                   let previousSibling = anchorAncestor.previousElementSibling;
                   previousSibling;
-                  previousSibling = anchorAncestor.previousElementSibling
+                  previousSibling = previousSibling.previousElementSibling
                 ) {
                   if (previousSibling === relativeAncestor) {
                     positionFound = true;
