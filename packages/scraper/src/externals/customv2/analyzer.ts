@@ -247,8 +247,91 @@ class GroupScorer extends Scorer {
     this.group = Object.keys(properties).map((key) => (parentKey ? parentKey + "." + key : key));
   }
   public score(node: HTMLElement): number {
+    const parentPrefix = this.propertyKey + ".";
+    const propertyMap = this.analyzer.getPropertyMap();
+
+    if (node.analyzer) {
+      // score negatively for scoring a parent group on a node with a child group already scored
+      for (const item of this.group) {
+        if (
+          item.startsWith(parentPrefix) &&
+          propertyMap.get(item)?.properties &&
+          node.analyzer[item] &&
+          node.analyzer[item][this.scoreName] > 0
+        ) {
+          return -5;
+        }
+      }
+    }
+    // forbid it, that a group key is only present in another group
+    // e.g. mediumLink should not be only present in candidates of the only candidate of releases
     const count = this.group.filter((item) => node.analyzer && node.analyzer[item]).length;
-    return count === this.group.length ? 5 : -5;
+    if (count === this.group.length) {
+      const groupCandidates = {} as Record<string, HTMLElement[]>;
+      // properties in this group, which are also a group
+      const groupProperties = this.group.filter((item) => propertyMap.get(item)?.properties);
+      // properties in this group, which are not a group
+      const nonGroupProperties = this.group.filter((item) => !propertyMap.get(item)?.properties);
+
+      for (const candidate of this.analyzer.getCurrentCandidates()) {
+        // skip candidates that are not part of this sub-tree
+        if (!node.contains(candidate)) {
+          continue;
+        }
+        for (const item of this.group) {
+          if (candidate.analyzer[item]?.nodeScore) {
+            const group = groupCandidates[item] || (groupCandidates[item] = []);
+            group.push(candidate);
+          }
+        }
+      }
+      // node.analyzer should be defined, else the condition count === this.group.length should fail
+      for (const item of this.group) {
+        if (node.analyzer[item]?.nodeScore) {
+          const group = groupCandidates[item] || (groupCandidates[item] = []);
+          group.push(node);
+        }
+      }
+
+      if (groupProperties.length) {
+        for (const nonGroupProperty of nonGroupProperties) {
+          // should always be defined, else the condition count === this.group.length should not be fulfilled
+          const filteredCandidates = groupCandidates[nonGroupProperty].filter((candidate) => {
+            // check that candidate is not a descendant of another group
+            return !groupProperties.some((groupProperty) => {
+              return groupCandidates[groupProperty].some((groupCandidate) => groupCandidate.contains(candidate));
+            });
+          });
+
+          if (!filteredCandidates.length) {
+            return -5;
+          }
+        }
+      }
+
+      // weaken the influence of propertyKeys not inside this group on nonGroupProperties candidates
+
+      for (const nonGroupProperty of nonGroupProperties) {
+        const candidates = groupCandidates[nonGroupProperty].filter((candidate) => {
+          // check that candidate is not a descendant of another group
+          return !groupProperties.some((groupProperty) => {
+            return groupCandidates[groupProperty].some((groupCandidate) => groupCandidate.contains(candidate));
+          });
+        });
+
+        for (const candidate of candidates) {
+          for (const [property, value] of Object.entries(candidate.analyzer)) {
+            if (this.group.includes(property)) {
+              continue;
+            }
+            value.groupScore -= 5;
+          }
+        }
+      }
+      return 5;
+    } else {
+      return -5;
+    }
   }
 }
 
@@ -451,6 +534,16 @@ export class ScrapeAnalyzer {
       this.calculateScore(node);
     }
     return requireSatisfied;
+  }
+
+  private propertyMap: Map<string, PropertyConfig> = new Map();
+
+  public getPropertyMap(): ReadonlyMap<string, Readonly<PropertyConfig>> {
+    return this.propertyMap;
+  }
+
+  public getCurrentCandidates(): ReadonlyArray<Readonly<HTMLElement>> {
+    return this._doc.candidates;
   }
 
   private initConfigPropertyMap(
@@ -817,6 +910,9 @@ export class ScrapeAnalyzer {
       value.analyzer = this;
       return value;
     });
+    // sort from most nested to root
+    scorer.sort((a, b) => b.propertyKey.split(".").length - a.propertyKey.split(".").length);
+
     this.log("**** visiting nodes ****");
     this.visit(node, candidates, scorer, config);
 
