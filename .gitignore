@@ -96,6 +96,7 @@ packages/**/*.vue.js.map
 *.json
 packages/server/src/ignore/
 dist/
+data/
 
 # vscode project files
 .vscode
