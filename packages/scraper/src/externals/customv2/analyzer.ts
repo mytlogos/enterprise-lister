@@ -332,6 +332,8 @@ function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): S
 
 export class ScrapeAnalyzer {
   private _doc: Document;
+  private visited = 0;
+  private skipped = 0;
 
   public constructor(document: Document) {
     this._doc = document;
@@ -353,11 +355,11 @@ export class ScrapeAnalyzer {
     );
   }
 
-  private propertyMap: Map<string, PropertyConfig> = new Map();
-
   private visit(node: HTMLElement, candidates: HTMLElement[], scorer: Scorer[], config: Config) {
+    this.visited++;
     if (!this.isProbablyVisible(node)) {
-      this.log("Skipping hidden node");
+      this.log("Skipping hidden node" + finder(node));
+      this.skipped++;
       return;
     }
 
@@ -366,7 +368,7 @@ export class ScrapeAnalyzer {
 
     const matchString = node.className + " " + node.id;
 
-    if (skipCandidate.test(matchString)) {
+      this.skipped++;
       return;
     }
 
@@ -805,6 +807,8 @@ export class ScrapeAnalyzer {
     this.log("**** init ****");
     const result = {} as any;
     config.verbosity = config.verbosity || 0;
+    this.skipped = 0;
+    this.visited = 0;
     this.propertyMap = this.initConfigPropertyMap(config.properties);
     const page = this._doc.body;
 
@@ -863,6 +867,11 @@ export class ScrapeAnalyzer {
     Object.assign(result, this.generateResult([...candidates], config));
     this.log("**** visualizing candidates ****");
     this.visualizeCandidates(candidates, config);
+    this.log(
+      `all=${this._doc.getElementsByTagName("*").length}; visited=${this.visited}; skipped=${this.skipped}; scored=${
+        candidates.length
+      }`,
+    );
     return result;
   }
 
