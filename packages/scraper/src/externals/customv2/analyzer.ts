@@ -127,15 +127,6 @@ function getNodeAncestors(node: Node, maxDepth?: number): HTMLElement[] {
   return ancestors.filter((value) => value.nodeType === value.ELEMENT_NODE) as HTMLElement[];
 }
 
-function remove<T>(array: T[], item: T): number {
-  const index = array.indexOf(item);
-
-  if (index >= 0) {
-    array.splice(index, 1);
-  }
-  return index;
-}
-
 function initNode(node: HTMLElement, key: string) {
   if (!node.analyzer) {
     node.analyzer = {};
@@ -162,6 +153,10 @@ function initNode(node: HTMLElement, key: string) {
 
 function copyInstance<T>(original: T): T {
   return Object.assign(Object.create(Object.getPrototypeOf(original)), original);
+}
+
+function getPropertyKey(parent: string, key: string): string {
+  return parent ? parent + "." + key : key;
 }
 
 abstract class Scorer {
@@ -246,7 +241,7 @@ class GroupScorer extends Scorer {
 
   public constructor(propertyKey: string, properties: Record<string, any>, parentKey: string) {
     super("node", "groupScore", propertyKey);
-    this.group = Object.keys(properties).map((key) => (parentKey ? parentKey + "." + key : key));
+    this.group = Object.keys(properties).map((key) => getPropertyKey(parentKey, key));
   }
   public score(node: HTMLElement): number {
     const parentPrefix = this.propertyKey + ".";
@@ -255,12 +250,7 @@ class GroupScorer extends Scorer {
     if (node.analyzer) {
       // score negatively for scoring a parent group on a node with a child group already scored
       for (const item of this.group) {
-        if (
-          item.startsWith(parentPrefix) &&
-          propertyMap.get(item)?.properties &&
-          node.analyzer[item] &&
-          node.analyzer[item][this.scoreName] > 0
-        ) {
+        if (item.startsWith(parentPrefix) && node.analyzer[item] && node.analyzer[item].nodeScore > 0) {
           return -5;
         }
       }
@@ -362,7 +352,7 @@ function toScorer(properties: Properties, parentKey = ""): Scorer[] {
   const scorer = [];
 
   for (const [key, value] of Object.entries(properties)) {
-    const propertyKey = parentKey ? parentKey + "." + key : key;
+    const propertyKey = getPropertyKey(parentKey, key);
 
     const require = value.require;
 
@@ -407,7 +397,7 @@ function toScorer(properties: Properties, parentKey = ""): Scorer[] {
   }
   for (const [key, value] of Object.entries(properties)) {
     if (value.sameAs) {
-      const propertyKey = parentKey ? parentKey + "." + key : key;
+      const propertyKey = getPropertyKey(parentKey, key);
       scorer
         .filter((score) => score.propertyKey === value.sameAs)
         .forEach((score) => {
@@ -425,6 +415,8 @@ export class ScrapeAnalyzer {
   private _doc: Document;
   private visited = 0;
   private skipped = 0;
+  private candidates: HTMLElement[] = [];
+  private usedCandidates: HTMLElement[] = [];
 
   public constructor(document: Document) {
     this._doc = document;
@@ -446,7 +438,7 @@ export class ScrapeAnalyzer {
     );
   }
 
-  private visit(node: HTMLElement, candidates: HTMLElement[], scorer: Scorer[], config: Config) {
+  private visit(node: HTMLElement, scorer: Scorer[], config: Config) {
     this.visited++;
     if (!this.isProbablyVisible(node)) {
       this.log("Skipping hidden node" + finder(node));
@@ -470,7 +462,7 @@ export class ScrapeAnalyzer {
 
     for (let index = 0; index < node.children.length; index++) {
       const child = node.children[index];
-      const descendantRequire = this.visit(child as HTMLElement, candidates, scorer, config);
+      const descendantRequire = this.visit(child as HTMLElement, scorer, config);
 
       if (descendantRequire) {
         descendantRequire.forEach((value) => descendantScored.add(value));
@@ -531,13 +523,16 @@ export class ScrapeAnalyzer {
         const propertyScore = initNode(node, score.propertyKey);
         // @ts-expect-error
         propertyScore[score.scoreName] += value;
+        // update nodeScore gradually, so that other scorers may notice it too
+        // currently only for GroupScorer
+        propertyScore.nodeScore += value;
       }
     }
 
     const requireSatisfied = new Set<string>(descendantScored);
 
     if (node.analyzer) {
-      candidates.push(node);
+      this.candidates.push(node);
       Object.keys(node.analyzer).forEach((key) => requireSatisfied.add(key));
       this.calculateScore(node);
     }
@@ -551,12 +546,12 @@ export class ScrapeAnalyzer {
   }
 
   public getCurrentCandidates(): ReadonlyArray<Readonly<HTMLElement>> {
-    return this._doc.candidates;
+    return this.candidates;
   }
 
   private initConfigPropertyMap(properties: Properties, parentKey = "", map = new Map<string, PropertyConfig>()) {
     for (const [key, value] of Object.entries(properties)) {
-      const propertyKey = parentKey ? parentKey + "." + key : key;
+      const propertyKey = getPropertyKey(parentKey, key);
       map.set(propertyKey, value);
 
       if (value.properties) {
@@ -570,14 +565,8 @@ export class ScrapeAnalyzer {
    * Scores all nodes with the anchorKey within a group whether a specific property key is before/after
    * any other specific property in the descendant hierarchy of the group.
    */
-  private scoreRelative(
-    candidates: HTMLElement[],
-    anchorKey: string,
-    relativeToKey: string,
-    position: "before" | "after",
-    parentKey: string,
-  ) {
-    for (const candidate of candidates) {
+  private scoreRelative(anchorKey: string, relativeToKey: string, position: "before" | "after", parentKey: string) {
+    for (const candidate of this.candidates) {
       const value = candidate.analyzer[parentKey];
 
       // ignore candidates without a groupScore
@@ -589,7 +578,7 @@ export class ScrapeAnalyzer {
       const relativeCandidates = [];
 
       // get all descendants of candidate with either anchorKey or relativeKey scored
-      for (const possibleDescendant of candidates) {
+      for (const possibleDescendant of this.candidates) {
         // ignore candidates that are not within this sub tree, excluding root
         if (candidate === possibleDescendant || !candidate.contains(possibleDescendant)) {
           continue;
@@ -681,8 +670,8 @@ export class ScrapeAnalyzer {
     });
   }
 
-  private reCalculateScore(candidates: HTMLElement[]) {
-    for (const node of candidates) {
+  private reCalculateScore() {
+    for (const node of this.candidates) {
       this.calculateScore(node);
     }
   }
@@ -698,7 +687,7 @@ export class ScrapeAnalyzer {
     }> = [],
   ) {
     for (const [key, value] of Object.entries(properties)) {
-      const propertyKey = parentKey ? parentKey + "." + key : key;
+      const propertyKey = getPropertyKey(parentKey, key);
 
       if (value.require?.relative) {
         group.push({
@@ -719,12 +708,11 @@ export class ScrapeAnalyzer {
     key: string,
     parentKey: string,
     value: PropertyConfig,
-    candidates: HTMLElement[],
     root: HTMLElement,
     usedCandidates: Record<string, HTMLElement>,
   ) {
     let subMainCandidate: HTMLElement;
-    const propertyKey = parentKey + "." + key;
+    const propertyKey = getPropertyKey(parentKey, key);
 
     if (value.sameAs) {
       const usedCandidate = usedCandidates[value.sameAs];
@@ -734,7 +722,7 @@ export class ScrapeAnalyzer {
       }
       subMainCandidate = usedCandidate;
     } else {
-      const subCandidates = candidates.filter((candidate) => root.contains(candidate));
+      const subCandidates = this.candidates.filter((candidate) => root.contains(candidate));
 
       // get best candidate within the sample, there must be candidates, else this group should not exist
       subMainCandidate = subCandidates.reduce((previous, current) =>
@@ -743,7 +731,7 @@ export class ScrapeAnalyzer {
           : previous,
       );
 
-      remove(candidates, subMainCandidate);
+      this.removeCandidate(subMainCandidate);
       usedCandidates[propertyKey] = subMainCandidate;
     }
     let selector = finder(subMainCandidate, { root });
@@ -756,15 +744,14 @@ export class ScrapeAnalyzer {
   }
 
   private generateGroupResult(
-    candidates: HTMLElement[],
     groupKey: string,
     groupConfig: PropertyConfig,
     groupProperties: Properties,
     root: HTMLElement,
     parentKey = "",
   ): any {
-    const propertyKey = parentKey ? parentKey + "." + groupKey : groupKey;
-    const keyCandidates = candidates.filter((node) => node.analyzer[propertyKey] && root.contains(node));
+    const propertyKey = getPropertyKey(parentKey, groupKey);
+    const keyCandidates = this.candidates.filter((node) => node.analyzer[propertyKey] && root.contains(node));
 
     if (!keyCandidates.length) {
       this.log("no candidate found for " + groupKey);
@@ -778,7 +765,7 @@ export class ScrapeAnalyzer {
     let sample: HTMLElement;
 
     if (groupConfig.array) {
-      const mainCandidateGroups = candidates.filter((candidate) => {
+      const mainCandidateGroups = this.candidates.filter((candidate) => {
         return (
           mainCandidate !== candidate &&
           mainCandidate.contains(candidate) &&
@@ -787,76 +774,15 @@ export class ScrapeAnalyzer {
         );
       });
 
-      // if all children have groups, then no further inspection should be necessary
-      if (
-        mainCandidate.analyzer[propertyKey].levels[0] > 0 &&
-        mainCandidate.children.length === mainCandidate.analyzer[propertyKey].levels[0]
-      ) {
-        const groupContainerSelector = finder(mainCandidate, { root });
+      sample = mainCandidateGroups[0];
+      let partialSelector: string;
 
-        const groupAncestors = getNodeAncestors(mainCandidateGroups[0]);
-
-        let possibleSelector;
-
-        // if group is direct child of mainCandidate
-        if (mainCandidate === mainCandidateGroups[0].parentElement) {
-          possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName.toLowerCase();
-          this.log(`evaluating possible group selector: '${possibleSelector}'`);
-
-          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
-          let unusableSelector = false;
-
-          for (let index = 0; index < selected.length; index++) {
-            const element = selected[index];
-            if (!mainCandidateGroups.includes(element)) {
-              unusableSelector = true;
-              break;
-            }
-          }
-          if (unusableSelector) {
-            possibleSelector = groupContainerSelector + " > *";
-          }
-        } else {
-          // if group is descendant and no direct child, it complicates it a little
-          const mainIndex = groupAncestors.findIndex((node) => node === mainCandidate);
-          const mainChild = groupAncestors[mainIndex + 1];
-
-          // get the selector from the direct child to the group
-          // this assumes that a direct from mainCandidate as a descendant group
-          possibleSelector =
-            groupContainerSelector +
-            " > " +
-            mainChild.tagName.toLowerCase() +
-            " " +
-            finder(mainCandidateGroups[0], { root: mainChild });
-
-          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
-          let unusableSelector = false;
-
-          for (let index = 0; index < selected.length; index++) {
-            const element = selected[index];
-            if (!mainCandidateGroups.includes(element)) {
-              unusableSelector = true;
-              break;
-            }
-          }
-          if (unusableSelector) {
-            this.log("no usable selector found: " + groupKey);
-            return;
-          }
-        }
-
-        groupSelector = possibleSelector;
-        sample = mainCandidateGroups[0];
-
-        // remove all "used" candidates from the candidates pool
-        for (const element of mainCandidateGroups) {
-          remove(candidates, element);
-        }
+      // if sample is a child of mainCandidate a simple selector should suffice
+      if (sample.parentElement === mainCandidate) {
+        partialSelector = sample.tagName.toLowerCase();
       } else {
-        sample = mainCandidateGroups[0];
         const ancestors = getNodeAncestors(sample);
-        let partialSelector = finder(sample, { root: ancestors[ancestors.length - 1] });
+        partialSelector = finder(sample, { root: ancestors[ancestors.length - 1] });
 
         for (let index = ancestors.length - 1; index >= 0; index--) {
           const ancestor = ancestors[index];
@@ -867,37 +793,38 @@ export class ScrapeAnalyzer {
           }
           partialSelector = ancestor.tagName.toLowerCase() + " > " + partialSelector;
         }
-
-        partialSelector = finder(mainCandidate, { root }) + " > " + partialSelector;
-
-        const selected = this._doc.querySelectorAll<HTMLElement>(partialSelector);
-        let unusableSelector = false;
-
-        for (let index = 0; index < selected.length; index++) {
-          const element = selected[index];
-          if (!mainCandidateGroups.includes(element)) {
-            unusableSelector = true;
-            break;
-          }
-        }
-        if (unusableSelector) {
-          this.log("no usable selector found: " + groupKey);
-          return;
-        }
-
-        groupSelector = partialSelector;
-
-        // remove all "used" candidates from the candidates pool
-        for (const element of mainCandidateGroups) {
-          remove(candidates, element);
-        }
-        // TODO: handle other cases?
       }
+
+      partialSelector = finder(mainCandidate, { root }) + " > " + partialSelector;
+
+      // this selector is only within root
+      const selected = root.querySelectorAll<HTMLElement>(partialSelector);
+      let unusableSelector = false;
+
+      for (let index = 0; index < selected.length; index++) {
+        const element = selected[index];
+        if (!mainCandidateGroups.includes(element)) {
+          unusableSelector = true;
+          break;
+        }
+      }
+      if (unusableSelector) {
+        this.log("no usable selector found: " + groupKey);
+        return;
+      }
+
+      groupSelector = partialSelector;
+
+      // remove all "used" candidates from the candidates pool
+      for (const element of mainCandidateGroups) {
+        this.removeCandidate(element);
+      }
+      // TODO: handle other cases?
     } else {
       sample = mainCandidate;
       groupSelector = finder(mainCandidate, { root });
     }
-    remove(candidates, mainCandidate);
+    this.removeCandidate(mainCandidate);
     this.log(`Group selector for '${groupKey}'${groupConfig.array ? " (array)" : ""}: ${groupSelector}`);
     const keyResult = { selector: groupSelector, properties: {} as any };
 
@@ -906,7 +833,6 @@ export class ScrapeAnalyzer {
     for (const [subKey, subValue] of Object.entries(groupProperties)) {
       if (subValue.properties) {
         keyResult.properties[subKey] = this.generateGroupResult(
-          candidates,
           subKey,
           subValue,
           subValue.properties,
@@ -918,7 +844,6 @@ export class ScrapeAnalyzer {
           subKey,
           propertyKey,
           subValue,
-          candidates,
           sample,
           usedCandidates,
         );
@@ -927,14 +852,23 @@ export class ScrapeAnalyzer {
     return keyResult;
   }
 
-  private generateResult(candidates: HTMLElement[], config: Config) {
+  private removeCandidate(node: HTMLElement) {
+    const index = this.candidates.indexOf(node);
+
+    if (index >= 0) {
+      this.candidates.splice(index, 1);
+      this.usedCandidates.push(node);
+    }
+  }
+
+  private generateResult(config: Config) {
     const result = {} as Record<string, any>;
 
     Object.entries(config.properties).forEach(([key, value]) => {
       if (value.properties) {
-        result[key] = this.generateGroupResult(candidates, key, value, value.properties, this._doc.documentElement);
+        result[key] = this.generateGroupResult(key, value, value.properties, this._doc.documentElement);
       } else {
-        result[key] = this.generatePropertyResult(key, "", value, candidates, this._doc.documentElement, {});
+        result[key] = this.generatePropertyResult(key, "", value, this._doc.documentElement, {});
       }
     });
     this.log("Current result:", result);
@@ -947,18 +881,16 @@ export class ScrapeAnalyzer {
     config.verbosity = config.verbosity || 0;
     this.skipped = 0;
     this.visited = 0;
+    this.candidates = [];
+    this.usedCandidates = [];
     this.propertyMap = this.initConfigPropertyMap(config.properties);
-    const page = this._doc.body;
-
     // We can't grab an article if we don't have a page!
-    if (!page) {
+    if (!this._doc.body) {
       this.log("No body found in document. Abort.");
       return null;
     }
 
     const node: HTMLElement | null = this._doc.documentElement;
-    const candidates: HTMLElement[] = [];
-    this._doc.candidates = candidates;
 
     if (node.tagName === "HTML") {
       result.lang = node.getAttribute("lang");
@@ -973,14 +905,14 @@ export class ScrapeAnalyzer {
     scorer.sort((a, b) => b.propertyKey.split(".").length - a.propertyKey.split(".").length);
 
     this.log("**** visiting nodes ****");
-    this.visit(node, candidates, scorer, config);
+    this.visit(node, scorer, config);
 
     this.log("**** scoring post stage ****");
     for (const score of scorer) {
       if (score.stage !== "post") {
         continue;
       }
-      for (const candidate of candidates) {
+      for (const candidate of this.candidates) {
         const value = score.score(candidate);
 
         if (value) {
@@ -993,7 +925,6 @@ export class ScrapeAnalyzer {
     this.log("**** scoring relatives ****");
     for (const relativeConfig of this.getRelativeConfigs(config.properties)) {
       this.scoreRelative(
-        candidates,
         relativeConfig.anchor,
         relativeConfig.relativeTo,
         relativeConfig.position,
@@ -1001,16 +932,16 @@ export class ScrapeAnalyzer {
       );
     }
     this.log("**** recalculating scores ****");
-    this.reCalculateScore(candidates);
-    console.log(candidates.length, "Candidates");
+    this.reCalculateScore();
+    console.log(this.candidates.length, "Candidates");
 
     this.log("**** generating result ****");
-    Object.assign(result, this.generateResult([...candidates], config));
+    Object.assign(result, this.generateResult(config));
     this.log("**** visualizing candidates ****");
-    this.visualizeCandidates(candidates, config);
+    this.visualizeCandidates(config);
 
     const totalNodes = this._doc.getElementsByTagName("*").length;
-    this.log(`all=${totalNodes}; visited=${this.visited}; skipped=${this.skipped}; scored=${candidates.length}`);
+    this.log(`all=${totalNodes}; visited=${this.visited}; skipped=${this.skipped}; scored=${this.candidates.length}`);
     return result;
   }
 
@@ -1021,12 +952,12 @@ export class ScrapeAnalyzer {
    * Adds a sticky color legend to the top left corner.
    * @param candidates candidates to visualize
    */
-  private visualizeCandidates(candidates: HTMLElement[], config: Config) {
+  private visualizeCandidates(config: Config) {
     const classes = new Set<string>();
     let count = 0;
     const verbosity = config.verbosity as number;
 
-    candidates.forEach((node) => {
+    [...this.candidates, ...this.usedCandidates].forEach((node) => {
       let score = 0;
       let highestKey = "";
 
