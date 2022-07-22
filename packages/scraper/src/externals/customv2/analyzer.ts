@@ -314,7 +314,13 @@ class GroupScorer extends Scorer {
       // weaken the influence of propertyKeys not inside this group on nonGroupProperties candidates
 
       for (const nonGroupProperty of nonGroupProperties) {
-        const candidates = groupCandidates[nonGroupProperty].filter((candidate) => {
+        const nonGroupCandidates = groupCandidates[nonGroupProperty];
+
+        if (!nonGroupCandidates) {
+          continue;
+        }
+
+        const candidates = nonGroupCandidates.filter((candidate) => {
           // check that candidate is not a descendant of another group
           return !groupProperties.some((groupProperty) => {
             return groupCandidates[groupProperty].some((groupCandidate) => groupCandidate.contains(candidate));
