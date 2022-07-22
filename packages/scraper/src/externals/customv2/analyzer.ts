@@ -1,6 +1,8 @@
 import { JsonRegex } from "./types";
 import { finder } from "./css-selector";
 
+type Properties = Record<string, PropertyConfig>;
+
 interface TextPropertyConfig {
   type: "text";
   pattern: JsonRegex;
@@ -32,7 +34,7 @@ interface PropertyConfig {
 
 interface Config {
   verbosity?: 0 | 1 | 2;
-  properties: Record<string, PropertyConfig>;
+  properties: Properties;
 }
 
 interface PropertyScore {
@@ -350,7 +352,7 @@ class AttributeScorer extends Scorer {
   }
 }
 
-function toScorer(properties: Record<string, PropertyConfig>, parentKey = ""): Scorer[] {
+function toScorer(properties: Properties, parentKey = ""): Scorer[] {
   const scorer = [];
 
   for (const [key, value] of Object.entries(properties)) {
@@ -546,11 +548,7 @@ export class ScrapeAnalyzer {
     return this._doc.candidates;
   }
 
-  private initConfigPropertyMap(
-    properties: Record<string, PropertyConfig>,
-    parentKey = "",
-    map = new Map<string, PropertyConfig>(),
-  ) {
+  private initConfigPropertyMap(properties: Properties, parentKey = "", map = new Map<string, PropertyConfig>()) {
     for (const [key, value] of Object.entries(properties)) {
       const propertyKey = parentKey ? parentKey + "." + key : key;
       map.set(propertyKey, value);
@@ -684,7 +682,7 @@ export class ScrapeAnalyzer {
   }
 
   private getRelativeConfigs(
-    properties: Record<string, PropertyConfig>,
+    properties: Properties,
     parentKey = "",
     group: Array<{
       parentKey: string;
@@ -711,117 +709,95 @@ export class ScrapeAnalyzer {
     return group;
   }
 
-  private generateResult(candidates: HTMLElement[], config: Config) {
-    const result = {} as Record<string, any>;
+  private generatePropertyResult(
+    key: string,
+    parentKey: string,
+    value: PropertyConfig,
+    candidates: HTMLElement[],
+    root: HTMLElement,
+    usedCandidates: Record<string, HTMLElement>,
+  ) {
+    let subMainCandidate: HTMLElement;
+    const propertyKey = parentKey + "." + key;
 
-    Object.entries(config.properties).forEach(([key, value]) => {
-      const keyCandidates = candidates.filter((node) => node.analyzer[key]);
+    if (value.sameAs) {
+      const usedCandidate = usedCandidates[value.sameAs];
 
-      if (!keyCandidates.length) {
-        this.log("no candidate found for " + key);
-        return;
+      if (!usedCandidate) {
+        throw Error(`missing used candidate of ${value.sameAs} for ${propertyKey}`);
       }
-      const mainCandidate = keyCandidates.reduce((previous, current) =>
-        (previous.analyzer[key].score || 0) < (current.analyzer[key].score || 0) ? current : previous,
+      subMainCandidate = usedCandidate;
+    } else {
+      const subCandidates = candidates.filter((candidate) => root.contains(candidate));
+
+      // get best candidate within the sample, there must be candidates, else this group should not exist
+      subMainCandidate = subCandidates.reduce((previous, current) =>
+        (previous.analyzer[propertyKey]?.nodeScore || 0) < (current.analyzer[propertyKey]?.nodeScore || 0)
+          ? current
+          : previous,
       );
 
-      let groupSelector;
-      let sample: HTMLElement;
+      remove(candidates, subMainCandidate);
+      usedCandidates[propertyKey] = subMainCandidate;
+    }
+    let selector = finder(subMainCandidate, { root });
 
-      if (value.array) {
-        const mainCandidateGroups = candidates.filter((candidate) => {
-          return (
-            mainCandidate !== candidate &&
-            mainCandidate.contains(candidate) &&
-            candidate.analyzer[key] &&
-            candidate.analyzer[key].nodeScore > 0
-          );
-        });
+    if (value.extract?.type === "attribute") {
+      selector += "@" + value.extract.attribute;
+    }
+    selector += " | trim";
+    return selector;
+  }
 
-        // if all children have groups, then no further inspection should be necessary
-        if (
-          mainCandidate.analyzer[key].levels[0] > 0 &&
-          mainCandidate.children.length === mainCandidate.analyzer[key].levels[0]
-        ) {
-          const groupContainerSelector = finder(mainCandidate);
+  private generateGroupResult(
+    candidates: HTMLElement[],
+    groupKey: string,
+    groupConfig: PropertyConfig,
+    groupProperties: Properties,
+    root: HTMLElement,
+    parentKey = "",
+  ): any {
+    const propertyKey = parentKey ? parentKey + "." + groupKey : groupKey;
+    const keyCandidates = candidates.filter((node) => node.analyzer[propertyKey] && root.contains(node));
 
-          const groupAncestors = getNodeAncestors(mainCandidateGroups[0]);
+    if (!keyCandidates.length) {
+      this.log("no candidate found for " + groupKey);
+      return;
+    }
+    const mainCandidate = keyCandidates.reduce((previous, current) =>
+      (previous.analyzer[propertyKey].score || 0) < (current.analyzer[propertyKey].score || 0) ? current : previous,
+    );
 
-          let possibleSelector;
+    let groupSelector;
+    let sample: HTMLElement;
 
-          // if group is direct child of mainCandidate
-          if (mainCandidate === mainCandidateGroups[0].parentElement) {
-            possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName.toLowerCase();
-            this.log(`evaluating possible group selector: '${possibleSelector}'`);
+    if (groupConfig.array) {
+      const mainCandidateGroups = candidates.filter((candidate) => {
+        return (
+          mainCandidate !== candidate &&
+          mainCandidate.contains(candidate) &&
+          candidate.analyzer[propertyKey] &&
+          candidate.analyzer[propertyKey].nodeScore > 0
+        );
+      });
 
-            const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
-            let unusableSelector = false;
+      // if all children have groups, then no further inspection should be necessary
+      if (
+        mainCandidate.analyzer[propertyKey].levels[0] > 0 &&
+        mainCandidate.children.length === mainCandidate.analyzer[propertyKey].levels[0]
+      ) {
+        const groupContainerSelector = finder(mainCandidate, { root });
 
-            for (let index = 0; index < selected.length; index++) {
-              const element = selected[index];
-              if (!mainCandidateGroups.includes(element)) {
-                unusableSelector = true;
-                break;
-              }
-            }
-            if (unusableSelector) {
-              possibleSelector = groupContainerSelector + " > *";
-            }
-          } else {
-            // if group is descendant and no direct child, it complicates it a little
-            const mainIndex = groupAncestors.findIndex((node) => node === mainCandidate);
-            const mainChild = groupAncestors[mainIndex + 1];
+        const groupAncestors = getNodeAncestors(mainCandidateGroups[0]);
 
-            // get the selector from the direct child to the group
-            // this assumes that a direct from mainCandidate as a descendant group
-            possibleSelector =
-              groupContainerSelector +
-              " > " +
-              mainChild.tagName.toLowerCase() +
-              " " +
-              finder(mainCandidateGroups[0], { root: mainChild });
+        let possibleSelector;
 
-            const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
-            let unusableSelector = false;
+        // if group is direct child of mainCandidate
+        if (mainCandidate === mainCandidateGroups[0].parentElement) {
+          possibleSelector = groupContainerSelector + " > " + mainCandidate.children[0].tagName.toLowerCase();
+          this.log(`evaluating possible group selector: '${possibleSelector}'`);
 
-            for (let index = 0; index < selected.length; index++) {
-              const element = selected[index];
-              if (!mainCandidateGroups.includes(element)) {
-                unusableSelector = true;
-                break;
-              }
-            }
-            if (unusableSelector) {
-              this.log("no usable selector found: " + key);
-              return;
-            }
-          }
-
-          groupSelector = possibleSelector;
-          sample = mainCandidateGroups[0];
-
-          // remove all "used" candidates from the candidates pool
-          for (const element of mainCandidateGroups) {
-            remove(candidates, element);
-          }
-        } else {
-          sample = mainCandidateGroups[0];
-          const ancestors = getNodeAncestors(sample);
-          let partialSelector = finder(sample, { root: ancestors[ancestors.length - 1] });
-
-          for (let index = ancestors.length - 1; index >= 0; index--) {
-            const ancestor = ancestors[index];
-
-            // should always encounter mainCandidate in loop, as sample is a descendant
-            if (ancestor === mainCandidate) {
-              break;
-            }
-            partialSelector = ancestor.tagName.toLowerCase() + " > " + partialSelector;
-          }
-
-          partialSelector = finder(mainCandidate) + " > " + partialSelector;
-
-          const selected = this._doc.querySelectorAll<HTMLElement>(partialSelector);
+          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
           let unusableSelector = false;
 
           for (let index = 0; index < selected.length; index++) {
@@ -832,85 +808,127 @@ export class ScrapeAnalyzer {
             }
           }
           if (unusableSelector) {
-            this.log("no usable selector found: " + key);
+            possibleSelector = groupContainerSelector + " > *";
+          }
+        } else {
+          // if group is descendant and no direct child, it complicates it a little
+          const mainIndex = groupAncestors.findIndex((node) => node === mainCandidate);
+          const mainChild = groupAncestors[mainIndex + 1];
+
+          // get the selector from the direct child to the group
+          // this assumes that a direct from mainCandidate as a descendant group
+          possibleSelector =
+            groupContainerSelector +
+            " > " +
+            mainChild.tagName.toLowerCase() +
+            " " +
+            finder(mainCandidateGroups[0], { root: mainChild });
+
+          const selected = this._doc.querySelectorAll<HTMLElement>(possibleSelector);
+          let unusableSelector = false;
+
+          for (let index = 0; index < selected.length; index++) {
+            const element = selected[index];
+            if (!mainCandidateGroups.includes(element)) {
+              unusableSelector = true;
+              break;
+            }
+          }
+          if (unusableSelector) {
+            this.log("no usable selector found: " + groupKey);
             return;
           }
+        }
 
-          groupSelector = partialSelector;
+        groupSelector = possibleSelector;
+        sample = mainCandidateGroups[0];
 
-          // remove all "used" candidates from the candidates pool
-          for (const element of mainCandidateGroups) {
-            remove(candidates, element);
-          }
-          // TODO: handle other cases?
+        // remove all "used" candidates from the candidates pool
+        for (const element of mainCandidateGroups) {
+          remove(candidates, element);
         }
       } else {
-        sample = mainCandidate;
-        groupSelector = finder(mainCandidate);
+        sample = mainCandidateGroups[0];
+        const ancestors = getNodeAncestors(sample);
+        let partialSelector = finder(sample, { root: ancestors[ancestors.length - 1] });
+
+        for (let index = ancestors.length - 1; index >= 0; index--) {
+          const ancestor = ancestors[index];
+
+          // should always encounter mainCandidate in loop, as sample is a descendant
+          if (ancestor === mainCandidate) {
+            break;
+          }
+          partialSelector = ancestor.tagName.toLowerCase() + " > " + partialSelector;
+        }
+
+        partialSelector = finder(mainCandidate, { root }) + " > " + partialSelector;
+
+        const selected = this._doc.querySelectorAll<HTMLElement>(partialSelector);
+        let unusableSelector = false;
+
+        for (let index = 0; index < selected.length; index++) {
+          const element = selected[index];
+          if (!mainCandidateGroups.includes(element)) {
+            unusableSelector = true;
+            break;
+          }
+        }
+        if (unusableSelector) {
+          this.log("no usable selector found: " + groupKey);
+          return;
+        }
+
+        groupSelector = partialSelector;
+
+        // remove all "used" candidates from the candidates pool
+        for (const element of mainCandidateGroups) {
+          remove(candidates, element);
+        }
+        // TODO: handle other cases?
       }
-      remove(candidates, mainCandidate);
-      this.log(`Group selector for '${key}'${value.array ? " (array)" : ""}: ${groupSelector}`);
-      const keyResult = (result[key] = { selector: groupSelector } as any);
+    } else {
+      sample = mainCandidate;
+      groupSelector = finder(mainCandidate, { root });
+    }
+    remove(candidates, mainCandidate);
+    this.log(`Group selector for '${groupKey}'${groupConfig.array ? " (array)" : ""}: ${groupSelector}`);
+    const keyResult = { selector: groupSelector, properties: {} as any };
 
+    const usedCandidates = {} as Record<string, HTMLElement>;
+
+    for (const [subKey, subValue] of Object.entries(groupProperties)) {
+      if (subValue.properties) {
+        keyResult.properties[subKey] = this.generateGroupResult(
+          candidates,
+          subKey,
+          subValue,
+          subValue.properties,
+          sample,
+          propertyKey,
+        );
+      } else {
+        keyResult.properties[subKey] = this.generatePropertyResult(
+          subKey,
+          propertyKey,
+          subValue,
+          candidates,
+          sample,
+          usedCandidates,
+        );
+      }
+    }
+    return keyResult;
+  }
+
+  private generateResult(candidates: HTMLElement[], config: Config) {
+    const result = {} as Record<string, any>;
+
+    Object.entries(config.properties).forEach(([key, value]) => {
       if (value.properties) {
-        keyResult.properties = {};
-        const usedCandidates = {} as Record<string, HTMLElement>;
-
-        // TODO: do this properly later on, support arbitrary nesting, arrays etc.
-        Object.entries(value.properties)
-          .filter((entry) => !entry[1].sameAs)
-          .forEach(([subKey, subValue]) => {
-            if (subValue.properties) {
-              throw Error("double nested properties are currently not supported");
-            }
-            const propertyKey = key + "." + subKey;
-
-            // if sameAs, just copy the selector
-            if (subValue.sameAs) {
-              const keyParts = subValue.sameAs.split(".");
-              // assumes that key and subValue.sameAs are on the same level
-              const lastProperty = keyParts[keyParts.length - 1];
-              keyResult.properties[subKey] = keyResult.properties[lastProperty];
-              return;
-            }
-            const subCandidates = candidates.filter((candidate) => sample.contains(candidate));
-
-            // get best candidate within the sample, there must be candidates, else this group should not exist
-            const subMainCandidate = subCandidates.reduce((previous, current) =>
-              (previous.analyzer[propertyKey]?.nodeScore || 0) < (current.analyzer[propertyKey]?.nodeScore || 0)
-                ? current
-                : previous,
-            );
-
-            remove(candidates, subMainCandidate);
-            usedCandidates[propertyKey] = subMainCandidate;
-            keyResult.properties[subKey] = finder(subMainCandidate, { root: sample });
-
-            if (subValue.extract?.type === "attribute") {
-              keyResult.properties[subKey] += "@" + subValue.extract.attribute;
-            }
-            keyResult.properties[subKey] += " | trim";
-          });
-        Object.entries(value.properties)
-          .filter((entry) => entry[1].sameAs)
-          .forEach(([subKey, subValue]) => {
-            if (subValue.properties) {
-              throw Error("double nested properties are currently not supported");
-            }
-            const propertyKey = key + "." + subKey;
-            const usedCandidate = usedCandidates[subValue.sameAs as string];
-
-            if (!usedCandidate) {
-              throw Error(`missing used candidate of ${subValue.sameAs} for ${propertyKey}`);
-            }
-
-            keyResult.properties[subKey] = finder(usedCandidate, { root: sample });
-
-            if (subValue.extract?.type === "attribute") {
-              keyResult.properties[subKey] += "@" + subValue.extract.attribute;
-            }
-            keyResult.properties[subKey] += " | trim";
-          });
+        result[key] = this.generateGroupResult(candidates, key, value, value.properties, this._doc.documentElement);
+      } else {
+        result[key] = this.generatePropertyResult(key, "", value, candidates, this._doc.documentElement, {});
       }
     });
     this.log("Current result:", result);
