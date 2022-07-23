@@ -724,6 +724,10 @@ export class ScrapeAnalyzer {
     } else {
       const subCandidates = this.candidates.filter((candidate) => root.contains(candidate));
 
+      if (!subCandidates.length) {
+        this.log("no candidates for " + propertyKey);
+        return;
+      }
       // get best candidate within the sample, there must be candidates, else this group should not exist
       subMainCandidate = subCandidates.reduce((previous, current) =>
         (previous.analyzer[propertyKey]?.nodeScore || 0) < (current.analyzer[propertyKey]?.nodeScore || 0)
@@ -774,6 +778,10 @@ export class ScrapeAnalyzer {
         );
       });
 
+      if (!mainCandidateGroups.length) {
+        this.log("no groups found in mainCanditate: " + finder(mainCandidate));
+        return;
+      }
       sample = mainCandidateGroups[0];
       let partialSelector: string;
 
@@ -871,7 +879,6 @@ export class ScrapeAnalyzer {
         result[key] = this.generatePropertyResult(key, "", value, this._doc.documentElement, {});
       }
     });
-    this.log("Current result:", result);
     return result;
   }
 
