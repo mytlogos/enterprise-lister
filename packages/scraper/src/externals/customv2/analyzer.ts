@@ -47,6 +47,7 @@ interface PropertyConfig {
 interface Config {
   verbosity?: 0 | 1 | 2;
   properties: Properties;
+  disableCommonWordsFilter?: boolean;
 }
 
 interface PropertyScore {
@@ -1269,12 +1270,18 @@ export class ScrapeAnalyzer {
 
     this.log("**** gathering common text snippets ****");
 
-    this.gatherTextSnippets(this._doc.body);
-    const mostCommonWords = Object.entries(this.commonTextSnippets)
-      .filter((entry) => entry[1] >= 10)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map((value) => value[0]);
+    let mostCommonWords: string[];
+
+    if (!config.disableCommonWordsFilter) {
+      this.gatherTextSnippets(this._doc.body);
+      mostCommonWords = Object.entries(this.commonTextSnippets)
+        .filter((entry) => entry[1] >= 10)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map((value) => value[0]);
+    } else {
+      mostCommonWords = [];
+    }
 
     this.log("**** generating scorer ****");
 
