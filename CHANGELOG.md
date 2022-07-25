@@ -1,3 +1,39 @@
+# [1.41.0](https://github.com/mytlogos/enterprise-lister/compare/v1.40.0...v1.41.0) (2022-07-25)
+
+
+### Bug Fixes
+
+* **scraper:** better selector generation ([1047a27](https://github.com/mytlogos/enterprise-lister/commit/1047a27e5e2863e7ea1b354d68dfce21fcb3bb53))
+* **scraper:** fix date pattern ([f5ada71](https://github.com/mytlogos/enterprise-lister/commit/f5ada71819627e44ff69ec858687573e8a467735))
+* **scraper:** fix datePattern ([6ec3557](https://github.com/mytlogos/enterprise-lister/commit/6ec3557b1c08b42fa8e82fc785cc47df89816e14))
+* **scraper:** fix endless loop ([cd1b1ca](https://github.com/mytlogos/enterprise-lister/commit/cd1b1ca75d7e5d37a7acbd759d98e51e81aacace))
+* **scraper:** fix TypeError ([e18ad1e](https://github.com/mytlogos/enterprise-lister/commit/e18ad1e15ab3f5a9f8b16b59708597f364945c33))
+* **scraper:** handle sameAs better ([2258e9a](https://github.com/mytlogos/enterprise-lister/commit/2258e9aa52ef7bfb2ffb6bc3568a6459a4a13aa1))
+* **scraper:** never skip body ([6c2cf6e](https://github.com/mytlogos/enterprise-lister/commit/6c2cf6edd7ed8afa97f7c7e38b2fc774ea3da7a7))
+* **scraper:** operations on empty array ([17fd99f](https://github.com/mytlogos/enterprise-lister/commit/17fd99f0d76dd800bf19cdf74ca9beeede028b79))
+* **scraper:** reduce on empty array ([b8759ca](https://github.com/mytlogos/enterprise-lister/commit/b8759ca4e26269361c9183e745205ef0a6f95deb))
+
+
+### Features
+
+* **scraper:** add descendantscorer ([798d275](https://github.com/mytlogos/enterprise-lister/commit/798d2756be0b29fe89cea1ff5040f1ad01dffc7b))
+* **scraper:** add initial analyzer ([7b7df83](https://github.com/mytlogos/enterprise-lister/commit/7b7df83b9f53c978ef761f3f0b28c87ed1428273))
+* **scraper:** add more colors to visualization ([b742f09](https://github.com/mytlogos/enterprise-lister/commit/b742f097edd8c04832c39ee44a7e42468108f8d4))
+* **scraper:** always skip some tags ([ebf2e1a](https://github.com/mytlogos/enterprise-lister/commit/ebf2e1afe85b1fd01fac4a2d8e581c3c4f710909))
+* **scraper:** ignore some tags in scoring ([43b03aa](https://github.com/mytlogos/enterprise-lister/commit/43b03aadf3db61d8f99c92b5712cc7828e50876e))
+* **scraper:** improve analyzer ([f23f319](https://github.com/mytlogos/enterprise-lister/commit/f23f319438a0c82f9c1e904129220edb7d4827c3))
+* **scraper:** improve analyzer ([2482f60](https://github.com/mytlogos/enterprise-lister/commit/2482f600836b3b8da445c597a91c36fd5daad7e7))
+* **scraper:** improve analyzer ([9f2a3d3](https://github.com/mytlogos/enterprise-lister/commit/9f2a3d30512154244c4e242690ac5a56dda3387d))
+* **scraper:** improve analyzer ([ff7dbe4](https://github.com/mytlogos/enterprise-lister/commit/ff7dbe44dd964da52429f6f75c7dd9d4b53c6ff2))
+* **scraper:** improve analyzer ([df9ffc4](https://github.com/mytlogos/enterprise-lister/commit/df9ffc40293810f80fc7e349cb93c3d9c27a67d4))
+* **scraper:** improve analyzer ([ce41f18](https://github.com/mytlogos/enterprise-lister/commit/ce41f1817462282e4906b2cd9a9f16ac193a79a8))
+* **scraper:** improve analyzer ([130b300](https://github.com/mytlogos/enterprise-lister/commit/130b3000d4f3d571338fbec8b820d6c9cb5e2b40))
+* **scraper:** improve analyzer ([6f24dee](https://github.com/mytlogos/enterprise-lister/commit/6f24dee37280b6828f2c4b8e0dc9483f3c38f178))
+* **scraper:** improve groupscorer ([3724118](https://github.com/mytlogos/enterprise-lister/commit/372411806d59e4a8005ed99f5edde6e6b946db72))
+* **scraper:** option for common words filter ([fedcb74](https://github.com/mytlogos/enterprise-lister/commit/fedcb74b2df01cd3389fa9415387399d11d14a60))
+* **scraper:** selectors for nested array ([8bb6ca2](https://github.com/mytlogos/enterprise-lister/commit/8bb6ca20300409137648bf2f09330d82f9387162))
+* **scraper:** support nested results ([a2a3ac7](https://github.com/mytlogos/enterprise-lister/commit/a2a3ac700a86cbf7897c80ed0694f970e52b6035))
+
 # [1.40.0](https://github.com/mytlogos/enterprise-lister/compare/v1.39.4...v1.40.0) (2022-07-18)
 
 
