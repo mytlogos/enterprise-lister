@@ -213,7 +213,7 @@ abstract class Scorer {
 }
 
 class DateScorer extends Scorer {
-  public static datePattern = /(Jan|Jun|July?),? \d+(, \d+)?/im;
+  public static datePattern = /(Jan|Feb|Mar|Apr|May|Jun|July?|Aug|Sep|Oct|Nov|Dec),? \d+(, \d+)?/im;
   public static relativePattern = /(\d{1,3}|an?) (min|hour|day|week|month)s?( ago)?/im;
   public static skipAttr = /href|src|class|id|style|type|target|rel/im;
   public readonly minLength = 5;
