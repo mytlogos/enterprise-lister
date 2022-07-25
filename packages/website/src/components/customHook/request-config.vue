@@ -145,7 +145,7 @@ const nextId = idGenerator();
 function model(prop: RequestConfig) {
   return {
     options: Object.assign({}, prop.options || {}, { method: "GET" }),
-    headers: Object.entries((prop.options || {}).headers || {}) as Array<[string, string]>,
+    headers: Object.entries(prop.options?.headers || {}) as Array<[string, string]>,
     regexUrl: prop.regexUrl || { flags: "", pattern: "" },
     transformUrl: prop.transformUrl || "",
     templateUrl: prop.templateUrl || "",
@@ -219,7 +219,7 @@ export default defineComponent({
         // remove it as it is managed separately
         delete result.options.headers;
 
-        result.headers = Object.entries((newValue.options || {}).headers || {});
+        result.headers = Object.entries(newValue.options?.headers || {});
 
         if (deepEqual(result, this.model)) {
           this.logger.info("Did not update model from prop");

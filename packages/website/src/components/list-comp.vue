@@ -24,6 +24,7 @@
 // FIXME do it better with marked list
 // FIXME still is focused after being not shown
 import { List } from "../siteTypes";
+import { defineComponent, PropType } from "vue";
 
 interface Data {
   marked: { external: boolean; id: null | number; index: null | number };
@@ -31,8 +32,6 @@ interface Data {
   markClassExternal: boolean;
   keyListener: (evt: KeyboardEvent) => void;
 }
-
-import { defineComponent, PropType } from "vue";
 
 export interface SelectItemEvent {
   id: number;

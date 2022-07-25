@@ -399,7 +399,7 @@ export default defineComponent({
       const diff = event.current - event.previous;
 
       // TODO: support page difference of more than 1 page
-      if (Math.abs(diff) != 1) {
+      if (Math.abs(diff) !== 1) {
         return;
       }
 
@@ -643,7 +643,7 @@ export default defineComponent({
               }
             });
           } else {
-            return Promise.reject();
+            return Promise.reject(new Error("progress update not successfull"));
           }
         })
         .catch((error) => {

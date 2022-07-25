@@ -94,7 +94,7 @@ export default defineComponent({
     request: createComputedProperty("modelValue", "request"),
   },
   created() {
-    let newValue = undefined;
+    let newValue;
 
     if (!this.modelValue.selector) {
       newValue = { ...this.modelValue, selector: [] };

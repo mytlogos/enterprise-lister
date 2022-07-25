@@ -12,6 +12,8 @@ export function emitBusEvent(event: string, param?: any): void {
 /**
  * Listen to events on the bus.
  */
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 export function onBusEvent(event: string, callback: (...value: any) => void | any): void {
+  // eslint-disable-next-line n/no-callback-literal
   bus.on(event, (...args: any) => callback(...args));
 }

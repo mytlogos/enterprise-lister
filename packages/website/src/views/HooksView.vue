@@ -69,11 +69,11 @@ export default defineComponent({
 
       hooks.sort((a, b) => {
         const compare = a.state.localeCompare(b.state);
-        return compare ? compare : a.name.localeCompare(b.name);
+        return compare || a.name.localeCompare(b.name);
       });
       customHooks.sort((a, b) => {
         const compare = a.state.localeCompare(b.state);
-        return compare ? compare : a.name.localeCompare(b.name);
+        return compare || a.name.localeCompare(b.name);
       });
       this.hooks = hooks;
       this.customHooks = customHooks;

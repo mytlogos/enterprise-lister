@@ -15,6 +15,9 @@ const module: Module<MediaStore, VuexStore> = {
     },
     getMergedProp(state) {
       return <T extends StringKey<SimpleMedium>>(medium: Medium, prop: T): SimpleMedium[T] => {
+        if (!medium.id) {
+          throw Error("missing id on medium");
+        }
         const secondMedium = state.secondaryMedia[medium.id];
         return mergeMediaTocProp(medium, secondMedium?.tocs || [], prop);
       };
@@ -32,8 +35,16 @@ const module: Module<MediaStore, VuexStore> = {
     },
     addMedium(state, medium: Medium | Medium[]) {
       if (Array.isArray(medium)) {
-        medium.forEach((item) => (state.media[item.id] = item));
+        medium.forEach((item) => {
+          if (!item.id) {
+            throw Error("missing id on medium");
+          }
+          state.media[item.id] = item;
+        });
       } else {
+        if (!medium.id) {
+          throw Error("missing id on medium");
+        }
         state.media[medium.id] = medium;
       }
     },

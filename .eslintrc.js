@@ -21,7 +21,7 @@ module.exports = {
         "eslint:recommended",
         "plugin:@typescript-eslint/recommended",
         "plugin:vue/vue3-recommended",
-        "@vue/typescript/recommended",
+        "@vue/eslint-config-standard-with-typescript",
         "plugin:prettier/recommended"
     ],
     "parser": "vue-eslint-parser",
@@ -112,6 +112,17 @@ module.exports = {
         'no-console': 'off',
         'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
         'vue/multi-word-component-names': 'off', // TODO: address this rule and remove this override
-        'vue/no-deprecated-router-link-tag-prop': 'off' // TODO: address this rule and remove this override
+        'vue/no-deprecated-router-link-tag-prop': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/explicit-function-return-type': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/prefer-nullish-coalescing': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/restrict-plus-operands': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/strict-boolean-expressions': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/method-signature-style': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/promise-function-async': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/no-floating-promises': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/return-await': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/no-misused-promises': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/no-dynamic-delete': 'off', // TODO: address this rule and remove this override
+        '@typescript-eslint/return-await': 'off', // TODO: address this rule and remove this override
     },
 };

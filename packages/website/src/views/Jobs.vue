@@ -122,7 +122,7 @@ import { defineComponent } from "vue";
 import { AllJobStats, Job } from "../siteTypes";
 import { absoluteToRelative, formatDate, round } from "../init";
 import { JobStatSummary } from "enterprise-core/src/types";
-import { FilterMatchMode, FilterOperator } from "primevue/api";
+import { FilterMatchMode } from "primevue/api";
 
 interface LiveJob {
   /**
@@ -405,7 +405,7 @@ export default defineComponent({
       const medium = this.$store.getters.getMedium(id);
       const link = match[2];
       const domainName = domainRegex.exec(link);
-      return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName && domainName[2]}`;
+      return `Toc: ${medium ? (medium.title as string) : "Deleted Medium"} of ${domainName?.[2] || ""}`;
     },
     absoluteToRelative(date?: Date | null): string {
       if (!date) {

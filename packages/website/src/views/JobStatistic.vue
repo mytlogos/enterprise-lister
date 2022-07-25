@@ -69,7 +69,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item of data" :key="item.timepoint">
+        <tr v-for="item of data" :key="item.timepoint.toString()">
           <td>{{ formatDate(item.timepoint) }}</td>
           <td>{{ item.avgduration }}</td>
           <td>{{ item.avgnetwork }}</td>
@@ -91,7 +91,6 @@
 <script lang="ts">
 import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
-// @ts-ignore
 import { Chart, LineController, LineElement, PointElement, LinearScale, Title } from "chart.js";
 import { TimeBucket, TimeJobStats } from "../siteTypes";
 import { formatDate, round, hexToRgbA } from "../init";
@@ -99,7 +98,6 @@ import * as storage from "../storage";
 import { interpolateColors } from "../colorscale";
 import { interpolateCool } from "d3-scale-chromatic";
 
-// @ts-ignore
 Chart.register(LineController, LineElement, PointElement, LinearScale, Title);
 
 interface ChartJobDatum extends TimeJobStats {
@@ -505,7 +503,6 @@ export default defineComponent({
           value.right = false;
         }
       });
-      return;
     },
     getTimeRange(): [null | Date, null | Date] {
       const from = new Date(this.fromDate + " " + this.fromTime);
@@ -525,9 +522,9 @@ export default defineComponent({
 
       // hide axis when unused
       // ts-expect-error
-      //(this.chart as Chart).options.scales.yAxes[0].display = leftFilter;
+      // (this.chart as Chart).options.scales.yAxes[0].display = leftFilter;
       // ts-expect-error
-      //(this.chart as Chart).options.scales.yAxes[1].display = rightFilter;
+      // (this.chart as Chart).options.scales.yAxes[1].display = rightFilter;
 
       if (leftFilter) {
         const yValues = this.data.map((value) => value[leftFilter.key]);
@@ -565,7 +562,7 @@ export default defineComponent({
       } else {
         // hide axis when unused
         // ts-expect-error
-        //(this.chart as Chart).options.scales.yAxes[1].display = false;
+        // (this.chart as Chart).options.scales.yAxes[1].display = false;
       }
 
       // remove the points which are not in datetime range
@@ -591,11 +588,11 @@ export default defineComponent({
         dataset.backgroundColor = changeOpacity(colors[index], 0.5);
       }
       // ts-expect-error
-      //this.chart.data.labels = points;
+      // this.chart.data.labels = points;
       // ts-expect-error
-      //this.chart.data.datasets = newDataSet;
+      // this.chart.data.datasets = newDataSet;
       // ts-expect-error
-      //this.chart.update();
+      // this.chart.update();
 
       // no longer dirty as it is "tidied up" now
       this.dirty = false;

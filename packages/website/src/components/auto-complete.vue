@@ -108,7 +108,7 @@ export default defineComponent({
     filterResults(): void {
       const loweredSeach = this.search.toLowerCase();
       this.results = this.items.filter((item) => {
-        return this.toItemTitle(item).toLowerCase().indexOf(loweredSeach) > -1;
+        return this.toItemTitle(item).toLowerCase().includes(loweredSeach);
       });
     },
     onChange(): void {

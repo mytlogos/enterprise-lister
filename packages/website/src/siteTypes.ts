@@ -18,10 +18,6 @@ export enum MediaType {
   IMAGE = 0x8,
 }
 
-export interface Medium {
-  id: number;
-}
-
 export interface TransferMedium {
   mediumId: any;
   listId: any;

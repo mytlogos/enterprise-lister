@@ -64,6 +64,7 @@ export default defineComponent({
       }
       try {
         const newUser = await HttpClient.isLoggedIn();
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         console.log(`Logged In: ${this.loggedIn} New User: `, newUser);
 
         if (!this.loggedIn && newUser) {
@@ -82,7 +83,6 @@ export default defineComponent({
     refreshExternalUser(uuid: string) {
       if (!uuid) {
         console.error("cannot refresh externalUser without data");
-        return;
       }
     },
   },

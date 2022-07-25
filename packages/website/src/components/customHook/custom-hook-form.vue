@@ -231,7 +231,7 @@ export default defineComponent({
         if (newValue.base !== this.baseUrl) {
           this.baseUrl = newValue.base;
         }
-        if (newValue.medium != this.medium) {
+        if (newValue.medium !== this.medium) {
           this.medium = newValue.medium;
         }
         if (newValue.name !== this.name) {

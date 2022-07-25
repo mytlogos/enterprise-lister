@@ -13,4 +13,4 @@ unzip dist-src.zip
 rm dist-src.zip
 
 npm install -g npm@latest
-npm install --production --legacy-peer-deps
+npm install --production

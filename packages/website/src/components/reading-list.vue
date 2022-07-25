@@ -21,6 +21,8 @@
 
 <script lang="ts">
 import listComp, { SelectItemEvent } from "./list-comp.vue";
+import { defineComponent, PropType } from "vue";
+import { List } from "../siteTypes";
 
 interface Data {
   selectOpen: boolean;
@@ -36,9 +38,6 @@ interface Data {
   clickListener: (evt: MouseEvent) => void;
   windowClickListener: (evt: MouseEvent) => void;
 }
-
-import { defineComponent, PropType } from "vue";
-import { List } from "../siteTypes";
 
 export default defineComponent({
   name: "ReadingList",

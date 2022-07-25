@@ -280,7 +280,7 @@ export default defineComponent({
       }
       try {
         const medium = await HttpClient.postCreateMediumFromMediaInWaits(
-          this.item as MediumInWait,
+          this.item,
           this.mergedSimilarItems,
           this.selectedList,
         );

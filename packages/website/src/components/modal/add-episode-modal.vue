@@ -113,7 +113,7 @@ export default defineComponent({
           const secondDiff = secondPart.totalIndex - partIndex;
 
           if (firstDiff < 0 && secondDiff < 0) {
-            return;
+            return undefined;
           } else if (firstDiff < 0) {
             return secondPart;
           } else if (secondDiff < 0) {

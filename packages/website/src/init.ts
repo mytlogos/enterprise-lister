@@ -6,7 +6,7 @@ import { SimpleMedium, FullMediumToc, StringKey } from "./siteTypes";
 export function hexToRgbA(hex: string, opacity = 1) {
   if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex) && (opacity < 1 || opacity > 0)) {
     let c = hex.substring(1).split("");
-    if (c.length == 3) {
+    if (c.length === 3) {
       c = [c[0], c[0], c[1], c[1], c[2], c[2]];
     }
     const fullHex = Number("0x" + c.join(""));
@@ -68,7 +68,7 @@ export type AnyFunction = (...args: any[]) => any;
  * @param timeout time to execute function after last call in ms
  * @returns nothing
  */
-export function debounce<Func extends AnyFunction, thisValue = void>(
+export function debounce<Func extends AnyFunction, thisValue = undefined>(
   this: thisValue,
   func: Func,
   timeout = 500,
@@ -313,8 +313,8 @@ export function isString(value: unknown): value is string {
  * From Stackoverflow: https://stackoverflow.com/a/41956372
  */
 export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number {
-  let lo = -1,
-    hi = array.length;
+  let lo = -1;
+  let hi = array.length;
   while (1 + lo < hi) {
     const mi = lo + ((hi - lo) >> 1);
     if (pred(array[mi])) {
@@ -384,7 +384,7 @@ export function deepEqual(actual: any, expected: any): boolean {
   if (!!actual !== !!expected) {
     return false;
   }
-  if (!!actual === false) {
+  if (!actual) {
     return true;
   }
   if (typeof actual !== typeof expected) {

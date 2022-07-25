@@ -323,12 +323,12 @@ export default defineComponent({
 
   mounted() {
     // TODO: use chart
-    //chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
-    //type: "line",
-    //data: {
+    // chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
+    // type: "line",
+    // data: {
     //  datasets: [],
-    //},
-    //options: {
+    // },
+    // options: {
     //  scales: {
     //    // @ts-ignore
     //    x: {
@@ -351,8 +351,8 @@ export default defineComponent({
     //      title: "Number of Releases",
     //    },
     //  },
-    //},
-    //});
+    // },
+    // });
     this.loadLocalData();
     this.loadMedium();
     this.loadTocs();
@@ -375,8 +375,8 @@ export default defineComponent({
       }
     },
     markBetween() {
-      let lowest: MediumRelease | EpisodeRelease | undefined = undefined;
-      let highest: MediumRelease | EpisodeRelease | undefined = undefined;
+      let lowest: MediumRelease | EpisodeRelease | undefined;
+      let highest: MediumRelease | EpisodeRelease | undefined;
 
       this.selectedRows.forEach((item) => {
         if (!lowest || lowest.combiIndex > item.combiIndex) {
@@ -521,12 +521,11 @@ export default defineComponent({
       }
 
       const yValues = points.map((value) => count.get(value));
-      const xValues = points.map((value) => new Date(value));
+      // const xValues = points.map((value) => new Date(value));
 
       const newDataSet = [];
 
-      //// @ts-expect-error
-      //chart.options.scales.y.scaleLabel.labelString = "Release Count";
+      // chart.options.scales.y.scaleLabel.labelString = "Release Count";
 
       newDataSet.push({
         label: "All",
@@ -538,10 +537,9 @@ export default defineComponent({
         yAxisID: "left-y-axis",
       });
 
-      //chart.data.labels = xValues;
-      // @ts-ignore
-      //chart.data.datasets = newDataSet;
-      //chart.update();
+      // chart.data.labels = xValues;
+      // chart.data.datasets = newDataSet;
+      // chart.update();
 
       // no longer dirty as it is "tidied up" now
       this.dirty = false;
@@ -617,7 +615,7 @@ export default defineComponent({
               }
             });
           } else {
-            return Promise.reject();
+            return Promise.reject(new Error("progress update was not successfull"));
           }
         })
         .catch((error) => {

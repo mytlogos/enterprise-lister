@@ -98,6 +98,8 @@ import { emitBusEvent, onBusEvent } from "../bus";
 import deleteModal from "./modal/delete-modal.vue";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
+import { defineComponent, PropType } from "vue";
+import { ClickListener, KeyboardListener, Column, EmptyObject, Medium, StringKey } from "../siteTypes";
 
 // FIXME user can edit empty rows
 
@@ -115,12 +117,12 @@ interface Data {
   sortProp: string;
   sortOrders: any;
   marked: {
-    id: null | number;
+    id: undefined | number;
     index: null | number;
     prop: null | StringKey<Medium>;
   };
   editCell: {
-    id: null | number;
+    id: undefined | number;
     prop: null | StringKey<Medium>;
     value: null | any;
   };
@@ -137,8 +139,6 @@ interface Data {
   clickListener: ClickListener | null;
   typeListener: KeyboardListener | null;
 }
-import { defineComponent, PropType } from "vue";
-import { ClickListener, KeyboardListener, Column, EmptyObject, Medium, StringKey } from "../siteTypes";
 
 export default defineComponent({
   name: "AppTable",
@@ -160,12 +160,12 @@ export default defineComponent({
       sortProp: "",
       sortOrders: {},
       marked: {
-        id: null,
+        id: undefined,
         index: null,
         prop: null,
       },
       editCell: {
-        id: null,
+        id: undefined,
         prop: null,
         value: null,
       },
@@ -196,9 +196,7 @@ export default defineComponent({
       // filter data by searching all stringified properties by the value of filterKey
       if (filterKey) {
         filterKey = filterKey.toLowerCase();
-        data = data.filter((row) =>
-          Object.keys(row).some((key) => String(row[key]).toLowerCase().indexOf(filterKey) > -1),
-        );
+        data = data.filter((row) => Object.keys(row).some((key) => String(row[key]).toLowerCase().includes(filterKey)));
       }
       if (sortKey) {
         data.sort((a, b) => {
@@ -404,7 +402,7 @@ export default defineComponent({
         prop: this.editCell.prop,
         value: this.editCell.value,
       });
-      this.editCell.id = null;
+      this.editCell.id = undefined;
       this.editCell.prop = null;
       this.editCell.value = null;
     },

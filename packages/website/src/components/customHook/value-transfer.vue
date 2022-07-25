@@ -333,7 +333,7 @@ export default defineComponent({
           newModel.use = toUse;
           newModel.html = "html" in newValue && newValue.html;
           newModel.type = ("type" in newValue && newValue.type) || "string";
-          newModel.mappings = Object.entries((newValue.mapping || {}).include || {});
+          newModel.mappings = Object.entries(newValue.mapping?.include || {});
 
           if (deepEqual(newModel, this.model)) {
             this.logger.info("Did not update model from prop");

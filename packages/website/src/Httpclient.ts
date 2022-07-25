@@ -283,11 +283,11 @@ export const HttpClient = {
   login(userName: string, psw: string): Promise<User> {
     // need to be logged out to login
     if (HttpClient.loggedIn) {
-      return Promise.reject();
+      return Promise.reject(new Error("already logged in"));
     }
 
     if (!userName || !psw) {
-      return Promise.reject();
+      return Promise.reject(new Error("missing username or password"));
     }
 
     return this.queryServer(serverRestApi.api.login.post, {
@@ -299,11 +299,11 @@ export const HttpClient = {
   register(userName: string, psw: string, pswRepeat: string): Promise<User> {
     // need to be logged out to login
     if (HttpClient.loggedIn) {
-      return Promise.reject();
+      return Promise.reject(new Error("already logged in"));
     }
     if (psw !== pswRepeat) {
       // TODO show incorrect password
-      return Promise.reject();
+      return Promise.reject(new Error("repeated password does not match new password"));
     }
 
     return this.queryServer(serverRestApi.api.register.post, {
@@ -365,7 +365,7 @@ export const HttpClient = {
 
   getMedia(media: number | number[]): Promise<Medium | Medium[]> {
     if (Array.isArray(media) && !media.length) {
-      return Promise.reject();
+      return Promise.reject(new Error("empty media array"));
     }
     return this.queryServer(serverRestApi.api.user.medium.get, { mediumId: media });
   },
@@ -597,7 +597,7 @@ export const HttpClient = {
           }
         });
       } else {
-        // @ts-ignore
+        // @ts-expect-error
         init.body = JSON.stringify(query);
       }
     }
