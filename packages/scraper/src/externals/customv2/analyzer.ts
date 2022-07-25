@@ -42,6 +42,7 @@ interface PropertyConfig {
   extract?: { type: "text" } | { type: "attribute"; attribute: string } | { type: "auto" };
   properties?: Record<string, PropertyConfig>;
   array?: boolean;
+  optional?: boolean;
 }
 
 interface Config {
@@ -292,6 +293,27 @@ class TagScorer extends Scorer {
   }
   public score(node: HTMLElement): number {
     return this.tagName === node.tagName.toLowerCase() ? 5 : -5;
+  }
+}
+
+/**
+ * Score a node if it is after another candidate, which has been scored positively with a given candidate.
+ */
+class AfterScorer extends Scorer {
+  public readonly targetProperty: string;
+  public readonly afterProperty: string;
+
+  public constructor(propertyKey: string, targetProperty: string, afterProperty: string) {
+    super("node", "relativeScore", propertyKey);
+    this.targetProperty = targetProperty;
+    this.afterProperty = afterProperty;
+  }
+
+  public score(node: HTMLElement): number {
+    for (const candidate of this.analyzer.getCurrentCandidates()) {
+      candidate.analyzer[this.targetProperty];
+    }
+    return 0;
   }
 }
 

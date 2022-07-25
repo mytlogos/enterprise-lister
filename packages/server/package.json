@@ -20,7 +20,7 @@
     "express-prom-bundle": "^6.5.0",
     "express-ws": "^5.0.2",
     "handlebars": "^4.7.7",
-    "helmet": "^5.1.0",
+    "helmet": "^5.1.1",
     "http-errors": "^2.0.0",
     "localtunnel": "^2.0.2",
     "on-finished": "^2.4.1",
