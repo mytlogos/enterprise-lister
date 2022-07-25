@@ -125,12 +125,12 @@ export default defineComponent({
       this.selectPageValue(this.currentPage - 1);
     },
     selectPageValue(pageValue: number) {
-      const page = this.displayPages.find((page) => page.value === pageValue);
+      const foundPage = this.displayPages.find((page) => page.value === pageValue);
 
-      if (!page) {
+      if (!foundPage) {
         console.warn(`Could not find page: "${pageValue}" in`, this.displayPages);
       } else {
-        this.selectPage(page);
+        this.selectPage(foundPage);
       }
     },
     selectPage(page: Page) {
@@ -142,7 +142,7 @@ export default defineComponent({
 
       const previous = this.currentPage;
       this.currentPage = pageValue;
-      this.$emit("page", { previous: previous, current: pageValue });
+      this.$emit("page", { previous, current: pageValue });
     },
   },
 });

@@ -7,7 +7,7 @@ import { equalsIgnore, getElseSet, isString, unique } from "../tools";
 import mySql from "promise-mysql";
 import { Uuid, MultiSingleValue, EmptyPromise, Optional, Nullable } from "../types";
 import { DatabaseContext } from "./contexts/databaseContext";
-import * as validate from "validate.js";
+import validate from "validate.js";
 import { Counter } from "../counter";
 import { DatabaseError, SchemaError } from "../error";
 
@@ -123,7 +123,7 @@ const UpdateParser: Parser = {
     if (Array.isArray(rawQuery.parameter)) {
       idValue = rawQuery.parameter[rawQuery.parameter.length - 1];
     } else {
-      logger.warn(`suspicious update query: '${query}' with less than two parameter: '${rawQuery.parameter}'`);
+      logger.warn(`suspicious update query: '${query}' with less than two parameter: '${rawQuery.parameter + ""}'`);
       return null;
     }
     return {
@@ -196,13 +196,13 @@ const InsertParser: Parser = {
 
         if (Array.isArray(parameter)) {
           if (!parameter.length) {
-            logger.warn(`not enough values for insert query: '${query}', Parameter: ${parameter}`);
+            logger.warn(`not enough values for insert query: '${query}', Parameter: ${parameter + ""}`);
             return null;
           }
           value = parameter.shift();
         } else {
           if (singleParamUsed) {
-            logger.warn(`not enough values for insert query: '${query}', Parameter: ${parameter}`);
+            logger.warn(`not enough values for insert query: '${query}', Parameter: ${parameter + ""}`);
             return null;
           }
           singleParamUsed = true;
@@ -481,20 +481,20 @@ const StateProcessorImpl: StateProcessorImpl = {
           throw new SchemaError("Number of Values and Placeholders do not match, one value but multiple placeholders");
         }
       }
-      const columnTable = columnSchema.table && columnSchema.table.name;
+      const columnTable = columnSchema.table?.name;
 
       const notNull = columnValue != null;
 
       if (columnSchema.type === ColumnType.INT && notNull && !Number.isInteger(columnValue)) {
-        throw new SchemaError(`non integer value on int column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`non integer value on int column: '${columnName}' in table '${columnTable + ""}'`);
       }
 
       if (columnSchema.type === ColumnType.FLOAT && notNull && !validate.isNumber(columnValue)) {
-        throw new SchemaError(`non number value on float column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`non number value on float column: '${columnName}' in table '${columnTable + ""}'`);
       }
 
       if (columnSchema.type === ColumnType.BOOLEAN && notNull && !validate.isBoolean(columnValue)) {
-        throw new SchemaError(`non boolean value on boolean column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`non boolean value on boolean column: '${columnName}' in table '${columnTable + ""}'`);
       }
 
       if (
@@ -502,7 +502,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         notNull &&
         (!validate.isDate(columnValue) || Number.isNaN(columnValue.getDate()))
       ) {
-        throw new SchemaError(`no valid date value on date column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`no valid date value on date column: '${columnName}' in table '${columnTable + ""}'`);
       }
 
       if (
@@ -510,15 +510,15 @@ const StateProcessorImpl: StateProcessorImpl = {
         notNull &&
         !isString(columnValue)
       ) {
-        throw new SchemaError(`no string value on string column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`no string value on string column: '${columnName}' in table '${columnTable + ""}'`);
       }
 
       if (columnSchema.modifiers.includes(Modifier.NOT_NULL) && !notNull) {
-        throw new SchemaError(`null/undefined on not nullable column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`null/undefined on not nullable column: '${columnName}' in table '${columnTable + ""}'`);
       }
 
       if (columnSchema.modifiers.includes(Modifier.UNSIGNED) && notNull && columnValue < 0) {
-        throw new SchemaError(`negative number on unsigned column: '${columnName}' in table '${columnTable}'`);
+        throw new SchemaError(`negative number on unsigned column: '${columnName}' in table '${columnTable + ""}'`);
       }
     }
   },
@@ -536,7 +536,7 @@ const StateProcessorImpl: StateProcessorImpl = {
         affectedRows: value.affectedRows,
         uuid,
       });
-      logger.debug(`Query: '${query}', Parameter: '${parameter}'`);
+      logger.debug(`Query: '${query}', Parameter: '${parameter + ""}'`);
     }
     return value;
   },

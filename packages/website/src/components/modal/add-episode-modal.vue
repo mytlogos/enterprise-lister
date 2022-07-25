@@ -137,7 +137,7 @@ export default defineComponent({
         totalIndex: this.newPartIndex,
         episodes: Array(this.newEpisodeCount)
           .fill(undefined)
-          .map((_undef, index) => {
+          .map((_undef, index): SimpleEpisode => {
             return {
               id: 0,
               totalIndex: index + 1 + indexOffset,
@@ -150,7 +150,7 @@ export default defineComponent({
                   episodeId: 0,
                 },
               ],
-            } as SimpleEpisode;
+            };
           }),
         title: this.newPartPrefix + " " + this.newPartIndex,
       });

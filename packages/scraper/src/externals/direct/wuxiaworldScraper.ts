@@ -168,7 +168,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       if (!indices) {
         const chapterTitleGroups = chapTitleReg.exec(title);
 
-        if (chapterTitleGroups && chapterTitleGroups[2]) {
+        if (chapterTitleGroups?.[2]) {
           indices = extractIndices(chapterTitleGroups, 1, 2, 4);
         }
       }

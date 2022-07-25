@@ -9,7 +9,7 @@ export class ColumnBuilder {
   private type?: ColumnType;
   private typeSize?: number;
   private default?: any | SqlFunction;
-  private modifier: Set<Modifier> = new Set<Modifier>();
+  private readonly modifier: Set<Modifier> = new Set<Modifier>();
   private primaryKey = false;
   private primaryKeyTypeSize?: number;
   private foreignKey?: ColumnSchema;

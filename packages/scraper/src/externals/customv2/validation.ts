@@ -14,7 +14,7 @@ const schema = function schema<T extends RequireField<Schema, "id" | "type">>(va
   value.$schema = "http://json-schema.org/draft-07/schema#";
 
   // by default forbid any additionally defined properties
-  if (value.type === "object" && value.additionalProperties == undefined) {
+  if (value.type === "object" && value.additionalProperties == null) {
     value.additionalProperties = false;
   }
   return value;

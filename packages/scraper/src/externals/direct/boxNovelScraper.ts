@@ -176,7 +176,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
       if (e.statusCode === 404) {
         throw new MissingResourceError("Toc not found on BoxNovel", tocLink);
       } else {
-        throw e;
+        throw e as Error;
       }
     } else {
       throw e;
@@ -269,14 +269,14 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
       continue;
     }
     seenEpisodes.set(episodeIndices.combi, episodeTitle);
-    const chapterContent = {
+    const chapterContent: TocEpisode = {
       combiIndex: episodeIndices.combi,
       totalIndex: episodeIndices.total,
       partialIndex: episodeIndices.fraction,
       url: link,
       releaseDate: date,
       title: episodeTitle,
-    } as TocEpisode;
+    };
     checkTocContent(chapterContent);
     content.push(chapterContent);
   }

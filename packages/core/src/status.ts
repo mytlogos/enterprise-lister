@@ -47,7 +47,7 @@ function loop(program: AppEventProgram): NodeJS.Timeout {
 }
 
 export class AppStatus {
-  private program: AppEventProgram;
+  private readonly program: AppEventProgram;
   private loopTimeout?: NodeJS.Timeout;
 
   public constructor(program: AppEventProgram) {

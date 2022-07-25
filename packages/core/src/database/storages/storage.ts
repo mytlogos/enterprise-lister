@@ -104,8 +104,10 @@ async function getConnection(pool: mySql.Pool): Promise<mySql.PoolConnection> {
           logger.debug(`Database not up yet. Attempt ${attempt + 1}/${maxAttempts}`);
           // the service may not be up right now, so wait
           await delay(1000);
-        } else {
+        } else if (error instanceof Error) {
           throw error;
+        } else {
+          throw Error(JSON.stringify(error));
         }
       } else {
         console.log("Error rethrown");
@@ -232,7 +234,7 @@ class SqlPoolProvider {
         const database = this.getConfig().database;
 
         if (!database) {
-          this.startPromise = Promise.reject("No database name defined");
+          this.startPromise = Promise.reject(new Error("No database name defined"));
           return;
         }
         manager.initTableSchema(databaseSchema, database);
@@ -240,13 +242,13 @@ class SqlPoolProvider {
           (error) => {
             logger.error(error);
             this.errorAtStart = true;
-            return Promise.reject("Database error occurred while starting");
+            return Promise.reject(new Error("Database error occurred while starting"));
           },
         );
       } catch (e) {
         this.errorAtStart = true;
         logger.error(e);
-        this.startPromise = Promise.reject("Error in database schema");
+        this.startPromise = Promise.reject(new Error("Error in database schema"));
       }
     }
   }

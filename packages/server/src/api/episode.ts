@@ -68,7 +68,7 @@ export const getAllReleases = createHandler(() => {
 export const getDisplayReleases = createHandler((req) => {
   const latest = extractQueryParam(req, "latest");
   const until = extractQueryParam(req, "until", true);
-  const read = extractQueryParam(req, "read", true) ? extractQueryParam(req, "read").toLowerCase() == "true" : null;
+  const read = extractQueryParam(req, "read", true) ? extractQueryParam(req, "read").toLowerCase() === "true" : null;
   const uuid = extractQueryParam(req, "uuid");
   const ignoredLists = stringToNumberList(extractQueryParam(req, "ignore_lists", true) || "");
   const requiredLists = stringToNumberList(extractQueryParam(req, "only_lists", true) || "");

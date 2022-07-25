@@ -69,8 +69,8 @@ function onListening() {
     if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
       continue;
     }
-    debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
-    logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
+    debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface?.address}'`);
+    logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
     break;
   }
 }

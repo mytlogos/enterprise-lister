@@ -152,7 +152,7 @@ async function search(text: string, medium: number): Promise<SearchResult[]> {
       return {
         link: `${BASE_URI}api/books?bibkeys=OLID:${value.cover_edition_key}&jscmd=data&format=json`,
         title: value.title,
-        author: value.author_name && value.author_name[0],
+        author: value.author_name?.[0],
         coverUrl: `https://covers.openlibrary.org/b/id/${value.cover_i}-M.jpg`,
         medium: MediaType.TEXT,
       };

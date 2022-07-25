@@ -24,7 +24,7 @@ const tocSchema: JSONSchema7 = {
           totalIndex: { type: "integer" },
           partialIndex: { type: "integer" },
           url: { type: "string" },
-          //releaseDate?: Date;
+          // releaseDate?: Date;
           noTime: { type: "boolean" },
           locked: { type: "boolean" },
           tocId: { type: "integer" },

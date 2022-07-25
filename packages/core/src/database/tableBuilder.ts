@@ -7,11 +7,11 @@ import { InvalidationType } from "./databaseTypes";
 import { SchemaError } from "../error";
 
 export class TableBuilder {
-  private columns: ColumnSchema[] = [];
+  private readonly columns: ColumnSchema[] = [];
   private name?: string;
   private main?: boolean;
   private invalidationTable?: boolean;
-  private invalidationColumn?: string;
+  private readonly invalidationColumn?: string;
   private readonly databaseBuilder: DataBaseBuilder;
   private readonly stubTable = new TableSchema([], "");
   private readonly invalidations: Array<{ type: InvalidationType; table?: string }> = [];

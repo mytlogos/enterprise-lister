@@ -8,7 +8,7 @@ import {
   TypedQuery,
   ExternalStorageUser,
 } from "../../types";
-import { Errors, promiseMultiSingle } from "../../tools";
+import { promiseMultiSingle } from "../../tools";
 import { v1 as uuidGenerator } from "uuid";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, DuplicateEntityError, MissingEntityError } from "../../error";

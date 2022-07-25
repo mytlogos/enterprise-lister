@@ -60,7 +60,7 @@ const appConfig: Config = {
 // this should not output sensitive information
 for (const [key, value] of Object.entries(appConfig)) {
   if (value == null || Number.isNaN(value)) {
-    throw new ConfigurationError(`Config Error: ${key} has invalid Value: ${value}`);
+    throw new ConfigurationError(`Config Error: ${key} has invalid Value: ${value + ""}`);
   }
 }
 

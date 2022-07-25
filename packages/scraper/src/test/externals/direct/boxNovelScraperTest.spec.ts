@@ -1,3 +1,4 @@
+/* eslint-disable import/first */
 "use strict";
 jest.mock("request-promise-native");
 

@@ -1009,7 +1009,7 @@ export interface PageInfo {
  * T extends R   -> U
  * T extends R[] -> U[]
  */
-export type MultiSingle<T, U> = T extends Array<infer R> ? U[] : U;
+export type MultiSingle<T, U> = T extends any[] ? U[] : U;
 
 /**
  * When Type is either a lone value or an array of values.
@@ -1022,7 +1022,7 @@ export type MultiSingleValue<T> = T[] | T;
  * T extends R   -> U
  * T extends R[] -> U[]
  */
-export type PromiseMultiSingle<T, U> = Promise<T extends Array<infer R> ? U[] : U>;
+export type PromiseMultiSingle<T, U> = Promise<T extends any[] ? U[] : U>;
 
 /**
  * Convenience type of a lone number or an array of numbers.
@@ -1035,7 +1035,7 @@ export type MultiSingleNumber = MultiSingleValue<number>;
  * T extends R   -> Optional<U>   // may be undefined
  * T extends R[] -> U[] | never[] // an array of U or an empty array
  */
-export type OptionalMultiSingle<T, U> = T extends Array<infer R> ? U[] | never[] : Optional<U>;
+export type OptionalMultiSingle<T, U> = T extends any[] ? U[] | never[] : Optional<U>;
 
 /**
  * A Promise with an Optional Value.

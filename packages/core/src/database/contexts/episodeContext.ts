@@ -332,10 +332,12 @@ export class EpisodeContext extends SubContext {
         "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
         [value.novel, value.chapter, value.chapIndex],
       );
-      const episodeId: Optional<number> = resultArray[0] && resultArray[0].episode_id;
+      const episodeId: Optional<number> = resultArray[0]?.episode_id;
 
       if (episodeId == null) {
-        const msg = `could not find an episode for '${value.novel}', '${value.chapter}', '${value.chapIndex}'`;
+        const msg = `could not find an episode for '${value.novel}', '${value.chapter + ""}', '${
+          value.chapIndex + ""
+        }'`;
         logger.info(msg);
         return;
       }
@@ -378,7 +380,7 @@ export class EpisodeContext extends SubContext {
         !value.novel ||
         (!value.chapIndex && !value.chapter) ||
         // do not mark episode if they are a teaser only
-        (value.chapter && value.chapter.match(teaserMatcher))
+        value.chapter?.match(teaserMatcher)
       ) {
         return;
       }
@@ -388,7 +390,7 @@ export class EpisodeContext extends SubContext {
         [value.novel, value.chapter, value.chapIndex],
       );
       // if a similar/same result was mapped to an episode before, get episode_id and update read
-      if (resultArray[0] && resultArray[0].episode_id != null) {
+      if (resultArray[0]?.episode_id != null) {
         const insertResult = await this.query(
           "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
           [uuid, resultArray[0].episode_id],
@@ -506,7 +508,7 @@ export class EpisodeContext extends SubContext {
 
       const episodeSelect = episodeSelectArray[0];
 
-      let episodeId = episodeSelect && episodeSelect.id;
+      let episodeId = episodeSelect?.id;
 
       if (episodeId == null) {
         let episodeIndex = Number(value.chapIndex);
@@ -757,7 +759,7 @@ export class EpisodeContext extends SubContext {
         insertId = result[0].id;
       }
       if (!Number.isInteger(insertId)) {
-        throw new ValidationError(`invalid ID ${insertId}`);
+        throw new ValidationError(`invalid ID ${insertId + ""}`);
       }
 
       if (episode.releases) {

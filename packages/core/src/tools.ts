@@ -88,7 +88,7 @@ export function promiseMultiSingle<T, R>(
   cb: multiSingleCallback<Unpack<T>, R>,
 ): PromiseMultiSingle<T, Unpack<R>> {
   if (typeof cb !== "function") {
-    return Promise.reject(new TypeError(`callback is not a function: '${cb}'`)) as any;
+    return Promise.reject(new TypeError(`callback is not a function: '${cb + ""}'`)) as any;
   }
   if (Array.isArray(item)) {
     const maxIndex = item.length - 1;
@@ -406,7 +406,7 @@ export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
   }
   const [, value, unit] = exec;
   const absolute = new Date();
-  const timeValue = value && value.match("an?") ? 1 : Number(value);
+  const timeValue = value?.match("an?") ? 1 : Number(value);
 
   // should not happen?
   if (Number.isNaN(timeValue)) {
@@ -450,6 +450,7 @@ export const delay = setTimeoutPromise;
  */
 export function equalsRelease(firstRelease?: EpisodeRelease, secondRelease?: EpisodeRelease): boolean {
   return (
+    // eslint-disable-next-line eqeqeq
     firstRelease == secondRelease ||
     (!!firstRelease &&
       !!secondRelease &&
@@ -458,6 +459,7 @@ export function equalsRelease(firstRelease?: EpisodeRelease, secondRelease?: Epi
       firstRelease.tocId === secondRelease.tocId &&
       !!firstRelease.locked === !!secondRelease.locked &&
       // tslint:disable-next-line:triple-equals
+      // eslint-disable-next-line eqeqeq
       firstRelease.sourceType == secondRelease.sourceType &&
       firstRelease.title === secondRelease.title)
   );
@@ -593,10 +595,10 @@ export const ShaHash: ShaHasher = {
 
   innerHash(text, salt) {
     if (!isString(text)) {
-      throw TypeError(`'${text}' not a string`);
+      throw TypeError(`'${text + ""}' not a string`);
     }
     if (!isString(salt)) {
-      throw TypeError(`'${salt}' not a string`);
+      throw TypeError(`'${salt + ""}' not a string`);
     }
     const hash = crypto.createHash("sha512");
     hash.update(salt + text);
@@ -616,7 +618,7 @@ export const Md5Hash: Hasher = {
   hash(text: string) {
     return promisify(() => {
       if (!isString(text)) {
-        throw TypeError(`'${text}' not a string`);
+        throw TypeError(`'${text + ""}' not a string`);
       }
       const newsHash = crypto.createHash("md5").update(text).digest("hex");
       return { hash: newsHash };
@@ -726,7 +728,7 @@ export function promisify<T>(callback: () => T): Promise<T> {
 export function combiIndex(value: Indexable): number {
   const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
   if (Number.isNaN(combi)) {
-    throw new ParseError(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
+    throw new ParseError(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex + ""}'`);
   }
   return combi;
 }
@@ -892,7 +894,7 @@ export function isQuery(value: unknown): value is Query {
  * @param value value to validate as an uuid
  */
 export function validUuid(value: unknown): value is Uuid {
-  return isString(value) && value.length == 36 && validateUuid(value);
+  return isString(value) && value.length === 36 && validateUuid(value);
 }
 
 export interface InternetTester extends EventEmitter.EventEmitter {
@@ -915,8 +917,8 @@ export function getDate(value: string): Nullable<Date> {
  * From Stackoverflow: https://stackoverflow.com/a/41956372
  */
 export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number {
-  let lo = -1,
-    hi = array.length;
+  let lo = -1;
+  let hi = array.length;
   while (1 + lo < hi) {
     const mi = lo + ((hi - lo) >> 1);
     if (pred(array[mi])) {

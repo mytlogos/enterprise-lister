@@ -10,7 +10,7 @@ import { MESSAGE } from "triple-beam";
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
 if (appName) {
-  filePrefix = appName.replace(/[^\w-_]/g, "") + "-";
+  filePrefix = appName.replace(/[^\w-]/g, "") + "-";
 } else {
   filePrefix = "logs";
 }
@@ -87,7 +87,7 @@ const logger = winston.createLogger({
         formatLogFmt(),
         // use logfmt here too
         format.printf((info) => {
-          return `${info.timestamp} ${info.level}: ${info.message}`;
+          return `${info.timestamp + ""} ${info.level}: ${info.message}`;
         }),
       ),
     }),
@@ -171,31 +171,31 @@ export function stringifyLogFmt(data: Record<any, any>): string {
 
   for (const key of keys) {
     let value = data[key];
-    let is_null = false;
+    let isNull = false;
 
     if (value == null) {
-      is_null = true;
+      isNull = true;
       value = "";
     } else {
       if (typeof value.toString === "function") {
         value = value.toString();
       } else {
         console.log("value=", value, "has no toString");
-        value = `${value}`;
+        value = value + "";
       }
     }
 
-    const needs_quoting = value.indexOf(" ") > -1 || value.indexOf("=") > -1;
-    const needs_escaping = value.indexOf('"') > -1 || value.indexOf("\\") > -1;
+    const needsQuoting = value.indexOf(" ") > -1 || value.indexOf("=") > -1;
+    const needsEscaping = value.indexOf('"') > -1 || value.indexOf("\\") > -1;
 
-    if (needs_escaping) value = value.replace(/["\\]/g, "\\$&");
-    if (needs_quoting) value = `"${value}"`;
-    if (value === "" && !is_null) value = '""';
+    if (needsEscaping) value = value.replace(/["\\]/g, "\\$&");
+    if (needsQuoting) value = `"${value + ""}"`;
+    if (value === "" && !isNull) value = '""';
 
     line += key + "=" + value + " ";
   }
 
-  //trim trailing space
+  // trim trailing space
   return line.substring(0, line.length - 1);
 }
 

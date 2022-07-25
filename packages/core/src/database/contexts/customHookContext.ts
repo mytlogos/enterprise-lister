@@ -18,7 +18,7 @@ export class CustomHookContext extends SubContext {
       [value.name, value.state, value.hookState, value.comment],
     );
     if (!Number.isInteger(result.insertId) || result.insertId === 0) {
-      throw new ValidationError(`invalid ID ${result.insertId}`);
+      throw new ValidationError(`invalid ID ${result.insertId + ""}`);
     }
     storeModifications("custom_hook", "insert", result);
 

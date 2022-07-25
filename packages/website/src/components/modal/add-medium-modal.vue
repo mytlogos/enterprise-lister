@@ -10,7 +10,7 @@
       </div>
       <div class="medium">
         <label>Medium:</label>
-        <span v-for="type of mediaTypes" :key="type" class="medium-check-container">
+        <span v-for="type of mediaTypes" :key="type.value" class="medium-check-container">
           <label>
             <input v-model="type.checked" type="checkbox" />
             {{ type.name }}
@@ -86,6 +86,8 @@
 
 <script lang="ts">
 import modal from "./modal.vue";
+import { defineComponent, PropType } from "vue";
+import { List } from "../../siteTypes";
 
 interface GuiMediaType {
   value: number;
@@ -111,10 +113,6 @@ interface Data {
   name: string;
   medium: AddMedium;
 }
-
-import { defineComponent, PropType } from "vue";
-import { List } from "../../siteTypes";
-
 export default defineComponent({
   name: "AddMediumModal",
   components: { modal },

@@ -2,7 +2,6 @@ import {
   checkIndices,
   combiIndex,
   equalsRelease,
-  Errors,
   getElseSet,
   Md5Hash,
   multiSingle,
@@ -19,7 +18,6 @@ import {
   MilliTime,
   MinPart,
   News,
-  Part,
   ScrapeName,
   SimpleEpisode,
   SimpleMedium,
@@ -27,7 +25,6 @@ import {
   Optional,
   NewsResult,
   CombinedEpisode,
-  FullMediumToc,
 } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult, ScrapeItem } from "./externals/types";
@@ -92,7 +89,7 @@ async function processNews({ link, rawNews }: NewsResult): EmptyPromise {
     news = news.filter((value) => value);
   }
   if (!news || (Array.isArray(news) && !news.length)) {
-    return;
+    return undefined;
   }
   // this produces wrong links, so disable it for now
   // set news to medium
@@ -191,7 +188,7 @@ async function getTocMedium(toc: Toc, uuid?: Uuid): Promise<MediumTocContent> {
     episodes: [],
     parts: [],
     url: toc.link,
-    tocId: (currentToc as FullMediumToc).id,
+    tocId: currentToc.id,
     medium,
   };
 
@@ -287,6 +284,7 @@ function partEpisodesReleaseChanges(
         return true;
       }
       nonNewIndices.push(index);
+      return false;
     })
     .map((episodeIndex): SimpleEpisode => {
       const episodeToc = episodeMap.get(episodeIndex);
@@ -328,7 +326,7 @@ function partEpisodesReleaseChanges(
       const episodeValue = episodeMap.get(index);
 
       if (!episodeValue) {
-        throw new ValidationError(`no episodeValue for index ${index} of medium ${value.part && value.part.mediumId}`);
+        throw new ValidationError(`no episodeValue for index ${index} of medium ${value.part?.mediumId}`);
       }
       const currentEpisode = episodeValue.episode;
 
@@ -525,9 +523,11 @@ export async function tocHandler(result: TocResult): EmptyPromise {
   const tocs = result.tocs;
   const uuid = result.uuid;
   logger.debug(
-    `handling tocs ${tocs.length}: ${tocs.map((value) => {
-      return { ...value, content: value.content.length };
-    })} ${uuid}`,
+    `handling tocs ${tocs.length}: ${JSON.stringify(
+      tocs.map((value) => {
+        return { ...value, content: value.content.length };
+      }),
+    )} ${uuid || ""}`,
   );
 
   if (!tocs || !tocs.length) {
@@ -640,7 +640,7 @@ async function processMedia(media: ScrapeMedium[], listType: number, userUuid: U
 
     foundLikeMedia.push(likeMedium);
 
-    if (likeMedium.medium && likeMedium.medium.id) {
+    if (likeMedium.medium?.id) {
       if (value.title.link) {
         updateMediaPromises.push(mediumStorage.addToc(likeMedium.medium.id, value.title.link).then(ignore));
       }

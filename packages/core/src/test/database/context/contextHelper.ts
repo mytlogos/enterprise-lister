@@ -46,11 +46,11 @@ export function checkEmptyQuery(query: Query): EmptyPromise {
     let rejected = false;
     query.on("result", () => {
       rejected = true;
-      reject();
+      reject(new Error("expected empty query"));
     });
-    query.on("error", () => {
+    query.on("error", (err) => {
       rejected = true;
-      reject();
+      reject(err);
     });
     query.on("end", () => {
       if (!rejected) {

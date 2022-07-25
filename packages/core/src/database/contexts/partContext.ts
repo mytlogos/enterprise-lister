@@ -311,7 +311,7 @@ export class PartContext extends SubContext {
     }
     let episodes: Episode[];
 
-    if (part.episodes && part.episodes.length) {
+    if (part.episodes?.length) {
       if (!Number.isInteger(part.episodes[0])) {
         part.episodes.forEach((episode) => {
           episode.partId = partId;

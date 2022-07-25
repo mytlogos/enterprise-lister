@@ -176,18 +176,18 @@ function getPropertyKey(parent: string, key: string): string {
 function deepEquality(a: any, b: any): boolean {
   if (a === b) return true;
 
-  if (typeof a != "object" || typeof b != "object" || a == null || b == null) return false;
+  if (typeof a !== "object" || typeof b !== "object" || a == null || b == null) return false;
 
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
 
-  if (keysA.length != keysB.length) return false;
+  if (keysA.length !== keysB.length) return false;
 
   for (const key of keysA) {
     if (!keysB.includes(key)) return false;
 
     if (typeof a[key] === "function" || typeof b[key] === "function") {
-      if (a[key].toString() != b[key].toString()) return false;
+      if (a[key].toString() !== b[key].toString()) return false;
     } else {
       if (!deepEquality(a[key], b[key])) return false;
     }
@@ -217,6 +217,7 @@ abstract class Scorer {
 class DateScorer extends Scorer {
   public static datePattern =
     /(Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember?)|Dec(ember)?),? \d+(, \d+)?/im;
+
   public static relativePattern = /(\d{1,3}|an?) (min|hour|day|week|month)s?( ago)?/im;
   public static skipAttr = /href|src|class|id|style|type|target|rel/im;
   public readonly minLength = 5;
@@ -273,6 +274,7 @@ class TextScorer extends Scorer {
     this.maxLength = maxLength || Number.POSITIVE_INFINITY;
     this.mostCommonWords = new Set();
   }
+
   public score(node: HTMLElement): number {
     const textValue = (node.textContent || "").replaceAll(/\s+/g, " ");
     return textValue.length <= this.maxLength &&
@@ -291,6 +293,7 @@ class TagScorer extends Scorer {
     super("node", "tagScore", propertyKey);
     this.tagName = tagName;
   }
+
   public score(node: HTMLElement): number {
     return this.tagName === node.tagName.toLowerCase() ? 5 : -5;
   }
@@ -299,6 +302,7 @@ class TagScorer extends Scorer {
 /**
  * Score a node if it is after another candidate, which has been scored positively with a given candidate.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 class AfterScorer extends Scorer {
   public readonly targetProperty: string;
   public readonly afterProperty: string;
@@ -310,9 +314,6 @@ class AfterScorer extends Scorer {
   }
 
   public score(node: HTMLElement): number {
-    for (const candidate of this.analyzer.getCurrentCandidates()) {
-      candidate.analyzer[this.targetProperty];
-    }
     return 0;
   }
 }
@@ -324,16 +325,13 @@ class DescendantScorer extends Scorer {
     super("post", "descendantOfScore", propertyKey);
     this.descendantOf = descendantOf;
   }
+
   public score(node: HTMLElement): number {
     const ancestors = getNodeAncestors(node);
     let foundAncestor = null;
 
     for (const ancestor of ancestors) {
-      if (
-        ancestor.analyzer &&
-        ancestor.analyzer[this.descendantOf] &&
-        ancestor.analyzer[this.descendantOf].nodeScore > 0
-      ) {
+      if (ancestor.analyzer?.[this.descendantOf] && ancestor.analyzer[this.descendantOf].nodeScore > 0) {
         foundAncestor = ancestor;
         break;
       }
@@ -354,14 +352,15 @@ class GroupScorer extends Scorer {
     super("node", "groupScore", propertyKey);
     this.group = Object.keys(properties).map((key) => getPropertyKey(parentKey, key));
   }
+
   public score(node: HTMLElement): number {
     const propertyMap = this.analyzer.getPropertyMap();
 
     // forbid it, that a group key is only present in another group
     // e.g. mediumLink should not be only present in candidates of the only candidate of releases
-    const count = this.group.filter((item) => node.analyzer && node.analyzer[item]).length;
+    const count = this.group.filter((item) => node.analyzer?.[item]).length;
     if (count === this.group.length) {
-      const groupCandidates = {} as Record<string, HTMLElement[]>;
+      const groupCandidates: Record<string, HTMLElement[]> = {};
       // properties in this group, which are also a group
       const groupProperties = this.group.filter((item) => propertyMap.get(item)?.properties);
       // properties in this group, which are not a group
@@ -501,6 +500,7 @@ class AttributeScorer extends Scorer {
     this.attr = attr;
     this.pattern = new RegExp(pattern.pattern, pattern.flags);
   }
+
   public score(node: HTMLElement): number {
     const textValue = node.getAttribute(this.attr) || "";
     return this.pattern.test(textValue) ? 5 : -5;
@@ -586,7 +586,7 @@ function toScorer(properties: Properties, parentKey = ""): Scorer[] {
  */
 // TODO: documentation of the current assumptions about input document
 export class ScrapeAnalyzer {
-  private _doc: Document;
+  private readonly _doc: Document;
   private visited = 0;
   private skipped = 0;
   private candidates: HTMLElement[] = [];
@@ -594,9 +594,9 @@ export class ScrapeAnalyzer {
   public commonTextSnippets: Record<string, number> = {};
   private propertyMap: Map<string, PropertyConfig> = new Map();
   private scorer: Scorer[] = [];
-  private neverScoreTags = ["HEAD", "HTML", "BODY"];
-  private alwaysSkipTag = ["style"];
-  private skipCandidate =
+  private readonly neverScoreTags = ["HEAD", "HTML", "BODY"];
+  private readonly alwaysSkipTag = ["style"];
+  private readonly skipCandidate =
     /-ad-|ai2html|banner|combx|comment|community|cover-wrap|disqus|extra|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|popup|yom-remote/i;
 
   public constructor(document: Document) {
@@ -610,12 +610,12 @@ export class ScrapeAnalyzer {
   private isProbablyVisible(node: HTMLElement) {
     // Have to null-check node.style and node.className.indexOf to deal with SVG and MathML nodes.
     return (
-      (!node.style || node.style.display != "none") &&
+      (!node.style || node.style.display !== "none") &&
       !node.hasAttribute("hidden") &&
-      //check for "fallback-image" so that wikimedia math images are displayed
+      // check for "fallback-image" so that wikimedia math images are displayed
       (!node.hasAttribute("aria-hidden") ||
-        node.getAttribute("aria-hidden") != "true" ||
-        (node.className && node.className.indexOf && node.className.indexOf("fallback-image") !== -1))
+        node.getAttribute("aria-hidden") !== "true" ||
+        (node.className?.includes && node.className.includes("fallback-image")))
     );
   }
 
@@ -717,7 +717,7 @@ export class ScrapeAnalyzer {
         if (value <= 0 && !score.optional) {
           missingRequired.add(score.propertyKey);
           // remove propertyScore if any requirements are missing
-          if (node.analyzer && node.analyzer[score.propertyKey]) {
+          if (node.analyzer?.[score.propertyKey]) {
             delete node.analyzer[score.propertyKey];
           }
         } else if (value) {
@@ -1198,7 +1198,7 @@ export class ScrapeAnalyzer {
       const index = Object.entries(voteIndicesCount).sort((a, b) => b[1] - a[1])[0];
 
       // if no valid votes, return
-      if (index == undefined) {
+      if (index == null) {
         this.log("no valid selector for array group found in " + finder(mainCandidate));
         return;
       }
@@ -1251,7 +1251,7 @@ export class ScrapeAnalyzer {
       }
       this.removeCandidate(mainCandidate);
     }
-    this.log(`Group selector for '${groupKey}'${groupConfig.array ? " (array)" : ""}: ${keyResult.selector}`);
+    this.log(`Group selector for '${groupKey}'${groupConfig.array ? " (array)" : ""}: ${keyResult.selector || ""}`);
     return keyResult;
   }
 
@@ -1364,7 +1364,7 @@ export class ScrapeAnalyzer {
 
     const totalNodes = this._doc.getElementsByTagName("*").length;
     this.log(
-      `all=${totalNodes}; visited=${this.visited}; skipped=${this.skipped}; scored=${this.candidates.length}; mostCommonWords=${mostCommonWords}`,
+      `all=${totalNodes}; visited=${this.visited.toString()}; skipped=${this.skipped.toString()}; scored=${this.candidates.length.toString()}; mostCommonWords=${mostCommonWords.toString()}`,
     );
     return result;
   }
@@ -1386,7 +1386,7 @@ export class ScrapeAnalyzer {
       let highestKey = "";
 
       Object.entries(node.analyzer).forEach(([key, value]) => {
-        if (value.nodeScore != 0) {
+        if (value.nodeScore !== 0) {
           const escapedKey = key.replaceAll(".", "_");
           count++;
           if (value.nodeScore > score) {

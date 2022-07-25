@@ -7,10 +7,10 @@ export function logRequest(req: Request, res: Response, next: () => void) {
   const start = process.hrtime();
 
   function log() {
-    const httpHeader = req.header && req.header("x-forwarded-for");
-    const requestID = req.header && req.header("x-request-id");
+    const httpHeader = req.header?.("x-forwarded-for");
+    const requestID = req.header?.("x-request-id");
 
-    const ip = req.ip || httpHeader || (req.connection && req.connection.remoteAddress) || req.socket.remoteAddress;
+    const ip = req.ip || httpHeader || req.connection?.remoteAddress || req.socket.remoteAddress;
     // time elapsed from request start
     const elapsed = process.hrtime(start);
 
@@ -21,7 +21,7 @@ export function logRequest(req: Request, res: Response, next: () => void) {
     const elapsedMillis = ms.toFixed(3);
 
     const requestData = {
-      ip: ip,
+      ip,
       method: req.method,
       status: res.statusCode,
       url: req.originalUrl || req.path || req.url,

@@ -44,11 +44,11 @@ export class JobScraperManager {
   private readonly queue = new JobQueue({ maxActive: 50 });
   private fetching = false;
   private paused = true;
-  private jobMap = new Map<number | string, Job>();
-  private jobItems = [] as JobItem[];
-  private nameIdList: Array<[number, string]> = [];
+  private readonly jobMap = new Map<number | string, Job>();
+  private readonly jobItems = [] as JobItem[];
+  private readonly nameIdList: Array<[number, string]> = [];
   private intervalId: Optional<Timeout>;
-  private schedulingStrategy: SchedulingStrategy;
+  private readonly schedulingStrategy: SchedulingStrategy;
 
   public constructor() {
     this.schedulingStrategy = Strategies.REQUEST_QUEUE_BALANCED;
@@ -99,7 +99,7 @@ export class JobScraperManager {
         deleteAfterRun: false,
         runImmediately: true,
         interval: MilliTime.MINUTE * 5,
-        name: `${value.hookName}-${ScrapeName.newsAdapter}`,
+        name: `${value.hookName + ""}-${ScrapeName.newsAdapter}`,
         type: ScrapeName.newsAdapter,
         arguments: value.hookName,
       };
@@ -619,7 +619,7 @@ export class JobScraperManager {
 }
 
 function isJobItem(value: any): value is JobItem {
-  return value && value.id;
+  return value?.id;
 }
 
 export const DefaultJobScraper = new JobScraperManager();

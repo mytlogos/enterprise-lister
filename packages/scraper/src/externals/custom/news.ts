@@ -75,7 +75,7 @@ export function createNewsScraper(config: HookConfig): NewsScraper | undefined {
     result = result.map((value) => {
       value.mediumType = config.medium;
 
-      if (value.date == undefined) {
+      if (value.date == null) {
         value.date = new Date();
       }
       return value;

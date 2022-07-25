@@ -8,7 +8,6 @@ import { getHook as getMangaDexHook } from "./direct/mangadexScraper";
 import { getHook as getWebnovelHook } from "./direct/webnovelScraper";
 import { getHook as getQUndergroundHook } from "./direct/undergroundScraper";
 import { getHook as getNovelFullHook } from "./direct/novelFullScraper";
-import { getHook as getBoxnovelHook } from "./direct/boxNovelScraper";
 import { getHook as getOpenLibraryHook } from "./direct/openLibraryScraper";
 import { ContentDownloader, Hook, NewsScraper, SearchScraper, TocScraper, TocSearchScraper } from "./types";
 import { customHookStorage, hookStorage } from "enterprise-core/dist/database/storages/storage";

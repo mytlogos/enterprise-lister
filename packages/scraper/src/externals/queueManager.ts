@@ -112,6 +112,7 @@ export class Queue {
 
     return new Promise((resolve, reject) => {
       const worker = () => {
+        // eslint-disable-next-line promise/param-names
         return new Promise((subResolve, subReject) => {
           try {
             setContext("worker");
@@ -178,7 +179,7 @@ const fastQueues: Map<string, Queue> = new Map();
 export type Callback = () => Promise<any>;
 
 function methodToRequest(options: Optional<Options>, toUseRequest: Request) {
-  const method = options && options.method ? options.method : "";
+  const method = options?.method ? options.method : "";
 
   switch (method.toLowerCase()) {
     case "get":
@@ -429,18 +430,3 @@ export const queueWork = (key: string, callback: Callback): Promise<any> => {
 export const queueFastWork = (key: string, callback: Callback): Promise<any> => {
   return queueWithLimit(key, callback, 50, fastQueues);
 };
-
-/*
-parse5-parser-stream
-
-// Fetch the page content and obtain it's <head> node
-http.get('http://inikulin.github.io/parse5/', res => {
-    const parser = new ParserStream();
-
-    parser.once('finish', () => {
-        console.log(parser.document.childNodes[1].childNodes[0].tagName); //> 'head'
-    });
-
-    res.pipe(parser);
-});
- */

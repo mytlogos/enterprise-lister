@@ -261,7 +261,7 @@ export class JobContext extends SubContext {
     }
     if (["type", "name", "arguments"].includes(column)) {
       if (!isString(value)) {
-        throw new TypeError(`trying to delete jobs from column '${column}' without a string value: ${value}`);
+        throw new TypeError(`trying to delete jobs from column '${column}' without a string value: ${value + ""}`);
       }
       const like = escapeLike(value, {
         noBoundaries: true,
@@ -338,7 +338,7 @@ export class JobContext extends SubContext {
       let runAfter: Optional<number>;
 
       // @ts-expect-error
-      if (value.runAfter && value.runAfter.id && Number.isInteger(value.runAfter.id)) {
+      if (value.runAfter?.id && Number.isInteger(value.runAfter.id)) {
         // @ts-expect-error
         runAfter = value.runAfter.id;
       }
@@ -615,9 +615,9 @@ export class JobContext extends SubContext {
       });
 
       const queries = jobTrack.queryCount;
-      const network_received = jobTrack.network.received || 0;
-      const network_send = jobTrack.network.sent || 0;
-      const network_requests = jobTrack.network.count || 0;
+      const networkReceived = jobTrack.network.received || 0;
+      const networkSend = jobTrack.network.sent || 0;
+      const networkRequests = jobTrack.network.count || 0;
 
       return this.query(
         "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments, created, updated, deleted, queries, network_queries, network_received, network_send)" +
@@ -640,9 +640,9 @@ export class JobContext extends SubContext {
           updated,
           deleted,
           queries,
-          network_requests,
-          network_received,
-          network_send,
+          networkRequests,
+          networkReceived,
+          networkSend,
         ],
       );
     });

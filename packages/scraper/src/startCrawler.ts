@@ -28,10 +28,11 @@ collectDefaultMetrics({
 });
 
 // start websocket server
+// eslint-disable-next-line import/first
 import "./websocket";
 
 const debugMessenger = debug("enterprise-lister:crawler");
-logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
+logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
 // first start storage, then crawler, as crawler depends on storage
 startStorage();
 startCrawler();
@@ -171,8 +172,8 @@ function onListening() {
       if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
         continue;
       }
-      debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
-      logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
+      debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface?.address}'`);
+      logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
       break;
     }
   }

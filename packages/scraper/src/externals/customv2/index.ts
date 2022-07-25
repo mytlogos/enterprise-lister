@@ -243,7 +243,7 @@ function createSearchScraper(config: HookConfig): SearchScraper | undefined {
 function templateString(value: string, context: Context): string {
   const originalValue = value;
   const braces: Array<{ type: string; index: number }> = [];
-  let lastBrace: { type: string; index: number } | undefined = undefined;
+  let lastBrace: { type: string; index: number } | undefined;
 
   for (let index = 0; index < value.length; index++) {
     const char = value[index];
@@ -320,7 +320,7 @@ function templateString(value: string, context: Context): string {
       variableValue = variableValue[Number(match[2])];
     }
 
-    if (variableValue == undefined) {
+    if (variableValue == null) {
       throw new CustomHookError(
         `Variable '${originalName}' has no value!`,
         CustomHookErrorCodes.TEMPLATE_VARIABLE_NO_VALUE,

@@ -183,9 +183,10 @@ export function runAsync<T extends (...fArgs: any[]) => any>(
       stores.set(id, store);
     }
     try {
+      // eslint-disable-next-line n/no-callback-literal
       const result = callback(...args);
 
-      if (result && result.then) {
+      if (result?.then) {
         return await result;
       }
       return result;

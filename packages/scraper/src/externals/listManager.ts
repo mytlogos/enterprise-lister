@@ -207,7 +207,7 @@ class SimpleNovelUpdates implements ListManager {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       method: "POST",
-      body: `action=nu_prevew&pagenum=${page}&intUserID=${this.id}&isMobile=`,
+      body: `action=nu_prevew&pagenum=${page}&intUserID=${this.id as string}&isMobile=`,
     });
 
     const lastIndexOf = response.lastIndexOf("}");
@@ -546,7 +546,7 @@ export interface ScrapeMedium {
 }
 
 async function novelUpdatesTocAdapter(uri: string) {
-  /*const pageInfo = await storage.getPageInfo(uri, "scraped");
+  /* const pageInfo = await storage.getPageInfo(uri, "scraped");
 
     if (pageInfo.values) {
         const date = new Date(pageInfo.values[0]);
@@ -554,7 +554,7 @@ async function novelUpdatesTocAdapter(uri: string) {
             // do not search a toc on novelupdates twice a day
             return [];
         }
-    }*/
+    } */
   const medium: ScrapeMedium = {
     current: {},
     latest: {},

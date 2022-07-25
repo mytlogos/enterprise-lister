@@ -1,4 +1,4 @@
-/*eslint-env es6:false*/
+/* eslint-env es6:false */
 /*
  * Copyright (c) 2010 Arc90 Inc
  *
@@ -52,30 +52,30 @@ declare global {
  * @param {Object} options The options object.
  */
 export class Readability {
-  private FLAG_STRIP_UNLIKELYS = 0x1;
-  private FLAG_WEIGHT_CLASSES = 0x2;
-  private FLAG_CLEAN_CONDITIONALLY = 0x4;
+  private readonly FLAG_STRIP_UNLIKELYS = 0x1;
+  private readonly FLAG_WEIGHT_CLASSES = 0x2;
+  private readonly FLAG_CLEAN_CONDITIONALLY = 0x4;
 
   // https://developer.mozilla.org/en-US/docs/Web/API/Node/nodeType
-  private ELEMENT_NODE = 1;
-  private TEXT_NODE = 3;
+  private readonly ELEMENT_NODE = 1;
+  private readonly TEXT_NODE = 3;
 
   // Max number of nodes supported by this parser. Default: 0 (no limit)
-  private DEFAULT_MAX_ELEMS_TO_PARSE = 0;
+  private readonly DEFAULT_MAX_ELEMS_TO_PARSE = 0;
 
   // The number of top candidates to consider when analysing how
   // tight the competition is among candidates.
-  private DEFAULT_N_TOP_CANDIDATES = 5;
+  private readonly DEFAULT_N_TOP_CANDIDATES = 5;
 
   // Element tags to score by default.
-  private DEFAULT_TAGS_TO_SCORE = "section,h2,h3,h4,h5,h6,p,td,pre".toUpperCase().split(",");
+  private readonly DEFAULT_TAGS_TO_SCORE = "section,h2,h3,h4,h5,h6,p,td,pre".toUpperCase().split(",");
 
   // The default number of chars an article must have in order to return a result
-  private DEFAULT_CHAR_THRESHOLD = 500;
+  private readonly DEFAULT_CHAR_THRESHOLD = 500;
 
   // All of the regular expressions in use within readability.
   // Defined up here so we don't instantiate them repeatedly in loops.
-  private REGEXPS = {
+  private readonly REGEXPS = {
     // NOTE: These two regular expressions are duplicated in
     // Readability-readerable.js. Please keep both copies in sync.
     unlikelyCandidates:
@@ -105,13 +105,21 @@ export class Readability {
       /^(Article|AdvertiserContentArticle|NewsArticle|AnalysisNewsArticle|AskPublicNewsArticle|BackgroundNewsArticle|OpinionNewsArticle|ReportageNewsArticle|ReviewNewsArticle|Report|SatiricalArticle|ScholarlyArticle|MedicalScholarlyArticle|SocialMediaPosting|BlogPosting|LiveBlogPosting|DiscussionForumPosting|TechArticle|APIReference)$/,
   };
 
-  private UNLIKELY_ROLES = ["menu", "menubar", "complementary", "navigation", "alert", "alertdialog", "dialog"];
+  private readonly UNLIKELY_ROLES = [
+    "menu",
+    "menubar",
+    "complementary",
+    "navigation",
+    "alert",
+    "alertdialog",
+    "dialog",
+  ];
 
-  private DIV_TO_P_ELEMS = new Set(["BLOCKQUOTE", "DL", "DIV", "IMG", "OL", "P", "PRE", "TABLE", "UL"]);
+  private readonly DIV_TO_P_ELEMS = new Set(["BLOCKQUOTE", "DL", "DIV", "IMG", "OL", "P", "PRE", "TABLE", "UL"]);
 
-  private ALTER_TO_DIV_EXCEPTIONS = ["DIV", "ARTICLE", "SECTION", "P"];
+  private readonly ALTER_TO_DIV_EXCEPTIONS = ["DIV", "ARTICLE", "SECTION", "P"];
 
-  private PRESENTATIONAL_ATTRIBUTES = [
+  private readonly PRESENTATIONAL_ATTRIBUTES = [
     "align",
     "background",
     "bgcolor",
@@ -126,11 +134,11 @@ export class Readability {
     "vspace",
   ];
 
-  private DEPRECATED_SIZE_ATTRIBUTE_ELEMS = ["TABLE", "TH", "TD", "HR", "PRE"];
+  private readonly DEPRECATED_SIZE_ATTRIBUTE_ELEMS = ["TABLE", "TH", "TD", "HR", "PRE"];
 
   // The commented out elements qualify as phrasing content but tend to be
   // removed by readability when put into paragraphs, so we ignore them here.
-  private PHRASING_ELEMS = [
+  private readonly PHRASING_ELEMS = [
     // "CANVAS", "IFRAME", "SVG", "VIDEO",
     "ABBR",
     "AUDIO",
@@ -174,10 +182,10 @@ export class Readability {
   ];
 
   // These are the classes that readability sets itself.
-  private CLASSES_TO_PRESERVE = ["page"];
+  private readonly CLASSES_TO_PRESERVE = ["page"];
 
   // These are the list of HTML entities that need to be escaped.
-  private HTML_ESCAPE_MAP = {
+  private readonly HTML_ESCAPE_MAP = {
     lt: "<",
     gt: ">",
     amp: "&",
@@ -185,23 +193,23 @@ export class Readability {
     apos: "'",
   };
 
-  private _doc: Document;
+  private readonly _doc: Document;
   private _articleTitle: string | null;
   private _articleByline: unknown | null;
   private _articleDir: unknown | null;
-  private _articleSiteName: unknown | null;
-  private _attempts: Array<{ articleContent: HTMLElement; textLength: number }>;
-  private _debug: NonNullable<ReadabilityOptions["debug"]>;
-  private _maxElemsToParse: NonNullable<ReadabilityOptions["maxElemsToParse"]>;
-  private _nbTopCandidates: NonNullable<ReadabilityOptions["nbTopCandidates"]>;
-  private _charThreshold: NonNullable<ReadabilityOptions["charThreshold"]>;
-  private _classesToPreserve: NonNullable<ReadabilityOptions["classesToPreserve"]>;
-  private _keepClasses: NonNullable<ReadabilityOptions["keepClasses"]>;
-  private _serializer: NonNullable<ReadabilityOptions["serializer"]>;
-  private _disableJSONLD: NonNullable<ReadabilityOptions["disableJSONLD"]>;
+  private readonly _articleSiteName: unknown | null;
+  private readonly _attempts: Array<{ articleContent: HTMLElement; textLength: number }>;
+  private readonly _debug: NonNullable<ReadabilityOptions["debug"]>;
+  private readonly _maxElemsToParse: NonNullable<ReadabilityOptions["maxElemsToParse"]>;
+  private readonly _nbTopCandidates: NonNullable<ReadabilityOptions["nbTopCandidates"]>;
+  private readonly _charThreshold: NonNullable<ReadabilityOptions["charThreshold"]>;
+  private readonly _classesToPreserve: NonNullable<ReadabilityOptions["classesToPreserve"]>;
+  private readonly _keepClasses: NonNullable<ReadabilityOptions["keepClasses"]>;
+  private readonly _serializer: NonNullable<ReadabilityOptions["serializer"]>;
+  private readonly _disableJSONLD: NonNullable<ReadabilityOptions["disableJSONLD"]>;
   private _flags: number;
 
-  private log: (...args: unknown[]) => void;
+  private readonly log: (...args: unknown[]) => void;
   private _articleLang?: string | null;
 
   public constructor(doc: Document, options?: ReadabilityOptions) {
@@ -237,8 +245,8 @@ export class Readability {
     // Control whether log messages are sent to the console
     if (this._debug) {
       const logNode = function (node: Element) {
-        if (node.nodeType == node.TEXT_NODE) {
-          return `${node.nodeName} ("${node.textContent}")`;
+        if (node.nodeType === node.TEXT_NODE) {
+          return `${node.nodeName} ("${node.textContent || ""}")`;
         }
 
         const attrPairs = Array.from(node.attributes || [], function (attr) {
@@ -252,7 +260,7 @@ export class Readability {
         if (typeof global.dump !== "undefined") {
           const msg = Array.prototype.map
             .call(values, function (x) {
-              return x && x.nodeName ? logNode(x) : x;
+              return x?.nodeName ? logNode(x) : x;
             })
             .join(" ");
           // @ts-expect-error
@@ -260,7 +268,7 @@ export class Readability {
         } else if (typeof console !== "undefined") {
           const args = Array.from(values, (arg) => {
             // @ts-expect-error
-            if (arg && arg.nodeType == this.ELEMENT_NODE) {
+            if (arg && arg.nodeType === this.ELEMENT_NODE) {
               // @ts-expect-error
               return logNode(arg);
             }
@@ -440,7 +448,7 @@ export class Readability {
     const className = (node.getAttribute("class") || "")
       .split(/\s+/)
       .filter(function (cls: string) {
-        return classesToPreserve.indexOf(cls) != -1;
+        return classesToPreserve.includes(cls);
       })
       .join(" ");
 
@@ -469,7 +477,7 @@ export class Readability {
 
     function toAbsoluteURI(uri: string) {
       // Leave hash links alone if the base URI matches the document URI:
-      if (baseURI == documentURI && uri.charAt(0) == "#") {
+      if (baseURI === documentURI && uri.charAt(0) === "#") {
         return uri;
       }
 
@@ -492,14 +500,14 @@ export class Readability {
           // if the link only contains simple text content, it can be converted to a text node
           if (link.childNodes.length === 1 && link.childNodes[0].nodeType === this.TEXT_NODE) {
             const text = this._doc.createTextNode(link.textContent || "");
-            link.parentNode!.replaceChild(text, link);
+            link.parentNode?.replaceChild(text, link);
           } else {
             // if the link has multiple children, they should all be preserved
             const container = this._doc.createElement("span");
             while (link.firstChild) {
               container.appendChild(link.firstChild);
             }
-            link.parentNode!.replaceChild(container, link);
+            link.parentNode?.replaceChild(container, link);
           }
         } else {
           link.setAttribute("href", toAbsoluteURI(href));
@@ -536,11 +544,7 @@ export class Readability {
     let node: HTMLElement | null = articleContent;
 
     while (node) {
-      if (
-        node.parentNode &&
-        ["DIV", "SECTION"].includes(node.tagName) &&
-        !(node.id && node.id.startsWith("readability"))
-      ) {
+      if (node.parentNode && ["DIV", "SECTION"].includes(node.tagName) && !node.id?.startsWith("readability")) {
         if (this._isElementWithoutContent(node)) {
           // @ts-expect-error
           node = this._removeAndGetNext(node);
@@ -594,7 +598,7 @@ export class Readability {
       // If the resulting title is too short (3 words or fewer), remove
       // the first part instead:
       if (wordCount(curTitle) < 3) curTitle = origTitle.replace(/[^|\-\\/>»]*[|\-\\/>»](.*)/gi, "$1");
-    } else if (curTitle.indexOf(": ") !== -1) {
+    } else if (curTitle.includes(": ")) {
       // Check if we have an heading containing this exact string, so we
       // could assume it's the full title.
       const headings = this._concatNodeLists(doc.getElementsByTagName("h1"), doc.getElementsByTagName("h2"));
@@ -630,7 +634,7 @@ export class Readability {
     const curTitleWordCount = wordCount(curTitle);
     if (
       curTitleWordCount <= 4 &&
-      (!titleHadHierarchicalSeparators || curTitleWordCount != wordCount(origTitle.replace(/[|\-\\/>»]+/g, "")) - 1)
+      (!titleHadHierarchicalSeparators || curTitleWordCount !== wordCount(origTitle.replace(/[|\-\\/>»]+/g, "")) - 1)
     ) {
       curTitle = origTitle;
     }
@@ -665,7 +669,7 @@ export class Readability {
   private _nextNode(node: Node) {
     let next: Node | null = node;
 
-    while (next && next.nodeType != this.ELEMENT_NODE && this.REGEXPS.whitespace.test(next.textContent || "")) {
+    while (next && next.nodeType !== this.ELEMENT_NODE && this.REGEXPS.whitespace.test(next.textContent || "")) {
       next = next.nextSibling;
     }
     return next;
@@ -690,10 +694,10 @@ export class Readability {
       // or non-whitespace. This leaves behind the first <br> in the chain
       // (which will be replaced with a <p> later).
       // @ts-expect-error
-      while (next && (next = this._nextNode(next)) && next.tagName == "BR") {
+      while (next && (next = this._nextNode(next)) && next.tagName === "BR") {
         replaced = true;
         const brSibling = next.nextSibling;
-        next.parentNode!.removeChild(next);
+        next.parentNode?.removeChild(next);
         next = brSibling;
       }
 
@@ -702,17 +706,17 @@ export class Readability {
       // chain.
       if (replaced) {
         const p = this._doc.createElement("p");
-        br.parentNode!.replaceChild(p, br);
+        br.parentNode?.replaceChild(p, br);
 
         next = p.nextSibling;
         while (next) {
           // If we've hit another <br><br>, we're done adding children to this <p>.
           // @ts-expect-error
-          if (next.tagName == "BR") {
+          if (next.tagName === "BR") {
             // @ts-expect-error
             const nextElem = this._nextNode(next.nextSibling);
             // @ts-expect-error
-            if (nextElem && nextElem.tagName == "BR") break;
+            if (nextElem && nextElem.tagName === "BR") break;
           }
           // @ts-expect-error
           if (!this._isPhrasingContent(next)) break;
@@ -735,11 +739,11 @@ export class Readability {
   private _setNodeTag(node: Element, tag: string) {
     this.log("_setNodeTag", node, tag);
 
-    const replacement = node.ownerDocument!.createElement(tag);
+    const replacement = node.ownerDocument.createElement(tag);
     while (node.firstChild) {
       replacement.appendChild(node.firstChild);
     }
-    node.parentNode!.replaceChild(replacement, node);
+    node.parentNode?.replaceChild(replacement, node);
     if (node.readability) replacement.readability = node.readability;
 
     for (let i = 0; i < node.attributes.length; i++) {
@@ -826,7 +830,7 @@ export class Readability {
       // @ts-expect-error
       const next = this._nextNode(br.nextSibling);
       // @ts-expect-error
-      if (next && next.tagName == "P") br.parentNode.removeChild(br);
+      if (next && next.tagName === "P") br.parentNode.removeChild(br);
     });
 
     // Remove single-cell tables
@@ -896,7 +900,7 @@ export class Readability {
 
   private _removeAndGetNext(node: Element) {
     const nextNode = this._getNextNode(node, true);
-    node.parentNode!.removeChild(node);
+    node.parentNode?.removeChild(node);
     return nextNode;
   }
 
@@ -922,7 +926,7 @@ export class Readability {
     do {
       node = node.parentNode as Element;
     } while (node && !node.nextElementSibling);
-    return node && node.nextElementSibling;
+    return node?.nextElementSibling;
   }
 
   // compares second text to first one
@@ -954,7 +958,7 @@ export class Readability {
     }
 
     if (
-      (rel === "author" || (itemprop && itemprop.indexOf("author") !== -1) || this.REGEXPS.byline.test(matchString)) &&
+      (rel === "author" || itemprop?.includes("author") || this.REGEXPS.byline.test(matchString)) &&
       this._isValidByline(node.textContent || "")
     ) {
       this._articleByline = (node.textContent || "").trim();
@@ -988,7 +992,7 @@ export class Readability {
     this.log("**** grabArticle ****");
     const doc = this._doc;
     const isPaging = page !== null;
-    page = page ? page : this._doc.body;
+    page = page || this._doc.body;
 
     // We can't grab an article if we don't have a page!
     if (!page) {
@@ -1079,7 +1083,7 @@ export class Readability {
           continue;
         }
 
-        if (this.DEFAULT_TAGS_TO_SCORE.indexOf(node.tagName) !== -1) {
+        if (this.DEFAULT_TAGS_TO_SCORE.includes(node.tagName)) {
           elementsToScore.push(node);
         }
 
@@ -1116,7 +1120,7 @@ export class Readability {
           // algorithm with DIVs with are, in practice, paragraphs.
           if (this._hasSingleTagInsideElement(node, "P") && this._getLinkDensity(node) < 0.25) {
             const newNode = node.children[0];
-            node.parentNode!.replaceChild(newNode, node);
+            node.parentNode?.replaceChild(newNode, node);
             node = newNode;
             elementsToScore.push(node);
           } else if (!this._hasChildBlockElement(node)) {
@@ -1292,7 +1296,7 @@ export class Readability {
         // If the top candidate is the only child, use parent instead. This will help sibling
         // joining logic when adjacent content is actually located in parent's sibling node.
         parentOfTopCandidate = topCandidate.parentNode;
-        while (parentOfTopCandidate.tagName != "BODY" && parentOfTopCandidate.children.length == 1) {
+        while (parentOfTopCandidate.tagName !== "BODY" && parentOfTopCandidate.children.length === 1) {
           topCandidate = parentOfTopCandidate;
           parentOfTopCandidate = topCandidate.parentNode;
         }
@@ -1350,7 +1354,7 @@ export class Readability {
         if (append) {
           this.log("Appending node:", sibling);
 
-          if (this.ALTER_TO_DIV_EXCEPTIONS.indexOf(sibling.nodeName) === -1) {
+          if (!this.ALTER_TO_DIV_EXCEPTIONS.includes(sibling.nodeName)) {
             // We have a node that isn't a common block level element, like a form or td tag.
             // Turn it into a div so it doesn't get filtered out later by accident.
             this.log("Altering sibling:", sibling, "to div.");
@@ -1409,15 +1413,15 @@ export class Readability {
 
         if (this._flagIsActive(this.FLAG_STRIP_UNLIKELYS)) {
           this._removeFlag(this.FLAG_STRIP_UNLIKELYS);
-          this._attempts.push({ articleContent: articleContent, textLength: textLength });
+          this._attempts.push({ articleContent, textLength });
         } else if (this._flagIsActive(this.FLAG_WEIGHT_CLASSES)) {
           this._removeFlag(this.FLAG_WEIGHT_CLASSES);
-          this._attempts.push({ articleContent: articleContent, textLength: textLength });
+          this._attempts.push({ articleContent, textLength });
         } else if (this._flagIsActive(this.FLAG_CLEAN_CONDITIONALLY)) {
           this._removeFlag(this.FLAG_CLEAN_CONDITIONALLY);
-          this._attempts.push({ articleContent: articleContent, textLength: textLength });
+          this._attempts.push({ articleContent, textLength });
         } else {
-          this._attempts.push({ articleContent: articleContent, textLength: textLength });
+          this._attempts.push({ articleContent, textLength });
           // No luck after removing flags, just return the longest text we found during the different loops
           this._attempts.sort((a, b) => b.textLength - a.textLength);
 
@@ -1457,7 +1461,7 @@ export class Readability {
    * @return Boolean - whether the input string is a byline.
    */
   private _isValidByline(byline: string | String): boolean {
-    if (typeof byline == "string" || byline instanceof String) {
+    if (typeof byline === "string" || byline instanceof String) {
       byline = byline.trim();
       return byline.length > 0 && byline.length < 100;
     }
@@ -1495,13 +1499,13 @@ export class Readability {
   private _getJSONLD(doc: Document): Metadata {
     const scripts = this._getAllNodesWithTag(doc, ["script"]);
 
-    let metadata: Metadata | undefined = undefined;
+    let metadata: Metadata | undefined;
 
     this._forEachNode(scripts, function (jsonLdElement: Element) {
       if (!metadata && jsonLdElement.getAttribute("type") === "application/ld+json") {
         try {
           // Strip CDATA markers if present
-          const content = jsonLdElement.textContent!.replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "");
+          const content = jsonLdElement.textContent?.replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "") || "";
           let parsed = JSON.parse(content);
           if (!parsed["@context"] || !parsed["@context"].match(/^https?:\/\/schema\.org$/)) {
             return;
@@ -1568,7 +1572,7 @@ export class Readability {
         }
       }
     });
-    return metadata ? metadata : {};
+    return metadata || {};
   }
 
   /**
@@ -1639,7 +1643,7 @@ export class Readability {
     }
 
     // get author
-    metadata.byline = jsonld.byline || values["dc:creator"] || values["dcterm:creator"] || values["author"];
+    metadata.byline = jsonld.byline || values["dc:creator"] || values["dcterm:creator"] || values.author;
 
     // get description
     metadata.excerpt =
@@ -1787,7 +1791,7 @@ export class Readability {
    **/
   private _hasSingleTagInsideElement(element: Element, tag: string) {
     // There should be exactly 1 element child with given tag
-    if (element.children.length != 1 || element.children[0].tagName !== tag) {
+    if (element.children.length !== 1 || element.children[0].tagName !== tag) {
       return false;
     }
 
@@ -1800,9 +1804,9 @@ export class Readability {
   private _isElementWithoutContent(node: Element) {
     return (
       node.nodeType === this.ELEMENT_NODE &&
-      (!node.textContent || node.textContent.trim().length) == 0 &&
-      (node.children.length == 0 ||
-        node.children.length == node.getElementsByTagName("br").length + node.getElementsByTagName("hr").length)
+      (!node.textContent || node.textContent.trim().length) === 0 &&
+      (node.children.length === 0 ||
+        node.children.length === node.getElementsByTagName("br").length + node.getElementsByTagName("hr").length)
     );
   }
 
@@ -1824,7 +1828,7 @@ export class Readability {
   private _isPhrasingContent(node: Element): boolean {
     return (
       node.nodeType === this.TEXT_NODE ||
-      this.PHRASING_ELEMS.indexOf(node.tagName) !== -1 ||
+      this.PHRASING_ELEMS.includes(node.tagName) ||
       ((node.tagName === "A" || node.tagName === "DEL" || node.tagName === "INS") &&
         this._everyNode(node.children, this._isPhrasingContent))
     );
@@ -1882,7 +1886,7 @@ export class Readability {
       e.removeAttribute(this.PRESENTATIONAL_ATTRIBUTES[i]);
     }
 
-    if (this.DEPRECATED_SIZE_ATTRIBUTE_ELEMS.indexOf(e.tagName) !== -1) {
+    if (this.DEPRECATED_SIZE_ATTRIBUTE_ELEMS.includes(e.tagName)) {
       e.removeAttribute("width");
       e.removeAttribute("height");
     }
@@ -1955,7 +1959,7 @@ export class Readability {
    * @return void
    **/
   private _clean(e: Element, tag: string): void {
-    const isEmbed = ["object", "embed", "iframe"].indexOf(tag) !== -1;
+    const isEmbed = ["object", "embed", "iframe"].includes(tag);
 
     this._removeNodes(this._getAllNodesWithTag(e, [tag]), function (element) {
       // Allow youtube and vimeo videos through as people usually want to see those.
@@ -2033,7 +2037,7 @@ export class Readability {
       }
       columns = Math.max(columns, columnsInThisRow);
     }
-    return { rows: rows, columns: columns };
+    return { rows, columns };
   }
 
   /**
@@ -2046,13 +2050,13 @@ export class Readability {
     for (let i = 0; i < tables.length; i++) {
       const table = tables[i];
       const role = table.getAttribute("role");
-      if (role == "presentation") {
+      if (role === "presentation") {
         // @ts-expect-error
         table._readabilityDataTable = false;
         continue;
       }
       const datatable = table.getAttribute("datatable");
-      if (datatable == "0") {
+      if (datatable === "0") {
         // @ts-expect-error
         table._readabilityDataTable = false;
         continue;
@@ -2147,7 +2151,7 @@ export class Readability {
 
       // also check for "null" to work around https://github.com/jsdom/jsdom/issues/2580
       // @ts-expect-error
-      if ((elem.src || (elem.srcset && elem.srcset != "null")) && elem.className.toLowerCase().indexOf("lazy") === -1) {
+      if ((elem.src || (elem.srcset && elem.srcset !== "null")) && !elem.className.toLowerCase().includes("lazy")) {
         return;
       }
 
@@ -2164,12 +2168,12 @@ export class Readability {
           copyTo = "src";
         }
         if (copyTo) {
-          //if this is an img or picture, set the attribute directly
+          // if this is an img or picture, set the attribute directly
           if (elem.tagName === "IMG" || elem.tagName === "PICTURE") {
             elem.setAttribute(copyTo, attr.value);
           } else if (elem.tagName === "FIGURE" && !this._getAllNodesWithTag(elem, ["img", "picture"]).length) {
-            //if the item is a <figure> that does not contain an image or picture, create one and place it inside the figure
-            //see the nytimes-3 testcase for an example
+            // if the item is a <figure> that does not contain an image or picture, create one and place it inside the figure
+            // see the nytimes-3 testcase for an example
             const img = this._doc.createElement("img");
             img.setAttribute(copyTo, attr.value);
             elem.appendChild(img);
@@ -2307,7 +2311,7 @@ export class Readability {
   private _cleanMatchedNodes(e: Element, filter: (this: Readability, next: Element, value: string) => boolean) {
     const endOfSearchMarkerNode = this._getNextNode(e, true);
     let next = this._getNextNode(e);
-    while (next && next != endOfSearchMarkerNode) {
+    while (next && next !== endOfSearchMarkerNode) {
       if (filter.call(this, next, next.className + " " + next.id)) {
         next = this._removeAndGetNext(next);
       } else {
@@ -2341,7 +2345,7 @@ export class Readability {
    * @return boolean indicating whether this is a title-like header.
    */
   private _headerDuplicatesTitle(node: Element) {
-    if (node.tagName != "H1" && node.tagName != "H2") {
+    if (node.tagName !== "H1" && node.tagName !== "H2") {
       return false;
     }
     const heading = this._getInnerText(node, false);
@@ -2361,12 +2365,13 @@ export class Readability {
   private _isProbablyVisible(node: HTMLElement) {
     // Have to null-check node.style and node.className.indexOf to deal with SVG and MathML nodes.
     return (
-      (!node.style || node.style.display != "none") &&
+      (!node.style || node.style.display !== "none") &&
       !node.hasAttribute("hidden") &&
-      //check for "fallback-image" so that wikimedia math images are displayed
+      // check for "fallback-image" so that wikimedia math images are displayed
       (!node.hasAttribute("aria-hidden") ||
-        node.getAttribute("aria-hidden") != "true" ||
-        (node.className && node.className.indexOf && node.className.indexOf("fallback-image") !== -1))
+        node.getAttribute("aria-hidden") !== "true" ||
+        // @ts-expect-error
+        (node.className?.indexOf && node.className.includes("fallback-image")))
     );
   }
 
@@ -2431,7 +2436,7 @@ export class Readability {
       dir: this._articleDir,
       lang: this._articleLang,
       content: this._serializer(articleContent),
-      textContent: textContent,
+      textContent,
       length: textContent.length,
       excerpt: metadata.excerpt,
       siteName: metadata.siteName || this._articleSiteName,

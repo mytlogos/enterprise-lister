@@ -17,7 +17,7 @@ import {
   QueryItems,
   QueryItemsResult,
 } from "../../types";
-import { Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
+import { getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
 import { Query, OkPacket } from "mysql";
@@ -76,7 +76,7 @@ function emptyPacket() {
  * A Class for consecutive queries on the same connection.
  */
 export class QueryContext implements ConnectionContext {
-  private con: Connection;
+  private readonly con: Connection;
   // tslint:disable-next-line:variable-name
   private _databaseContext?: DatabaseContext;
   // tslint:disable-next-line:variable-name
@@ -225,7 +225,7 @@ export class QueryContext implements ConnectionContext {
         "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
         [value.novel, value.chapter, value.chapIndex],
       );
-      if (resultArray[0] && resultArray[0].episode_id != null) {
+      if (resultArray[0]?.episode_id != null) {
         return null;
       }
       // TODO implement
@@ -358,7 +358,7 @@ export class QueryContext implements ConnectionContext {
     }
 
     if (Array.isArray(result) && result.length > 10) {
-      logger.debug(`[${Date.now() - start}ms] ${result.length} Results for ${query} - Parameter: '${parameter}'`);
+      logger.debug(`[${Date.now() - start}ms] ${result.length} Results for ${query} - Parameter: '${parameter + ""}'`);
     }
     return result;
   }
@@ -703,7 +703,7 @@ export class QueryContext implements ConnectionContext {
     }
 
     for (const part of parts) {
-      const mediumParts: any = getElseSetObj(media, part.medium_id, () => new Object());
+      const mediumParts: any = getElseSetObj(media, part.medium_id, () => ({}));
       mediumParts[part.id] = getElseSet(partMap, part.id, () => emptyPart);
     }
 

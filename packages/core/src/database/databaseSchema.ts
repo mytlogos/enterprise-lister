@@ -449,7 +449,7 @@ dataBaseBuilder.getTableBuilder()
     .setName("service_settings")
     .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
-    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");*/
+    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)"); */
 
 dataBaseBuilder
   .getTableBuilder()

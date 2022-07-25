@@ -140,9 +140,9 @@ export default defineComponent({
           }
 
           if (list.external) {
-            this.$store.commit("updateExternalList", { ...list, show: show });
+            this.$store.commit("updateExternalList", { ...list, show });
           } else {
-            this.$store.commit("updateList", { ...list, show: show });
+            this.$store.commit("updateList", { ...list, show });
           }
         }
       }

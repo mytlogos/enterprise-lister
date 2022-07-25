@@ -10,7 +10,7 @@
       </div>
       <div class="input-medium">
         <label>Medium:</label>
-        <span v-for="type of mediaTypes" :key="type" class="medium-check-container">
+        <span v-for="type of mediaTypes" :key="type.value" class="medium-check-container">
           <label>
             <input v-model="type.checked" type="checkbox" />
             {{ type.name }}
@@ -24,14 +24,13 @@
 
 <script lang="ts">
 import modal from "./modal.vue";
+import { defineComponent } from "vue";
 
 interface GuiMediaType {
   value: number;
   name: string;
   checked: boolean;
 }
-
-import { defineComponent } from "vue";
 
 export default defineComponent({
   name: "AddListModal",

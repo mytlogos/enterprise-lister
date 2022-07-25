@@ -1,6 +1,6 @@
 import { SubContext } from "./subContext";
 import { List, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
-import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
+import { promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
 
@@ -17,7 +17,7 @@ export class InternalListContext extends SubContext {
     ]);
     storeModifications("list", "insert", result);
     if (!Number.isInteger(result.insertId)) {
-      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId}`);
+      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId + ""}`);
     }
     return {
       id: result.insertId,

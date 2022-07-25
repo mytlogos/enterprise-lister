@@ -29,7 +29,8 @@ server.on("message", (message, remote) => {
       received: decoded,
     });
 
-    if ("DISCOVER_SERVER_REQUEST_ENTERPRISE" === decoded) {
+    if (decoded === "DISCOVER_SERVER_REQUEST_ENTERPRISE") {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       logger.info(`server was discovered in ${env.development} and ${process.env.NODE_ENV}`);
 
       const response = "ENTERPRISE_" + (env.development ? "DEV" : "PROD");

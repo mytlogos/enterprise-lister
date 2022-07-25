@@ -13,7 +13,15 @@ const ws = new Websocket.Server({
 ws.on("connection", (socket) => {
   socket.on("message", (data) => {
     try {
-      const msg = data.toString() as WSRequest;
+      let msg: WSRequest;
+
+      if (Buffer.isBuffer(data)) {
+        msg = data.toString() as WSRequest;
+      } else if (data instanceof ArrayBuffer) {
+        msg = new TextDecoder().decode(data) as WSRequest;
+      } else {
+        msg = data.map((value) => value.toString()).join() as WSRequest;
+      }
 
       switch (msg) {
         case "START_JOBS":
@@ -53,8 +61,8 @@ ws.on("connection", (socket) => {
 });
 
 class SocketChannelListener {
-  private listenerSockets = [] as Websocket[];
-  private channel: ScraperChannel;
+  private readonly listenerSockets: Websocket[] = [];
+  private readonly channel: ScraperChannel;
 
   public constructor(channel: ScraperChannel) {
     this.channel = channel;
@@ -70,7 +78,7 @@ class SocketChannelListener {
       return this.listener;
     }
     const sockets = this.listenerSockets;
-    this.listener = function jobListener(msg: unknown) {
+    this.listener = function channelListener(msg: unknown) {
       for (const socket of sockets) {
         try {
           socket.send(JSON.stringify(msg));

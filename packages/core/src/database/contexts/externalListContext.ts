@@ -34,7 +34,7 @@ export class ExternalListContext extends SubContext {
     const insertId = result.insertId;
 
     if (!Number.isInteger(insertId)) {
-      throw new DatabaseError(`invalid ID ${insertId}`);
+      throw new DatabaseError(`invalid ID ${insertId + ""}`);
     }
 
     return {

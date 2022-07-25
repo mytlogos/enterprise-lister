@@ -19,7 +19,7 @@ import {
   TypedQuery,
   Id,
 } from "../../types";
-import { count, Errors, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
+import { count, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
@@ -55,7 +55,7 @@ export class MediumContext extends SubContext {
     }
     const result = await this.query("INSERT INTO medium(medium, title) VALUES (?,?);", [medium.medium, medium.title]);
     if (!Number.isInteger(result.insertId)) {
-      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId}`);
+      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId + ""}`);
     }
     storeModifications("medium", "insert", result);
 
@@ -164,7 +164,7 @@ export class MediumContext extends SubContext {
       mediumId: result.id,
       medium: result.medium,
       title: result.title,
-      synonyms: (synonyms[0] && synonyms[0].synonym) || [],
+      synonyms: synonyms[0]?.synonym || [],
     };
   }
 
@@ -665,7 +665,7 @@ export class MediumContext extends SubContext {
       destMedium.title,
     ]);
     if (!Number.isInteger(result.insertId)) {
-      throw new ValidationError(`insert failed, invalid ID: ${result.insertId}`);
+      throw new ValidationError(`insert failed, invalid ID: ${result.insertId + ""}`);
     }
     storeModifications("medium", "insert", result);
     let mediumId: number;

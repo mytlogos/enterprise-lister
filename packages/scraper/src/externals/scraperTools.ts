@@ -39,7 +39,6 @@ import {
   NewsScraper,
   Toc,
   TocContent,
-  TocEpisode,
   TocRequest,
   TocResult,
   TocScraper,
@@ -125,7 +124,7 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
   logger.info("Scraping for News", { url: adapter.link });
   const rawNews = await adapter();
 
-  if (rawNews && rawNews.episodes && rawNews.episodes.length) {
+  if (rawNews?.episodes?.length) {
     logger.info("Scraped Episode News", { count: rawNews.episodes.length, url: adapter.link });
 
     const episodeMap: Map<string, EpisodeNews[]> = rawNews.episodes.reduce((map, currentValue) => {
@@ -149,7 +148,7 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
   }
   return {
     link: adapter.link,
-    rawNews: (rawNews && rawNews.news) || [],
+    rawNews: rawNews?.news || [],
   };
 };
 
@@ -175,10 +174,7 @@ async function processMediumNews(
     const maxPreviousRelease = max(previous.releases, "releaseDate");
     const maxCurrentRelease = max(current.releases, "releaseDate");
 
-    return (
-      ((maxPreviousRelease && maxPreviousRelease.releaseDate.getTime()) || 0) -
-      ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0)
-    );
+    return (maxPreviousRelease?.releaseDate.getTime() || 0) - (maxCurrentRelease?.releaseDate.getTime() || 0);
   });
 
   let standardPart = await partStorage.getStandardPart(mediumId);
@@ -394,7 +390,7 @@ function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: s
         continue;
       }
       searchJobs.push({
-        name: `${searcher.hookName}-${ScrapeName.searchForToc}-${tocSearch.mediumId}`,
+        name: `${searcher.hookName || ""}-${ScrapeName.searchForToc}-${tocSearch.mediumId}`,
         interval: -1,
         arguments: JSON.stringify([searcher.hookName, tocSearch]),
         type: ScrapeName.searchForToc,
@@ -568,7 +564,7 @@ export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: Toc
             }
           }
         } else {
-          const episode = tocContent as TocEpisode;
+          const episode = tocContent;
           if (episode.noTime && episode.releaseDate && episode.releaseDate.toDateString() === today) {
             episode.releaseDate = lastRequest;
           }
@@ -590,7 +586,7 @@ export const news = async (link: string): Promise<{ link: string; result: News[]
 export const toc = async (value: TocRequest): Promise<TocResult> => {
   const result = await oneTimeToc(value);
   if (!result.tocs.length) {
-    throw new ScraperError(`could not find toc for: url=${value.url} mediumId=${value.mediumId}`);
+    throw new ScraperError(`could not find toc for: url=${value.url} mediumId=${value.mediumId || ""}`);
   }
   // TODO implement toc scraping which requires page analyzing
   return {
@@ -654,6 +650,7 @@ export const list = async (value: { info: string; uuid: Uuid }): Promise<Externa
       lists,
     };
   } catch (e) {
+    // eslint-disable-next-line prefer-promise-reject-errors
     return Promise.reject({ ...value, error: e });
   }
 };
@@ -662,31 +659,34 @@ export const feed = async (feedLink: string): Promise<NewsResult> => {
   logger.info("scraping feed", { url: feedLink });
   const startTime = Date.now();
   // noinspection JSValidateTypes
-  return feedParserPromised
-    .parse(feedLink)
-    .then((items) =>
-      Promise.all(
-        items.map((value) => {
-          return checkLink(value.link, value.title).then((link) => {
-            return {
-              title: value.title,
-              link,
-              // FIXME does this seem right?, current date as fallback?
-              date: value.pubdate || value.date || new Date(),
-            };
-          });
-        }),
-      ),
-    )
-    .then((value) => {
-      const duration = Date.now() - startTime;
-      logger.info("scraped feed", { url: feedLink, duration: duration + "ms" });
-      return {
-        link: feedLink,
-        rawNews: value,
-      };
-    })
-    .catch((error) => Promise.reject({ feed: feedLink, error }));
+  return (
+    feedParserPromised
+      .parse(feedLink)
+      .then((items) =>
+        Promise.all(
+          items.map((value) => {
+            return checkLink(value.link, value.title).then((link) => {
+              return {
+                title: value.title,
+                link,
+                // FIXME does this seem right?, current date as fallback?
+                date: value.pubdate || value.date || new Date(),
+              };
+            });
+          }),
+        ),
+      )
+      .then((value) => {
+        const duration = Date.now() - startTime;
+        logger.info("scraped feed", { url: feedLink, duration: duration + "ms" });
+        return {
+          link: feedLink,
+          rawNews: value,
+        };
+      })
+      // eslint-disable-next-line prefer-promise-reject-errors
+      .catch((error) => Promise.reject({ feed: feedLink, error }))
+  );
 };
 
 export function checkTocContent(content: TocContent, allowMinusOne = false): void {
@@ -801,7 +801,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
     }
     const downloadValue = downloadContents.get(indexKey);
 
-    if (downloadValue && downloadValue.content.length) {
+    if (downloadValue?.content.length) {
       logger.warn("downloaded episode already", { episode_index: indexKey, episode_id: episode.id });
       continue;
     }
@@ -934,7 +934,7 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
     if (linkKey) {
       const value: Optional<any> = cache.get(linkKey);
 
-      if (value && value.redirect && value.followed && value.redirect === link) {
+      if (value?.redirect && value.followed && value.redirect === link) {
         // refresh this entry, due to hit
         cache.ttl(linkKey);
         resolve(value.followed);
@@ -962,7 +962,7 @@ function checkLink(link: string, linkKey?: string): Promise<string> {
         resolve(href);
       })
       .catch((reason) => {
-        if (reason && reason.statusCode && reason.statusCode === 404) {
+        if (reason?.statusCode && reason.statusCode === 404) {
           // TODO if resource does not exist what to do?
           if (linkKey) {
             cache.set(linkKey, { redirect: link, followed: "" });

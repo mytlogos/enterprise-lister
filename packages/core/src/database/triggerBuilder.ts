@@ -9,7 +9,7 @@ export class TriggerBuilder {
   private _event: Nullable<TriggerEvent> = null;
   private _table: Nullable<string> = null;
   private _body: Nullable<string> = null;
-  private databaseBuilder: DataBaseBuilder;
+  private readonly databaseBuilder: DataBaseBuilder;
 
   public constructor(databaseBuilder: DataBaseBuilder) {
     this.databaseBuilder = databaseBuilder;

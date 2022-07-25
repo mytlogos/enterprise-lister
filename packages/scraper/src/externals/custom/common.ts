@@ -322,7 +322,7 @@ export const extractValue = traceWrap(function extractValue(result: any, targetK
         if (
           Array.isArray(transferTarget) &&
           transferTarget.length &&
-          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] == context.multipleIndex
+          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] === context.multipleIndex
         ) {
           transferTarget = transferTarget[transferTarget.length - 1];
         } else {
@@ -378,7 +378,7 @@ const getTransferContext = traceWrap(function getTransferContext<Target extends 
         if (
           Array.isArray(transferTarget) &&
           transferTarget.length &&
-          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] == context.multipleIndex
+          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] === context.multipleIndex
         ) {
           // reuse item
           transferTarget = transferTarget[transferTarget.length - 1];
@@ -448,7 +448,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
 ) {
   const transfers: Array<SimpleTransfer<Target>> = selector.transfers || [];
 
-  let text: string | undefined = undefined;
+  let text: string | undefined;
   let html: string | null = null;
 
   for (const transfer of transfers) {
@@ -462,7 +462,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
       }
       value = html;
     } else {
-      if (text == undefined) {
+      if (text == null) {
         text = sanitizeString(getText(element).trim());
       }
       value = text;
@@ -477,7 +477,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
     if (variable.extract) {
       value = getAttributeValue(element, variable.extract, base);
     } else {
-      if (text == undefined) {
+      if (text == null) {
         text = sanitizeString(getText(element).trim());
       }
       value = text;
@@ -496,7 +496,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
 ) {
   const transfers: Array<RegexTransfer<Target>> = selector.transfers || [];
 
-  let match: RegExpExecArray | null | undefined = undefined;
+  let match: RegExpExecArray | null | undefined;
 
   for (const transfer of transfers) {
     let value: string;
@@ -504,7 +504,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
     if (typeof transfer.extract === "object" && Object.keys(transfer.extract).length) {
       value = getAttributeValue(element, transfer.extract, base);
     } else if (typeof transfer.extract === "string") {
-      if (match === undefined) {
+      if (match == null) {
         const text = sanitizeString(getText(element).trim());
         match = toRegex(selector.regex).exec(text);
 
@@ -537,7 +537,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
     if (variable.extract) {
       value = getAttributeValue(element, variable.extract, base);
     } else if (variable.value) {
-      if (match === undefined) {
+      if (match == null) {
         const text = sanitizeString(getText(element).trim());
         match = toRegex(selector.regex).exec(text);
 
@@ -625,8 +625,8 @@ export const extractJSON = traceWrap(function extractJSON<Target extends object,
     }
   }
 
-  logger.debug(`Matched selector ${selector.selector} found ${found.length} matches`);
-  logger.debug(`Has multiple: ${!!selector.multiple}`);
+  logger.debug(`Matched selector ${selector.selector} found ${found.length as string} matches`);
+  logger.debug(`Has multiple: ${!!selector.multiple + ""}`);
 
   let results: Array<Partial<Target>> = [];
 
@@ -669,11 +669,11 @@ export const extractJSON = traceWrap(function extractJSON<Target extends object,
       const currentPartial = results[index];
       const nexts = nextBuckets[index];
 
-      let multipleBucket: Array<Partial<Target>> | undefined = undefined;
+      let multipleBucket: Array<Partial<Target>> | undefined;
 
       for (const bucket of nexts) {
         if (bucket.length > 1) {
-          if (multipleBucket != undefined) {
+          if (multipleBucket != null) {
             throw new CustomHookError(
               "Multiple Child Selectors of the same parent with multiple=true are not allowed",
               CustomHookErrorCodes.MULTIPLE_IN_MULTIPLE_SIBLINGS,
@@ -756,11 +756,11 @@ export const extract = traceWrap(function extract<Target extends object>(
       const currentPartial = results[index];
       const nexts = nextBuckets[index];
 
-      let multipleBucket: Array<Partial<Target>> | undefined = undefined;
+      let multipleBucket: Array<Partial<Target>> | undefined;
 
       for (const bucket of nexts) {
         if (bucket.length > 1) {
-          if (multipleBucket != undefined) {
+          if (multipleBucket != null) {
             throw new CustomHookError(
               "Multiple Child Selectors of the same parent with multiple=true are not allowed",
               CustomHookErrorCodes.MULTIPLE_IN_MULTIPLE_SIBLINGS,
@@ -804,7 +804,7 @@ const mergeSameIndexSymbol = traceWrap(function mergeSameIndexSymbol(
   const filter = (value: Record<string | symbol, any>) => {
     const index = value[EXTRACT_ITEM_INDEX];
 
-    if (index != undefined) {
+    if (index != null) {
       if (indices[index]) {
         merge(indices[index], value);
       } else {
@@ -825,7 +825,7 @@ const mergeSameIndexSymbol = traceWrap(function mergeSameIndexSymbol(
 
 export const merge = traceWrap(function merge<T extends any[] | Record<string, any>>(target: T, source: T): T {
   if (Array.isArray(target) && Array.isArray(source)) {
-    if (target[0] && target[0][EXTRACT_ITEM_INDEX] != undefined) {
+    if (target[0]?.[EXTRACT_ITEM_INDEX] != null) {
       mergeSameIndexSymbol(target, source);
     } else {
       target.push(...source);
@@ -840,7 +840,9 @@ export const merge = traceWrap(function merge<T extends any[] | Record<string, a
           merge(targetValue, sourceValue);
         } else {
           throw new CustomHookError(
-            `Cannot merge non object values: key: '${key}', target: '${targetValue}', source: '${sourceValue}'`,
+            `Cannot merge non object values: key: '${key}', target: '${targetValue + ""}', source: '${
+              sourceValue + ""
+            }'`,
             CustomHookErrorCodes.MERGE_TYPE_NON_OBJECT,
             {
               target,
@@ -877,7 +879,7 @@ export const merge = traceWrap(function merge<T extends any[] | Record<string, a
 const templateString = traceWrap(function templateString(value: string, context: Context): string {
   const originalValue = value;
   const braces: Array<{ type: string; index: number }> = [];
-  let lastBrace: { type: string; index: number } | undefined = undefined;
+  let lastBrace: { type: string; index: number } | undefined;
 
   for (let index = 0; index < value.length; index++) {
     const char = value[index];
@@ -954,7 +956,7 @@ const templateString = traceWrap(function templateString(value: string, context:
       variableValue = variableValue[Number(match[2])];
     }
 
-    if (variableValue == undefined) {
+    if (variableValue == null) {
       throw new CustomHookError(
         `Variable '${originalName}' has no value!`,
         CustomHookErrorCodes.TEMPLATE_VARIABLE_NO_VALUE,

@@ -40,7 +40,7 @@ export function finder(input: Element, options?: Partial<Options>) {
     throw new Error("Can't generate CSS selector for non-element node type.");
   }
 
-  if ("html" === input.tagName.toLowerCase()) {
+  if (input.tagName.toLowerCase() === "html") {
     return "html";
   }
 
@@ -357,10 +357,10 @@ const defaultOptions = {
 
 function cssesc(string: string, opt: Partial<typeof defaultOptions> = {}) {
   const options = { ...defaultOptions, ...opt };
-  if (options.quotes != "single" && options.quotes != "double") {
+  if (options.quotes !== "single" && options.quotes !== "double") {
     options.quotes = "single";
   }
-  const quote = options.quotes == "double" ? '"' : "'";
+  const quote = options.quotes === "double" ? '"' : "'";
   const isIdentifier = options.isIdentifier;
 
   const firstChar = string.charAt(0);
@@ -370,13 +370,13 @@ function cssesc(string: string, opt: Partial<typeof defaultOptions> = {}) {
   while (counter < length) {
     const character = string.charAt(counter++);
     let codePoint = character.charCodeAt(0);
-    let value: string | undefined = void 0;
+    let value: string | undefined;
     // If it’s not a printable ASCII character…
     if (codePoint < 0x20 || codePoint > 0x7e) {
       if (codePoint >= 0xd800 && codePoint <= 0xdbff && counter < length) {
         // It’s a high surrogate, and there is a next character.
         const extra = string.charCodeAt(counter++);
-        if ((extra & 0xfc00) == 0xdc00) {
+        if ((extra & 0xfc00) === 0xdc00) {
           // next character is low surrogate
           codePoint = ((codePoint & 0x3ff) << 10) + (extra & 0x3ff) + 0x10000;
         } else {
@@ -397,8 +397,8 @@ function cssesc(string: string, opt: Partial<typeof defaultOptions> = {}) {
       } else if (/[\t\n\f\r\x0B]/.test(character)) {
         value = "\\" + codePoint.toString(16).toUpperCase() + " ";
       } else if (
-        character == "\\" ||
-        (!isIdentifier && ((character == '"' && quote == character) || (character == "'" && quote == character))) ||
+        character === "\\" ||
+        (!isIdentifier && ((character === '"' && quote === character) || (character === "'" && quote === character))) ||
         (isIdentifier && regexSingleEscape.test(character))
       ) {
         value = "\\" + character;

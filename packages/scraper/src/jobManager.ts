@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-invalid-void-type */
 import { remove, removeLike, stringify, getElseSet } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import { JobRequest, EmptyPromise, Optional, Nullable } from "enterprise-core/dist/types";

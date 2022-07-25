@@ -1,6 +1,6 @@
 import { SubContext } from "./subContext";
 import { News, Uuid, MultiSingleValue, PromiseMultiSingle, Optional } from "../../types";
-import { Errors, promiseMultiSingle } from "../../tools";
+import { promiseMultiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, ValidationError } from "../../error";
 
@@ -22,7 +22,7 @@ export class NewsContext extends SubContext {
         return;
       }
       if (!value.title || !value.date) {
-        return Promise.reject(new ValidationError(`Invalid News: ${value.title}-${value.date}`));
+        return Promise.reject(new ValidationError(`Invalid News: ${value.title}-${value.date + ""}`));
       }
       let result = await this.query("INSERT IGNORE INTO news_board (title, link, date) VALUES (?,?,?);", [
         value.title,
@@ -30,7 +30,7 @@ export class NewsContext extends SubContext {
         value.date,
       ]);
       if (!Number.isInteger(result.insertId)) {
-        throw new DatabaseError(`failed insert, invalid ID ${result.insertId}`);
+        throw new DatabaseError(`failed insert, invalid ID ${result.insertId + ""}`);
       }
       storeModifications("news", "insert", result);
       if (!result.affectedRows) {

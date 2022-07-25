@@ -10,10 +10,10 @@ import { MigrationError } from "../error";
 export class SchemaManager {
   private databaseName = "";
   private dataBaseVersion = 0;
-  private tables: TableSchema[] = [];
+  private readonly tables: TableSchema[] = [];
   private mainTable: Nullable<TableSchema> = null;
-  private trigger: Trigger[] = [];
-  private migrations: Migration[] = [];
+  private readonly trigger: Trigger[] = [];
+  private readonly migrations: Migration[] = [];
 
   public initTableSchema(database: DatabaseSchema, databaseName: string): void {
     this.databaseName = databaseName;
@@ -122,7 +122,7 @@ export class SchemaManager {
     const versionResult = await context.getDatabaseVersion();
     let previousVersion = 0;
 
-    if (versionResult && versionResult[0] && versionResult[0].version > 0) {
+    if (versionResult?.[0] && versionResult[0].version > 0) {
       previousVersion = versionResult[0].version;
     }
 

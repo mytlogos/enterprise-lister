@@ -108,10 +108,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
     const maxPreviousRelease = max(previous.releases, "releaseDate");
     const maxCurrentRelease = max(current.releases, "releaseDate");
 
-    return (
-      ((maxPreviousRelease && maxPreviousRelease.releaseDate.getTime()) || 0) -
-      ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0)
-    );
+    return (maxPreviousRelease?.releaseDate.getTime() || 0) - (maxCurrentRelease?.releaseDate.getTime() || 0);
   });
 
   const chapIndexReg = /(\d+)\s*$/;
@@ -131,7 +128,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
 
       if (!exec) {
         logger.warn("news title does not end chapter index on qidianUnderground");
-        return;
+        return undefined;
       }
       if (Number(exec[1]) > latestRelease.totalIndex) {
         return true;

@@ -70,7 +70,7 @@ export function createHandler(handler: RestHandler): Handler {
     try {
       const result = handler(req, res, next);
 
-      if (result && result.catch && result.then) {
+      if (result?.catch && result.then) {
         sendResult(res, result);
       } else {
         sendResult(res, Promise.resolve(result));

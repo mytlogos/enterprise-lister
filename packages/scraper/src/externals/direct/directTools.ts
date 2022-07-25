@@ -150,7 +150,7 @@ export async function searchTocCheerio(
   if (tocLink) {
     const tocs = await tocScraper(tocLink);
 
-    if (tocs && tocs.length) {
+    if (tocs?.length) {
       return tocs[0];
     } else {
       logger.warn("a possible toc link could not be scraped", { url: tocLink });
@@ -227,7 +227,7 @@ export async function searchToc(
   if (tocLink) {
     const tocs = await tocScraper(tocLink);
 
-    if (tocs && tocs.length) {
+    if (tocs?.length) {
       return tocs[0];
     } else {
       logger.warn("a possible toc link could not be scraped", { url: tocLink });
@@ -358,7 +358,7 @@ class TocLinkedList implements Iterable<Node> {
     let node: Optional<Node> = this.start;
     return {
       next(): IteratorResult<Node> {
-        if (node && node.next) {
+        if (node?.next) {
           node = node.next;
           if (node.next) {
             return { value: node };

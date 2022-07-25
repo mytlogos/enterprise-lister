@@ -1,3 +1,4 @@
+/* eslint-disable import/first */
 "use strict";
 jest.mock("request-promise-native");
 import * as directTools from "../../../externals/direct/directTools";
@@ -41,12 +42,7 @@ async function* novelfullGenerator(pages: string[], mediumType = tools.MediaType
 
     const releaseStatusString = directTools.getText($(".info-holder .info div:nth-child(4) a")).trim().toLowerCase();
 
-    let end = false;
-    if (releaseStatusString === "ongoing") {
-      end = false;
-    } else if (releaseStatusString === "completed") {
-      end = true;
-    }
+    const end = releaseStatusString === "completed";
     if (!tocYielded) {
       const tocMeta = {
         title: mediumTitle,
@@ -89,12 +85,7 @@ async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType
     .trim()
     .toLowerCase();
 
-  let end = false;
-  if (releaseStatusString === "ongoing") {
-    end = false;
-  } else if (releaseStatusString === "completed") {
-    end = true;
-  }
+  const end = releaseStatusString === "completed";
   const tocMeta = {
     title: mediumTitle,
     mediumType,
@@ -284,7 +275,7 @@ async function testStaticCase(
   // @ts-expect-error
   const contents = await directTools.scrapeToc(generator);
   // @ts-expect-error
-  const createResult = expected[0] && expected[0].episodes ? createParts : createReleases;
+  const createResult = expected[0]?.episodes ? createParts : createReleases;
 
   // @ts-expect-error
   expect(contents).toEqual(createResult(now, ...expected));
@@ -334,7 +325,7 @@ async function testCase(casePath: string): EmptyPromise {
   if (caseData.domain === "novelfull") {
     generator = novelfullGenerator(caseData.pages);
   } else {
-    throw Error(`no known generator for domain ${caseData.domain}`);
+    throw Error(`no known generator for case ${JSON.stringify(caseData)}`);
   }
 
   const contents = await directTools.scrapeToc(generator);

@@ -108,7 +108,7 @@ export const addBookmarked = createHandler(async (req) => {
   const { uuid, bookmarked } = req.body;
   const protocol = /^https?:\/\//;
 
-  if (bookmarked && bookmarked.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
+  if (bookmarked?.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
     const scrapeAble = await filterScrapeAble(bookmarked);
 
     const storePromise = jobStorage
@@ -141,7 +141,7 @@ export const addToc = createHandler((req) => {
   if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
     const storePromise = jobStorage
       .addJobs({
-        name: `${ScrapeName.oneTimeToc}-${toc}`,
+        name: `${ScrapeName.oneTimeToc}-${toc as string}`,
         type: ScrapeName.oneTimeToc,
         runImmediately: true,
         deleteAfterRun: true,
@@ -250,7 +250,7 @@ export const deleteToc = createHandler((req) => {
 });
 
 export const getAllAppEvents = createHandler((req) => {
-  const filter = {} as AppEventFilter;
+  const filter: AppEventFilter = {};
   const from = extractQueryParam(req, "from", true);
 
   if (from) {
