@@ -1,3 +1,18 @@
+## [1.41.1](https://github.com/mytlogos/enterprise-lister/compare/v1.41.0...v1.41.1) (2022-07-25)
+
+
+### Bug Fixes
+
+* npm audit fix ([6fc0368](https://github.com/mytlogos/enterprise-lister/commit/6fc0368e0bfa2f1398712679e5c596484e31e26c))
+* npm dedupe ([0442c9e](https://github.com/mytlogos/enterprise-lister/commit/0442c9e8d3f7dc62600cffd58d28de762881ea0d))
+* **scraper:** update deps ([c4f06b6](https://github.com/mytlogos/enterprise-lister/commit/c4f06b6da70a284fe871b9541368f458c15ee75e))
+* **server:** update deps ([4f144c1](https://github.com/mytlogos/enterprise-lister/commit/4f144c1311ba4a2e8907d0a3e9730ac4e730d6a3))
+* update deps ([f032c49](https://github.com/mytlogos/enterprise-lister/commit/f032c49cbcb3f19ff1b2d8de8c1693f553ec08b8))
+* update deps ([e0603fb](https://github.com/mytlogos/enterprise-lister/commit/e0603fb2abf3d15ff32dd23d8cfe9890f3cfc66e))
+* update node types ([dcf3b94](https://github.com/mytlogos/enterprise-lister/commit/dcf3b949bc322d170d0d6cb4cba5367548145c93))
+* **website:** update deps ([fedcf2a](https://github.com/mytlogos/enterprise-lister/commit/fedcf2a5dd949841a94e0e935b3b28379667cf3e))
+* **website:** update deps ([507ee73](https://github.com/mytlogos/enterprise-lister/commit/507ee733044ba7cc47f301aee3f64cdf7386f8a1))
+
 # [1.41.0](https://github.com/mytlogos/enterprise-lister/compare/v1.40.0...v1.41.0) (2022-07-25)
 
 
