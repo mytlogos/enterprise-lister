@@ -10,16 +10,28 @@ interface TextPropertyConfig {
   maxLength?: number;
 }
 
+/**
+ * TODO: use different modes: auto (all), text-only, attr-only
+ * detect a wider range of dates:
+ * - formatted dates in text,attr
+ * - relative dates in text,attr
+ * - unformatted dates in attr, like timestamp
+ */
+interface DatePropertyConfig {
+  type: "date";
+}
+
 interface AttributePropertyConfig {
   type: "attribute";
   attr?: string; // either attr or pattern or both, none is illegal
   pattern?: JsonRegex;
 }
 
+// TODO: implement optional bonus/detriments, like certain attribute names/values, classes, id, etc. + optional version of require
 interface PropertyConfig {
   require?: {
     tag?: string;
-    content?: TextPropertyConfig | AttributePropertyConfig;
+    content?: TextPropertyConfig | AttributePropertyConfig | DatePropertyConfig;
     descendantOf?: string; // using descendantOff implies an implicit reverse ancestorOf relationship and is scored as such
     relative?: {
       relativeTo: string;
@@ -27,7 +39,7 @@ interface PropertyConfig {
     };
   };
   sameAs?: string;
-  extract?: { type: "text" } | { type: "attribute"; attribute: string };
+  extract?: { type: "text" } | { type: "attribute"; attribute: string } | { type: "auto" };
   properties?: Record<string, PropertyConfig>;
   array?: boolean;
 }
@@ -186,21 +198,24 @@ abstract class Scorer {
   public stage: "node" | "parent" | "post" | "post-node";
   public readonly scoreName: keyof PropertyScore;
   public analyzer!: ScrapeAnalyzer;
-  public readonly optional?: boolean | undefined;
+  public readonly optional: boolean | undefined;
   public readonly propertyKey: string;
+  public readonly hints: Map<HTMLElement, { type: "text" } | { type: "attr"; attribute: string }>;
 
   public constructor(stage: Scorer["stage"], scoreName: keyof PropertyScore, propertyKey: string) {
     this.stage = stage;
     this.scoreName = scoreName;
     this.propertyKey = propertyKey;
+    this.hints = new Map();
   }
 
   public abstract score(node: HTMLElement): number;
 }
 
 class DateScorer extends Scorer {
-  public static datePattern = /(Jun|July?),? \\d+(, \\d+)?/im;
+  public static datePattern = /(Jan|Jun|July?),? \d+(, \d+)?/im;
   public static relativePattern = /(\d{1,3}|an?) (min|hour|day|week|month)s?( ago)?/im;
+  public static skipAttr = /href|src|class|id|style|type|target|rel/im;
   public readonly minLength = 5;
   public readonly maxLength = 50;
 
@@ -214,12 +229,31 @@ class DateScorer extends Scorer {
 
   public score(node: HTMLElement): number {
     const textValue = node.textContent || "";
-    return textValue.length <= this.maxLength &&
+
+    if (
+      textValue.length <= this.maxLength &&
       textValue.length >= this.minLength &&
-      DateScorer.datePattern.test(textValue) &&
-      DateScorer.relativePattern.test(textValue)
-      ? 5
-      : -5;
+      (DateScorer.datePattern.test(textValue) || DateScorer.relativePattern.test(textValue))
+    ) {
+      this.hints.set(node, { type: "text" });
+      return 5;
+    }
+    for (let index = 0; index < node.attributes.length; index++) {
+      const attr = node.attributes[index];
+
+      if (DateScorer.skipAttr.test(attr.name)) {
+        continue;
+      }
+      if (
+        attr.value.length <= this.maxLength &&
+        attr.value.length >= this.minLength &&
+        (DateScorer.datePattern.test(attr.value) || DateScorer.relativePattern.test(attr.value))
+      ) {
+        this.hints.set(node, { type: "attr", attribute: attr.name });
+        return 5;
+      }
+    }
+    return -5;
   }
 }
 
@@ -475,6 +509,8 @@ function toScorer(properties: Properties, parentKey = ""): Scorer[] {
           }
         } else if (require.content.type === "attribute" && require.content.attr && require.content.pattern) {
           scorer.push(new AttributeScorer(propertyKey, require.content.attr, require.content.pattern));
+        } else if (require.content.type === "date") {
+          scorer.push(new DateScorer(propertyKey));
         }
       }
 
@@ -512,6 +548,19 @@ function toScorer(properties: Properties, parentKey = ""): Scorer[] {
   return scorer;
 }
 
+/**
+ * Problem:
+ * - a property has valid candidates in a group, where sometimes the content is not in text, but in attributes, so it misses content regardless of which selector gets chosen
+ * - x-ray cannot handle multiple selectors for a single item
+ *
+ * Multiple ways to go forward with cases like nocturnalscans, where only some parts need a different selector:
+ * - output both selector (and let scraper try both of them)
+ * - add pre-process step to scraper, where parts of the document may be modified, and generate pre-process steps in analyzer, e.g. attribute value to text node
+ * - make a feature request to x-ray to allow multiple selectors per item/field (similar to first way)
+ * - duplicate field with all selectors, e.g. field -> field_1: "selector 1", field_2: "selector 2" and let scraper use a post-process step
+ * - ...?
+ */
+// TODO: documentation of the current assumptions about input document
 export class ScrapeAnalyzer {
   private _doc: Document;
   private visited = 0;
@@ -519,6 +568,8 @@ export class ScrapeAnalyzer {
   private candidates: HTMLElement[] = [];
   private usedCandidates: HTMLElement[] = [];
   public commonTextSnippets: Record<string, number> = {};
+  private propertyMap: Map<string, PropertyConfig> = new Map();
+  private scorer: Scorer[] = [];
 
   public constructor(document: Document) {
     this._doc = document;
@@ -657,8 +708,6 @@ export class ScrapeAnalyzer {
     }
     return requireSatisfied;
   }
-
-  private propertyMap: Map<string, PropertyConfig> = new Map();
 
   public getPropertyMap(): ReadonlyMap<string, Readonly<PropertyConfig>> {
     return this.propertyMap;
@@ -888,7 +937,20 @@ export class ScrapeAnalyzer {
     }
     let selector = subMainCandidate === root ? "" : finder(subMainCandidate, { root });
 
-    if (value.extract?.type === "attribute") {
+    if (value.extract?.type === "auto") {
+      const propertyScorer = this.scorer.filter((scorer) => scorer.propertyKey === propertyKey);
+
+      for (const scorer of propertyScorer) {
+        const hint = scorer.hints.get(subMainCandidate);
+
+        if (hint) {
+          if (hint.type === "attr") {
+            selector += "@" + hint.attribute;
+          }
+          break;
+        }
+      }
+    } else if (value.extract?.type === "attribute") {
       selector += "@" + value.extract.attribute;
     }
     selector += " | trim";
@@ -1031,7 +1093,6 @@ export class ScrapeAnalyzer {
       (previous.analyzer[propertyKey].score || 0) < (current.analyzer[propertyKey].score || 0) ? current : previous,
     );
 
-    let groupSelector;
     const keyResult = { selector: undefined as string | undefined, properties: {} as any };
 
     if (groupConfig.array) {
@@ -1131,6 +1192,7 @@ export class ScrapeAnalyzer {
       for (const element of mainCandidateGroups) {
         this.removeCandidate(element);
       }
+      this.removeCandidate(mainCandidate);
     } else {
       keyResult.selector = finder(mainCandidate, { root });
 
@@ -1155,9 +1217,9 @@ export class ScrapeAnalyzer {
           );
         }
       }
+      this.removeCandidate(mainCandidate);
     }
-    this.removeCandidate(mainCandidate);
-    this.log(`Group selector for '${groupKey}'${groupConfig.array ? " (array)" : ""}: ${groupSelector}`);
+    this.log(`Group selector for '${groupKey}'${groupConfig.array ? " (array)" : ""}: ${keyResult.selector}`);
     return keyResult;
   }
 
@@ -1216,13 +1278,13 @@ export class ScrapeAnalyzer {
 
     this.log("**** generating scorer ****");
 
-    const scorer = toScorer(config.properties).map((value) => {
+    const scorer = (this.scorer = toScorer(config.properties).map((value) => {
       value.analyzer = this;
       if (value instanceof TextScorer) {
         value.mostCommonWords = new Set(mostCommonWords);
       }
       return value;
-    });
+    }));
     // sort from most nested to root
     scorer.sort((a, b) => b.propertyKey.split(".").length - a.propertyKey.split(".").length);
 
@@ -1263,7 +1325,9 @@ export class ScrapeAnalyzer {
     this.visualizeCandidates(config);
 
     const totalNodes = this._doc.getElementsByTagName("*").length;
-    this.log(`all=${totalNodes}; visited=${this.visited}; skipped=${this.skipped}; scored=${this.candidates.length}`);
+    this.log(
+      `all=${totalNodes}; visited=${this.visited}; skipped=${this.skipped}; scored=${this.candidates.length}; mostCommonWords=${mostCommonWords}`,
+    );
     return result;
   }
 
