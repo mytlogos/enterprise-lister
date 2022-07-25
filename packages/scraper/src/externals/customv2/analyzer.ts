@@ -572,6 +572,7 @@ export class ScrapeAnalyzer {
   public commonTextSnippets: Record<string, number> = {};
   private propertyMap: Map<string, PropertyConfig> = new Map();
   private scorer: Scorer[] = [];
+  private neverScoreTags = ["HEAD", "HTML", "BODY"];
   private alwaysSkipTag = ["style"];
   private skipCandidate =
     /-ad-|ai2html|banner|combx|comment|community|cover-wrap|disqus|extra|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|popup|yom-remote/i;
@@ -675,33 +676,36 @@ export class ScrapeAnalyzer {
     }
     const missingRequired = new Set<string>();
 
-    for (const score of scorer) {
-      if (score.stage !== "node") {
-        continue;
-      }
-      // if a descendant already scored this, this may score it too, so prevent it
-      if (descendantScored.has(score.propertyKey)) {
-        continue;
-      }
-      // if any requirements on that propertyKey are already violated, ignore it
-      if (missingRequired.has(score.propertyKey)) {
-        continue;
-      }
-      const value = score.score(node);
-
-      if (value <= 0 && !score.optional) {
-        missingRequired.add(score.propertyKey);
-        // remove propertyScore if any requirements are missing
-        if (node.analyzer && node.analyzer[score.propertyKey]) {
-          delete node.analyzer[score.propertyKey];
+    // never score these tags
+    if (!this.neverScoreTags.includes(node.tagName)) {
+      for (const score of scorer) {
+        if (score.stage !== "node") {
+          continue;
         }
-      } else if (value) {
-        const propertyScore = initNode(node, score.propertyKey);
-        // @ts-expect-error
-        propertyScore[score.scoreName] += value;
-        // update nodeScore gradually, so that other scorers may notice it too
-        // currently only for GroupScorer
-        propertyScore.nodeScore += value;
+        // if a descendant already scored this, this may score it too, so prevent it
+        if (descendantScored.has(score.propertyKey)) {
+          continue;
+        }
+        // if any requirements on that propertyKey are already violated, ignore it
+        if (missingRequired.has(score.propertyKey)) {
+          continue;
+        }
+        const value = score.score(node);
+
+        if (value <= 0 && !score.optional) {
+          missingRequired.add(score.propertyKey);
+          // remove propertyScore if any requirements are missing
+          if (node.analyzer && node.analyzer[score.propertyKey]) {
+            delete node.analyzer[score.propertyKey];
+          }
+        } else if (value) {
+          const propertyScore = initNode(node, score.propertyKey);
+          // @ts-expect-error
+          propertyScore[score.scoreName] += value;
+          // update nodeScore gradually, so that other scorers may notice it too
+          // currently only for GroupScorer
+          propertyScore.nodeScore += value;
+        }
       }
     }
 
