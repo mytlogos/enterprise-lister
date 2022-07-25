@@ -572,6 +572,9 @@ export class ScrapeAnalyzer {
   public commonTextSnippets: Record<string, number> = {};
   private propertyMap: Map<string, PropertyConfig> = new Map();
   private scorer: Scorer[] = [];
+  private alwaysSkipTag = ["style"];
+  private skipCandidate =
+    /-ad-|ai2html|banner|combx|comment|community|cover-wrap|disqus|extra|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|popup|yom-remote/i;
 
   public constructor(document: Document) {
     this._doc = document;
@@ -612,19 +615,20 @@ export class ScrapeAnalyzer {
 
   private visit(node: HTMLElement, scorer: Scorer[], config: Config) {
     this.visited++;
+
     if (!this.isProbablyVisible(node)) {
       this.log("Skipping hidden node" + finder(node));
       this.skipped++;
       return;
     }
 
-    const skipCandidate =
-      /-ad-|ai2html|banner|combx|comment|community|cover-wrap|disqus|extra|gdpr|legends|menu|related|remark|replies|rss|shoutbox|sidebar|skyscraper|social|sponsor|supplemental|ad-break|agegate|popup|yom-remote/i;
-
     const matchString = node.className + " " + node.id;
 
     // never skip body
-    if (skipCandidate.test(matchString) && node.tagName !== "BODY") {
+    if (
+      (this.skipCandidate.test(matchString) && node.tagName !== "BODY") ||
+      this.alwaysSkipTag.includes(node.tagName.toLowerCase())
+    ) {
       this.log("skipping unlikely candidate: " + finder(node));
       this.skipped++;
       return;
