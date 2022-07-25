@@ -1,3 +1,10 @@
+## [1.41.2](https://github.com/mytlogos/enterprise-lister/compare/v1.41.1...v1.41.2) (2022-07-25)
+
+
+### Bug Fixes
+
+* address lint issues ([829045b](https://github.com/mytlogos/enterprise-lister/commit/829045b1fd4f058e233778cf105a5f8587866948))
+
 ## [1.41.1](https://github.com/mytlogos/enterprise-lister/compare/v1.41.0...v1.41.1) (2022-07-25)
 
 
