@@ -1376,7 +1376,20 @@ export class ScrapeAnalyzer {
     const overlay = this._doc.createElement("div");
     this._doc.body.insertBefore(overlay, this._doc.body.firstElementChild);
     this._doc.head.appendChild(style);
-    const colors = ["aqua", "bisque", "cadetblue", "coral", "orangered", "plum", "yellow"];
+    const colors = [
+      "aqua",
+      "bisque",
+      "cadetblue",
+      "coral",
+      "orangered",
+      "plum",
+      "yellow",
+      "yellowgreen",
+      "chartreuse",
+      "deeppink",
+      "gold",
+      "indigo",
+    ];
     let css = "";
     let content = "";
     [...classes].forEach((value, index) => {
