@@ -1,6 +1,6 @@
 {
   "name": "enterprise-scraper",
-  "version": "1.40.0",
+  "version": "1.41.0",
   "private": true,
   "scripts": {
     "test:unit": "vue-cli-service test:unit",
@@ -33,7 +33,7 @@
     "@types/jsdom": "16.2.14",
     "@types/jsonpath": "0.2.0",
     "@types/json-schema": "^7.0.11",
-    "@types/node": "^18.0.6",
+    "@types/node": "^18.6.1",
     "@types/request-promise-native": "^1.0.18",
     "@types/ws": "^8.5.3",
     "@types/x-ray": "^2.3.3",
