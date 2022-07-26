@@ -16,12 +16,11 @@ import emojiRegex from "emoji-regex";
 import * as fs from "fs";
 import * as path from "path";
 import { Query } from "mysql";
-import * as dns from "dns";
-import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { ParseError, ValidationError } from "./error";
+import { networkInterfaces } from "os";
 
 export function isNumberOrArray(value: number | any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
@@ -897,16 +896,6 @@ export function validUuid(value: unknown): value is Uuid {
   return isString(value) && value.length === 36 && validateUuid(value);
 }
 
-export interface InternetTester extends EventEmitter.EventEmitter {
-  on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
-
-  isOnline(): boolean;
-
-  stop(): void;
-
-  start(): void;
-}
-
 export function getDate(value: string): Nullable<Date> {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
@@ -955,60 +944,20 @@ export function batch<T>(array: T[], batchSize: number): T[][] {
   return batches;
 }
 
-class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTester {
-  private offline?: boolean = undefined;
-  private since: Date = new Date();
-  private stopLoop = false;
-
-  public on(evt: "online" | "offline", listener: (previousSince: Date) => void): this {
-    super.on(evt, listener);
-
-    if (this.offline != null && this.since != null) {
-      if (this.offline && evt === "offline") {
-        listener(this.since);
-      }
-      if (!this.offline && evt === "online") {
-        listener(this.since);
-      }
+/**
+ * Get the first interface on the current local network.
+ * Must be on the '192.168.x.x' subnet.
+ */
+export function getMainInterface(): string | undefined {
+  for (const arrays of Object.values(networkInterfaces())) {
+    if (!Array.isArray(arrays)) {
+      continue;
     }
-    return this;
-  }
+    const foundIpInterface = arrays.find((value) => value.family === "IPv4");
 
-  public isOnline() {
-    return !this.offline;
-  }
-
-  public start() {
-    this.stopLoop = false;
-    // should never call catch callback
-    this.checkInternet().catch(console.error);
-  }
-
-  public stop() {
-    this.stopLoop = true;
-  }
-
-  private async checkInternet() {
-    while (!this.stopLoop) {
-      try {
-        await dns.promises.lookup("google.com");
-        if (this.offline || this.offline == null) {
-          this.offline = false;
-          const since = new Date();
-          this.emit("online", this.since);
-          this.since = since;
-        }
-      } catch (e) {
-        if (!this.offline) {
-          this.offline = true;
-          const since = new Date();
-          this.emit("offline", this.since);
-          this.since = since;
-        }
-      }
-      await setTimeoutPromise(1000);
+    if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
+      continue;
     }
+    return foundIpInterface.address;
   }
 }
-
-export const internetTester: InternetTester = new InternetTesterImpl();

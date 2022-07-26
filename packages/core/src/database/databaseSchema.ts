@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(17);
+const dataBaseBuilder = new DataBaseBuilder(18);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -408,6 +408,18 @@ dataBaseBuilder
   .parseColumn("min_sql_queries INT NOT NULL")
   .parseColumn("max_sql_queries INT NOT NULL")
   .parseMeta("PRIMARY KEY(name)")
+  .build();
+
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("notifications")
+  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
+  .parseColumn("title VARCHAR(200) NOT NULL")
+  .parseColumn("content VARCHAR(500) NOT NULL")
+  .parseColumn("date DATETIME NOT NULL")
+  .parseColumn("type VARCHAR(200) NOT NULL")
+  .parseColumn("key VARCHAR(200) NOT NULL")
+  .parseMeta("PRIMARY KEY(id)")
   .build();
 
 dataBaseBuilder.addMigrations(...Migrations);

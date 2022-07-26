@@ -1158,6 +1158,8 @@ export type Link = string;
  */
 export type Id = number;
 
+export type Insert<T extends { id: Id }> = Omit<T, "id"> & Partial<Pick<T, "id">>;
+
 export enum ScrapeName {
   searchForToc = "searchForToc",
   toc = "toc",
@@ -1898,4 +1900,13 @@ export interface QueryItemsResult {
   mediaLists: List[];
   externalMediaLists: ExternalList[];
   externalUser: ExternalUser[];
+}
+
+export interface Notification {
+  id: number;
+  title: string;
+  content: string;
+  date: Date;
+  key: string;
+  type: string;
 }

@@ -1,5 +1,5 @@
 import { HttpClient } from "../Httpclient";
-import { User, VuexStore } from "../siteTypes";
+import { User, UserNotification, VuexStore } from "../siteTypes";
 import router from "../router";
 import { Commit, createStore, createLogger } from "vuex";
 import persistedState from "vuex-persistedstate";
@@ -10,6 +10,7 @@ import mediumStore from "./media";
 import externalUserStore from "./externaluser";
 import newsStore from "./news";
 import hookStore from "./hooks";
+import { notify } from "../notifications";
 
 function userClear(commit: Commit) {
   commit("userName", "");
@@ -47,6 +48,8 @@ export const store = createStore({
         { name: "Author", prop: "author", show: true },
         { name: "Artist", prop: "artist", show: true },
       ],
+      notifications: [],
+      readNotifications: {},
     },
     name: "",
     session: "",
@@ -55,6 +58,9 @@ export const store = createStore({
   getters: {
     loggedIn(state): boolean {
       return !!state.uuid;
+    },
+    unreadNotifications(state): UserNotification[] {
+      return state.user.notifications.filter((value) => !value.read);
     },
   },
   mutations: {
@@ -66,6 +72,19 @@ export const store = createStore({
     },
     userSession(state, session: string) {
       state.session = session;
+    },
+    notifications(state, notifications: UserNotification[]) {
+      state.user.notifications = notifications;
+    },
+    readNotification(state, notification: UserNotification) {
+      state.user.readNotifications[notification.id] = true;
+      notification.read = true;
+    },
+    readAllNotifications(state) {
+      state.user.notifications.forEach((value) => {
+        state.user.readNotifications[value.id] = true;
+        value.read = true;
+      });
     },
   },
   actions: {
@@ -139,6 +158,31 @@ export const store = createStore({
           commit("registerModalError", String(error));
         }
       }
+    },
+    async checkNotifications({ commit, state }) {
+      const now = new Date();
+      now.setDate(now.getDate() - 5);
+      const data = await HttpClient.getNotifications(now);
+
+      const notifications = data
+        .map((value) => {
+          const read = state.user.readNotifications[value.id];
+          const userNotification = value as UserNotification;
+          userNotification.read = read ?? false;
+          userNotification.date = new Date(userNotification.date);
+          return userNotification;
+        })
+        .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      const ids = state.user.notifications.reduce((previous, current) => previous.add(current.id), new Set());
+
+      const newNotifications = notifications.filter((value) => !ids.has(value.id));
+
+      if (newNotifications.length) {
+        const titleSuffix = newNotifications.length > 1 ? ` +${newNotifications.length - 1} more` : "";
+        notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
+      }
+      commit("notifications", notifications);
     },
   },
 });

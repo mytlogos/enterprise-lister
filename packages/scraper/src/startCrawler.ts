@@ -2,7 +2,7 @@ import { startCrawler } from "./jobHandler";
 import { startStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
 import { createServer, Server } from "http";
-import { stringify } from "enterprise-core/dist/tools";
+import { stringify, getMainInterface } from "enterprise-core/dist/tools";
 import { AppStatus } from "enterprise-core/dist/status";
 import { getStores } from "enterprise-core/dist/asyncStorage";
 import os from "os";
@@ -162,19 +162,8 @@ function onListening() {
   if (address != null) {
     const bind = typeof address === "string" ? "pipe " + address : "port " + address.port;
 
-    const networkInterfaces = os.networkInterfaces();
-    for (const arrays of Object.values(networkInterfaces)) {
-      if (!Array.isArray(arrays)) {
-        continue;
-      }
-      const foundIpInterface = arrays.find((value) => value.family === "IPv4");
-
-      if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
-        continue;
-      }
-      debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface?.address}'`);
-      logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
-      break;
-    }
+    const interfaceIp = getMainInterface() || "";
+    debugMessenger(`Listening on ${bind} with Ip: '${interfaceIp}'`);
+    logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
   }
 }

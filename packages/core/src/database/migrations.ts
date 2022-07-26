@@ -302,4 +302,11 @@ export const Migrations: Migration[] = [
       );
     },
   },
+  {
+    fromVersion: 17,
+    toVersion: 18,
+    async migrate(): EmptyPromise {
+      // Table 'notifications' is automatically added
+    },
+  },
 ];

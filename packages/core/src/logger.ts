@@ -106,6 +106,9 @@ if (env.lokiUrl) {
       },
       level: "info", // never allow debug logs or less
       format: formatLogFmt(true),
+      // else one cannot implement custom made gracefulShutdown
+      // it will exit immediately via async-hook-exit lib on process.on events
+      gracefulShutdown: false,
     }),
   );
 }
@@ -130,6 +133,11 @@ function log(level: string, value: any, meta: LogMeta = {}) {
   }
   if (!isString(value)) {
     value = stringify(value);
+  }
+  // do not log on closed logger, fallback to console.log
+  if (logger.closed) {
+    console.log(`Logger closed, falling back to console.log: [${level}] ${value + ""} ${JSON.stringify(meta)}`);
+    return;
   }
   logger.log(level, value, meta);
 }
@@ -239,5 +247,8 @@ export default {
 
   silly(value: any, meta?: LogMeta): void {
     log("silly", value, meta);
+  },
+  close() {
+    logger.close();
   },
 };

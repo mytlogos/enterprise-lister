@@ -3,12 +3,13 @@
 jest.mock("request-promise-native");
 import * as directTools from "../../../externals/direct/directTools";
 import * as tools from "enterprise-core/dist/tools";
+import { internetTester } from "enterprise-core/dist/internetTester";
 import fs from "fs";
 import * as cheerio from "cheerio";
 import { EmptyPromise } from "enterprise-core/dist/types";
 
 afterAll(() => {
-  tools.internetTester.stop();
+  internetTester.stop();
 });
 
 interface TocSnippet {

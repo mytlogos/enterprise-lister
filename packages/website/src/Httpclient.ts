@@ -28,7 +28,7 @@ import {
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
-import { CustomHook, Nullable, SimpleUser } from "enterprise-core/dist/types";
+import { CustomHook, Notification, Nullable, SimpleUser } from "enterprise-core/dist/types";
 
 /**
  * Allowed Methods for the API.
@@ -199,6 +199,9 @@ const restApi = createRestDefinition({
         jobs: {
           get: true,
         },
+      },
+      notification: {
+        get: true,
       },
     },
   },
@@ -560,6 +563,10 @@ export const HttpClient = {
 
   getCrawlerJobs(): Promise<Record<number, any>> {
     return this.queryServer(serverRestApi.api.user.crawler.jobs.get);
+  },
+
+  getNotifications(from: Date): Promise<Notification[]> {
+    return this.queryServer(serverRestApi.api.user.notification.get, { from });
   },
 
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
