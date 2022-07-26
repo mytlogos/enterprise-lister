@@ -134,6 +134,11 @@ function log(level: string, value: any, meta: LogMeta = {}) {
   if (!isString(value)) {
     value = stringify(value);
   }
+  // do not log on closed logger, fallback to console.log
+  if (logger.closed) {
+    console.log(`Logger closed, falling back to console.log: [${level}] ${value + ""} ${JSON.stringify(meta)}`);
+    return;
+  }
   logger.log(level, value, meta);
 }
 
