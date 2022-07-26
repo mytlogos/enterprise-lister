@@ -17,16 +17,23 @@
           <em v-else class="pi pi-bell"></em>
         </button>
         <ul class="dropdown-menu" aria-labelledby="notifications">
-          <span>
-            <a href="#" class="btn btn-primary" @click="$store.commit('readAllNotifications')">Read all</a>
-            <router-link :to="{ name: 'notifications' }" class="btn btn-primary">View all</router-link>
-          </span>
-          <li v-for="item in $store.getters.unreadNotifications.slice(0, 5)" :key="item.id" class="dropdown-item">
+          <toolbar>
+            <template #start>
+              <p-button label="Read all" class="btn btn-primary me-2" @click="$store.commit('readAllNotifications')" />
+              <router-link :to="{ name: 'notifications' }" class="btn btn-primary">View all</router-link>
+            </template>
+          </toolbar>
+          <li
+            v-for="item in $store.getters.unreadNotifications.slice(0, 5)"
+            :key="item.id"
+            class="dropdown-item"
+            style="max-width: 100vw"
+          >
             <div class="card">
               <div class="card-header">{{ item.title }}</div>
               <div class="card-body">
                 <h6 class="card-subtitle mb-2 text-muted">{{ item.date.toLocaleString() }}</h6>
-                <p class="card-text">
+                <p class="card-text text-truncate">
                   {{ item.content }}
                 </p>
                 <a href="#" class="btn btn-primary" @click="$store.commit('readNotification', item)">Read</a>

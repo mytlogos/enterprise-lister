@@ -16,7 +16,7 @@
         <a v-if="!item.read" href="#" class="btn btn-primary" @click="$store.commit('readNotification', item)">Read</a>
       </div>
     </div>
-    <div v-if="!notifications.length">No Notifications available</div>
+    <div v-if="!notifications.length" class="text-center mt-1">No Notifications available</div>
   </div>
 </template>
 <script lang="ts">

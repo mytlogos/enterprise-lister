@@ -164,12 +164,15 @@ export const store = createStore({
       const data = await HttpClient.getNotifications(now);
       commit(
         "notifications",
-        data.map((value) => {
-          const read = state.user.readNotifications[value.id];
-          const userNotification = value as UserNotification;
-          userNotification.read = read ?? false;
-          return userNotification;
-        }),
+        data
+          .map((value) => {
+            const read = state.user.readNotifications[value.id];
+            const userNotification = value as UserNotification;
+            userNotification.read = read ?? false;
+            userNotification.date = new Date(userNotification.date);
+            return userNotification;
+          })
+          .sort((a, b) => b.date.getTime() - a.date.getTime()),
       );
     },
   },
