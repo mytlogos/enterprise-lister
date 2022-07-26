@@ -229,6 +229,7 @@ const hookConfigSchema = schema({
       type: "integer",
       enum: [1, 2, 4, 8],
     },
+    domain: jsonRegexSchema,
     name: schema.string({ minLength: 2 }),
     news: newsConfigSchema,
     toc: tocConfigSchema,

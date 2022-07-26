@@ -102,6 +102,10 @@ export default defineComponent({
         name: "",
         base: "",
         medium: 0,
+        domain: {
+          flags: "",
+          pattern: "",
+        },
       },
       hook: {
         id: 0,

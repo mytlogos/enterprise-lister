@@ -52,6 +52,7 @@
           required
         />
       </div>
+      <regex v-model="configModel.domain" regex-name="Valid domain regex" />
     </div>
     <div>
       <div>
@@ -116,6 +117,7 @@ import NewsConfigComp from "./news-config.vue";
 import TocConfigComp from "./toc-config.vue";
 import SearchConfigComp from "./search-config.vue";
 import DownloadConfigComp from "./download-config.vue";
+import Regex from "../regex.vue";
 
 export default defineComponent({
   name: "CustomHookForm",
@@ -124,6 +126,7 @@ export default defineComponent({
     DownloadConfig: DownloadConfigComp,
     TocConfig: TocConfigComp,
     NewsConfig: NewsConfigComp,
+    Regex,
   },
   props: {
     hook: {

@@ -124,6 +124,7 @@ export interface DownloadConfig {
 export interface HookConfig {
   name: string;
   base: string;
+  domain: JsonRegex;
   medium: MediaType;
   news?: NewsConfig;
   search?: SearchConfig;

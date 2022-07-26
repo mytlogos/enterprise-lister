@@ -30,6 +30,7 @@ export function createHook<T extends HookConfig>(config: T): CustomHook<T> {
   return {
     medium: config.medium,
     name: config.name,
+    domainReg: toRegex(config.domain),
     // @ts-expect-error
     newsAdapter: createNewsScraper(config),
     // @ts-expect-error

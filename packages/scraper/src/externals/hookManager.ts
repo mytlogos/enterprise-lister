@@ -14,6 +14,8 @@ import { customHookStorage, hookStorage } from "enterprise-core/dist/database/st
 import { getListManagerHooks } from "./listManager";
 import { MediaType, multiSingle } from "enterprise-core/dist/tools";
 import { HookConfig } from "./custom/types";
+import { HookConfig as HookConfigV2 } from "./customv2/types";
+import { createHook as createHookV2 } from "./customv2";
 import { createHook } from "./custom/customScraper";
 import { ValidationError } from "enterprise-core/dist/error";
 
@@ -52,6 +54,16 @@ export enum HookState {
   DISABLED = "disabled",
 }
 
+function isHookConfigV2(config: HookConfig | HookConfigV2): config is HookConfigV2 {
+  return (
+    ((config.news && "regexex" in config.news) ||
+      (config.search && "regexex" in config.search) ||
+      (config.toc && "regexex" in config.toc) ||
+      (config.download && "regexex" in config.download)) ??
+    false
+  );
+}
+
 async function loadCustomHooks(): Promise<Hook[]> {
   const hooks: CustomHookEntity[] = await customHookStorage.getHooks();
 
@@ -61,7 +73,7 @@ async function loadCustomHooks(): Promise<Hook[]> {
     if (hookEntity.hookState === HookState.DISABLED) {
       continue;
     }
-    let hookConfig: HookConfig;
+    let hookConfig: HookConfig | HookConfigV2;
     try {
       hookConfig = JSON.parse(hookEntity.state);
     } catch (error) {
@@ -69,7 +81,12 @@ async function loadCustomHooks(): Promise<Hook[]> {
       continue;
     }
 
-    const customHook = createHook(hookConfig);
+    let customHook;
+    if (isHookConfigV2(hookConfig)) {
+      customHook = createHookV2(hookConfig);
+    } else {
+      customHook = createHook(hookConfig);
+    }
     loadedCustomHooks.push({
       name: customHook.name,
       medium: customHook.medium,
