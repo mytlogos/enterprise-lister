@@ -6,7 +6,7 @@
       <label for="validationCustom01" class="form-label" style="flex: 0.12 0 0%">Hook name</label>
       <input
         id="validationCustom01"
-        v-model="hookModel.name"
+        v-model="name"
         type="text"
         class="col form-control"
         placeholder="Name required"
@@ -141,6 +141,7 @@ export default defineComponent({
   emits: ["update:hook", "update:config"],
   data() {
     return {
+      name: "",
       hookModel: { ...this.hook },
       configModel: { ...this.config },
       logger: new Logger("custom-hook-form"),
@@ -162,6 +163,10 @@ export default defineComponent({
     },
   },
   watch: {
+    name() {
+      this.hookModel.name = this.name;
+      this.configModel.name = this.name;
+    },
     showHookModel() {
       if (this.showHookModel) {
         this.dialogError = [];
