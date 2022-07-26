@@ -45,6 +45,7 @@ import { MissingResourceError, UrlError } from "./externals/errors";
 import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { MissingEntityError, ValidationError } from "enterprise-core/dist/error";
 import { DisabledHookError } from "./externals/hookManager";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 const scraper = DefaultJobScraper;
 
@@ -916,6 +917,9 @@ scraper.on("news", newsHandler);
 scraper.on("toc", tocHandler);
 scraper.on("feed", feedHandler);
 scraper.on("list", listHandler);
+
+// stop scraper before exiting
+registerOnExitHandler(() => scraper.stop());
 
 export const startCrawler = (): void => {
   scraper

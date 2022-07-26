@@ -23,6 +23,7 @@ import { isNumber } from "validate.js";
 import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { ParseError, ValidationError } from "./error";
 import { networkInterfaces } from "os";
+import { registerOnExitHandler } from "./exit";
 
 export function isNumberOrArray(value: number | any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
@@ -1012,6 +1013,7 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
   }
 }
 
+registerOnExitHandler(() => internetTester.stop());
 export const internetTester: InternetTester = new InternetTesterImpl();
 
 /**

@@ -3,6 +3,7 @@ import logger from "./logger";
 import { getMainInterface } from "./tools";
 import { AppEvent, AppEventProgram } from "./types";
 import env from "./env";
+import { registerOnExitHandler } from "./exit";
 
 async function ensureAppStatus(program: AppEventProgram, previous?: AppEvent): Promise<AppEvent | undefined> {
   const type = previous ? "end" : "start";
@@ -14,7 +15,7 @@ async function ensureAppStatus(program: AppEventProgram, previous?: AppEvent): P
     return appEventStorage.addAppEvent({
       id: 0,
       date: new Date(),
-      program: program,
+      program,
       type,
     });
   }
@@ -56,9 +57,11 @@ export class AppStatus {
     this.program = program;
   }
 
-  private requestedExit() {
+  private async requestedExit() {
+    this.stop();
+
     const interfaceIp = getMainInterface() || "unknown";
-    notificationStorage
+    await notificationStorage
       .insertNotification({
         title: `"${this.program}" has stopped`,
         content: `An Instance on ${interfaceIp} (${env.development ? "dev" : "prod"}) has stopped`,
@@ -85,8 +88,7 @@ export class AppStatus {
       })
       .catch((error) => logger.error(error));
 
-    process.on("SIGINT", () => this.requestedExit());
-    process.on("SIGTERM", () => this.requestedExit());
+    registerOnExitHandler(() => this.requestedExit());
     this.loopTimeout = loop(this.program);
   }
 
