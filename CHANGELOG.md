@@ -1,3 +1,24 @@
+# [1.42.0](https://github.com/mytlogos/enterprise-lister/compare/v1.41.2...v1.42.0) (2022-07-26)
+
+
+### Bug Fixes
+
+* **core:** fallback to console.log if logger is closed ([48fff5c](https://github.com/mytlogos/enterprise-lister/commit/48fff5c98326d749fbe41ada9f3261f888121b41))
+* **core:** fix exit on sigint exiting prematurely ([7be5680](https://github.com/mytlogos/enterprise-lister/commit/7be568007633cf5440353df6486d62016a8fe6fb))
+* correct package.json script paths ([a6fbfaf](https://github.com/mytlogos/enterprise-lister/commit/a6fbfaf11611f86593946f9936153ff8022e4304))
+
+
+### Features
+
+* add exit handler ([a285b72](https://github.com/mytlogos/enterprise-lister/commit/a285b720853b619af6699ec71480a8c1a95d48a6))
+* **core:** implement notifications ([abd6618](https://github.com/mytlogos/enterprise-lister/commit/abd66188409f4dcab63aae3587f1e9a498e02a84))
+* implement instance lifecycle notifications ([e0a9ea0](https://github.com/mytlogos/enterprise-lister/commit/e0a9ea06f034f62d1d648f660c06231c86cc864c))
+* **scraper:** add notification on job failure ([52dcc33](https://github.com/mytlogos/enterprise-lister/commit/52dcc33b07f42633eb642c3b444bae3fc39a805f))
+* **server:** add get notifications api ([948338f](https://github.com/mytlogos/enterprise-lister/commit/948338f3e74ea0c474e031d739fd0f1002490954))
+* **website:** add native notifications ([d01da6a](https://github.com/mytlogos/enterprise-lister/commit/d01da6aefa686d03765c97f65402692efda06d1a))
+* **website:** implement notifications ([496f529](https://github.com/mytlogos/enterprise-lister/commit/496f5293463975b2d10d771da356f3127ea7b635))
+* **website:** improve notifications ui ([059e954](https://github.com/mytlogos/enterprise-lister/commit/059e954630394a69d7a6a4b1f4aed440500c2641))
+
 ## [1.41.2](https://github.com/mytlogos/enterprise-lister/compare/v1.41.1...v1.41.2) (2022-07-25)
 
 
