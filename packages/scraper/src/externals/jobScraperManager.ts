@@ -11,7 +11,7 @@ import {
   EmptyPromise,
   Optional,
 } from "enterprise-core/dist/types";
-import { jobStorage } from "enterprise-core/dist/database/storages/storage";
+import { jobStorage, notificationStorage } from "enterprise-core/dist/database/storages/storage";
 import * as dns from "dns";
 import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
@@ -238,13 +238,13 @@ export class JobScraperManager {
         return;
       }
       const found = this.nameIdList.find((value) => value[0] === job.jobId);
-      const message = {
+      const message: StartJobChannelMessage = {
         jobId: job.jobId,
         messageType: "jobs",
         jobName: found?.[1] || "Not found",
         timestamp: job.startRun || 0,
         type: "started",
-      } as StartJobChannelMessage;
+      };
       jobChannel.publish(message);
     });
   }
@@ -612,6 +612,20 @@ export class JobScraperManager {
     return value
       .then((content) => this.helper.emit(eventName, content))
       .catch(async (reason) => {
+        const store = getStore();
+        if (store) {
+          const jobLabel = store.get(StoreKey.LABEL) ?? {};
+
+          await notificationStorage
+            .insertNotification({
+              title: `Job Error for '${jobLabel.job_name + ""}'`,
+              content: reason.message,
+              date: new Date(),
+              key: "job-" + jobLabel.job_id,
+              type: "error",
+            })
+            .catch(logger.error);
+        }
         await this.helper.emit(eventName + ":error", reason);
         return reason;
       });
