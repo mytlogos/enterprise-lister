@@ -22,6 +22,7 @@ import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { ParseError, ValidationError } from "./error";
+import { networkInterfaces } from "os";
 
 export function isNumberOrArray(value: number | any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
@@ -1012,3 +1013,21 @@ class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTe
 }
 
 export const internetTester: InternetTester = new InternetTesterImpl();
+
+/**
+ * Get the first interface on the current local network.
+ * Must be on the '192.168.x.x' subnet.
+ */
+export function getMainInterface(): string | undefined {
+  for (const arrays of Object.values(networkInterfaces())) {
+    if (!Array.isArray(arrays)) {
+      continue;
+    }
+    const foundIpInterface = arrays.find((value) => value.family === "IPv4");
+
+    if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
+      continue;
+    }
+    return foundIpInterface.address;
+  }
+}

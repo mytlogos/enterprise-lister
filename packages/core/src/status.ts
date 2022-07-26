@@ -1,6 +1,8 @@
-import { appEventStorage } from "./database/storages/storage";
+import { appEventStorage, notificationStorage } from "./database/storages/storage";
 import logger from "./logger";
+import { getMainInterface } from "./tools";
 import { AppEvent, AppEventProgram } from "./types";
+import env from "./env";
 
 async function ensureAppStatus(program: AppEventProgram, previous?: AppEvent): Promise<AppEvent | undefined> {
   const type = previous ? "end" : "start";
@@ -54,11 +56,37 @@ export class AppStatus {
     this.program = program;
   }
 
+  private requestedExit() {
+    const interfaceIp = getMainInterface() || "unknown";
+    notificationStorage
+      .insertNotification({
+        title: `"${this.program}" has stopped`,
+        content: `An Instance on ${interfaceIp} (${env.development ? "dev" : "prod"}) has stopped`,
+        date: new Date(),
+        key: "lifecycle-" + this.program,
+        type: "stopped",
+      })
+      .catch((error) => logger.error(error));
+  }
+
   public start(): void {
     if (this.loopTimeout) {
       logger.warn("Calling start on an already started AppStatus Instance.");
       return;
     }
+    const interfaceIp = getMainInterface() || "unknown";
+    notificationStorage
+      .insertNotification({
+        title: `"${this.program}" has started`,
+        content: `An Instance on ${interfaceIp} (${env.development ? "dev" : "prod"}) has started`,
+        date: new Date(),
+        key: "lifecycle-" + this.program,
+        type: "started",
+      })
+      .catch((error) => logger.error(error));
+
+    process.on("SIGINT", () => this.requestedExit());
+    process.on("SIGTERM", () => this.requestedExit());
     this.loopTimeout = loop(this.program);
   }
 

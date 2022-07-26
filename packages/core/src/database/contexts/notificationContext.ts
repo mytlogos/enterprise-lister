@@ -1,17 +1,17 @@
-import { Notification } from "@/types";
+import { Insert, Notification } from "@/types";
 import { SubContext } from "./subContext";
 
 export class NotificationContext extends SubContext {
   private readonly tableName = "notifications";
 
-  public async insertNotification(notification: Notification): Promise<Notification> {
+  public async insertNotification(notification: Insert<Notification>): Promise<Notification> {
     const result = await this.dmlQuery(
       "INSERT INTO notifications (`title`, `content`, `date`, `key`, `type`) VALUES (?,?,?,?,?);",
       [notification.title, notification.content, notification.date, notification.key, notification.type],
     );
 
     notification.id = result.insertId;
-    return notification;
+    return notification as Notification;
   }
 
   public async deleteNotification(notification: Notification): Promise<boolean> {

@@ -1158,6 +1158,8 @@ export type Link = string;
  */
 export type Id = number;
 
+export type Insert<T extends { id: Id }> = Omit<T, "id"> & Partial<Pick<T, "id">>;
+
 export enum ScrapeName {
   searchForToc = "searchForToc",
   toc = "toc",
