@@ -4,6 +4,7 @@ import {
   episodeStorage,
   jobStorage,
   mediumStorage,
+  notificationStorage,
   storage,
   userStorage,
 } from "enterprise-core/dist/database/storages/storage";
@@ -247,6 +248,17 @@ export const deleteToc = createHandler((req) => {
   }
 
   return mediumStorage.removeMediumToc(mediumId, link);
+});
+
+export const getNotifications = createHandler((req) => {
+  const from = extractQueryParam(req, "from", true) || "";
+  const fromDate = getDate(from);
+
+  if (!fromDate) {
+    return new Error(Errors.INVALID_INPUT);
+  }
+
+  return notificationStorage.getNotifications(fromDate);
 });
 
 export const getAllAppEvents = createHandler((req) => {
@@ -899,6 +911,7 @@ export function userRouter(): Router {
    */
   router.get("/events", getAllAppEvents);
   router.get("/status", getStatus);
+  router.get("/notification", getNotifications);
   router.post("/load", postLoad);
 
   router.use("/medium", mediumRouter());
