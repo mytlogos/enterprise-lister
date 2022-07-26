@@ -1,15 +1,53 @@
 <template>
-  <Menubar :model="menuItems" />
+  <Menubar :model="menuItems">
+    <template #end>
+      <div class="dropdown">
+        <button
+          id="notifications"
+          class="btn dropdown-toggle"
+          type="button"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+        >
+          <em
+            v-if="$store.getters.unreadNotifications.length"
+            v-badge="$store.getters.unreadNotifications.length"
+            class="pi pi-bell"
+          ></em>
+          <em v-else class="pi pi-bell"></em>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="notifications">
+          <span>
+            <a href="#" class="btn btn-primary" @click="$store.commit('readAllNotifications')">Read all</a>
+            <router-link :to="{ name: 'notifications' }" class="btn btn-primary">View all</router-link>
+          </span>
+          <li v-for="item in $store.getters.unreadNotifications.slice(0, 5)" :key="item.id" class="dropdown-item">
+            <div class="card">
+              <div class="card-header">{{ item.title }}</div>
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">{{ item.date.toLocaleString() }}</h6>
+                <p class="card-text">
+                  {{ item.content }}
+                </p>
+                <a href="#" class="btn btn-primary" @click="$store.commit('readNotification', item)">Read</a>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </template>
+  </Menubar>
 </template>
 
 <script lang="ts">
 import { defineComponent } from "vue";
 import { mapGetters, mapState } from "vuex";
-import "bootstrap/js/dist/collapse";
+import "@popperjs/core/dist/umd/popper.min.js";
+import "bootstrap/js/dist/dropdown";
 import Menubar from "primevue/menubar";
 import { MenuItem as OriginalMenuItem } from "primevue/menuitem";
 
-type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | undefined | { name: string } };
+type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | { name: string } };
 
 export default defineComponent({
   name: "AppHeader",
@@ -123,6 +161,9 @@ export default defineComponent({
       return items as OriginalMenuItem[];
     },
   },
+  mounted() {
+    this.checkNotifications();
+  },
   methods: {
     logout(): void {
       this.$store.dispatch("logout").catch((error) => {
@@ -133,6 +174,12 @@ export default defineComponent({
           severity: "error",
         });
       });
+    },
+    checkNotifications() {
+      const check = () => this.$store.dispatch("checkNotifications");
+      check();
+      // check every minute at most
+      setInterval(check, 1000 * 60);
     },
   },
 });

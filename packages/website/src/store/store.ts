@@ -1,5 +1,5 @@
 import { HttpClient } from "../Httpclient";
-import { User, VuexStore } from "../siteTypes";
+import { User, UserNotification, VuexStore } from "../siteTypes";
 import router from "../router";
 import { Commit, createStore, createLogger } from "vuex";
 import persistedState from "vuex-persistedstate";
@@ -47,6 +47,8 @@ export const store = createStore({
         { name: "Author", prop: "author", show: true },
         { name: "Artist", prop: "artist", show: true },
       ],
+      notifications: [],
+      readNotifications: {},
     },
     name: "",
     session: "",
@@ -55,6 +57,9 @@ export const store = createStore({
   getters: {
     loggedIn(state): boolean {
       return !!state.uuid;
+    },
+    unreadNotifications(state): UserNotification[] {
+      return state.user.notifications.filter((value) => !value.read);
     },
   },
   mutations: {
@@ -66,6 +71,19 @@ export const store = createStore({
     },
     userSession(state, session: string) {
       state.session = session;
+    },
+    notifications(state, notifications: UserNotification[]) {
+      state.user.notifications = notifications;
+    },
+    readNotification(state, notification: UserNotification) {
+      state.user.readNotifications[notification.id] = true;
+      notification.read = true;
+    },
+    readAllNotifications(state) {
+      state.user.notifications.forEach((value) => {
+        state.user.readNotifications[value.id] = true;
+        value.read = true;
+      });
     },
   },
   actions: {
@@ -139,6 +157,20 @@ export const store = createStore({
           commit("registerModalError", String(error));
         }
       }
+    },
+    async checkNotifications({ commit, state }) {
+      const now = new Date();
+      now.setDate(now.getDate() - 5);
+      const data = await HttpClient.getNotifications(now);
+      commit(
+        "notifications",
+        data.map((value) => {
+          const read = state.user.readNotifications[value.id];
+          const userNotification = value as UserNotification;
+          userNotification.read = read ?? false;
+          return userNotification;
+        }),
+      );
     },
   },
 });
