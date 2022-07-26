@@ -1,3 +1,10 @@
+## [1.43.1](https://github.com/mytlogos/enterprise-lister/compare/v1.43.0...v1.43.1) (2022-07-26)
+
+
+### Bug Fixes
+
+* **website:** fix name not set on configModel ([722951a](https://github.com/mytlogos/enterprise-lister/commit/722951ae12aaa7678c32f1ba92a3b062a064a8c0))
+
 # [1.43.0](https://github.com/mytlogos/enterprise-lister/compare/v1.42.0...v1.43.0) (2022-07-26)
 
 
