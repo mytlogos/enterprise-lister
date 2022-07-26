@@ -78,106 +78,75 @@ function emptyPacket() {
  */
 export class QueryContext implements ConnectionContext {
   private readonly con: Connection;
-  // tslint:disable-next-line:variable-name
-  private _databaseContext?: DatabaseContext;
-  // tslint:disable-next-line:variable-name
-  private _userContext?: UserContext;
-  // tslint:disable-next-line:variable-name
-  private _externalUserContext?: ExternalUserContext;
-  // tslint:disable-next-line:variable-name
-  private _episodeContext?: EpisodeContext;
-  // tslint:disable-next-line:variable-name
-  private _externalListContext?: ExternalListContext;
-  // tslint:disable-next-line:variable-name
-  private _internalListContext?: InternalListContext;
-  // tslint:disable-next-line:variable-name
-  private _jobContext?: JobContext;
-  // tslint:disable-next-line:variable-name
-  private _mediumContext?: MediumContext;
-  // tslint:disable-next-line:variable-name
-  private _mediumInWaitContext?: MediumInWaitContext;
-  // tslint:disable-next-line:variable-name
-  private _newsContext?: NewsContext;
-  // tslint:disable-next-line:variable-name
-  private _partContext?: PartContext;
-  // tslint:disable-next-line:variable-name
-  private _scraperHookContext?: ScraperHookContext;
-  // tslint:disable-next-line:variable-name
-  private _appEventContext?: AppEventContext;
-  // tslint:disable-next-line:variable-name
-  private _customHookContext?: CustomHookContext;
-  private _notificationContext?: NotificationContext;
+  private readonly subClassMap: Map<new (parentContext: QueryContext) => any, any> = new Map();
+
+  private getSubInstanceLazy<T>(constructor: new (parentContext: QueryContext) => T): T {
+    let value = this.subClassMap.get(constructor);
+    if (!value) {
+      value = new constructor(this);
+      this.subClassMap.set(constructor, value);
+    }
+    return value;
+  }
 
   public get databaseContext(): DatabaseContext {
-    return this._databaseContext ? this._databaseContext : (this._databaseContext = new DatabaseContext(this));
+    return this.getSubInstanceLazy(DatabaseContext);
   }
 
   public get userContext(): UserContext {
-    return this._userContext ? this._userContext : (this._userContext = new UserContext(this));
+    return this.getSubInstanceLazy(UserContext);
   }
 
   public get partContext(): PartContext {
-    return this._partContext ? this._partContext : (this._partContext = new PartContext(this));
+    return this.getSubInstanceLazy(PartContext);
   }
 
   public get mediumContext(): MediumContext {
-    return this._mediumContext ? this._mediumContext : (this._mediumContext = new MediumContext(this));
+    return this.getSubInstanceLazy(MediumContext);
   }
 
   public get episodeContext(): EpisodeContext {
-    return this._episodeContext ? this._episodeContext : (this._episodeContext = new EpisodeContext(this));
+    return this.getSubInstanceLazy(EpisodeContext);
   }
 
   public get newsContext(): NewsContext {
-    return this._newsContext ? this._newsContext : (this._newsContext = new NewsContext(this));
+    return this.getSubInstanceLazy(NewsContext);
   }
 
   public get externalListContext(): ExternalListContext {
-    return this._externalListContext
-      ? this._externalListContext
-      : (this._externalListContext = new ExternalListContext(this));
+    return this.getSubInstanceLazy(ExternalListContext);
   }
 
   public get externalUserContext(): ExternalUserContext {
-    return this._externalUserContext
-      ? this._externalUserContext
-      : (this._externalUserContext = new ExternalUserContext(this));
+    return this.getSubInstanceLazy(ExternalUserContext);
   }
 
   public get internalListContext(): InternalListContext {
-    return this._internalListContext
-      ? this._internalListContext
-      : (this._internalListContext = new InternalListContext(this));
+    return this.getSubInstanceLazy(InternalListContext);
   }
 
   public get jobContext(): JobContext {
-    return this._jobContext ? this._jobContext : (this._jobContext = new JobContext(this));
+    return this.getSubInstanceLazy(JobContext);
   }
 
   public get mediumInWaitContext(): MediumInWaitContext {
-    return this._mediumInWaitContext
-      ? this._mediumInWaitContext
-      : (this._mediumInWaitContext = new MediumInWaitContext(this));
+    return this.getSubInstanceLazy(MediumInWaitContext);
   }
 
   public get scraperHookContext(): ScraperHookContext {
-    return this._scraperHookContext
-      ? this._scraperHookContext
-      : (this._scraperHookContext = new ScraperHookContext(this));
+    return this.getSubInstanceLazy(ScraperHookContext);
   }
 
   public get appEventContext(): AppEventContext {
-    return this._appEventContext ? this._appEventContext : (this._appEventContext = new AppEventContext(this));
+    return this.getSubInstanceLazy(AppEventContext);
   }
 
   public get customHookContext(): CustomHookContext {
-    return this._customHookContext ? this._customHookContext : (this._customHookContext = new CustomHookContext(this));
+    return this.getSubInstanceLazy(CustomHookContext);
   }
 
   public get notificationContext(): NotificationContext {
-    return this._notificationContext
-      ? this._notificationContext
-      : (this._notificationContext = new NotificationContext(this));
+    return this.getSubInstanceLazy(NotificationContext);
   }
 
   public constructor(con: Connection) {
