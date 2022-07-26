@@ -1899,3 +1899,12 @@ export interface QueryItemsResult {
   externalMediaLists: ExternalList[];
   externalUser: ExternalUser[];
 }
+
+export interface Notification {
+  id: number;
+  title: string;
+  content: string;
+  date: Date;
+  key: string;
+  type: string;
+}

@@ -40,6 +40,7 @@ import { ScraperHookContext } from "./scraperHookContext";
 import { AppEventContext } from "./appEventContext";
 import { CustomHookContext } from "./customHookContext";
 import { DatabaseError, NotImplementedError, UnsupportedError, ValidationError } from "../../error";
+import { NotificationContext } from "./notificationContext";
 
 const database = "enterprise";
 
@@ -105,6 +106,7 @@ export class QueryContext implements ConnectionContext {
   private _appEventContext?: AppEventContext;
   // tslint:disable-next-line:variable-name
   private _customHookContext?: CustomHookContext;
+  private _notificationContext?: NotificationContext;
 
   public get databaseContext(): DatabaseContext {
     return this._databaseContext ? this._databaseContext : (this._databaseContext = new DatabaseContext(this));
@@ -170,6 +172,12 @@ export class QueryContext implements ConnectionContext {
 
   public get customHookContext(): CustomHookContext {
     return this._customHookContext ? this._customHookContext : (this._customHookContext = new CustomHookContext(this));
+  }
+
+  public get notificationContext(): NotificationContext {
+    return this._notificationContext
+      ? this._notificationContext
+      : (this._notificationContext = new NotificationContext(this));
   }
 
   public constructor(con: Connection) {

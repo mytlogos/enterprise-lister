@@ -41,6 +41,7 @@ import { AppEventContext } from "../contexts/appEventContext";
 import { CustomHookContext } from "../contexts/customHookContext";
 import { DatabaseContext } from "../contexts/databaseContext";
 import { DatabaseConnectionError } from "../../error";
+import { NotificationContext } from "../contexts/notificationContext";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -478,6 +479,7 @@ export const externalListStorage = createStorage<ExternalListContext>("externalL
 export const hookStorage = createStorage<ScraperHookContext>("scraperHookContext");
 export const appEventStorage = createStorage<AppEventContext>("appEventContext");
 export const customHookStorage = createStorage<CustomHookContext>("customHookContext");
+export const notificationStorage = createStorage<NotificationContext>("notificationContext");
 
 /**
  *
