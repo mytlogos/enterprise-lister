@@ -1,6 +1,7 @@
 import localtunnel from "localtunnel";
 import env from "enterprise-core/dist/env";
-import { internetTester, remove, stringify } from "enterprise-core/dist/tools";
+import { remove, stringify } from "enterprise-core/dist/tools";
+import { internetTester } from "enterprise-core/dist/internetTester";
 import logger from "enterprise-core/dist/logger";
 import { ValidationError } from "enterprise-core/dist/error";
 

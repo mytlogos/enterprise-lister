@@ -1,4 +1,5 @@
 import * as tools from "../../../tools";
+import { internetTester } from "../../../internetTester";
 import * as storage from "../../../database/storages/storage";
 import { episodeStorage } from "../../../database/storages/storage";
 import {
@@ -28,7 +29,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // await tearDownTestDatabase();
-  tools.internetTester.stop();
+  internetTester.stop();
   return storage.stopStorage();
 });
 

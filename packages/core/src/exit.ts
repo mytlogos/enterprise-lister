@@ -1,4 +1,5 @@
-import process from "process";
+import process, { nextTick } from "process";
+import logger from "./logger";
 
 const registeredHandlers = new Set<ExitHandler>();
 export type ExitHandler = () => void | Promise<void>;
@@ -18,6 +19,8 @@ export function registerOnExitHandler(handler: ExitHandler) {
  */
 function signalHandler() {
   const promises: Array<Promise<void>> = [];
+  const nowMillis = Date.now();
+
   registeredHandlers.forEach((value) => {
     const promise = value();
     if (promise) {
@@ -27,9 +30,14 @@ function signalHandler() {
 
   // let there be enough room to have everything settled before exiting
   Promise.allSettled(promises).finally(() => {
-    setTimeout(() => process.exit(1), 500);
+    const timeLeft = Math.max(500, 5000 - (Date.now() - nowMillis));
+    logger.info(`Exiting in ${timeLeft}ms`);
+    // close logger and wait a bit for all transports to finish before exiting
+    logger.close();
+    // wait at least 500ms but at most 5000ms to exit from now on, depending how much time
+    // the listeners already took
+    setTimeout(() => nextTick(() => process.exit(1)), timeLeft);
   });
 }
-
 process.on("SIGTERM", signalHandler);
 process.on("SIGINT", signalHandler);

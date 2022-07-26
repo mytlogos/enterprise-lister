@@ -106,6 +106,9 @@ if (env.lokiUrl) {
       },
       level: "info", // never allow debug logs or less
       format: formatLogFmt(true),
+      // else one cannot implement custom made gracefulShutdown
+      // it will exit immediately via async-hook-exit lib on process.on events
+      gracefulShutdown: false,
     }),
   );
 }
@@ -239,5 +242,8 @@ export default {
 
   silly(value: any, meta?: LogMeta): void {
     log("silly", value, meta);
+  },
+  close() {
+    logger.close();
   },
 };
