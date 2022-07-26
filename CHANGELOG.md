@@ -1,3 +1,10 @@
+# [1.43.0](https://github.com/mytlogos/enterprise-lister/compare/v1.42.0...v1.43.0) (2022-07-26)
+
+
+### Features
+
+* enable v2 custom scraper ([2c38167](https://github.com/mytlogos/enterprise-lister/commit/2c3816761874da60084a707dcbdb824d839b6a81))
+
 # [1.42.0](https://github.com/mytlogos/enterprise-lister/compare/v1.41.2...v1.42.0) (2022-07-26)
 
 
