@@ -10,6 +10,7 @@ import mediumStore from "./media";
 import externalUserStore from "./externaluser";
 import newsStore from "./news";
 import hookStore from "./hooks";
+import { notify } from "../notifications";
 
 function userClear(commit: Commit) {
   commit("userName", "");
@@ -162,18 +163,26 @@ export const store = createStore({
       const now = new Date();
       now.setDate(now.getDate() - 5);
       const data = await HttpClient.getNotifications(now);
-      commit(
-        "notifications",
-        data
-          .map((value) => {
-            const read = state.user.readNotifications[value.id];
-            const userNotification = value as UserNotification;
-            userNotification.read = read ?? false;
-            userNotification.date = new Date(userNotification.date);
-            return userNotification;
-          })
-          .sort((a, b) => b.date.getTime() - a.date.getTime()),
-      );
+
+      const notifications = data
+        .map((value) => {
+          const read = state.user.readNotifications[value.id];
+          const userNotification = value as UserNotification;
+          userNotification.read = read ?? false;
+          userNotification.date = new Date(userNotification.date);
+          return userNotification;
+        })
+        .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      const ids = state.user.notifications.reduce((previous, current) => previous.add(current.id), new Set());
+
+      const newNotifications = notifications.filter((value) => !ids.has(value.id));
+
+      if (newNotifications.length) {
+        const titleSuffix = newNotifications.length > 1 ? ` +${newNotifications.length - 1} more` : "";
+        notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
+      }
+      commit("notifications", notifications);
     },
   },
 });

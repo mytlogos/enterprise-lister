@@ -2,6 +2,12 @@
   <div class="container">
     <toolbar>
       <template #start>
+        <p-button
+          v-if="shouldRequestPermission"
+          label="Permit Notifications"
+          class="btn btn-primary me-2"
+          @click="requestPermission"
+        />
         <p-button label="Read all" class="btn btn-primary me-2" @click="$store.commit('readAllNotifications')" />
         <select-button v-model="selectedRead" :options="readOptions" option-label="name" option-value="value" />
       </template>
@@ -21,6 +27,7 @@
 </template>
 <script lang="ts">
 import { defineComponent } from "vue";
+import { requestPermission, shouldRequestPermission } from "../notifications";
 
 export default defineComponent({
   name: "Notifications",
@@ -37,6 +44,7 @@ export default defineComponent({
           value: false,
         },
       ],
+      shouldRequestPermission: shouldRequestPermission(),
     };
   },
   computed: {
@@ -46,6 +54,13 @@ export default defineComponent({
       } else {
         return this.$store.getters.unreadNotifications;
       }
+    },
+  },
+  methods: {
+    requestPermission() {
+      requestPermission()
+        .catch(console.error)
+        .finally(() => (this.shouldRequestPermission = shouldRequestPermission()));
     },
   },
 });
