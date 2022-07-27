@@ -1,3 +1,10 @@
+## [1.45.2](https://github.com/mytlogos/enterprise-lister/compare/v1.45.1...v1.45.2) (2022-07-27)
+
+
+### Bug Fixes
+
+* **scraper:** disabled hook not recognized ([54d7e09](https://github.com/mytlogos/enterprise-lister/commit/54d7e0956c1a8f4d8195374aa85cf873654037b0))
+
 ## [1.45.1](https://github.com/mytlogos/enterprise-lister/compare/v1.45.0...v1.45.1) (2022-07-27)
 
 
