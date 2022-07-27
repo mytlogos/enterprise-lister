@@ -1,3 +1,17 @@
+# [1.44.0](https://github.com/mytlogos/enterprise-lister/compare/v1.43.1...v1.44.0) (2022-07-27)
+
+
+### Bug Fixes
+
+* **scraper:** transform news result into expected ([2b7aebe](https://github.com/mytlogos/enterprise-lister/commit/2b7aebe18b56b6537647640060ca18813bde42d6))
+
+
+### Features
+
+* **scraper:** add missing properties, add filter ([182e272](https://github.com/mytlogos/enterprise-lister/commit/182e272439c9011201e6b05ae9bf09b106921d98))
+* **scraper:** improve and validate scraper results ([5fca46b](https://github.com/mytlogos/enterprise-lister/commit/5fca46bd51f710cf4d1eb33f04ec652ea44f5725))
+* **website:** add result dialog, improve ui ([fb8db0d](https://github.com/mytlogos/enterprise-lister/commit/fb8db0d64c476584d0a112e71436625307f46fe4))
+
 ## [1.43.1](https://github.com/mytlogos/enterprise-lister/compare/v1.43.0...v1.43.1) (2022-07-26)
 
 
