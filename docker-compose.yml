@@ -42,8 +42,8 @@ services:
     depends_on:
       - mariadb
     ports:
-      - "3003:3003"
-      - "3004:3004"
+      - "3003:3000"
+      - "3004:3001"
     networks:
       enterprise:
         aliases:
