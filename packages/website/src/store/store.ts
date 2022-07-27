@@ -86,6 +86,7 @@ export const store = createStore({
         readNotifications[value.id] = true;
         return { ...value, read: true };
       });
+      state.user.readNotifications = readNotifications;
     },
   },
   actions: {
