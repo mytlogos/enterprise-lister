@@ -1,6 +1,13 @@
 import { MediaType, relativeToAbsoluteTime } from "enterprise-core/dist/tools";
-import { NewsScraper, TocScraper, TocSearchScraper, SearchScraper, ContentDownloader } from "../types";
-import { HookConfig, JsonRegex, RequestConfig } from "./types";
+import {
+  NewsScraper,
+  TocScraper,
+  TocSearchScraper,
+  SearchScraper,
+  ContentDownloader,
+  NewsScrapeResult,
+} from "../types";
+import { HookConfig, JsonRegex, NewsNestedResult, NewsSingleResult, RequestConfig } from "./types";
 import Xray, { Selector } from "x-ray";
 import jsonpath from "jsonpath";
 import logger from "enterprise-core/dist/logger";
@@ -8,7 +15,7 @@ import { Context } from "vm";
 import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
 import { queueRequest } from "../queueManager";
-import { SearchResult } from "enterprise-core/dist/types";
+import { EpisodeNews, SearchResult } from "enterprise-core/dist/types";
 import { datePattern } from "./analyzer";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
@@ -115,8 +122,8 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
   }
   const x = createScraper(newsConfig.regexes);
 
-  const scraper: NewsScraper = async () => {
-    const results = [];
+  const scraper: NewsScraper = async (): Promise<NewsScrapeResult> => {
+    const results: Array<Array<NewsNestedResult | NewsSingleResult>> = [];
     for (const datum of newsConfig.data) {
       const selector: Selector = {
         mediumTitle: datum.mediumTitle,
@@ -130,7 +137,45 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
       }
       results.push(await x(newsConfig.newsUrl, datum._$, [selector]));
     }
-    return results.reduce((previous, current) => [...previous, ...current], []);
+    const items = results.reduce((previous, current) => [...previous, ...current], []);
+    const episodes: EpisodeNews[] = [];
+
+    for (const item of items) {
+      if ("releases" in item) {
+        for (const release of item.releases) {
+          episodes.push({
+            date: release.date,
+            episodeTitle: release.episodeTitle,
+            episodeIndex: release.episodeIndex,
+            episodeTotalIndex: release.episodeTotalIndex,
+            episodePartialIndex: release.episodePartialIndex,
+            partIndex: release.partIndex,
+            partTotalIndex: release.partTotalIndex,
+            partPartialIndex: release.partPartialIndex,
+            link: release.link,
+            mediumTitle: item.mediumTitle,
+            mediumTocLink: item.mediumTocLink,
+            mediumType: config.medium,
+          });
+        }
+      } else {
+        episodes.push({
+          date: item.date,
+          episodeTitle: item.episodeTitle,
+          episodeIndex: item.episodeIndex,
+          episodeTotalIndex: item.episodeTotalIndex,
+          episodePartialIndex: item.episodePartialIndex,
+          partIndex: item.partIndex,
+          partTotalIndex: item.partTotalIndex,
+          partPartialIndex: item.partPartialIndex,
+          link: item.link,
+          mediumTitle: item.mediumTitle,
+          mediumTocLink: item.mediumTocLink,
+          mediumType: config.medium,
+        });
+      }
+    }
+    return { episodes };
   };
   scraper.link = config.base;
   return scraper;

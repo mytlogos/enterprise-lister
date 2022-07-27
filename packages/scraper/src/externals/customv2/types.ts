@@ -1,6 +1,37 @@
 import { Options } from "cloudscraper";
 import { MediaType } from "enterprise-core/dist/tools";
 
+export interface NewsNestedResult {
+  mediumTitle: string;
+  mediumTocLink: string;
+
+  releases: Array<{
+    partIndex?: number;
+    partTotalIndex?: number;
+    partPartialIndex?: number;
+    episodeTotalIndex: number;
+    episodePartialIndex?: number;
+    episodeIndex: number;
+    episodeTitle: string;
+    link: string;
+    date: Date;
+  }>;
+}
+
+export interface NewsSingleResult {
+  mediumTitle: string;
+  mediumTocLink: string;
+  partIndex?: number;
+  partTotalIndex?: number;
+  partPartialIndex?: number;
+  episodeTotalIndex: number;
+  episodePartialIndex?: number;
+  episodeIndex: number;
+  episodeTitle: string;
+  link: string;
+  date: Date;
+}
+
 export interface NewsNested {
   type: "nested";
   _$: string;
