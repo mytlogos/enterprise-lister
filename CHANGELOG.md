@@ -1,3 +1,10 @@
+## [1.45.4](https://github.com/mytlogos/enterprise-lister/compare/v1.45.3...v1.45.4) (2022-07-27)
+
+
+### Bug Fixes
+
+* **website:** missing assignment ([a6a9a77](https://github.com/mytlogos/enterprise-lister/commit/a6a9a77969acc1ba554b5cacbe5645e64e7945d1))
+
 ## [1.45.3](https://github.com/mytlogos/enterprise-lister/compare/v1.45.2...v1.45.3) (2022-07-27)
 
 
