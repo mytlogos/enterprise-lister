@@ -81,9 +81,10 @@ export const store = createStore({
       notification.read = true;
     },
     readAllNotifications(state) {
-      state.user.notifications.forEach((value) => {
-        state.user.readNotifications[value.id] = true;
-        value.read = true;
+      const readNotifications: Record<number, boolean> = {};
+      state.user.notifications = state.user.notifications.map((value) => {
+        readNotifications[value.id] = true;
+        return { ...value, read: true };
       });
     },
   },
