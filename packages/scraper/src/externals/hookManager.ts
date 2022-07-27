@@ -138,8 +138,6 @@ export async function load(unloadedOnly = false): EmptyPromise {
     return;
   }
   timeoutId = undefined;
-  const hooks = await loadRawHooks();
-  hooks.push(...(await loadCustomHooks()));
 
   // remove registered hooks
   redirects.length = 0;
@@ -150,6 +148,9 @@ export async function load(unloadedOnly = false): EmptyPromise {
   searchAdapter.length = 0;
   nameHookMap.clear();
   disabledHooks.clear();
+
+  const hooks = await loadRawHooks();
+  hooks.push(...(await loadCustomHooks()));
 
   loadedHooks = hooks;
   registerHooks(loadedHooks);
@@ -267,11 +268,20 @@ export function getHooks(): Hook[] {
   return [...loadedHooks];
 }
 
+/**
+ * Get the Hook with the given name.
+ * Each hook has a unique name.
+ *
+ * @param name name of the hook
+ * @returns a loaded hook
+ * @throws DisabledHookError If the hook with the given name is disabled
+ * @throws if no hook with the given name is loaded
+ */
 export function getHook(name: string): Hook {
   const hook = nameHookMap.get(name);
   if (!hook) {
     if (disabledHooks.has(name)) {
-      throw new DisabledHookError(`trying to access disabled hook '${name}'`);
+      throw new DisabledHookError(`trying to access disabled hook '${name}'`, false);
     }
     throw new ValidationError(`there is no hook with name: '${name}'`);
   }
