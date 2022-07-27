@@ -1,3 +1,10 @@
+## [1.45.1](https://github.com/mytlogos/enterprise-lister/compare/v1.45.0...v1.45.1) (2022-07-27)
+
+
+### Bug Fixes
+
+* **scraper:** creating wrong custom hook ([6ffb7ec](https://github.com/mytlogos/enterprise-lister/commit/6ffb7ec4426e38da460353b15bb66a9f89bb1cd9))
+
 # [1.45.0](https://github.com/mytlogos/enterprise-lister/compare/v1.44.0...v1.45.0) (2022-07-27)
 
 
