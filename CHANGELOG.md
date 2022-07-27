@@ -1,3 +1,10 @@
+# [1.45.0](https://github.com/mytlogos/enterprise-lister/compare/v1.44.0...v1.45.0) (2022-07-27)
+
+
+### Features
+
+* **scraper:** auto disable jobs on disabled hooks ([0ba25a1](https://github.com/mytlogos/enterprise-lister/commit/0ba25a199de3d5197bef9222b60b03883958ac30))
+
 # [1.44.0](https://github.com/mytlogos/enterprise-lister/compare/v1.43.1...v1.44.0) (2022-07-27)
 
 
