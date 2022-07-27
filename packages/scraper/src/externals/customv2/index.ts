@@ -6,6 +6,7 @@ import {
   SearchScraper,
   ContentDownloader,
   NewsScrapeResult,
+  Toc,
 } from "../types";
 import { HookConfig, JsonRegex, NewsNestedResult, NewsSingleResult, RequestConfig } from "./types";
 import Xray, { Selector } from "x-ray";
@@ -15,8 +16,9 @@ import { Context } from "vm";
 import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
 import { queueRequest } from "../queueManager";
-import { EpisodeNews, SearchResult } from "enterprise-core/dist/types";
+import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/types";
 import { datePattern } from "./analyzer";
+import { validateEpisodeNews, validateToc } from "./validation";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
 
@@ -111,6 +113,26 @@ function createScraper(regexes: Record<string, JsonRegex>) {
         }
         return relativeToAbsoluteTime(value.trim());
       },
+      toReleaseState(value?: string) {
+        if (!value) {
+          return;
+        }
+        const lowerCased = value.toLowerCase().trim();
+        switch (lowerCased) {
+          case "ongoing":
+            return ReleaseState.Ongoing;
+          case "complete":
+            return ReleaseState.Complete;
+          case "discontinued":
+            return ReleaseState.Discontinued;
+          case "hiatus":
+            return ReleaseState.Hiatus;
+          case "dropped":
+            return ReleaseState.Dropped;
+          default:
+            return ReleaseState.Unknown;
+        }
+      },
     },
   });
 }
@@ -175,6 +197,11 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
         });
       }
     }
+    for (const episode of episodes) {
+      // TODO: let validate throw
+      validateEpisodeNews(episode, true);
+      episode.date = new Date(episode.date);
+    }
     return { episodes };
   };
   scraper.link = config.base;
@@ -188,7 +215,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
   }
   const x = createScraper(tocConfig.regexes);
 
-  const scraper: TocScraper = async (link: string) => {
+  const scraper: TocScraper = async (link: string): Promise<Toc[]> => {
     const results = [];
     for (const datum of tocConfig.data) {
       const selector = {
@@ -212,7 +239,22 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
         results.push(await x(link, datum._$, [selector as unknown as Selector]));
       }
     }
-    return merge(results);
+    const tocs = merge(results);
+    tocs.forEach((toc: any) => {
+      toc.mediumType = config.medium;
+      validateToc(toc, true);
+
+      for (const content of toc.content) {
+        if (content.episodes) {
+          for (const episode of content.episodes) {
+            episode.releaseDate = new Date(episode.releaseDate);
+          }
+        } else {
+          content.releaseDate = new Date(content.releaseDate);
+        }
+      }
+    });
+    return tocs;
   };
   scraper.hookName = config.name;
   return scraper;

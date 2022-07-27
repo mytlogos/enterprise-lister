@@ -1,5 +1,5 @@
 import { ValidationResult } from "json-schema";
-import { Schema, Validator } from "jsonschema";
+import { Schema, Validator, ValidatorResult } from "jsonschema";
 export { ValidationError } from "jsonschema";
 
 type RequireField<T, K extends keyof T> = T & Required<Pick<T, K>>;
@@ -7,6 +7,9 @@ type RequireField<T, K extends keyof T> = T & Required<Pick<T, K>>;
 interface SchemaFunc {
   <T extends RequireField<Schema, "id" | "type">>(value: T): T;
   string(schema?: Omit<Schema, "type">): { type: "string" };
+  integer(schema?: Omit<Schema, "type">): { type: "integer" };
+  number(schema?: Omit<Schema, "type">): { type: "number" };
+  boolean(schema?: Omit<Schema, "type">): { type: "boolean" };
   link(schema?: Omit<Schema, "type" | "format" | "pattern">): Schema;
 }
 
@@ -22,6 +25,18 @@ const schema = function schema<T extends RequireField<Schema, "id" | "type">>(va
 
 schema.string = function string(value: Schema = {}) {
   return { ...value, type: "string" };
+};
+
+schema.integer = function integer(value: Schema = {}) {
+  return { ...value, type: "integer" };
+};
+
+schema.number = function number(value: Schema = {}) {
+  return { ...value, type: "number" };
+};
+
+schema.boolean = function boolean(value: Schema = {}) {
+  return { ...value, type: "boolean" };
 };
 
 schema.link = function link(value: Schema = {}) {
@@ -47,6 +62,89 @@ const jsonRegexMapSchema = schema({
   id: "/JsonRegexRecord",
   type: "object",
   additionalProperties: jsonRegexSchema,
+});
+
+const newsEpisodeSchema = schema({
+  id: "/NewsEpisode",
+  type: "object",
+  properties: {
+    mediumTitle: schema.string(),
+    mediumTocLink: schema.link(),
+    mediumType: schema.integer(),
+    episodeTitle: schema.string(),
+    episodeIndex: schema.number(),
+    episodeTotalIndex: schema.integer(),
+    episodePartialIndex: schema.integer(),
+    partIndex: schema.number(),
+    partTotalIndex: schema.integer(),
+    partPartialIndex: schema.integer(),
+    link: schema.link(),
+    // releaseDate needs a custom schema check for Date objects
+    date: schema.string({ format: "date-time" }),
+    locked: schema.boolean(),
+  },
+  required: ["mediumTitle", "mediumType", "episodeTitle", "episodeIndex", "episodeTotalIndex", "link", "date"],
+});
+
+const tocEpisodeSchema = schema({
+  id: "/TocEpisode",
+  type: "object",
+  properties: {
+    title: schema.string(),
+    combiIndex: schema.number(),
+    totalIndex: schema.integer(),
+    partialIndex: schema.integer(),
+    url: schema.link(),
+    // releaseDate needs a custom schema check for Date objects
+    releaseDate: schema.string({ format: "date-time" }),
+    noTime: schema.boolean(),
+    locked: schema.boolean(),
+    tocId: schema.integer(),
+  },
+  required: ["title", "combiIndex", "totalIndex", "url"],
+});
+
+const tocPartSchema = schema({
+  id: "/TocPart",
+  type: "object",
+  properties: {
+    title: schema.string(),
+    combiIndex: schema.number(),
+    totalIndex: schema.integer(),
+    partialIndex: schema.integer(),
+    episodes: {
+      type: "array",
+      items: tocEpisodeSchema,
+    },
+  },
+  required: ["title", "combiIndex", "totalIndex", "episodes"],
+});
+
+const tocSchema = schema({
+  id: "/Toc",
+  type: "object",
+  properties: {
+    title: schema.string(),
+    content: {
+      type: "array",
+      items: {
+        oneOf: [tocEpisodeSchema, tocPartSchema],
+      },
+    },
+    mediumId: schema.integer(),
+    synonyms: schema.string(),
+    mediumType: schema.integer(),
+    partsOnly: schema.boolean(),
+    end: schema.boolean(),
+    link: schema.link(),
+    langCOO: schema.string(),
+    langTL: schema.string(),
+    statusCOO: schema.integer(),
+    statusTl: schema.integer(),
+    authors: schema.string(),
+    artists: schema.string(),
+  },
+  required: ["title", "content", "mediumType", "link"],
 });
 
 const requestConfigSchema = schema({
@@ -249,4 +347,26 @@ const hookConfigSchema = schema({
 export function validateHookConfig(value: any): ValidationResult {
   const v = new Validator();
   return v.validate(value, hookConfigSchema);
+}
+
+export function validateToc<T extends boolean>(value: any, throwError: T): T extends true ? never : ValidatorResult {
+  const v = new Validator();
+  // @ts-expect-error
+  return v.validate(value, tocSchema, { throwAll: throwError });
+}
+
+export function validateEpisodeNews<T extends boolean>(
+  value: any,
+  throwError: T,
+): T extends true ? never : ValidatorResult {
+  const v = new Validator();
+  if (throwError) {
+    // @ts-expect-error
+    return v.validate(value, newsEpisodeSchema, {
+      throwAll: true,
+    });
+  } else {
+    // @ts-expect-error
+    return v.validate(value, newsEpisodeSchema);
+  }
 }

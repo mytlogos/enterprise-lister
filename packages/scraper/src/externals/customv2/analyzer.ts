@@ -215,7 +215,7 @@ abstract class Scorer {
 }
 
 export const datePattern =
-  /(Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember?)|Dec(ember)?),? \d+(, \d+)?/im;
+  /(Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember)?|Dec(ember)?),? \d+(, \d+)?/im;
 
 export const relativePattern = /(\d{1,3}|an?) (min|hour|day|week|month)s?( ago)?/im;
 
