@@ -1,3 +1,10 @@
+## [1.45.3](https://github.com/mytlogos/enterprise-lister/compare/v1.45.2...v1.45.3) (2022-07-27)
+
+
+### Bug Fixes
+
+* **website:** speedup 'read all notifications' ([855880d](https://github.com/mytlogos/enterprise-lister/commit/855880d18bd93b65b2f54d85950539b402c6c87e))
+
 ## [1.45.2](https://github.com/mytlogos/enterprise-lister/compare/v1.45.1...v1.45.2) (2022-07-27)
 
 
