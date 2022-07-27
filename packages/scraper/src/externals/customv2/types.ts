@@ -10,11 +10,11 @@ export interface NewsNested {
 
   releases: {
     _$: string;
-    partIndex: string;
-    partTotalIndex: string;
-    partPartialIndex: string;
+    partIndex?: string;
+    partTotalIndex?: string;
+    partPartialIndex?: string;
     episodeTotalIndex: string;
-    episodePartialIndex: string;
+    episodePartialIndex?: string;
     episodeIndex: string;
     episodeTitle: string;
     link: string;
@@ -28,11 +28,11 @@ export interface NewsSingle {
   _request?: RequestConfig;
   mediumTitle: string;
   mediumTocLink: string;
-  partIndex: string;
-  partTotalIndex: string;
-  partPartialIndex: string;
+  partIndex?: string;
+  partTotalIndex?: string;
+  partPartialIndex?: string;
   episodeTotalIndex: string;
-  episodePartialIndex: string;
+  episodePartialIndex?: string;
   episodeIndex: string;
   episodeTitle: string;
   link: string;

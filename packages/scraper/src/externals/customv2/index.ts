@@ -9,9 +9,11 @@ import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
 import { queueRequest } from "../queueManager";
 import { SearchResult } from "enterprise-core/dist/types";
+import { datePattern } from "./analyzer";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
 
+// TODO: add filter for text to date
 export interface CustomHook<T extends HookConfig = HookConfig> {
   name: string;
   medium: MediaType;
@@ -74,11 +76,31 @@ function createScraper(regexes: Record<string, JsonRegex>) {
           return;
         }
         // @ts-expect-error
-        return match[index];
+        const matchGroup = match[index];
+
+        const parsed = Number(matchGroup);
+        return Number.isNaN(parsed) ? undefined : parsed;
       },
-      relative(value) {
+      toDate(value?: string) {
         if (!value) {
           return;
+        }
+        const dateMatch = datePattern.exec(value);
+
+        if (dateMatch) {
+          const yearGroup = dateMatch[11];
+
+          if (!yearGroup) {
+            // this may have an edge case around end/start of the year
+            value += ", " + new Date().getFullYear();
+          }
+          const date = new Date(value);
+
+          if (Number.isNaN(date.getTime())) {
+            return undefined;
+          } else {
+            return date;
+          }
         }
         return relativeToAbsoluteTime(value.trim());
       },

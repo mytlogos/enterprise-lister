@@ -214,11 +214,12 @@ abstract class Scorer {
   public abstract score(node: HTMLElement): number;
 }
 
-class DateScorer extends Scorer {
-  public static datePattern =
-    /(Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember?)|Dec(ember)?),? \d+(, \d+)?/im;
+export const datePattern =
+  /(Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember?)|Dec(ember)?),? \d+(, \d+)?/im;
 
-  public static relativePattern = /(\d{1,3}|an?) (min|hour|day|week|month)s?( ago)?/im;
+export const relativePattern = /(\d{1,3}|an?) (min|hour|day|week|month)s?( ago)?/im;
+
+class DateScorer extends Scorer {
   public static skipAttr = /href|src|class|id|style|type|target|rel/im;
   public readonly minLength = 5;
   public readonly maxLength = 50;
@@ -228,7 +229,7 @@ class DateScorer extends Scorer {
   }
 
   public static isDate(value: string) {
-    return DateScorer.datePattern.test(value) || DateScorer.relativePattern.test(value);
+    return datePattern.test(value) || relativePattern.test(value);
   }
 
   public score(node: HTMLElement): number {
@@ -237,7 +238,7 @@ class DateScorer extends Scorer {
     if (
       textValue.length <= this.maxLength &&
       textValue.length >= this.minLength &&
-      (DateScorer.datePattern.test(textValue) || DateScorer.relativePattern.test(textValue))
+      (datePattern.test(textValue) || relativePattern.test(textValue))
     ) {
       this.hints.set(node, { type: "text" });
       return 5;
@@ -251,7 +252,7 @@ class DateScorer extends Scorer {
       if (
         attr.value.length <= this.maxLength &&
         attr.value.length >= this.minLength &&
-        (DateScorer.datePattern.test(attr.value) || DateScorer.relativePattern.test(attr.value))
+        (datePattern.test(attr.value) || relativePattern.test(attr.value))
       ) {
         this.hints.set(node, { type: "attr", attribute: attr.name });
         return 5;
