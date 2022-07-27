@@ -198,7 +198,6 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
       }
     }
     for (const episode of episodes) {
-      // TODO: let validate throw
       validateEpisodeNews(episode, true);
       episode.date = new Date(episode.date);
     }
