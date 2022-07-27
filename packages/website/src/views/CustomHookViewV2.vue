@@ -42,14 +42,15 @@
         </button>
       </div>
     </div>
-    <div>Result:</div>
-    <div v-if="loading || result" class="alert alert-info" role="alert">
-      <div v-if="loading" class="d-flex align-items-center">
-        <strong>Processing...</strong>
-        <div class="spinner-border ms-auto" role="status" aria-hidden="true"></div>
+    <p-dialog v-model:visible="showResult" class="container-fluid" header="Result" @hide="result = ''">
+      <div>
+        <div v-if="loading" class="d-flex align-items-center alert alert-info" role="alert">
+          <strong>Processing...</strong>
+          <div class="spinner-border ms-auto" role="status" aria-hidden="true"></div>
+        </div>
+        <textarea v-model="result" class="w-100" style="min-height: 500px; white-space: pre"></textarea>
       </div>
-      <span v-else-if="result" style="white-space: pre">{{ result }}</span>
-    </div>
+    </p-dialog>
     <custom-hook-form v-model:hook="hook" v-model:config="value" />
   </div>
 </template>
@@ -71,6 +72,7 @@ import { clone, Logger } from "../init";
 import { validateHookConfig, ValidationError } from "enterprise-scraper/dist/externals/customv2/validation";
 
 interface Data {
+  showResult: boolean;
   invalid: string[];
   param: string;
   result: string;
@@ -93,6 +95,7 @@ export default defineComponent({
   },
   data(): Data {
     return {
+      showResult: false,
       loading: false,
       logger: new Logger("CustomHookView"),
       invalid: [],
@@ -117,17 +120,25 @@ export default defineComponent({
       createResult: undefined,
     };
   },
+  watch: {
+    loading() {
+      this.showResult = !!this.loading || !!this.result;
+    },
+    result() {
+      this.showResult = !!this.loading || !!this.result;
+    },
+  },
   created() {
     this.load();
   },
   methods: {
     testHook(hookKey: keyof HookConfig) {
-      if (this.loading) {
-        return;
-      }
-      this.loading = true;
-
       const hookConfig = clone(this.value);
+
+      this.cleanEmptySelectors(hookConfig.download?.data);
+      this.cleanEmptySelectors(hookConfig.news?.data);
+      this.cleanEmptySelectors(hookConfig.toc?.data);
+      this.cleanEmptySelectors(hookConfig.search?.data);
 
       // only set value if it is a valid config
       try {
@@ -151,15 +162,18 @@ export default defineComponent({
         this.logger.error(error);
         return;
       }
-
+      if (this.loading) {
+        return;
+      }
+      this.loading = true;
       HttpClient.testHookV2({
         config: hookConfig,
         key: hookKey,
         param: this.param,
       })
-        .then((value) => (this.result = JSON.stringify(value)))
+        .then((value) => (this.result = JSON.stringify(value, undefined, 2)))
         .catch((value) => {
-          this.result = (value.message ? value.message + "\n" : "") + JSON.stringify(value);
+          this.result = (value.message ? value.message + "\n" : "") + JSON.stringify(value, undefined, 2);
         })
         .finally(() => (this.loading = false));
     },
@@ -194,6 +208,19 @@ export default defineComponent({
       }
     },
 
+    cleanEmptySelectors(data?: Record<string, any>) {
+      if (!data) {
+        return;
+      }
+      for (const [key, value] of Object.entries(data)) {
+        if (typeof value === "string" && !value.trim()) {
+          data[key] = undefined;
+        } else if (typeof value === "object") {
+          this.cleanEmptySelectors(value);
+        }
+      }
+    },
+
     save() {
       if (this.value.name && !this.hook.name) {
         this.hook.name = this.value.name;
@@ -204,12 +231,18 @@ export default defineComponent({
         return;
       }
 
+      const cloned = clone(this.value);
+      this.cleanEmptySelectors(cloned.download?.data);
+      this.cleanEmptySelectors(cloned.news?.data);
+      this.cleanEmptySelectors(cloned.toc?.data);
+      this.cleanEmptySelectors(cloned.search?.data);
+
       // only set value if it is a valid config
       try {
-        const result = validateHookConfig(this.value);
+        const result = validateHookConfig(cloned);
 
         if (result.valid) {
-          this.hook.state = JSON.stringify(this.value);
+          this.hook.state = JSON.stringify(cloned);
           this.invalid = [];
         } else {
           this.invalid = result.errors.map((v) => {

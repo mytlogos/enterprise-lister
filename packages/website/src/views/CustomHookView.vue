@@ -112,7 +112,7 @@ interface Data {
   result: string;
   loading: boolean;
   createResult?: "success" | "failed";
-  value: Partial<HookConfig>;
+  value: HookConfig;
   hook: Partial<CustomHook>;
   activeTab: "form" | "editor";
   logger: Logger;
@@ -142,7 +142,15 @@ export default defineComponent({
       invalid: "",
       param: "",
       result: "",
-      value: {},
+      value: {
+        name: "",
+        base: "",
+        domain: {
+          flags: "",
+          pattern: "",
+        },
+        medium: 0,
+      },
       hook: {
         id: 0,
         name: "",
@@ -176,7 +184,7 @@ export default defineComponent({
     this.load();
   },
   methods: {
-    setConfig(value: Partial<HookConfig>) {
+    setConfig(value: HookConfig) {
       if (deepEqual(value, this.value)) {
         this.logger.info("No config update required");
         return;
