@@ -57,10 +57,10 @@ export enum HookState {
 
 function isHookConfigV2(config: HookConfig | HookConfigV2): config is HookConfigV2 {
   return (
-    ((config.news && "regexex" in config.news) ||
-      (config.search && "regexex" in config.search) ||
-      (config.toc && "regexex" in config.toc) ||
-      (config.download && "regexex" in config.download)) ??
+    ((config.news && "regexes" in config.news) ||
+      (config.search && "regexes" in config.search) ||
+      (config.toc && "regexes" in config.toc) ||
+      (config.download && "regexes" in config.download)) ??
     false
   );
 }
