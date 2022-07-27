@@ -47,6 +47,7 @@ const tocDiscovery: Map<RegExp, TocSearchScraper> = new Map();
 const newsAdapter: NewsScraper[] = [];
 const searchAdapter: SearchScraper[] = [];
 const nameHookMap = new Map<string, Hook>();
+const disabledHooks = new Set<string>();
 let timeoutId: NodeJS.Timeout | undefined;
 
 export enum HookState {
@@ -71,6 +72,7 @@ async function loadCustomHooks(): Promise<Hook[]> {
 
   for (const hookEntity of hooks) {
     if (hookEntity.hookState === HookState.DISABLED) {
+      disabledHooks.add(hookEntity.name);
       continue;
     }
     let hookConfig: HookConfig | HookConfigV2;
@@ -147,6 +149,7 @@ export async function load(unloadedOnly = false): EmptyPromise {
   newsAdapter.length = 0;
   searchAdapter.length = 0;
   nameHookMap.clear();
+  disabledHooks.clear();
 
   loadedHooks = hooks;
   registerHooks(loadedHooks);
@@ -161,8 +164,8 @@ export async function load(unloadedOnly = false): EmptyPromise {
 }
 
 export class DisabledHookError extends Error {
-  public constructor(name: string) {
-    super("Called a function on the disabled Hook '" + name + "'");
+  public constructor(name: string, called = true) {
+    super(called ? "Called a function on the disabled Hook '" + name + "'" : name);
     this.name = "DisabledHookError";
   }
 }
@@ -267,6 +270,9 @@ export function getHooks(): Hook[] {
 export function getHook(name: string): Hook {
   const hook = nameHookMap.get(name);
   if (!hook) {
+    if (disabledHooks.has(name)) {
+      throw new DisabledHookError(`trying to access disabled hook '${name}'`);
+    }
     throw new ValidationError(`there is no hook with name: '${name}'`);
   }
   return hook;

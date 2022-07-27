@@ -863,6 +863,11 @@ async function tocErrorHandler(error: Error) {
   if (store) {
     if (error instanceof DisabledHookError) {
       store.set(StoreKey.RESULT, "warning");
+      const jobId = store.get(StoreKey.LABEL)?.job_id;
+
+      if (jobId) {
+        await jobStorage.updateJobsEnable(jobId, false);
+      }
     } else {
       store.set(StoreKey.RESULT, "failed");
     }
@@ -896,6 +901,12 @@ function defaultErrorHandler(errorValue: any): void {
   if (store) {
     if (errorValue instanceof DisabledHookError) {
       store.set(StoreKey.RESULT, "warning");
+
+      const jobId = store.get(StoreKey.LABEL)?.job_id;
+
+      if (jobId) {
+        jobStorage.updateJobsEnable(jobId, false).catch(console.error);
+      }
     } else {
       store.set(StoreKey.RESULT, "failed");
     }
