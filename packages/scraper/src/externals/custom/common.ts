@@ -42,11 +42,11 @@ export interface Trace {
 
 /**
  * Serializes a Cheerio Object into html or its selected items in a html string array.
- * @param key property key
+ * @param _key property key
  * @param value property value
  * @returns serializable value
  */
-function replacer(key: unknown, value: any): unknown {
+function replacer(_key: unknown, value: any): unknown {
   if ((typeof value === "object" || typeof value === "function") && value && typeof value.html === "function") {
     if (typeof value.eq === "function" && typeof value.length === "number") {
       const serialized = [];
