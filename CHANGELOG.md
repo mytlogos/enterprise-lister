@@ -1,3 +1,10 @@
+# [1.46.0](https://github.com/mytlogos/enterprise-lister/compare/v1.45.4...v1.46.0) (2022-07-28)
+
+
+### Features
+
+* **scraper:** successive scrape configs use last url ([50eac3e](https://github.com/mytlogos/enterprise-lister/commit/50eac3e3b0340c583cec901a728aa47f7adcecb8))
+
 ## [1.45.4](https://github.com/mytlogos/enterprise-lister/compare/v1.45.3...v1.45.4) (2022-07-27)
 
 
