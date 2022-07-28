@@ -5,6 +5,7 @@ import { HookConfig, TocConfig } from "./types";
 import { validate } from "jsonschema";
 import { JSONSchema7 } from "json-schema";
 import { CustomHookError } from "./errors";
+import { getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
 
 const tocSchema: JSONSchema7 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -95,9 +96,12 @@ export function createTocScraper(config: HookConfig): TocScraper | undefined {
 
   const scraper: TocScraper = async (url) => {
     const context = defaultContext();
+    let lastUrl = url;
 
     async function scrape(tocConfig: TocConfig) {
-      const $ = await makeRequest(url, context, tocConfig.request);
+      const $ = await makeRequest(lastUrl, context, tocConfig.request);
+
+      lastUrl = getStoreValue(StoreKey.LAST_REQUEST_URL);
       const baseUri = tocConfig.base || config.base;
 
       try {

@@ -7,7 +7,14 @@ import { BufferToStringStream } from "enterprise-core/dist/transform";
 import { StatusCodeError } from "request-promise-native/errors";
 import requestPromise from "request-promise-native";
 import { MissingResourceError } from "./errors";
-import { setContext, removeContext, getStore, bindContext, StoreKey } from "enterprise-core/dist/asyncStorage";
+import {
+  setContext,
+  removeContext,
+  getStore,
+  bindContext,
+  StoreKey,
+  setStoreValue,
+} from "enterprise-core/dist/asyncStorage";
 import http from "http";
 import https from "https";
 import { Socket } from "net";
@@ -246,7 +253,13 @@ export const queueRequest: QueueRequest<string> = (uri, options, otherRequest): 
     // @ts-expect-error
     options.url = uri;
   }
-  return queue.push(() => methodToRequest(options, toUseRequest));
+  options.resolveWithFullResponse = true;
+  return queue.push(() =>
+    methodToRequest(options, toUseRequest).then((response: FullResponse) => {
+      setStoreValue(StoreKey.LAST_REQUEST_URL, response.request.uri.href);
+      return response.body;
+    }),
+  );
 };
 
 export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
@@ -259,14 +272,14 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
   if (!options) {
     options = { uri };
   }
-  options.transform = transformCheerio;
-  // only transform 2xx to get full response on error
-  options.transform2xxOnly = true;
+  options.resolveWithFullResponse = true;
 
   return queue.push(async () => {
     for (let tryAgain = 0; tryAgain < 4; tryAgain++) {
       try {
-        return await methodToRequest(options, toUseRequest);
+        const response: FullResponse = await methodToRequest(options, toUseRequest);
+        setStoreValue(StoreKey.LAST_REQUEST_URL, response.request.uri.href);
+        return transformCheerio(response.body);
       } catch (error) {
         // retry at most 3 times for 429 - Too many Requests error
         if (hasProps(error, "statusCode", "response") && error.statusCode === 429 && tryAgain < 3) {

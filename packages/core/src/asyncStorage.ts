@@ -113,6 +113,26 @@ export type Store = Map<StoreKey, any>;
 const stores = new Map<number, Store>();
 const defaultContext = "base";
 
+export function setStoreValue(key: StoreKey, value: any, force = false) {
+  const store = getStore();
+
+  if (store) {
+    store.set(key, value);
+  } else if (force) {
+    throw Error("expected store, but did not find one, is this function running in runAsync?");
+  }
+}
+
+export function getStoreValue(key: StoreKey, force = false): Optional<any> {
+  const store = getStore();
+
+  if (store) {
+    return store.get(key);
+  } else if (force) {
+    throw Error("expected store, but did not find one, is this function running in runAsync?");
+  }
+}
+
 export function getStore(): Optional<Store> {
   return localStorage.getStore() as Optional<Store>;
 }
@@ -179,7 +199,7 @@ export function runAsync<T extends (...fArgs: any[]) => any>(
   ...args: Parameters<T>
 ): Promise<ReturnType<T>> {
   return localStorage.run(store, async () => {
-    if (!id) {
+    if (id) {
       stores.set(id, store);
     }
     try {
@@ -191,7 +211,7 @@ export function runAsync<T extends (...fArgs: any[]) => any>(
       }
       return result;
     } finally {
-      if (!id) {
+      if (id) {
         stores.delete(id);
       }
     }
@@ -229,4 +249,5 @@ export enum StoreKey {
   NETWORK = "network",
   LAST_RUN = "lastRun",
   ERROR = "error",
+  LAST_REQUEST_URL = "last_request_url", // after redirects
 }
