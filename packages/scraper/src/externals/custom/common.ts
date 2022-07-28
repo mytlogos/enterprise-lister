@@ -6,7 +6,7 @@ import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-c
 import { Nullable } from "enterprise-core/dist/types";
 import * as url from "url";
 import { getText } from "../direct/directTools";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "../queueManager";
 import { CustomHookError, CustomHookErrorCodes } from "./errors";
 import {
   JsonRegex,
@@ -1015,6 +1015,9 @@ export const makeRequest = traceWrap(function makeRequest(
   logger.debug("Requesting url: " + targetUrl);
   if (requestConfig?.jsonResponse) {
     return queueRequest(targetUrl, options).then((value) => JSON.parse(value));
+  }
+  if (requestConfig?.fullResponse) {
+    return queueRequestFullResponse(targetUrl, options);
   }
   return queueCheerioRequest(targetUrl, options);
 });

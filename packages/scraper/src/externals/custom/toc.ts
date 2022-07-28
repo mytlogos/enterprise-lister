@@ -1,11 +1,11 @@
-import { Cheerio, Element } from "cheerio";
+import { Cheerio, Element, load as loadCheerio } from "cheerio";
 import { Toc, TocScraper } from "../types";
 import { defaultContext, extract, makeRequest, merge } from "./common";
 import { HookConfig, TocConfig } from "./types";
 import { validate } from "jsonschema";
 import { JSONSchema7 } from "json-schema";
 import { CustomHookError } from "./errors";
-import { getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
+import { FullResponse } from "cloudscraper";
 
 const tocSchema: JSONSchema7 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -99,18 +99,22 @@ export function createTocScraper(config: HookConfig): TocScraper | undefined {
     let lastUrl = url;
 
     async function scrape(tocConfig: TocConfig) {
-      const $ = await makeRequest(lastUrl, context, tocConfig.request);
-
-      lastUrl = getStoreValue(StoreKey.LAST_REQUEST_URL);
+      const response: FullResponse = await makeRequest(
+        lastUrl,
+        context,
+        Object.assign(tocConfig.request || {}, { fullResponse: true }),
+      );
+      lastUrl = response.request.uri.href;
+      const $ = loadCheerio(response.body);
       const baseUri = tocConfig.base || config.base;
 
       try {
         if (Array.isArray(tocConfig.selector)) {
           return tocConfig.selector.flatMap((selector) =>
-            extract($.root() as Cheerio<Element>, selector, baseUri, context),
+            extract($.root() as unknown as Cheerio<Element>, selector, baseUri, context),
           );
         } else {
-          return extract($.root() as Cheerio<Element>, tocConfig.selector, baseUri, context);
+          return extract($.root() as unknown as Cheerio<Element>, tocConfig.selector, baseUri, context);
         }
       } catch (error) {
         if (error instanceof CustomHookError) {

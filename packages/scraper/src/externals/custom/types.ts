@@ -126,6 +126,7 @@ export interface RequestConfig {
   templateUrl?: string;
   templateBody?: string;
   jsonResponse?: boolean;
+  fullResponse?: boolean;
   options?: Omit<Options, "url" | "uri">;
 }
 

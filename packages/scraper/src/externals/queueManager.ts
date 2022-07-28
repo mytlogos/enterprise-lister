@@ -278,6 +278,7 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
     for (let tryAgain = 0; tryAgain < 4; tryAgain++) {
       try {
         const response: FullResponse = await methodToRequest(options, toUseRequest);
+        // FIXME: for some reason, this is not in asyncContext anymore
         setStoreValue(StoreKey.LAST_REQUEST_URL, response.request.uri.href);
         return transformCheerio(response.body);
       } catch (error) {

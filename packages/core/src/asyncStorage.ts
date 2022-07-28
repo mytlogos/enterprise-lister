@@ -113,6 +113,29 @@ export type Store = Map<StoreKey, any>;
 const stores = new Map<number, Store>();
 const defaultContext = "base";
 
+/**
+ * Ensures that the function is executed in an asynchronous context.
+ *
+ * @param func function to execute in some async context
+ * @returns a wrapper function
+ */
+export function asyncContext<T extends (...fArgs: any[]) => any>(func: T): T {
+  // @ts-expect-error
+  return (...values: Parameters<T>): ReturnType<T> => {
+    if (inAsyncContext()) {
+      return func(...values);
+    }
+    const store = new Map();
+    return localStorage.run(store, () => {
+      return func(...values);
+    });
+  };
+}
+
+export function inAsyncContext(): boolean {
+  return !!localStorage.getStore();
+}
+
 export function setStoreValue(key: StoreKey, value: any, force = false) {
   const store = getStore();
 
