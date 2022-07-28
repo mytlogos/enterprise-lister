@@ -1,3 +1,10 @@
+## [1.46.1](https://github.com/mytlogos/enterprise-lister/compare/v1.46.0...v1.46.1) (2022-07-28)
+
+
+### Bug Fixes
+
+* **scraper:** fix using wrong url after redirect ([49270d1](https://github.com/mytlogos/enterprise-lister/commit/49270d1e9bcbaf59a1ab44cdecb1480e79cdfee7))
+
 # [1.46.0](https://github.com/mytlogos/enterprise-lister/compare/v1.45.4...v1.46.0) (2022-07-28)
 
 
