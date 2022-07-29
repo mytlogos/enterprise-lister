@@ -177,6 +177,7 @@ export default defineComponent({
     },
     configModel(): HookConfig {
       return {
+        version: 1,
         name: this.name,
         domain: this.domain,
         base: this.baseUrl,
