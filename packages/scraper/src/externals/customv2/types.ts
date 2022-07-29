@@ -1,5 +1,5 @@
 import { Options } from "cloudscraper";
-import { MediaType } from "enterprise-core/dist/tools";
+import { BaseHookConfig } from "../custom/types";
 
 export interface NewsNestedResult {
   mediumTitle: string;
@@ -152,11 +152,8 @@ export interface DownloadConfig {
   data: DownloadSingle[];
 }
 
-export interface HookConfig {
-  name: string;
-  base: string;
-  domain: JsonRegex;
-  medium: MediaType;
+export interface HookConfig extends BaseHookConfig {
+  version: 2;
   news?: NewsConfig;
   search?: SearchConfig;
   toc?: TocConfig;

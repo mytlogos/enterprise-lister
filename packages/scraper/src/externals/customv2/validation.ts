@@ -333,6 +333,7 @@ const hookConfigSchema = schema({
       type: "integer",
       enum: [1, 2, 4, 8],
     },
+    version: { const: 2 },
     domain: jsonRegexSchema,
     name: schema.string({ minLength: 2 }),
     news: newsConfigSchema,
@@ -341,7 +342,7 @@ const hookConfigSchema = schema({
     search: searchConfigSchema,
   },
   additionalProperties: false,
-  required: ["base", "medium", "name"],
+  required: ["base", "medium", "name", "version"],
 });
 
 export function validateHookConfig(value: any): ValidationResult {

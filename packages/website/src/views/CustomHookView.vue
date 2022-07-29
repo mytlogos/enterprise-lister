@@ -143,6 +143,7 @@ export default defineComponent({
       param: "",
       result: "",
       value: {
+        version: 1,
         name: "",
         base: "",
         domain: {

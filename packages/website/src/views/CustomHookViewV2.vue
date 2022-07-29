@@ -102,6 +102,7 @@ export default defineComponent({
       param: "",
       result: "",
       value: {
+        version: 2,
         name: "",
         base: "",
         medium: 0,

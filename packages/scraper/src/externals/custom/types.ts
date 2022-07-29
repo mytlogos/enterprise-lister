@@ -1,4 +1,5 @@
 import { Options } from "cloudscraper";
+import { MediaType } from "enterprise-core/dist/tools";
 import { EpisodeNews, SearchResult } from "enterprise-core/dist/types";
 import { EpisodeContent, Toc } from "../types";
 
@@ -146,11 +147,15 @@ export interface JsonRegex {
 
 export type HookDomain = string | JsonRegex | RegExp;
 
-export interface HookConfig {
+export interface BaseHookConfig {
   name: string;
-  medium: number;
+  medium: MediaType;
   base: string;
   domain: JsonRegex;
+}
+
+export interface HookConfig extends BaseHookConfig {
+  version: 1;
   search?: SearchConfig;
   download?: DownloadConfig;
   toc?: TocConfig | TocConfig[];

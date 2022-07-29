@@ -56,13 +56,7 @@ export enum HookState {
 }
 
 function isHookConfigV2(config: HookConfig | HookConfigV2): config is HookConfigV2 {
-  return (
-    ((config.news && "regexes" in config.news) ||
-      (config.search && "regexes" in config.search) ||
-      (config.toc && "regexes" in config.toc) ||
-      (config.download && "regexes" in config.download)) ??
-    false
-  );
+  return "version" in config && config.version === 2;
 }
 
 async function loadCustomHooks(): Promise<Hook[]> {
