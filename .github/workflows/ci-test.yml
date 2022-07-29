@@ -107,4 +107,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           build-args: |
-            PROJECT_VERSION=${{ steps.semantic.outputs.new_release_version }}
+            PROJECT_VERSION=${{ steps.semantic.outputs.new_release_version || steps.semantic.outputs.last_release_version }}
