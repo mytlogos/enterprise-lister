@@ -2,7 +2,7 @@
 
 set -e
 
-VERSION=$1
+VERSION=$(git describe --tags)
 
 echo $@
 
