@@ -1,3 +1,11 @@
+## [1.46.2](https://github.com/mytlogos/enterprise-lister/compare/v1.46.1...v1.46.2) (2022-07-29)
+
+
+### Bug Fixes
+
+* **scraper:** add version to hookconfigs ([70269a5](https://github.com/mytlogos/enterprise-lister/commit/70269a56c6b1901994fdbc41975e48ce393f4b94))
+* **website:** add missing property ([6991e34](https://github.com/mytlogos/enterprise-lister/commit/6991e34b145cc9328a93137a981069f44e93d887))
+
 ## [1.46.1](https://github.com/mytlogos/enterprise-lister/compare/v1.46.0...v1.46.1) (2022-07-28)
 
 
