@@ -187,10 +187,11 @@ interface Data {
   currentReleases: Set<string>;
   tooltips: ToolTip[];
   latest: Date;
-  until?: Date;
+  until: Date;
   pages: Array<{ latest: Date; until: Date }>;
   isFetching: boolean;
   isRefreshing: boolean;
+  lastFetch?: { args: string; date: number };
   readFilterValues: [Value<true>, Value<false>];
   typeFilterValues: Array<{
     tooltip: string;
@@ -202,6 +203,21 @@ interface Data {
   mediumSuggestions: SimpleMedium[];
   listSuggestions: List[];
   listSuggestion?: List;
+}
+
+function defaultLatest(): Date {
+  // some releases have dates in the future, so get them at most one year in the future
+  const latest = new Date();
+  latest.setFullYear(latest.getFullYear() + 1);
+  return latest;
+}
+
+function defaultEarliest(): Date {
+  // this is more of a hotfix to speedup the queries
+  // view only the last month on the first full request
+  const until = new Date();
+  until.setMonth(until.getMonth() - 1);
+  return until;
 }
 
 export default defineComponent({
@@ -230,8 +246,8 @@ export default defineComponent({
       },
       currentReleases: new Set(),
       tooltips: [],
-      latest: new Date(),
-      until: undefined,
+      latest: defaultLatest(),
+      until: defaultEarliest(),
       pages: [{ latest, until }],
       readFilterValues: [{ value: true }, { value: false }],
       typeFilterValues: [
@@ -358,43 +374,28 @@ export default defineComponent({
         [MediaType.IMAGE]: 0,
         [MediaType.VIDEO]: 0,
         [MediaType.AUDIO]: 0,
-      } as Record<number, number>;
+      };
 
       this.releases.forEach((value) => {
         if (value.medium) {
-          newCount[value.medium]++;
+          newCount[value.medium as MediaType]++;
         }
       });
 
       Object.assign(this.typeReleases, newCount);
       this.typeFilterValues.forEach((item) => {
-        item.count = newCount[item.value];
+        item.count = newCount[item.value as MediaType];
       });
     },
   },
-  async mounted() {
+  mounted() {
     this.unmounted = false;
-    // FIXME: why does this property not exist?:
-    // @ts-expect-error
-    return this.fetchReleases();
+    this.fetchReleases().catch(console.error);
   },
   unmounted() {
     this.unmounted = true;
   },
   methods: {
-    defaultLatest(): Date {
-      // some releases have dates in the future, so get them at most one year in the future
-      const latest = new Date();
-      latest.setFullYear(latest.getFullYear() + 1);
-      return latest;
-    },
-    defaultUntil(): Date {
-      // this is more of a hotfix to speedup the queries
-      // view only the last month on the first full request
-      const until = new Date();
-      until.setMonth(until.getMonth() - 1);
-      return until;
-    },
     paginate(event: { previous: number; current: number }) {
       const diff = event.current - event.previous;
 
@@ -426,7 +427,7 @@ export default defineComponent({
             console.warn("No Releases left");
             return;
           }
-          this.until = (this.until && new Date(this.until)) || this.defaultUntil();
+          this.until = (this.until && new Date(this.until)) || defaultEarliest();
           this.until.setMonth(this.until.getMonth() - 1);
 
           this.latest = new Date(lastRelease.date);
@@ -534,23 +535,31 @@ export default defineComponent({
       if (this.fetching || this.unmounted) {
         return;
       }
+      const args: Parameters<typeof HttpClient.getDisplayReleases> = [
+        this.latest,
+        this.until,
+        this.readFilter.value,
+        this.onlyLists.map((item) => item.id),
+        this.onlyMedia.map((item) => item.id) as number[],
+        this.ignoreLists.map((item) => item.id),
+        this.ignoreMedia.map((item) => item.id) as number[],
+      ];
+
+      const currentFetch = JSON.stringify(args);
+      const nowMillis = Date.now();
+
+      // do not try to get releases with the same args twice in less than a minute
+      if (this.lastFetch && nowMillis - this.lastFetch.date < 1000 * 60 && currentFetch === this.lastFetch.args) {
+        return;
+      }
+      this.lastFetch = { args: currentFetch, date: nowMillis };
       this.fetching = true;
 
       if (replace) {
-        this.until = this.until || this.defaultUntil();
-        this.latest = this.latest || this.defaultLatest();
         this.isRefreshing = true;
       }
       try {
-        const response = await HttpClient.getDisplayReleases(
-          this.latest,
-          this.until,
-          this.readFilter.value,
-          this.onlyLists.map((item) => item.id),
-          this.onlyMedia.map((item) => item.id) as number[],
-          this.ignoreLists.map((item) => item.id),
-          this.ignoreMedia.map((item) => item.id) as number[],
-        );
+        const response = await HttpClient.getDisplayReleases(...args);
 
         if (replace) {
           this.currentReleases.clear();
@@ -589,7 +598,7 @@ export default defineComponent({
               }
             }
             return {
-              key: key,
+              key,
               date: formatDate(item.date),
               episodeId: item.episodeId,
               link: item.link,
@@ -600,7 +609,7 @@ export default defineComponent({
               time: item.date.getTime(),
               title: item.title,
               locked: item.locked,
-            } as DisplayReleaseItem;
+            };
           }),
         );
         releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
