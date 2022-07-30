@@ -1,3 +1,10 @@
+## [1.47.2](https://github.com/mytlogos/enterprise-lister/compare/v1.47.1...v1.47.2) (2022-07-30)
+
+
+### Bug Fixes
+
+* **core:** fix expected env variable name ([15b5f95](https://github.com/mytlogos/enterprise-lister/commit/15b5f95454a1f9626fa088291d8a43ce6efd80c7))
+
 ## [1.47.1](https://github.com/mytlogos/enterprise-lister/compare/v1.47.0...v1.47.1) (2022-07-30)
 
 
