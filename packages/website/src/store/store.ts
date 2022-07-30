@@ -48,8 +48,6 @@ export const store = createStore({
         { name: "Author", prop: "author", show: true },
         { name: "Artist", prop: "artist", show: true },
       ],
-      notifications: [],
-      readNotifications: {},
       unreadNotificationsCount: 0,
       readNotificationsCount: 0,
     },
@@ -60,9 +58,6 @@ export const store = createStore({
   getters: {
     loggedIn(state): boolean {
       return !!state.uuid;
-    },
-    unreadNotifications(state): UserNotification[] {
-      return state.user.notifications.filter((value) => !value.read);
     },
   },
   mutations: {
@@ -80,21 +75,6 @@ export const store = createStore({
     },
     readNotificationCount(state, count: number) {
       state.user.readNotificationsCount = count;
-    },
-    notifications(state, notifications: UserNotification[]) {
-      state.user.notifications = notifications;
-    },
-    readNotification(state, notification: UserNotification) {
-      state.user.readNotifications[notification.id] = true;
-      notification.read = true;
-    },
-    readAllNotifications(state) {
-      const readNotifications: Record<number, boolean> = {};
-      state.user.notifications = state.user.notifications.map((value) => {
-        readNotifications[value.id] = true;
-        return { ...value, read: true };
-      });
-      state.user.readNotifications = readNotifications;
     },
   },
   actions: {
