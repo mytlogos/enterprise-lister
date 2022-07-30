@@ -1910,3 +1910,7 @@ export interface Notification {
   key: string;
   type: string;
 }
+
+export interface UserNotification extends Notification {
+  read: boolean;
+}

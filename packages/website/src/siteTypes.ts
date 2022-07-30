@@ -1,6 +1,5 @@
-import { CustomHook, JobHistoryItem as ServerJobHistoryItem, Notification } from "enterprise-core/dist/types";
+import { CustomHook, JobHistoryItem as ServerJobHistoryItem, UserNotification } from "enterprise-core/dist/types";
 
-export type UserNotification = Notification & { read: boolean };
 export type ClickListener = (evt: MouseEvent) => void;
 export type KeyboardListener = (evt: KeyboardEvent) => void;
 
@@ -353,6 +352,8 @@ export interface StoreUser {
   columns: Column[];
   notifications: UserNotification[];
   readNotifications: Record<number, boolean>;
+  unreadNotificationsCount: number;
+  readNotificationsCount: number;
 }
 
 export interface Modal {

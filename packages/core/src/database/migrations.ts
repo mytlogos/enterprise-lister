@@ -309,4 +309,12 @@ export const Migrations: Migration[] = [
       // Table 'notifications' is automatically added
     },
   },
+  {
+    fromVersion: 18,
+    toVersion: 19,
+    async migrate(): EmptyPromise {
+      // Table 'notifications_read' is automatically added
+      // foreign keys included
+    },
+  },
 ];

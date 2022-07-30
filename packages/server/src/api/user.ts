@@ -251,14 +251,40 @@ export const deleteToc = createHandler((req) => {
 });
 
 export const getNotifications = createHandler((req) => {
-  const from = extractQueryParam(req, "from", true) || "";
-  const fromDate = getDate(from);
+  const from = extractQueryParam(req, "from");
+  const uuid = extractQueryParam(req, "uuid");
+  const read = extractQueryParam(req, "read");
+  const sizeString = extractQueryParam(req, "size", true) || "0";
 
-  if (!fromDate) {
+  const fromDate = getDate(from);
+  const size = Number(sizeString);
+
+  if (!fromDate || !uuid || Number.isNaN(size)) {
+    throw new Error(Errors.INVALID_INPUT);
+  }
+
+  return notificationStorage.getNotifications(fromDate, uuid, read.toLowerCase() === "true", size);
+});
+
+export const getNotificationsCount = createHandler((req) => {
+  const uuid = extractQueryParam(req, "uuid");
+  const read = extractQueryParam(req, "read");
+  return notificationStorage.countNotifications(uuid, read.toLowerCase() === "true");
+});
+
+export const postReadAllNotifications = createHandler((req) => {
+  const { uuid } = req.body;
+  return notificationStorage.readAllNotifications(uuid);
+});
+
+export const postReadNotification = createHandler((req) => {
+  const { id, uuid } = req.body;
+
+  if (isInvalidId(id)) {
     return new Error(Errors.INVALID_INPUT);
   }
 
-  return notificationStorage.getNotifications(fromDate);
+  return notificationStorage.readNotification(id, uuid);
 });
 
 export const getAllAppEvents = createHandler((req) => {
@@ -912,6 +938,9 @@ export function userRouter(): Router {
   router.get("/events", getAllAppEvents);
   router.get("/status", getStatus);
   router.get("/notification", getNotifications);
+  router.post("/notification-read", postReadNotification);
+  router.post("/notification-read-all", postReadAllNotifications);
+  router.get("/notification-count", getNotificationsCount);
   router.post("/load", postLoad);
 
   router.use("/medium", mediumRouter());

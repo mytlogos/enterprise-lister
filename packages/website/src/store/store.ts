@@ -1,5 +1,5 @@
 import { HttpClient } from "../Httpclient";
-import { User, UserNotification, VuexStore } from "../siteTypes";
+import { User, VuexStore } from "../siteTypes";
 import router from "../router";
 import { Commit, createStore, createLogger } from "vuex";
 import persistedState from "vuex-persistedstate";
@@ -10,7 +10,7 @@ import mediumStore from "./media";
 import externalUserStore from "./externaluser";
 import newsStore from "./news";
 import hookStore from "./hooks";
-import { notify } from "../notifications";
+import { UserNotification } from "enterprise-core/dist/types";
 
 function userClear(commit: Commit) {
   commit("userName", "");
@@ -50,6 +50,8 @@ export const store = createStore({
       ],
       notifications: [],
       readNotifications: {},
+      unreadNotificationsCount: 0,
+      readNotificationsCount: 0,
     },
     name: "",
     session: "",
@@ -72,6 +74,12 @@ export const store = createStore({
     },
     userSession(state, session: string) {
       state.session = session;
+    },
+    unreadNotificationCount(state, count: number) {
+      state.user.unreadNotificationsCount = count;
+    },
+    readNotificationCount(state, count: number) {
+      state.user.readNotificationsCount = count;
     },
     notifications(state, notifications: UserNotification[]) {
       state.user.notifications = notifications;
@@ -161,30 +169,21 @@ export const store = createStore({
         }
       }
     },
-    async checkNotifications({ commit, state }) {
-      const now = new Date();
-      now.setDate(now.getDate() - 5);
-      const data = await HttpClient.getNotifications(now);
-
-      const notifications = data
-        .map((value) => {
-          const read = state.user.readNotifications[value.id];
-          const userNotification = value as UserNotification;
-          userNotification.read = read ?? false;
-          userNotification.date = new Date(userNotification.date);
-          return userNotification;
-        })
-        .sort((a, b) => b.date.getTime() - a.date.getTime());
-
-      const ids = state.user.notifications.reduce((previous, current) => previous.add(current.id), new Set());
-
-      const newNotifications = notifications.filter((value) => !ids.has(value.id));
-
-      if (newNotifications.length) {
-        const titleSuffix = newNotifications.length > 1 ? ` +${newNotifications.length - 1} more` : "";
-        notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
-      }
-      commit("notifications", notifications);
+    async checkNotificationCounts({ commit }) {
+      const [unreadCount, readCount] = await Promise.all([
+        HttpClient.getNotificationsCount(false),
+        HttpClient.getNotificationsCount(true),
+      ]);
+      commit("unreadNotificationCount", unreadCount);
+      commit("readNotificationCount", readCount);
+    },
+    async readNotification({ dispatch }, data: UserNotification) {
+      await HttpClient.readNotification(data.id);
+      dispatch("checkNotificationCounts");
+    },
+    async readAllNotifications({ dispatch }) {
+      await HttpClient.readAllNotifications();
+      dispatch("checkNotificationCounts");
     },
   },
 });
