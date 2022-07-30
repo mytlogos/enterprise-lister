@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(18);
+const dataBaseBuilder = new DataBaseBuilder(19);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -420,6 +420,16 @@ dataBaseBuilder
   .parseColumn("type VARCHAR(200) NOT NULL")
   .parseColumn("key VARCHAR(200) NOT NULL")
   .parseMeta("PRIMARY KEY(id)")
+  .build();
+
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("notifications_read")
+  .parseColumn("id INT UNSIGNED NOT NULL")
+  .parseColumn("uuid CHAR(36) NOT NULL")
+  .parseMeta("PRIMARY KEY(id, uuid)")
+  .parseMeta("FOREIGN KEY (uuid) REFERENCES user(uuid)")
+  .parseMeta("FOREIGN KEY (id) REFERENCES notifications(id)")
   .build();
 
 dataBaseBuilder.addMigrations(...Migrations);

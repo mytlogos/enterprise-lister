@@ -29,6 +29,7 @@ import TriStateCheckbox from "primevue/tristatecheckbox";
 import Dialog from "primevue/dialog";
 import InputNumber from "primevue/inputnumber";
 import Dropdown from "primevue/dropdown";
+import Paginator from "primevue/paginator";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
@@ -54,6 +55,7 @@ app.component("TriStateCheckbox", TriStateCheckbox);
 app.component("PDialog", Dialog);
 app.component("InputNumber", InputNumber);
 app.component("Dropdown", Dropdown);
+app.component("PPaginator", Paginator);
 app.directive("badge", BadgeDirective);
 app.directive("tooltip", Tooltip);
 Router.isReady().then(() => app.mount("#app"));

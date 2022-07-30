@@ -10,8 +10,8 @@
           aria-expanded="false"
         >
           <em
-            v-if="$store.getters.unreadNotifications.length"
-            v-badge="$store.getters.unreadNotifications.length"
+            v-if="$store.state.user.unreadNotificationsCount"
+            v-badge="$store.state.user.unreadNotificationsCount"
             class="pi pi-bell"
           ></em>
           <em v-else class="pi pi-bell"></em>
@@ -19,16 +19,15 @@
         <ul class="dropdown-menu" aria-labelledby="notifications">
           <toolbar>
             <template #start>
-              <p-button label="Read all" class="btn btn-primary me-2" @click="$store.commit('readAllNotifications')" />
+              <p-button
+                label="Read all"
+                class="btn btn-primary me-2"
+                @click="$store.dispatch('readAllNotifications')"
+              />
               <router-link :to="{ name: 'notifications' }" class="btn btn-primary">View all</router-link>
             </template>
           </toolbar>
-          <li
-            v-for="item in $store.getters.unreadNotifications.slice(0, 5)"
-            :key="item.id"
-            class="dropdown-item"
-            style="max-width: 100vw"
-          >
+          <li v-for="item in notifications" :key="item.id" class="dropdown-item" style="max-width: 100vw">
             <div class="card">
               <div class="card-header">{{ item.title }}</div>
               <div class="card-body">
@@ -36,7 +35,7 @@
                 <p class="card-text text-truncate">
                   {{ item.content }}
                 </p>
-                <a href="#" class="btn btn-primary" @click="$store.commit('readNotification', item)">Read</a>
+                <a href="#" class="btn btn-primary" @click="$store.dispatch('readNotification', item)">Read</a>
               </div>
             </div>
           </li>
@@ -53,6 +52,9 @@ import "@popperjs/core/dist/umd/popper.min.js";
 import "bootstrap/js/dist/dropdown";
 import Menubar from "primevue/menubar";
 import { MenuItem as OriginalMenuItem } from "primevue/menuitem";
+import { HttpClient } from "../Httpclient";
+import { UserNotification } from "enterprise-core/dist/types";
+import { notify } from "../notifications";
 
 type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | { name: string } };
 
@@ -134,6 +136,7 @@ export default defineComponent({
           to: { name: "login" },
         },
       ],
+      notifications: [] as UserNotification[],
     };
   },
   computed: {
@@ -183,10 +186,28 @@ export default defineComponent({
       });
     },
     checkNotifications() {
-      const check = () => this.$store.dispatch("checkNotifications");
-      check();
+      this.getLatestNotifications();
       // check every minute at most
-      setInterval(check, 1000 * 60);
+      setInterval(() => this.getLatestNotifications(), 1000 * 60);
+    },
+    async getLatestNotifications() {
+      this.$store.dispatch("checkNotificationCounts");
+
+      const now = new Date();
+      now.setDate(now.getDate() - 5);
+      const data = await HttpClient.getNotifications(now, false, 5);
+
+      const notifications = data.map((value) => {
+        const userNotification = value as UserNotification;
+        userNotification.date = new Date(userNotification.date);
+        return userNotification;
+      });
+
+      if (notifications.length) {
+        const titleSuffix = notifications.length > 1 ? ` +${notifications.length - 1} more` : "";
+        notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
+      }
+      this.notifications = notifications;
     },
   },
 });

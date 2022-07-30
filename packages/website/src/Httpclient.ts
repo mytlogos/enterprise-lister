@@ -28,7 +28,7 @@ import {
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
-import { CustomHook, Notification, Nullable, SimpleUser } from "enterprise-core/dist/types";
+import { CustomHook, Id, Notification, Nullable, SimpleUser } from "enterprise-core/dist/types";
 
 /**
  * Allowed Methods for the API.
@@ -201,6 +201,15 @@ const restApi = createRestDefinition({
         },
       },
       notification: {
+        get: true,
+      },
+      "notification-read": {
+        post: true,
+      },
+      "notification-read-all": {
+        post: true,
+      },
+      "notification-count": {
         get: true,
       },
     },
@@ -565,8 +574,20 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.crawler.jobs.get);
   },
 
-  getNotifications(from: Date): Promise<Notification[]> {
-    return this.queryServer(serverRestApi.api.user.notification.get, { from });
+  getNotifications(from: Date, read: boolean, size?: number): Promise<Notification[]> {
+    return this.queryServer(serverRestApi.api.user.notification.get, { from, read, size });
+  },
+
+  readNotification(id: Id): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user["notification-read"].post, { id });
+  },
+
+  readAllNotifications(): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user["notification-read-all"].post);
+  },
+
+  getNotificationsCount(read: boolean): Promise<number> {
+    return this.queryServer(serverRestApi.api.user["notification-count"].get, { read });
   },
 
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {

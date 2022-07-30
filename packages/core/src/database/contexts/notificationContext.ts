@@ -1,4 +1,4 @@
-import { Insert, Notification } from "@/types";
+import { Id, Insert, Notification, UserNotification, Uuid } from "@/types";
 import { SubContext } from "./subContext";
 
 export class NotificationContext extends SubContext {
@@ -49,7 +49,52 @@ export class NotificationContext extends SubContext {
     return result.affectedRows > 0;
   }
 
-  public async getNotifications(date: Date): Promise<Notification[]> {
-    return this.query("SELECT * FROM notifications WHERE date > ?", date);
+  public async getNotifications(date: Date, uuid: Uuid, read: boolean, size?: number): Promise<UserNotification[]> {
+    const args = [date, uuid] as any[];
+    const limit = size && size > 0 ? " LIMIT ?" : "";
+
+    if (limit) {
+      args.push(size);
+    }
+
+    if (read) {
+      return this.query(
+        "SELECT n.*, true as `read` FROM notifications as n WHERE date > ? AND id IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
+          limit,
+        args,
+      );
+    } else {
+      return this.query(
+        "SELECT n.*, false as `read` FROM notifications as n WHERE date > ? AND id NOT IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
+          limit,
+        args,
+      );
+    }
+  }
+
+  public async readNotification(id: Id, uuid: Uuid): Promise<boolean> {
+    const result = await this.dmlQuery("INSERT IGNORE INTO notifications_read (id, uuid) VALUES (?, ?)", [id, uuid]);
+    return result.affectedRows > 0;
+  }
+
+  public async countNotifications(uuid: Uuid, read: boolean): Promise<number> {
+    let result;
+    if (read) {
+      result = await this.query("SELECT count(id) as count FROM notifications_read WHERE uuid = ?", uuid);
+    } else {
+      result = await this.query(
+        "SELECT count(id) as count FROM notifications WHERE id not in (SELECT id as count FROM notifications_read WHERE uuid = ?)",
+        uuid,
+      );
+    }
+    return result[0].count;
+  }
+
+  public async readAllNotifications(uuid: Uuid): Promise<boolean> {
+    const result = await this.dmlQuery(
+      "INSERT IGNORE INTO notifications_read (id, uuid) SELECT id, ? FROM notifications",
+      uuid,
+    );
+    return result.affectedRows > 0;
   }
 }
