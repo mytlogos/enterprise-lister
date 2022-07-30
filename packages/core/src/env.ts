@@ -57,9 +57,14 @@ const appConfig: Config = {
   lokiUrl: process.env.lokiUrl || config.parsed.lokiUrl,
 };
 
+const optionalVars = new Set(["lokiUrl"] as Array<keyof Config>);
+
 // this should not output sensitive information
 for (const [key, value] of Object.entries(appConfig)) {
   if (value == null || Number.isNaN(value)) {
+    if (optionalVars.has(key as keyof Config)) {
+      continue;
+    }
     throw new ConfigurationError(`Config Error: ${key} has invalid Value: ${value + ""}`);
   }
 }
