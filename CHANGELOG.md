@@ -1,3 +1,15 @@
+# [1.48.0](https://github.com/mytlogos/enterprise-lister/compare/v1.47.2...v1.48.0) (2022-07-30)
+
+
+### Bug Fixes
+
+* **core:** do not throw on optional config keys ([d021849](https://github.com/mytlogos/enterprise-lister/commit/d021849be52f1d23b8626879e09fd05e375b3f66))
+
+
+### Features
+
+* **website:** improve release filter ui ([f24bdbb](https://github.com/mytlogos/enterprise-lister/commit/f24bdbb31b7312413cb1706d33b15dbdcd41d95d))
+
 ## [1.47.2](https://github.com/mytlogos/enterprise-lister/compare/v1.47.1...v1.47.2) (2022-07-30)
 
 
