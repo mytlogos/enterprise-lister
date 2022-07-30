@@ -1,17 +1,17 @@
 <template>
   <div class="container-fluid p-0">
     <h1 id="releases-title">Releases</h1>
-    <div class="p-1">
+    <div class="p-1 btn-toolbar">
       <p-button :loading="isRefreshing" label="Refresh" @click.left="refresh" />
-      <p-button class="ms-1" :loading="isFetching" label="Fetch new Releases" @click.left="fetchNew" />
-      <SelectButton v-model="readFilter" class="d-inline-block ms-1" :options="readFilterValues" data-key="value">
+      <p-button :loading="isFetching" label="Fetch new Releases" @click.left="fetchNew" />
+      <SelectButton v-model="readFilter" class="d-inline-block" :options="readFilterValues" data-key="value">
         <template #option="slotProps">
           <i class="fas fa-check" :class="{ 'text-success': slotProps.option.value }" aria-hidden="true" />
         </template>
       </SelectButton>
       <SelectButton
         v-model="typeFilter"
-        class="d-inline-block ms-1"
+        class="d-inline-block"
         :options="typeFilterValues"
         data-key="value"
         option-value="value"
@@ -677,3 +677,12 @@ export default defineComponent({
   },
 });
 </script>
+<style scoped>
+.btn-toolbar :deep(.p-button) {
+  height: 100% !important;
+}
+.btn-toolbar > * {
+  margin-top: 0.25rem !important;
+  margin-left: 0.25rem !important;
+}
+</style>
