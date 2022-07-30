@@ -1,3 +1,10 @@
+# [1.47.0](https://github.com/mytlogos/enterprise-lister/compare/v1.46.2...v1.47.0) (2022-07-30)
+
+
+### Features
+
+* implement read status on backend ([4cc9908](https://github.com/mytlogos/enterprise-lister/commit/4cc9908a6289805b901d4b7ac89220213990935a))
+
 ## [1.46.2](https://github.com/mytlogos/enterprise-lister/compare/v1.46.1...v1.46.2) (2022-07-29)
 
 

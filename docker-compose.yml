@@ -28,7 +28,7 @@ services:
           - mariadb
   crawler:
     restart: always
-    image: enterprise-server:v1.46.2
+    image: enterprise-server:v1.47.0
     command: ["node", "packages/scraper/dist/startCrawler.js"]
     working_dir: /code
     build:
@@ -36,7 +36,7 @@ services:
       network: host
       dockerfile: Dockerfile
       args:
-        PROJECT_VERSION: v1.46.2
+        PROJECT_VERSION: v1.47.0
     volumes:
       - /media/data/docker/enterprise/logs:/code/logs
     depends_on:
@@ -55,14 +55,14 @@ services:
       NODE_APP_NAME: crawler
   web:
     restart: always
-    image: enterprise-server:v1.46.2
+    image: enterprise-server:v1.47.0
     command: ["node", "packages/server/dist/startServer.js"]
     build:
       context: .
       network: host
       dockerfile: Dockerfile
       args:
-        PROJECT_VERSION: v1.46.2
+        PROJECT_VERSION: v1.47.0
     working_dir: /code
     volumes:
       - /media/data/docker/enterprise/logs:/code/logs
