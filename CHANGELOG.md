@@ -1,3 +1,11 @@
+## [1.47.1](https://github.com/mytlogos/enterprise-lister/compare/v1.47.0...v1.47.1) (2022-07-30)
+
+
+### Bug Fixes
+
+* quote string ([19a2a1a](https://github.com/mytlogos/enterprise-lister/commit/19a2a1a2380dc1c11154a6d1ce81a9e4810fc51d))
+* **website:** fix duplicate release fetch ([3231abe](https://github.com/mytlogos/enterprise-lister/commit/3231abe20704d4c597977486fd01f2bc7503a358))
+
 # [1.47.0](https://github.com/mytlogos/enterprise-lister/compare/v1.46.2...v1.47.0) (2022-07-30)
 
 

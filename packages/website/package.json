@@ -1,6 +1,6 @@
 {
   "name": "enterprise-website",
-  "version": "1.47.0",
+  "version": "1.47.1",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
