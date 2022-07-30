@@ -272,7 +272,7 @@ export class MediumContext extends SubContext {
    * Gets one or multiple media from the storage.
    */
   public getLikeMedium<T extends MultiSingleValue<LikeMediumQuery>>(likeMedia: T): PromiseMultiSingle<T, LikeMedium> {
-    return promiseMultiSingle(likeMedia, async (value) => {
+    return promiseMultiSingle(likeMedia, async (value): Promise<LikeMedium> => {
       const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
       const escapedTitle = escapeLike(value.title, { singleQuotes: true });
 
@@ -288,8 +288,8 @@ export class MediumContext extends SubContext {
       return {
         medium: result[0],
         title: value.title,
-        link: value.link,
-      } as LikeMedium;
+        link: value.link || "",
+      };
     });
   }
 

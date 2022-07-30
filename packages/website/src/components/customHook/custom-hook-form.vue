@@ -126,7 +126,7 @@
 </template>
 <script lang="ts">
 import { CustomHook, HookState } from "enterprise-core/dist/types";
-import { HookConfig, Selector as SelectorType, JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
+import { HookConfig, Selector as SelectorType } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
 import ScraperConfig from "./scraper-config.vue";
 import Regex from "./regex.vue";
@@ -158,7 +158,7 @@ export default defineComponent({
       comment: this.hook.comment,
       baseUrl: this.config.base,
       medium: MediaType.TEXT,
-      domain: this.config.domain || ({ pattern: "", flags: "" } as JsonRegex),
+      domain: this.config.domain || { pattern: "", flags: "" },
       tocConfig: toArray(this.config.toc),
       searchConfig: this.config.search && { ...this.config.search },
       newsConfig: this.config.news && { ...this.config.news },
@@ -298,9 +298,10 @@ export default defineComponent({
       if (!Array.isArray(config.selector)) {
         config.selector = toArray(config.selector);
       }
-      config.selector.push({
+      const selector: SelectorType<any> = {
         selector: "",
-      } as SelectorType<any>);
+      };
+      config.selector.push(selector);
     },
   },
 });

@@ -98,7 +98,7 @@ export interface StartJobChannelMessage extends BasicJobChannelMessage {
 export interface ScraperJob {
   type: string;
   onSuccess?: () => void;
-  onDone?: () => void | ScraperJob | ScraperJob[];
+  onDone?: () => undefined | ScraperJob | ScraperJob[];
   onFailure?: (reason?: any) => void;
   cb: (item: any) => Promise<any>;
 }

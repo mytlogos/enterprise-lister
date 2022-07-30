@@ -776,7 +776,7 @@ export class EpisodeContext extends SubContext {
         releases: episode.releases,
         progress: 0,
         readDate: null,
-      } as Episode;
+      };
     }).then(async (value: MultiSingleValue<Episode>) => {
       if (insertReleases.length) {
         await this.addRelease(insertReleases);

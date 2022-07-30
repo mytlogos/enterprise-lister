@@ -6,7 +6,6 @@ import compression from "compression";
 import helmet from "helmet";
 // own router
 import { apiRouter } from "./api";
-import { blockRequests } from "./timer";
 import { isString, emojiStrip } from "enterprise-core/dist/tools";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsDoc from "swagger-jsdoc";
@@ -44,7 +43,6 @@ enableWS(app); // allow router/app to use *.ws
 
 const parentDirName = path.dirname(path.dirname(__dirname));
 
-app.use(blockRequests);
 app.use(logRequest);
 
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -77,7 +75,7 @@ app.use((req, res) => {
 });
 
 // catch 404 and forward to error handler
-app.use((req, res, next) => {
+app.use((_req, _res, next) => {
   next(createError(404));
 });
 
@@ -90,7 +88,3 @@ app.use((err: HttpError, req: Request, res: Response) => {
   // render the error page
   res.sendStatus(err.status || 500);
 });
-
-// TODO what is with tls (https), cloudflare?
-// TODO does it redirect automatically to https when http was typed?
-// TODO what options does https need

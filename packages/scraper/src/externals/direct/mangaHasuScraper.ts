@@ -333,7 +333,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         partContents.push(part);
       }
 
-      const episodeContent = {
+      const episodeContent: TocEpisode = {
         title,
         combiIndex: chapIndices.combi,
         totalIndex: chapIndices.total,
@@ -341,7 +341,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
         url: link,
         releaseDate: time,
         noTime: true,
-      } as TocEpisode;
+      };
       checkTocContent(episodeContent);
       part.episodes.push(episodeContent);
     } else if (chapGroups) {

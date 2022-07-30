@@ -275,7 +275,7 @@ export class PartContext extends SubContext {
   /**
    * Adds a part of an medium to the storage.
    */
-  public async addPart(part: AddPart): Promise<Part> {
+  public async addPart(part: AddPart): Promise<Part | FullPart> {
     if (part.totalIndex === -1) {
       return this.createStandardPart(part.mediumId);
     }
@@ -331,7 +331,7 @@ export class PartContext extends SubContext {
       partialIndex: part.partialIndex,
       totalIndex: part.totalIndex,
       episodes,
-    } as FullPart;
+    };
   }
 
   /**

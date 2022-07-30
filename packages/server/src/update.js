@@ -60,10 +60,10 @@ module.exports.downloadLatest = async function downloadLatest() {
       request(distAsset.browser_download_url)
         .pipe(tar.extract(process.cwd()))
         .on("entry", (header) => console.log(`Extracting ${header.name}...`))
-        .on("error", () => {
+        .on("error", (err) => {
           if (!finished) {
             finished = true;
-            reject();
+            reject(err);
           }
         })
         .on("finish", () => {

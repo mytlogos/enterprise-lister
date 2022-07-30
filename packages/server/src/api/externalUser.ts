@@ -26,7 +26,7 @@ export const getExternalUser = createHandler((req) => {
     let externalUuid;
     if (externalUuidString.startsWith("[") && externalUuidString.endsWith("]")) {
       externalUuid = externalUuidString
-        .substr(1, externalUuidString.length - 2)
+        .substring(1, externalUuidString.length - 1)
         .split(",")
         .map((value) => value.trim());
     } else {

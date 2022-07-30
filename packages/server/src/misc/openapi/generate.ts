@@ -35,10 +35,10 @@ async function readHook(openApiObject: OpenApiObject) {
     for (const method of methods) {
       // @ts-expect-error
       const operation: OperationObject = value[method];
-      const methodInput: any = input && input[method];
+      const methodInput: any = input?.[method];
 
       if (operation) {
-        if (operation.parameters && operation.parameters.length) {
+        if (operation.parameters?.length) {
           const inputParameter = methodInput.parameter || [];
 
           operation.parameters.forEach((p) => {
@@ -57,7 +57,7 @@ async function readHook(openApiObject: OpenApiObject) {
           const requestSchema = (operation.requestBody as RequestBodyObject).content["application/json"]
             ?.schema as SchemaObject;
 
-          if (requestSchema && requestSchema.properties) {
+          if (requestSchema?.properties) {
             const parameterInput: Record<string, SchemaObject> = methodInput.requestBody || {};
 
             for (const [key, schema] of Object.entries(requestSchema.properties)) {
@@ -84,7 +84,7 @@ async function writeHook(openApiObject: OpenApiObject) {
       const methodOutput: any = {};
 
       if (operation) {
-        if (operation.parameters && operation.parameters.length) {
+        if (operation.parameters?.length) {
           const parameterOutput: Record<string, SchemaObject> = (methodOutput.parameter = {});
 
           operation.parameters.forEach((p) => {
@@ -102,7 +102,7 @@ async function writeHook(openApiObject: OpenApiObject) {
           const requestSchema = (operation.requestBody as RequestBodyObject).content["application/json"]
             ?.schema as SchemaObject;
 
-          if (requestSchema && requestSchema.properties) {
+          if (requestSchema?.properties) {
             const parameterOutput: Record<string, SchemaObject> = {};
 
             for (const [key, schema] of Object.entries(requestSchema.properties)) {

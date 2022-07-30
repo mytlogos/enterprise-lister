@@ -297,7 +297,7 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
             const diffMillis = retryAfterDate.getTime() - Date.now();
 
             if (Number.isNaN(diffMillis) || diffMillis < 0) {
-              logger.error(`Retry-After is invalid: ${retryAfterValue}`);
+              logger.error(`Retry-After is invalid: ${retryAfterValue + ""}`);
             } else {
               await delay(diffMillis);
             }

@@ -103,11 +103,12 @@ export default defineComponent({
   },
   methods: {
     select(id: number, external: boolean, index: number, evt: KeyboardEvent | MouseEvent): void {
-      this.$emit("select", {
+      const event: SelectItemEvent = {
         id,
         external,
         multiSelect: this.multi && evt.ctrlKey,
-      } as SelectItemEvent);
+      };
+      this.$emit("select", event);
 
       this.markClassId = this.markClassId === id ? null : id;
       // TODO: check if this is correct

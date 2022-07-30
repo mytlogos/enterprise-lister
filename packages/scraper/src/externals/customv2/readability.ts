@@ -1460,7 +1460,7 @@ export class Readability {
    * @param possibleByline {string} - a string to check whether its a byline.
    * @return Boolean - whether the input string is a byline.
    */
-  private _isValidByline(byline: string | String): boolean {
+  private _isValidByline(byline: any): boolean {
     if (typeof byline === "string" || byline instanceof String) {
       byline = byline.trim();
       return byline.length > 0 && byline.length < 100;

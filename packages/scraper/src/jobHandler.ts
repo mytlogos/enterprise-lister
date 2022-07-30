@@ -610,7 +610,7 @@ interface StoredMedium {
 /**
  *
  */
-async function processMedia(media: ScrapeMedium[], listType: number, userUuid: Uuid): Promise<LikeMedium[]> {
+async function processMedia(media: ScrapeMedium[], _listType: number, _userUuid: Uuid): Promise<LikeMedium[]> {
   const likeMedia = media.map((value) => {
     return {
       title: value.title.text,
@@ -718,8 +718,8 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
           name: value.name,
           url: value.link,
           medium: value.medium,
-          items: value.media,
-        } as ExternalList)
+          items: value.media as number[],
+        })
         .catch((error) => logger.error(error)),
     ),
   );
@@ -731,7 +731,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
         .updateExternalList({
           id,
           name: value.name,
-        } as ExternalList)
+        })
         .catch((error) => logger.error(error));
     }),
   );
@@ -896,7 +896,7 @@ async function tocErrorHandler(error: Error) {
   }
 }
 
-function defaultErrorHandler(errorValue: any): void {
+function defaultErrorHandler(errorValue: any) {
   const store = getStore();
   if (store) {
     if (errorValue instanceof DisabledHookError) {
@@ -917,6 +917,7 @@ function defaultErrorHandler(errorValue: any): void {
   } else {
     logger.error(errorValue);
   }
+  return undefined;
 }
 
 scraper.on("feed:error", defaultErrorHandler);

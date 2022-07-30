@@ -11,7 +11,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="item in filteredData" :key="item">
+        <tr v-for="(item, index) in filteredData" :key="index">
           <td>
             {{ item.identifier }}
           </td>
@@ -105,9 +105,12 @@ export default defineComponent({
     filteredData(): Array<ExternalUserItem | EmptyObject> {
       const data: Array<ExternalUserItem | EmptyObject> = this.$store.state.externalUser.externalUser
         .filter((value) => value)
-        .map((value) => {
+        .map((value): ExternalUserItem => {
           const host = this.hosts.find((hostValue) => hostValue.value === value.type);
-          return { ...value, host } as ExternalUserItem;
+          if (!host) {
+            throw Error("no host for external user: " + JSON.stringify(value));
+          }
+          return { ...value, host };
         });
 
       // eslint-disable-next-line vue/no-side-effects-in-computed-properties

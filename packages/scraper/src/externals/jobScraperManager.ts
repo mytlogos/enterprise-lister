@@ -54,7 +54,7 @@ export class JobScraperManager {
     this.schedulingStrategy = Strategies.REQUEST_QUEUE_BALANCED;
   }
 
-  public on(event: string, callback: (value: any) => void | EmptyPromise): void {
+  public on(event: string, callback: (value: any) => undefined | EmptyPromise): void {
     this.helper.on(event, callback);
   }
 
@@ -500,14 +500,14 @@ export class JobScraperManager {
 
   private processJobCallback(
     result: JobRequest | JobRequest[] | Promise<JobRequest | JobRequest[]>,
-  ): EmptyPromise | void {
+  ): EmptyPromise | undefined {
     if (!result) {
       return;
     }
     if (result instanceof Promise) {
       return result.then((value) => value && this.processJobCallbackResult(value));
     } else {
-      return this.processJobCallbackResult(result);
+      this.processJobCallbackResult(result);
     }
   }
 
@@ -637,4 +637,3 @@ function isJobItem(value: any): value is JobItem {
 }
 
 export const DefaultJobScraper = new JobScraperManager();
-// DefaultJobScraper.start();

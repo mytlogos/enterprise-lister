@@ -387,7 +387,7 @@ class GroupScorer extends Scorer {
         }
       }
 
-      const ancestorDescendantMap = {} as Record<string, string>;
+      const ancestorDescendantMap: Record<string, string> = {};
 
       for (const item of this.group) {
         const itemConfig = propertyMap.get(item) as PropertyConfig;
@@ -1095,8 +1095,8 @@ export class ScrapeAnalyzer {
       return {};
     }
 
-    const usedCandidates = {} as Record<string, HTMLElement>;
-    const result = {} as Record<string, any>;
+    const usedCandidates: Record<string, HTMLElement> = {};
+    const result: Record<string, any> = {};
 
     for (const [subKey, subValue] of Object.entries(groupProperties)) {
       if (subValue.properties) {
@@ -1170,7 +1170,7 @@ export class ScrapeAnalyzer {
         });
       }
       // results indices counting the number of same results
-      const voteIndicesCount = {} as Record<string, number>;
+      const voteIndicesCount: Record<string, number> = {};
       const alreadyVoted = new Set();
 
       for (let i = 0; i < results.length; i++) {
@@ -1229,7 +1229,7 @@ export class ScrapeAnalyzer {
     } else {
       keyResult.selector = finder(mainCandidate, { root });
 
-      const usedCandidates = {} as Record<string, HTMLElement>;
+      const usedCandidates: Record<string, HTMLElement> = {};
 
       for (const [subKey, subValue] of Object.entries(groupProperties)) {
         if (subValue.properties) {
@@ -1266,7 +1266,7 @@ export class ScrapeAnalyzer {
   }
 
   private generateResult(config: Config) {
-    const result = {} as Record<string, any>;
+    const result: Record<string, any> = {};
 
     Object.entries(config.properties).forEach(([key, value]) => {
       if (value.properties) {

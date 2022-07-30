@@ -474,7 +474,7 @@ export class JobContext extends SubContext {
       const result = store.get(StoreKey.RESULT) || "success";
       const message = store.get(StoreKey.MESSAGE) || JSON.stringify({ message: "No Message" });
 
-      const jobTrack = {
+      const jobTrack: JobTrack = {
         modifications: store.get(StoreKey.MODIFICATIONS) || {},
         network: store.get(StoreKey.NETWORK) || {
           count: 0,
@@ -483,7 +483,7 @@ export class JobContext extends SubContext {
           history: [],
         },
         queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
-      } as JobTrack;
+      };
 
       let [item] = (await this.query("SELECT * FROM job_stat_summary WHERE name = ?", [
         value.name,
@@ -527,19 +527,18 @@ export class JobContext extends SubContext {
       }
       item.count++;
       const modifications = Object.values(jobTrack.modifications);
-      modifications.forEach((value) => {
-        const created = value.created;
-        item.created += created;
-        item.min_created = Math.min(item.min_created, created);
-        item.max_created = Math.max(item.max_created, created);
+      modifications.forEach((modification) => {
+        item.created += modification.created;
+        item.min_created = Math.min(item.min_created, modification.created);
+        item.max_created = Math.max(item.max_created, modification.created);
 
-        item.updated += value.updated;
-        item.min_updated = Math.min(item.min_updated, value.updated);
-        item.max_updated = Math.max(item.max_updated, value.updated);
+        item.updated += modification.updated;
+        item.min_updated = Math.min(item.min_updated, modification.updated);
+        item.max_updated = Math.max(item.max_updated, modification.updated);
 
-        item.deleted += value.deleted;
-        item.min_deleted = Math.min(item.min_deleted, value.deleted);
-        item.max_deleted = Math.max(item.max_deleted, value.deleted);
+        item.deleted += modification.deleted;
+        item.min_deleted = Math.min(item.min_deleted, modification.deleted);
+        item.max_deleted = Math.max(item.max_deleted, modification.deleted);
       });
       item.sql_queries = jobTrack.queryCount;
       item.min_sql_queries = Math.min(jobTrack.queryCount);
@@ -608,10 +607,10 @@ export class JobContext extends SubContext {
       let created = 0;
       let updated = 0;
       let deleted = 0;
-      modifications.forEach((value) => {
-        created += value.created;
-        updated += value.updated;
-        deleted += value.deleted;
+      modifications.forEach((modification) => {
+        created += modification.created;
+        updated += modification.updated;
+        deleted += modification.deleted;
       });
 
       const queries = jobTrack.queryCount;

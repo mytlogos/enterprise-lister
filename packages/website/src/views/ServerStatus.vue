@@ -237,16 +237,17 @@
   </div>
 </template>
 <script lang="ts">
-import { Status } from "enterprise-server/src/types";
+import { Status } from "enterprise-server/dist/types";
 import { defineComponent } from "vue";
 import { HttpClient } from "../Httpclient";
 
-function defaultStatus() {
+function defaultStatus(): Status {
   return {
     crawler: { status: "unavailable" },
-    database: { status: "unavailable" },
+    database: { status: "unavailable", type: "unknown", host: "unknown" },
+    // @ts-expect-error
     server: {},
-  } as Status;
+  };
 }
 
 export default defineComponent({

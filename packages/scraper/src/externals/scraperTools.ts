@@ -495,9 +495,10 @@ export const queueTocsJob = async (): Promise<JobRequest[]> => {
   // TODO: 02.09.2019 a perfect candidate to use stream on
   const tocs = await mediumStorage.getAllTocs();
   return tocs.map((value): JobRequest => {
+    const tocRequest: TocRequest = { mediumId: value.mediumId, url: value.link };
     return {
       runImmediately: true,
-      arguments: JSON.stringify({ mediumId: value.mediumId, url: value.link } as TocRequest),
+      arguments: JSON.stringify(tocRequest),
       type: ScrapeName.toc,
       name: `${ScrapeName.toc}-${value.mediumId}-${value.link}`,
       interval: MilliTime.HOUR,
@@ -730,9 +731,9 @@ export enum ScrapeEvent {
 }
 
 export class ScraperHelper {
-  private readonly eventMap: Map<string, Array<(value: any) => void | EmptyPromise>> = new Map();
+  private readonly eventMap: Map<string, Array<(value: any) => undefined | EmptyPromise>> = new Map();
 
-  public on(event: string, callback: (value: any) => void | EmptyPromise): void {
+  public on(event: string, callback: (value: any) => undefined | EmptyPromise): void {
     const callbacks = getElseSet(this.eventMap, event, () => []);
     callbacks.push(callback);
   }

@@ -98,7 +98,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
     );
     return [];
   }
-  let jsonResponse: any;
+  let jsonResponse: ChapterResponse;
   try {
     jsonResponse = await jsonPromise;
   } catch (e) {
@@ -109,7 +109,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
           episodeTitle: contentData.episodeTitle,
           index: contentData.index,
           mediumTitle: contentData.mediumTitle,
-        } as EpisodeContent,
+        },
       ];
     } else {
       throw e;
@@ -124,9 +124,9 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
   for (const imageKey of jsonResponse.page_array) {
     let server: string = jsonResponse.server;
     if (!server.startsWith("http")) {
-      server = BASE_URI + server.substr(1);
+      server = BASE_URI + server.substring(1);
     }
-    imageUrls.push(`${server}${jsonResponse.hash}/${imageKey}`);
+    imageUrls.push(`${server}${jsonResponse.hash + ""}/${imageKey + ""}`);
   }
   const episodeContent: EpisodeContent = {
     content: imageUrls,
@@ -397,7 +397,7 @@ async function scrapeTocPage(
         indexPartMap.set(volIndices.combi, part);
         toc.content.push(part);
       }
-      const chapterContent = {
+      const chapterContent: TocEpisode = {
         title,
         combiIndex: chapIndices.combi,
         totalIndex: chapIndices.total,
@@ -405,7 +405,7 @@ async function scrapeTocPage(
         url: link,
         releaseDate: time,
         noTime: true,
-      } as TocEpisode;
+      };
       checkTocContent(chapterContent);
       part.episodes.push(chapterContent);
     } else if (chapGroups) {
@@ -418,7 +418,7 @@ async function scrapeTocPage(
 
       const title = `Chapter ${chapIndices.combi}${chapGroups[5] ? " - " + chapGroups[7] : ""}`;
 
-      const chapterContent = {
+      const chapterContent: TocEpisode = {
         title,
         combiIndex: chapIndices.combi,
         totalIndex: chapIndices.total,
@@ -426,7 +426,7 @@ async function scrapeTocPage(
         url: link,
         releaseDate: time,
         noTime: true,
-      } as TocEpisode;
+      };
       checkTocContent(chapterContent);
       toc.content.push(chapterContent);
     } else {

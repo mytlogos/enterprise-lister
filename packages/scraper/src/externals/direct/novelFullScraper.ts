@@ -284,13 +284,13 @@ async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromis
       throw new ScraperError(`title format changed on fullNovel, got no indices for '${episodeTitle}'`);
     }
 
-    const episode = {
+    const episode: TocEpisode = {
       combiIndex: episodeIndices.combi,
       totalIndex: episodeIndices.total,
       partialIndex: episodeIndices.fraction,
       url: link,
       title: episodeTitle,
-    } as TocEpisode;
+    };
     checkTocContent(episode);
 
     if (partIndices) {

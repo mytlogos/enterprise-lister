@@ -185,7 +185,7 @@ interface Data {
 const tocRegex = /toc-(\d+)-(.+)/;
 const domainRegex = /https?:\/\/(.+\.)?(\w+)(\.\w+)\/?.*/;
 
-function getDefaultJobStatSummmary() {
+function getDefaultJobStatSummmary(): JobStatSummary {
   return {
     name: "",
     type: "",
@@ -219,7 +219,7 @@ function getDefaultJobStatSummmary() {
     max_deleted: 0,
     max_sql_queries: 0,
     max_lagging: 0,
-  } as JobStatSummary;
+  };
 }
 
 export default defineComponent({
@@ -325,7 +325,7 @@ export default defineComponent({
       this.isLoading = true;
       const summaryPromise = HttpClient.getJobsStatsSummary();
       const jobPromise = HttpClient.getJobs();
-      const nameMap = {} as Record<string, JobItem>;
+      const nameMap: Record<string, JobItem> = {};
 
       try {
         let running = 0;

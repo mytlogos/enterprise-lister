@@ -51,7 +51,7 @@
   </div>
 </template>
 <script lang="ts">
-import { BasicScraperConfig, Selector as SelectorTsType } from "enterprise-scraper/dist/externals/custom/types";
+import { BasicScraperConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
 import { createComputedProperty, idGenerator } from "../../init";
 import Selector from "./selector.vue";
@@ -125,7 +125,7 @@ export default defineComponent({
           ...this.modelValue.selector,
           {
             selector: "",
-          } as SelectorTsType<any>,
+          },
         ],
       });
     },

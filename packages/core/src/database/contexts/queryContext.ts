@@ -45,7 +45,7 @@ import { NotificationContext } from "./notificationContext";
 const database = "enterprise";
 
 type ParamCallback<T> = (value: UnpackArray<T>) => any[] | any;
-type UpdateCallback = (updates: string[], values: any[]) => void | EmptyPromise;
+type UpdateCallback = (updates: string[], values: any[]) => undefined | EmptyPromise;
 export type SqlPrimitive = Primitive | Date;
 export type QueryValue = SqlPrimitive | SqlPrimitive[];
 export type QueryInValue = SqlPrimitive | Array<SqlPrimitive | SqlPrimitive[]>;
@@ -431,7 +431,7 @@ export class QueryContext implements ConnectionContext {
     let paramCount = -1;
     const param: any[] = [];
 
-    multiSingle(value, (item, index, lastItem) => {
+    multiSingle(value, (item, _index, lastItem) => {
       const items = paramCallback(item);
       if (Array.isArray(items)) {
         param.push(...items);

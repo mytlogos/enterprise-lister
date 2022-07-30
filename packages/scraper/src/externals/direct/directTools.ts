@@ -689,7 +689,7 @@ function adjustPartialIndices(contentIndex: number, contents: InternalTocContent
 }
 
 function convertToTocEpisode(totalIndex: number, partialIndex: number, index: number, value: UnusedPiece) {
-  const episode = {
+  const episode: InternalTocEpisode = {
     type: "episode",
     combiIndex: 0,
     totalIndex,
@@ -701,7 +701,7 @@ function convertToTocEpisode(totalIndex: number, partialIndex: number, index: nu
     releaseDate: value.releaseDate,
     originalTitle: value.title,
     part: value.part,
-  } as InternalTocEpisode;
+  };
   episode.combiIndex = combiIndex(episode);
   return episode;
 }
@@ -766,11 +766,11 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
     }
     let insertNeighbour = content;
     for (let i = content.totalIndex + 1; i <= content.episodeRange; i++) {
-      const episode = {
+      const episode: InternalTocEpisode = {
         ...content,
         next: undefined,
         previous: undefined,
-      } as InternalTocEpisode;
+      };
       episode.totalIndex = i;
       episode.combiIndex = combiIndex(episode);
       rangeInserter.call(contents, episode, insertNeighbour);
@@ -1039,7 +1039,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
       usedMatches.push(match);
       const partialWrappingMatch = matches.find((value) => match.from <= value.from && value.to > match.to);
 
-      const episode = {
+      const episode: InternalTocEpisode = {
         type: "episode",
         combiIndex: indices.combi,
         totalIndex: indices.total,
@@ -1049,7 +1049,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
         title: "",
         originalTitle: tocPiece.title,
         match,
-      } as InternalTocEpisode;
+      };
       if (secondaryIndices && !partialWrappingMatch) {
         // for now ignore any fraction, normally it should only have the format of 1-4, not 1.1-1.4 or similar
         episode.episodeRange = secondaryIndices.total;
@@ -1143,7 +1143,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
         possibleVolume = state.volumeMap.get(volIndices.combi);
 
         if (!possibleVolume) {
-          const internalTocPart = {
+          const internalTocPart: InternalTocPart = {
             type: "part",
             combiIndex: volIndices.combi,
             totalIndex: volIndices.total,
@@ -1151,7 +1151,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
             title: "",
             originalTitle: "",
             episodes: [],
-          } as InternalTocPart;
+          };
           // need to be valid to be acknowledged
           try {
             checkTocContent(internalTocPart);
@@ -1187,7 +1187,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
           title: "",
           originalTitle: tocPiece.title,
           match,
-        } as InternalTocEpisode);
+        });
       }
     } else if (!possibleVolume && match.type === "volume") {
       if (match.match[9]) {
@@ -1202,7 +1202,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
         possibleVolume = state.volumeMap.get(volIndices.combi);
 
         if (!possibleVolume) {
-          const internalTocPart = {
+          const internalTocPart: InternalTocPart = {
             type: "part",
             combiIndex: volIndices.combi,
             totalIndex: volIndices.total,
@@ -1210,7 +1210,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
             title: "",
             originalTitle: "",
             episodes: [],
-          } as InternalTocPart;
+          };
           // need to be valid to be acknowledged
           try {
             checkTocContent(internalTocPart);

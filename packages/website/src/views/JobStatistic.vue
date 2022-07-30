@@ -420,7 +420,7 @@ export default defineComponent({
 
       HttpClient.getJobsStatsTimed(this.selectedTime, groupByDomain).then(async (result) => {
         const events = await eventsPromise;
-        const bucketsFilled = {} as Record<number, number>;
+        const bucketsFilled: Record<number, number> = {};
         const step =
           this.selectedTime === "minute" ? 1000 * 60 : this.selectedTime === "hour" ? 1000 * 3600 : 1000 * 3600 * 24;
 

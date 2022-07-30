@@ -229,7 +229,7 @@ function createRestDefinition<T extends Record<string, any>>(value: T): Rest<T> 
 }
 
 function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
-  const api = {} as RestAPI<any>;
+  const api: RestAPI<any> = {};
   const apis = [api];
   const values = [value];
   const paths = [""];
@@ -239,13 +239,18 @@ function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
     const path = paths.pop();
     const currentApi = apis.pop() as RestAPI<any>;
 
+    if (!path || !last || !currentApi) {
+      break;
+    }
+
     for (const key in last) {
       if (key in Methods) {
-        // @ts-expect-error
-        currentApi[key] = {
+        const method: MethodObject = {
           method: Methods[key as MethodName],
-          path: path,
-        } as MethodObject;
+          path,
+        };
+        // @ts-expect-error
+        currentApi[key] = method;
       } else {
         const subPath = path ? path + "/" + key : key;
         const subApi = {};

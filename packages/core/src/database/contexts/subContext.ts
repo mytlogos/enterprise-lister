@@ -41,7 +41,7 @@ export class SubContext implements ConnectionContext {
    * Updates data from the storage.
    */
   protected async update(table: string, cb: UpdateCallback, ...condition: Condition[]): Promise<OkPacket> {
-    return this.parentContext.update(table, cb, ...condition);
+    return this.parentContext.update(table, cb as any, ...condition);
   }
 
   protected multiInsert<T extends MultiSingleValue<any>>(

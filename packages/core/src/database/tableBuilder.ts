@@ -2,7 +2,7 @@ import { DataBaseBuilder } from "./databaseBuilder";
 import { ColumnBuilder } from "./columnBuilder";
 import { TableSchema } from "./tableSchema";
 import { ColumnSchema } from "./columnSchema";
-import { TableParser } from "./tableParser";
+import { parseDataColumn, parseForeignKey, parsePrimaryKey, parseUnique } from "./tableParser";
 import { InvalidationType } from "./databaseTypes";
 import { SchemaError } from "../error";
 
@@ -27,7 +27,7 @@ export class TableBuilder {
   }
 
   public parseColumn(column: string): this {
-    const dataColumn = TableParser.parseDataColumn(this.stubTable, this.databaseBuilder.tables, column);
+    const dataColumn = parseDataColumn(this.stubTable, this.databaseBuilder.tables, column);
     if (!dataColumn) {
       throw new SchemaError("could not parse column");
     }
@@ -43,11 +43,11 @@ export class TableBuilder {
   public parseMeta(data: string): this {
     const uppedData = data.toUpperCase();
     if (uppedData.startsWith("PRIMARY KEY")) {
-      TableParser.parsePrimaryKey(this.stubTable, this.databaseBuilder.tables, data);
+      parsePrimaryKey(this.stubTable, this.databaseBuilder.tables, data);
     } else if (uppedData.startsWith("FOREIGN KEY")) {
-      TableParser.parseForeignKey(this.stubTable, this.databaseBuilder.tables, data);
+      parseForeignKey(this.stubTable, this.databaseBuilder.tables, data);
     } else if (uppedData.startsWith("UNIQUE")) {
-      TableParser.parseUnique(this.stubTable, this.databaseBuilder.tables, data);
+      parseUnique(this.stubTable, this.databaseBuilder.tables, data);
     } else {
       throw new SchemaError(`unknown meta: ${data}`);
     }

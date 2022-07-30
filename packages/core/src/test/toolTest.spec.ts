@@ -114,8 +114,11 @@ describe("testing tool.js", () => {
     let up = false;
 
     beforeAll(() => {
-      // @ts-expect-error
-      jest.spyOn(dns.promises, "lookup").mockImplementation(() => (up ? Promise.resolve() : Promise.reject()));
+      jest
+        .spyOn(dns.promises, "lookup")
+        .mockImplementation(() =>
+          up ? Promise.resolve({ address: "", family: 0 }) : Promise.reject(Error("is down")),
+        );
       jest.spyOn(internetTester, "isOnline").mockImplementation(() => up);
     });
     beforeEach(() => internetTester.stop());
@@ -203,6 +206,7 @@ describe("testing tool.js", () => {
       tools.removeLike(items, (item) => item === "1");
       expect(items).toEqual([1, 2, 3, 4]);
       // @ts-expect-error
+      // eslint-disable-next-line eqeqeq
       tools.removeLike(items, (item) => item == "1");
       expect(items).toEqual([2, 3, 4]);
 
@@ -572,7 +576,7 @@ describe("testing tool.js", () => {
   describe("test countOccurrence", () => {
     it("should work correctly", () => {
       const result = tools.countOccurrence([1, 5, 2, 3, 4, 5, 5, null, null, null]);
-      expect([...result.entries()].sort()).toEqual([
+      expect([...result.entries()].sort((a, b) => (a[0] || 0) - (b[0] || 0))).toEqual([
         [null, 3],
         [1, 1],
         [2, 1],

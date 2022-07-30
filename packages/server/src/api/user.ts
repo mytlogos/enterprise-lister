@@ -111,25 +111,24 @@ export const addBookmarked = createHandler(async (req) => {
 
   if (bookmarked?.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
     const scrapeAble = await filterScrapeAble(bookmarked);
-
-    const storePromise = jobStorage
+    return jobStorage
       .addJobs(
         scrapeAble.available.map((link: string): JobRequest => {
+          const tocRequest: TocRequest = {
+            url: link,
+            uuid,
+          };
           return {
             name: `${ScrapeName.oneTimeToc}-${link}`,
             type: ScrapeName.oneTimeToc,
             runImmediately: true,
             deleteAfterRun: true,
             interval: -1,
-            arguments: JSON.stringify({
-              url: link,
-              uuid,
-            } as TocRequest),
+            arguments: JSON.stringify(tocRequest),
           };
         }),
       )
       .then(() => scrapeAble.unavailable);
-    return storePromise;
   } else {
     return Promise.reject(Errors.INVALID_INPUT);
   }
@@ -140,21 +139,21 @@ export const addToc = createHandler((req) => {
   const protocol = /^https?:\/\//;
 
   if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
-    const storePromise = jobStorage
+    const tocRequest: TocRequest = {
+      url: toc,
+      uuid,
+      mediumId,
+    };
+    return jobStorage
       .addJobs({
         name: `${ScrapeName.oneTimeToc}-${toc as string}`,
         type: ScrapeName.oneTimeToc,
         runImmediately: true,
         deleteAfterRun: true,
         interval: -1,
-        arguments: JSON.stringify({
-          url: toc,
-          uuid,
-          mediumId,
-        } as TocRequest),
+        arguments: JSON.stringify(tocRequest),
       })
       .then(() => true);
-    return storePromise;
   } else {
     return Promise.reject(Errors.INVALID_INPUT);
   }

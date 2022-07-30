@@ -2,7 +2,7 @@ import logger from "../logger";
 import { ColumnType, DatabaseSchema, InvalidationType, Modifier } from "./databaseTypes";
 import { TableSchema } from "./tableSchema";
 import { ColumnSchema } from "./columnSchema";
-import { TableParser } from "./tableParser";
+import { parseDataColumn, parseForeignKey, parsePrimaryKey } from "./tableParser";
 import { equalsIgnore, getElseSet, isString, unique } from "../tools";
 import mySql from "promise-mysql";
 import { Uuid, MultiSingleValue, EmptyPromise, Optional, Nullable } from "../types";
@@ -11,7 +11,7 @@ import validate from "validate.js";
 import { Counter } from "../counter";
 import { DatabaseError, SchemaError } from "../error";
 
-interface StateProcessor {
+interface StateProcessorInterface {
   addSql<T>(query: string, parameter: MultiSingleValue<any>, value: T, uuid?: Uuid): T;
 
   startRound(): Promise<string[]>;
@@ -33,7 +33,7 @@ interface Trigger {
   updateInvalidationMap(query: Query, invalidationMap: Map<string, Invalidation>): void;
 }
 
-interface StateProcessorImpl extends StateProcessor {
+interface StateProcessorImpl extends StateProcessorInterface {
   databaseName: string;
   workingPromise: EmptyPromise;
   readonly sqlHistory: RawQuery[];
@@ -97,7 +97,7 @@ const UpdateParser: Parser = {
       return null;
     }
     const [, table, idConditionColumn] = exec;
-    const tableMeta = StateProcessorImpl.tables.find((value) => value.name === table);
+    const tableMeta = stateProcessorImpl.tables.find((value) => value.name === table);
 
     if (!tableMeta) {
       logger.warn(`unknown table: '${table}'`);
@@ -150,7 +150,7 @@ const InsertParser: Parser = {
       return null;
     }
     const [, tableName, insertColumns, insertValues] = exec;
-    const table = StateProcessorImpl.tables.find((value) => value.name === tableName);
+    const table = stateProcessorImpl.tables.find((value) => value.name === tableName);
 
     if (!table) {
       logger.warn(`unknown table: '${tableName}'`);
@@ -238,7 +238,7 @@ const DeleteParser: Parser = {
       return null;
     }
     const [, tableName, , deleteCondition] = exec;
-    const table = StateProcessorImpl.tables.find((value) => value.name === tableName);
+    const table = stateProcessorImpl.tables.find((value) => value.name === tableName);
 
     if (!table) {
       logger.warn(`unknown table: '${tableName}'`);
@@ -378,7 +378,7 @@ function createTrigger(
 const queryTableReg = /((select .+? from)|(update )|(delete.+?from)|(insert.+?into )|(.+?join))\s*(\w+)/gi;
 const queryColumnReg = /(((\w+\.)?(\w+))|\?)\s*(like|is|=|<|>|<>|<=|>=)\s*(((\w+\.)?(\w+))|\?)/gi;
 const counter = new Counter<string>();
-const StateProcessorImpl: StateProcessorImpl = {
+const stateProcessorImpl: StateProcessorImpl = {
   databaseName: "",
   workingPromise: Promise.resolve(),
   sqlHistory: [],
@@ -714,11 +714,11 @@ const StateProcessorImpl: StateProcessorImpl = {
         const keyPart = `${declarationParts[0]} ${declarationParts[1]}`.toUpperCase();
 
         if (keyPart === "PRIMARY KEY") {
-          TableParser.parsePrimaryKey(table, this.tables, declaration);
+          parsePrimaryKey(table, this.tables, declaration);
         } else if (keyPart === "FOREIGN KEY") {
-          TableParser.parseForeignKey(table, this.tables, declaration);
+          parseForeignKey(table, this.tables, declaration);
         } else {
-          const column = TableParser.parseDataColumn(table, this.tables, declaration);
+          const column = parseDataColumn(table, this.tables, declaration);
 
           if (column) {
             table.columns.push(column);
@@ -730,4 +730,4 @@ const StateProcessorImpl: StateProcessorImpl = {
   },
 };
 
-export const StateProcessor: StateProcessor = StateProcessorImpl;
+export const StateProcessor: StateProcessorInterface = stateProcessorImpl;

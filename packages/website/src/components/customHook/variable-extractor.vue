@@ -79,10 +79,7 @@
   </div>
 </template>
 <script lang="ts">
-import {
-  AttributeSelector as AttributeSelectorType,
-  VariableExtractor,
-} from "enterprise-scraper/dist/externals/custom/types";
+import { VariableExtractor } from "enterprise-scraper/dist/externals/custom/types";
 import { defineComponent, PropType } from "vue";
 import { clone, deepEqual, idGenerator, Logger } from "../../init";
 import { SelectorValueType } from "../../siteTypes";
@@ -94,7 +91,7 @@ type Source = "text" | "regex" | "attribute";
 function model(prop: VariableExtractor) {
   return {
     use: (prop.value ? "regex" : prop.extract?.attribute ? "attribute" : "text") as Source,
-    extract: prop.extract || ({ attribute: "" } as AttributeSelectorType),
+    extract: prop.extract || { attribute: "" },
     value: prop.value || "",
     name: prop.variableName,
   };

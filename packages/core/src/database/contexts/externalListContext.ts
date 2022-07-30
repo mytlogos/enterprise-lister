@@ -1,9 +1,11 @@
 import { SubContext } from "./subContext";
-import { ExternalList, Uuid } from "../../types";
+import { ExternalList, Id, Insert, Uuid } from "../../types";
 import { promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { OkPacket } from "mysql";
 import { DatabaseError, ValidationError } from "../../error";
+
+export type UpdateExternalList = Partial<ExternalList> & { id: Id };
 
 export class ExternalListContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<ExternalList[]> {
@@ -25,7 +27,7 @@ export class ExternalListContext extends SubContext {
    * @param {ExternalList} externalList
    * @return {Promise<ExternalList>}
    */
-  public async addExternalList(userUuid: Uuid, externalList: ExternalList): Promise<ExternalList> {
+  public async addExternalList(userUuid: Uuid, externalList: Insert<ExternalList>): Promise<ExternalList> {
     const result = await this.query(
       "INSERT INTO external_reading_list " + "(name, user_uuid, medium, url) " + "VALUES(?,?,?,?);",
       [externalList.name, userUuid, externalList.medium, externalList.url],
@@ -49,7 +51,7 @@ export class ExternalListContext extends SubContext {
   /**
    * Updates an external list.
    */
-  public async updateExternalList(externalList: ExternalList): Promise<boolean> {
+  public async updateExternalList(externalList: UpdateExternalList): Promise<boolean> {
     const result = await this.update(
       "external_reading_list",
       (updates, values) => {

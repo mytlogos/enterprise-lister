@@ -119,7 +119,7 @@ interface Data {
 export default defineComponent({
   name: "Search",
   components: {
-    mediaFilter: mediaFilter,
+    mediaFilter,
     typeIcon: TypeIcon,
   },
   data(): Data {
