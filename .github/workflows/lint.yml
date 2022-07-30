@@ -4,10 +4,20 @@ name: Node.js CI Lint
 on:
   pull_request:
     branches: [ master ]
+    paths:
+      - 'packages/**'
+      - package-lock.json
+      - .prettierrc.js
+      - .eslintrc.js
   push:
     branches:
       - master
       - next
+    paths:
+      - 'packages/**'
+      - package-lock.json
+      - .prettierrc.js
+      - .eslintrc.js
 
 jobs:
   lint:
