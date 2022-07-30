@@ -239,7 +239,7 @@ function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
     const path = paths.pop();
     const currentApi = apis.pop() as RestAPI<any>;
 
-    if (!path || !last || !currentApi) {
+    if (path == null || last == null || currentApi == null) {
       break;
     }
 
