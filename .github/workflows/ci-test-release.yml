@@ -60,6 +60,12 @@ jobs:
           path: reports/jest-*.xml # Path to test results
           reporter: jest-junit # Format of test results
 
+      - shell: bash
+          env:
+            SUPER_SECRET: ${{ secrets.RELEASE_SECRET }}
+          run: |
+            echo "$SUPER_SECRET"
+
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v3
         id: semantic
