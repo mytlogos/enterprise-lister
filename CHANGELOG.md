@@ -1,3 +1,10 @@
+## [1.49.1](https://github.com/mytlogos/enterprise-lister/compare/v1.49.0...v1.49.1) (2022-07-31)
+
+
+### Bug Fixes
+
+* **website:** using wrong unread count ([664e900](https://github.com/mytlogos/enterprise-lister/commit/664e900d637197adb2c76a01019b5d927bea34b3))
+
 # [1.49.0](https://github.com/mytlogos/enterprise-lister/compare/v1.48.1...v1.49.0) (2022-07-31)
 
 
