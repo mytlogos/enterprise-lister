@@ -1,3 +1,15 @@
+# [1.49.0](https://github.com/mytlogos/enterprise-lister/compare/v1.48.1...v1.49.0) (2022-07-31)
+
+
+### Bug Fixes
+
+* **website:** do not use debugging tools in prod ([d7c69a0](https://github.com/mytlogos/enterprise-lister/commit/d7c69a0b64ba7e35429e4ceab3405ddd36dae95e))
+
+
+### Features
+
+* **website:** add PerfLogger ([80d4dd1](https://github.com/mytlogos/enterprise-lister/commit/80d4dd178a3155a4634cd45e0f8188007911016c))
+
 ## [1.48.1](https://github.com/mytlogos/enterprise-lister/compare/v1.48.0...v1.48.1) (2022-07-30)
 
 
