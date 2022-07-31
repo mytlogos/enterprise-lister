@@ -478,3 +478,25 @@ export function toArray<T>(value: T[] | T | undefined): T[] {
     return [];
   }
 }
+
+/**
+ * Timing Logger for debugging purposes.
+ * Start of time is the construction of an instance.
+ * Each PerfLogger.time call logs the time since start and since previous time call.
+ */
+export class PerfLogger {
+  private readonly start: number;
+  private previous?: number;
+
+  public constructor(private readonly tag: string) {
+    this.start = Date.now();
+  }
+
+  public time(msg: string) {
+    const now = Date.now();
+    const diffStart = now - this.start;
+    const diffPrevious = now - (this.previous || now);
+    console.log(`[${this.tag}](${diffStart};${diffPrevious}): ${msg}`);
+    this.previous = now;
+  }
+}
