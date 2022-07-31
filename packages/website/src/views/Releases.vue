@@ -333,7 +333,6 @@ export default defineComponent({
         return this.$store.state.releases.typeFilter;
       },
       set(type: number) {
-        console.log("typeFilter", type);
         this.$store.commit("releases/typeFilter", type);
       },
     },
@@ -368,7 +367,6 @@ export default defineComponent({
       deep: true,
     },
     releases() {
-      console.log("i am triggerin");
       const newCount = {
         [MediaType.TEXT]: 0,
         [MediaType.IMAGE]: 0,
@@ -670,9 +668,6 @@ export default defineComponent({
     fetchNew() {
       this.isFetching = true;
       this.fetchReleases(false).finally(() => (this.isFetching = false));
-    },
-    log(value: any) {
-      console.log(value);
     },
   },
 });
