@@ -191,7 +191,7 @@ export default defineComponent({
       setInterval(() => this.getLatestNotifications(), 1000 * 60);
     },
     async getLatestNotifications() {
-      this.$store.dispatch("checkNotificationCounts");
+      await this.$store.dispatch("checkNotificationCounts");
 
       const now = new Date();
       now.setDate(now.getDate() - 5);
@@ -204,7 +204,10 @@ export default defineComponent({
       });
 
       if (notifications.length) {
-        const titleSuffix = notifications.length > 1 ? ` +${notifications.length - 1} more` : "";
+        const titleSuffix =
+          this.$store.state.user.unreadNotificationsCount > 1
+            ? ` +${this.$store.state.user.unreadNotificationsCount - 1} more`
+            : "";
         notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
       }
       this.notifications = notifications;
