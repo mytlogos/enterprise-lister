@@ -1,3 +1,10 @@
+## [1.48.1](https://github.com/mytlogos/enterprise-lister/compare/v1.48.0...v1.48.1) (2022-07-30)
+
+
+### Bug Fixes
+
+* **website:** api client not constructed ([37f119c](https://github.com/mytlogos/enterprise-lister/commit/37f119cd640cd336bc6045485029da2f9b9fe460))
+
 # [1.48.0](https://github.com/mytlogos/enterprise-lister/compare/v1.47.2...v1.48.0) (2022-07-30)
 
 
