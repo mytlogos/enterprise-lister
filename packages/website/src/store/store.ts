@@ -28,9 +28,15 @@ function setUser(commit: Commit, user: User) {
   commit("userSession", user.session);
 }
 
+const plugins = [persistedState()];
+
+if (process.env.NODE_ENV !== "production") {
+  plugins.push(createLogger());
+}
+
 export const store = createStore({
-  strict: true,
-  plugins: [createLogger(), persistedState()],
+  strict: process.env.NODE_ENV !== "production",
+  plugins,
   modules: {
     releases: releaseStore,
     modals: modalStore,
