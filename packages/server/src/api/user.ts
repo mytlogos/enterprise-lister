@@ -16,7 +16,7 @@ import {
 } from "enterprise-scraper/dist/externals/scraperTools";
 import { TocRequest } from "enterprise-scraper/dist/externals/types";
 import logger from "enterprise-core/dist/logger";
-import { Errors, getDate, isError, isInvalidId, isString, stringToNumberList } from "enterprise-core/dist/tools";
+import { Errors, getDate, isError, isString } from "enterprise-core/dist/tools";
 import { JobRequest, ScrapeName, AppEventFilter, QueryItemsResult } from "enterprise-core/dist/types";
 import { Handler, Router } from "express";
 import { extractQueryParam, createHandler, castQuery } from "./apiTools";
@@ -49,6 +49,7 @@ import {
   GetNotificationsCount,
   getNotificationsCountSchema,
   getNotificationsSchema,
+  getTocSchema,
   PostLoad,
   postLoadSchema,
   PutUser,
@@ -207,28 +208,18 @@ export const searchToc = createHandler((req) => {
   return loadToc(link);
 });
 
-export const getToc = createHandler((req) => {
-  let media: string | number | number[] = extractQueryParam(req, "mediumId");
+export const getToc = createHandler(
+  (req) => {
+    let media: number | number[] = req.query.mediumId as any;
 
-  const listMedia = stringToNumberList(media);
-
-  if (!listMedia.length) {
-    media = Number.parseInt(media);
-
-    if (isInvalidId(media)) {
-      return Promise.reject(Errors.INVALID_INPUT);
+    if (!Array.isArray(media)) {
+      media = [media];
     }
-    media = [media];
-  } else {
-    media = listMedia;
-  }
 
-  if (!media || !media.length) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-
-  return mediumStorage.getMediumTocs(media);
-});
+    return mediumStorage.getMediumTocs(media);
+  },
+  { query: getTocSchema },
+);
 
 export const deleteToc = createHandler(
   (req) => {

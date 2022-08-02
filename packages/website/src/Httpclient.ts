@@ -381,7 +381,7 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.medium.allSecondary.get);
   },
 
-  getMedia(media: number | number[]): Promise<Medium | Medium[]> {
+  getMedia(media: number[]): Promise<Medium[]> {
     if (Array.isArray(media) && !media.length) {
       return Promise.reject(new Error("empty media array"));
     }

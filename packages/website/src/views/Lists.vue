@@ -67,7 +67,7 @@ export default defineComponent({
       for (const missingBatch of missingBatches) {
         // load missing media
         HttpClient.getMedia(missingBatch)
-          .then((media: SimpleMedium | SimpleMedium[]) => this.$store.commit("addMedium", media))
+          .then((media: SimpleMedium[]) => this.$store.commit("addMedium", media))
           .catch((error) => {
             this.$store.commit("errorModalError", String(error));
             console.log(error);

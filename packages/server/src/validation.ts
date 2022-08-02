@@ -1046,3 +1046,16 @@ export const loginSchema: JSONSchemaType<Login> = {
   },
   required: ["userName", "pw"],
 };
+
+export interface GetToc {
+  mediumId: Id | Id[];
+}
+
+export const getTocSchema: JSONSchemaType<GetToc> = {
+  $id: "/GetToc",
+  type: "object",
+  properties: {
+    mediumId: { oneOf: [id(), idArray()] },
+  },
+  required: ["mediumId"],
+};

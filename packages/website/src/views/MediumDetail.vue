@@ -408,9 +408,9 @@ export default defineComponent({
       }
     },
     loadMedium() {
-      HttpClient.getMedia(this.id)
+      HttpClient.getMedia([this.id])
         .then((medium) => {
-          if (Array.isArray(medium)) {
+          if (medium.length !== 1) {
             this.$toast.add({
               summary: "Error while loading Details",
               detail: "Please contact the developer",
@@ -419,7 +419,7 @@ export default defineComponent({
             console.error("Expected a single Medium Item but got an Array");
             return;
           }
-          this.details = reactive(medium);
+          this.details = medium[0];
         })
         .catch((error) => {
           this.$toast.add({
