@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/mytlogos/enterprise-lister/compare/v2.0.1...v2.0.2) (2022-08-02)
+
+
+### Bug Fixes
+
+* **website:** correct updateProgress client request ([3d2b4bd](https://github.com/mytlogos/enterprise-lister/commit/3d2b4bd5295ec6d5e9a5f900bcffc993abcc4682))
+
 ## [2.0.1](https://github.com/mytlogos/enterprise-lister/compare/v2.0.0...v2.0.1) (2022-08-02)
 
 
