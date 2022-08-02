@@ -1,4 +1,8 @@
 import {
+  AppEvent,
+  AppEventFilter,
+  AppEventProgram,
+  AppEventType,
   Id,
   Json,
   Link,
@@ -193,19 +197,50 @@ export const getNotificationsCountSchema: JSONSchemaType<GetNotificationsCount> 
   required: ["read", "uuid"],
 };
 
-export interface GetAllAppEvents {
-  uuid: Uuid;
-  read: boolean;
-}
+const AppEventProgramSchema: JSONSchemaType<AppEventProgram> = {
+  $id: "/AppEventProgram",
+  type: "string",
+  enum: ["crawler", "server"],
+};
 
-export const getAllAppEventsSchema: JSONSchemaType<GetAllAppEvents> = {
+const AppEventTypeSchema: JSONSchemaType<AppEventType> = {
+  $id: "/AppEventType",
+  type: "string",
+  enum: ["start", "end"],
+};
+
+const AppEventKeySchema: JSONSchemaType<keyof AppEvent> = {
+  $id: "/AppEventKey",
+  type: "string",
+  enum: ["id", "program", "date", "type"],
+};
+
+// @ts-expect-error
+export const getAllAppEventsSchema: JSONSchemaType<Json<AppEventFilter>> = {
   $id: "/GetAllAppEvents",
   type: "object",
   properties: {
-    read: boolean(),
-    uuid: uuid(),
+    fromDate: { type: "string", nullable: true },
+    toDate: { type: "string", nullable: true },
+    program: {
+      oneOf: [
+        { ...AppEventProgramSchema, $id: undefined, nullable: true },
+        { type: "array", items: AppEventProgramSchema, nullable: true },
+      ],
+    },
+    sortOrder: {
+      oneOf: [
+        { ...AppEventKeySchema, $id: undefined, nullable: true },
+        { type: "array", items: AppEventKeySchema, nullable: true },
+      ],
+    },
+    type: {
+      oneOf: [
+        { ...AppEventTypeSchema, $id: undefined, nullable: true },
+        { type: "array", items: AppEventTypeSchema, nullable: true },
+      ],
+    },
   },
-  required: ["read", "uuid"],
 };
 
 export interface GetAssociatedEpisode {

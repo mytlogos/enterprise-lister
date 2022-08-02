@@ -16,26 +16,10 @@ import {
 } from "enterprise-scraper/dist/externals/scraperTools";
 import { TocRequest } from "enterprise-scraper/dist/externals/types";
 import logger from "enterprise-core/dist/logger";
-import {
-  Errors,
-  getDate,
-  isError,
-  isInvalidId,
-  isString,
-  stringToNumberList,
-  toArray,
-} from "enterprise-core/dist/tools";
-import {
-  JobRequest,
-  ScrapeName,
-  AppEventFilter,
-  AppEventProgram,
-  AppEventType,
-  AppEvent,
-  QueryItemsResult,
-} from "enterprise-core/dist/types";
+import { Errors, getDate, isError, isInvalidId, isString, stringToNumberList } from "enterprise-core/dist/tools";
+import { JobRequest, ScrapeName, AppEventFilter, QueryItemsResult } from "enterprise-core/dist/types";
 import { Handler, Router } from "express";
-import { extractQueryParam, createHandler } from "./apiTools";
+import { extractQueryParam, createHandler, castQuery } from "./apiTools";
 import { externalUserRouter } from "./externalUser";
 import { hooksRouter } from "./hooks";
 import { jobsRouter } from "./jobs";
@@ -59,6 +43,7 @@ import {
   deleteTocSchema,
   DownloadEpisode,
   downloadEpisodeSchema,
+  getAllAppEventsSchema,
   getAssociatedEpisodeSchema,
   GetNotifications,
   GetNotificationsCount,
@@ -292,54 +277,21 @@ export const postReadNotification = createHandler(
   { query: readNotificationSchema },
 );
 
-export const getAllAppEvents = createHandler((req) => {
-  const filter: AppEventFilter = {};
-  const from = extractQueryParam(req, "from", true);
+export const getAllAppEvents = createHandler(
+  (req) => {
+    const filter = castQuery<AppEventFilter>(req);
 
-  if (from) {
-    filter.fromDate = getDate(from) || undefined;
-  }
-  const to = extractQueryParam(req, "to", true);
-  if (to) {
-    filter.toDate = getDate(to) || undefined;
-  }
-
-  const program = extractQueryParam(req, "program", true);
-
-  if (program) {
-    const programs = toArray(program);
-
-    if (programs) {
-      filter.program = programs as AppEventProgram[];
-    } else {
-      filter.program = program as AppEventProgram;
+    if (filter.fromDate) {
+      filter.fromDate = getDate(filter.fromDate as unknown as string) || undefined;
     }
-  }
 
-  const type = extractQueryParam(req, "type", true);
-
-  if (type) {
-    const types = toArray(type);
-
-    if (types) {
-      filter.type = types as AppEventType[];
-    } else {
-      filter.type = type as AppEventType;
+    if (filter.toDate) {
+      filter.toDate = getDate(filter.toDate as unknown as string) || undefined;
     }
-  }
-  const sortOrder = extractQueryParam(req, "sortOrder", true);
-
-  if (sortOrder) {
-    const sortOrders = toArray(sortOrder);
-
-    if (sortOrders) {
-      filter.sortOrder = sortOrders as Array<keyof AppEvent>;
-    } else {
-      filter.sortOrder = sortOrder as keyof AppEvent;
-    }
-  }
-  return appEventStorage.getAppEvents(filter);
-});
+    return appEventStorage.getAppEvents(filter);
+  },
+  { query: getAllAppEventsSchema },
+);
 
 async function getDatabaseStatus(): Promise<DatabaseStatus> {
   try {
