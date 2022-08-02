@@ -20,7 +20,9 @@ jobs:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     permissions:
+      checks: write
       pull-requests: write
+      contents: write
     steps:
       - run: sudo service mysql stop
 
