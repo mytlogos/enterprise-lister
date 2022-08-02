@@ -1,6 +1,6 @@
 import { mediumStorage, mediumInWaitStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
-import { Errors, isString, stringToNumberList, isNumberOrArray } from "enterprise-core/dist/tools";
+import { Errors, getDate } from "enterprise-core/dist/tools";
 import { MediumInWaitSearch } from "enterprise-core/dist/types";
 import { Router } from "express";
 import {
@@ -18,6 +18,7 @@ import {
   postMediumSchema,
   PostMergeMedia,
   postMergeMediaSchema,
+  PostProgress,
   postProgressSchema,
   PostSplitMedium,
   postSplitMediumSchema,
@@ -128,18 +129,12 @@ export const getProgress = createHandler(
 
 export const postProgress = createHandler(
   (req) => {
-    const { uuid, progress } = req.body;
-    let episodeId = req.body.episodeId;
-
-    if (isString(episodeId)) {
-      episodeId = stringToNumberList(episodeId);
-    }
-
-    if (!episodeId || !isNumberOrArray(episodeId) || progress == null) {
-      return Promise.reject(Errors.INVALID_INPUT);
-    }
+    const { uuid, progress, episodeId, readDate: readDateString }: PostProgress = req.body;
     try {
-      const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
+      const readDate = getDate(readDateString);
+      if (!readDate) {
+        throw Error(Errors.INVALID_INPUT);
+      }
       return episodeStorage.addProgress(uuid, episodeId, progress, readDate);
     } catch (e) {
       logger.error(e);

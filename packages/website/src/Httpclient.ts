@@ -467,8 +467,8 @@ export const HttpClient = {
    * @param episodeId the episode/s to set the progress to
    * @param progress the new progress value
    */
-  updateProgress(episodeId: number | number[], progress: number): Promise<boolean> {
-    return this.queryServer(serverRestApi.api.user.medium.progress.post, { episodeId, progress });
+  updateProgress(episodeId: number[], progress: number, readDate = new Date()): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user.medium.progress.post, { episodeId, progress, readDate });
   },
 
   getJobs(): Promise<Job[]> {

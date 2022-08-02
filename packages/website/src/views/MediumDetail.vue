@@ -605,7 +605,7 @@ export default defineComponent({
      */
     changeReadStatus(release: MediumRelease): void {
       const newProgress = release.progress < 1 ? 1 : 0;
-      HttpClient.updateProgress(release.episodeId, newProgress)
+      HttpClient.updateProgress([release.episodeId], newProgress)
         .then((success) => {
           if (success) {
             // update progress of all releases for the same episode

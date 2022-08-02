@@ -640,7 +640,7 @@ export default defineComponent({
      */
     changeReadStatus(release: DisplayReleaseItem): void {
       const newProgress = release.read ? 0 : 1;
-      HttpClient.updateProgress(release.episodeId, newProgress)
+      HttpClient.updateProgress([release.episodeId], newProgress)
         .then((success) => {
           if (success) {
             // update progress of all releases for the same episode
