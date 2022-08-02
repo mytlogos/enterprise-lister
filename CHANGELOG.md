@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/mytlogos/enterprise-lister/compare/v2.0.0...v2.0.1) (2022-08-02)
+
+
+### Bug Fixes
+
+* fix api errors and update client ([e3cddaf](https://github.com/mytlogos/enterprise-lister/commit/e3cddaf5b6c0f53337715476457b625aa07d737d))
+
 # [2.0.0](https://github.com/mytlogos/enterprise-lister/compare/v1.49.1...v2.0.0) (2022-08-02)
 
 
