@@ -1,5 +1,5 @@
 import createError, { HttpError } from "http-errors";
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import path from "path";
 import compression from "compression";
 // helps by preventing some known http vulnerabilities by setting http headers appropriately
@@ -12,6 +12,8 @@ import swaggerJsDoc from "swagger-jsdoc";
 import enableWS from "express-ws";
 import promBundle from "express-prom-bundle";
 import { logRequest } from "./requestlogger";
+import { ValidationError } from "express-json-validator-middleware";
+import queryType from "query-types";
 
 // Add the options to the prometheus middleware most option are for http_request_duration_seconds histogram metric
 const metricsMiddleware = promBundle({
@@ -56,6 +58,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(queryType.middleware());
 // only accept json as req body
 app.use(express.json());
 app.use(metricsMiddleware);
@@ -80,11 +83,17 @@ app.use((_req, _res, next) => {
 });
 
 // error handler
-app.use((err: HttpError, req: Request, res: Response) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
 
-  // render the error page
-  res.sendStatus(err.status || 500);
+  if (err instanceof HttpError) {
+    // render the error page
+    res.sendStatus(err.status || 500);
+  } else if (err instanceof ValidationError) {
+    res.status(400).json(err.validationErrors);
+  } else {
+    res.sendStatus(500);
+  }
 });

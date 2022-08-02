@@ -213,9 +213,8 @@ export class MediumContext extends SubContext {
         universe: result.universe,
         parts: partsResult.map((packet: any) => packet.id),
         currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
-        latestReleases: latestReleasesResult.map((packet: any) => packet.id),
+        latestReleased: latestReleasesResult.map((packet: any) => packet.id),
         unreadEpisodes: unReadResult.map((packet: any) => packet.id),
-        latestReleased: [],
       };
     });
   }
@@ -297,7 +296,7 @@ export class MediumContext extends SubContext {
    * Updates a medium from the storage.
    */
   public async updateMediumToc(mediumToc: FullMediumToc): Promise<boolean> {
-    const keys = [
+    const keys: Array<keyof FullMediumToc> = [
       "countryOfOrigin",
       "languageOfOrigin",
       "author",
@@ -346,7 +345,7 @@ export class MediumContext extends SubContext {
    * Updates a medium from the storage.
    */
   public async updateMedium(medium: UpdateMedium): Promise<boolean> {
-    const keys = [
+    const keys: Array<keyof UpdateMedium> = [
       "countryOfOrigin",
       "languageOfOrigin",
       "author",

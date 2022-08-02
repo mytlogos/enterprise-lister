@@ -1,32 +1,37 @@
 import { jobStorage } from "enterprise-core/dist/database/storages/storage";
-import { isInvalidId, Errors } from "enterprise-core/dist/tools";
-import { TimeBucket } from "enterprise-core/dist/types";
 import { Router } from "express";
-import { extractQueryParam, createHandler } from "./apiTools";
+import {
+  GetHistoryJobs,
+  getHistoryJobsSchema,
+  GetJobDetails,
+  getJobDetailsSchema,
+  GetJobStatsTimed,
+  getJobStatsTimedSchema,
+  PostJobEnable,
+} from "../validation";
+import { createHandler, castQuery } from "./apiTools";
 
 export const getJobs = createHandler(() => {
   return jobStorage.getAllJobs();
 });
 
-export const getHistoryJobs = createHandler((req) => {
-  let since = new Date(extractQueryParam(req, "since", true) || "");
-  const limit = Number.parseInt(extractQueryParam(req, "limit", true) || "-1");
+export const getHistoryJobs = createHandler(
+  (req) => {
+    const { since: sinceString, limit } = castQuery<GetHistoryJobs>(req);
+    let since = new Date(sinceString || "");
 
-  if (Number.isNaN(since.getTime())) {
-    since = new Date();
-  }
+    if (Number.isNaN(since.getTime())) {
+      since = new Date();
+    }
 
-  return jobStorage.getJobHistoryStream(since, limit);
-});
+    return jobStorage.getJobHistoryStream(since, limit || -1);
+  },
+  { query: getHistoryJobsSchema },
+);
 
 export const postJobEnable = createHandler((req) => {
-  const jobId = req.body.id;
-  const enabled = req.body.enabled;
-
-  if (isInvalidId(jobId)) {
-    return Promise.reject(Errors.INVALID_DATA);
-  }
-  return jobStorage.updateJobsEnable(jobId, enabled);
+  const { id, enabled }: PostJobEnable = req.body;
+  return jobStorage.updateJobsEnable(id, enabled);
 });
 
 export const getJobsStats = createHandler(() => {
@@ -41,25 +46,21 @@ export const getJobsStatsGrouped = createHandler(() => {
   return jobStorage.getJobsStatsGrouped();
 });
 
-export const getJobDetails = createHandler((req) => {
-  const id = Number.parseInt(extractQueryParam(req, "id"));
+export const getJobDetails = createHandler(
+  (req) => {
+    const { id } = castQuery<GetJobDetails>(req);
+    return jobStorage.getJobDetails(id);
+  },
+  { query: getJobDetailsSchema },
+);
 
-  if (isInvalidId(id)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-
-  return jobStorage.getJobDetails(id);
-});
-
-export const getJobStatsTimed = createHandler((req) => {
-  const bucket = extractQueryParam(req, "bucket");
-  const groupByDomain = (extractQueryParam(req, "groupByDomain") || "").toLowerCase() === "true";
-
-  if (!["day", "hour", "minute"].includes(bucket)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return jobStorage.getJobsStatsTimed(bucket as TimeBucket, groupByDomain);
-});
+export const getJobStatsTimed = createHandler(
+  (req) => {
+    const { bucket, groupByDomain } = castQuery<GetJobStatsTimed>(req);
+    return jobStorage.getJobsStatsTimed(bucket, groupByDomain);
+  },
+  { query: getJobStatsTimedSchema },
+);
 
 /**
  * Creates the Jobs API Router.

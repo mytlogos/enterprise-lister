@@ -1,42 +1,38 @@
 import { newsStorage } from "enterprise-core/dist/database/storages/storage";
-import { stringToNumberList, Errors, isString } from "enterprise-core/dist/tools";
 import { Router } from "express";
-import { createHandler, extractQueryParam, stopper } from "./apiTools";
+import { GetNews, getNewsSchema, ReadNews, readNewsSchema } from "../validation";
+import { castQuery, createHandler, extractQueryParam, stopper } from "./apiTools";
 
-export const getNews = createHandler((req) => {
-  const uuid = extractQueryParam(req, "uuid");
-  let from: string | Date | undefined = extractQueryParam(req, "from", true);
-  let to: string | Date | undefined = extractQueryParam(req, "to", true);
-  let newsIds: string | number[] | undefined = extractQueryParam(req, "newsId", true);
+export const getNews = createHandler(
+  (req) => {
+    const { uuid, from: fromString, to: toString, newsId } = castQuery<GetNews>(req);
 
-  // if newsIds is specified, send only these news
-  if (isString(newsIds)) {
-    newsIds = stringToNumberList(newsIds);
-    return newsStorage.getNews(uuid, undefined, undefined, newsIds);
-  } else {
-    // else send it based on time
-    from = !from || from === "null" ? undefined : new Date(from);
-    to = !to || to === "null" ? undefined : new Date(to);
+    // if newsIds is specified, send only these news
+    if (newsId) {
+      return newsStorage.getNews(uuid, undefined, undefined, newsId);
+    } else {
+      // else send it based on time
+      const from = !fromString || fromString == null ? undefined : new Date(fromString);
+      const to = !toString || toString == null ? undefined : new Date(toString);
 
-    return newsStorage.getNews(uuid, from, to);
-  }
-});
+      return newsStorage.getNews(uuid, from, to);
+    }
+  },
+  { query: getNewsSchema },
+);
 
 export const getAllNews = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
   return newsStorage.getAll(uuid);
 });
 
-export const readNews = createHandler((req) => {
-  const { uuid, read } = req.body;
-  // TODO: change this validation, should expect a number[]
-  if (!read || !isString(read)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  const currentlyReadNews = stringToNumberList(read);
-
-  return newsStorage.markRead(uuid, currentlyReadNews);
-});
+export const readNews = createHandler(
+  (req) => {
+    const { uuid, read }: ReadNews = req.body;
+    return newsStorage.markRead(uuid, read);
+  },
+  { body: readNewsSchema },
+);
 
 /**
  * Creates the User Api Router.

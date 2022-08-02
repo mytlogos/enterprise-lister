@@ -1,6 +1,5 @@
-import { ValidationResult } from "json-schema";
 import { Schema, Validator, ValidatorResult } from "jsonschema";
-export { ValidationError } from "jsonschema";
+export { ValidationError, Validator, ValidatorResult } from "jsonschema";
 
 type RequireField<T, K extends keyof T> = T & Required<Pick<T, K>>;
 
@@ -345,7 +344,7 @@ const hookConfigSchema = schema({
   required: ["base", "medium", "name", "version"],
 });
 
-export function validateHookConfig(value: any): ValidationResult {
+export function validateHookConfig(value: any): ValidatorResult {
   const v = new Validator();
   return v.validate(value, hookConfigSchema);
 }

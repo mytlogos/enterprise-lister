@@ -16,11 +16,6 @@
       "esnext"
     ],
     "outDir": "./dist/",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
     "types": [
       "jest"
     ]

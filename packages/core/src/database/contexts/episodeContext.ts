@@ -421,7 +421,7 @@ export class EpisodeContext extends SubContext {
           },
           uuid,
         );
-        bestMedium = { id: addedMedium.insertId, title: value.novel };
+        bestMedium = { id: addedMedium.id as number, title: value.novel };
         // TODO add medium if it is not known?
       }
 

@@ -1,118 +1,113 @@
 import { mediumStorage, mediumInWaitStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
-import {
-  isInvalidId,
-  Errors,
-  isInvalidSimpleMedium,
-  isString,
-  stringToNumberList,
-  isNumberOrArray,
-} from "enterprise-core/dist/tools";
+import { Errors, isString, stringToNumberList, isNumberOrArray } from "enterprise-core/dist/tools";
+import { MediumInWaitSearch } from "enterprise-core/dist/types";
 import { Router } from "express";
-import { extractQueryParam, createHandler } from "./apiTools";
+import {
+  deleteProgressSchema,
+  GetMedium,
+  GetMediumReleases,
+  getMediumReleasesSchema,
+  getMediumSchema,
+  GetProgress,
+  getProgressSchema,
+  getUnusedMediaSchema,
+  PostCreateFromUnusedMedia,
+  postCreateFromUnusedMediaSchema,
+  PostMedium,
+  postMediumSchema,
+  PostMergeMedia,
+  postMergeMediaSchema,
+  postProgressSchema,
+  PostSplitMedium,
+  postSplitMediumSchema,
+  PostTransferToc,
+  postTransferTocSchema,
+  PutConsumeUnusedMedia,
+  putConsumeUnusedMediaSchema,
+  putMediumSchema,
+} from "../validation";
+import { extractQueryParam, createHandler, castQuery } from "./apiTools";
 import { partRouter } from "./part";
 
-export const postMergeMedia = createHandler((req) => {
-  const { sourceId, destinationId } = req.body;
-  if (isInvalidId(sourceId) || isInvalidId(destinationId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  } else {
+export const postMergeMedia = createHandler(
+  (req) => {
+    const { sourceId, destinationId }: PostMergeMedia = req.body;
     return mediumStorage.mergeMedia(sourceId, destinationId);
-  }
-});
+  },
+  { body: postMergeMediaSchema },
+);
 
-export const postSplitMedium = createHandler((req) => {
-  const { sourceId, destinationMedium, toc } = req.body;
-  if (
-    isInvalidId(sourceId) ||
-    !destinationMedium ||
-    isInvalidSimpleMedium(destinationMedium) ||
-    !/^https?:\/\//.test(toc)
-  ) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  } else {
+export const postSplitMedium = createHandler(
+  (req) => {
+    const { sourceId, destinationMedium, toc }: PostSplitMedium = req.body;
     return mediumStorage.splitMedium(sourceId, destinationMedium, toc);
-  }
-});
+  },
+  { body: postSplitMediumSchema },
+);
 
-export const postTransferToc = createHandler((req) => {
-  const { sourceId, destinationId, toc } = req.body;
-  if (isInvalidId(sourceId) || isInvalidId(destinationId) || !/^https?:\/\//.test(toc)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  } else {
+export const postTransferToc = createHandler(
+  (req) => {
+    const { sourceId, destinationId, toc }: PostTransferToc = req.body;
     return mediumStorage.transferToc(sourceId, destinationId, toc);
-  }
-});
+  },
+  { body: postTransferTocSchema },
+);
 
 export const getAllMedia = createHandler(() => {
   return mediumStorage.getAllMedia();
 });
 
-export const putConsumeUnusedMedia = createHandler((req) => {
-  const { mediumId, tocsMedia } = req.body;
+export const putConsumeUnusedMedia = createHandler(
+  (req) => {
+    const { mediumId, tocsMedia }: PutConsumeUnusedMedia = req.body;
+    return mediumInWaitStorage.consumeMediaInWait(mediumId, tocsMedia);
+  },
+  { body: putConsumeUnusedMediaSchema },
+);
 
-  if (mediumId <= 0 || !tocsMedia || !Array.isArray(tocsMedia) || !tocsMedia.length) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return mediumInWaitStorage.consumeMediaInWait(mediumId, tocsMedia);
-});
+export const postCreateFromUnusedMedia = createHandler(
+  (req) => {
+    const { createMedium, tocsMedia, listId }: PostCreateFromUnusedMedia = req.body;
+    return mediumInWaitStorage.createFromMediaInWait(createMedium, tocsMedia, listId);
+  },
+  { body: postCreateFromUnusedMediaSchema },
+);
 
-export const postCreateFromUnusedMedia = createHandler((req) => {
-  const { createMedium, tocsMedia, listId } = req.body;
+export const getUnusedMedia = createHandler(
+  (req) => {
+    const search = castQuery<MediumInWaitSearch>(req);
+    return mediumInWaitStorage.getMediaInWait(search);
+  },
+  { query: getUnusedMediaSchema },
+);
 
-  if (!createMedium || listId <= 0 || (tocsMedia && !Array.isArray(tocsMedia))) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return mediumInWaitStorage.createFromMediaInWait(createMedium, tocsMedia, listId);
-});
+export const getMedium = createHandler(
+  (req) => {
+    const { uuid, mediumId } = castQuery<GetMedium>(req);
+    return mediumStorage.getMedium(mediumId, uuid);
+  },
+  { query: getMediumSchema },
+);
 
-export const getUnusedMedia = createHandler((req) => {
-  const limit = Number(extractQueryParam(req, "limit", true));
-  const medium = Number(extractQueryParam(req, "medium", true));
-  const title = extractQueryParam(req, "title", true);
-  const link = extractQueryParam(req, "link", true);
+export const postMedium = createHandler(
+  (req) => {
+    const { uuid, medium }: PostMedium = req.body;
+    return mediumStorage.addMedium(medium, uuid);
+  },
+  { body: postMediumSchema },
+);
 
-  return mediumInWaitStorage.getMediaInWait({
-    limit,
-    medium,
-    title,
-    link,
-  });
-});
-
-export const getMedium = createHandler((req) => {
-  let mediumId: string | number | number[] = extractQueryParam(req, "mediumId");
-  const uuid = extractQueryParam(req, "uuid");
-
-  mediumId = Number(mediumId);
-
-  if (!mediumId && !Number.isNaN(mediumId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  if (!Number.isInteger(mediumId)) {
-    mediumId = extractQueryParam(req, "mediumId");
-    mediumId = stringToNumberList(mediumId);
-  }
-  if (!mediumId || !isNumberOrArray(mediumId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return mediumStorage.getMedium(mediumId, uuid);
-});
-
-export const postMedium = createHandler((req) => {
-  const { uuid, medium } = req.body;
-  if (!medium) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return mediumStorage.addMedium(medium, uuid);
-});
-export const putMedium = createHandler((req) => {
-  const { medium } = req.body;
-  if (!medium) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return mediumStorage.updateMedium(medium);
-});
+export const putMedium = createHandler(
+  (req) => {
+    const { medium } = req.body;
+    if (!medium) {
+      return Promise.reject(Errors.INVALID_INPUT);
+    }
+    return mediumStorage.updateMedium(medium);
+  },
+  { body: putMediumSchema },
+);
 
 export const getAllMediaFull = createHandler(() => {
   return mediumStorage.getAllMediaFull();
@@ -123,58 +118,57 @@ export const getAllSecondary = createHandler((req) => {
   return mediumStorage.getAllSecondary(uuid);
 });
 
-export const getProgress = createHandler((req) => {
-  const uuid = extractQueryParam(req, "uuid");
-  const episodeIdString = extractQueryParam(req, "episodeId");
+export const getProgress = createHandler(
+  (req) => {
+    const { uuid, episodeId } = castQuery<GetProgress>(req);
+    return episodeStorage.getProgress(uuid, episodeId);
+  },
+  { query: getProgressSchema },
+);
 
-  const episodeId = Number.parseInt(episodeIdString);
+export const postProgress = createHandler(
+  (req) => {
+    const { uuid, progress } = req.body;
+    let episodeId = req.body.episodeId;
 
-  if (!episodeId || !Number.isInteger(episodeId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return episodeStorage.getProgress(uuid, episodeId);
-});
+    if (isString(episodeId)) {
+      episodeId = stringToNumberList(episodeId);
+    }
 
-export const postProgress = createHandler((req) => {
-  const { uuid, progress } = req.body;
-  let episodeId = req.body.episodeId;
-
-  if (isString(episodeId)) {
-    episodeId = stringToNumberList(episodeId);
-  }
-
-  if (!episodeId || !isNumberOrArray(episodeId) || progress == null) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  try {
-    const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
-    return episodeStorage.addProgress(uuid, episodeId, progress, readDate);
-  } catch (e) {
-    logger.error(e);
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-});
+    if (!episodeId || !isNumberOrArray(episodeId) || progress == null) {
+      return Promise.reject(Errors.INVALID_INPUT);
+    }
+    try {
+      const readDate = req.body.readDate ? new Date(req.body.readDate) : new Date();
+      return episodeStorage.addProgress(uuid, episodeId, progress, readDate);
+    } catch (e) {
+      logger.error(e);
+      return Promise.reject(Errors.INVALID_INPUT);
+    }
+  },
+  { body: postProgressSchema },
+);
 
 export const putProgress = postProgress;
 
-export const deleteProgress = createHandler((req) => {
-  const { uuid, episodeId } = req.body;
-  if (!episodeId || !Number.isInteger(episodeId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return episodeStorage.removeProgress(uuid, episodeId);
-});
+export const deleteProgress = createHandler(
+  (req) => {
+    const { uuid, episodeId } = req.body;
+    if (!episodeId || !Number.isInteger(episodeId)) {
+      return Promise.reject(Errors.INVALID_INPUT);
+    }
+    return episodeStorage.removeProgress(uuid, episodeId);
+  },
+  { body: deleteProgressSchema },
+);
 
-export const getMediumReleases = createHandler((req) => {
-  const mediumId = Number.parseInt(extractQueryParam(req, "id"));
-  const uuid = extractQueryParam(req, "uuid");
-
-  if (isInvalidId(mediumId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-
-  return episodeStorage.getMediumReleases(mediumId, uuid);
-});
+export const getMediumReleases = createHandler(
+  (req) => {
+    const { id, uuid } = castQuery<GetMediumReleases>(req);
+    return episodeStorage.getMediumReleases(id, uuid);
+  },
+  { query: getMediumReleasesSchema },
+);
 
 /**
  * Creates the Medium API Router.

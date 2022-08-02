@@ -32,9 +32,7 @@ import {
   AppEventProgram,
   AppEventType,
   AppEvent,
-  QueryItems,
   QueryItemsResult,
-  Uuid,
 } from "enterprise-core/dist/types";
 import { Handler, Router } from "express";
 import { extractQueryParam, createHandler } from "./apiTools";
@@ -52,6 +50,31 @@ import { readFile } from "fs/promises";
 import path from "path";
 import appConfig from "enterprise-core/dist/env";
 import requestPromise from "request-promise-native";
+import {
+  AddBookmarked,
+  addBookmarkedSchema,
+  AddToc,
+  addTocSchema,
+  DeleteToc,
+  deleteTocSchema,
+  DownloadEpisode,
+  downloadEpisodeSchema,
+  getAssociatedEpisodeSchema,
+  GetNotifications,
+  GetNotificationsCount,
+  getNotificationsCountSchema,
+  getNotificationsSchema,
+  PostLoad,
+  postLoadSchema,
+  PutUser,
+  putUserSchema,
+  ReadNotification,
+  readNotificationSchema,
+  Search,
+  searchSchema,
+  Session,
+  sessionSchema,
+} from "../validation";
 
 export const authenticate: Handler = (req, res, next) => {
   let { uuid, session } = req.body;
@@ -83,33 +106,34 @@ const getUser = createHandler((req) => {
   return userStorage.getUser(uuid, req.ip);
 });
 
-export const putUser = createHandler((req) => {
-  const { uuid, user } = req.body;
-  if (!user) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return userStorage.updateUser(uuid, user);
-});
+export const putUser = createHandler(
+  (req) => {
+    const { uuid, user }: PutUser = req.body;
+    return userStorage.updateUser(uuid, user);
+  },
+  { body: putUserSchema },
+);
 
-export const deleteUser = createHandler((req) => {
-  const { uuid } = req.body;
-  return userStorage.deleteUser(uuid);
-});
+export const deleteUser = createHandler(
+  (req) => {
+    const { uuid }: Session = req.body;
+    return userStorage.deleteUser(uuid);
+  },
+  { body: sessionSchema },
+);
 
-const logout = createHandler((req) => {
-  const { uuid } = req.body;
-  // TODO: should logout only with valid session
-  if (!uuid) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return userStorage.logoutUser(uuid, req.ip);
-});
+const logout = createHandler(
+  (req) => {
+    const { uuid }: Session = req.body;
+    // TODO: should logout only with valid session
+    return userStorage.logoutUser(uuid, req.ip);
+  },
+  { body: sessionSchema },
+);
 
-export const addBookmarked = createHandler(async (req) => {
-  const { uuid, bookmarked } = req.body;
-  const protocol = /^https?:\/\//;
-
-  if (bookmarked?.length && bookmarked.every((url: any) => isString(url) && protocol.test(url))) {
+export const addBookmarked = createHandler(
+  async (req) => {
+    const { uuid, bookmarked }: AddBookmarked = req.body;
     const scrapeAble = await filterScrapeAble(bookmarked);
     return jobStorage
       .addJobs(
@@ -129,73 +153,58 @@ export const addBookmarked = createHandler(async (req) => {
         }),
       )
       .then(() => scrapeAble.unavailable);
-  } else {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-});
+  },
+  { body: addBookmarkedSchema },
+);
 
-export const addToc = createHandler((req) => {
-  const { uuid, toc, mediumId } = req.body;
-  const protocol = /^https?:\/\//;
-
-  if (protocol.test(toc) && Number.isInteger(mediumId) && mediumId > 0) {
+export const addToc = createHandler(
+  async (req) => {
+    const { uuid, toc, mediumId }: AddToc = req.body;
     const tocRequest: TocRequest = {
       url: toc,
       uuid,
       mediumId,
     };
-    return jobStorage
-      .addJobs({
-        name: `${ScrapeName.oneTimeToc}-${toc as string}`,
-        type: ScrapeName.oneTimeToc,
-        runImmediately: true,
-        deleteAfterRun: true,
-        interval: -1,
-        arguments: JSON.stringify(tocRequest),
-      })
-      .then(() => true);
-  } else {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-});
+    // TODO: directly request the scrape and insert immediately
+    await jobStorage.addJobs({
+      name: `${ScrapeName.oneTimeToc}-${toc}`,
+      type: ScrapeName.oneTimeToc,
+      runImmediately: true,
+      deleteAfterRun: true,
+      interval: -1,
+      arguments: JSON.stringify(tocRequest),
+    });
+    return true;
+  },
+  { body: addTocSchema },
+);
 
-export const downloadEpisode = createHandler((req) => {
-  const uuid = extractQueryParam(req, "uuid");
-  const stringEpisode = extractQueryParam(req, "episode");
-
-  if (!stringEpisode || !isString(stringEpisode)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  const episodes: number[] = stringToNumberList(stringEpisode);
-
-  if (!episodes || !episodes.length) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return episodeStorage
-    .getEpisode(episodes, uuid)
-    .then((fullEpisodes) => downloadEpisodes(fullEpisodes.filter((value) => value)));
-});
+export const downloadEpisode = createHandler(
+  async (req) => {
+    const { uuid, episode }: DownloadEpisode = req.query as any;
+    const fullEpisodes = await episodeStorage.getEpisode(episode, uuid);
+    return downloadEpisodes(fullEpisodes.filter((value) => value));
+  },
+  { query: downloadEpisodeSchema },
+);
 
 export const getLists = getAllLists;
 
-export const getAssociatedEpisode = createHandler((req) => {
-  const url = extractQueryParam(req, "url");
+export const getAssociatedEpisode = createHandler(
+  (req) => {
+    const url = extractQueryParam(req, "url");
+    return episodeStorage.getAssociatedEpisode(url);
+  },
+  { query: getAssociatedEpisodeSchema },
+);
 
-  if (!url || !isString(url) || !/^https?:\/\//.test(url)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return episodeStorage.getAssociatedEpisode(url);
-});
-
-export const search = createHandler((req) => {
-  const text = extractQueryParam(req, "text");
-  const medium = Number(extractQueryParam(req, "medium"));
-
-  if (Number.isNaN(medium) || !text) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return searchMedium(text, medium);
-});
+export const search = createHandler(
+  (req) => {
+    const { text, medium }: Search = req.query as any;
+    return searchMedium(text, medium);
+  },
+  { query: searchSchema },
+);
 
 export const getStats = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
@@ -236,55 +245,52 @@ export const getToc = createHandler((req) => {
   return mediumStorage.getMediumTocs(media);
 });
 
-export const deleteToc = createHandler((req) => {
-  let mediumId: string | number = extractQueryParam(req, "mediumId");
-  const link = extractQueryParam(req, "link");
+export const deleteToc = createHandler(
+  (req) => {
+    const { mediumId, link }: DeleteToc = req.query as any;
+    return mediumStorage.removeMediumToc(mediumId, link);
+  },
+  { query: deleteTocSchema },
+);
 
-  mediumId = Number.parseInt(mediumId, 10);
+export const getNotifications = createHandler(
+  (req) => {
+    const { from, uuid, read, size }: GetNotifications = req.query as any;
 
-  if (isInvalidId(mediumId) || !link || !isString(link)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
+    const fromDate = getDate(from);
 
-  return mediumStorage.removeMediumToc(mediumId, link);
-});
+    if (!fromDate) {
+      throw new Error(Errors.INVALID_INPUT);
+    }
 
-export const getNotifications = createHandler((req) => {
-  const from = extractQueryParam(req, "from");
-  const uuid = extractQueryParam(req, "uuid");
-  const read = extractQueryParam(req, "read");
-  const sizeString = extractQueryParam(req, "size", true) || "0";
+    return notificationStorage.getNotifications(fromDate, uuid, read, size);
+  },
+  { query: getNotificationsSchema },
+);
 
-  const fromDate = getDate(from);
-  const size = Number(sizeString);
+export const getNotificationsCount = createHandler(
+  (req) => {
+    const { uuid, read }: GetNotificationsCount = req.query as any;
+    return notificationStorage.countNotifications(uuid, read);
+  },
+  { query: getNotificationsCountSchema },
+);
 
-  if (!fromDate || !uuid || Number.isNaN(size)) {
-    throw new Error(Errors.INVALID_INPUT);
-  }
+export const postReadAllNotifications = createHandler(
+  (req) => {
+    const { uuid }: Session = req.body;
+    return notificationStorage.readAllNotifications(uuid);
+  },
+  { body: sessionSchema },
+);
 
-  return notificationStorage.getNotifications(fromDate, uuid, read.toLowerCase() === "true", size);
-});
-
-export const getNotificationsCount = createHandler((req) => {
-  const uuid = extractQueryParam(req, "uuid");
-  const read = extractQueryParam(req, "read");
-  return notificationStorage.countNotifications(uuid, read.toLowerCase() === "true");
-});
-
-export const postReadAllNotifications = createHandler((req) => {
-  const { uuid } = req.body;
-  return notificationStorage.readAllNotifications(uuid);
-});
-
-export const postReadNotification = createHandler((req) => {
-  const { id, uuid } = req.body;
-
-  if (isInvalidId(id)) {
-    return new Error(Errors.INVALID_INPUT);
-  }
-
-  return notificationStorage.readNotification(id, uuid);
-});
+export const postReadNotification = createHandler(
+  (req) => {
+    const body: ReadNotification = req.body;
+    return notificationStorage.readNotification(body.id, body.uuid);
+  },
+  { query: readNotificationSchema },
+);
 
 export const getAllAppEvents = createHandler((req) => {
   const filter: AppEventFilter = {};
@@ -426,10 +432,13 @@ const getStatus = createHandler(async (): Promise<Status> => {
   };
 });
 
-const postLoad = createHandler(async (request): Promise<QueryItemsResult> => {
-  const { items, uuid }: { items: QueryItems; uuid: Uuid } = request.body;
-  return storage.queryItems(uuid, items);
-});
+const postLoad = createHandler(
+  async (request): Promise<QueryItemsResult> => {
+    const { items, uuid }: PostLoad = request.body;
+    return storage.queryItems(uuid, items);
+  },
+  { query: postLoadSchema },
+);
 
 /**
  * Creates the User Api Router.

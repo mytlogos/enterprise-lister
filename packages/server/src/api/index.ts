@@ -1,32 +1,30 @@
 import { userStorage } from "enterprise-core/dist/database/storages/storage";
 import env from "enterprise-core/dist/env";
-import { Errors, isString } from "enterprise-core/dist/tools";
 import { getTunnelUrls } from "../tunnel";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
 import { userRouter } from "./user";
+import { Login, loginSchema } from "../validation";
 
 const checkLogin = createHandler((req) => {
   return userStorage.loggedInUser(req.ip);
 });
 
-const login = createHandler((req) => {
-  const { userName, pw } = req.body;
+const login = createHandler(
+  (req) => {
+    const { userName, pw }: Login = req.body;
+    return userStorage.loginUser(userName, pw, req.ip);
+  },
+  { body: loginSchema },
+);
 
-  if (!userName || !isString(userName) || !pw || !isString(pw)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return userStorage.loginUser(userName, pw, req.ip);
-});
-
-const register = createHandler((req) => {
-  const { userName, pw } = req.body;
-
-  if (!userName || !isString(userName) || !pw || !isString(pw)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return userStorage.register(userName, pw, req.ip);
-});
+const register = createHandler(
+  (req) => {
+    const { userName, pw }: Login = req.body;
+    return userStorage.register(userName, pw, req.ip);
+  },
+  { body: loginSchema },
+);
 
 const getTunnel = createHandler(() => {
   return Promise.resolve(getTunnelUrls());

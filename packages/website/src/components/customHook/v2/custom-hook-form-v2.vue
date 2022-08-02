@@ -108,7 +108,7 @@
 </template>
 <script lang="ts">
 import { CustomHook, HookState } from "enterprise-core/dist/types";
-import { validateHookConfig, ValidationError } from "enterprise-scraper/dist/externals/customv2/validation";
+import { validateHookConfig } from "enterprise-scraper/dist/externals/customv2/validation";
 import { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
 import { defineComponent, PropType } from "vue";
 import "bootstrap/js/dist/collapse";
@@ -233,13 +233,7 @@ export default defineComponent({
         const validated = validateHookConfig(value);
 
         if (validated.errors.length) {
-          this.dialogError = validated.errors.map((v) => {
-            if (v instanceof ValidationError) {
-              return v.stack;
-            } else {
-              return v.message;
-            }
-          });
+          this.dialogError = validated.errors.map((v) => v.message);
         } else {
           this.dialogError = [];
           this.$emit("update:config", value);
