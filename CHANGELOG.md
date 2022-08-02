@@ -1,3 +1,22 @@
+# [2.0.0](https://github.com/mytlogos/enterprise-lister/compare/v1.49.1...v2.0.0) (2022-08-02)
+
+
+### Bug Fixes
+
+* npm install missing package ([6ae37de](https://github.com/mytlogos/enterprise-lister/commit/6ae37de3a4e34c7400f1a861b0b6ab045f1f2c0f))
+* **server:** fix duplicate schema id ([8bfb429](https://github.com/mytlogos/enterprise-lister/commit/8bfb4290d9a2653ed1a3dc79b537048a8228b90c))
+
+
+### Features
+
+* add server api validation ([71c9b58](https://github.com/mytlogos/enterprise-lister/commit/71c9b5810942fb0565f2e0a56628c83a92dccc6d))
+* **server:** add more validation ([cd5f6c8](https://github.com/mytlogos/enterprise-lister/commit/cd5f6c8512d63ef9170d4cffbd43709e870ebac7))
+
+
+### BREAKING CHANGES
+
+* api does not always take the same arguments anymore
+
 ## [1.49.1](https://github.com/mytlogos/enterprise-lister/compare/v1.49.0...v1.49.1) (2022-07-31)
 
 
