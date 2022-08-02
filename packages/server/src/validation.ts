@@ -358,7 +358,7 @@ export interface PutEpisode {
 }
 
 export const putEpisodeSchema: JSONSchemaType<Json<PutEpisode>> = {
-  $id: "/PostEpisode",
+  $id: "/PutEpisode",
   type: "object",
   properties: {
     episode: {
