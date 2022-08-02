@@ -9,7 +9,7 @@ import { createHook as createHookV2 } from "enterprise-scraper/dist/externals/cu
 import { HookConfig as HookConfigV2 } from "enterprise-scraper/dist/externals/customv2/types";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
-import { HookTest, HookTestV2 } from "@/types";
+import { HookTest, HookTestV2 } from "../types";
 import { CustomHookError } from "enterprise-scraper/dist/externals/custom/errors";
 import { RestResponseError } from "../errors";
 

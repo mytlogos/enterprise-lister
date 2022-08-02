@@ -85,8 +85,6 @@ export interface SimpleMedium {
   stateTL?: ReleaseState;
   series?: string;
   universe?: string;
-
-  [key: string]: any;
 }
 
 /**
@@ -1100,6 +1098,27 @@ export type PromiseFunctions<T, K extends StringKeys<T>> = Properties<Omit<T, K>
  */
 export type NonNull<T, K extends StringKeys<T>> = T & {
   [S in K]-?: T[K];
+};
+
+export type RequiredKeys<T> = {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  [K in keyof T]-?: {} extends { [P in K]: T[K] } ? never : K;
+}[keyof T];
+
+export type OptionalKeys<T> = {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  [K in keyof T]-?: {} extends { [P in K]: T[K] } ? K : never;
+}[keyof T];
+
+export type ExcludeOptionalProps<T> = Pick<T, RequiredKeys<T>>;
+
+export type ExcludeRequiredProps<T> = Pick<T, OptionalKeys<T>>;
+
+/**
+ * Transform record to a jsonable Type
+ */
+export type Json<T extends Record<string, any>> = {
+  [K in keyof T]: T[K] extends Date ? string : T[K] extends Record<string, any> ? Json<T[K]> : T[K];
 };
 
 export type Primitive = string | number | boolean;

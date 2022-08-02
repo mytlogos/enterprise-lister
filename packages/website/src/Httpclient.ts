@@ -29,6 +29,7 @@ import {
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
 import { CustomHook, Id, Notification, Nullable, SimpleUser } from "enterprise-core/dist/types";
+import qs from "qs";
 
 /**
  * Allowed Methods for the API.
@@ -618,17 +619,10 @@ export const HttpClient = {
         "Content-Type": "application/json; charset=utf-8",
       },
     };
-    const url = new URL(`${window.location.origin}/${path}`);
+    let url = `${window.location.origin}/${path}`;
     if (query) {
       if (method === Methods.get) {
-        Object.keys(query).forEach((key) => {
-          const value = query[key];
-          if (Array.isArray(value)) {
-            url.searchParams.append(key, `[${value.map((v) => (typeof v === "string" ? `"${v}"` : v)).join(",")}]`);
-          } else {
-            url.searchParams.append(key, value);
-          }
-        });
+        url += "?" + qs.stringify(query);
       } else {
         // @ts-expect-error
         init.body = JSON.stringify(query);

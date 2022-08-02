@@ -69,7 +69,7 @@ import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/v2/custom-hook-form-v2.vue";
 import { clone, Logger } from "../init";
-import { validateHookConfig, ValidationError } from "enterprise-scraper/dist/externals/customv2/validation";
+import { validateHookConfig } from "enterprise-scraper/dist/externals/customv2/validation";
 
 interface Data {
   showResult: boolean;
@@ -149,13 +149,7 @@ export default defineComponent({
           this.value = hookConfig;
           this.invalid = [];
         } else {
-          this.invalid = result.errors.map((v) => {
-            if (v instanceof ValidationError) {
-              return v.stack;
-            } else {
-              return v.message;
-            }
-          });
+          this.invalid = result.errors.map((v) => v.message);
           return;
         }
       } catch (error) {
@@ -194,13 +188,7 @@ export default defineComponent({
             this.value = hookConfig;
             this.invalid = [];
           } else {
-            this.invalid = result.errors.map((v) => {
-              if (v instanceof ValidationError) {
-                return v.stack;
-              } else {
-                return v.message;
-              }
-            });
+            this.invalid = result.errors.map((v) => v.message);
           }
         } catch (error) {
           this.invalid = [error + ""];
@@ -246,13 +234,7 @@ export default defineComponent({
           this.hook.state = JSON.stringify(cloned);
           this.invalid = [];
         } else {
-          this.invalid = result.errors.map((v) => {
-            if (v instanceof ValidationError) {
-              return v.stack;
-            } else {
-              return v.message;
-            }
-          });
+          this.invalid = result.errors.map((v) => v.message);
           return;
         }
       } catch (error) {

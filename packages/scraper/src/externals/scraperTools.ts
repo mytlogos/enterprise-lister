@@ -79,7 +79,7 @@ interface ScrapeableFilterResult {
   unavailable: string[];
 }
 
-export const filterScrapeAble = async (urls: string): Promise<ScrapeableFilterResult> => {
+export const filterScrapeAble = async (urls: string[]): Promise<ScrapeableFilterResult> => {
   await checkHooks();
 
   const regs: RegExp[] = [];

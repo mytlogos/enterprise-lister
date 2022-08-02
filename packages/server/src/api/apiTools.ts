@@ -4,8 +4,16 @@ import { isQuery, Errors, isError, isString } from "enterprise-core/dist/tools";
 import { Handler, NextFunction, Request, Response } from "express";
 import stringify from "stringify-stream";
 import { ValidationError } from "enterprise-core/dist/error";
+import { JSONSchemaType } from "enterprise-core/dist/validation";
+import { Validator } from "express-json-validator-middleware";
+import addFormats from "ajv-formats";
+import * as validationSchemata from "../validation";
 
-export function stopper(req: Request, res: Response, next: NextFunction): any {
+export function castQuery<T extends Record<string, any>>(req: Request): T {
+  return req.query as T;
+}
+
+export function stopper(_req: Request, _res: Response, next: NextFunction): any {
   return next();
 }
 
@@ -56,19 +64,41 @@ export function extractQueryParam<T extends boolean = false>(
 }
 
 export type RestHandler<Return = any> = (request: Request, response: Response, next: NextFunction) => Return;
+export interface ValidationSchemata {
+  body?: JSONSchemaType<unknown> | any;
+  params?: JSONSchemaType<unknown> | any;
+  query?: JSONSchemaType<unknown> | any;
+}
+
+/**
+ * Initialize a `Validator` instance, optionally passing in
+ * an Ajv options object.
+ *
+ * @see https://github.com/ajv-validator/ajv/tree/v9#options
+ */
+export const validator = new Validator({});
+addFormats(validator.ajv);
+
+// add all exported schemata to this instance
+for (const schema of Object.values(validationSchemata)) {
+  if (schema?.$id) {
+    // this will throw and exit process if any schema with already exiting id are added
+    validator.ajv.addSchema(schema);
+  }
+}
 
 /**
  * Wraps a Function handler. The return value is interpreted as the body
  * of the response. A Promise will be resolved, a Query will be listened on.
  * Errors are catched and returned as response status code depending on the error.
  *
- * @param handler handler function to wrap
+ * @param restHandler handler function to wrap
  * @returns an express handler
  */
-export function createHandler(handler: RestHandler): Handler {
-  return (req, res, next) => {
+export function createHandler(restHandler: RestHandler, schemata?: ValidationSchemata): Handler | [Handler, Handler] {
+  const handler: Handler = (req, res, next) => {
     try {
-      const result = handler(req, res, next);
+      const result = restHandler(req, res, next);
 
       if (result?.catch && result.then) {
         sendResult(res, result);
@@ -79,4 +109,9 @@ export function createHandler(handler: RestHandler): Handler {
       sendResult(res, Promise.reject(error));
     }
   };
+  if (schemata) {
+    // if schema is defined, validate first and then call handler
+    return [validator.validate(schemata as any), handler];
+  }
+  return handler;
 }

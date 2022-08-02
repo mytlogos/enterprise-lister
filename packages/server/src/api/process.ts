@@ -3,6 +3,7 @@ import { Errors } from "enterprise-core/dist/tools";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
 
+// TODO: deprecate/remove this api
 export const processReadEpisode = createHandler((req) => {
   const { uuid, result } = req.body;
   if (!result) {
