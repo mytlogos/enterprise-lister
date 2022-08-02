@@ -75,24 +75,8 @@
             "files": [
               "docker-compose.yml"
             ],
-            "from": "PROJECT_VERSION: .*",
-            "to": "PROJECT_VERSION: ${nextRelease.gitTag}",
-            "results": [
-              {
-                "file": "docker-compose.yml",
-                "hasChanged": true,
-                "numMatches": 2,
-                "numReplacements": 2
-              }
-            ],
-            "countMatches": true
-          },
-          {
-            "files": [
-              "docker-compose.yml"
-            ],
-            "from": "image: enterprise-server:.*",
-            "to": "image: enterprise-server:${nextRelease.gitTag}",
+            "from": "image: ghcr.io/mytlogos/enterprise-lister:.*",
+            "to": "image: ghcr.io/mytlogos/enterprise-lister:${nextRelease.gitTag}",
             "results": [
               {
                 "file": "docker-compose.yml",
