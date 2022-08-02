@@ -1,3 +1,10 @@
+## [2.0.3](https://github.com/mytlogos/enterprise-lister/compare/v2.0.2...v2.0.3) (2022-08-02)
+
+
+### Bug Fixes
+
+* **server:** validated wrong property ([f6331c2](https://github.com/mytlogos/enterprise-lister/commit/f6331c2aaaab173ef54b2bc9c845634e309da1f6))
+
 ## [2.0.2](https://github.com/mytlogos/enterprise-lister/compare/v2.0.1...v2.0.2) (2022-08-02)
 
 
