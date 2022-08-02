@@ -265,7 +265,7 @@ export const postReadNotification = createHandler(
     const body: ReadNotification = req.body;
     return notificationStorage.readNotification(body.id, body.uuid);
   },
-  { query: readNotificationSchema },
+  { body: readNotificationSchema },
 );
 
 export const getAllAppEvents = createHandler(
