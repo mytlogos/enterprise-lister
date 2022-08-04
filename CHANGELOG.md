@@ -1,3 +1,10 @@
+## [2.0.4](https://github.com/mytlogos/enterprise-lister/compare/v2.0.3...v2.0.4) (2022-08-04)
+
+
+### Bug Fixes
+
+* **scraper:** mitigate malformed date ([8410392](https://github.com/mytlogos/enterprise-lister/commit/841039236ced1bf5881c7e41c1538a089d905307))
+
 ## [2.0.3](https://github.com/mytlogos/enterprise-lister/compare/v2.0.2...v2.0.3) (2022-08-02)
 
 
