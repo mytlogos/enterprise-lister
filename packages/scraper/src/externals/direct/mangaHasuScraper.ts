@@ -239,6 +239,8 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const contentElement = $(".wrapper_content");
   const mangaTitle = sanitizeString(getText(contentElement.find(".info-title h1").first()));
   // TODO process metadata and get more (like author)
+  const invalidDatePattern =
+    /(Jan(uary)?|Feb(ruary)?|Mar(ch)?|Apr(il)?|May|June?|July?|Aug(ust)?|Sep(tember)?|Oct(ober)?|Nov(ember)?|Dec(ember)?),? \d+(, -\d+)?/im;
 
   const chapters = contentElement.find(".list-chapter tbody > tr");
 
@@ -278,17 +280,31 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const endReg = /\[END]\s*$/i;
   const volChapReg = /Vol\.?\s*((\d+)(\.(\d+))?)\s*Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
   const chapReg = /Chapter\s*((\d+)(\.(\d+))?)(:\s*(.+))?/i;
+  let previousDate: Date | undefined;
 
   for (let i = 0; i < chapters.length; i++) {
     const chapterElement = chapters.eq(i);
 
     const timeString = getText(chapterElement.find(".date-updated")).trim();
-    const time = new Date(timeString);
+    let time = new Date(timeString);
 
     if (!timeString || Number.isNaN(time.getTime())) {
-      scraperLog("warn", LogType.TIME_FORMAT, "mangahasu", { url: urlString, unknown_time: timeString });
-      return [];
+      const match = invalidDatePattern.exec(timeString);
+
+      if (match?.[11] && previousDate) {
+        const alternativeTime = timeString.replace(match[11], ", " + previousDate.getFullYear());
+        time = new Date(alternativeTime);
+
+        if (Number.isNaN(time.getTime())) {
+          scraperLog("warn", LogType.TIME_FORMAT, "mangahasu", { url: urlString, unknown_time: timeString });
+          return [];
+        }
+      } else {
+        scraperLog("warn", LogType.TIME_FORMAT, "mangahasu", { url: urlString, unknown_time: timeString });
+        return [];
+      }
     }
+    previousDate = time;
     const chapterTitleElement = chapterElement.find(".name");
     const chapterTitle = sanitizeString(getText(chapterTitleElement));
 
