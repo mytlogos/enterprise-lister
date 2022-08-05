@@ -30,7 +30,7 @@ import logger from "enterprise-core/dist/logger";
 import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult, ScrapeItem } from "./externals/types";
 import * as validate from "validate.js";
 import { checkTocContent, remapMediumPart } from "./externals/scraperTools";
-import { DefaultJobScraper } from "./externals/jobScraperManager";
+import { DefaultJobScraper } from "./externals/jobScheduler";
 import {
   episodeStorage,
   externalListStorage,

@@ -1,7 +1,7 @@
 import { JobItem } from "enterprise-core/dist/types";
 import { jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { getElseSet, stringify } from "enterprise-core/dist/tools";
-import { JobQueue } from "../jobManager";
+import { JobQueue } from "../jobQueue";
 import { getQueueKey } from "./queueManager";
 import { writeFile } from "fs/promises";
 import { ValidationError } from "enterprise-core/dist/error";
