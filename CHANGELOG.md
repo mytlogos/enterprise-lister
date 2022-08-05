@@ -1,3 +1,10 @@
+## [2.0.5](https://github.com/mytlogos/enterprise-lister/compare/v2.0.4...v2.0.5) (2022-08-05)
+
+
+### Bug Fixes
+
+* **scraper:** clear hook data after async steps ([d3aac3e](https://github.com/mytlogos/enterprise-lister/commit/d3aac3e2b777fe2aa5cc3177acd1f9a2f04fad8a))
+
 ## [2.0.4](https://github.com/mytlogos/enterprise-lister/compare/v2.0.3...v2.0.4) (2022-08-04)
 
 
