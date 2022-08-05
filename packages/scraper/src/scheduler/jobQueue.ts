@@ -5,7 +5,7 @@ import { JobRequest, EmptyPromise, Optional, Nullable } from "enterprise-core/di
 import { getStore, runAsync, setContext, removeContext, StoreKey } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
 import diagnostics_channel from "diagnostics_channel";
-import { JobQueueChannelMessage } from "./externals/types";
+import { JobQueueChannelMessage } from "../externals/types";
 import { JobError } from "enterprise-core/dist/error";
 
 const queueChannel = diagnostics_channel.channel("enterprise-jobqueue");

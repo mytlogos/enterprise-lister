@@ -1,5 +1,5 @@
-import { ScrapeEvent, ScraperHelper } from "./scraperTools";
-import { Job, JobQueue, OutsideJob } from "../jobQueue";
+import { ScrapeEvent, ScraperHelper } from "../externals/scraperTools";
+import { Job, JobQueue, OutsideJob } from "./jobQueue";
 import { getElseSet, isString, maxValue, removeLike, stringify } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import {
@@ -15,8 +15,8 @@ import { jobStorage, notificationStorage } from "enterprise-core/dist/database/s
 import * as dns from "dns";
 import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
-import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "./types";
-import { getNewsAdapter, load } from "./hookManager";
+import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "../externals/types";
+import { getNewsAdapter, load } from "../externals/hookManager";
 import { ScrapeJob } from "./scrapeJobs";
 import diagnostic_channel from "diagnostics_channel";
 import { SchedulingStrategy, Strategies } from "./scheduling";

@@ -14,7 +14,7 @@ import {
   ScrapeName,
 } from "enterprise-core/dist/types";
 import { MediaType } from "enterprise-core/dist/tools";
-import { JobCallback } from "../jobQueue";
+import { JobCallback } from "../scheduler/jobQueue";
 import { ListScrapeResult } from "./listManager";
 
 /**

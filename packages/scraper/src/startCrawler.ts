@@ -1,4 +1,4 @@
-import { startCrawler } from "./jobHandler";
+import { startCrawler } from "./scheduler/jobHandler";
 import { startStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
 import { createServer, Server } from "http";

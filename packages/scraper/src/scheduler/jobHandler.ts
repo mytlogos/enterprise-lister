@@ -7,8 +7,8 @@ import {
   multiSingle,
   ignore,
 } from "enterprise-core/dist/tools";
-import { isTocEpisode, isTocPart } from "./tools";
-import { ScrapeList, ScrapeMedium } from "./externals/listManager";
+import { isTocEpisode, isTocPart } from "../tools";
+import { ScrapeList, ScrapeMedium } from "../externals/listManager";
 import {
   EpisodeRelease,
   ExternalList,
@@ -27,10 +27,10 @@ import {
   CombinedEpisode,
 } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
-import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult, ScrapeItem } from "./externals/types";
+import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult, ScrapeItem } from "../externals/types";
 import * as validate from "validate.js";
-import { checkTocContent, remapMediumPart } from "./externals/scraperTools";
-import { DefaultJobScraper } from "./externals/jobScheduler";
+import { checkTocContent, remapMediumPart } from "../externals/scraperTools";
+import { DefaultJobScraper } from "./jobScheduler";
 import {
   episodeStorage,
   externalListStorage,
@@ -41,10 +41,10 @@ import {
   partStorage,
   storage,
 } from "enterprise-core/dist/database/storages/storage";
-import { MissingResourceError, UrlError } from "./externals/errors";
+import { MissingResourceError, UrlError } from "../externals/errors";
 import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { MissingEntityError, ValidationError } from "enterprise-core/dist/error";
-import { DisabledHookError } from "./externals/hookManager";
+import { DisabledHookError } from "../externals/hookManager";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 const scraper = DefaultJobScraper;

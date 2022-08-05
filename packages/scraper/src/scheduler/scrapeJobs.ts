@@ -12,7 +12,7 @@ import {
   queueTocsJob,
   remapMediaParts,
   queueExternalUser,
-} from "./scraperTools";
+} from "../externals/scraperTools";
 
 export class ScrapeJob {
   public static readonly toc = new ScrapeJob(ScrapeName.toc, toc, ScrapeEvent.TOC);
