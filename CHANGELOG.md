@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/mytlogos/enterprise-lister/compare/v2.0.5...v2.1.0) (2022-08-05)
+
+
+### Features
+
+* improve exit handling ([5b5a22f](https://github.com/mytlogos/enterprise-lister/commit/5b5a22fa2ad08a1762d02652eb7c65dc2bde3a1c))
+
 ## [2.0.5](https://github.com/mytlogos/enterprise-lister/compare/v2.0.4...v2.0.5) (2022-08-05)
 
 
