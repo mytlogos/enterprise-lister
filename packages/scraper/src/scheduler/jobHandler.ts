@@ -29,7 +29,7 @@ import {
 import logger from "enterprise-core/dist/logger";
 import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult, ScrapeItem } from "../externals/types";
 import * as validate from "validate.js";
-import { checkTocContent, remapMediumPart } from "../externals/scraperTools";
+import { checkTocContent } from "../externals/scraperTools";
 import { DefaultJobScraper } from "./jobScheduler";
 import {
   episodeStorage,
@@ -46,6 +46,7 @@ import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { MissingEntityError, ValidationError } from "enterprise-core/dist/error";
 import { DisabledHookError } from "../externals/hookManager";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
+import { remapMediumPart } from "../jobs/remapMediumParts";
 
 const scraper = DefaultJobScraper;
 
