@@ -59,14 +59,15 @@ function isHookConfigV2(config: HookConfig | HookConfigV2): config is HookConfig
   return "version" in config && config.version === 2;
 }
 
-async function loadCustomHooks(): Promise<Hook[]> {
+async function loadCustomHooks(): Promise<{ custom: Hook[]; disabled: Set<string> }> {
   const hooks: CustomHookEntity[] = await customHookStorage.getHooks();
 
   const loadedCustomHooks: Hook[] = [];
+  const disabled = new Set<string>();
 
   for (const hookEntity of hooks) {
     if (hookEntity.hookState === HookState.DISABLED) {
-      disabledHooks.add(hookEntity.name);
+      disabled.add(hookEntity.name);
       continue;
     }
     let hookConfig: HookConfig | HookConfigV2;
@@ -96,7 +97,7 @@ async function loadCustomHooks(): Promise<Hook[]> {
       tocAdapter: customHook.tocAdapter,
     });
   }
-  return loadedCustomHooks;
+  return { custom: loadedCustomHooks, disabled };
 }
 
 async function loadRawHooks() {
@@ -133,7 +134,11 @@ export async function load(unloadedOnly = false): EmptyPromise {
   }
   timeoutId = undefined;
 
-  // remove registered hooks
+  const hooks = await loadRawHooks();
+  const customResult = await loadCustomHooks();
+  hooks.push(...customResult.custom);
+
+  // remove registered hooks, now that no asynchronous steps are left
   redirects.length = 0;
   tocScraper.clear();
   episodeDownloader.clear();
@@ -143,9 +148,7 @@ export async function load(unloadedOnly = false): EmptyPromise {
   nameHookMap.clear();
   disabledHooks.clear();
 
-  const hooks = await loadRawHooks();
-  hooks.push(...(await loadCustomHooks()));
-
+  customResult.disabled.forEach((name) => disabledHooks.add(name));
   loadedHooks = hooks;
   registerHooks(loadedHooks);
 
