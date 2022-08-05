@@ -84,3 +84,8 @@ export default defineComponent({
   },
 });
 </script>
+<style>
+:deep(.p-button) {
+  height: 100% !important;
+}
+</style>

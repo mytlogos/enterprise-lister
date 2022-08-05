@@ -1,8 +1,23 @@
 <template>
   <div>
-    <div>
-      <input v-model="minModifications" type="number" />
-    </div>
+    <toolbar>
+      <template #start>
+        <span class="p-float-label me-2">
+          <label for="modifications">Min. Modifications</label>
+          <input-number
+            id="modifications"
+            v-model="minModifications"
+            show-buttons
+            button-layout="horizontal"
+            decrement-button-class="p-button-danger"
+            increment-button-class="p-button-success"
+            increment-button-icon="pi pi-plus"
+            decrement-button-icon="pi pi-minus"
+            :min="-1"
+          />
+        </span>
+      </template>
+    </toolbar>
     <table class="table" aria-describedby="jobs-title">
       <thead>
         <tr>

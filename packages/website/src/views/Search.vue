@@ -1,17 +1,15 @@
 <template>
   <div>
-    <div class="m-3 d-flex">
-      <input
-        v-model="title"
-        type="search"
-        placeholder="Title"
-        class="form-control me-2"
-        style="max-width: 20em"
-        @keyup.enter="search"
-      />
-      <p-button class="btn btn-dark me-2" :loading="isSearching" label="Search" @click.left="search" />
-      <media-filter :state="type" @update:state="type = $event" />
-    </div>
+    <Toolbar>
+      <template #start>
+        <span class="p-float-label me-2">
+          <input-text id="title" v-model="title" type="text" @keyup.enter="search" />
+          <label for="title">Title</label>
+        </span>
+        <p-button class="btn btn-dark me-2" :loading="isSearching" label="Search" @click.left="search" />
+        <media-filter :state="type" @update:state="type = $event" />
+      </template>
+    </Toolbar>
     <data-view :value="result" layout="grid" :paginator="true" :rows="35" data-key="link">
       <template #empty>No records found.</template>
       <template #grid="slotProps">
@@ -198,5 +196,8 @@ export default defineComponent({
 .tile {
   width: 20vw;
   max-width: 100vw;
+}
+.p-toolbar :deep(.p-button) {
+  height: 2.6em !important;
 }
 </style>
