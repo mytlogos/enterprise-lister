@@ -6,7 +6,7 @@ import { ContentDownloader, DownloadContent, EpisodeContent, Hook, Toc, TocConte
 import { Cache } from "enterprise-core/dist/cache";
 import request from "request";
 import { FullResponse } from "cloudscraper";
-import { queueFastRequestFullResponse } from "./queueManager";
+import { queueFastRequestFullResponse } from "./queueRequest";
 import env from "enterprise-core/dist/env";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError } from "./errors";

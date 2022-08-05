@@ -4,7 +4,7 @@ import { remove } from "enterprise-core/dist/tools";
 import diagnostic_channel from "diagnostics_channel";
 import { ScraperChannel, WSRequest } from "./externals/types";
 import { DefaultJobScraper } from "./scheduler/jobScheduler";
-import { publishQueues } from "./externals/queueManager";
+import { publishQueues } from "./externals/queueRequest";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 const ws = new Websocket.Server({

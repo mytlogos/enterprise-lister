@@ -1,7 +1,7 @@
 import { EpisodeContent, Hook, NewsScrapeResult } from "../types";
 import { EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest } from "../queueRequest";
 import { max, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist/database/storages/storage";
 import { ScraperError } from "../errors";

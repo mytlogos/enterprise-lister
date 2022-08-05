@@ -1,7 +1,7 @@
 import request from "request-promise-native";
 import url from "url";
 import { Errors, isString, MediaType, unique } from "enterprise-core/dist/tools";
-import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "./queueManager";
+import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "./queueRequest";
 import { CookieJar } from "tough-cookie";
 import { Hook, Toc } from "./types";
 import logger from "enterprise-core/dist/logger";

@@ -1,7 +1,7 @@
 import { Hook, Toc, TocEpisode, NewsScrapeResult } from "../types";
 import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/types";
 import * as url from "url";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest } from "../queueRequest";
 import logger from "enterprise-core/dist/logger";
 import { extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import * as request from "cloudscraper";

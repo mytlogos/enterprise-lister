@@ -9,7 +9,7 @@ import { internetTester } from "enterprise-core/dist/internetTester";
 import { getHook } from "../../../externals/direct/boxNovelScraper";
 import * as externalErrors from "../../../externals/errors";
 import * as storage from "enterprise-core/dist/database/storages/storage";
-import * as queueManager from "../../../externals/queueManager";
+import * as queueManager from "../../../externals/queueRequest";
 import * as scraperTestTools from "./scraperTestTools";
 import { Hook } from "../../../externals/types";
 
