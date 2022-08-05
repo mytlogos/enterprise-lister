@@ -73,6 +73,7 @@ import {
   tocScraperEntries,
 } from "./hookManager";
 import { DatabaseError, MissingEntityError, ValidationError } from "enterprise-core/dist/error";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 interface ScrapeableFilterResult {
   available: string[];
@@ -717,6 +718,12 @@ export function checkTocContent(content: TocContent, allowMinusOne = false): voi
 // TODO: 21.06.2019 save cache in database?
 const cache = new Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
 const errorCache = new Cache({ size: 500, deleteOnExpire: true, stdTTL: 60 * 60 * 2 });
+
+// clear any timers
+registerOnExitHandler(() => {
+  cache.close();
+  errorCache.close();
+});
 
 export interface ListScrapeEvent {
   external: { cookies: string; uuid: Uuid; userUuid: Uuid; type: number };

@@ -486,6 +486,7 @@ export const notificationStorage = createStorage<NotificationContext>("notificat
  */
 export const startStorage = (): void => poolProvider.start();
 
+// gets called by gracefulShutdown in exit.ts, after every handler was called, so do not register a handler
 export const stopStorage = (): EmptyPromise => poolProvider.stop();
 
 export const waitStorage = (): EmptyPromise => poolProvider.startPromise;

@@ -2,12 +2,14 @@ import diagram from "dgram";
 import { isString } from "enterprise-core/dist/tools";
 import env from "enterprise-core/dist/env";
 import logger from "enterprise-core/dist/logger";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 const PORT = env.port;
 
 const server = diagram.createSocket("udp4");
 
 server.on("listening", () => {
+  registerOnExitHandler(() => new Promise((resolve) => server.close(resolve)));
   const address = server.address();
   server.setBroadcast(true);
   if (isString(address)) {

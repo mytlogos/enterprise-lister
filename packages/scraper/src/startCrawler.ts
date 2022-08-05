@@ -21,15 +21,16 @@ import path from "path";
 import { readFileSync } from "fs";
 import "./metrics";
 
+// start websocket server
+// eslint-disable-next-line import/first
+import "./websocket";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
+
 collectDefaultMetrics({
   labels: {
     NODE_APP_INSTANCE: "enterprise-crawler",
   },
 });
-
-// start websocket server
-// eslint-disable-next-line import/first
-import "./websocket";
 
 const debugMessenger = debug("enterprise-lister:crawler");
 logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
@@ -156,6 +157,17 @@ function onError(error: any) {
 }
 
 function onListening() {
+  registerOnExitHandler(() => {
+    return new Promise((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  });
   const address = server.address();
   console.log("Listening: ", address);
 

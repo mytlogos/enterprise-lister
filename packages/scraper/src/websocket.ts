@@ -5,12 +5,14 @@ import diagnostic_channel from "diagnostics_channel";
 import { ScraperChannel, WSRequest } from "./externals/types";
 import { DefaultJobScraper } from "./externals/jobScraperManager";
 import { publishQueues } from "./externals/queueManager";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 const ws = new Websocket.Server({
   port: 3001,
 });
 
 ws.on("connection", (socket) => {
+  registerOnExitHandler(() => new Promise((resolve, reject) => ws.close((err) => (err ? reject(err) : resolve()))));
   socket.on("message", (data) => {
     try {
       let msg: WSRequest;

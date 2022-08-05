@@ -21,6 +21,7 @@ import { ScrapeJob } from "./scrapeJobs";
 import diagnostic_channel from "diagnostics_channel";
 import { SchedulingStrategy, Strategies } from "./scheduling";
 import { JobError } from "enterprise-core/dist/error";
+import { gracefulShutdown } from "enterprise-core/dist/exit";
 
 const missingConnections = new Set<Date>();
 const jobChannel = diagnostic_channel.channel("enterprise-jobs");
@@ -346,13 +347,13 @@ export class JobScraperManager {
       if (maxDate) {
         if (maxDate < now && this.queue.invalidRunning(maxDate, 5)) {
           logger.error("Restarting Process due to long running jobs");
-          process.exit(1);
+          gracefulShutdown();
           return;
         }
         now.setHours(-2);
         if (maxDate < now && this.queue.invalidRunning(maxDate, 1)) {
           logger.error("Restarting Process due to long running jobs");
-          process.exit(1);
+          gracefulShutdown();
           return;
         }
       }
@@ -377,7 +378,7 @@ export class JobScraperManager {
           storageRunning: runningJobs.length,
           queueRunning: this.queue.runningJobs,
         });
-        process.exit(1);
+        gracefulShutdown();
       }
     }
   }

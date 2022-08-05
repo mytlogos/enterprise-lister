@@ -7,6 +7,7 @@ import "./deviceVerificator";
 import logger from "enterprise-core/dist/logger";
 import { getMainInterface } from "enterprise-core/dist/tools";
 import { AppStatus } from "enterprise-core/dist/status";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 import process from "node:process";
 
 const port = env.port;
@@ -24,7 +25,7 @@ app.set("port", port);
  * Listen on provided port, on all network interfaces.
  * Add event listener on server.
  */
-app.listen(port).on("error", onError).on("listening", onListening);
+const server = app.listen(port).on("error", onError).on("listening", onListening);
 
 /**
  * Event listener for HTTP server "error" event.
@@ -57,6 +58,17 @@ const status = new AppStatus("server");
  * Event listener for HTTP server "listening" event.
  */
 function onListening() {
+  registerOnExitHandler(() => {
+    return new Promise((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  });
   const bind = "port " + port;
 
   const interfaceIp = getMainInterface() || "";

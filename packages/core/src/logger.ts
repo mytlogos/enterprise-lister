@@ -9,6 +9,7 @@ import { MESSAGE } from "triple-beam";
 
 let filePrefix: string;
 const appName = process.env.NODE_APP_NAME || process.env.name;
+
 if (appName) {
   filePrefix = appName.replace(/[^\w-]/g, "") + "-";
 } else {
@@ -249,6 +250,10 @@ export default {
     log("silly", value, meta);
   },
   close() {
+    const promise = new Promise((resolve) => {
+      logger.addListener("close", resolve);
+    });
     logger.close();
+    return promise;
   },
 };
