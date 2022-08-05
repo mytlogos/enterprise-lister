@@ -46,6 +46,10 @@ tests/api_requests
 ignore/
 *.uxf
 *test*.js
+*.txt
+*.csv
+*.ods
+*.md
 jspm_packages/
 
 # TypeScript v1 declaration files
