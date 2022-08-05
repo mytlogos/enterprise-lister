@@ -20,6 +20,7 @@ import {
   UpdateMedium,
   TypedQuery,
   PureEpisode,
+  SmallMediumRelease,
 } from "../../types";
 import {
   checkIndices,
@@ -136,6 +137,17 @@ export class EpisodeContext extends SubContext {
         "INNER JOIN part ON part.id=part_id " +
         "WHERE part.medium_id = ?;",
       [uuid, mediumId],
+    );
+  }
+
+  public async getSmallMediumReleases(mediumId: number): Promise<SmallMediumRelease[]> {
+    return this.query(
+      "SELECT er.releaseDate, episode.combiIndex " +
+        "FROM episode_release as er " +
+        "INNER JOIN episode ON episode.id=er.episode_id " +
+        "INNER JOIN part ON part.id=part_id " +
+        "WHERE part.medium_id = ? ORDER BY releaseDate ASC;",
+      [mediumId],
     );
   }
 

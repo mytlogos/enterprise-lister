@@ -563,6 +563,12 @@ export interface MediumRelease {
   combiIndex: number;
   locked?: boolean;
   date: Date;
+  progress?: number;
+}
+
+export interface SmallMediumRelease {
+  combiIndex: number;
+  releaseDate: Date;
 }
 
 /**
