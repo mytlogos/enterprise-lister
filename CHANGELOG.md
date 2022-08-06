@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/mytlogos/enterprise-lister/compare/v2.2.0...v2.3.0) (2022-08-06)
+
+
+### Features
+
+* **website:** improve ui ([3c7ec61](https://github.com/mytlogos/enterprise-lister/commit/3c7ec619ed2d740a5e8263980c8711c4966fa658))
+
 # [2.2.0](https://github.com/mytlogos/enterprise-lister/compare/v2.1.0...v2.2.0) (2022-08-05)
 
 
