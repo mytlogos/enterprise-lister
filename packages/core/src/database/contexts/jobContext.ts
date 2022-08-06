@@ -471,7 +471,11 @@ export class JobContext extends SubContext {
    */
   public async getJobHistoryPaginated(filter: QueryJobHistory): Promise<Paginated<JobHistoryItem, "start">> {
     let conditions = "WHERE start < ?";
-    const values: any[] = [filter.since.toISOString()];
+    // to transform the date into the correct form in the local timezone
+    // else the database misses it with the timezoneoffset
+    const since = new Date(filter.since);
+    since.setMinutes(since.getMinutes() - since.getTimezoneOffset());
+    const values: any[] = [since.toISOString()];
 
     if (filter.name) {
       values.push(`%${filter.name}%`);
