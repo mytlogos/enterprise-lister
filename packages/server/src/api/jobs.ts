@@ -2,6 +2,8 @@ import { jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { Router } from "express";
 import {
   GetHistoryJobs,
+  GetHistoryJobsPaginated,
+  getHistoryJobsPaginatedSchema,
   getHistoryJobsSchema,
   GetJobDetails,
   getJobDetailsSchema,
@@ -27,6 +29,26 @@ export const getHistoryJobs = createHandler(
     return jobStorage.getJobHistoryStream(since, limit || -1);
   },
   { query: getHistoryJobsSchema },
+);
+
+export const getHistoryJobsPaginated = createHandler(
+  (req) => {
+    const query = castQuery<GetHistoryJobsPaginated>(req);
+    let since = new Date(query.since || "");
+
+    if (Number.isNaN(since.getTime())) {
+      since = new Date();
+    }
+
+    return jobStorage.getJobHistoryPaginated({
+      since,
+      limit: query.limit ?? 0,
+      name: query.name,
+      result: query.result,
+      type: query.type,
+    });
+  },
+  { query: getHistoryJobsPaginatedSchema },
 );
 
 export const postJobEnable = createHandler((req) => {
@@ -128,6 +150,7 @@ export function jobsRouter(): Router {
    *          description: queried job history
    */
   router.get("/history", getHistoryJobs);
+  router.get("/history-paginated", getHistoryJobsPaginated);
 
   /**
    * @openapi

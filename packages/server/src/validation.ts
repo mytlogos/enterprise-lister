@@ -4,12 +4,14 @@ import {
   AppEventProgram,
   AppEventType,
   Id,
+  JobHistoryResult,
   Json,
   Link,
   MediumInWait,
   MediumInWaitSearch,
   MinList,
   QueryItems,
+  ScrapeName,
   SimpleEpisode,
   SimpleMedium,
   TimeBucket,
@@ -835,6 +837,42 @@ export const getHistoryJobsSchema: JSONSchemaType<GetHistoryJobs> = {
   properties: {
     since: { ...string(), nullable: true },
     limit: { ...integer(), nullable: true },
+  },
+};
+
+export interface GetHistoryJobsPaginated {
+  since?: string;
+  name?: string;
+  type?: ScrapeName;
+  result?: JobHistoryResult;
+  limit?: number;
+}
+
+export const getHistoryJobsPaginatedSchema: JSONSchemaType<GetHistoryJobsPaginated> = {
+  $id: "/GetHistoryJobsPaginated",
+  type: "object",
+  properties: {
+    since: { ...string(), nullable: true },
+    name: { ...string(), nullable: true },
+    limit: { ...integer({ minimum: 1, maximum: 1000 }), nullable: true },
+    type: {
+      type: "string",
+      enum: [
+        ScrapeName.checkTocs,
+        ScrapeName.feed,
+        ScrapeName.news,
+        ScrapeName.newsAdapter,
+        ScrapeName.oneTimeToc,
+        ScrapeName.oneTimeUser,
+        ScrapeName.queueExternalUser,
+        ScrapeName.queueTocs,
+        ScrapeName.remapMediaParts,
+        ScrapeName.searchForToc,
+        ScrapeName.toc,
+      ],
+      nullable: true,
+    },
+    result: { type: "string", enum: ["failed", "success", "warning"], nullable: true },
   },
 };
 
