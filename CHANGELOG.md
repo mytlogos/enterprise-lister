@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/mytlogos/enterprise-lister/compare/v2.3.0...v2.4.0) (2022-08-06)
+
+
+### Features
+
+* improve job history view ([ff48578](https://github.com/mytlogos/enterprise-lister/commit/ff4857846ccf216451b8c25cf393f8f9a8bd1c11))
+
 # [2.3.0](https://github.com/mytlogos/enterprise-lister/compare/v2.2.0...v2.3.0) (2022-08-06)
 
 
