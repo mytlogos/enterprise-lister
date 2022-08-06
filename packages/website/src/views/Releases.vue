@@ -25,61 +25,73 @@
           />
         </template>
       </SelectButton>
-      <AutoComplete
-        v-model="mediumSuggestion"
-        force-selection
-        :suggestions="mediumSuggestions"
-        field="title"
-        @item-select="ignoreMedium($event.value)"
-        @complete="searchMedium($event)"
-      />
-      <AutoComplete
-        v-model="listSuggestion"
-        force-selection
-        :suggestions="listSuggestions"
-        field="name"
-        @item-select="ignoreList($event.value)"
-        @complete="searchList($event)"
-      />
+      <span class="p-float-label me-2">
+        <AutoComplete
+          id="ignoremedium-input"
+          v-model="mediumSuggestion"
+          force-selection
+          :suggestions="mediumSuggestions"
+          field="title"
+          @item-select="ignoreMedium($event.value)"
+          @complete="searchMedium($event)"
+        />
+        <label for="ignoremedium-input">Ignore Medium Title</label>
+      </span>
+      <span class="p-float-label me-2">
+        <AutoComplete
+          id="ignorelist-input"
+          v-model="listSuggestion"
+          force-selection
+          :suggestions="listSuggestions"
+          field="name"
+          @item-select="ignoreList($event.value)"
+          @complete="searchList($event)"
+        />
+        <label for="ignorelist-input">Ignore List Title</label>
+      </span>
     </div>
     <div v-if="onlyMedia.length">
       <div class="px-1">Required Media:</div>
-      <app-label
+      <Chip
         v-for="medium in onlyMedia"
         :key="medium.id"
-        :value="medium.title"
-        class="m-1 bg-success"
-        @delete="unrequireMedium(medium)"
+        class="m-1 bg-success text-bg-success"
+        :label="medium.title"
+        removable
+        @remove="unrequireMedium(medium)"
       />
     </div>
     <div v-if="ignoreMedia.length">
       <div class="px-1">Ignored Media:</div>
-      <app-label
+      <Chip
         v-for="medium in ignoreMedia"
         :key="medium.id"
-        :value="medium.title"
-        class="m-1 bg-danger"
-        @delete="unignoreMedium(medium)"
+        class="m-1 bg-danger text-bg-danger"
+        :label="medium.title"
+        removable
+        @remove="unignoreMedium(medium)"
       />
     </div>
     <div v-if="onlyLists.length">
       <div class="px-1">Required Lists:</div>
-      <app-label
+      <Chip
         v-for="list in onlyLists"
         :key="list.id"
-        :value="list.name"
-        class="m-1 bg-success"
-        @delete="unrequireList(list)"
+        class="m-1 bg-success text-bg-success"
+        :label="list.name"
+        removable
+        @remove="unrequireList(list)"
       />
     </div>
     <div v-if="ignoreLists.length">
       <div class="px-1">Ignored Lists:</div>
-      <app-label
+      <Chip
         v-for="list in ignoreLists"
         :key="list.id"
-        :value="list.name"
-        class="m-1 bg-danger"
-        @delete="unignoreList(list)"
+        :label="list.name"
+        class="m-1 bg-danger text-bg-danger"
+        removable
+        @remove="unignoreList(list)"
       />
     </div>
     <DataTable
@@ -140,7 +152,6 @@
         </template>
       </Column>
     </DataTable>
-    <Toast />
   </div>
 </template>
 <script lang="ts">
@@ -149,7 +160,6 @@ import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate } from "../init";
 import ToolTip from "bootstrap/js/dist/tooltip";
-import AppLabel from "../components/label.vue";
 import { PrimeIcons } from "primevue/api";
 
 interface Value<T> {
@@ -222,7 +232,6 @@ function defaultEarliest(): Date {
 
 export default defineComponent({
   name: "Releases",
-  components: { AppLabel },
   data(): Data {
     const latest = new Date();
     latest.setFullYear(latest.getFullYear() + 1);
@@ -611,11 +620,6 @@ export default defineComponent({
           }),
         );
         releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
-        this.$toast.add({
-          severity: "success",
-          summary: "Loaded Releases",
-          life: 1000,
-        });
         this.releases = reactive(releases);
       } catch (error) {
         this.$toast.add({

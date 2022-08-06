@@ -1,3 +1,31 @@
+## [2.4.1](https://github.com/mytlogos/enterprise-lister/compare/v2.4.0...v2.4.1) (2022-08-06)
+
+
+### Bug Fixes
+
+* **core:** fix timezone interaction with db ([ca0b9d1](https://github.com/mytlogos/enterprise-lister/commit/ca0b9d1781e3eacf563e1d2a43837c3ff919e950))
+
+# [2.4.0](https://github.com/mytlogos/enterprise-lister/compare/v2.3.0...v2.4.0) (2022-08-06)
+
+
+### Features
+
+* improve job history view ([ff48578](https://github.com/mytlogos/enterprise-lister/commit/ff4857846ccf216451b8c25cf393f8f9a8bd1c11))
+
+# [2.3.0](https://github.com/mytlogos/enterprise-lister/compare/v2.2.0...v2.3.0) (2022-08-06)
+
+
+### Features
+
+* **website:** improve ui ([3c7ec61](https://github.com/mytlogos/enterprise-lister/commit/3c7ec619ed2d740a5e8263980c8711c4966fa658))
+
+# [2.2.0](https://github.com/mytlogos/enterprise-lister/compare/v2.1.0...v2.2.0) (2022-08-05)
+
+
+### Features
+
+* **website:** improve inputs ui ([1f2846d](https://github.com/mytlogos/enterprise-lister/commit/1f2846d42b7a6a68b2ef39dfd67f0f393ec989b1))
+
 # [2.1.0](https://github.com/mytlogos/enterprise-lister/compare/v2.0.5...v2.1.0) (2022-08-05)
 
 

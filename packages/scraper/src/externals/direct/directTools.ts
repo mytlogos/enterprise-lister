@@ -1,6 +1,6 @@
 import logger, { LogLevel, LogMeta } from "enterprise-core/dist/logger";
 import { EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson } from "../types";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest } from "../queueRequest";
 import {
   combiIndex,
   equalsIgnore,

@@ -6,7 +6,7 @@ import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-c
 import { Nullable } from "enterprise-core/dist/types";
 import * as url from "url";
 import { getText } from "../direct/directTools";
-import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "../queueManager";
+import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "../queueRequest";
 import { CustomHookError, CustomHookErrorCodes } from "./errors";
 import {
   JsonRegex,

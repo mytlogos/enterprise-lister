@@ -1,7 +1,7 @@
 import { EpisodeContent, Hook, Toc, TocEpisode, NewsScrapeResult } from "../types";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromise } from "enterprise-core/dist/types";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { queueCheerioRequest, queueRequest } from "../queueRequest";
 import * as cheerio from "cheerio";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";

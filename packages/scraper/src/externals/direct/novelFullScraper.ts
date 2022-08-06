@@ -8,7 +8,7 @@ import {
   VoidablePromise,
   Nullable,
 } from "enterprise-core/dist/types";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest } from "../queueRequest";
 import * as url from "url";
 import { extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import { isTocEpisode, isTocPart } from "../../tools";

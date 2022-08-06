@@ -2,7 +2,7 @@
 
 import { Hook, Toc, TocEpisode } from "../types";
 import { MediaType } from "enterprise-core/dist/tools";
-import { queueRequest } from "../queueManager";
+import { queueRequest } from "../queueRequest";
 import { UrlError } from "../errors";
 import { SearchResult } from "enterprise-core/dist/types";
 import { ValidationError } from "enterprise-core/dist/error";

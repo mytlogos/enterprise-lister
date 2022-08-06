@@ -1,5 +1,5 @@
 import { EpisodeNews } from "enterprise-core/dist/types";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest } from "../queueRequest";
 import { NewsScraper } from "../types";
 import { defaultContext, extract } from "./common";
 import { HookConfig } from "./types";

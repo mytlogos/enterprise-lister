@@ -1,13 +1,11 @@
 <template>
   <div class="container">
-    <div class="row">
-      <div class="col text-end">
-        <router-link class="btn btn-success" :to="{ name: 'addHook' }"> Add Hook </router-link>
-      </div>
-      <div class="col text-end">
+    <toolbar>
+      <template #end>
+        <router-link class="btn btn-success me-2" :to="{ name: 'addHook' }"> Add Hook </router-link>
         <router-link class="btn btn-success" :to="{ name: 'addHookV2' }"> Add V2 Hook </router-link>
-      </div>
-    </div>
+      </template>
+    </toolbar>
     <div class="d-flex flex-wrap">
       <div v-for="(item, index) in hooks" :key="item.id" class="card card-body" style="width: 20em">
         <div class="form-check form-switch">

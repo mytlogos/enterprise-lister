@@ -2,7 +2,7 @@ import { EpisodeContent, Hook, Toc, TocPart, NewsScrapeResult } from "../types";
 import { EpisodeNews, SearchResult, TocSearchMedium, VoidablePromise, Nullable } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { queueCheerioRequest, queueRequest } from "../queueRequest";
 import { countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";

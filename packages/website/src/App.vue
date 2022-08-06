@@ -3,6 +3,7 @@
     <app-header />
     <main>
       <router-view />
+      <toast />
     </main>
   </div>
 </template>

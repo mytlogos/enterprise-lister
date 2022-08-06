@@ -8,7 +8,7 @@ import {
   VoidablePromise,
   Nullable,
 } from "enterprise-core/dist/types";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { queueCheerioRequest, queueRequest } from "../queueRequest";
 import * as url from "url";
 import {
   equalsIgnore,

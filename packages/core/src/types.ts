@@ -1445,6 +1445,8 @@ export interface JobStats extends AllJobStats {
   name: string;
 }
 
+export type JobHistoryResult = "warning" | "failed" | "success";
+
 /**
  * @openapi
  * components:
@@ -1481,7 +1483,7 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
   scheduled_at: Date;
   start: Date;
   end: Date;
-  result: string;
+  result: JobHistoryResult;
   message: string;
   context: string;
   created?: number;
@@ -1494,6 +1496,20 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
   lagging?: number;
   duration?: number;
 };
+
+export interface Paginated<T, K extends keyof T> {
+  items: T[];
+  next: T[K];
+  total: number;
+}
+
+export interface QueryJobHistory {
+  since: Date;
+  limit: number;
+  type?: ScrapeName;
+  result?: JobHistoryResult;
+  name?: string;
+}
 
 export interface Modification {
   created: number;

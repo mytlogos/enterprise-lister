@@ -20,6 +20,8 @@ import {
   Id,
   JobStatSummary,
   JobTrack,
+  QueryJobHistory,
+  Paginated,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
@@ -448,7 +450,6 @@ export class JobContext extends SubContext {
   public async getJobHistoryStream(since: Date, limit: number): Promise<TypedQuery<JobHistoryItem>> {
     let query = "SELECT * FROM job_history WHERE start < ? ORDER BY start DESC";
     const values = [since.toISOString()] as any[];
-    console.log(values);
 
     if (limit >= 0) {
       query += " LIMIT ?;";
@@ -459,6 +460,53 @@ export class JobContext extends SubContext {
 
   public async getJobHistory(): Promise<JobHistoryItem[]> {
     return this.query("SELECT * FROM job_history ORDER BY start;");
+  }
+
+  /**
+   * Return a paginated query result.
+   * Returns at most 1000 items but at least 5.
+   *
+   * @param filter the query filter
+   * @returns an array of items
+   */
+  public async getJobHistoryPaginated(filter: QueryJobHistory): Promise<Paginated<JobHistoryItem, "start">> {
+    let conditions = "WHERE start < ?";
+    // to transform the date into the correct form in the local timezone
+    // else the database misses it with the timezoneoffset
+    const since = new Date(filter.since);
+    since.setMinutes(since.getMinutes() - since.getTimezoneOffset());
+    const values: any[] = [since.toISOString()];
+
+    if (filter.name) {
+      values.push(`%${filter.name}%`);
+      conditions += " AND name like ?";
+    }
+
+    if (filter.type) {
+      values.push(filter.type);
+      conditions += " AND type = ?";
+    }
+
+    if (filter.result) {
+      values.push(filter.result);
+      conditions += " AND result = ?";
+    }
+
+    conditions += " ORDER BY start DESC";
+    const countValues = [...values];
+
+    const limit = " LIMIT ?;";
+    values.push(Math.max(Math.min(filter.limit, 1000), 5));
+
+    const totalPromise = this.query("SELECT count(*) as total FROM job_history " + conditions, countValues);
+    const items: JobHistoryItem[] = await this.query("SELECT * FROM job_history " + conditions + limit, values);
+    const [{ total }]: [{ total: number }] = await totalPromise;
+
+    return {
+      items,
+      next: items[items.length - 1] && new Date(items[items.length - 1].start),
+      total,
+    };
   }
 
   private async addJobHistory(jobs: JobItem | JobItem[], finished: Date): EmptyPromise {

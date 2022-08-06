@@ -2,20 +2,15 @@
   <Menubar :model="menuItems">
     <template #end>
       <div class="dropdown">
-        <button
+        <p-button
           id="notifications"
-          class="btn dropdown-toggle"
           type="button"
+          :badge="($store.state.user.unreadNotificationsCount || '') + ''"
+          icon="pi pi-bell"
+          class="dropdown-toggle p-button-text p-button-plain w-100 px-2"
           data-bs-toggle="dropdown"
           aria-expanded="false"
-        >
-          <em
-            v-if="$store.state.user.unreadNotificationsCount"
-            v-badge="$store.state.user.unreadNotificationsCount"
-            class="pi pi-bell"
-          ></em>
-          <em v-else class="pi pi-bell"></em>
-        </button>
+        ></p-button>
         <ul class="dropdown-menu" aria-labelledby="notifications">
           <toolbar>
             <template #start>
@@ -211,6 +206,10 @@ export default defineComponent({
         notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
       }
       this.notifications = notifications;
+    },
+
+    toggle(event: any) {
+      (this.$refs.op as any).toggle(event);
     },
   },
 });

@@ -1,25 +1,26 @@
 <template>
   <div class="container-fluid p-0">
     <h1 id="media-title">Media</h1>
-    <div>
-      <form class="row mx-auto">
-        <span class="p-float-label">
+    <Toolbar>
+      <template #start>
+        <span class="p-float-label me-2">
           <input-text id="title" v-model="titleSearch" type="text" />
           <label for="title">Title</label>
         </span>
         <SelectButton
           v-model="showStatesTL"
+          class="me-2"
           :options="showStatesTLOptions"
           option-value="value"
           option-label="name"
           multiple
         />
-        <div class="field-checkbox">
-          <checkbox id="hide-completed" v-model="hideCompleted" :binary="true" />
-          <label for="hide-completed">Hide Completed Media</label>
+        <div>
+          <checkbox id="hide-completed" v-model="hideCompleted" class="align-middle" :binary="true" />
+          <label for="hide-completed ms-1">Hide Completed Media</label>
         </div>
-      </form>
-    </div>
+      </template>
+    </Toolbar>
     <data-table
       class="p-datatable-sm"
       :value="filteredMedia"

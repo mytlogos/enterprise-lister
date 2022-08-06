@@ -1,17 +1,16 @@
 <template>
   <div class="container-fluid p-0">
     <h1 id="media-title">MediaInWait</h1>
-    <div>
-      <form class="row my-1">
-        <div class="me-sm-2 ms-sm-2 col-3">
-          <input v-model="titleSearch" class="form-control" placeholder="Search in Title..." type="text" />
+    <Toolbar>
+      <template #start>
+        <div class="me-sm-2">
+          <input v-model="titleSearch" class="form-control" placeholder="Search in Title" type="text" />
         </div>
-        <!-- @update:state="typeFilter = $event" -->
-        <media-filter v-model:state="typeFilter" class="ms-1 w-auto" />
-        <span class="w-auto"> {{ media.length }} Results</span>
+        <media-filter v-model:state="typeFilter" class="me-2 w-auto" />
         <template v-if="lastFetched < currentFetchId"> Loading... </template>
-      </form>
-    </div>
+        <span v-else class="w-auto"> {{ media.length }} Results</span>
+      </template>
+    </Toolbar>
     <table class="table table-striped table-hover" aria-describedby="media-title">
       <thead class="table-dark">
         <tr>

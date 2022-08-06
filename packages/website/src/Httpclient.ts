@@ -28,7 +28,8 @@ import {
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
 import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
-import { CustomHook, Id, Notification, Nullable, SimpleUser } from "enterprise-core/dist/types";
+import { GetHistoryJobsPaginated } from "enterprise-server/dist/validation";
+import { CustomHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
 import qs from "qs";
 
 /**
@@ -71,6 +72,9 @@ const restApi = createRestDefinition({
           post: true,
         },
         history: {
+          get: true,
+        },
+        "history-paginated": {
           get: true,
         },
         stats: {
@@ -477,6 +481,10 @@ export const HttpClient = {
 
   getJobHistory(since?: Date, limit?: number): Promise<JobHistoryItem[]> {
     return this.queryServer(serverRestApi.api.user.jobs.history.get, { since, limit });
+  },
+
+  getJobHistoryPaginated(query: GetHistoryJobsPaginated): Promise<Paginated<JobHistoryItem, "start">> {
+    return this.queryServer(serverRestApi.api.user.jobs["history-paginated"].get, query);
   },
 
   postJobEnabled(id: number, enabled: boolean): Promise<Job[]> {

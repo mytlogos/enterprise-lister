@@ -8,7 +8,7 @@ import {
   Optional,
 } from "enterprise-core/dist/types";
 import * as url from "url";
-import { queueCheerioRequest } from "../queueManager";
+import { queueCheerioRequest } from "../queueRequest";
 import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";

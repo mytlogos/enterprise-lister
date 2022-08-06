@@ -1,18 +1,14 @@
 import { ScrapeName } from "enterprise-core/dist/types";
-import {
-  toc,
-  ScrapeEvent,
-  oneTimeToc,
-  searchForTocJob,
-  feed,
-  news,
-  scrapeNewsJob,
-  list,
-  checkTocsJob,
-  queueTocsJob,
-  remapMediaParts,
-  queueExternalUser,
-} from "./scraperTools";
+import { ScrapeEvent } from "../externals/scraperTools";
+import { checkTocsJob } from "../jobs/checkToc";
+import { feed } from "../jobs/feed";
+import { news, scrapeNewsJob } from "../jobs/news";
+import { list } from "../jobs/oneTimeUser";
+import { queueExternalUser } from "../jobs/queueExternalUser";
+import { queueTocsJob } from "../jobs/queueTocs";
+import { remapMediaParts } from "../jobs/remapMediumParts";
+import { searchForTocJob } from "../jobs/searchForToc";
+import { toc, oneTimeToc } from "../jobs/toc";
 
 export class ScrapeJob {
   public static readonly toc = new ScrapeJob(ScrapeName.toc, toc, ScrapeEvent.TOC);

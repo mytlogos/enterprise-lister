@@ -1,5 +1,5 @@
-import { ScrapeEvent, ScraperHelper } from "./scraperTools";
-import { Job, JobQueue, OutsideJob } from "../jobManager";
+import { ScrapeEvent, ScraperHelper } from "../externals/scraperTools";
+import { Job, JobQueue, OutsideJob } from "./jobQueue";
 import { getElseSet, isString, maxValue, removeLike, stringify } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import {
@@ -15,8 +15,8 @@ import { jobStorage, notificationStorage } from "enterprise-core/dist/database/s
 import * as dns from "dns";
 import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
-import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "./types";
-import { getNewsAdapter, load } from "./hookManager";
+import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "../externals/types";
+import { getNewsAdapter, load } from "../externals/hookManager";
 import { ScrapeJob } from "./scrapeJobs";
 import diagnostic_channel from "diagnostics_channel";
 import { SchedulingStrategy, Strategies } from "./scheduling";
@@ -26,7 +26,7 @@ import { gracefulShutdown } from "enterprise-core/dist/exit";
 const missingConnections = new Set<Date>();
 const jobChannel = diagnostic_channel.channel("enterprise-jobs");
 
-export class JobScraperManager {
+export class JobScheduler {
   private static initStore(item: JobItem) {
     const store = getStore();
 
@@ -471,7 +471,7 @@ export class JobScraperManager {
 
   private queueEmittableJob(jobType: ScrapeJob, item: JobItem) {
     const job = this.queue.addJob(item.id, () => {
-      JobScraperManager.initStore(item);
+      JobScheduler.initStore(item);
       if (!jobType.event) {
         logger.warn("running emittable job without event name", { job_type: jobType.name });
         return Promise.resolve();
@@ -488,7 +488,7 @@ export class JobScraperManager {
 
   private queueJob(jobType: ScrapeJob, item: JobItem) {
     const job = this.queue.addJob(item.id, () => {
-      JobScraperManager.initStore(item);
+      JobScheduler.initStore(item);
       if (Array.isArray(item.arguments)) {
         this.processJobCallback(jobType.func(...item.arguments));
       } else {
@@ -637,4 +637,4 @@ function isJobItem(value: any): value is JobItem {
   return value?.id;
 }
 
-export const DefaultJobScraper = new JobScraperManager();
+export const DefaultJobScraper = new JobScheduler();

@@ -11,7 +11,7 @@ import {
 import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
-import { queueCheerioRequest, queueRequest } from "../queueManager";
+import { queueCheerioRequest, queueRequest } from "../queueRequest";
 import * as request from "request-promise-native";
 import { checkTocContent } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";

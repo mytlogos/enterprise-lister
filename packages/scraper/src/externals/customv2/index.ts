@@ -15,7 +15,7 @@ import logger from "enterprise-core/dist/logger";
 import { Context } from "vm";
 import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
-import { queueRequest } from "../queueManager";
+import { queueRequest } from "../queueRequest";
 import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/types";
 import { datePattern } from "./analyzer";
 import { validateEpisodeNews, validateToc } from "./validation";
