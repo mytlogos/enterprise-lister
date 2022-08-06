@@ -1,3 +1,10 @@
+## [2.4.1](https://github.com/mytlogos/enterprise-lister/compare/v2.4.0...v2.4.1) (2022-08-06)
+
+
+### Bug Fixes
+
+* **core:** fix timezone interaction with db ([ca0b9d1](https://github.com/mytlogos/enterprise-lister/commit/ca0b9d1781e3eacf563e1d2a43837c3ff919e950))
+
 # [2.4.0](https://github.com/mytlogos/enterprise-lister/compare/v2.3.0...v2.4.0) (2022-08-06)
 
 
