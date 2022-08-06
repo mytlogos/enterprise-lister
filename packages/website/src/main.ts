@@ -30,6 +30,8 @@ import Dialog from "primevue/dialog";
 import InputNumber from "primevue/inputnumber";
 import Dropdown from "primevue/dropdown";
 import Paginator from "primevue/paginator";
+import Chip from "primevue/chip";
+import Tag from "primevue/tag";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
@@ -56,6 +58,8 @@ app.component("PDialog", Dialog);
 app.component("InputNumber", InputNumber);
 app.component("Dropdown", Dropdown);
 app.component("PPaginator", Paginator);
+app.component("Chip", Chip);
+app.component("Tag", Tag);
 app.directive("badge", BadgeDirective);
 app.directive("tooltip", Tooltip);
 Router.isReady().then(() => app.mount("#app"));

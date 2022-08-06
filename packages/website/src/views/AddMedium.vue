@@ -358,6 +358,13 @@ export default defineComponent({
             this.medium.languageOfOrigin = toc.langCOO || "";
             this.medium.author = toc.authors ? toc.authors.map((item) => item.name).join(", ") : "";
             this.medium.artist = toc.artists ? toc.artists.map((item) => item.name).join(", ") : "";
+          } else {
+            this.$toast.add({
+              severity: "error",
+              summary: "Could not find any Toc",
+              closable: true,
+              life: 3000,
+            });
           }
         })
         .catch((error) => {

@@ -15,9 +15,9 @@
           option-label="name"
           multiple
         />
-        <div class="field-checkbox">
-          <checkbox id="hide-completed" v-model="hideCompleted" :binary="true" />
-          <label for="hide-completed">Hide Completed Media</label>
+        <div>
+          <checkbox id="hide-completed" v-model="hideCompleted" class="align-middle" :binary="true" />
+          <label for="hide-completed ms-1">Hide Completed Media</label>
         </div>
       </template>
     </Toolbar>

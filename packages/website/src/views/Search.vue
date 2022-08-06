@@ -11,7 +11,9 @@
       </template>
     </Toolbar>
     <data-view :value="result" layout="grid" :paginator="true" :rows="35" data-key="link">
-      <template #empty>No records found.</template>
+      <template #empty>
+        <div class="text-center my-5">No records found.</div>
+      </template>
       <template #grid="slotProps">
         <Card>
           <template #title>
