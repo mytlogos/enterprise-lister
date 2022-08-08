@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/mytlogos/enterprise-lister/compare/v2.5.0...v2.6.0) (2022-08-08)
+
+
+### Features
+
+* **website:** improve Media View ([31023fc](https://github.com/mytlogos/enterprise-lister/commit/31023fc07124ac394dee1d5e6b3603dba0a5c424))
+
 # [2.5.0](https://github.com/mytlogos/enterprise-lister/compare/v2.4.1...v2.5.0) (2022-08-08)
 
 
