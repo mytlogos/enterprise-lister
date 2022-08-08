@@ -30,7 +30,7 @@
     "query-types": "^0.1.4",
     "request-promise-native": "^1.0.9",
     "stringify-stream": "^1.0.5",
-    "swagger-jsdoc": "^6.2.1",
+    "swagger-jsdoc": "^6.2.4",
     "swagger-ui-express": "^4.5.0",
     "tslib": "^2.4.0",
     "validate.js": "^0.13.1",
