@@ -7,6 +7,7 @@ import {
   JobHistoryResult,
   Json,
   Link,
+  List,
   MediumInWait,
   MediumInWaitSearch,
   MinList,
@@ -949,6 +950,23 @@ export const postListSchema: JSONSchemaType<PostList> = {
     uuid: uuid(),
   },
   required: ["list", "uuid"],
+};
+
+export interface PutList {
+  list: List;
+}
+
+export const putListSchema: JSONSchemaType<PutList> = {
+  $id: "/PutList",
+  type: "object",
+  properties: {
+    list: {
+      type: "object",
+      properties: { medium: integer(), name: string(), id: id(), userUuid: uuid(), items: idArray() },
+      required: ["medium", "name", "id", "items", "userUuid"],
+    },
+  },
+  required: ["list"],
 };
 
 export interface DeleteList {

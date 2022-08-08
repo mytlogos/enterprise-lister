@@ -12,8 +12,10 @@ import {
   PostList,
   postListMediumSchema,
   postListSchema,
+  PutList,
   PutListMedium,
   putListMediumSchema,
+  putListSchema,
 } from "../validation";
 import { castQuery, createHandler, extractQueryParam } from "./apiTools";
 
@@ -35,11 +37,10 @@ export const postList = createHandler(
 
 export const putList = createHandler(
   (req) => {
-    const { uuid, list }: PostList = req.body;
-    // TODO: 05.09.2019 should this not be update list?
-    return internalListStorage.addList(uuid, list);
+    const { list }: PutList = req.body;
+    return internalListStorage.updateList(list);
   },
-  { body: postListSchema },
+  { body: putListSchema },
 );
 
 export const deleteList = createHandler(
