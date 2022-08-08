@@ -1,15 +1,11 @@
 <template>
   <div class="container-fluid p-0">
-    <h1 id="media-title">Media</h1>
     <Toolbar>
       <template #start>
-        <span class="p-float-label me-2">
-          <input-text id="title" v-model="titleSearch" type="text" />
-          <label for="title">Title</label>
-        </span>
+        <h3 class="m-0">Media</h3>
         <SelectButton
           v-model="showStatesTL"
-          class="me-2"
+          class="mx-2"
           :options="showStatesTLOptions"
           option-value="value"
           option-label="name"
@@ -17,61 +13,165 @@
         />
         <div>
           <checkbox id="hide-completed" v-model="hideCompleted" class="align-middle" :binary="true" />
-          <label for="hide-completed ms-1">Hide Completed Media</label>
+          <label class="ms-1" for="hide-completed">Hide Completed Media</label>
         </div>
       </template>
     </Toolbar>
     <data-table
+      v-model:filters="filters"
+      v-model:editingRows="editingRows"
       class="p-datatable-sm"
       :value="filteredMedia"
+      filter-display="row"
       striped-rows
+      sort-field="title"
+      :sort-order="1"
       :paginator="true"
       :rows="10"
+      paginator-position="both"
       paginator-template="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
       :rows-per-page-options="[10, 20, 50]"
       responsive-layout="scroll"
       current-page-report-template="Showing {first} to {last} of {totalRecords}"
+      :loading="editItemLoading"
+      edit-mode="row"
+      @row-edit-save="onRowEditSave"
     >
       <template #empty> No records found </template>
       <template #loading> Loading records, please wait... </template>
-      <Column field="title" header="Title">
+      <Column :row-editor="true" style="min-width: 5rem" body-style="text-align:center" />
+      <Column field="title" header="Title" sortable>
         <template #body="slotProps">
           <router-link :to="{ name: 'medium', params: { id: slotProps.data.id } }">
             {{ slotProps.data.title }}
           </router-link>
         </template>
+        <template #editor="{ data, field }">
+          <InputText v-model="data[field]" />
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <InputText
+            v-model="filterModel.value"
+            type="text"
+            class="p-column-filter"
+            placeholder="Search Title"
+            @keydown.enter="filterCallback()"
+          />
+        </template>
       </Column>
-      <Column field="type" header="Type">
+      <column field="medium" header="Type" :show-filter-menu="false" sortable>
         <template #body="slotProps">
           <type-icon :type="slotProps.data.medium" />
         </template>
-      </Column>
-      <Column field="progress" header="Progress">
+        <template #editor="{ data, field }">
+          <dropdown v-model="data[field]" :options="mediumOptions">
+            <template #value="slotProps">
+              <type-icon :type="slotProps.value" />
+            </template>
+            <template #option="slotProps">
+              <type-icon :type="slotProps.option" />
+            </template>
+          </dropdown>
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <dropdown
+            v-model="filterModel.value"
+            :options="mediumOptions"
+            placeholder="Any"
+            class="p-column-filter"
+            :show-clear="true"
+            @change="filterCallback()"
+          >
+            <template #value="{ value }">
+              <type-icon v-if="value" :type="value" />
+              <span v-else>Any</span>
+            </template>
+            <template #option="slotProps">
+              <type-icon :type="slotProps.option" />
+            </template>
+          </dropdown>
+        </template>
+      </column>
+      <Column field="totalEpisodes" header="Progress" sortable>
         <template #body="slotProps">
           {{ slotProps.data.readEpisodes || 0 }}/{{ slotProps.data.totalEpisodes || 0 }}
         </template>
       </Column>
-      <Column field="stateCOO" header="State in COO">
+      <column field="stateOrigin" header="State in COO" :show-filter-menu="false" sortable>
         <template #body="slotProps">
           <release-state :state="slotProps.data.stateOrigin" />
         </template>
-      </Column>
-      <Column field="stateTL" header="State from TL">
+        <template #editor="{ data, field }">
+          <dropdown v-model="data[field]" :options="statesOptions">
+            <template #value="slotProps">
+              <release-state :state="slotProps.value" />
+            </template>
+            <template #option="slotProps">
+              <release-state :state="slotProps.option" />
+            </template>
+          </dropdown>
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <dropdown
+            v-model="filterModel.value"
+            :options="statesOptions"
+            placeholder="Any"
+            class="p-column-filter"
+            :show-clear="true"
+            @change="filterCallback()"
+          >
+            <template #value="{ value }">
+              <release-state v-if="value != null" :state="value" />
+              <span v-else>Any</span>
+            </template>
+            <template #option="slotProps">
+              <release-state :state="slotProps.option" />
+            </template>
+          </dropdown>
+        </template>
+      </column>
+      <column field="stateTL" header="State from TL" sortable>
         <template #body="slotProps">
           <release-state :state="slotProps.data.stateTL" />
         </template>
+        <template #editor="{ data, field }">
+          <dropdown v-model="data[field]" :options="statesOptions">
+            <template #value="slotProps">
+              <release-state :state="slotProps.value" />
+            </template>
+            <template #option="slotProps">
+              <release-state :state="slotProps.option" />
+            </template>
+          </dropdown>
+        </template>
+      </column>
+      <Column field="author" header="Author">
+        <template #editor="{ data, field }">
+          <InputText v-model="data[field]" />
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <InputText
+            v-model="filterModel.value"
+            type="text"
+            class="p-column-filter"
+            placeholder="Search Author"
+            @keydown.enter="filterCallback()"
+          />
+        </template>
       </Column>
-      <Column field="author" header="Author" />
     </data-table>
   </div>
 </template>
 
 <script lang="ts">
-import { SimpleMedium, ReleaseState, SecondaryMedium } from "../siteTypes";
+import { SimpleMedium, ReleaseState, SecondaryMedium, MediaType } from "../siteTypes";
 import releaseState from "../components/release-state.vue";
 import typeIcon from "../components/type-icon.vue";
 import { defineComponent } from "vue";
 import { mergeMediaToc } from "../init";
+import { DataTableRowEditCancelEvent } from "primevue/datatable";
+import { HttpClient } from "../Httpclient";
+import { FilterMatchMode, FilterService } from "primevue/api";
 
 interface Medium extends SimpleMedium {
   readEpisodes: number;
@@ -79,12 +179,20 @@ interface Medium extends SimpleMedium {
 }
 
 interface Data {
-  titleSearch: string;
   showStatesTL: ReleaseState[];
+  statesOptions: ReleaseState[];
+  mediumOptions: MediaType[];
   showStatesTLOptions: Array<{ name: string; value: ReleaseState }>;
-  media: SimpleMedium[];
   hideCompleted: boolean;
+  editItemLoading: boolean;
+  filters: Record<keyof SimpleMedium, { value: any; matchMode: string }>;
+  editingRows: SimpleMedium[];
 }
+
+FilterService.register(
+  "lax-number-equals",
+  (dataValue, filterValue) => filterValue == null || Number(dataValue ?? 0) === filterValue,
+);
 
 export default defineComponent({
   name: "Media",
@@ -95,7 +203,14 @@ export default defineComponent({
 
   data(): Data {
     return {
-      titleSearch: "",
+      editingRows: [],
+      filters: {
+        stateOrigin: { value: null, matchMode: "lax-number-equals" },
+        medium: { value: null, matchMode: "lax-number-equals" },
+        author: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        title: { value: null, matchMode: FilterMatchMode.CONTAINS },
+      },
+      editItemLoading: false,
       showStatesTLOptions: [
         {
           name: "Unknown",
@@ -122,6 +237,7 @@ export default defineComponent({
           value: ReleaseState.Complete,
         },
       ],
+      mediumOptions: [MediaType.TEXT, MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO],
       showStatesTL: [
         ReleaseState.Unknown,
         ReleaseState.Ongoing,
@@ -130,28 +246,42 @@ export default defineComponent({
         ReleaseState.Dropped,
         ReleaseState.Complete,
       ],
-      // create a one time copy of the elements of media
-      media: this.$store.getters.media.map((value: SimpleMedium) => ({
-        ...value,
-      })),
+      statesOptions: [
+        ReleaseState.Unknown,
+        ReleaseState.Ongoing,
+        ReleaseState.Hiatus,
+        ReleaseState.Discontinued,
+        ReleaseState.Dropped,
+        ReleaseState.Complete,
+      ],
       hideCompleted: false,
     };
   },
 
   computed: {
-    sortedMedia(): Medium[] {
-      // sort alphabetically from A-Za-z case sensitive
-      return ([...this.media] as Medium[]).sort((first, second) => first.title.localeCompare(second.title));
+    /**
+     * Make a copy so that mergeMedia does not operate on store values
+     */
+    media(): Medium[] {
+      return this.$store.getters.media.map((medium: Medium) => {
+        const secondary: SecondaryMedium | undefined = this.$store.state.media.secondaryMedia[medium.id as number];
+
+        const copy = { ...medium };
+        if (!secondary) {
+          return copy;
+        }
+
+        copy.totalEpisodes = secondary.totalEpisodes;
+        copy.readEpisodes = secondary.readEpisodes;
+
+        return mergeMediaToc(copy, secondary.tocs);
+      });
     },
     /**
-     * Filter simplistic by title at first.
+     * Filter by stateTl and "hideCompleted".
      */
     filteredMedia(): Medium[] {
-      const lowerTitleSearch = this.titleSearch.toLowerCase();
-      return this.sortedMedia.filter((medium) => {
-        if (lowerTitleSearch && !medium.title.toLowerCase().includes(lowerTitleSearch)) {
-          return false;
-        }
+      return this.media.filter((medium: Medium) => {
         if (medium.stateTL == null) {
           return this.showStatesTL.includes(ReleaseState.Unknown);
         }
@@ -165,18 +295,11 @@ export default defineComponent({
     },
   },
 
-  watch: {
-    "$store.state.media.secondaryMedia"() {
-      this.mergeMedia();
-    },
-  },
-
   /**
    * Load all media once when mounted.
    */
   mounted() {
     console.log("Media: Mounted");
-    this.mergeMedia();
   },
 
   methods: {
@@ -201,6 +324,26 @@ export default defineComponent({
 
         mergeMediaToc(medium, secondary.tocs);
       }
+    },
+    onRowEditSave(event: DataTableRowEditCancelEvent) {
+      console.log(event);
+      this.editItemLoading = true;
+      const newMedium: SimpleMedium = event.newData;
+
+      HttpClient.updateMedium(newMedium)
+        .then(() => {
+          this.$store.commit("updateMedium", newMedium);
+          this.$toast.add({ severity: "success", summary: "Medium updated", life: 3000 });
+        })
+        .catch((reason) => {
+          this.$toast.add({
+            severity: "error",
+            summary: "Save failed",
+            detail: JSON.stringify(reason),
+            life: 3000,
+          });
+        })
+        .finally(() => (this.editItemLoading = false));
     },
   },
 });
