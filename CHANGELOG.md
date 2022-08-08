@@ -1,3 +1,15 @@
+# [2.7.0](https://github.com/mytlogos/enterprise-lister/compare/v2.6.0...v2.7.0) (2022-08-08)
+
+
+### Bug Fixes
+
+* **server:** fix deleteToc api endpoint ([9e71922](https://github.com/mytlogos/enterprise-lister/commit/9e71922aedf8f439878e4c008963d0c01561ab3a))
+
+
+### Features
+
+* **website:** improve MediumDetail view ([1650f55](https://github.com/mytlogos/enterprise-lister/commit/1650f55bef2bf67c68766984b083f6a89708e63d))
+
 # [2.6.0](https://github.com/mytlogos/enterprise-lister/compare/v2.5.0...v2.6.0) (2022-08-08)
 
 
