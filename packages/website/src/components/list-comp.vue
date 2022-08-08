@@ -5,7 +5,6 @@
         v-for="(item, i) in displayedData"
         :key="item.id"
         :class="{
-          active: item.show,
           marked: markClassId === item.id && (item.external == null || markClassExternal === item.external),
         }"
         class="list-group-item list-group-item-action btn"
@@ -23,7 +22,7 @@
 <script lang="ts">
 // FIXME do it better with marked list
 // FIXME still is focused after being not shown
-import { List } from "../siteTypes";
+import { StoreInternalList as List } from "../siteTypes";
 import { defineComponent, PropType } from "vue";
 
 interface Data {

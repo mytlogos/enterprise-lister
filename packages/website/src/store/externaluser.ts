@@ -1,18 +1,24 @@
-import { ExternalList, ExternalUser, ExternalUserStore, VuexStore } from "../siteTypes";
+import { ExternalUser, ExternalUserStore, StoreExternalList, VuexStore } from "../siteTypes";
 import { Module } from "vuex";
 import { HttpClient } from "../Httpclient";
+import { Id } from "enterprise-core/dist/types";
 
 const module: Module<ExternalUserStore, VuexStore> = {
   state: () => ({
     externalUser: [],
   }),
+  getters: {
+    getExternalList(state) {
+      return (id: Id) =>
+        state.externalUser.map((user) => user.lists.find((list) => list.id === id)).find((value) => value);
+    },
+  },
   mutations: {
     userExternalUser(state, externalUser: ExternalUser[]) {
       state.externalUser = [...externalUser];
     },
     addExternalUser(state, externalUser: ExternalUser) {
-      externalUser.lists.forEach((list: ExternalList) => {
-        list.show = false;
+      externalUser.lists.forEach((list) => {
         list.external = true;
       });
       state.externalUser.push(externalUser);
@@ -24,7 +30,7 @@ const module: Module<ExternalUserStore, VuexStore> = {
       }
       state.externalUser.splice(index, 1);
     },
-    updateExternalList(state, updateList: ExternalList) {
+    updateExternalList(state, updateList: StoreExternalList) {
       let found = false;
       for (const user of state.externalUser) {
         for (const list of user.lists) {

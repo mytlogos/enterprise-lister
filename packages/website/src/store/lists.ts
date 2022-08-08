@@ -1,32 +1,46 @@
-import { List, ListsStore, VuexStore } from "../siteTypes";
+import { ListsStore, StoreInternalList, StoreList, VuexStore } from "../siteTypes";
 import { Module } from "vuex";
 import { HttpClient } from "../Httpclient";
+import { List } from "enterprise-core/src/types";
 
 const module: Module<ListsStore, VuexStore> = {
   state: () => ({
     lists: [],
   }),
   getters: {
-    allLists(state, _getters, rootState): List[] {
+    allLists(state, _getters, rootState): StoreList[] {
       const externalLists = rootState.externalUser.externalUser.flatMap((value) => value.lists);
       return [...state.lists, ...externalLists];
     },
   },
   mutations: {
     userLists(state, lists: List[]): void {
-      state.lists = [...lists];
+      state.lists = lists.map((list) => ({ ...list, external: false }));
     },
-    addList(state, list: List) {
-      list.show = false;
+    addList(state, list: StoreInternalList) {
       list.external = false;
       state.lists.push(list);
     },
     deleteList(state, id: number) {
       const index = state.lists.findIndex((value) => value.id === id);
       if (index < 0) {
-        throw Error("invalid mediumId");
+        throw Error("invalid listId");
       }
       state.lists.splice(index, 1);
+    },
+    removeListItem(state, payload: { listId: number; mediumId: number }) {
+      const list = state.lists.find((value) => value.id === payload.listId);
+      if (!list) {
+        throw Error("invalid listId");
+      }
+      list.items = list.items.filter((id) => id !== payload.mediumId);
+    },
+    addListItem(state, payload: { listId: number; mediumId: number }) {
+      const list = state.lists.find((value) => value.id === payload.listId);
+      if (!list) {
+        throw Error("invalid listId");
+      }
+      list.items.push(payload.mediumId);
     },
     updateList(state, updateList: List) {
       const list = state.lists.find((value: List) => value.id === updateList.id);

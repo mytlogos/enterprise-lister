@@ -209,7 +209,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { AddMedium, List, MediaType, ReleaseState as ReleaseStateType } from "../siteTypes";
+import { AddMedium, StoreInternalList, MediaType, ReleaseState as ReleaseStateType } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
@@ -265,7 +265,7 @@ export default defineComponent({
   },
 
   computed: {
-    lists(): List[] {
+    lists(): StoreInternalList[] {
       return this.$store.state.lists.lists;
     },
     selectedMediumOption: {

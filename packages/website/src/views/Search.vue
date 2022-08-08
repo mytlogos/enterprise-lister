@@ -171,7 +171,7 @@ export default defineComponent({
         .then((result) => {
           return Promise.all([
             HttpClient.addToc(this.medium.url, result.id),
-            HttpClient.addListItem(this.selectedList, result.id),
+            HttpClient.addListItem({ listId: this.selectedList, mediumId: [result.id] }),
           ]);
         })
         .then(() => {

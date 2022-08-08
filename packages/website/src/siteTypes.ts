@@ -1,4 +1,4 @@
-import { CustomHook, JobHistoryItem as ServerJobHistoryItem } from "enterprise-core/dist/types";
+import { CustomHook, ExternalList, JobHistoryItem as ServerJobHistoryItem, List } from "enterprise-core/dist/types";
 
 export type ClickListener = (evt: MouseEvent) => void;
 export type KeyboardListener = (evt: KeyboardEvent) => void;
@@ -30,14 +30,6 @@ export interface TransferList {
   id: number;
   name: string | undefined;
   external: any;
-}
-
-export interface List {
-  name: string;
-  id: number;
-  external: boolean;
-  show: boolean;
-  items: number[];
 }
 
 export interface SimpleMedium {
@@ -123,22 +115,19 @@ export interface User {
   session: string;
 }
 
-export interface ExternalList {
-  uuid?: string;
-  id: number;
-  name: string;
-  medium: number;
-  url: string;
-  items: number[];
-  external: boolean;
-  show: boolean;
+export interface StoreInternalList extends List {
+  external: false;
+}
+
+export interface StoreExternalList extends ExternalList {
+  external: true;
 }
 
 export interface ExternalUser {
   uuid: string;
   identifier: string;
   type: number;
-  readonly lists: ExternalList[];
+  readonly lists: StoreExternalList[];
   lastScrape?: Date;
   cookies?: string | null;
 }
@@ -396,8 +385,10 @@ export interface ExternalUserStore {
   externalUser: ExternalUser[];
 }
 
+export type StoreList = StoreInternalList | StoreExternalList;
+
 export interface ListsStore {
-  lists: List[];
+  lists: StoreInternalList[];
 }
 
 export interface MediaStore {

@@ -155,7 +155,7 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, List, MediaType, MinMedium, SimpleMedium } from "../siteTypes";
+import { DisplayRelease, StoreList as List, MediaType, MinMedium, SimpleMedium } from "../siteTypes";
 import { defineComponent, reactive } from "vue";
 import { HttpClient } from "../Httpclient";
 import { formatDate } from "../init";
@@ -310,7 +310,8 @@ export default defineComponent({
             id,
             name: "Unknown",
             external: false,
-            show: false,
+            medium: 0,
+            userUuid: "",
             items: [],
           }
         );

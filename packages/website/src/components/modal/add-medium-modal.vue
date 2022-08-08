@@ -87,7 +87,7 @@
 <script lang="ts">
 import modal from "./modal.vue";
 import { defineComponent, PropType } from "vue";
-import { List } from "../../siteTypes";
+import { StoreInternalList as List } from "../../siteTypes";
 
 interface GuiMediaType {
   value: number;

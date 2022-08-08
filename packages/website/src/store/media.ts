@@ -1,4 +1,4 @@
-import { AddMedium, List, MediaStore, Medium, SecondaryMedium, SimpleMedium, StringKey, VuexStore } from "../siteTypes";
+import { AddMedium, MediaStore, Medium, SecondaryMedium, SimpleMedium, StringKey, VuexStore } from "../siteTypes";
 import { Module, useStore } from "vuex";
 import { HttpClient } from "../Httpclient";
 import { mergeMediaTocProp } from "../init";
@@ -48,6 +48,12 @@ const module: Module<MediaStore, VuexStore> = {
         state.media[medium.id] = medium;
       }
     },
+    updateMedium(state, medium: SimpleMedium) {
+      if (!medium.id) {
+        throw Error("missing id on medium");
+      }
+      Object.assign(state.media[medium.id], medium);
+    },
     deleteMedium(state, id: number) {
       if (!(id in state.media)) {
         throw Error("invalid mediumId");
@@ -55,7 +61,7 @@ const module: Module<MediaStore, VuexStore> = {
 
       delete state.media[id];
 
-      useStore().state.lists.forEach((value: List) => {
+      useStore().state.lists.forEach((value: { items: number[] }) => {
         const listIndex = value.items.findIndex((itemId: number) => itemId === id);
 
         if (listIndex >= 0) {

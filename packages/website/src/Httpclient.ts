@@ -1,7 +1,6 @@
 import { store } from "./store/store";
 import {
   ExternalUser,
-  List,
   Medium,
   News,
   User,
@@ -26,9 +25,9 @@ import {
   Part,
   JobHistoryItem,
 } from "./siteTypes";
-import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
+import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary, List } from "enterprise-core/src/types";
 import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
-import { GetHistoryJobsPaginated } from "enterprise-server/dist/validation";
+import { DeleteListMedium, GetHistoryJobsPaginated, PostListMedium } from "enterprise-server/dist/validation";
 import { CustomHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
 import qs from "qs";
 
@@ -283,6 +282,12 @@ interface MethodObject {
   readonly path: string;
 }
 
+/**
+ * The properties uuid and session are added automatically.
+ * So a query parameter does not need to specify them.
+ */
+type Query<T> = Omit<T, "uuid" | "session">;
+
 export const HttpClient = {
   get loggedIn(): boolean {
     return store.getters.loggedIn;
@@ -393,7 +398,7 @@ export const HttpClient = {
   },
 
   updateMedium(data: SimpleMedium): Promise<boolean> {
-    return this.queryServer(serverRestApi.api.user.medium.post, { medium: data });
+    return this.queryServer(serverRestApi.api.user.medium.put, { medium: data });
   },
 
   deleteMedium(id: number): Promise<void> {
@@ -536,8 +541,12 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.search.get, { text: title, medium: type });
   },
 
-  addListItem(listId: number, mediumId: number): Promise<void> {
-    return this.queryServer(serverRestApi.api.user.list.medium.post, { listId, mediumId });
+  addListItem(query: Query<PostListMedium>): Promise<void> {
+    return this.queryServer(serverRestApi.api.user.list.medium.post, query);
+  },
+
+  deleteListItem(query: Query<DeleteListMedium>): Promise<void> {
+    return this.queryServer(serverRestApi.api.user.list.medium.delete, query);
   },
 
   getHooks(): Promise<ScraperHook[]> {
@@ -639,21 +648,23 @@ export const HttpClient = {
     const response = await fetch(url.toString(), init);
     const result = await response.json();
 
-    if (!response.ok && result.error) {
-      if (result.error === "INVALID_SESSION") {
-        const sessionResponse = await fetch(`${window.location.origin}/api/`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json; charset=utf-8",
-          },
-        });
-        if (sessionResponse.ok) {
-          const sessionResult: Nullable<SimpleUser> = await sessionResponse.json();
+    if (!response.ok) {
+      if (result.error) {
+        if (result.error === "INVALID_SESSION") {
+          const sessionResponse = await fetch(`${window.location.origin}/api/`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+            },
+          });
+          if (sessionResponse.ok) {
+            const sessionResult: Nullable<SimpleUser> = await sessionResponse.json();
 
-          if (sessionResult) {
-            store.dispatch("changeUser", { user: sessionResult });
-          } else {
-            store.commit("immediateLogout");
+            if (sessionResult) {
+              store.dispatch("changeUser", { user: sessionResult });
+            } else {
+              store.commit("immediateLogout");
+            }
           }
         }
       }

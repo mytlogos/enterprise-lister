@@ -32,6 +32,9 @@ import Dropdown from "primevue/dropdown";
 import Paginator from "primevue/paginator";
 import Chip from "primevue/chip";
 import Tag from "primevue/tag";
+import ListBox from "primevue/listbox";
+import ConfirmDialog from "primevue/confirmdialog";
+import ConfirmationService from "primevue/confirmationservice";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
@@ -41,6 +44,7 @@ app.use(Router);
 app.use(store);
 app.use(PrimeVue);
 app.use(ToastService);
+app.use(ConfirmationService);
 app.component("Toast", Toast);
 app.component("PButton", Button);
 app.component("SelectButton", SelectButton);
@@ -60,6 +64,8 @@ app.component("Dropdown", Dropdown);
 app.component("PPaginator", Paginator);
 app.component("Chip", Chip);
 app.component("Tag", Tag);
+app.component("ListBox", ListBox);
+app.component("ConfirmDialog", ConfirmDialog);
 app.directive("badge", BadgeDirective);
 app.directive("tooltip", Tooltip);
 Router.isReady().then(() => app.mount("#app"));
