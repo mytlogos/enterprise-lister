@@ -223,10 +223,10 @@ export const getToc = createHandler(
 
 export const deleteToc = createHandler(
   (req) => {
-    const { mediumId, link }: DeleteToc = req.query as any;
+    const { mediumId, link }: DeleteToc = req.body;
     return mediumStorage.removeMediumToc(mediumId, link);
   },
-  { query: deleteTocSchema },
+  { body: deleteTocSchema },
 );
 
 export const getNotifications = createHandler(

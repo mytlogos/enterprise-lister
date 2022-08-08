@@ -479,7 +479,7 @@ export class MediumContext extends SubContext {
     const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(link);
 
     if (!domainRegMatch) {
-      throw new ValidationError("Invalid ink, Unable to extract Domain: " + link);
+      throw new ValidationError("Invalid link, Unable to extract Domain: " + link);
     }
 
     await this.parentContext.jobContext.removeJobLike("name", `toc-${mediumId}-${link}`);
