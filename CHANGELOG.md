@@ -1,3 +1,15 @@
+# [2.5.0](https://github.com/mytlogos/enterprise-lister/compare/v2.4.1...v2.5.0) (2022-08-08)
+
+
+### Bug Fixes
+
+* **server:** fix wrong update operation ([c2dc4f3](https://github.com/mytlogos/enterprise-lister/commit/c2dc4f30bbb0d790d42079de74bf5797586941bd))
+
+
+### Features
+
+* **website:** improve Lists UI ([17e4c1e](https://github.com/mytlogos/enterprise-lister/commit/17e4c1e05a9fa4fdd2289bea9d63a235294bf47e))
+
 ## [2.4.1](https://github.com/mytlogos/enterprise-lister/compare/v2.4.0...v2.4.1) (2022-08-06)
 
 
