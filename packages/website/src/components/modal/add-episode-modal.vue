@@ -1,5 +1,5 @@
 <template>
-  <Dialog v-model:visible="visible" header="Add Episodes" @hide="$emit('update:medium', null)">
+  <p-dialog v-model:visible="visible" header="Add Episodes" @hide="$emit('update:medium', null)">
     <div class="row">
       Current Items: {{ parts.length }}
       <p-button label="Next" @click="createPart" />
@@ -21,13 +21,13 @@
       <p-button label="Close" icon="pi pi-times" class="p-button-text" @click="$emit('update:medium', null)" />
       <p-button label="Add" icon="pi pi-check" autofocus @click="send()" />
     </template>
-  </Dialog>
+  </p-dialog>
 </template>
 <script lang="ts">
 import { MediaType, SimpleMedium, Part } from "../../siteTypes";
 import { defineComponent, PropType } from "vue";
 import { HttpClient } from "../../Httpclient";
-import { AddPart, SimpleEpisode } from "enterprise-core/src/types";
+import { AddPart, SimpleEpisode } from "enterprise-core/dist/types";
 
 export default defineComponent({
   name: "AddEpisodeModal",
@@ -69,6 +69,7 @@ export default defineComponent({
       }
 
       switch (newValue.medium) {
+        case MediaType.IMAGE:
         case MediaType.TEXT:
           this.newPartPrefix = "Volume";
           this.newEpisodePrefix = "Chapter";
@@ -80,10 +81,6 @@ export default defineComponent({
         case MediaType.VIDEO:
           this.newPartPrefix = "Season";
           this.newEpisodePrefix = "Episode";
-          break;
-        case MediaType.IMAGE:
-          this.newPartPrefix = "Volume";
-          this.newEpisodePrefix = "Chapter";
           break;
         default:
           this.newPartPrefix = "";

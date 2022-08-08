@@ -190,7 +190,6 @@
           <p-button label="Save" icon="pi pi-check" @click="saveList" />
         </template>
       </p-dialog>
-      <ConfirmDialog></ConfirmDialog>
     </div>
   </div>
 </template>

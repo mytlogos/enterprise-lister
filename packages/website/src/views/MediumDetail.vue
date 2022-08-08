@@ -2,50 +2,127 @@
   <div>
     <h1>MediumDetail</h1>
     <div class="container-fluid details">
-      <h2>
-        <type-icon :type="computedMedium.medium" />
-        {{ computedMedium.title }}
-      </h2>
+      <div>
+        <type-icon style="font-size: 2em" :type="computedMedium.medium" />
+        <h2 class="d-inline mx-2">{{ computedMedium.title }}</h2>
+        <p-button label="Save" :loading="editItemLoading" @click="onSave" />
+      </div>
       <div class="row">
         <div class="col-2">Release State of TL:</div>
         <div class="col">
-          <release-state :state="computedMedium.stateTL" />
+          <Inplace :closable="true">
+            <template #display>
+              <release-state :state="computedMedium.stateTL" />
+            </template>
+            <template #content>
+              <dropdown v-model="details.stateTL" :options="statesOptions">
+                <template #value="slotProps">
+                  <release-state :state="slotProps.value" />
+                </template>
+                <template #option="slotProps">
+                  <release-state :state="slotProps.option" />
+                </template>
+              </dropdown>
+            </template>
+          </Inplace>
         </div>
       </div>
       <div class="row">
         <div class="col-2">Release State in COO:</div>
         <div class="col">
-          <release-state :state="computedMedium.stateOrigin" />
+          <Inplace :closable="true">
+            <template #display>
+              <release-state :state="computedMedium.stateOrigin" />
+            </template>
+            <template #content>
+              <dropdown v-model="details.stateOrigin" :options="statesOptions">
+                <template #value="slotProps">
+                  <release-state :state="slotProps.value" />
+                </template>
+                <template #option="slotProps">
+                  <release-state :state="slotProps.option" />
+                </template>
+              </dropdown>
+            </template>
+          </Inplace>
         </div>
       </div>
       <div class="row">
         <div class="col-2">Series:</div>
         <div class="col">
-          {{ computedMedium.series }}
+          <Inplace :closable="true">
+            <template #display>
+              {{ computedMedium.series || "Click to Edit" }}
+            </template>
+            <template #content>
+              <InputText v-model="details.series" auto-focus />
+            </template>
+          </Inplace>
         </div>
       </div>
       <div class="row">
         <div class="col-2">Universe:</div>
         <div class="col">
-          {{ computedMedium.universe }}
+          <Inplace :closable="true">
+            <template #display>
+              {{ computedMedium.universe || "Click to Edit" }}
+            </template>
+            <template #content>
+              <InputText v-model="details.universe" auto-focus />
+            </template>
+          </Inplace>
         </div>
       </div>
       <div class="row">
         <div class="col-2">Author:</div>
         <div class="col">
-          {{ computedMedium.author }}
+          <Inplace :closable="true">
+            <template #display>
+              {{ computedMedium.author || "Click to Edit" }}
+            </template>
+            <template #content>
+              <InputText v-model="details.author" auto-focus />
+            </template>
+          </Inplace>
         </div>
       </div>
       <div class="row">
         <div class="col-2">Artist:</div>
         <div class="col">
-          {{ computedMedium.artist }}
+          <Inplace :closable="true">
+            <template #display>
+              {{ computedMedium.artist || "Click to Edit" }}
+            </template>
+            <template #content>
+              <InputText v-model="details.artist" auto-focus />
+            </template>
+          </Inplace>
         </div>
       </div>
       <div class="row">
         <div class="col-2">Language:</div>
         <div class="col">
-          {{ computedMedium.lang }}
+          <Inplace :closable="true">
+            <template #display>
+              {{ computedMedium.lang || "Click to Edit" }}
+            </template>
+            <template #content>
+              <InputText v-model="details.lang" auto-focus />
+            </template>
+          </Inplace>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-2">Language in COO:</div>
+        <div class="col">
+          <Inplace :closable="true">
+            <template #display>
+              {{ computedMedium.languageOfOrigin || "Click to Edit" }}
+            </template>
+            <template #content>
+              <InputText v-model="details.languageOfOrigin" auto-focus />
+            </template>
+          </Inplace>
         </div>
       </div>
     </div>
@@ -75,25 +152,20 @@
           }}</a>
         </template>
       </Column>
+      <Column>
+        <template #body="slotProps">
+          <p-button
+            icon="pi pi-trash"
+            class="p-button-rounded p-button-warning"
+            :loading="deleteTocLoading"
+            @click="confirmDeleteToc(slotProps.data)"
+          />
+        </template>
+      </Column>
     </data-table>
     <div class="my-2">
       <input-text v-model="addTocUrl" class="me-2" type="url" @keyup.enter="addToc" />
       <p-button label="Add Toc" @click="addToc" />
-    </div>
-    <p>
-      <p-button
-        data-bs-toggle="collapse"
-        data-bs-target="#collapseChart"
-        aria-expanded="false"
-        aria-controls="collapseChart"
-      >
-        Show Release Chart
-      </p-button>
-    </p>
-    <div id="collapseChart" class="collapse">
-      <div class="chart-container w-75">
-        <canvas ref="chart" />
-      </div>
     </div>
     <h1 id="medium-releases-title">Releases</h1>
     <toolbar>
@@ -108,9 +180,9 @@
           <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="form-check-input" />
           <label class="form-check-label" for="collapseToEpisode">Display Episodes only</label>
         </div>
-        <div class="field-checkbox m-0">
+        <div class="d-flex align-items-center mx-2">
           <tri-state-checkbox v-model="readFilter" />
-          <label>Filter by Progress</label>
+          <label class="mx-1">Filter by Progress</label>
         </div>
       </template>
     </toolbar>
@@ -179,8 +251,9 @@ import { defineComponent, reactive } from "vue";
 import { SimpleMedium, MediumRelease, FullMediumToc, MediaType } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
-import { batch, formatDate, mergeMediaToc, hexToRgbA } from "../init";
+import { batch, formatDate, mergeMediaToc } from "../init";
 import AddEpisodeModal from "../components/modal/add-episode-modal.vue";
+import { ReleaseState } from "enterprise-core/dist/types";
 
 interface EpisodeRelease extends MediumRelease {
   others: MediumRelease[];
@@ -197,13 +270,12 @@ interface Data {
   loadingReleases: boolean;
   readFilter: boolean | null;
   selectedRows: MediumRelease[] | EpisodeRelease[];
+  statesOptions: ReleaseState[];
+  editItemLoading: boolean;
+  deleteTocLoading: boolean;
 }
 
 const domainReg = /(https?:\/\/([^/]+))/;
-
-const colorPalette = ["#003f5c", "#2f4b7c", "#665191", "#a05195", "#d45087", "#f95d6a", "#ff7c43", "#ffa600"];
-
-const bgColorPalette = colorPalette.map((color) => hexToRgbA(color, 0.5));
 
 export default defineComponent({
   name: "MediumDetail",
@@ -221,6 +293,16 @@ export default defineComponent({
 
   data(): Data {
     return {
+      deleteTocLoading: false,
+      editItemLoading: false,
+      statesOptions: [
+        ReleaseState.Unknown,
+        ReleaseState.Ongoing,
+        ReleaseState.Hiatus,
+        ReleaseState.Discontinued,
+        ReleaseState.Dropped,
+        ReleaseState.Complete,
+      ],
       releases: [],
       details: {
         id: 0,
@@ -308,12 +390,6 @@ export default defineComponent({
   },
 
   watch: {
-    releases: {
-      handler() {
-        this.startUpdate();
-      },
-      deep: true,
-    },
     addEpisodeModal(newValue: SimpleMedium | null) {
       if (!newValue) {
         this.loadReleases();
@@ -322,42 +398,12 @@ export default defineComponent({
   },
 
   mounted() {
-    // TODO: use chart
-    // chart = new Chart(this.$refs.chart as HTMLCanvasElement, {
-    // type: "line",
-    // data: {
-    //  datasets: [],
-    // },
-    // options: {
-    //  scales: {
-    //    // @ts-ignore
-    //    x: {
-    //      // @ts-ignore
-    //      type: "time",
-    //      distribution: "linear",
-    //      time: {
-    //        unit: "hour",
-    //        displayFormats: {
-    //          hour: "DD.MM.YYYY",
-    //        },
-    //      },
-    //    },
-    //    y: {
-    //      display: true,
-    //      // @ts-ignore
-    //      type: "linear",
-    //      position: "left",
-    //      // @ts-ignore
-    //      title: "Number of Releases",
-    //    },
-    //  },
-    // },
-    // });
     this.loadLocalData();
     this.loadMedium();
     this.loadTocs();
     this.loadReleases();
   },
+
   methods: {
     actionOnMarked(action: "delete" | "read" | "unread") {
       if (action === "delete") {
@@ -374,6 +420,7 @@ export default defineComponent({
         this.selectedRows.length = 0;
       }
     },
+
     markBetween() {
       let lowest: MediumRelease | EpisodeRelease | undefined;
       let highest: MediumRelease | EpisodeRelease | undefined;
@@ -395,6 +442,7 @@ export default defineComponent({
         (item) => item.combiIndex <= highestIndex && item.combiIndex >= lowestIndex,
       );
     },
+
     loadLocalData() {
       const medium = this.$store.state.media.media[this.id];
 
@@ -407,6 +455,7 @@ export default defineComponent({
         this.tocs = [...secondaryMedium.tocs];
       }
     },
+
     loadMedium() {
       HttpClient.getMedia([this.id])
         .then((medium) => {
@@ -430,6 +479,7 @@ export default defineComponent({
           console.log(error);
         });
     },
+
     loadTocs() {
       this.loadingTocs = true;
       HttpClient.getTocs(this.id)
@@ -444,6 +494,7 @@ export default defineComponent({
         })
         .finally(() => (this.loadingTocs = false));
     },
+
     loadReleases() {
       if (this.loadingReleases) {
         return;
@@ -469,6 +520,7 @@ export default defineComponent({
           this.loadingReleases = false;
         });
     },
+
     addToc() {
       HttpClient.addToc(this.addTocUrl, this.id)
         .then(() => {
@@ -488,68 +540,11 @@ export default defineComponent({
         });
       this.addTocUrl = "";
     },
-    startUpdate() {
-      if (this.dirty) {
-        return;
-      }
-      this.dirty = true;
-      // update next event tick
-      setTimeout(() => this.update());
-    },
-    update() {
-      const to = new Date().getTime();
-      const from = to - 1000 * 60 * 60 * 24 * 30;
 
-      const count = new Map<number, number>();
-
-      const timePoints = this.releases.map((value: MediumRelease) => {
-        const key = value.date.getTime();
-        count.set(key, (count.get(key) || 0) + 1);
-        return key;
-      });
-
-      const points = [...new Set(timePoints)].sort((a, b) => a - b);
-
-      // remove the points which are not in datetime range
-      for (let index = 0; index < points.length; index++) {
-        const point = points[index];
-
-        if (point < from || point > to) {
-          points.splice(index, 1);
-          index--;
-        }
-      }
-
-      const yValues = points.map((value) => count.get(value));
-      // const xValues = points.map((value) => new Date(value));
-
-      const newDataSet = [];
-
-      // chart.options.scales.y.scaleLabel.labelString = "Release Count";
-
-      newDataSet.push({
-        label: "All",
-        data: yValues,
-        backgroundColor: bgColorPalette[newDataSet.length],
-        borderWidth: 1,
-        borderColor: colorPalette[newDataSet.length],
-        // This binds the dataset to the left y axis
-        yAxisID: "left-y-axis",
-      });
-
-      // chart.data.labels = xValues;
-      // chart.data.datasets = newDataSet;
-      // chart.update();
-
-      // no longer dirty as it is "tidied up" now
-      this.dirty = false;
-    },
     /**
      * Format a given Date to a german locale string.
      */
-    dateToString(date: Date): string {
-      return formatDate(date);
-    },
+    dateToString: formatDate,
 
     /**
      * Extracts the Domain name of a web link.
@@ -631,6 +626,7 @@ export default defineComponent({
     markAll(read: boolean) {
       this.markRead(read, this.releases);
     },
+
     markRead(read: boolean, readReleases: MediumRelease[] | EpisodeRelease[]) {
       const newProgress = read ? 1 : 0;
       const batchSize = 50;
@@ -685,6 +681,52 @@ export default defineComponent({
           life: failed ? undefined : 3000,
         });
         console.log(`succeeded=${succeeded}, failed=${failed}`);
+      });
+    },
+
+    onSave() {
+      this.editItemLoading = true;
+
+      HttpClient.updateMedium(this.details)
+        .then(() => {
+          this.$store.commit("updateMedium", this.details);
+          this.$toast.add({ severity: "success", summary: "Medium updated", life: 3000 });
+        })
+        .catch((reason) => {
+          this.$toast.add({
+            severity: "error",
+            summary: "Save failed",
+            detail: JSON.stringify(reason),
+            life: 3000,
+          });
+        })
+        .finally(() => (this.editItemLoading = false));
+    },
+
+    confirmDeleteToc(data: FullMediumToc) {
+      this.$confirm.require({
+        message: `Remove ToC '${data.link}' on '${this.getDomain(data.link)}'?`,
+        header: "Confirmation",
+        icon: "pi pi-exclamation-triangle",
+        acceptClass: "p-button-danger",
+        accept: () => {
+          this.deleteTocLoading = true;
+
+          HttpClient.deleteToc({ link: data.link, mediumId: data.mediumId })
+            .then(() => {
+              this.$store.commit("deleteToc", { link: data.link, mediumId: data.mediumId });
+              this.$toast.add({ severity: "info", summary: "Confirmed", detail: "Toc deleted", life: 3000 });
+            })
+            .catch((reason) => {
+              this.$toast.add({
+                severity: "error",
+                summary: "Deleting Toc failed",
+                detail: JSON.stringify(reason),
+                life: 3000,
+              });
+            })
+            .finally(() => (this.deleteTocLoading = false));
+        },
       });
     },
   },

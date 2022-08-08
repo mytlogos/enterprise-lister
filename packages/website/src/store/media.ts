@@ -69,6 +69,13 @@ const module: Module<MediaStore, VuexStore> = {
         }
       });
     },
+    deleteToc(state, data: { mediumId: number; link: string }) {
+      const medium = state.secondaryMedia[data.mediumId];
+      if (!medium) {
+        throw Error("invalid mediumId");
+      }
+      medium.tocs = medium.tocs.filter((toc) => toc.link !== data.link);
+    },
     episodesOnly(state, value: boolean) {
       state.episodesOnly = value;
     },

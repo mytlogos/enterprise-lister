@@ -27,7 +27,12 @@ import {
 } from "./siteTypes";
 import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary, List } from "enterprise-core/src/types";
 import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
-import { DeleteListMedium, GetHistoryJobsPaginated, PostListMedium } from "enterprise-server/dist/validation";
+import {
+  DeleteListMedium,
+  DeleteToc,
+  GetHistoryJobsPaginated,
+  PostListMedium,
+} from "enterprise-server/dist/validation";
 import { CustomHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
 import qs from "qs";
 
@@ -535,6 +540,10 @@ export const HttpClient = {
 
   addToc(link: string, id: number): Promise<boolean> {
     return this.queryServer(serverRestApi.api.user.toc.post, { toc: link, mediumId: id });
+  },
+
+  deleteToc(query: Query<DeleteToc>): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user.toc.delete, query);
   },
 
   search(title: string, type: MediaType): Promise<SearchResult[]> {

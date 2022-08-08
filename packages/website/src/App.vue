@@ -4,6 +4,7 @@
     <main>
       <router-view />
       <toast />
+      <ConfirmDialog></ConfirmDialog>
     </main>
   </div>
 </template>
