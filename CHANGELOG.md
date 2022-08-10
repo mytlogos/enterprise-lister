@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/mytlogos/enterprise-lister/compare/v2.7.0...v2.8.0) (2022-08-10)
+
+
+### Features
+
+* **website:** add notifications settings ([609689a](https://github.com/mytlogos/enterprise-lister/commit/609689ae5c63317efe3d8b9add9807f38c931a52))
+
 # [2.7.0](https://github.com/mytlogos/enterprise-lister/compare/v2.6.0...v2.7.0) (2022-08-08)
 
 
