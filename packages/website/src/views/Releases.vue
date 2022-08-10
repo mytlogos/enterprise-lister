@@ -3,7 +3,6 @@
     <h1 id="releases-title">Releases</h1>
     <div class="p-1 btn-toolbar">
       <p-button :loading="isRefreshing" label="Refresh" @click.left="refresh" />
-      <p-button :loading="isFetching" label="Fetch new Releases" @click.left="fetchNew" />
       <SelectButton v-model="readFilter" class="d-inline-block" :options="readFilterValues" data-key="value">
         <template #option="slotProps">
           <i class="fas fa-check" :class="{ 'text-success': slotProps.option.value }" aria-hidden="true" />
@@ -155,11 +154,9 @@
   </div>
 </template>
 <script lang="ts">
-import { DisplayRelease, StoreList as List, MediaType, MinMedium, SimpleMedium } from "../siteTypes";
-import { defineComponent, reactive } from "vue";
+import { StoreList as List, MediaType, SimpleMedium, DisplayReleaseItem } from "../siteTypes";
+import { defineComponent } from "vue";
 import { HttpClient } from "../Httpclient";
-import { formatDate } from "../init";
-import ToolTip from "bootstrap/js/dist/tooltip";
 import { PrimeIcons } from "primevue/api";
 
 interface Value<T> {
@@ -170,38 +167,11 @@ interface SearchEvent {
   query: string;
 }
 
-interface DisplayReleaseItem {
-  episodeId: number;
-  title: string;
-  link: string;
-  mediumId: number;
-  medium: number;
-  mediumTitle: string;
-  locked?: boolean;
-  date: string;
-  time: number;
-  read: boolean;
-  key: string;
-}
-
 interface Data {
-  releases: DisplayReleaseItem[];
-  currentDate: Date;
-  fetching: boolean;
-  unmounted: boolean;
-  /**
-   * Signal Variable for fetchReleases to replace all current ones
-   */
-  replace: boolean;
   typeReleases: Record<MediaType | number, number>;
-  currentReleases: Set<string>;
-  tooltips: ToolTip[];
-  latest: Date;
-  until: Date;
   pages: Array<{ latest: Date; until: Date }>;
   isFetching: boolean;
   isRefreshing: boolean;
-  lastFetch?: { args: string; date: number };
   readFilterValues: [Value<true>, Value<false>];
   typeFilterValues: Array<{
     tooltip: string;
@@ -240,24 +210,15 @@ export default defineComponent({
     until.setMonth(until.getMonth() - 1);
 
     return {
-      releases: [],
-      currentDate: new Date(),
-      fetching: false, // for the method
       isFetching: false, // for the button
       isRefreshing: false, // for the button
-      unmounted: false,
-      replace: false,
       typeReleases: {
         [MediaType.TEXT]: 0,
         [MediaType.IMAGE]: 0,
         [MediaType.VIDEO]: 0,
         [MediaType.AUDIO]: 0,
       },
-      currentReleases: new Set(),
-      tooltips: [],
-      latest: defaultLatest(),
-      until: defaultEarliest(),
-      pages: [{ latest, until }],
+      pages: [{ latest: defaultLatest(), until: defaultEarliest() }],
       readFilterValues: [{ value: true }, { value: false }],
       typeFilterValues: [
         {
@@ -292,6 +253,12 @@ export default defineComponent({
     };
   },
   computed: {
+    fetching() {
+      return this.$store.state.releases.fetching;
+    },
+    releases() {
+      return this.$store.state.releases.releases;
+    },
     onlyMedia(): SimpleMedium[] {
       return [];
     },
@@ -350,29 +317,29 @@ export default defineComponent({
   watch: {
     readFilter() {
       // when release filter changed, set replace current items flag and fetch anew
-      this.fetchReleases(true);
+      this.fetchReleases(false);
     },
     onlyMedia: {
       handler() {
-        this.fetchReleases(true);
+        this.fetchReleases(false);
       },
       deep: true,
     },
     onlyLists: {
       handler() {
-        this.fetchReleases(true);
+        this.fetchReleases(false);
       },
       deep: true,
     },
     ignoreMedia: {
       handler() {
-        this.fetchReleases(true);
+        this.fetchReleases(false);
       },
       deep: true,
     },
     ignoreLists: {
       handler() {
-        this.fetchReleases(true);
+        this.fetchReleases(false);
       },
       deep: true,
     },
@@ -397,13 +364,18 @@ export default defineComponent({
     },
   },
   mounted() {
-    this.unmounted = false;
-    this.fetchReleases().catch(console.error);
-  },
-  unmounted() {
-    this.unmounted = true;
+    this.$store.commit("releases/resetDates");
+    this.fetchReleases(false).catch(console.error);
   },
   methods: {
+    setUntil(until: Date) {
+      this.$store.commit("releases/until", until);
+    },
+
+    setLatest(latest: Date) {
+      this.$store.commit("releases/latest", latest);
+    },
+
     paginate(event: { previous: number; current: number }) {
       const diff = event.current - event.previous;
 
@@ -419,15 +391,15 @@ export default defineComponent({
           console.warn("Previous Page not found: " + page);
           return;
         }
-        this.until = page.until;
-        this.latest = page.latest;
+        this.setUntil(page.until);
+        this.setLatest(page.latest);
       } else {
         const newIndex = event.current - 1;
         const page = this.pages[newIndex];
 
         if (page) {
-          this.until = page.until;
-          this.latest = page.latest;
+          this.setUntil(page.until);
+          this.setLatest(page.latest);
         } else {
           const lastRelease = this.releases[this.releases.length - 1];
 
@@ -435,12 +407,13 @@ export default defineComponent({
             console.warn("No Releases left");
             return;
           }
-          this.until = (this.until && new Date(this.until)) || defaultEarliest();
-          this.until.setMonth(this.until.getMonth() - 1);
+          const until = new Date(this.$store.state.releases.until);
+          until.setMonth(until.getMonth() - 1);
+          this.setUntil(until);
 
-          this.latest = new Date(lastRelease.date);
+          this.setLatest(new Date(lastRelease.date));
           // do not miss releases which have the same time, but were not included in this page
-          this.latest.setSeconds(this.latest.getSeconds() - 1);
+          this.$store.state.releases.latest.setSeconds(this.$store.state.releases.latest.getSeconds() - 1);
 
           if (newIndex !== this.pages.length) {
             console.warn(
@@ -450,7 +423,7 @@ export default defineComponent({
             );
             return;
           }
-          this.pages.push({ latest: this.latest, until: this.until });
+          this.pages.push({ latest: this.$store.state.releases.latest, until: this.$store.state.releases.until });
         }
       }
       this.fetchReleases(true);
@@ -538,105 +511,9 @@ export default defineComponent({
     getMedium(id: number): SimpleMedium {
       return this.$store.getters.getMedium(id);
     },
-    async fetchReleases(replace = false) {
-      // do not fetch if already fetching or this component is already unmounted
-      if (this.fetching || this.unmounted) {
-        return;
-      }
-      const args: Parameters<typeof HttpClient.getDisplayReleases> = [
-        this.latest,
-        this.until,
-        this.readFilter.value,
-        this.onlyLists.map((item) => item.id),
-        this.onlyMedia.map((item) => item.id) as number[],
-        this.ignoreLists.map((item) => item.id),
-        this.ignoreMedia.map((item) => item.id) as number[],
-      ];
 
-      const currentFetch = JSON.stringify(args);
-      const nowMillis = Date.now();
-
-      // do not try to get releases with the same args twice in less than a minute
-      if (this.lastFetch && nowMillis - this.lastFetch.date < 1000 * 60 && currentFetch === this.lastFetch.args) {
-        return;
-      }
-      this.lastFetch = { args: currentFetch, date: nowMillis };
-      this.fetching = true;
-
-      if (replace) {
-        this.isRefreshing = true;
-      }
-      try {
-        const response = await HttpClient.getDisplayReleases(...args);
-
-        if (replace) {
-          this.currentReleases.clear();
-        } else {
-          response.releases = response.releases.filter((value) => {
-            return !this.currentReleases.has(value.episodeId + value.link);
-          });
-        }
-        this.currentDate = new Date();
-        // replace previous releases if necessary
-        const releases: DisplayReleaseItem[] = replace ? [] : [...this.releases];
-        this.replace = false;
-        // when filter changed while a previous query is still running, it may lead to wrong results
-        // should not happen because no two fetches should happen at the same time
-
-        const mediumIdMap = new Map<number, MinMedium>();
-        // insert fetched releases at the corresponding place
-        releases.push(
-          ...response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
-            if (!(item.date instanceof Date)) {
-              item.date = new Date(item.date);
-            }
-            const key = item.episodeId + item.link;
-            this.currentReleases.add(key);
-
-            let medium: SimpleMedium | undefined = this.$store.getters.getMedium(item.mediumId);
-
-            if (!medium) {
-              // build map only if necessary and previously empty
-              if (!mediumIdMap.size) {
-                response.media.forEach((responseMedium) => {
-                  mediumIdMap.set(responseMedium.id, responseMedium);
-                });
-              } else {
-                medium = mediumIdMap.get(item.mediumId);
-              }
-            }
-            return {
-              key,
-              date: formatDate(item.date),
-              episodeId: item.episodeId,
-              link: item.link,
-              mediumId: item.mediumId,
-              mediumTitle: medium?.title || "Unknown",
-              medium: medium?.medium || 0,
-              read: item.progress >= 1,
-              time: item.date.getTime(),
-              title: item.title,
-              locked: item.locked,
-            };
-          }),
-        );
-        releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
-        this.releases = reactive(releases);
-      } catch (error) {
-        this.$toast.add({
-          severity: "error",
-          summary: "Could not load Releases",
-          detail: error + "",
-          // life: 1000,
-        });
-        console.error(error);
-      } finally {
-        this.fetching = false;
-
-        if (replace) {
-          this.isRefreshing = false;
-        }
-      }
+    async fetchReleases(force: boolean) {
+      await this.$store.dispatch("releases/loadDisplayReleases", force);
     },
 
     /**
@@ -649,11 +526,7 @@ export default defineComponent({
         .then((success) => {
           if (success) {
             // update progress of all releases for the same episode
-            this.releases.forEach((element: DisplayReleaseItem) => {
-              if (release.episodeId === element.episodeId) {
-                element.read = !!newProgress;
-              }
-            });
+            this.$store.commit("releases/updateProgress", { episodeId: release.episodeId, read: !!newProgress });
           } else {
             return Promise.reject(new Error("progress update not successfull"));
           }
@@ -669,10 +542,6 @@ export default defineComponent({
     refresh() {
       this.isRefreshing = true;
       this.fetchReleases(true).finally(() => (this.isRefreshing = false));
-    },
-    fetchNew() {
-      this.isFetching = true;
-      this.fetchReleases(false).finally(() => (this.isFetching = false));
     },
   },
 });

@@ -145,7 +145,9 @@ const nextId = idGenerator();
 function model(prop: RequestConfig) {
   return {
     options: Object.assign({}, prop.options || {}, { method: "GET" }),
-    headers: Object.entries(prop.options?.headers || {}) as Array<[string, string]>,
+    // eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
+    // @ts-ignore does not pick up cloudscraper typings..
+    headers: Object.entries(prop.options?.headers || {}),
     regexUrl: prop.regexUrl || { flags: "", pattern: "" },
     transformUrl: prop.transformUrl || "",
     templateUrl: prop.templateUrl || "",
@@ -193,6 +195,8 @@ export default defineComponent({
         result.transformUrl = newValue.transformUrl || "";
 
         result.options = clone(newValue.options);
+        // eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
+        // @ts-ignore does not pick up cloudscraper typings..
         result.options.headers = Object.fromEntries(newValue.headers);
 
         if (deepEqual(result, this.modelValue)) {
@@ -217,8 +221,12 @@ export default defineComponent({
         result.options = Object.assign({ method: "GET" }, newValue.options || {});
 
         // remove it as it is managed separately
+        // eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
+        // @ts-ignore does not pick up cloudscraper typings..
         delete result.options.headers;
 
+        // eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
+        // @ts-ignore does not pick up cloudscraper typings..
         result.headers = Object.entries(newValue.options?.headers || {});
 
         if (deepEqual(result, this.model)) {

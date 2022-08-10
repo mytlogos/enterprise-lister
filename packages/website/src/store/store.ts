@@ -11,6 +11,7 @@ import externalUserStore from "./externaluser";
 import newsStore from "./news";
 import hookStore from "./hooks";
 import { UserNotification } from "enterprise-core/dist/types";
+import { actions as settingsActions, mutations as settingsMutations, state as settingsState } from "./settings";
 
 function userClear(commit: Commit) {
   commit("userName", "");
@@ -45,6 +46,11 @@ export const store = createStore({
     media: mediumStore,
     news: newsStore,
     hooks: hookStore,
+    settings: {
+      actions: settingsActions,
+      state: settingsState,
+      mutations: settingsMutations,
+    },
   },
   // @ts-expect-error
   state: (): VuexStore => ({

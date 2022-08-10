@@ -33,6 +33,18 @@ export default defineComponent({
         this.loginState();
       }
     },
+    "$store.settings.notifications": {
+      handler() {
+        // FIXME: does not fire somehow on changes
+        if (this.$store.state.settings.notifications.newReleases.enabled) {
+          this.$store.dispatch("activateNewReleases");
+        } else {
+          this.$store.dispatch("deactivateNewReleases");
+        }
+      },
+      immediate: true,
+      deep: true,
+    },
   },
   mounted() {
     onBusEvent("refresh:externalUser", (data: string) => this.refreshExternalUser(data));
