@@ -1,9 +1,15 @@
 <template>
   <div>
-    <h5>Notifications</h5>
-    <p-button label="Save" />
+    <Toolbar>
+      <template #start>
+        <h5 class="m-0">Notifications</h5>
+      </template>
+      <template #end>
+        <p-button label="Save" />
+      </template>
+    </Toolbar>
     <form>
-      <h6>Global Settings</h6>
+      <h6 class="my-2">Global Settings</h6>
       <p-button
         v-if="shouldRequestPermission"
         label="Permit native Notifications"
