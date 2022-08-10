@@ -1,3 +1,10 @@
+## [2.8.1](https://github.com/mytlogos/enterprise-lister/compare/v2.8.0...v2.8.1) (2022-08-10)
+
+
+### Bug Fixes
+
+* **website:** change margins on notification settins ([e46bd04](https://github.com/mytlogos/enterprise-lister/commit/e46bd04872c8438ad75ad12fb6e14aad0f92bd95))
+
 # [2.8.0](https://github.com/mytlogos/enterprise-lister/compare/v2.7.0...v2.8.0) (2022-08-10)
 
 
