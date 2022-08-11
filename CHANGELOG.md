@@ -1,3 +1,15 @@
+# [2.9.0](https://github.com/mytlogos/enterprise-lister/compare/v2.8.1...v2.9.0) (2022-08-11)
+
+
+### Bug Fixes
+
+* **server:** fix api parameter typos ([07691b3](https://github.com/mytlogos/enterprise-lister/commit/07691b32318162c39015875d5e2b12d125aaf310))
+
+
+### Features
+
+* **website:** replace vuex with pinia ([f592045](https://github.com/mytlogos/enterprise-lister/commit/f592045346a2624ba24e3bebb176265d93161207))
+
 ## [2.8.1](https://github.com/mytlogos/enterprise-lister/compare/v2.8.0...v2.8.1) (2022-08-10)
 
 
