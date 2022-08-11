@@ -9,7 +9,7 @@
         </template>
       </SelectButton>
       <SelectButton
-        v-model="typeFilter"
+        v-model="releaseStore.typeFilter"
         class="d-inline-block"
         :options="typeFilterValues"
         data-key="value"
@@ -31,7 +31,7 @@
           force-selection
           :suggestions="mediumSuggestions"
           field="title"
-          @item-select="ignoreMedium($event.value)"
+          @item-select="releaseStore.ignoreMedium($event.value)"
           @complete="searchMedium($event)"
         />
         <label for="ignoremedium-input">Ignore Medium Title</label>
@@ -43,7 +43,7 @@
           force-selection
           :suggestions="listSuggestions"
           field="name"
-          @item-select="ignoreList($event.value)"
+          @item-select="releaseStore.ignoreList($event.value)"
           @complete="searchList($event)"
         />
         <label for="ignorelist-input">Ignore List Title</label>
@@ -57,18 +57,18 @@
         class="m-1 bg-success text-bg-success"
         :label="medium.title"
         removable
-        @remove="unrequireMedium(medium)"
+        @remove="releaseStore.unrequireMedium(medium.id)"
       />
     </div>
-    <div v-if="ignoreMedia.length">
+    <div v-if="releaseStore.ignoreMedia.length">
       <div class="px-1">Ignored Media:</div>
       <Chip
-        v-for="medium in ignoreMedia"
+        v-for="medium in releaseStore.getIgnoreMedia"
         :key="medium.id"
         class="m-1 bg-danger text-bg-danger"
         :label="medium.title"
         removable
-        @remove="unignoreMedium(medium)"
+        @remove="releaseStore.unignoreMedium(medium.id)"
       />
     </div>
     <div v-if="onlyLists.length">
@@ -79,18 +79,18 @@
         class="m-1 bg-success text-bg-success"
         :label="list.name"
         removable
-        @remove="unrequireList(list)"
+        @remove="releaseStore.unrequireList(list.id)"
       />
     </div>
-    <div v-if="ignoreLists.length">
+    <div v-if="releaseStore.getIgnoreLists.length">
       <div class="px-1">Ignored Lists:</div>
       <Chip
-        v-for="list in ignoreLists"
+        v-for="list in releaseStore.getIgnoreLists"
         :key="list.id"
         :label="list.name"
         class="m-1 bg-danger text-bg-danger"
         removable
-        @remove="unignoreList(list)"
+        @remove="releaseStore.unignoreList(list.id)"
       />
     </div>
     <DataTable
@@ -98,7 +98,7 @@
       scrollable
       scroll-height="800px"
       :virtual-scroller-options="{ itemSize: 50 }"
-      :loading="fetching"
+      :loading="releaseStore.fetching"
       striped-rows
     >
       <template #empty> No records found </template>
@@ -146,19 +146,25 @@
             icon="pi pi-ban"
             class="p-button-text p-button-warning"
             style="margin: -0.5rem 0"
-            @click.left="ignoreMedium(getMedium(slotProps.data.mediumId))"
+            @click.left="releaseStore.ignoreMedium(slotProps.data.mediumId)"
           />
         </template>
       </Column>
     </DataTable>
   </div>
 </template>
-<script lang="ts">
+<script lang="ts" setup>
 import { StoreList as List, MediaType, SimpleMedium, DisplayReleaseItem } from "../siteTypes";
-import { defineComponent } from "vue";
+import { watch, computed, onMounted, ref } from "vue";
 import { HttpClient } from "../Httpclient";
 import { PrimeIcons } from "primevue/api";
+import { useReleaseStore } from "../store/releases";
+import { useMediaStore } from "../store/media";
+import { useToast } from "primevue/usetoast";
+import { storeToRefs } from "pinia";
+import { useListStore } from "../store/lists";
 
+// TYPES
 interface Value<T> {
   value: T;
 }
@@ -167,23 +173,106 @@ interface SearchEvent {
   query: string;
 }
 
-interface Data {
-  typeReleases: Record<MediaType | number, number>;
-  pages: Array<{ latest: Date; until: Date }>;
-  isFetching: boolean;
-  isRefreshing: boolean;
-  readFilterValues: [Value<true>, Value<false>];
-  typeFilterValues: Array<{
-    tooltip: string;
-    count: number;
-    icon: string;
-    value: number;
-  }>;
-  mediumSuggestion?: SimpleMedium;
-  mediumSuggestions: SimpleMedium[];
-  listSuggestions: List[];
-  listSuggestion?: List;
-}
+// MODIFIABLE VALUES
+const isRefreshing = ref(false); // for the button
+const pages: Array<{ latest: Date; until: Date }> = [{ latest: defaultLatest(), until: defaultEarliest() }];
+const readFilterValues = [{ value: true }, { value: false }];
+const typeFilterValues = ref([
+  {
+    tooltip: "Search Text Media",
+    count: 0,
+    icon: PrimeIcons.BOOK,
+    value: MediaType.TEXT,
+  },
+  {
+    tooltip: "Search Image Media",
+    count: 0,
+    icon: PrimeIcons.IMAGE,
+    value: MediaType.IMAGE,
+  },
+  {
+    tooltip: "Search Video Media",
+    count: 0,
+    icon: PrimeIcons.YOUTUBE,
+    value: MediaType.VIDEO,
+  },
+  {
+    tooltip: "Search Audio Media",
+    count: 0,
+    icon: PrimeIcons.VOLUME_OFF,
+    value: MediaType.AUDIO,
+  },
+]);
+const mediumSuggestions = ref([] as SimpleMedium[]);
+const listSuggestions = ref([] as List[]);
+const mediumSuggestion: SimpleMedium | undefined = undefined;
+const listSuggestion: List | undefined = undefined;
+
+// STORES
+const releaseStore = useReleaseStore();
+const mediaStore = useMediaStore();
+const listStore = useListStore();
+
+// COMPUTED VALUES
+const onlyMedia: SimpleMedium[] = [];
+const onlyLists: List[] = [];
+const computedReleases = computed((): DisplayReleaseItem[] => {
+  if (releaseStore.typeFilter) {
+    return releaseStore.releases.filter((value) => value.medium & releaseStore.typeFilter);
+  } else {
+    return releaseStore.releases;
+  }
+});
+const readFilter = computed({
+  get(): Value<boolean> {
+    return { value: releaseStore.readFilter };
+  },
+  set(value: Value<boolean>) {
+    releaseStore.readFilter = value.value;
+  },
+});
+
+// WATCHES
+// cannot watch nested store property itself, need refs?
+const storeRefs = storeToRefs(releaseStore);
+watch(
+  [
+    storeRefs.readFilter,
+    storeRefs.onlyMedia,
+    storeRefs.readFilter,
+    storeRefs.onlyLists,
+    storeRefs.ignoreLists,
+    storeRefs.ignoreMedia,
+  ],
+  () => {
+    releaseStore.loadDisplayReleases(false);
+  },
+);
+watch(storeRefs.releases, () => {
+  const newCount = {
+    [MediaType.TEXT]: 0,
+    [MediaType.IMAGE]: 0,
+    [MediaType.VIDEO]: 0,
+    [MediaType.AUDIO]: 0,
+  };
+
+  releaseStore.releases.forEach((value) => {
+    if (value.medium) {
+      newCount[value.medium as MediaType]++;
+    }
+  });
+
+  typeFilterValues.value.forEach((item) => {
+    item.count = newCount[item.value];
+  });
+});
+
+onMounted(() => {
+  releaseStore.resetDates();
+  releaseStore.loadDisplayReleases(false);
+});
+
+// FUNCTIONS
 
 function defaultLatest(): Date {
   // some releases have dates in the future, so get them at most one year in the future
@@ -200,351 +289,106 @@ function defaultEarliest(): Date {
   return until;
 }
 
-export default defineComponent({
-  name: "Releases",
-  data(): Data {
-    const latest = new Date();
-    latest.setFullYear(latest.getFullYear() + 1);
+// TODO: reimplement pagination again
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function paginate(event: { previous: number; current: number }) {
+  const diff = event.current - event.previous;
 
-    const until = new Date();
-    until.setMonth(until.getMonth() - 1);
+  // TODO: support page difference of more than 1 page
+  if (Math.abs(diff) !== 1) {
+    return;
+  }
 
-    return {
-      isFetching: false, // for the button
-      isRefreshing: false, // for the button
-      typeReleases: {
-        [MediaType.TEXT]: 0,
-        [MediaType.IMAGE]: 0,
-        [MediaType.VIDEO]: 0,
-        [MediaType.AUDIO]: 0,
-      },
-      pages: [{ latest: defaultLatest(), until: defaultEarliest() }],
-      readFilterValues: [{ value: true }, { value: false }],
-      typeFilterValues: [
-        {
-          tooltip: "Search Text Media",
-          count: 0,
-          icon: PrimeIcons.BOOK,
-          value: MediaType.TEXT,
-        },
-        {
-          tooltip: "Search Image Media",
-          count: 0,
-          icon: PrimeIcons.IMAGE,
-          value: MediaType.IMAGE,
-        },
-        {
-          tooltip: "Search Video Media",
-          count: 0,
-          icon: PrimeIcons.YOUTUBE,
-          value: MediaType.VIDEO,
-        },
-        {
-          tooltip: "Search Audio Media",
-          count: 0,
-          icon: PrimeIcons.VOLUME_OFF,
-          value: MediaType.AUDIO,
-        },
-      ],
-      mediumSuggestions: [],
-      listSuggestions: [],
-      mediumSuggestion: undefined,
-      listSuggestion: undefined,
-    };
-  },
-  computed: {
-    fetching() {
-      return this.$store.state.releases.fetching;
-    },
-    releases() {
-      return this.$store.state.releases.releases;
-    },
-    onlyMedia(): SimpleMedium[] {
-      return [];
-    },
-    onlyLists(): List[] {
-      return [];
-    },
-    ignoreMedia(): SimpleMedium[] {
-      return this.$store.state.releases.ignoreMedia.map((id) => {
-        return this.$store.state.media.media[id] || { id, title: "Unknown" };
-      });
-    },
-    ignoreLists(): List[] {
-      return this.$store.state.releases.ignoreLists.map((id) => {
-        return (
-          this.$store.state.lists.lists.find((list) => list.id === id) || {
-            id,
-            name: "Unknown",
-            external: false,
-            medium: 0,
-            userUuid: "",
-            items: [],
-          }
-        );
-      });
-    },
-    media(): SimpleMedium[] {
-      return Object.values(this.$store.state.media.media);
-    },
-    lists(): List[] {
-      return this.$store.state.lists.lists;
-    },
-    computedReleases(): DisplayReleaseItem[] {
-      if (this.typeFilter) {
-        return this.releases.filter((value) => value.medium & this.typeFilter);
-      } else {
-        return this.releases;
-      }
-    },
-    readFilter: {
-      get(): Value<boolean> {
-        return { value: !!this.$store.state.releases.readFilter };
-      },
-      set(read?: Value<boolean>) {
-        this.$store.commit("releases/readFilter", read?.value);
-      },
-    },
-    typeFilter: {
-      get(): number {
-        return this.$store.state.releases.typeFilter;
-      },
-      set(type: number) {
-        this.$store.commit("releases/typeFilter", type);
-      },
-    },
-  },
-  watch: {
-    readFilter() {
-      // when release filter changed, set replace current items flag and fetch anew
-      this.fetchReleases(false);
-    },
-    onlyMedia: {
-      handler() {
-        this.fetchReleases(false);
-      },
-      deep: true,
-    },
-    onlyLists: {
-      handler() {
-        this.fetchReleases(false);
-      },
-      deep: true,
-    },
-    ignoreMedia: {
-      handler() {
-        this.fetchReleases(false);
-      },
-      deep: true,
-    },
-    ignoreLists: {
-      handler() {
-        this.fetchReleases(false);
-      },
-      deep: true,
-    },
-    releases() {
-      const newCount = {
-        [MediaType.TEXT]: 0,
-        [MediaType.IMAGE]: 0,
-        [MediaType.VIDEO]: 0,
-        [MediaType.AUDIO]: 0,
-      };
+  if (diff < 0) {
+    const page = pages[event.current - 1];
 
-      this.releases.forEach((value) => {
-        if (value.medium) {
-          newCount[value.medium as MediaType]++;
-        }
-      });
+    if (!page) {
+      console.warn("Previous Page not found: " + page);
+      return;
+    }
+    releaseStore.until = page.until;
+    releaseStore.latest = page.latest;
+  } else {
+    const newIndex = event.current - 1;
+    const page = pages[newIndex];
 
-      Object.assign(this.typeReleases, newCount);
-      this.typeFilterValues.forEach((item) => {
-        item.count = newCount[item.value as MediaType];
-      });
-    },
-  },
-  mounted() {
-    this.$store.commit("releases/resetDates");
-    this.fetchReleases(false).catch(console.error);
-  },
-  methods: {
-    setUntil(until: Date) {
-      this.$store.commit("releases/until", until);
-    },
+    if (page) {
+      releaseStore.until = page.until;
+      releaseStore.latest = page.latest;
+    } else {
+      const lastRelease = releaseStore.releases[releaseStore.releases.length - 1];
 
-    setLatest(latest: Date) {
-      this.$store.commit("releases/latest", latest);
-    },
-
-    paginate(event: { previous: number; current: number }) {
-      const diff = event.current - event.previous;
-
-      // TODO: support page difference of more than 1 page
-      if (Math.abs(diff) !== 1) {
+      if (!lastRelease) {
+        console.warn("No Releases left");
         return;
       }
+      const until = new Date(releaseStore.until);
+      until.setMonth(until.getMonth() - 1);
+      releaseStore.until = until;
 
-      if (diff < 0) {
-        const page = this.pages[event.current - 1];
+      releaseStore.latest = new Date(lastRelease.date);
+      // do not miss releases which have the same time, but were not included in this page
+      releaseStore.latest.setSeconds(releaseStore.latest.getSeconds() - 1);
 
-        if (!page) {
-          console.warn("Previous Page not found: " + page);
-          return;
-        }
-        this.setUntil(page.until);
-        this.setLatest(page.latest);
-      } else {
-        const newIndex = event.current - 1;
-        const page = this.pages[newIndex];
-
-        if (page) {
-          this.setUntil(page.until);
-          this.setLatest(page.latest);
-        } else {
-          const lastRelease = this.releases[this.releases.length - 1];
-
-          if (!lastRelease) {
-            console.warn("No Releases left");
-            return;
-          }
-          const until = new Date(this.$store.state.releases.until);
-          until.setMonth(until.getMonth() - 1);
-          this.setUntil(until);
-
-          this.setLatest(new Date(lastRelease.date));
-          // do not miss releases which have the same time, but were not included in this page
-          this.$store.state.releases.latest.setSeconds(this.$store.state.releases.latest.getSeconds() - 1);
-
-          if (newIndex !== this.pages.length) {
-            console.warn(
-              "Cannot append Page at the current end, does not match end: ",
-              event.current,
-              this.pages.length,
-            );
-            return;
-          }
-          this.pages.push({ latest: this.$store.state.releases.latest, until: this.$store.state.releases.until });
-        }
-      }
-      this.fetchReleases(true);
-    },
-    searchMedium(event: SearchEvent) {
-      const query = event.query.toLowerCase();
-
-      if (!query.trim()) {
-        this.mediumSuggestions = Object.values(this.$store.state.media.media);
+      if (newIndex !== pages.length) {
+        console.warn("Cannot append Page at the current end, does not match end: ", event.current, pages.length);
         return;
       }
-      this.mediumSuggestions = Object.values(this.$store.state.media.media).filter((medium) => {
-        return medium.title.toLowerCase().includes(query);
+      pages.push({ latest: releaseStore.latest, until: releaseStore.until });
+    }
+  }
+  releaseStore.loadDisplayReleases(true);
+}
+function searchMedium(event: SearchEvent) {
+  const query = event.query.toLowerCase();
+
+  if (!query.trim()) {
+    mediumSuggestions.value = mediaStore.mediaList;
+    return;
+  }
+  mediumSuggestions.value = mediaStore.mediaList.filter((medium) => {
+    return medium.title.toLowerCase().includes(query);
+  });
+}
+function searchList(event: SearchEvent) {
+  const query = event.query.toLowerCase();
+
+  if (!query.trim()) {
+    listSuggestions.value = listStore.lists;
+    return;
+  }
+  listSuggestions.value = listStore.lists.filter((list) => {
+    return list.name.toLowerCase().includes(query);
+  });
+}
+
+/**
+ * Update the progress of the episode of the release to either 0 or 1.
+ * Shows an error toast if it could not update the progress.
+ */
+function changeReadStatus(release: DisplayReleaseItem): void {
+  const newProgress = release.read ? 0 : 1;
+  HttpClient.updateProgress([release.episodeId], newProgress)
+    .then((success) => {
+      if (success) {
+        // update progress of all releases for the same episode
+        releaseStore.updateStoreProgress({ episodeId: release.episodeId, read: !!newProgress });
+      } else {
+        return Promise.reject(new Error("progress update not successfull"));
+      }
+    })
+    .catch((error) => {
+      useToast().add({
+        severity: "error",
+        summary: "Could not update Progress",
+        detail: error + "",
       });
-    },
-    searchList(event: SearchEvent) {
-      const query = event.query.toLowerCase();
-
-      if (!query.trim()) {
-        this.listSuggestions = Object.values(this.$store.state.lists.lists);
-        return;
-      }
-      this.listSuggestions = Object.values(this.$store.state.lists.lists).filter((list) => {
-        return list.name.toLowerCase().includes(query);
-      });
-    },
-    requireMedium(item: SimpleMedium): void {
-      if (item) {
-        this.$store.commit("releases/requireMedium", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    requireList(item: List): void {
-      if (item) {
-        this.$store.commit("releases/requireList", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    ignoreMedium(item: SimpleMedium): void {
-      if (item) {
-        this.mediumSuggestion = undefined;
-        this.$store.commit("releases/ignoreMedium", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    ignoreList(item: List): void {
-      if (item) {
-        this.listSuggestion = undefined;
-        this.$store.commit("releases/ignoreList", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    unrequireMedium(item: SimpleMedium): void {
-      if (item) {
-        this.$store.commit("releases/unrequireMedium", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    unrequireList(item: List): void {
-      if (item) {
-        this.$store.commit("releases/unrequireList", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    unignoreMedium(item: SimpleMedium): void {
-      if (item) {
-        this.$store.commit("releases/unignoreMedium", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    unignoreList(item: List): void {
-      if (item) {
-        this.$store.commit("releases/unignoreList", item.id);
-      } else {
-        console.trace("Got event without value!");
-      }
-    },
-    getMedium(id: number): SimpleMedium {
-      return this.$store.getters.getMedium(id);
-    },
-
-    async fetchReleases(force: boolean) {
-      await this.$store.dispatch("releases/loadDisplayReleases", force);
-    },
-
-    /**
-     * Update the progress of the episode of the release to either 0 or 1.
-     * Shows an error toast if it could not update the progress.
-     */
-    changeReadStatus(release: DisplayReleaseItem): void {
-      const newProgress = release.read ? 0 : 1;
-      HttpClient.updateProgress([release.episodeId], newProgress)
-        .then((success) => {
-          if (success) {
-            // update progress of all releases for the same episode
-            this.$store.commit("releases/updateProgress", { episodeId: release.episodeId, read: !!newProgress });
-          } else {
-            return Promise.reject(new Error("progress update not successfull"));
-          }
-        })
-        .catch((error) => {
-          this.$toast.add({
-            severity: "error",
-            summary: "Could not update Progress",
-            detail: error + "",
-          });
-        });
-    },
-    refresh() {
-      this.isRefreshing = true;
-      this.fetchReleases(true).finally(() => (this.isRefreshing = false));
-    },
-  },
-});
+    });
+}
+function refresh() {
+  isRefreshing.value = true;
+  releaseStore.loadDisplayReleases(true).finally(() => (isRefreshing.value = false));
+}
 </script>
 <style scoped>
 .btn-toolbar :deep(.p-button) {

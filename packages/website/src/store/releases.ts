@@ -1,8 +1,10 @@
-import { DisplayReleaseItem, ReleaseStore, VuexStore } from "../siteTypes";
-import { Module } from "vuex";
+import { DisplayReleaseItem, MediaType, SimpleMedium } from "../siteTypes";
 import { formatDate, remove } from "../init";
 import { HttpClient } from "../Httpclient";
-import { DisplayRelease, Id, MinMedium, SimpleMedium } from "enterprise-core/dist/types";
+import { DisplayRelease, Id, List, MinMedium } from "enterprise-core/dist/types";
+import { defineStore } from "pinia";
+import { useMediaStore } from "./media";
+import { useListStore } from "./lists";
 
 let fetchingReleases = false;
 
@@ -21,92 +23,103 @@ function defaultEarliest(): Date {
   return until;
 }
 
-const module: Module<ReleaseStore, VuexStore> = {
-  namespaced: true,
+interface LastFetch {
+  args: string;
+  date: number;
+}
+
+export const useReleaseStore = defineStore("releases", {
+  persist: {
+    afterRestore(context) {
+      // parse the stringified dates back into an object
+      context.store.$state.latest = new Date(context.store.$state.latest);
+      context.store.$state.until = new Date(context.store.$state.until);
+    },
+  },
   state: () => ({
-    readFilter: undefined,
-    typeFilter: 0,
-    onlyMedia: [],
-    onlyLists: [],
-    ignoreMedia: [],
-    ignoreLists: [],
+    readFilter: false as boolean,
+    typeFilter: 0 as 0 | MediaType,
+    onlyMedia: [] as Id[],
+    onlyLists: [] as Id[],
+    ignoreMedia: [] as Id[],
+    ignoreLists: [] as Id[],
     latest: defaultLatest(),
     until: defaultEarliest(),
-    releases: [],
-    lastFetch: undefined,
+    releases: [] as DisplayReleaseItem[],
+    lastFetch: undefined as LastFetch | undefined,
     fetching: false,
   }),
-  mutations: {
-    readFilter(state: ReleaseStore, read?: boolean): void {
-      state.readFilter = read;
+  getters: {
+    getIgnoreMedia(): SimpleMedium[] {
+      const mediaStore = useMediaStore();
+      return this.ignoreMedia.map((id) => {
+        return mediaStore.media[id] || { id, title: "Unknown" };
+      });
     },
-    typeFilter(state: ReleaseStore, type: number): void {
-      state.typeFilter = type;
+    getIgnoreLists(): List[] {
+      const listStore = useListStore();
+      return this.ignoreLists.map((id) => {
+        return (
+          listStore.lists.find((list) => list.id === id) || {
+            id,
+            name: "Unknown",
+            external: false,
+            medium: 0,
+            userUuid: "",
+            items: [],
+          }
+        );
+      });
     },
-    ignoreMedium(state, id: number) {
-      state.ignoreMedia.push(id);
+  },
+  actions: {
+    ignoreMedium(id: number) {
+      this.ignoreMedia.push(id);
     },
-    ignoreList(state, id: number) {
-      state.ignoreLists.push(id);
+    ignoreList(id: number) {
+      this.ignoreLists.push(id);
     },
-    requireMedium(state, id: number) {
-      state.onlyMedia.push(id);
+    requireMedium(id: number) {
+      this.onlyMedia.push(id);
     },
-    requireList(state, id: number) {
-      state.onlyLists.push(id);
+    requireList(id: number) {
+      this.onlyLists.push(id);
     },
-    unignoreMedium(state, id: number) {
-      remove(state.ignoreMedia, id);
+    unignoreMedium(id: number) {
+      remove(this.ignoreMedia, id);
     },
-    unignoreList(state, id: number) {
-      remove(state.ignoreLists, id);
+    unignoreList(id: number) {
+      remove(this.ignoreLists, id);
     },
-    unrequireMedium(state, id: number) {
-      remove(state.onlyMedia, id);
+    unrequireMedium(id: number) {
+      remove(this.onlyMedia, id);
     },
-    unrequireList(state, id: number) {
-      remove(state.onlyLists, id);
+    unrequireList(id: number) {
+      remove(this.onlyLists, id);
     },
-    latest(state, date: Date) {
-      state.latest = date;
+    resetDates() {
+      this.until = defaultEarliest();
+      this.latest = defaultLatest();
     },
-    until(state, date: Date) {
-      state.until = date;
-    },
-    resetDates(state) {
-      state.until = defaultEarliest();
-      state.latest = defaultLatest();
-    },
-    setFetching(state, fetching: boolean) {
-      state.fetching = fetching;
-    },
-    updateProgress(state, update: { episodeId: Id; read: boolean }) {
-      state.releases.forEach((element: DisplayReleaseItem) => {
+    updateStoreProgress(update: { episodeId: Id; read: boolean }) {
+      this.releases.forEach((element: DisplayReleaseItem) => {
         if (update.episodeId === element.episodeId) {
           element.read = update.read;
         }
       });
     },
-    lastFetch(state, lastFetch: ReleaseStore["lastFetch"]) {
-      state.lastFetch = lastFetch;
-    },
-    releases(state, releases: ReleaseStore["releases"]) {
-      state.releases = releases;
-    },
-  },
-  actions: {
-    async loadDisplayReleases({ state, commit, rootGetters }, force: boolean) {
+    async loadDisplayReleases(force: boolean) {
       if (fetchingReleases) {
         return;
       }
       const args: Parameters<typeof HttpClient.getDisplayReleases> = [
-        state.latest,
-        state.until,
-        state.readFilter,
-        state.onlyLists,
-        state.onlyMedia,
-        state.ignoreLists,
-        state.ignoreMedia,
+        this.latest,
+        this.until,
+        this.readFilter,
+        this.onlyLists,
+        this.onlyMedia,
+        this.ignoreLists,
+        this.ignoreMedia,
       ];
 
       const currentFetch = JSON.stringify(args);
@@ -115,15 +128,15 @@ const module: Module<ReleaseStore, VuexStore> = {
       // do not try to get releases with the same args twice in less than a minute
       if (
         !force &&
-        state.lastFetch &&
-        nowMillis - state.lastFetch.date < 1000 * 60 &&
-        currentFetch === state.lastFetch.args
+        this.lastFetch &&
+        nowMillis - this.lastFetch.date < 1000 * 60 &&
+        currentFetch === this.lastFetch.args
       ) {
         return;
       }
-      commit("lastFetch", { args: currentFetch, date: nowMillis });
+      this.lastFetch = { args: currentFetch, date: nowMillis };
       fetchingReleases = true;
-      commit("setFetching", true);
+      this.fetching = true;
 
       try {
         const response = await HttpClient.getDisplayReleases(...args);
@@ -133,6 +146,7 @@ const module: Module<ReleaseStore, VuexStore> = {
         // should not happen because no two fetches should happen at the same time
 
         const mediumIdMap = new Map<number, MinMedium>();
+        const mediaStore = useMediaStore();
 
         // insert fetched releases at the corresponding place
         releases.push(
@@ -142,7 +156,7 @@ const module: Module<ReleaseStore, VuexStore> = {
             }
             const key = item.episodeId + item.link;
 
-            let medium: SimpleMedium | undefined = rootGetters.getMedium(item.mediumId);
+            let medium: SimpleMedium | undefined = mediaStore.media[item.mediumId];
 
             if (!medium) {
               // build map only if necessary and previously empty
@@ -170,14 +184,13 @@ const module: Module<ReleaseStore, VuexStore> = {
           }),
         );
         releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
-        commit("releases", releases);
+        this.releases = releases;
       } catch (error) {
         console.error(error);
       } finally {
         fetchingReleases = false;
-        commit("setFetching", false);
+        this.fetching = false;
       }
     },
   },
-};
-export default module;
+});

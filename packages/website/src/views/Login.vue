@@ -25,6 +25,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
+import { useUserStore } from "../store/store";
 
 export default defineComponent({
   name: "Login",
@@ -46,7 +47,7 @@ export default defineComponent({
   },
   methods: {
     sendForm(): void {
-      this.$store.dispatch("login", { user: this.user, pw: this.pw });
+      useUserStore().login({ user: this.user, pw: this.pw });
     },
   },
 });

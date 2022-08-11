@@ -1,5 +1,5 @@
 import { ChannelMessage, WSRequest } from "enterprise-scraper/dist/externals/types";
-import { store } from "./store/store";
+import { useUserStore } from "./store/store";
 
 let socket: WebSocket | null = null;
 // correct mapping of WSEventListener is not yet known/possible
@@ -16,9 +16,10 @@ function runCatching(listener: () => void): void {
 
 function createSocket() {
   const url = new URL("ws://" + window.location.host + "/api/user/crawler/live");
+  const store = useUserStore();
 
-  url.searchParams.append("uuid", store.state.uuid);
-  url.searchParams.append("session", store.state.session);
+  url.searchParams.append("uuid", store.uuid);
+  url.searchParams.append("session", store.session);
 
   socket = new WebSocket(url.toString());
   // remove socket on close

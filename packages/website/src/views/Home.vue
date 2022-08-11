@@ -21,48 +21,56 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { computed } from "vue";
 import { MediaType, ReleaseState } from "../siteTypes";
+import { useMediaStore } from "../store/media";
 
-export default defineComponent({
-  name: "Home",
-  computed: {
-    mediaCount() {
-      const mediaCounts = {
-        [MediaType.TEXT]: { name: "Text", value: 0 },
-        [MediaType.IMAGE]: { name: "Image", value: 0 },
-        [MediaType.VIDEO]: { name: "Video", value: 0 },
-        [MediaType.AUDIO]: { name: "Audio", value: 0 },
-      };
-      const stateTlCounts = {
-        [ReleaseState.Complete]: { name: "Complete", value: 0 },
-        [ReleaseState.Discontinued]: { name: "Discontinued", value: 0 },
-        [ReleaseState.Dropped]: { name: "Dropped", value: 0 },
-        [ReleaseState.Hiatus]: { name: "Hiatus", value: 0 },
-        [ReleaseState.Ongoing]: { name: "Ongoing", value: 0 },
-        [ReleaseState.Unknown]: { name: "Unknown", value: 0 },
-      };
-      const authors = new Set();
-      let total = 0;
+// TYPES
 
-      for (const medium of Object.values(this.$store.state.media.media)) {
-        mediaCounts[medium.medium as MediaType].value++;
-        total++;
-        authors.add(medium.author);
+// STORES
+const mediaStore = useMediaStore();
 
-        if (medium.stateTL) {
-          stateTlCounts[medium.stateTL].value++;
-        }
-      }
+// DATA
 
-      return {
-        total,
-        counts: Object.values(mediaCounts),
-        authors: authors.size,
-        states: Object.values(stateTlCounts),
-      };
-    },
-  },
+// COMPUTED
+const mediaCount = computed(() => {
+  const mediaCounts = {
+    [MediaType.TEXT]: { name: "Text", value: 0 },
+    [MediaType.IMAGE]: { name: "Image", value: 0 },
+    [MediaType.VIDEO]: { name: "Video", value: 0 },
+    [MediaType.AUDIO]: { name: "Audio", value: 0 },
+  };
+  const stateTlCounts = {
+    [ReleaseState.Complete]: { name: "Complete", value: 0 },
+    [ReleaseState.Discontinued]: { name: "Discontinued", value: 0 },
+    [ReleaseState.Dropped]: { name: "Dropped", value: 0 },
+    [ReleaseState.Hiatus]: { name: "Hiatus", value: 0 },
+    [ReleaseState.Ongoing]: { name: "Ongoing", value: 0 },
+    [ReleaseState.Unknown]: { name: "Unknown", value: 0 },
+  };
+  const authors = new Set();
+  let total = 0;
+
+  for (const medium of mediaStore.mediaList) {
+    mediaCounts[medium.medium as MediaType].value++;
+    total++;
+    authors.add(medium.author);
+
+    if (medium.stateTL) {
+      stateTlCounts[medium.stateTL].value++;
+    }
+  }
+
+  return {
+    total,
+    counts: Object.values(mediaCounts),
+    authors: authors.size,
+    states: Object.values(stateTlCounts),
+  };
 });
+
+// WATCHES
+
+// FUNCTIONS
 </script>

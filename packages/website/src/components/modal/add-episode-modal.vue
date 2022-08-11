@@ -129,7 +129,7 @@ export default defineComponent({
         0;
 
       this.parts.push({
-        mediumId: medium.id as number,
+        mediumId: medium.id,
         id: 0,
         totalIndex: this.newPartIndex,
         episodes: Array(this.newEpisodeCount)

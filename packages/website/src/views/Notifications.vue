@@ -8,7 +8,7 @@
           class="btn btn-primary me-2"
           @click="requestPermission"
         />
-        <p-button label="Read all" class="btn btn-primary me-2" @click="$store.dispatch('readAllNotifications')" />
+        <p-button label="Read all" class="btn btn-primary me-2" @click="userStore.readAllNotifications()" />
         <select-button v-model="selectedRead" :options="readOptions" option-label="name" option-value="value" />
       </template>
     </toolbar>
@@ -29,9 +29,11 @@
 </template>
 <script lang="ts">
 import { UserNotification } from "enterprise-core/dist/types";
+import { mapStores } from "pinia";
 import { defineComponent } from "vue";
 import { HttpClient } from "../Httpclient";
 import { requestPermission, shouldRequestPermission } from "../notifications";
+import { useUserStore } from "../store/store";
 
 export default defineComponent({
   name: "Notifications",
@@ -53,11 +55,13 @@ export default defineComponent({
     };
   },
   computed: {
+    ...mapStores(useUserStore),
     totalItemsCount() {
       if (this.selectedRead) {
         return 0;
       } else {
-        return this.$store.state.user.unreadNotificationsCount;
+        // @ts-expect-error
+        return this.userStore.user.unreadNotificationsCount;
       }
     },
   },
@@ -81,7 +85,7 @@ export default defineComponent({
       if (index >= 0) {
         this.notifications.splice(index, 1);
       }
-      this.$store.dispatch("readNotification", item);
+      this.userStore.readNotification(item);
     },
     async currentNofitications() {
       const now = new Date();

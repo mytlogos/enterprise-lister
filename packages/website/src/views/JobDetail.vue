@@ -67,6 +67,8 @@ import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import { Job, JobHistoryItem, JobTrack } from "../siteTypes";
 import { formatDate, absoluteToRelative, isString } from "../init";
+import { useMediaStore } from "../store/media";
+import { mapStores } from "pinia";
 
 interface Data {
   job?: Job;
@@ -91,6 +93,9 @@ export default defineComponent({
       enabled: true,
       history: [],
     };
+  },
+  computed: {
+    ...mapStores(useMediaStore),
   },
   watch: {
     enabled() {
@@ -141,10 +146,10 @@ export default defineComponent({
         return name;
       }
       const id = Number.parseInt(match[1]);
-      const medium = this.$store.getters.getMedium(id);
+      const medium = this.mediaStore.media[id];
       const link = match[2];
       const domainName = domainRegex.exec(link);
-      return `Toc: ${medium ? (medium.title as string) : "Deleted Medium"} of ${domainName?.[2] || ""}`;
+      return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName?.[2] || ""}`;
     },
     dateToString(date?: Date | null): string {
       if (!date) {

@@ -1,3 +1,4 @@
+import { useExternalUserStore } from "../store/externaluser";
 <template>
   <div ref="root" class="external">
     <h1 id="external-user">ExternalUser</h1>
@@ -38,7 +39,7 @@
 import { emitBusEvent, onBusEvent } from "../bus";
 import addExternalModal from "./modal/add-external-modal.vue";
 import confirmModal from "./modal/confirm-modal.vue";
-
+import { useExternalUserStore } from "../store/externaluser";
 import { defineComponent } from "vue";
 import { EmptyObject, ExternalUser } from "../siteTypes";
 
@@ -103,8 +104,8 @@ export default defineComponent({
   },
   computed: {
     filteredData(): Array<ExternalUserItem | EmptyObject> {
-      const data: Array<ExternalUserItem | EmptyObject> = this.$store.state.externalUser.externalUser
-        .filter((value) => value)
+      const data: Array<ExternalUserItem | EmptyObject> = useExternalUserStore()
+        .externalUser.filter((value) => value)
         .map((value): ExternalUserItem => {
           const host = this.hosts.find((hostValue) => hostValue.value === value.type);
           if (!host) {
@@ -203,7 +204,7 @@ export default defineComponent({
       if (!this.markDelete) {
         return;
       }
-      this.$store.dispatch("deleteExternalUser", this.markDelete);
+      useExternalUserStore().deleteExternalUser(this.markDelete);
     },
 
     refreshItem(item: ExternalUser | EmptyObject): void {

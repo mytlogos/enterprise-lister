@@ -1,49 +1,52 @@
-import { ListsStore, StoreInternalList, StoreList, VuexStore } from "../siteTypes";
-import { Module } from "vuex";
+import { StoreInternalList, StoreList } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import { List } from "enterprise-core/src/types";
+import { defineStore } from "pinia";
+import { useExternalUserStore } from "./externaluser";
 
-const module: Module<ListsStore, VuexStore> = {
+export const useListStore = defineStore("lists", {
+  persist: true,
   state: () => ({
-    lists: [],
+    lists: [] as StoreInternalList[],
   }),
   getters: {
-    allLists(state, _getters, rootState): StoreList[] {
-      const externalLists = rootState.externalUser.externalUser.flatMap((value) => value.lists);
-      return [...state.lists, ...externalLists];
+    allLists(): StoreList[] {
+      const externalLists = useExternalUserStore().externalUser.flatMap((value) => value.lists);
+      return [...this.lists, ...externalLists];
     },
   },
-  mutations: {
-    userLists(state, lists: List[]): void {
-      state.lists = lists.map((list) => ({ ...list, external: false }));
+
+  actions: {
+    userListsLocal(lists: List[]): void {
+      this.lists = lists.map((list) => ({ ...list, external: false }));
     },
-    addList(state, list: StoreInternalList) {
+    addListLocal(list: StoreInternalList) {
       list.external = false;
-      state.lists.push(list);
+      this.lists.push(list);
     },
-    deleteList(state, id: number) {
-      const index = state.lists.findIndex((value) => value.id === id);
+    deleteListLocal(id: number) {
+      const index = this.lists.findIndex((value) => value.id === id);
       if (index < 0) {
         throw Error("invalid listId");
       }
-      state.lists.splice(index, 1);
+      this.lists.splice(index, 1);
     },
-    removeListItem(state, payload: { listId: number; mediumId: number }) {
-      const list = state.lists.find((value) => value.id === payload.listId);
+    removeListItemLocal(payload: { listId: number; mediumId: number }) {
+      const list = this.lists.find((value) => value.id === payload.listId);
       if (!list) {
         throw Error("invalid listId");
       }
       list.items = list.items.filter((id) => id !== payload.mediumId);
     },
-    addListItem(state, payload: { listId: number; mediumId: number }) {
-      const list = state.lists.find((value) => value.id === payload.listId);
+    addListItemLocal(payload: { listId: number; mediumId: number }) {
+      const list = this.lists.find((value) => value.id === payload.listId);
       if (!list) {
         throw Error("invalid listId");
       }
       list.items.push(payload.mediumId);
     },
-    updateList(state, updateList: List) {
-      const list = state.lists.find((value: List) => value.id === updateList.id);
+    updateListLocal(updateList: List) {
+      const list = this.lists.find((value: List) => value.id === updateList.id);
 
       if (list) {
         Object.assign(list, updateList);
@@ -51,38 +54,33 @@ const module: Module<ListsStore, VuexStore> = {
         console.error("Cannot find list to update for id:", updateList.id);
       }
     },
-  },
-  actions: {
-    async loadLists({ commit }) {
+    async loadLists() {
       try {
         const lists = await HttpClient.getLists();
-        commit("userLists", lists);
+        this.userListsLocal(lists);
         console.log("Finished loading Lists", lists);
       } catch (error) {
         console.error(error);
       }
     },
 
-    async addList({ commit }, data: { name: string; type: number }) {
+    async addList(data: { name: string; type: number }) {
       if (!data.name) {
-        commit("addListModalError", "Missing name");
+        // TODO: commit("addListModalError", "Missing name");
       } else if (!data.type) {
-        commit("addListModalError", "Missing type");
+        // TODO: commit("addListModalError", "Missing type");
       } else {
         return HttpClient.createList(data).then((list) => {
-          commit("addList", list);
-          commit("resetModal", "addList");
+          // @ts-expect-error
+          this.addListLocal(list);
+          // TODO: commit("resetModal", "addList");
         });
       }
     },
 
-    deleteList({ commit }, id: number) {
-      HttpClient.deleteList(id)
-        .then(() => {
-          commit("deleteList", id);
-        })
-        .catch((error) => console.log(error));
+    async deleteList(id: number) {
+      await HttpClient.deleteList(id);
+      this.deleteListLocal(id);
     },
   },
-};
-export default module;
+});

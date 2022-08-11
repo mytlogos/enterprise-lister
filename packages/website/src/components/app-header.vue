@@ -5,7 +5,7 @@
         <p-button
           id="notifications"
           type="button"
-          :badge="($store.state.user.unreadNotificationsCount || '') + ''"
+          :badge="(userStore.user.unreadNotificationsCount || '') + ''"
           icon="pi pi-bell"
           class="dropdown-toggle p-button-text p-button-plain w-100 px-2"
           data-bs-toggle="dropdown"
@@ -14,11 +14,7 @@
         <ul class="dropdown-menu" aria-labelledby="notifications">
           <toolbar>
             <template #start>
-              <p-button
-                label="Read all"
-                class="btn btn-primary me-2"
-                @click="$store.dispatch('readAllNotifications')"
-              />
+              <p-button label="Read all" class="btn btn-primary me-2" @click="userStore.readAllNotifications()" />
               <router-link :to="{ name: 'notifications' }" class="btn btn-primary">View all</router-link>
             </template>
           </toolbar>
@@ -30,7 +26,7 @@
                 <p class="card-text text-truncate">
                   {{ item.content }}
                 </p>
-                <a href="#" class="btn btn-primary" @click="$store.dispatch('readNotification', item)">Read</a>
+                <a href="#" class="btn btn-primary" @click="userStore.readNotification(item)">Read</a>
               </div>
             </div>
           </li>
@@ -42,7 +38,6 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { mapGetters, mapState } from "vuex";
 import "@popperjs/core/dist/umd/popper.min.js";
 import "bootstrap/js/dist/dropdown";
 import Menubar from "primevue/menubar";
@@ -50,6 +45,8 @@ import { MenuItem as OriginalMenuItem } from "primevue/menuitem";
 import { HttpClient } from "../Httpclient";
 import { UserNotification } from "enterprise-core/dist/types";
 import { notify } from "../notifications";
+import { mapStores } from "pinia";
+import { useUserStore } from "../store/store";
 
 type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | { name: string } };
 
@@ -135,8 +132,7 @@ export default defineComponent({
     };
   },
   computed: {
-    ...mapState(["name"]),
-    ...mapGetters(["loggedIn"]),
+    ...mapStores(useUserStore),
     menuItems() {
       const items: MenuItem[] = [
         {
@@ -145,11 +141,11 @@ export default defineComponent({
         },
       ];
 
-      if (this.loggedIn) {
+      if (this.userStore.loggedIn) {
         items.push(
           ...this.loggedInItems,
           {
-            label: this.name,
+            label: this.userStore.name,
             icon: "pi pi-fw pi-user",
             to: { name: "settings" },
           },
@@ -171,7 +167,7 @@ export default defineComponent({
   },
   methods: {
     logout(): void {
-      this.$store.dispatch("logout").catch((error) => {
+      this.userStore.logout().catch((error) => {
         this.$toast.add({
           summary: "Logout failed",
           detail: error + "",
@@ -186,7 +182,7 @@ export default defineComponent({
       setInterval(() => this.getLatestNotifications(), 1000 * 60);
     },
     async getLatestNotifications() {
-      await this.$store.dispatch("checkNotificationCounts");
+      await this.userStore.checkNotificationCounts();
 
       const now = new Date();
       now.setDate(now.getDate() - 5);
@@ -200,8 +196,8 @@ export default defineComponent({
 
       if (notifications.length) {
         const titleSuffix =
-          this.$store.state.user.unreadNotificationsCount > 1
-            ? ` +${this.$store.state.user.unreadNotificationsCount - 1} more`
+          this.userStore.user.unreadNotificationsCount > 1
+            ? ` +${this.userStore.user.unreadNotificationsCount - 1} more`
             : "";
         notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
       }

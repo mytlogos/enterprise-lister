@@ -100,6 +100,8 @@ import ToolTip from "bootstrap/js/dist/tooltip";
 import Modal from "bootstrap/js/dist/modal";
 import TypeIcon from "../components/type-icon.vue";
 import mediaFilter from "../components/media-filter.vue";
+import { useListStore } from "../store/lists";
+import { mapState } from "pinia";
 
 interface Data {
   title: string;
@@ -139,9 +141,7 @@ export default defineComponent({
     };
   },
   computed: {
-    lists() {
-      return this.$store.state.lists.lists;
-    },
+    ...mapState(useListStore, ["lists"]),
   },
   mounted() {
     // eslint-disable-next-line @typescript-eslint/quotes

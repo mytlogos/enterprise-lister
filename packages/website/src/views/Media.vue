@@ -163,30 +163,22 @@
   </div>
 </template>
 
-<script lang="ts">
-import { SimpleMedium, ReleaseState, SecondaryMedium, MediaType } from "../siteTypes";
+<script lang="ts" setup>
+import { SimpleMedium, ReleaseState, SecondaryMedium, MediaType, Medium as StoreMedium } from "../siteTypes";
 import releaseState from "../components/release-state.vue";
 import typeIcon from "../components/type-icon.vue";
-import { defineComponent } from "vue";
+import { computed, ref } from "vue";
 import { mergeMediaToc } from "../init";
 import { DataTableRowEditCancelEvent } from "primevue/datatable";
 import { HttpClient } from "../Httpclient";
 import { FilterMatchMode, FilterService } from "primevue/api";
+import { useMediaStore } from "../store/media";
+import { useToast } from "primevue/usetoast";
 
+// TYPES
 interface Medium extends SimpleMedium {
   readEpisodes: number;
   totalEpisodes: number;
-}
-
-interface Data {
-  showStatesTL: ReleaseState[];
-  statesOptions: ReleaseState[];
-  mediumOptions: MediaType[];
-  showStatesTLOptions: Array<{ name: string; value: ReleaseState }>;
-  hideCompleted: boolean;
-  editItemLoading: boolean;
-  filters: Record<keyof SimpleMedium, { value: any; matchMode: string }>;
-  editingRows: SimpleMedium[];
 }
 
 FilterService.register(
@@ -194,157 +186,114 @@ FilterService.register(
   (dataValue, filterValue) => filterValue == null || Number(dataValue ?? 0) === filterValue,
 );
 
-export default defineComponent({
-  name: "Media",
-  components: {
-    releaseState,
-    typeIcon,
+// DATA
+const editingRows = ref([] as Medium[]);
+const filters = {
+  stateOrigin: { value: null, matchMode: "lax-number-equals" },
+  medium: { value: null, matchMode: "lax-number-equals" },
+  author: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  title: { value: null, matchMode: FilterMatchMode.CONTAINS },
+};
+const editItemLoading = ref(false);
+const showStatesTLOptions = [
+  {
+    name: "Unknown",
+    value: ReleaseState.Unknown,
   },
-
-  data(): Data {
-    return {
-      editingRows: [],
-      filters: {
-        stateOrigin: { value: null, matchMode: "lax-number-equals" },
-        medium: { value: null, matchMode: "lax-number-equals" },
-        author: { value: null, matchMode: FilterMatchMode.CONTAINS },
-        title: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      },
-      editItemLoading: false,
-      showStatesTLOptions: [
-        {
-          name: "Unknown",
-          value: ReleaseState.Unknown,
-        },
-        {
-          name: "Ongoing",
-          value: ReleaseState.Ongoing,
-        },
-        {
-          name: "Hiatus",
-          value: ReleaseState.Hiatus,
-        },
-        {
-          name: "Discontinued",
-          value: ReleaseState.Discontinued,
-        },
-        {
-          name: "Dropped",
-          value: ReleaseState.Dropped,
-        },
-        {
-          name: "Complete",
-          value: ReleaseState.Complete,
-        },
-      ],
-      mediumOptions: [MediaType.TEXT, MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO],
-      showStatesTL: [
-        ReleaseState.Unknown,
-        ReleaseState.Ongoing,
-        ReleaseState.Hiatus,
-        ReleaseState.Discontinued,
-        ReleaseState.Dropped,
-        ReleaseState.Complete,
-      ],
-      statesOptions: [
-        ReleaseState.Unknown,
-        ReleaseState.Ongoing,
-        ReleaseState.Hiatus,
-        ReleaseState.Discontinued,
-        ReleaseState.Dropped,
-        ReleaseState.Complete,
-      ],
-      hideCompleted: false,
-    };
+  {
+    name: "Ongoing",
+    value: ReleaseState.Ongoing,
   },
-
-  computed: {
-    /**
-     * Make a copy so that mergeMedia does not operate on store values
-     */
-    media(): Medium[] {
-      return this.$store.getters.media.map((medium: Medium) => {
-        const secondary: SecondaryMedium | undefined = this.$store.state.media.secondaryMedia[medium.id as number];
-
-        const copy = { ...medium };
-        if (!secondary) {
-          return copy;
-        }
-
-        copy.totalEpisodes = secondary.totalEpisodes;
-        copy.readEpisodes = secondary.readEpisodes;
-
-        return mergeMediaToc(copy, secondary.tocs);
-      });
-    },
-    /**
-     * Filter by stateTl and "hideCompleted".
-     */
-    filteredMedia(): Medium[] {
-      return this.media.filter((medium: Medium) => {
-        if (medium.stateTL == null) {
-          return this.showStatesTL.includes(ReleaseState.Unknown);
-        }
-        if (!this.showStatesTL.includes(medium.stateTL)) {
-          return false;
-        }
-        return this.hideCompleted
-          ? medium.stateTL === ReleaseState.Complete && medium.readEpisodes !== medium.totalEpisodes
-          : true;
-      });
-    },
+  {
+    name: "Hiatus",
+    value: ReleaseState.Hiatus,
   },
-
-  /**
-   * Load all media once when mounted.
-   */
-  mounted() {
-    console.log("Media: Mounted");
+  {
+    name: "Discontinued",
+    value: ReleaseState.Discontinued,
   },
-
-  methods: {
-    toggleReleaseStateTL(state: ReleaseState) {
-      const index = this.showStatesTL.indexOf(state);
-      if (index < 0) {
-        this.showStatesTL.push(state);
-      } else {
-        this.showStatesTL.splice(index, 1);
-      }
-    },
-    mergeMedia() {
-      for (const medium of this.media) {
-        const secondary: SecondaryMedium | undefined = this.$store.state.media.secondaryMedia[medium.id as number];
-
-        if (!secondary) {
-          continue;
-        }
-
-        medium.totalEpisodes = secondary.totalEpisodes;
-        medium.readEpisodes = secondary.readEpisodes;
-
-        mergeMediaToc(medium, secondary.tocs);
-      }
-    },
-    onRowEditSave(event: DataTableRowEditCancelEvent) {
-      console.log(event);
-      this.editItemLoading = true;
-      const newMedium: SimpleMedium = event.newData;
-
-      HttpClient.updateMedium(newMedium)
-        .then(() => {
-          this.$store.commit("updateMedium", newMedium);
-          this.$toast.add({ severity: "success", summary: "Medium updated", life: 3000 });
-        })
-        .catch((reason) => {
-          this.$toast.add({
-            severity: "error",
-            summary: "Save failed",
-            detail: JSON.stringify(reason),
-            life: 3000,
-          });
-        })
-        .finally(() => (this.editItemLoading = false));
-    },
+  {
+    name: "Dropped",
+    value: ReleaseState.Dropped,
   },
+  {
+    name: "Complete",
+    value: ReleaseState.Complete,
+  },
+];
+const mediumOptions = [MediaType.TEXT, MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO];
+const showStatesTL = ref([
+  ReleaseState.Unknown,
+  ReleaseState.Ongoing,
+  ReleaseState.Hiatus,
+  ReleaseState.Discontinued,
+  ReleaseState.Dropped,
+  ReleaseState.Complete,
+]);
+const statesOptions = [
+  ReleaseState.Unknown,
+  ReleaseState.Ongoing,
+  ReleaseState.Hiatus,
+  ReleaseState.Discontinued,
+  ReleaseState.Dropped,
+  ReleaseState.Complete,
+];
+const hideCompleted = ref(false);
+
+// STORES
+const mediaStore = useMediaStore();
+
+// COMPUTED
+const media = computed(() => {
+  return mediaStore.mediaList.map((value: StoreMedium): Medium => {
+    const secondary: SecondaryMedium | undefined = mediaStore.secondaryMedia[value.id];
+
+    // Make a copy so that mergeMedia/mergeMediaToc does not operate on store values
+    const copy = { ...value, totalEpisodes: 0, readEpisodes: 0 };
+    if (!secondary) {
+      return copy;
+    }
+
+    copy.totalEpisodes = secondary.totalEpisodes;
+    copy.readEpisodes = secondary.readEpisodes;
+
+    // @ts-expect-error
+    return mergeMediaToc(copy, secondary.tocs);
+  });
 });
+
+const filteredMedia = computed((): Medium[] => {
+  return media.value.filter((medium: Medium) => {
+    if (medium.stateTL == null) {
+      return showStatesTL.value.includes(ReleaseState.Unknown);
+    }
+    if (!showStatesTL.value.includes(medium.stateTL)) {
+      return false;
+    }
+    return hideCompleted.value
+      ? medium.stateTL === ReleaseState.Complete && medium.readEpisodes !== medium.totalEpisodes
+      : true;
+  });
+});
+
+function onRowEditSave(event: DataTableRowEditCancelEvent) {
+  console.log(event);
+  editItemLoading.value = true;
+  const newMedium: SimpleMedium = event.newData;
+
+  HttpClient.updateMedium(newMedium)
+    .then(() => {
+      mediaStore.updateMediumLocal(newMedium);
+      useToast().add({ severity: "success", summary: "Medium updated", life: 3000 });
+    })
+    .catch((reason) => {
+      useToast().add({
+        severity: "error",
+        summary: "Save failed",
+        detail: JSON.stringify(reason),
+        life: 3000,
+      });
+    })
+    .finally(() => (editItemLoading.value = false));
+}
 </script>

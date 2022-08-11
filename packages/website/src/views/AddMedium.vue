@@ -209,10 +209,12 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import { AddMedium, StoreInternalList, MediaType, ReleaseState as ReleaseStateType } from "../siteTypes";
+import { AddMedium, MediaType, ReleaseState as ReleaseStateType } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
+import { useListStore } from "../store/lists";
+import { mapState } from "pinia";
 
 interface Data {
   medium: AddMedium;
@@ -265,9 +267,7 @@ export default defineComponent({
   },
 
   computed: {
-    lists(): StoreInternalList[] {
-      return this.$store.state.lists.lists;
-    },
+    ...mapState(useListStore, ["lists"]),
     selectedMediumOption: {
       get() {
         return this.mediumOptions.find((item) => item.value === this.medium.medium);

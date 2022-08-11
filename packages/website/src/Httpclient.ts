@@ -1,4 +1,3 @@
-import { store } from "./store/store";
 import {
   ExternalUser,
   Medium,
@@ -35,6 +34,7 @@ import {
 } from "enterprise-server/dist/validation";
 import { CustomHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
 import qs from "qs";
+import { useUserStore } from "./store/store";
 
 /**
  * Allowed Methods for the API.
@@ -295,7 +295,7 @@ type Query<T> = Omit<T, "uuid" | "session">;
 
 export const HttpClient = {
   get loggedIn(): boolean {
-    return store.getters.loggedIn;
+    return useUserStore().loggedIn;
   },
 
   _checkLogin: null as null | Promise<User>,
@@ -628,7 +628,8 @@ export const HttpClient = {
       if (this._checkLogin) {
         await this._checkLogin;
       }
-      const uuid = store.state.uuid;
+      const store = useUserStore();
+      const uuid = store.uuid;
 
       if (!uuid) {
         throw Error("cannot send user message if no user is logged in");
@@ -637,7 +638,7 @@ export const HttpClient = {
         query = {};
       }
       query.uuid = uuid;
-      query.session = store.state.session;
+      query.session = store.session;
     }
     const init = {
       method,
@@ -669,10 +670,11 @@ export const HttpClient = {
           if (sessionResponse.ok) {
             const sessionResult: Nullable<SimpleUser> = await sessionResponse.json();
 
+            const store = useUserStore();
             if (sessionResult) {
-              store.dispatch("changeUser", { user: sessionResult });
+              store.changeUser(sessionResult);
             } else {
-              store.commit("immediateLogout");
+              store.immediateLogout();
             }
           }
         }

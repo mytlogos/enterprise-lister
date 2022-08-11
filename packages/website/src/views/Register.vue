@@ -34,6 +34,7 @@
 </template>
 <script lang="ts">
 import { defineComponent } from "vue";
+import { useUserStore } from "../store/store";
 
 export default defineComponent({
   name: "Register",
@@ -58,7 +59,7 @@ export default defineComponent({
   },
   methods: {
     sendForm(): void {
-      this.$store.dispatch("register", { user: this.user, pw: this.pw, pwRepeat: this.pwRepeat });
+      useUserStore().register({ user: this.user, pw: this.pw, pwRepeat: this.pwRepeat });
     },
   },
 });
