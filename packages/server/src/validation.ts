@@ -307,10 +307,10 @@ export interface GetDisplayReleases {
   latest: string;
   until?: string;
   read?: boolean;
-  ignored_lists?: Id[];
-  required_lists?: Id[];
-  ignored_media?: Id[];
-  required_media?: Id[];
+  ignore_lists?: Id[];
+  only_lists?: Id[];
+  ignore_media?: Id[];
+  only_media?: Id[];
 }
 
 export const getDisplayReleasesSchema: JSONSchemaType<GetDisplayReleases> = {
@@ -321,10 +321,10 @@ export const getDisplayReleasesSchema: JSONSchemaType<GetDisplayReleases> = {
     latest: string(),
     until: { type: "string", nullable: true },
     read: { type: "boolean", nullable: true },
-    ignored_lists: { type: "array", items: id(), nullable: true },
-    ignored_media: { type: "array", items: id(), nullable: true },
-    required_lists: { type: "array", items: id(), nullable: true },
-    required_media: { type: "array", items: id(), nullable: true },
+    ignore_lists: { type: "array", items: id(), nullable: true },
+    ignore_media: { type: "array", items: id(), nullable: true },
+    only_lists: { type: "array", items: id(), nullable: true },
+    only_media: { type: "array", items: id(), nullable: true },
   },
   required: ["uuid", "latest"],
 };
