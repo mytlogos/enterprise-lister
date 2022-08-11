@@ -1,4 +1,4 @@
-import { CustomHook, ExternalList, Id, JobHistoryItem as ServerJobHistoryItem, List } from "enterprise-core/dist/types";
+import { CustomHook, ExternalList, JobHistoryItem as ServerJobHistoryItem, List } from "enterprise-core/dist/types";
 
 export type ClickListener = (evt: MouseEvent) => void;
 export type KeyboardListener = (evt: KeyboardEvent) => void;
@@ -33,7 +33,7 @@ export interface TransferList {
 }
 
 export interface SimpleMedium {
-  id?: number;
+  id: number;
   countryOfOrigin?: string;
   languageOfOrigin?: string;
   author?: string;
@@ -364,13 +364,6 @@ export interface VuexStore {
   name: string;
   uuid: string;
   modals: Modals;
-  releases: ReleaseStore;
-  externalUser: ExternalUserStore;
-  media: MediaStore;
-  lists: ListsStore;
-  news: NewsStore;
-  hooks: CustomHookStore;
-  settings: SettingStore;
 }
 
 export interface DisplayReleaseItem {
@@ -401,20 +394,10 @@ export interface ReleaseStore {
   fetching: boolean;
 }
 
-export interface ExternalUserStore {
-  externalUser: ExternalUser[];
-}
-
 export type StoreList = StoreInternalList | StoreExternalList;
 
 export interface ListsStore {
   lists: StoreInternalList[];
-}
-
-export interface MediaStore {
-  media: Record<number, SimpleMedium>;
-  secondaryMedia: Record<number, SecondaryMedium>;
-  episodesOnly: boolean;
 }
 
 export interface NewsStore {
@@ -423,13 +406,6 @@ export interface NewsStore {
 
 export interface CustomHookStore {
   hooks: Record<number, CustomHook>;
-}
-
-export interface SettingStore {
-  notifications: {
-    push: boolean;
-    newReleases: { push: boolean; enabled: boolean; allMedia: boolean; media: Id[] };
-  };
 }
 
 export interface ScraperHook {

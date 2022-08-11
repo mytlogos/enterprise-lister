@@ -184,6 +184,7 @@ import { debounce } from "../../init";
 import ReleaseState from "../release-state.vue";
 import TypeIcon from "../type-icon.vue";
 import AutoComplete from "../auto-complete.vue";
+import { useListStore } from "../../store/lists";
 
 export default defineComponent({
   name: "AddUnusedModal",
@@ -194,9 +195,10 @@ export default defineComponent({
   },
   emits: ["update:item"],
   data() {
+    const listStore = useListStore();
     return {
       medium: this.createMediumValues(),
-      lists: this.$store.state.lists.lists,
+      lists: listStore.lists,
       selectedList: 0,
       toastMessage: "",
       toastTitle: "",

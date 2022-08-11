@@ -125,6 +125,8 @@ import { HttpClient } from "../Httpclient";
 import { JobTrack, Modification } from "../siteTypes";
 import { JobHistoryResult, ScrapeName } from "enterprise-core/dist/types";
 import { FilterMatchMode } from "primevue/api";
+import { mapStores } from "pinia";
+import { useMediaStore } from "../store/media";
 
 const tocRegex = /toc-(\d+)-(.+)/;
 const domainRegex = /https?:\/\/(.+\.)?(\w+)(\.\w+)\/?.*/;
@@ -205,6 +207,7 @@ export default defineComponent({
     computedJobs(): HistoryItem[] {
       return this.jobs.filter((item) => item.modifications >= this.minModifications);
     },
+    ...mapStores(useMediaStore),
   },
   watch: {
     rowsPerPage() {
@@ -253,10 +256,10 @@ export default defineComponent({
         return name;
       }
       const id = Number.parseInt(match[1]);
-      const medium = this.$store.getters.getMedium(id);
+      const medium = this.mediaStore.media[id];
       const link = match[2];
       const domainName = domainRegex.exec(link);
-      return `Toc: ${medium ? (medium.title as string) : "Deleted Medium"} of ${domainName?.[2] || ""}`;
+      return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName?.[2] || ""}`;
     },
     round(value: number): number {
       return round(value, 2);

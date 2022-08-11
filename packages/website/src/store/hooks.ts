@@ -1,56 +1,45 @@
-import { CustomHookStore, VuexStore } from "../siteTypes";
-import { Module } from "vuex";
 import { HttpClient } from "../Httpclient";
 import { CustomHook } from "enterprise-core/dist/types";
+import { defineStore } from "pinia";
 
-const module: Module<CustomHookStore, VuexStore> = {
+export const useHookStore = defineStore("hooks", {
+  persist: true,
   state: () => ({
-    hooks: {},
+    hooks: {} as Record<number, CustomHook>,
   }),
-  mutations: {
-    add(state, hook: CustomHook): void {
-      if (state.hooks[hook.id]) {
-        throw Error("Hook already exists");
-      }
-      state.hooks[hook.id] = hook;
-    },
-    update(state, hook: CustomHook): void {
-      if (!state.hooks[hook.id]) {
+  actions: {
+    delete(hook: CustomHook): void {
+      if (!this.hooks[hook.id]) {
         throw Error("Hook does not exist already");
       }
-      state.hooks[hook.id] = hook;
+      delete this.hooks[hook.id];
     },
-    setAll(state, hooks: CustomHook[]): void {
+    async createHook(hook: CustomHook): Promise<CustomHook> {
+      const result = await HttpClient.createCustomHook(hook);
+      if (this.hooks[hook.id]) {
+        throw Error("Hook already exists");
+      }
+      this.hooks[hook.id] = hook;
+      return result;
+    },
+    async updateHook(hook: CustomHook): Promise<CustomHook> {
+      const result = await HttpClient.updateCustomHook(hook);
+      if (!this.hooks[hook.id]) {
+        throw Error("Hook does not exist already");
+      }
+      this.hooks[hook.id] = hook;
+      return result;
+    },
+    async loadHooks(): Promise<void> {
+      const result = await HttpClient.getCustomHooks();
+
       const newHooks: Record<number, CustomHook> = {};
 
-      for (const hook of hooks) {
+      for (const hook of result) {
         newHooks[hook.id] = hook;
       }
 
-      state.hooks = newHooks;
-    },
-    delete(state, hook: CustomHook): void {
-      if (!state.hooks[hook.id]) {
-        throw Error("Hook does not exist already");
-      }
-      delete state.hooks[hook.id];
+      this.hooks = newHooks;
     },
   },
-  actions: {
-    async createHook({ commit }, hook: CustomHook): Promise<CustomHook> {
-      const result = await HttpClient.createCustomHook(hook);
-      commit("add", result);
-      return result;
-    },
-    async updateHook({ commit }, hook: CustomHook): Promise<CustomHook> {
-      const result = await HttpClient.updateCustomHook(hook);
-      commit("update", result);
-      return result;
-    },
-    async loadHooks({ commit }): Promise<void> {
-      const result = await HttpClient.getCustomHooks();
-      commit("setAll", result);
-    },
-  },
-};
-export default module;
+});

@@ -177,7 +177,7 @@
         <p-button label="Set marked read" class="me-2" @click.left="actionOnMarked('read')" />
         <p-button label="Set marked unread" class="me-2" @click.left="actionOnMarked('unread')" />
         <div class="form-check form-switch">
-          <input id="collapseToEpisode" v-model="episodesOnly" type="checkbox" class="form-check-input" />
+          <input id="collapseToEpisode" v-model="mediaStore.episodesOnly" type="checkbox" class="form-check-input" />
           <label class="form-check-label" for="collapseToEpisode">Display Episodes only</label>
         </div>
         <div class="d-flex align-items-center mx-2">
@@ -207,7 +207,7 @@
       <column field="combiIndex" header="#" sortable />
       <column field="date" header="Date" sortable>
         <template #body="slotProps">
-          {{ dateToString(slotProps.data.date) }}
+          {{ formatDate(slotProps.data.date) }}
         </template>
       </column>
       <column header="Chapter">
@@ -245,492 +245,456 @@
   </div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { HttpClient } from "../Httpclient";
-import { defineComponent, reactive } from "vue";
+import { onMounted, computed, ref, watch } from "vue";
 import { SimpleMedium, MediumRelease, FullMediumToc, MediaType } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import { batch, formatDate, mergeMediaToc } from "../init";
 import AddEpisodeModal from "../components/modal/add-episode-modal.vue";
 import { ReleaseState } from "enterprise-core/dist/types";
+import { useMediaStore } from "../store/media";
+import { useToast } from "primevue/usetoast";
+import { useConfirm } from "primevue/useconfirm";
 
+// TYPES
 interface EpisodeRelease extends MediumRelease {
   others: MediumRelease[];
 }
 
-interface Data {
-  releases: MediumRelease[] | EpisodeRelease[];
-  details: SimpleMedium;
-  tocs: FullMediumToc[];
-  dirty: boolean;
-  addTocUrl: string;
-  addEpisodesModal?: SimpleMedium;
-  loadingTocs: boolean;
-  loadingReleases: boolean;
-  readFilter: boolean | null;
-  selectedRows: MediumRelease[] | EpisodeRelease[];
-  statesOptions: ReleaseState[];
-  editItemLoading: boolean;
-  deleteTocLoading: boolean;
-}
-
 const domainReg = /(https?:\/\/([^/]+))/;
 
-export default defineComponent({
-  name: "MediumDetail",
-  components: {
-    releaseState,
-    typeIcon,
-    AddEpisodeModal,
-  },
-  props: {
-    id: {
-      type: Number,
-      required: true,
-    },
-  },
+// PROPS
+const props = defineProps<{
+  id: number;
+}>();
 
-  data(): Data {
-    return {
-      deleteTocLoading: false,
-      editItemLoading: false,
-      statesOptions: [
-        ReleaseState.Unknown,
-        ReleaseState.Ongoing,
-        ReleaseState.Hiatus,
-        ReleaseState.Discontinued,
-        ReleaseState.Dropped,
-        ReleaseState.Complete,
-      ],
-      releases: [],
-      details: {
-        id: 0,
-        countryOfOrigin: "N/A",
-        languageOfOrigin: "N/A",
-        author: "N/A",
-        title: "N/A",
-        medium: 0,
-        artist: "N/A",
-        lang: "N/A",
-        stateOrigin: 0,
-        stateTL: 0,
-        series: "N/A",
-        universe: "N/A",
-      },
-      tocs: [],
-      dirty: false,
-      addTocUrl: "",
-      addEpisodesModal: undefined,
-      loadingTocs: false,
-      loadingReleases: false,
-      readFilter: null,
-      selectedRows: [],
-    };
-  },
+// STORES
+const mediaStore = useMediaStore();
 
-  computed: {
-    computedReleases(): MediumRelease[] | EpisodeRelease[] {
-      let filtered;
+// DATA
+const deleteTocLoading = ref(false);
+const editItemLoading = ref(false);
+const statesOptions = [
+  ReleaseState.Unknown,
+  ReleaseState.Ongoing,
+  ReleaseState.Hiatus,
+  ReleaseState.Discontinued,
+  ReleaseState.Dropped,
+  ReleaseState.Complete,
+];
+const releases = ref<MediumRelease[] | EpisodeRelease[]>([]);
+const details = ref<SimpleMedium>({
+  id: 0,
+  countryOfOrigin: "N/A",
+  languageOfOrigin: "N/A",
+  author: "N/A",
+  title: "N/A",
+  medium: 0,
+  artist: "N/A",
+  lang: "N/A",
+  stateOrigin: 0,
+  stateTL: 0,
+  series: "N/A",
+  universe: "N/A",
+});
+const tocs = ref<FullMediumToc[]>([]);
+const addTocUrl = ref("");
+const addEpisodesModal = ref<SimpleMedium | undefined>();
+const loadingTocs = ref(false);
+const loadingReleases = ref(false);
+const readFilter = ref<null | boolean>(null);
+const selectedRows = ref<MediumRelease[] | EpisodeRelease[]>([]);
 
-      if (this.readFilter != null) {
-        filtered = this.releases.filter((item) => {
-          if (this.readFilter) {
-            return item.progress >= 1;
-          } else {
-            return item.progress < 1;
+// COMPUTED
+const computedReleases = computed((): MediumRelease[] | EpisodeRelease[] => {
+  let filtered;
+
+  if (readFilter.value != null) {
+    filtered = releases.value.filter((item) => {
+      if (readFilter.value) {
+        return item.progress >= 1;
+      } else {
+        return item.progress < 1;
+      }
+    });
+  } else {
+    filtered = [...releases.value];
+  }
+
+  if (mediaStore.episodesOnly) {
+    const episodes = [] as EpisodeRelease[];
+
+    for (let i = 1; i < filtered.length; i++) {
+      const previous = filtered[i - 1];
+
+      const others = [] as MediumRelease[];
+      const episode: EpisodeRelease = {
+        others,
+        ...previous,
+      };
+
+      for (; i < filtered.length && filtered[i].episodeId === previous.episodeId; i++) {
+        const element = filtered[i];
+
+        if (!element.locked) {
+          episode.locked = false;
+        }
+        if (element.date < episode.date) {
+          episode.date = element.date;
+          episode.link = element.link;
+        }
+        others.push(element);
+      }
+      episodes.push(episode);
+    }
+    return episodes;
+  }
+  return filtered;
+});
+
+const computedMedium = computed((): SimpleMedium => {
+  // merge tocs to a single display result
+  return mergeMediaToc({ ...details.value }, tocs.value);
+});
+
+watch(addEpisodesModal, (newValue: SimpleMedium | undefined) => {
+  if (!newValue) {
+    loadReleases();
+  }
+});
+
+// LIFECYCLE EVENTS
+onMounted(() => {
+  loadLocalData();
+  loadMedium();
+  loadTocs();
+  loadReleases();
+});
+
+// FUNCTIONS
+const toast = useToast();
+
+function actionOnMarked(action: "delete" | "read" | "unread") {
+  if (action === "delete") {
+    toast.add({
+      summary: "Not implemented",
+      severity: "warn",
+      life: 3000,
+    });
+  } else if (action === "read") {
+    markRead(true, selectedRows.value);
+    selectedRows.value.length = 0;
+  } else if (action === "unread") {
+    markRead(false, selectedRows.value);
+    selectedRows.value.length = 0;
+  }
+}
+
+function markBetween() {
+  let lowest: MediumRelease | EpisodeRelease | undefined;
+  let highest: MediumRelease | EpisodeRelease | undefined;
+
+  selectedRows.value.forEach((item) => {
+    if (!lowest || lowest.combiIndex > item.combiIndex) {
+      lowest = item;
+    }
+    if (!highest || highest.combiIndex < item.combiIndex) {
+      highest = item;
+    }
+  });
+  if (!lowest || !highest) {
+    return;
+  }
+  const highestIndex = (highest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
+  const lowestIndex = (lowest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
+  selectedRows.value = releases.value.filter(
+    (item) => item.combiIndex <= highestIndex && item.combiIndex >= lowestIndex,
+  );
+}
+
+function loadLocalData() {
+  const medium = mediaStore.media[props.id];
+
+  if (medium) {
+    details.value = { ...medium };
+  }
+  const secondaryMedium = mediaStore.secondaryMedia[props.id];
+
+  if (secondaryMedium) {
+    tocs.value = [...secondaryMedium.tocs];
+  }
+}
+
+function loadMedium() {
+  HttpClient.getMedia([props.id])
+    .then((medium) => {
+      if (medium.length !== 1) {
+        toast.add({
+          summary: "Error while loading Details",
+          detail: "Please contact the developer",
+          severity: "error",
+        });
+        console.error("Expected a single Medium Item but got an Array");
+        return;
+      }
+      details.value = medium[0];
+    })
+    .catch((error) => {
+      toast.add({
+        summary: "Unknown Error",
+        detail: JSON.stringify(error),
+        severity: "error",
+      });
+      console.log(error);
+    });
+}
+
+function loadTocs() {
+  loadingTocs.value = true;
+  HttpClient.getTocs(props.id)
+    .then((value) => (tocs.value = value))
+    .catch((error) => {
+      toast.add({
+        summary: "Error while loading Tocs",
+        detail: error + "",
+        severity: "error",
+      });
+      console.log(error);
+    })
+    .finally(() => (loadingTocs.value = false));
+}
+
+function loadReleases() {
+  if (loadingReleases.value) {
+    return;
+  }
+  loadingReleases.value = true;
+  HttpClient.getReleases(props.id)
+    .then((result) => {
+      // ensure that date is a 'Date' object
+      for (const release of result) {
+        release.date = new Date(release.date);
+      }
+      releases.value = result;
+    })
+    .catch((error) => {
+      toast.add({
+        summary: "Error while loading Releases",
+        detail: error + "",
+        severity: "error",
+      });
+      console.log(error);
+    })
+    .finally(() => {
+      loadingReleases.value = false;
+    });
+}
+
+function addToc() {
+  HttpClient.addToc(addTocUrl.value, props.id)
+    .then(() => {
+      toast.add({
+        summary: "Successfully added the TocRequest",
+        severity: "success",
+        life: 3000,
+      });
+    })
+    .catch((error) => {
+      toast.add({
+        summary: "Error while adding the Toc",
+        detail: error + "",
+        severity: "error",
+      });
+      console.log(error);
+    });
+  addTocUrl.value = "";
+}
+
+/**
+ * Extracts the Domain name of a web link.
+ *
+ * @param link the link to inspect
+ */
+function getDomain(link: string): string {
+  const match = domainReg.exec(link);
+  if (!match) {
+    console.warn("invalid link: " + link);
+    return "";
+  }
+  return match[2];
+}
+
+/**
+ * Extracts the Part up to the first slash (/).
+ *
+ * @param link the link to inspect
+ */
+function getHome(link: string): string {
+  const match = domainReg.exec(link);
+  if (!match) {
+    console.warn("invalid link: " + link);
+    return "";
+  }
+  return match[1];
+}
+
+/**
+ * Returns a String representation to the medium.
+ *
+ * @param medium medium to represent
+ */
+function mediumToString(medium?: number): string {
+  switch (medium) {
+    case MediaType.TEXT:
+      return "Text";
+    case MediaType.AUDIO:
+      return "Audio";
+    case MediaType.VIDEO:
+      return "Video";
+    case MediaType.IMAGE:
+      return "Image";
+    default:
+      return "Unknown";
+  }
+}
+
+/**
+ * Update the progress of the episode of the release to either 0 or 1.
+ * Shows an error toast if it could not update the progress.
+ */
+function changeReadStatus(release: MediumRelease): void {
+  const newProgress = release.progress < 1 ? 1 : 0;
+  HttpClient.updateProgress([release.episodeId], newProgress)
+    .then((success) => {
+      if (success) {
+        // update progress of all releases for the same episode
+        releases.value.forEach((element: MediumRelease) => {
+          if (release.episodeId === element.episodeId) {
+            element.progress = newProgress;
           }
         });
       } else {
-        filtered = [...this.releases];
+        return Promise.reject(new Error("progress update was not successfull"));
       }
-
-      if (this.episodesOnly) {
-        const episodes = [] as EpisodeRelease[];
-
-        for (let i = 1; i < filtered.length; i++) {
-          const previous = filtered[i - 1];
-
-          const others = [] as MediumRelease[];
-          const episode: EpisodeRelease = {
-            others,
-            ...previous,
-          };
-
-          for (; i < filtered.length && filtered[i].episodeId === previous.episodeId; i++) {
-            const element = filtered[i];
-
-            if (!element.locked) {
-              episode.locked = false;
-            }
-            if (element.date < episode.date) {
-              episode.date = element.date;
-              episode.link = element.link;
-            }
-            others.push(element);
-          }
-          episodes.push(episode);
-        }
-        return episodes;
-      }
-      return filtered;
-    },
-    computedMedium(): SimpleMedium {
-      // merge tocs to a single display result
-      return mergeMediaToc({ ...this.details }, this.tocs);
-    },
-    episodesOnly: {
-      get(): boolean {
-        return this.$store.state.media.episodesOnly;
-      },
-      set(value: boolean) {
-        this.$store.commit("episodesOnly", value);
-      },
-    },
-  },
-
-  watch: {
-    addEpisodeModal(newValue: SimpleMedium | null) {
-      if (!newValue) {
-        this.loadReleases();
-      }
-    },
-  },
-
-  mounted() {
-    this.loadLocalData();
-    this.loadMedium();
-    this.loadTocs();
-    this.loadReleases();
-  },
-
-  methods: {
-    actionOnMarked(action: "delete" | "read" | "unread") {
-      if (action === "delete") {
-        this.$toast.add({
-          summary: "Not implemented",
-          severity: "warn",
-          life: 3000,
-        });
-      } else if (action === "read") {
-        this.markRead(true, this.selectedRows);
-        this.selectedRows.length = 0;
-      } else if (action === "unread") {
-        this.markRead(false, this.selectedRows);
-        this.selectedRows.length = 0;
-      }
-    },
-
-    markBetween() {
-      let lowest: MediumRelease | EpisodeRelease | undefined;
-      let highest: MediumRelease | EpisodeRelease | undefined;
-
-      this.selectedRows.forEach((item) => {
-        if (!lowest || lowest.combiIndex > item.combiIndex) {
-          lowest = item;
-        }
-        if (!highest || highest.combiIndex < item.combiIndex) {
-          highest = item;
-        }
+    })
+    .catch((error) => {
+      toast.add({
+        summary: "Error updating Progress",
+        detail: error + "",
+        severity: "error",
       });
-      if (!lowest || !highest) {
-        return;
-      }
-      const highestIndex = (highest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
-      const lowestIndex = (lowest as MediumRelease | EpisodeRelease | undefined)?.combiIndex || 0;
-      this.selectedRows = this.releases.filter(
-        (item) => item.combiIndex <= highestIndex && item.combiIndex >= lowestIndex,
-      );
-    },
+      console.log(error);
+    });
+}
 
-    loadLocalData() {
-      const medium = this.$store.state.media.media[this.id];
+function markAll(read: boolean) {
+  markRead(read, releases.value);
+}
 
-      if (medium) {
-        this.details = reactive({ ...medium });
-      }
-      const secondaryMedium = this.$store.state.media.secondaryMedia[this.id];
+function markRead(read: boolean, readReleases: MediumRelease[] | EpisodeRelease[]) {
+  const newProgress = read ? 1 : 0;
+  const batchSize = 50;
 
-      if (secondaryMedium) {
-        this.tocs = [...secondaryMedium.tocs];
-      }
-    },
+  let updateReleases = [];
 
-    loadMedium() {
-      HttpClient.getMedia([this.id])
-        .then((medium) => {
-          if (medium.length !== 1) {
-            this.$toast.add({
-              summary: "Error while loading Details",
-              detail: "Please contact the developer",
-              severity: "error",
-            });
-            console.error("Expected a single Medium Item but got an Array");
-            return;
-          }
-          this.details = medium[0];
-        })
-        .catch((error) => {
-          this.$toast.add({
-            summary: "Unknown Error",
-            detail: error + "",
-            severity: "error",
-          });
-          console.log(error);
-        });
-    },
+  if (read) {
+    updateReleases = readReleases.filter((value) => value.progress < 1);
+  } else {
+    updateReleases = readReleases.filter((value) => value.progress >= 1);
+  }
 
-    loadTocs() {
-      this.loadingTocs = true;
-      HttpClient.getTocs(this.id)
-        .then((tocs) => (this.tocs = tocs))
-        .catch((error) => {
-          this.$toast.add({
-            summary: "Error while loading Tocs",
-            detail: error + "",
-            severity: "error",
-          });
-          console.log(error);
-        })
-        .finally(() => (this.loadingTocs = false));
-    },
+  if (!updateReleases.length) {
+    toast.add({
+      summary: "No Releases available for marking.",
+      severity: "warn",
+    });
+    return;
+  }
 
-    loadReleases() {
-      if (this.loadingReleases) {
-        return;
-      }
-      this.loadingReleases = true;
-      HttpClient.getReleases(this.id)
-        .then((releases) => {
-          // ensure that date is a 'Date' object
-          for (const release of releases) {
-            release.date = new Date(release.date);
-          }
-          this.releases = reactive(releases);
-        })
-        .catch((error) => {
-          this.$toast.add({
-            summary: "Error while loading Releases",
-            detail: error + "",
-            severity: "error",
-          });
-          console.log(error);
-        })
-        .finally(() => {
-          this.loadingReleases = false;
-        });
-    },
+  Promise.allSettled(
+    batch(updateReleases, batchSize).map((releases: MediumRelease[]) => {
+      const episodeIds: number[] = releases.map((value) => value.episodeId);
+      return HttpClient.updateProgress(episodeIds, newProgress);
+    }),
+  ).then((settled: Array<PromiseSettledResult<boolean>>) => {
+    let failed = 0;
+    let succeeded = 0;
 
-    addToc() {
-      HttpClient.addToc(this.addTocUrl, this.id)
-        .then(() => {
-          this.$toast.add({
-            summary: "Successfully added the TocRequest",
-            severity: "success",
-            life: 3000,
-          });
-        })
-        .catch((error) => {
-          this.$toast.add({
-            summary: "Error while adding the Toc",
-            detail: error + "",
-            severity: "error",
-          });
-          console.log(error);
-        });
-      this.addTocUrl = "";
-    },
+    settled.forEach((result, index) => {
+      const releaseStart = index * batchSize;
+      const releaseEnd = releaseStart + (index >= settled.length - 1 ? readReleases.length % batchSize : batchSize);
 
-    /**
-     * Format a given Date to a german locale string.
-     */
-    dateToString: formatDate,
-
-    /**
-     * Extracts the Domain name of a web link.
-     *
-     * @param link the link to inspect
-     */
-    getDomain(link: string): string {
-      const match = domainReg.exec(link);
-      if (!match) {
-        console.warn("invalid link: " + link);
-        return "";
-      }
-      return match[2];
-    },
-
-    /**
-     * Extracts the Part up to the first slash (/).
-     *
-     * @param link the link to inspect
-     */
-    getHome(link: string): string {
-      const match = domainReg.exec(link);
-      if (!match) {
-        console.warn("invalid link: " + link);
-        return "";
-      }
-      return match[1];
-    },
-
-    /**
-     * Returns a String representation to the medium.
-     *
-     * @param medium medium to represent
-     */
-    mediumToString(medium?: number): string {
-      switch (medium) {
-        case MediaType.TEXT:
-          return "Text";
-        case MediaType.AUDIO:
-          return "Audio";
-        case MediaType.VIDEO:
-          return "Video";
-        case MediaType.IMAGE:
-          return "Image";
-        default:
-          return "Unknown";
-      }
-    },
-
-    /**
-     * Update the progress of the episode of the release to either 0 or 1.
-     * Shows an error toast if it could not update the progress.
-     */
-    changeReadStatus(release: MediumRelease): void {
-      const newProgress = release.progress < 1 ? 1 : 0;
-      HttpClient.updateProgress([release.episodeId], newProgress)
-        .then((success) => {
-          if (success) {
-            // update progress of all releases for the same episode
-            this.releases.forEach((element: MediumRelease) => {
-              if (release.episodeId === element.episodeId) {
-                element.progress = newProgress;
-              }
-            });
-          } else {
-            return Promise.reject(new Error("progress update was not successfull"));
-          }
-        })
-        .catch((error) => {
-          this.$toast.add({
-            summary: "Error updating Progress",
-            detail: error + "",
-            severity: "error",
-          });
-          console.log(error);
-        });
-    },
-
-    markAll(read: boolean) {
-      this.markRead(read, this.releases);
-    },
-
-    markRead(read: boolean, readReleases: MediumRelease[] | EpisodeRelease[]) {
-      const newProgress = read ? 1 : 0;
-      const batchSize = 50;
-
-      let updateReleases = [];
-
-      if (read) {
-        updateReleases = readReleases.filter((value) => value.progress < 1);
+      if (result.status === "rejected" || !result.value) {
+        failed += releaseEnd - releaseStart;
       } else {
-        updateReleases = readReleases.filter((value) => value.progress >= 1);
-      }
+        succeeded += releaseEnd - releaseStart;
+        // set new progress for all releases in this batch result
+        for (let i = releaseStart; i < releaseEnd && i < readReleases.length; i++) {
+          const element = readReleases[i];
 
-      if (!updateReleases.length) {
-        this.$toast.add({
-          summary: "No Releases available for marking.",
-          severity: "warn",
-        });
-        return;
-      }
-
-      Promise.allSettled(
-        batch(updateReleases, batchSize).map((releases: MediumRelease[]) => {
-          const episodeIds: number[] = releases.map((value) => value.episodeId);
-          return HttpClient.updateProgress(episodeIds, newProgress);
-        }),
-      ).then((settled: Array<PromiseSettledResult<boolean>>) => {
-        let failed = 0;
-        let succeeded = 0;
-
-        settled.forEach((result, index) => {
-          const releaseStart = index * batchSize;
-          const releaseEnd = releaseStart + (index >= settled.length - 1 ? readReleases.length % batchSize : batchSize);
-
-          if (result.status === "rejected" || !result.value) {
-            failed += releaseEnd - releaseStart;
-          } else {
-            succeeded += releaseEnd - releaseStart;
-            // set new progress for all releases in this batch result
-            for (let i = releaseStart; i < releaseEnd && i < readReleases.length; i++) {
-              const element = readReleases[i];
-
-              if (element) {
-                element.progress = newProgress;
-              }
-            }
+          if (element) {
+            element.progress = newProgress;
           }
-        });
-        this.$toast.add({
-          summary: "Mark all",
-          detail: `Marking as read succeeded for ${succeeded} and failed for ${failed}`,
-          severity: failed ? "error" : "success",
-          life: failed ? undefined : 3000,
-        });
-        console.log(`succeeded=${succeeded}, failed=${failed}`);
+        }
+      }
+    });
+    toast.add({
+      summary: "Mark all",
+      detail: `Marking as read succeeded for ${succeeded} and failed for ${failed}`,
+      severity: failed ? "error" : "success",
+      life: failed ? undefined : 3000,
+    });
+    console.log(`succeeded=${succeeded}, failed=${failed}`);
+  });
+}
+
+function onSave() {
+  editItemLoading.value = true;
+
+  HttpClient.updateMedium(details.value)
+    .then(() => {
+      mediaStore.updateMediumLocal(details.value);
+      toast.add({ severity: "success", summary: "Medium updated", life: 3000 });
+    })
+    .catch((reason) => {
+      toast.add({
+        severity: "error",
+        summary: "Save failed",
+        detail: JSON.stringify(reason),
+        life: 3000,
       });
-    },
+    })
+    .finally(() => (editItemLoading.value = false));
+}
 
-    onSave() {
-      this.editItemLoading = true;
+function confirmDeleteToc(data: FullMediumToc) {
+  useConfirm().require({
+    message: `Remove ToC '${data.link}' on '${getDomain(data.link)}'?`,
+    header: "Confirmation",
+    icon: "pi pi-exclamation-triangle",
+    acceptClass: "p-button-danger",
+    accept: () => {
+      deleteTocLoading.value = true;
 
-      HttpClient.updateMedium(this.details)
+      HttpClient.deleteToc({ link: data.link, mediumId: data.mediumId })
         .then(() => {
-          this.$store.commit("updateMedium", this.details);
-          this.$toast.add({ severity: "success", summary: "Medium updated", life: 3000 });
+          mediaStore.deleteTocLocal({ link: data.link, mediumId: data.mediumId });
+          toast.add({ severity: "info", summary: "Confirmed", detail: "Toc deleted", life: 3000 });
         })
         .catch((reason) => {
-          this.$toast.add({
+          toast.add({
             severity: "error",
-            summary: "Save failed",
+            summary: "Deleting Toc failed",
             detail: JSON.stringify(reason),
             life: 3000,
           });
         })
-        .finally(() => (this.editItemLoading = false));
+        .finally(() => (deleteTocLoading.value = false));
     },
-
-    confirmDeleteToc(data: FullMediumToc) {
-      this.$confirm.require({
-        message: `Remove ToC '${data.link}' on '${this.getDomain(data.link)}'?`,
-        header: "Confirmation",
-        icon: "pi pi-exclamation-triangle",
-        acceptClass: "p-button-danger",
-        accept: () => {
-          this.deleteTocLoading = true;
-
-          HttpClient.deleteToc({ link: data.link, mediumId: data.mediumId })
-            .then(() => {
-              this.$store.commit("deleteToc", { link: data.link, mediumId: data.mediumId });
-              this.$toast.add({ severity: "info", summary: "Confirmed", detail: "Toc deleted", life: 3000 });
-            })
-            .catch((reason) => {
-              this.$toast.add({
-                severity: "error",
-                summary: "Deleting Toc failed",
-                detail: JSON.stringify(reason),
-                life: 3000,
-              });
-            })
-            .finally(() => (this.deleteTocLoading = false));
-        },
-      });
-    },
-  },
-});
+  });
+}
 </script>
 
 <style scoped>

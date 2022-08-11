@@ -104,6 +104,7 @@ import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/custom-hook-form.vue";
 import { clone, deepEqual, Logger } from "../init";
+import { useHookStore } from "../store/hooks";
 
 interface Data {
   code: string;
@@ -303,9 +304,10 @@ export default defineComponent({
 
     load() {
       if (this.id) {
+        const hookStore = useHookStore();
         // simple but stupid way to clone the hook, firefox went off alone in 94 and introduced "structuredClone" (with Node 17 support at this time)
         // when there is wider support, maybe use that, else if lodash is ever used use that cloneDeep
-        this.hook = clone(this.$store.state.hooks.hooks[this.id]);
+        this.hook = clone(hookStore.hooks[this.id]);
         this.code = this.hook.state || "";
       }
     },
@@ -322,10 +324,11 @@ export default defineComponent({
 
       this.hook.state = this.code;
 
-      const action = this.hook.id ? "updateHook" : "createHook";
+      const hookStore = useHookStore();
+      const action = this.hook.id ? hookStore.updateHook : hookStore.createHook;
 
-      this.$store
-        .dispatch(action, this.hook)
+      // @ts-expect-error
+      action(this.hook)
         .then((value: CustomHook) => {
           console.log(value);
           this.hook = value;

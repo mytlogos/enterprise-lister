@@ -194,7 +194,7 @@
   </div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { HttpClient } from "../Httpclient";
 import {
   StoreList,
@@ -206,40 +206,22 @@ import {
 } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
-import { defineComponent } from "vue";
+import { computed, ref, watch, watchEffect } from "vue";
 import { mergeMediaToc } from "../init";
 import { FilterMatchMode, FilterService, PrimeIcons } from "primevue/api";
 import { DataTableRowEditCancelEvent } from "primevue/datatable";
 import { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import { List } from "enterprise-core/dist/types";
+import { useMediaStore } from "../store/media";
+import { useListStore } from "../store/lists";
+import { useConfirm } from "primevue/useconfirm";
+import { useToast } from "primevue/usetoast";
+import { useExternalUserStore } from "../store/externaluser";
 
+// TYPES
 interface MinList {
   name: string;
   medium: MediaType;
-}
-
-interface Data {
-  loadingMedia: number[][];
-  selectedList: null | DisplayList;
-  displayEditDialog: boolean;
-  loading: boolean;
-  filters: Record<string, any>;
-  mediumOptions: MediaType[];
-  stateOptions: number[];
-  editingRows: Medium[];
-  typeFilterValues: Array<{
-    tooltip: string;
-    icon: string;
-    value: MediaType;
-  }>;
-  editingList: MinList;
-  selectedMedium: SimpleMedium | null;
-  mediumSuggestions: SimpleMedium[];
-  addItemLoading: boolean;
-  deleteItemLoading: boolean;
-  deleteListLoading: boolean;
-  editListLoading: boolean;
-  editItemLoading: boolean;
 }
 
 function emptyMinList(): MinList {
@@ -258,341 +240,335 @@ FilterService.register(
   (dataValue, filterValue) => filterValue == null || Number(dataValue ?? 0) === filterValue,
 );
 
-export default defineComponent({
-  name: "Lists",
-  components: {
-    typeIcon,
-    releaseState,
+// STORES
+const mediaStore = useMediaStore();
+const listsStore = useListStore();
+const externalUserStore = useExternalUserStore();
+
+// DATA
+const selectedMedium = ref<SimpleMedium | null>(null);
+const mediumSuggestions = ref<Medium[]>([]);
+const editingList = ref(emptyMinList());
+const editingRows = ref<Medium[]>([]);
+const loadingMedia = ref<number[][]>([]);
+const selectedList = ref<null | DisplayList>(null);
+const displayEditDialog = ref(false);
+const filters = {
+  title: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  stateTL: { value: null, matchMode: "lax-number-equals" },
+  medium: { value: null, matchMode: "lax-number-equals" },
+};
+const mediumOptions = [MediaType.TEXT, MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO];
+const stateOptions = [
+  ReleaseStateType.Unknown,
+  ReleaseStateType.Ongoing,
+  ReleaseStateType.Hiatus,
+  ReleaseStateType.Complete,
+  ReleaseStateType.Discontinued,
+  ReleaseStateType.Dropped,
+];
+const typeFilterValues = [
+  {
+    tooltip: "Search Text Media",
+    icon: PrimeIcons.BOOK,
+    value: MediaType.TEXT,
   },
-  data(): Data {
-    return {
-      selectedMedium: null,
-      mediumSuggestions: [],
-      editingList: emptyMinList(),
-      editingRows: [],
-      loadingMedia: [],
-      selectedList: null,
-      displayEditDialog: false,
-      loading: false,
-      filters: {
-        title: { value: null, matchMode: FilterMatchMode.CONTAINS },
-        stateTL: { value: null, matchMode: "lax-number-equals" },
-        medium: { value: null, matchMode: "lax-number-equals" },
-      },
-      mediumOptions: [MediaType.TEXT, MediaType.IMAGE, MediaType.VIDEO, MediaType.AUDIO],
-      stateOptions: [
-        ReleaseStateType.Unknown,
-        ReleaseStateType.Ongoing,
-        ReleaseStateType.Hiatus,
-        ReleaseStateType.Complete,
-        ReleaseStateType.Discontinued,
-        ReleaseStateType.Dropped,
-      ],
-      typeFilterValues: [
-        {
-          tooltip: "Search Text Media",
-          icon: PrimeIcons.BOOK,
-          value: MediaType.TEXT,
-        },
-        {
-          tooltip: "Search Image Media",
-          icon: PrimeIcons.IMAGE,
-          value: MediaType.IMAGE,
-        },
-        {
-          tooltip: "Search Video Media",
-          icon: PrimeIcons.YOUTUBE,
-          value: MediaType.VIDEO,
-        },
-        {
-          tooltip: "Search Audio Media",
-          icon: PrimeIcons.VOLUME_OFF,
-          value: MediaType.AUDIO,
-        },
-      ],
-      addItemLoading: false,
-      deleteItemLoading: false,
-      deleteListLoading: false,
-      editListLoading: false,
-      editItemLoading: false,
-    };
+  {
+    tooltip: "Search Image Media",
+    icon: PrimeIcons.IMAGE,
+    value: MediaType.IMAGE,
   },
-  computed: {
-    displayedLists(): DisplayList[] {
-      const lists = [...this.lists];
-      lists.sort((a, b) => a.name.localeCompare(b.name));
-      return lists.map((list) => ({ ...list, key: list.id + "-" + list.external }));
-    },
-    lists(): StoreList[] {
-      return this.$store.getters.allLists;
-    },
-    storeSelectedList(): StoreList | undefined {
-      const selectedList = this.selectedList;
-
-      if (!selectedList) {
-        return;
-      }
-      if (selectedList.external) {
-        return this.$store.getters.getExternalList(selectedList.id);
-      }
-      return this.$store.state.lists.lists.find((list) => list.id === selectedList.id);
-    },
-    items(): Medium[] {
-      const selectedList = this.selectedList;
-
-      if (!selectedList) {
-        return [];
-      }
-      const items = this.storeSelectedList?.items;
-
-      if (!items) {
-        return [];
-      }
-      return items
-        .map((id: number): Medium | undefined => {
-          let medium = this.$store.getters.getMedium(id);
-          if (!medium) {
-            console.log("medium with id %d is not loaded", id);
-            return medium;
-          }
-          const secondary: SecondaryMedium | undefined = this.$store.state.media.secondaryMedia[medium.id as number];
-
-          if (!secondary) {
-            return medium;
-          }
-
-          // make a copy, so that we do not modify the store value
-          medium = { ...medium };
-          medium.totalEpisodes = secondary.totalEpisodes;
-          medium.readEpisodes = secondary.readEpisodes;
-
-          mergeMediaToc(medium, secondary.tocs);
-          return medium;
-        })
-        .filter((value) => value != null) as Medium[];
-    },
-    columns() {
-      return this.$store.state.user.columns;
-    },
+  {
+    tooltip: "Search Video Media",
+    icon: PrimeIcons.YOUTUBE,
+    value: MediaType.VIDEO,
   },
-  watch: {
-    displayedLists() {
-      if (!this.selectedList) {
-        this.selectedList = this.displayedLists[0];
-      }
-    },
-    displayEditDialog() {
-      if (!this.displayEditDialog) {
-        this.editingList = emptyMinList();
-      }
-    },
-    loadingMedia(newValue: number[][], oldValue: number[][]) {
-      // TODO: use this function or remove it
-      console.log("New:", newValue, "Old", oldValue);
-      const missingBatches = newValue.filter((batch) => !oldValue.includes(batch));
-
-      for (const missingBatch of missingBatches) {
-        // load missing media
-        HttpClient.getMedia(missingBatch)
-          .then((media: SimpleMedium[]) => this.$store.commit("addMedium", media))
-          .catch((error) => {
-            this.$store.commit("errorModalError", String(error));
-            console.log(error);
-          })
-          .finally(() => {
-            // remove batch so it will be regarded as loaded, regardless whether it failed or not
-            const index = this.loadingMedia.indexOf(missingBatch);
-
-            if (index > 0) {
-              this.loadingMedia.splice(index, 1);
-            }
-          });
-      }
-    },
+  {
+    tooltip: "Search Audio Media",
+    icon: PrimeIcons.VOLUME_OFF,
+    value: MediaType.AUDIO,
   },
-  mounted() {
-    if (!this.selectedList) {
-      this.selectedList = this.displayedLists[0];
-    }
-  },
-  methods: {
-    startListEdit() {
-      this.editingList.name = this.storeSelectedList?.name || "";
-      this.editingList.medium = this.storeSelectedList?.medium || 0;
-      this.displayEditDialog = true;
-    },
-    saveList() {
-      const selectedList = this.selectedList;
-      if (!selectedList || selectedList?.external) {
-        return;
-      }
+];
+const addItemLoading = ref(false);
+const deleteItemLoading = ref(false);
+const deleteListLoading = ref(false);
+const editListLoading = ref(false);
+const editItemLoading = ref(false);
 
-      if (!this.editingList.name.trim()) {
-        this.$toast.add({
-          summary: "Missing List name",
-          severity: "error",
-        });
-        return;
-      }
-      if (!this.editingList.medium) {
-        this.$toast.add({
-          summary: "Missing List Medium",
-          severity: "error",
-        });
-        return;
-      }
-      const currentList: List = {
-        ...selectedList,
-        name: this.editingList.name,
-        medium: this.editingList.medium,
-      };
-
-      this.editListLoading = true;
-      HttpClient.updateList(currentList)
-        .then((success) => {
-          if (success) {
-            this.$store.commit("updateList", currentList);
-            this.$toast.add({ severity: "success", summary: "Saved", detail: "List changes were saved", life: 3000 });
-          } else {
-            this.$toast.add({
-              severity: "error",
-              summary: "Save Error",
-              detail: "Save was not successful",
-              life: 3000,
-            });
-          }
-        })
-        .catch((reason) => {
-          this.$toast.add({
-            severity: "error",
-            summary: "Save Error",
-            detail: JSON.stringify(reason),
-            life: 3000,
-          });
-        })
-        .finally(() => {
-          this.displayEditDialog = false;
-          this.editListLoading = false;
-        });
-    },
-    deleteList() {
-      const listId = this.selectedList?.id;
-
-      if (!listId) {
-        return;
-      }
-      this.$confirm.require({
-        message: "Are you sure you want to proceed?",
-        header: "Confirmation",
-        icon: "pi pi-exclamation-triangle",
-        acceptClass: "p-button-danger",
-        accept: () => {
-          this.deleteListLoading = true;
-          HttpClient.deleteList(listId)
-            .then(() => {
-              this.$store.commit("deleteList", listId);
-              // select the next list
-              this.selectedList = this.displayedLists.find((list) => list.id !== listId) || null;
-              this.$toast.add({ severity: "info", summary: "Confirmed", detail: "Record deleted", life: 3000 });
-            })
-            .catch((reason) => {
-              this.$toast.add({
-                severity: "error",
-                summary: "Delete failed",
-                detail: JSON.stringify(reason),
-                life: 3000,
-              });
-            })
-            .finally(() => (this.deleteListLoading = false));
-        },
-      });
-    },
-    confirmDeleteListItem(data: Medium) {
-      const list = this.selectedList;
-      const mediumId = data?.id;
-
-      if (!list || !mediumId) {
-        return;
-      }
-      this.$confirm.require({
-        message: `Remove '${data.title}' from List '${list.name}'?`,
-        header: "Confirmation",
-        icon: "pi pi-exclamation-triangle",
-        acceptClass: "p-button-danger",
-        accept: () => {
-          this.deleteItemLoading = true;
-
-          HttpClient.deleteListItem({ listId: list.id, mediumId: [mediumId] })
-            .then(() => {
-              this.$store.commit("removeListItem", { listId: list.id, mediumId });
-              this.$toast.add({ severity: "info", summary: "Confirmed", detail: "Item removed from List", life: 3000 });
-            })
-            .catch((reason) => {
-              this.$toast.add({
-                severity: "error",
-                summary: "Deleting Item failed",
-                detail: JSON.stringify(reason),
-                life: 3000,
-              });
-            })
-            .finally(() => (this.deleteItemLoading = false));
-        },
-      });
-    },
-    onRowEditSave(event: DataTableRowEditCancelEvent) {
-      console.log(event);
-      this.editItemLoading = true;
-      const newMedium: SimpleMedium = event.newData;
-
-      HttpClient.updateMedium(newMedium)
-        .then(() => {
-          this.$store.commit("updateMedium", newMedium);
-          this.$toast.add({ severity: "success", summary: "Medium updated", life: 3000 });
-        })
-        .catch((reason) => {
-          this.$toast.add({
-            severity: "error",
-            summary: "Save failed",
-            detail: JSON.stringify(reason),
-            life: 3000,
-          });
-        })
-        .finally(() => (this.editItemLoading = false));
-    },
-    addListItem() {
-      const list = this.selectedList;
-      const mediumId = this.selectedMedium?.id;
-
-      if (!list || !mediumId) {
-        this.selectedMedium = null;
-        return;
-      }
-      this.addItemLoading = true;
-      HttpClient.addListItem({ listId: list.id, mediumId: [mediumId] })
-        .then(() => {
-          this.$store.commit("addListItem", { listId: list.id, mediumId });
-          this.$toast.add({ severity: "success", summary: "Success", detail: "Medium added to List", life: 3000 });
-        })
-        .catch((reason) => {
-          this.$toast.add({
-            severity: "error",
-            summary: "Adding Item failed",
-            detail: JSON.stringify(reason),
-            life: 3000,
-          });
-        })
-        .finally(() => (this.addItemLoading = false));
-      this.selectedMedium = null;
-    },
-    searchMedia(event: AutoCompleteCompleteEvent) {
-      const query = event.query.toLowerCase().trim();
-
-      const current = new Set(this.selectedList?.items);
-
-      this.mediumSuggestions = Object.values(this.$store.state.media.media).filter((medium) => {
-        return !current.has(medium.id as number) && medium.title.toLowerCase().includes(query);
-      });
-    },
-  },
+// COMPUTED
+const displayedLists = computed((): DisplayList[] => {
+  const copy = [...lists.value];
+  copy.sort((a, b) => a.name.localeCompare(b.name));
+  return copy.map((list) => ({ ...list, key: list.id + "-" + list.external }));
 });
+
+const lists = computed((): StoreList[] => {
+  return listsStore.allLists;
+});
+
+const storeSelectedList = computed((): StoreList | undefined => {
+  const value = selectedList.value;
+  if (!value) {
+    return;
+  }
+  if (value.external) {
+    return externalUserStore.getExternalList(value.id);
+  }
+  return listsStore.lists.find((list) => list.id === value.id);
+});
+
+const items = computed((): Medium[] => {
+  const list = selectedList.value;
+
+  if (!list) {
+    return [];
+  }
+  const listItems = storeSelectedList.value?.items;
+
+  if (!listItems) {
+    return [];
+  }
+  return listItems
+    .map((id: number): Medium | undefined => {
+      let medium = mediaStore.media[id];
+      if (!medium) {
+        console.log("medium with id %d is not loaded", id);
+        return medium;
+      }
+      const secondary: SecondaryMedium | undefined = mediaStore.secondaryMedia[medium.id];
+
+      if (!secondary) {
+        return medium;
+      }
+
+      // make a copy, so that we do not modify the store value
+      medium = { ...medium };
+      medium.totalEpisodes = secondary.totalEpisodes;
+      medium.readEpisodes = secondary.readEpisodes;
+
+      mergeMediaToc(medium, secondary.tocs);
+      return medium;
+    })
+    .filter((value) => value != null) as Medium[];
+});
+
+// WATCHES
+watchEffect(() => {
+  if (!selectedList.value) {
+    selectedList.value = displayedLists.value[0];
+  }
+});
+
+watchEffect(() => {
+  if (!displayEditDialog.value) {
+    editingList.value = emptyMinList();
+  }
+});
+
+watch(loadingMedia, (newValue: number[][], oldValue: number[][]) => {
+  // TODO: use function or remove it
+  console.log("New:", newValue, "Old", oldValue);
+  const missingBatches = newValue.filter((batch) => !oldValue.includes(batch));
+
+  for (const missingBatch of missingBatches) {
+    // load missing media
+    HttpClient.getMedia(missingBatch)
+      .then((media) => mediaStore.addMediumLocal(media))
+      .catch((error) => {
+        // TODO: display error
+        console.log(error);
+      })
+      .finally(() => {
+        // remove batch so it will be regarded as loaded, regardless whether it failed or not
+        const index = loadingMedia.value.indexOf(missingBatch);
+
+        if (index > 0) {
+          loadingMedia.value.splice(index, 1);
+        }
+      });
+  }
+});
+
+// LIFECYCLE EVENTS
+
+// FUNCTIONS
+const toast = useToast();
+function startListEdit() {
+  editingList.value.name = storeSelectedList.value?.name || "";
+  editingList.value.medium = storeSelectedList.value?.medium || 0;
+  displayEditDialog.value = true;
+}
+function saveList() {
+  const value = selectedList.value;
+  if (!value || value?.external) {
+    return;
+  }
+
+  if (!editingList.value.name.trim()) {
+    toast.add({
+      summary: "Missing List name",
+      severity: "error",
+    });
+    return;
+  }
+  if (!editingList.value.medium) {
+    toast.add({
+      summary: "Missing List Medium",
+      severity: "error",
+    });
+    return;
+  }
+  const currentList: List = {
+    ...value,
+    name: editingList.value.name,
+    medium: editingList.value.medium,
+  };
+
+  editListLoading.value = true;
+  HttpClient.updateList(currentList)
+    .then((success) => {
+      if (success) {
+        listsStore.updateListLocal(currentList);
+        toast.add({ severity: "success", summary: "Saved", detail: "List changes were saved", life: 3000 });
+      } else {
+        toast.add({
+          severity: "error",
+          summary: "Save Error",
+          detail: "Save was not successful",
+          life: 3000,
+        });
+      }
+    })
+    .catch((reason) => {
+      toast.add({
+        severity: "error",
+        summary: "Save Error",
+        detail: JSON.stringify(reason),
+        life: 3000,
+      });
+    })
+    .finally(() => {
+      displayEditDialog.value = false;
+      editListLoading.value = false;
+    });
+}
+function deleteList() {
+  const listId = selectedList.value?.id;
+
+  if (!listId) {
+    return;
+  }
+  useConfirm().require({
+    message: "Are you sure you want to proceed?",
+    header: "Confirmation",
+    icon: "pi pi-exclamation-triangle",
+    acceptClass: "p-button-danger",
+    accept: () => {
+      // TODO: make this an action
+      deleteListLoading.value = true;
+      HttpClient.deleteList(listId)
+        .then(() => {
+          listsStore.deleteListLocal(listId);
+          // select the next list
+          selectedList.value = displayedLists.value.find((list) => list.id !== listId) || null;
+          toast.add({ severity: "info", summary: "Confirmed", detail: "Record deleted", life: 3000 });
+        })
+        .catch((reason) => {
+          toast.add({
+            severity: "error",
+            summary: "Delete failed",
+            detail: JSON.stringify(reason),
+            life: 3000,
+          });
+        })
+        .finally(() => (deleteListLoading.value = false));
+    },
+  });
+}
+function confirmDeleteListItem(data: Medium) {
+  const list = selectedList.value;
+  const mediumId = data?.id;
+
+  if (!list || !mediumId) {
+    return;
+  }
+  useConfirm().require({
+    message: `Remove '${data.title}' from List '${list.name}'?`,
+    header: "Confirmation",
+    icon: "pi pi-exclamation-triangle",
+    acceptClass: "p-button-danger",
+    accept: () => {
+      deleteItemLoading.value = true;
+
+      HttpClient.deleteListItem({ listId: list.id, mediumId: [mediumId] })
+        .then(() => {
+          listsStore.removeListItemLocal({ listId: list.id, mediumId });
+          toast.add({ severity: "info", summary: "Confirmed", detail: "Item removed from List", life: 3000 });
+        })
+        .catch((reason) => {
+          toast.add({
+            severity: "error",
+            summary: "Deleting Item failed",
+            detail: JSON.stringify(reason),
+            life: 3000,
+          });
+        })
+        .finally(() => (deleteItemLoading.value = false));
+    },
+  });
+}
+function onRowEditSave(event: DataTableRowEditCancelEvent) {
+  console.log(event);
+  editItemLoading.value = true;
+  const newMedium: SimpleMedium = event.newData;
+
+  HttpClient.updateMedium(newMedium)
+    .then(() => {
+      mediaStore.updateMediumLocal(newMedium);
+      toast.add({ severity: "success", summary: "Medium updated", life: 3000 });
+    })
+    .catch((reason) => {
+      toast.add({
+        severity: "error",
+        summary: "Save failed",
+        detail: JSON.stringify(reason),
+        life: 3000,
+      });
+    })
+    .finally(() => (editItemLoading.value = false));
+}
+function addListItem() {
+  const list = selectedList.value;
+  const mediumId = selectedMedium.value?.id;
+
+  if (!list || !mediumId) {
+    selectedMedium.value = null;
+    return;
+  }
+  addItemLoading.value = true;
+  HttpClient.addListItem({ listId: list.id, mediumId: [mediumId] })
+    .then(() => {
+      listsStore.addListItemLocal({ listId: list.id, mediumId });
+      toast.add({ severity: "success", summary: "Success", detail: "Medium added to List", life: 3000 });
+    })
+    .catch((reason) => {
+      toast.add({
+        severity: "error",
+        summary: "Adding Item failed",
+        detail: JSON.stringify(reason),
+        life: 3000,
+      });
+    })
+    .finally(() => (addItemLoading.value = false));
+  selectedMedium.value = null;
+}
+function searchMedia(event: AutoCompleteCompleteEvent) {
+  const query = event.query.toLowerCase().trim();
+
+  const current = new Set(selectedList.value?.items);
+
+  mediumSuggestions.value = mediaStore.mediaList.filter((medium) => {
+    return !current.has(medium.id) && medium.title.toLowerCase().includes(query);
+  });
+}
 </script>

@@ -1,5 +1,5 @@
-import { Modal, Modals, VuexStore } from "../siteTypes";
-import { Module } from "vuex";
+import { Modal, Modals } from "../siteTypes";
+import { defineStore } from "pinia";
 
 function createModal(): Modal {
   return {
@@ -8,7 +8,7 @@ function createModal(): Modal {
   };
 }
 
-const module: Module<Modals, VuexStore> = {
+export const useModalStore = defineStore("store", {
   state: () => ({
     addList: createModal(),
     addMedium: createModal(),
@@ -18,7 +18,7 @@ const module: Module<Modals, VuexStore> = {
     settings: createModal(),
     error: createModal(),
   }),
-  mutations: {
+  actions: {
     // create error and show setter for modals
     ...(function () {
       const modals: Array<keyof Modals> = [
@@ -44,5 +44,4 @@ const module: Module<Modals, VuexStore> = {
       state[modalKey].error = "";
     },
   },
-};
-export default module;
+});

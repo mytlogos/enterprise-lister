@@ -1,3 +1,4 @@
+import { useExternalUserStore } from "../store/externaluser";
 <template>
   <modal :error="error" @finish="sendForm()">
     <template #title> Login </template>
@@ -26,6 +27,7 @@
 <script lang="ts">
 import modal from "../components/modal/modal.vue";
 import { defineComponent, PropType } from "vue";
+import { useExternalUserStore } from "../store/externaluser";
 
 interface Option {
   name: string;
@@ -70,7 +72,8 @@ export default defineComponent({
   },
   methods: {
     sendForm(): void {
-      this.$store.dispatch("addExternalUser", { identifier: this.user, pwd: this.pw, type: this.selected });
+      // @ts-expect-error
+      useExternalUserStore().addExternalUser({ identifier: this.user, pwd: this.pw, type: this.selected });
     },
   },
 });

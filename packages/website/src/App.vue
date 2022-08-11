@@ -15,14 +15,18 @@ import { emitBusEvent, onBusEvent } from "./bus";
 import { HttpClient } from "./Httpclient";
 import { defineComponent } from "vue";
 import { optimizedResize } from "./init";
+import { useSettingsStore } from "./store/settings";
+import { mapStores } from "pinia";
+import { useUserStore } from "./store/store";
 
 export default defineComponent({
   components: {
     appHeader,
   },
   computed: {
+    ...mapStores(useUserStore),
     loggedIn(): boolean {
-      return this.$store.getters.loggedIn;
+      return this.userStore.loggedIn;
     },
   },
   watch: {
@@ -33,20 +37,19 @@ export default defineComponent({
         this.loginState();
       }
     },
-    "$store.settings.notifications": {
-      handler() {
-        // FIXME: does not fire somehow on changes
-        if (this.$store.state.settings.notifications.newReleases.enabled) {
-          this.$store.dispatch("activateNewReleases");
-        } else {
-          this.$store.dispatch("deactivateNewReleases");
-        }
-      },
-      immediate: true,
-      deep: true,
-    },
   },
   mounted() {
+    const store = useSettingsStore();
+    store.$subscribe(
+      () => {
+        if (store.notifications.newReleases.enabled) {
+          store.activateNewReleases();
+        } else {
+          store.deactivateNewReleases();
+        }
+      },
+      { immediate: true },
+    );
     onBusEvent("refresh:externalUser", (data: string) => this.refreshExternalUser(data));
 
     onBusEvent("reset:modal", () => this.closeModal());
@@ -56,7 +59,7 @@ export default defineComponent({
 
   async created() {
     if (this.loggedIn) {
-      await this.$store.dispatch("load");
+      await this.userStore.load();
     } else {
       await this.loginState();
     }
@@ -64,12 +67,13 @@ export default defineComponent({
 
   methods: {
     closeModal() {
-      this.$store.commit("resetModal", "login");
-      this.$store.commit("resetModal", "register");
-      this.$store.commit("resetModal", "addList");
-      this.$store.commit("resetModal", "addMedium");
-      this.$store.commit("resetModal", "error");
-      this.$store.commit("resetModal", "settings");
+      // TODO: modal thingis
+      // this.$store.commit("resetModal", "login");
+      // this.$store.commit("resetModal", "register");
+      // this.$store.commit("resetModal", "addList");
+      // this.$store.commit("resetModal", "addMedium");
+      // this.$store.commit("resetModal", "error");
+      // this.$store.commit("resetModal", "settings");
     },
 
     async loginState() {
@@ -82,10 +86,7 @@ export default defineComponent({
         console.log(`Logged In: ${this.loggedIn} New User: `, newUser);
 
         if (!this.loggedIn && newUser) {
-          await this.$store.dispatch("changeUser", {
-            user: newUser,
-            modal: "login",
-          });
+          await this.userStore.changeUser(newUser, "login");
         } else {
           throw Error();
         }

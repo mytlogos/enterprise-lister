@@ -75,10 +75,10 @@ export const getDisplayReleases = createHandler(
       until,
       read,
       uuid,
-      ignored_lists: ignoredLists,
-      required_lists: requiredLists,
-      ignored_media: ignoredMedia,
-      required_media: requiredMedia,
+      ignore_lists: ignoredLists,
+      only_lists: requiredLists,
+      ignore_media: ignoredMedia,
+      only_media: requiredMedia,
     }: GetDisplayReleases = req.query as any;
 
     const latestDate = getDate(latest);

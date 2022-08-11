@@ -121,8 +121,10 @@ import { HttpClient } from "../Httpclient";
 import { defineComponent } from "vue";
 import { AllJobStats, Job } from "../siteTypes";
 import { absoluteToRelative, formatDate, round } from "../init";
-import { JobStatSummary } from "enterprise-core/src/types";
+import { JobStatSummary } from "enterprise-core/dist/types";
 import { FilterMatchMode } from "primevue/api";
+import { mapStores } from "pinia";
+import { useMediaStore } from "../store/media";
 
 interface LiveJob {
   /**
@@ -271,6 +273,7 @@ export default defineComponent({
     };
   },
   computed: {
+    ...mapStores(useMediaStore),
     computedJobs(): JobItem[] {
       const jobs = [...this.jobStats];
       const sortEntries = Object.entries(this.sortedOn) as Array<[keyof JobItem, number]>;
@@ -402,10 +405,10 @@ export default defineComponent({
         return name;
       }
       const id = Number.parseInt(match[1]);
-      const medium = this.$store.getters.getMedium(id);
+      const medium = this.mediaStore.media[id];
       const link = match[2];
       const domainName = domainRegex.exec(link);
-      return `Toc: ${medium ? (medium.title as string) : "Deleted Medium"} of ${domainName?.[2] || ""}`;
+      return `Toc: ${medium?.title || "Deleted Medium"} of ${domainName?.[2] || ""}`;
     },
     absoluteToRelative(date?: Date | null): string {
       if (!date) {
