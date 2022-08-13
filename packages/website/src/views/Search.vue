@@ -7,44 +7,53 @@
           <label for="title">Title</label>
         </span>
         <p-button class="btn btn-dark me-2" :loading="data.isSearching" label="Search" @click.left="search" />
-        <media-filter :state="data.type" @update:state="data.type = $event" />
+        <media-filter v-model:state="data.type" />
       </template>
     </Toolbar>
-    <data-view :value="data.result" layout="grid" :paginator="true" :rows="35" data-key="link">
+    <data-view
+      :value="data.result"
+      layout="grid"
+      :paginator="true"
+      paginator-position="both"
+      :rows="20"
+      data-key="link"
+    >
       <template #empty>
         <div class="text-center my-5">No records found.</div>
       </template>
       <template #grid="slotProps">
-        <Card>
-          <template #title>
-            <a
-              v-tooltip.top="slotProps.data.title"
-              :href="slotProps.data.link"
-              target="_blank"
-              rel="noopener noreferrer"
-              style="overflow: hidden; max-height: 40%"
-              class="d-block text-body card-title h5"
-            >
-              {{ slotProps.data.title }}
-            </a>
-          </template>
-          <template #subtitle>
-            <type-icon :type="slotProps.data.medium" />
-            <small class="text-muted">{{ slotProps.data.author || "N/A" }}</small>
-          </template>
-          <template #content>
-            <img :src="slotProps.data.coverUrl" class="card-img" alt="Cover Image" />
-          </template>
-          <template #footer>
-            <p-button
-              class="pi pi-plus"
-              label="Add"
-              data-bs-toggle="modal"
-              data-bs-target="#add-modal"
-              @click.left="select(slotProps.data)"
-            />
-          </template>
-        </Card>
+        <div class="col-12 md:col-3">
+          <Card>
+            <template #title>
+              <a
+                v-tooltip.top="slotProps.data.title"
+                :href="slotProps.data.link"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="overflow: hidden; max-height: 40%"
+                class="d-block text-body card-title h5"
+              >
+                {{ slotProps.data.title }}
+              </a>
+            </template>
+            <template #subtitle>
+              <type-icon :type="slotProps.data.medium" />
+              <small class="text-muted ms-2 align-top">{{ slotProps.data.author || "N/A" }}</small>
+            </template>
+            <template #content>
+              <img :src="slotProps.data.coverUrl" class="card-img" alt="Cover Image" />
+            </template>
+            <template #footer>
+              <p-button
+                class="pi pi-plus"
+                label="Add"
+                data-bs-toggle="modal"
+                data-bs-target="#add-modal"
+                @click.left="select(slotProps.data)"
+              />
+            </template>
+          </Card>
+        </div>
       </template>
     </data-view>
     <!-- Modal -->
@@ -184,6 +193,12 @@ function add() {
 </script>
 
 <style scoped>
+:deep(.p-card) {
+  margin: 0.25rem;
+  border: 1px solid var(--surface-border);
+  box-shadow: unset;
+}
+
 .tile {
   width: 20vw;
   max-width: 100vw;
