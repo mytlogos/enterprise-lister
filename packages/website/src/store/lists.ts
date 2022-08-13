@@ -64,13 +64,14 @@ export const useListStore = defineStore("lists", {
       }
     },
 
-    async addList(data: { name: string; type: number }) {
+    async addList(data: { name: string; medium: number }) {
+      // TODO: check if list already exists
       if (!data.name) {
         // TODO: commit("addListModalError", "Missing name");
-      } else if (!data.type) {
+      } else if (!data.medium) {
         // TODO: commit("addListModalError", "Missing type");
       } else {
-        return HttpClient.createList(data).then((list) => {
+        return HttpClient.createList({ list: { name: data.name, medium: data.medium } }).then((list) => {
           // @ts-expect-error
           this.addListLocal(list);
           // TODO: commit("resetModal", "addList");

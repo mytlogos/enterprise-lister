@@ -30,6 +30,7 @@ import {
   DeleteListMedium,
   DeleteToc,
   GetHistoryJobsPaginated,
+  PostList,
   PostListMedium,
 } from "enterprise-server/dist/validation";
 import { CustomHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
@@ -360,8 +361,9 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.externalUser.delete, { externalUuid: uuid });
   },
 
-  createList(list: { name: string; type: number }): Promise<List> {
-    return this.queryServer(serverRestApi.api.user.list.post, { list }).then((newList) => Object.assign(list, newList));
+  async createList(param: Query<PostList>): Promise<List> {
+    const newList = await this.queryServer(serverRestApi.api.user.list.post, param);
+    return Object.assign(param.list, newList);
   },
 
   updateList(list: List): Promise<boolean> {

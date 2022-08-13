@@ -93,7 +93,7 @@ function send(): void {
     }
   });
   listStore
-    .addList({ name: data.value.name, type: mediumType })
+    .addList({ name: data.value.name, medium: mediumType })
     .then(() => {
       toast.add({
         summary: "Success",
