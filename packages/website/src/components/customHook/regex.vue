@@ -10,42 +10,47 @@
     </div>
   </div>
 </template>
-<script lang="ts">
+<script lang="ts" setup>
 import { JsonRegex } from "enterprise-scraper/dist/externals/custom/types";
-import { defineComponent, PropType } from "vue";
-import { createComputedProperty } from "../../init";
+import { computed, PropType } from "vue";
 import { PrismEditor } from "vue-prism-editor";
 // @ts-expect-error
 import { highlight, languages } from "prismjs/components/prism-core";
 import "prismjs/components/prism-regex.js";
 import "prismjs/themes/prism-tomorrow.css"; // import syntax highlighting styles
 
-export default defineComponent({
-  name: "Regex",
-  components: {
-    PrismEditor,
+const props = defineProps({
+  modelValue: {
+    type: Object as PropType<JsonRegex>,
+    required: true,
   },
-  props: {
-    modelValue: {
-      type: Object as PropType<JsonRegex>,
-      required: true,
-    },
-    regexName: {
-      type: String,
-      default: () => "Regex",
-    },
-  },
-  emits: ["update:modelValue"],
-  computed: {
-    pattern: createComputedProperty("modelValue", "pattern"),
-    flags: createComputedProperty("modelValue", "flags"),
-  },
-  methods: {
-    highlighter(code: string) {
-      return highlight(code, languages.regex); // languages.<insert language> to return html with markup
-    },
+  regexName: {
+    type: String,
+    default: () => "Regex",
   },
 });
+
+const emits = defineEmits(["update:modelValue"]);
+const pattern = computed({
+  get(): string {
+    return props.modelValue.pattern;
+  },
+  set(value: string) {
+    emits("update:modelValue", { ...props.modelValue, pattern: value });
+  },
+});
+const flags = computed({
+  get(): string {
+    return props.modelValue.flags;
+  },
+  set(value: string) {
+    emits("update:modelValue", { ...props.modelValue, flags: value });
+  },
+});
+
+function highlighter(code: string) {
+  return highlight(code, languages.regex); // languages.<insert language> to return html with markup
+}
 </script>
 <style scoped>
 /* required class */

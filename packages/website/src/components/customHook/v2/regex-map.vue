@@ -3,10 +3,10 @@
   <div class="row mb-3">
     <div class="col">
       <label for="hookBase" class="form-label">Regex Name</label>
-      <input id="hookBase" v-model="name" type="text" class="form-control" placeholder="Name" />
+      <input id="hookBase" v-model="data.name" type="text" class="form-control" placeholder="Name" />
     </div>
     <div class="col">
-      <regex v-model="regex" />
+      <regex v-model="data.regex" />
     </div>
   </div>
   <div v-for="entry in Object.entries(modelValue)" :key="entry[0]" class="row mb-3">
@@ -16,44 +16,38 @@
     </div>
   </div>
 </template>
-<script lang="ts">
-import { defineComponent, PropType } from "vue";
-import { idGenerator } from "../../../init";
+<script lang="ts" setup>
+import { PropType, reactive } from "vue";
 import Regex from "../regex.vue";
 import { JsonRegex } from "enterprise-scraper/dist/externals/customv2/types";
-
-const nextId = idGenerator();
 
 function defaultRegex() {
   return { pattern: "", flags: "" };
 }
 
-export default defineComponent({
-  name: "RegexMap",
-  components: {
-    Regex,
+const props = defineProps({
+  idPrefix: {
+    type: String,
+    required: true,
   },
-  props: {
-    idPrefix: {
-      type: String,
-      required: true,
-    },
-    modelValue: {
-      type: Object as PropType<Record<string, JsonRegex>>,
-      required: true,
-    },
-  },
-  emits: ["update:modelValue", "delete"],
-  data: () => ({ id: nextId(), name: "", regex: defaultRegex() }),
-  methods: {
-    addRegex() {
-      if (!this.name || !this.regex.pattern) {
-        return;
-      }
-      this.$emit("update:modelValue", { ...this.modelValue, [this.name]: this.regex });
-      this.regex = defaultRegex();
-      this.name = "";
-    },
+  modelValue: {
+    type: Object as PropType<Record<string, JsonRegex>>,
+    required: true,
   },
 });
+
+const emits = defineEmits(["update:modelValue", "delete"]);
+const data = reactive({
+  name: "",
+  regex: defaultRegex(),
+});
+
+function addRegex() {
+  if (!data.name || !data.regex.pattern) {
+    return;
+  }
+  emits("update:modelValue", { ...props.modelValue, [data.name]: data.regex });
+  data.regex = defaultRegex();
+  data.name = "";
+}
 </script>

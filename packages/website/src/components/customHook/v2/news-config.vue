@@ -38,7 +38,7 @@
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data.data, index)"
+              @click="data.data.splice(index, 1)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -247,14 +247,15 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+import { toRef, PropType, ref } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { NewsConfig, NewsNested, NewsSingle } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
-
+</script>
+<script lang="ts" setup>
 function defaultSingle(): NewsSingle {
   return {
     type: "single",
@@ -314,75 +315,37 @@ function singleToNested(config: NewsSingle) {
     },
   };
 }
-
-export default defineComponent({
-  name: "NewsConfig",
-  components: {
-    RequestConfig,
-    RegexMap,
+const props = defineProps({
+  idPrefix: {
+    type: String,
+    required: true,
   },
-  props: {
-    idPrefix: {
-      type: String,
-      required: true,
-    },
-    modelValue: {
-      type: Object as PropType<NewsConfig>,
-      required: true,
-    },
-  },
-  emits: ["update:modelValue", "delete"],
-  data: () => ({
-    id: nextId(),
-    types: ["nested", "single"] as Array<NewsConfig["data"][0]["type"]>,
-    data: {} as NewsConfig,
-    logger: new Logger("news-config"),
-  }),
-  watch: {
-    data: {
-      handler(newValue: NewsConfig) {
-        if (deepEqual(newValue, this.modelValue)) {
-          this.logger.info("Did not update news-config");
-        } else {
-          this.logger.info("Updated news-config");
-          this.$emit("update:modelValue", newValue);
-        }
-      },
-      deep: true,
-    },
-    modelValue: {
-      handler(newValue: NewsConfig) {
-        if (!deepEqual(newValue, this.data)) {
-          this.data = clone(newValue);
-        }
-      },
-      deep: true,
-      immediate: true,
-    },
-  },
-  methods: {
-    remove(array: any[], index: number) {
-      array.splice(index, 1);
-    },
-    toggleCustomRequest(item: NewsConfig["data"][0]) {
-      if (item._request) {
-        item._request = undefined;
-      } else {
-        item._request = {};
-      }
-    },
-    addSchema() {
-      this.data.data.push(defaultSingle());
-    },
-    convertConfig(type: NewsConfig["data"][0]["type"], data: any[], index: number) {
-      if (type === "nested") {
-        data[index] = singleToNested(data[index]);
-      } else {
-        data[index] = nestedToSingle(data[index]);
-      }
-    },
+  modelValue: {
+    type: Object as PropType<NewsConfig>,
+    required: true,
   },
 });
+const emits = defineEmits(["update:modelValue", "delete"]);
+const data = ref<NewsConfig>({} as any);
+const id = nextId();
+const types = ["nested", "single"] as Array<NewsConfig["data"][0]["type"]>;
+const logger = new Logger("news-config");
+
+const { toggleCustomRequest, addSchema } = customHookHelper(
+  data,
+  toRef(props, "modelValue"),
+  defaultSingle,
+  logger,
+  emits,
+);
+
+function convertConfig(type: NewsConfig["data"][0]["type"], data: any[], index: number) {
+  if (type === "nested") {
+    data[index] = singleToNested(data[index]);
+  } else {
+    data[index] = nestedToSingle(data[index]);
+  }
+}
 </script>
 <style scoped>
 .card[aria-expanded="true"] {

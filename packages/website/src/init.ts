@@ -1,3 +1,4 @@
+import { Ref, watch } from "vue";
 import { SimpleMedium, FullMediumToc, StringKey } from "./siteTypes";
 
 /**
@@ -499,4 +500,47 @@ export class PerfLogger {
     console.log(`[${this.tag}](${diffStart};${diffPrevious}): ${msg}`);
     this.previous = now;
   }
+}
+
+export function customHookHelper<T extends { data: any[] }>(
+  data: Ref<T>,
+  modelValue: Ref<T>,
+  createSchema: () => T["data"][0],
+  logger: Logger,
+  emits: (event: "update:modelValue", ...args: any[]) => void,
+) {
+  return {
+    dataUnwatcher: watch(
+      data,
+      (newValue) => {
+        if (!deepEqual(newValue, modelValue.value)) {
+          logger.info("Updated config");
+          emits("update:modelValue", newValue);
+        }
+      },
+      { deep: true },
+    ),
+
+    modelUnwatcher: watch(
+      modelValue,
+      (newValue) => {
+        if (!deepEqual(newValue, data.value)) {
+          data.value = clone(newValue);
+        }
+      },
+      { deep: true, immediate: true },
+    ),
+
+    toggleCustomRequest(item: T["data"][0]) {
+      if (item._request) {
+        item._request = undefined;
+      } else {
+        item._request = {};
+      }
+    },
+
+    addSchema() {
+      data.value.data.push(createSchema());
+    },
+  };
 }

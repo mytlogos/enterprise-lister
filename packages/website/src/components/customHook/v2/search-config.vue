@@ -38,7 +38,7 @@
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data.data, index)"
+              @click="data.data.splice(index, 1)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -74,14 +74,15 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+import { PropType, ref, toRef } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { SearchSingle, SearchConfig } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
-
+</script>
+<script lang="ts" setup>
 function defaultSingle(): SearchSingle {
   return {
     _$: "",
@@ -94,66 +95,32 @@ function defaultSingle(): SearchSingle {
   };
 }
 
-export default defineComponent({
-  name: "SearchConfig",
-  components: {
-    RequestConfig,
-    RegexMap,
+const props = defineProps({
+  idPrefix: {
+    type: String,
+    required: true,
   },
-  props: {
-    idPrefix: {
-      type: String,
-      required: true,
-    },
-    modelValue: {
-      type: Object as PropType<SearchConfig>,
-      required: true,
-    },
-  },
-  emits: ["update:modelValue", "delete"],
-  data: () => ({
-    id: nextId(),
-    data: {} as SearchConfig,
-    logger: new Logger("search-config"),
-  }),
-  watch: {
-    data: {
-      handler(newValue: SearchConfig) {
-        if (deepEqual(newValue, this.modelValue)) {
-          this.logger.info("Did not update search-config");
-        } else {
-          this.logger.info("Updated search-config");
-          this.$emit("update:modelValue", newValue);
-        }
-      },
-      deep: true,
-    },
-    modelValue: {
-      handler(newValue: SearchConfig) {
-        if (!deepEqual(newValue, this.data)) {
-          this.data = clone(newValue);
-        }
-      },
-      deep: true,
-      immediate: true,
-    },
-  },
-  methods: {
-    remove(array: any[], index: number) {
-      array.splice(index, 1);
-    },
-    toggleCustomRequest(item: SearchConfig["data"][0]) {
-      if (item._request) {
-        item._request = undefined;
-      } else {
-        item._request = {};
-      }
-    },
-    addSchema() {
-      this.data.data.push(defaultSingle());
-    },
+  modelValue: {
+    type: Object as PropType<SearchConfig>,
+    required: true,
   },
 });
+const emits = defineEmits(["update:modelValue", "delete"]);
+const id = nextId();
+const data = ref<SearchConfig>({
+  searchUrl: "",
+  data: [],
+  regexes: {},
+});
+const logger = new Logger("search-config-" + id);
+
+const { toggleCustomRequest, addSchema } = customHookHelper(
+  data,
+  toRef(props, "modelValue"),
+  defaultSingle,
+  logger,
+  emits,
+);
 </script>
 <style scoped>
 .card[aria-expanded="true"] {

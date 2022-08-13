@@ -3,7 +3,7 @@
     <template #title> Create Medium from Unused Medium </template>
     <template #input>
       <input
-        v-model="medium.title"
+        v-model="data.medium.title"
         class="form-control"
         name="title"
         required
@@ -11,11 +11,11 @@
         type="text"
         placeholder="Title of the Medium"
       />
-      <type-icon :type="medium.medium" class="form-control-plaintext" />
+      <type-icon :type="data.medium.medium" class="form-control-plaintext" />
       <div class="row">
         <label> Author </label>
         <input
-          v-model="medium.author"
+          v-model="data.medium.author"
           name="author"
           class="form-control"
           title="Author"
@@ -26,7 +26,7 @@
       <div class="row">
         <label>Artist</label>
         <input
-          v-model="medium.artist"
+          v-model="data.medium.artist"
           class="form-control"
           name="artist"
           title="Artist"
@@ -37,7 +37,7 @@
       <div class="row">
         <label>Series</label>
         <input
-          v-model="medium.series"
+          v-model="data.medium.series"
           class="form-control"
           name="series"
           title="Series"
@@ -48,7 +48,7 @@
       <div class="row">
         <label>Universe</label>
         <input
-          v-model="medium.universe"
+          v-model="data.medium.universe"
           class="form-control"
           name="universe"
           title="Universe"
@@ -59,7 +59,7 @@
       <div class="row">
         <label>Language</label>
         <input
-          v-model="medium.lang"
+          v-model="data.medium.lang"
           class="form-control"
           name="language"
           title="Language"
@@ -70,7 +70,7 @@
       <div class="row">
         <label>Country Of Origin</label>
         <input
-          v-model="medium.countryOfOrigin"
+          v-model="data.medium.countryOfOrigin"
           class="form-control"
           name="countryOfOrigin"
           title="Country Of Origin"
@@ -81,7 +81,7 @@
       <div class="row">
         <label>Language Of Origin</label>
         <input
-          v-model="medium.languageOfOrigin"
+          v-model="data.medium.languageOfOrigin"
           class="form-control"
           name="langOfOrigin"
           title="Language Of Origin"
@@ -92,7 +92,7 @@
       <div class="row">
         <label>Status of Translator</label>
         <release-state
-          :state="medium.stateTL"
+          :state="data.medium.stateTL"
           class="ms-1"
           name="stateTl"
           title="Status of Translator"
@@ -102,7 +102,7 @@
       <div class="row">
         <label>Status in COO</label>
         <release-state
-          :state="medium.stateOrigin"
+          :state="data.medium.stateOrigin"
           class="ms-1"
           name="stateCOO"
           title="Status in COO"
@@ -110,21 +110,19 @@
         />
       </div>
       <div class="row">
-        <select v-model="selectedList" class="form-select col-2" title="Select list to add medium to">
+        <select v-model="data.selectedList" class="form-select col-2" title="Select list to add medium to">
           <option disabled selected value="">Select list to add medium to</option>
-          <option v-for="list in lists" :key="list.id" :value="list.id">
+          <option v-for="list in data.lists" :key="list.id" :value="list.id">
             {{ list.name }}
           </option>
         </select>
       </div>
-      <auto-complete
-        thing-key="id"
-        input-class="form-control"
-        :items="suggestions"
-        title-key="title"
+      <AutoComplete
+        :suggestions="data.suggestions"
+        field="title"
         placeholder="Add Unused Media"
-        @input="addOwnSimilar"
-        @text="fetchSuggestions"
+        @keyup.enter="addOwnSimilar"
+        @complete="fetchSuggestions"
       />
       <ul class="list-group">
         <li
@@ -163,150 +161,147 @@
   >
     <div class="toast-header">
       <i class="fas fa-exclamation-circle rounded me-2 text-danger" aria-hidden="true" />
-      <strong class="me-auto">{{ toastTitle }}</strong>
+      <strong class="me-auto">{{ data.toastTitle }}</strong>
       <button type="button" class="ms-2 mb-1 btn-close" data-bs-dismiss="toast" aria-label="Close">
         <span aria-hidden="true">&times;</span>
       </button>
     </div>
     <div class="toast-body">
-      {{ toastMessage }}
+      {{ data.toastMessage }}
     </div>
   </div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import modal from "./modal.vue";
-import { defineComponent, PropType } from "vue";
+import { computed, PropType, reactive, watchEffect } from "vue";
 import { HttpClient } from "../../Httpclient";
 import { AddMedium, MediumInWait } from "../../siteTypes";
 import Toast from "bootstrap/js/dist/toast";
 import { debounce } from "../../init";
 import ReleaseState from "../release-state.vue";
 import TypeIcon from "../type-icon.vue";
-import AutoComplete from "../auto-complete.vue";
 import { useListStore } from "../../store/lists";
+import { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 
-export default defineComponent({
-  name: "AddUnusedModal",
-  components: { modal, ReleaseState, TypeIcon, AutoComplete },
-  props: {
-    item: { type: Object as PropType<MediumInWait>, default: undefined, required: false },
-    similarItems: { type: Array as PropType<MediumInWait[]>, required: true },
-  },
-  emits: ["update:item"],
-  data() {
-    const listStore = useListStore();
-    return {
-      medium: this.createMediumValues(),
-      lists: listStore.lists,
-      selectedList: 0,
-      toastMessage: "",
-      toastTitle: "",
-      tocs: [],
-      ownSimilarItems: [] as MediumInWait[],
-      suggestions: [] as MediumInWait[],
-      toast: null as Toast | null,
-    };
-  },
-  computed: {
-    mergedSimilarItems(): MediumInWait[] {
-      return [...this.similarItems, ...this.ownSimilarItems];
-    },
-  },
-  watch: {
-    item() {
-      this.load();
-    },
-  },
-  mounted() {
-    this.toast = new Toast("#alert-toast");
-  },
-  methods: {
-    fetchSuggestions: debounce(async (value: string) => {
-      const result = await HttpClient.getAllMediaInWaits({
-        title: value || undefined,
-        // @ts-expect-error
-        medium: this.medium || undefined,
-        limit: 10,
-      });
-      // @ts-expect-error
-      this.suggestions = result;
-    }),
-    addOwnSimilar(item: MediumInWait) {
-      this.ownSimilarItems.push(item);
-    },
-    load() {
-      if (!this.item) {
-        return;
-      }
-      this.medium.title = this.item.title;
-      this.medium.medium = this.item.medium;
-    },
-    createMediumValues() {
-      return {
-        title: "",
-        medium: 0,
-        author: "",
-        artist: "",
-        series: "",
-        universe: "",
-        lang: "",
-        countryOfOrigin: "",
-        languageOfOrigin: "",
-        stateTL: 0,
-        stateOrigin: 0,
-      };
-    },
-    reset() {
-      this.medium = this.createMediumValues();
-      this.lists = [];
-      this.tocs = [];
-      this.ownSimilarItems = [];
-      this.toastMessage = "";
-      this.toastTitle = "";
-    },
-    async sendForm() {
-      if (!this.item) {
-        this.showMessage("Missing MediumInWait. Cannot add anything", "Invalid");
-        return;
-      }
-      const result: AddMedium = { ...this.medium };
-
-      if (!result.medium || !result.title) {
-        this.showMessage("Invalid Medium, either title or medium type missing", "Invalid");
-        return;
-      }
-      if (!this.selectedList) {
-        this.showMessage("No List Selected", "Invalid");
-        return;
-      }
-      try {
-        const medium = await HttpClient.postCreateMediumFromMediaInWaits(
-          this.item,
-          this.mergedSimilarItems,
-          this.selectedList,
-        );
-        const success = await HttpClient.updateMedium({ id: medium.id, ...result });
-        if (success) {
-          this.showMessage("Successfully created Medium", "Success");
-        } else {
-          // should never happen, success is always true if there is no error
-          this.showMessage("Failed in creating Medium", "Failure");
-        }
-      } catch (error) {
-        console.error(error);
-        this.showMessage("Failed in creating Medium with an Error", "Hard Failure");
-      }
-    },
-    close() {
-      this.$emit("update:item", undefined);
-    },
-    showMessage(message: string, title: string) {
-      this.toastMessage = message;
-      this.toastTitle = title;
-      this.toast?.show();
-      console.log(`Showing Message: ${title}: ${message}`);
-    },
-  },
+const props = defineProps({
+  item: { type: Object as PropType<MediumInWait>, default: undefined, required: false },
+  similarItems: { type: Array as PropType<MediumInWait[]>, required: true },
 });
+const emits = defineEmits(["update:item"]);
+
+const listStore = useListStore();
+const data = reactive({
+  medium: createMediumValues(),
+  lists: listStore.lists,
+  selectedList: 0,
+  toastMessage: "",
+  toastTitle: "",
+  tocs: [],
+  selectedOwnSimilar: null as MediumInWait | null,
+  ownSimilarItems: [] as MediumInWait[],
+  suggestions: [] as MediumInWait[],
+});
+
+const mergedSimilarItems = computed((): MediumInWait[] => {
+  return [...props.similarItems, ...data.ownSimilarItems];
+});
+
+watchEffect(() => load());
+
+// FUNCTIONS
+const toast = new Toast("#alert-toast");
+const fetchSuggestions = debounce(async (event: AutoCompleteCompleteEvent) => {
+  const result = await HttpClient.getAllMediaInWaits({
+    title: event.query || undefined,
+    // @ts-expect-error
+    medium: this.medium || undefined,
+    limit: 10,
+  });
+  // @ts-expect-error
+  this.suggestions = result;
+});
+
+function addOwnSimilar() {
+  if (data.selectedOwnSimilar) {
+    data.ownSimilarItems.push(data.selectedOwnSimilar);
+    data.selectedOwnSimilar = null;
+  }
+}
+
+function load() {
+  if (!props.item) {
+    return;
+  }
+  data.medium.title = props.item.title;
+  data.medium.medium = props.item.medium;
+}
+
+function createMediumValues() {
+  return {
+    title: "",
+    medium: 0,
+    author: "",
+    artist: "",
+    series: "",
+    universe: "",
+    lang: "",
+    countryOfOrigin: "",
+    languageOfOrigin: "",
+    stateTL: 0,
+    stateOrigin: 0,
+  };
+}
+
+function reset() {
+  data.medium = createMediumValues();
+  data.lists = [];
+  data.tocs = [];
+  data.ownSimilarItems = [];
+  data.toastMessage = "";
+  data.toastTitle = "";
+}
+
+async function sendForm() {
+  if (!props.item) {
+    showMessage("Missing MediumInWait. Cannot add anything", "Invalid");
+    return;
+  }
+  const result: AddMedium = { ...data.medium };
+
+  if (!result.medium || !result.title) {
+    showMessage("Invalid Medium, either title or medium type missing", "Invalid");
+    return;
+  }
+  if (!data.selectedList) {
+    showMessage("No List Selected", "Invalid");
+    return;
+  }
+  try {
+    const medium = await HttpClient.postCreateMediumFromMediaInWaits(
+      props.item,
+      mergedSimilarItems.value,
+      data.selectedList,
+    );
+    const success = await HttpClient.updateMedium({ id: medium.id, ...result });
+    if (success) {
+      showMessage("Successfully created Medium", "Success");
+    } else {
+      // should never happen, success is always true if there is no error
+      showMessage("Failed in creating Medium", "Failure");
+    }
+  } catch (error) {
+    console.error(error);
+    showMessage("Failed in creating Medium with an Error", "Hard Failure");
+  }
+}
+function close() {
+  emits("update:item", undefined);
+  reset();
+}
+function showMessage(message: string, title: string) {
+  data.toastMessage = message;
+  data.toastTitle = title;
+  toast.show();
+}
 </script>

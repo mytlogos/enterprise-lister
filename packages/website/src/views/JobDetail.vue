@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h1>Name: {{ job ? nameToString(job.name) : "Unknown" }}</h1>
+    <h1>Name: {{ data.job ? nameToString(data.job.name) : "Unknown" }}</h1>
     <div class="form-check form-switch">
       <input id="enabledSwitch" v-model="enabled" type="checkbox" class="form-check-input" />
       <label class="form-check-label" for="enabledSwitch">Job enabled</label>
@@ -23,7 +23,7 @@
         </tr>
       </thead>
       <tbody>
-        <template v-for="(item, index) in history" :key="item.id">
+        <template v-for="(item, index) in data.history" :key="item.id">
           <tr data-bs-toggle="collapse" :data-bs-target="'.collapse-' + index">
             <td>{{ index + 1 }}</td>
             <td>{{ nameToString(item.name) }}</td>
@@ -43,7 +43,7 @@
                 {{ item.result }}
               </span>
             </td>
-            <td>{{ absoluteToRelative(item) }}</td>
+            <td>{{ itemToRelativeTime(item) }}</td>
             <td>
               {{ trackingStat(item, (value) => String(value.network.count || 0)) }}
             </td>
@@ -53,8 +53,8 @@
             <td>
               {{ trackingStat(item, (value) => String(value.queryCount || 0)) }}
             </td>
-            <td>{{ dateToString(item.start) }}</td>
-            <td>{{ dateToString(item.end) }}</td>
+            <td>{{ formatDate(item.start) }}</td>
+            <td>{{ formatDate(item.end) }}</td>
           </tr>
         </template>
       </tbody>
@@ -62,111 +62,93 @@
   </div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { HttpClient } from "../Httpclient";
-import { defineComponent } from "vue";
+import { reactive, ref, watchEffect } from "vue";
 import { Job, JobHistoryItem, JobTrack } from "../siteTypes";
 import { formatDate, absoluteToRelative, isString } from "../init";
 import { useMediaStore } from "../store/media";
-import { mapStores } from "pinia";
 
 interface Data {
   job?: Job;
-  enabled: boolean;
   history: JobHistoryItem[];
 }
 
 const tocRegex = /toc-(\d+)-(.+)/;
 const domainRegex = /https?:\/\/(.+\.)?(\w+)(\.\w+)\/?.*/;
 
-export default defineComponent({
-  name: "JobDetail",
-  props: {
-    id: {
-      type: Number,
-      required: true,
-    },
-  },
-  data(): Data {
-    return {
-      job: undefined,
-      enabled: true,
-      history: [],
-    };
-  },
-  computed: {
-    ...mapStores(useMediaStore),
-  },
-  watch: {
-    enabled() {
-      const job = this.job;
-
-      if (!job) {
-        this.enabled = false;
-        return;
-      }
-
-      const jobEnabled = this.job?.job_state === "enabled";
-
-      if (this.enabled !== jobEnabled) {
-        HttpClient.postJobEnabled(job.id, this.enabled)
-          .then(() => {
-            // commit ui change to job object
-            job.job_state = this.enabled ? "enabled" : "disabled";
-          })
-          .catch(() => {
-            // revert ui change on error
-            this.enabled = jobEnabled;
-          });
-      }
-    },
-  },
-  mounted() {
-    HttpClient.getJobDetails(this.id).then((value) => {
-      this.job = value.job;
-      this.enabled = value.job?.job_state === "enabled";
-
-      for (const history of value.history) {
-        try {
-          history.message = JSON.parse(history.message as string);
-        } catch {
-          // ignore it as it may not be json but a plain string
-        }
-        history.start = new Date(history.start);
-        history.end = new Date(history.end);
-      }
-      this.history = value.history;
-    });
-  },
-  methods: {
-    nameToString(name: string): string {
-      const match = tocRegex.exec(name);
-
-      if (!match) {
-        return name;
-      }
-      const id = Number.parseInt(match[1]);
-      const medium = this.mediaStore.media[id];
-      const link = match[2];
-      const domainName = domainRegex.exec(link);
-      return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName?.[2] || ""}`;
-    },
-    dateToString(date?: Date | null): string {
-      if (!date) {
-        return "";
-      }
-      return formatDate(date);
-    },
-    absoluteToRelative(item: JobHistoryItem): string {
-      if (!item.start || !item.end) {
-        console.log("Wrong Item:", item);
-        return "";
-      }
-      return absoluteToRelative(item.start, item.end);
-    },
-    trackingStat(item: JobHistoryItem, accessor: (track: JobTrack) => string): string {
-      return isString(item.message) ? "" : accessor(item.message);
-    },
-  },
+const mediaStore = useMediaStore();
+const props = defineProps<{ id: number }>();
+const data = reactive<Data>({
+  job: undefined,
+  history: [],
 });
+const enabled = ref(true);
+
+// WATCHES
+watchEffect(() => {
+  const job = data.job;
+
+  if (!job) {
+    enabled.value = false;
+    return;
+  }
+
+  const jobEnabled = data.job?.job_state === "enabled";
+
+  if (enabled.value !== jobEnabled) {
+    HttpClient.postJobEnabled(job.id, enabled.value)
+      .then(() => {
+        // commit ui change to job object
+        job.job_state = enabled.value ? "enabled" : "disabled";
+      })
+      .catch(() => {
+        // revert ui change on error
+        enabled.value = jobEnabled;
+      });
+  }
+});
+
+// GENERIC SETUP
+HttpClient.getJobDetails(props.id).then((value) => {
+  data.job = value.job;
+  enabled.value = value.job?.job_state === "enabled";
+
+  for (const history of value.history) {
+    try {
+      history.message = JSON.parse(history.message as string);
+    } catch {
+      // ignore it as it may not be json but a plain string
+    }
+    history.start = new Date(history.start);
+    history.end = new Date(history.end);
+  }
+  data.history = value.history;
+});
+
+// FUNCTIONS
+function nameToString(name: string): string {
+  const match = tocRegex.exec(name);
+
+  if (!match) {
+    return name;
+  }
+  const id = Number.parseInt(match[1]);
+  const medium = mediaStore.media[id];
+  const link = match[2];
+  const domainName = domainRegex.exec(link);
+  return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName?.[2] || ""}`;
+}
+
+function itemToRelativeTime(item: JobHistoryItem): string {
+  if (!item.start || !item.end) {
+    console.log("Wrong Item:", item);
+    return "";
+  }
+  return absoluteToRelative(item.start, item.end);
+}
+
+function trackingStat(item: JobHistoryItem, accessor: (track: JobTrack) => string): string {
+  return isString(item.message) ? "" : accessor(item.message);
+}
 </script>

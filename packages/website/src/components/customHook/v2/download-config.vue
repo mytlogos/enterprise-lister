@@ -80,14 +80,15 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+import { PropType, ref, toRef } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { DownloadSingle, DownloadConfig } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
-
+</script>
+<script lang="ts" setup>
 function defaultSingle(): DownloadSingle {
   return {
     _$: "",
@@ -100,72 +101,37 @@ function defaultSingle(): DownloadSingle {
   };
 }
 
-export default defineComponent({
-  name: "DownloadConfig",
-  components: {
-    RequestConfig,
-    RegexMap,
+const props = defineProps({
+  idPrefix: {
+    type: String,
+    required: true,
   },
-  props: {
-    idPrefix: {
-      type: String,
-      required: true,
-    },
-    modelValue: {
-      type: Object as PropType<DownloadConfig>,
-      required: true,
-    },
-  },
-  emits: ["update:modelValue", "delete"],
-  data: () => ({
-    id: nextId(),
-    data: {} as DownloadConfig,
-    logger: new Logger("download-config"),
-  }),
-  watch: {
-    data: {
-      handler(newValue: DownloadConfig) {
-        if (deepEqual(newValue, this.modelValue)) {
-          this.logger.info("Did not update download-config");
-        } else {
-          this.logger.info("Updated download-config");
-          this.$emit("update:modelValue", newValue);
-        }
-      },
-      deep: true,
-    },
-    modelValue: {
-      handler(newValue: DownloadConfig) {
-        if (!deepEqual(newValue, this.data)) {
-          this.data = clone(newValue);
-        }
-      },
-      deep: true,
-      immediate: true,
-    },
-  },
-  methods: {
-    toggleCustomRequest(item: DownloadConfig["data"][0]) {
-      if (item._request) {
-        item._request = undefined;
-      } else {
-        item._request = {};
-      }
-    },
-    update(value: DownloadConfig) {
-      this.$emit("update:modelValue", value);
-    },
-    removeSchema(index: number) {
-      const value = { ...this.modelValue, data: [...this.modelValue.data] };
-      value.data.splice(index, 1);
-      this.update(value);
-    },
-    addSchema() {
-      const value = { ...this.modelValue, data: [...this.modelValue.data, defaultSingle()] };
-      this.update(value);
-    },
+  modelValue: {
+    type: Object as PropType<DownloadConfig>,
+    required: true,
   },
 });
+const emits = defineEmits(["update:modelValue", "delete"]);
+const id = nextId();
+const data = ref<DownloadConfig>({
+  data: [],
+  regexes: {},
+});
+const logger = new Logger("download-config-" + id);
+
+const { toggleCustomRequest, addSchema } = customHookHelper(
+  data,
+  toRef(props, "modelValue"),
+  defaultSingle,
+  logger,
+  emits,
+);
+
+function removeSchema(index: number) {
+  const value = { ...props.modelValue, data: [...props.modelValue.data] };
+  value.data.splice(index, 1);
+  emits("update:modelValue", value);
+}
 </script>
 <style scoped>
 .card[aria-expanded="true"] {

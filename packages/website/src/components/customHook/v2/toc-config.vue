@@ -32,7 +32,7 @@
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data.data, index)"
+              @click="data.data.splice(index, 1)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -163,13 +163,40 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+import { ref, toRef, PropType } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { TocSingle, TocConfig } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
+</script>
+<script lang="ts" setup>
+const props = defineProps({
+  idPrefix: {
+    type: String,
+    required: true,
+  },
+  modelValue: {
+    type: Object as PropType<TocConfig>,
+    required: true,
+  },
+});
+const emits = defineEmits(["update:modelValue", "delete"]);
+const id = nextId();
+const data = ref<TocConfig>({
+  data: [],
+  regexes: {},
+});
+const logger = new Logger("toc-config-" + id);
+
+const { toggleCustomRequest, addSchema } = customHookHelper(
+  data,
+  toRef(props, "modelValue"),
+  defaultSingle,
+  logger,
+  emits,
+);
 
 function defaultSingle(): TocSingle {
   return {
@@ -198,67 +225,6 @@ function defaultSingle(): TocSingle {
     artists: "",
   };
 }
-
-export default defineComponent({
-  name: "ToCConfig",
-  components: {
-    RequestConfig,
-    RegexMap,
-  },
-  props: {
-    idPrefix: {
-      type: String,
-      required: true,
-    },
-    modelValue: {
-      type: Object as PropType<TocConfig>,
-      required: true,
-    },
-  },
-  emits: ["update:modelValue", "delete"],
-  data: () => ({
-    id: nextId(),
-    data: {} as TocConfig,
-    logger: new Logger("toc-config"),
-  }),
-  watch: {
-    data: {
-      handler(newValue: TocConfig) {
-        if (deepEqual(newValue, this.modelValue)) {
-          this.logger.info("Did not update toc-config");
-        } else {
-          this.logger.info("Updated toc-config");
-          this.$emit("update:modelValue", newValue);
-        }
-      },
-      deep: true,
-    },
-    modelValue: {
-      handler(newValue: TocConfig) {
-        if (!deepEqual(newValue, this.data)) {
-          this.data = clone(newValue);
-        }
-      },
-      deep: true,
-      immediate: true,
-    },
-  },
-  methods: {
-    remove(array: any[], index: number) {
-      array.splice(index, 1);
-    },
-    toggleCustomRequest(item: TocConfig["data"][0]) {
-      if (item._request) {
-        item._request = undefined;
-      } else {
-        item._request = {};
-      }
-    },
-    addSchema() {
-      this.data.data.push(defaultSingle());
-    },
-  },
-});
 </script>
 <style scoped>
 .card[aria-expanded="true"] {

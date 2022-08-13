@@ -188,12 +188,12 @@ FilterService.register(
 
 // DATA
 const editingRows = ref([] as Medium[]);
-const filters = {
+const filters = ref({
   stateOrigin: { value: null, matchMode: "lax-number-equals" },
   medium: { value: null, matchMode: "lax-number-equals" },
   author: { value: null, matchMode: FilterMatchMode.CONTAINS },
   title: { value: null, matchMode: FilterMatchMode.CONTAINS },
-};
+});
 const editItemLoading = ref(false);
 const showStatesTLOptions = [
   {
