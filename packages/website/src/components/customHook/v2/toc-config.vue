@@ -32,7 +32,7 @@
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data.data, index)"
+              @click="data.data.splice(index, 1)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -163,8 +163,8 @@
   </div>
 </template>
 <script lang="ts">
-import { ref, watch, toRef, PropType } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+import { ref, toRef, PropType } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { TocSingle, TocConfig } from "enterprise-scraper/dist/externals/customv2/types";
@@ -190,43 +190,13 @@ const data = ref<TocConfig>({
 });
 const logger = new Logger("toc-config-" + id);
 
-watch(
+const { toggleCustomRequest, addSchema } = customHookHelper(
   data,
-  (newValue) => {
-    if (deepEqual(newValue, props.modelValue)) {
-      logger.info("Did not update toc-config");
-    } else {
-      logger.info("Updated toc-config");
-      emits("update:modelValue", newValue);
-    }
-  },
-  { deep: true },
-);
-watch(
   toRef(props, "modelValue"),
-  (newValue) => {
-    if (!deepEqual(newValue, data.value)) {
-      data.value = clone(newValue);
-    }
-  },
-  { deep: true, immediate: true },
+  defaultSingle,
+  logger,
+  emits,
 );
-
-function remove(array: any[], index: number) {
-  array.splice(index, 1);
-}
-
-function toggleCustomRequest(item: TocConfig["data"][0]) {
-  if (item._request) {
-    item._request = undefined;
-  } else {
-    item._request = {};
-  }
-}
-
-function addSchema() {
-  data.value.data.push(defaultSingle());
-}
 
 function defaultSingle(): TocSingle {
   return {

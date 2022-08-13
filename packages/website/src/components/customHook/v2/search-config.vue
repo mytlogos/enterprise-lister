@@ -38,7 +38,7 @@
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data.data, index)"
+              @click="data.data.splice(index, 1)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -74,8 +74,8 @@
   </div>
 </template>
 <script lang="ts">
-import { PropType, ref, toRef, watch } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+import { PropType, ref, toRef } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { SearchSingle, SearchConfig } from "enterprise-scraper/dist/externals/customv2/types";
@@ -114,43 +114,13 @@ const data = ref<SearchConfig>({
 });
 const logger = new Logger("search-config-" + id);
 
-watch(
+const { toggleCustomRequest, addSchema } = customHookHelper(
   data,
-  (newValue) => {
-    if (deepEqual(newValue, props.modelValue)) {
-      logger.info("Did not update search-config");
-    } else {
-      logger.info("Updated search-config");
-      emits("update:modelValue", newValue);
-    }
-  },
-  { deep: true },
-);
-watch(
   toRef(props, "modelValue"),
-  (newValue) => {
-    if (!deepEqual(newValue, data.value)) {
-      data.value = clone(newValue);
-    }
-  },
-  { deep: true, immediate: true },
+  defaultSingle,
+  logger,
+  emits,
 );
-
-function remove(array: any[], index: number) {
-  array.splice(index, 1);
-}
-
-function toggleCustomRequest(item: SearchConfig["data"][0]) {
-  if (item._request) {
-    item._request = undefined;
-  } else {
-    item._request = {};
-  }
-}
-
-function addSchema() {
-  data.value.data.push(defaultSingle());
-}
 </script>
 <style scoped>
 .card[aria-expanded="true"] {

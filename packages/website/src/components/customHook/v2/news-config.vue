@@ -38,7 +38,7 @@
               aria-hidden="true"
               title="Delete Item"
               class="fas fa-trash btn btn-sm btn-danger text-light ms-auto"
-              @click="remove(data.data, index)"
+              @click="data.data.splice(index, 1)"
             ></i>
           </div>
           <div class="row">Config #{{ index }}</div>
@@ -246,15 +246,16 @@
     </div>
   </div>
 </template>
-<script lang="ts" setup>
-import { toRef, PropType, ref, watch } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+<script lang="ts">
+import { toRef, PropType, ref } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { NewsConfig, NewsNested, NewsSingle } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
-
+</script>
+<script lang="ts" setup>
 function defaultSingle(): NewsSingle {
   return {
     type: "single",
@@ -330,43 +331,13 @@ const id = nextId();
 const types = ["nested", "single"] as Array<NewsConfig["data"][0]["type"]>;
 const logger = new Logger("news-config");
 
-watch(
+const { toggleCustomRequest, addSchema } = customHookHelper(
   data,
-  (newValue) => {
-    if (deepEqual(newValue, props.modelValue)) {
-      logger.info("Did not update news-config");
-    } else {
-      logger.info("Updated news-config");
-      emits("update:modelValue", newValue);
-    }
-  },
-  { deep: true },
-);
-watch(
   toRef(props, "modelValue"),
-  (newValue) => {
-    if (!deepEqual(newValue, data.value)) {
-      data.value = clone(newValue);
-    }
-  },
-  { deep: true, immediate: true },
+  defaultSingle,
+  logger,
+  emits,
 );
-
-function remove(array: any[], index: number) {
-  array.splice(index, 1);
-}
-
-function toggleCustomRequest(item: NewsConfig["data"][0]) {
-  if (item._request) {
-    item._request = undefined;
-  } else {
-    item._request = {};
-  }
-}
-
-function addSchema() {
-  data.value.data.push(defaultSingle());
-}
 
 function convertConfig(type: NewsConfig["data"][0]["type"], data: any[], index: number) {
   if (type === "nested") {

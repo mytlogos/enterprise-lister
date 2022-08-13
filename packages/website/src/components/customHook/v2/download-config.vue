@@ -80,8 +80,8 @@
   </div>
 </template>
 <script lang="ts">
-import { PropType, ref, toRef, watch } from "vue";
-import { clone, deepEqual, idGenerator, Logger } from "../../../init";
+import { PropType, ref, toRef } from "vue";
+import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { DownloadSingle, DownloadConfig } from "enterprise-scraper/dist/externals/customv2/types";
@@ -119,49 +119,18 @@ const data = ref<DownloadConfig>({
 });
 const logger = new Logger("download-config-" + id);
 
-watch(
+const { toggleCustomRequest, addSchema } = customHookHelper(
   data,
-  (newValue) => {
-    if (deepEqual(newValue, props.modelValue)) {
-      logger.info("Did not update download-config");
-    } else {
-      logger.info("Updated download-config");
-      emits("update:modelValue", newValue);
-    }
-  },
-  { deep: true },
-);
-watch(
   toRef(props, "modelValue"),
-  (newValue) => {
-    if (!deepEqual(newValue, data.value)) {
-      data.value = clone(newValue);
-    }
-  },
-  { deep: true, immediate: true },
+  defaultSingle,
+  logger,
+  emits,
 );
-
-function toggleCustomRequest(item: DownloadConfig["data"][0]) {
-  if (item._request) {
-    item._request = undefined;
-  } else {
-    item._request = {};
-  }
-}
-
-function update(value: DownloadConfig) {
-  emits("update:modelValue", value);
-}
 
 function removeSchema(index: number) {
   const value = { ...props.modelValue, data: [...props.modelValue.data] };
   value.data.splice(index, 1);
-  update(value);
-}
-
-function addSchema() {
-  const value = { ...props.modelValue, data: [...props.modelValue.data, defaultSingle()] };
-  update(value);
+  emits("update:modelValue", value);
 }
 </script>
 <style scoped>
