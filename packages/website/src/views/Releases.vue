@@ -31,7 +31,7 @@
           force-selection
           :suggestions="mediumSuggestions"
           field="title"
-          @item-select="releaseStore.ignoreMedium($event.value)"
+          @item-select="ignoreMedium($event.value)"
           @complete="searchMedium($event)"
         />
         <label for="ignoremedium-input">Ignore Medium Title</label>
@@ -43,7 +43,7 @@
           force-selection
           :suggestions="listSuggestions"
           field="name"
-          @item-select="releaseStore.ignoreList($event.value)"
+          @item-select="ignoreList($event.value)"
           @complete="searchList($event)"
         />
         <label for="ignorelist-input">Ignore List Title</label>
@@ -155,13 +155,12 @@
 </template>
 <script lang="ts" setup>
 import { StoreList as List, MediaType, SimpleMedium, DisplayReleaseItem } from "../siteTypes";
-import { watch, computed, onMounted, ref } from "vue";
+import { watchEffect, computed, ref } from "vue";
 import { HttpClient } from "../Httpclient";
 import { PrimeIcons } from "primevue/api";
 import { useReleaseStore } from "../store/releases";
 import { useMediaStore } from "../store/media";
 import { useToast } from "primevue/usetoast";
-import { storeToRefs } from "pinia";
 import { useListStore } from "../store/lists";
 
 // TYPES
@@ -205,13 +204,15 @@ const typeFilterValues = ref([
 ]);
 const mediumSuggestions = ref([] as SimpleMedium[]);
 const listSuggestions = ref([] as List[]);
-const mediumSuggestion: SimpleMedium | undefined = undefined;
-const listSuggestion: List | undefined = undefined;
+const mediumSuggestion = ref<SimpleMedium | null>(null);
+const listSuggestion = ref<List | null>(null);
 
 // STORES
 const releaseStore = useReleaseStore();
 const mediaStore = useMediaStore();
 const listStore = useListStore();
+
+releaseStore.resetDates();
 
 // COMPUTED VALUES
 const onlyMedia: SimpleMedium[] = [];
@@ -233,22 +234,8 @@ const readFilter = computed({
 });
 
 // WATCHES
-// cannot watch nested store property itself, need refs?
-const storeRefs = storeToRefs(releaseStore);
-watch(
-  [
-    storeRefs.readFilter,
-    storeRefs.onlyMedia,
-    storeRefs.readFilter,
-    storeRefs.onlyLists,
-    storeRefs.ignoreLists,
-    storeRefs.ignoreMedia,
-  ],
-  () => {
-    releaseStore.loadDisplayReleases(false);
-  },
-);
-watch(storeRefs.releases, () => {
+watchEffect(() => releaseStore.loadDisplayReleases(false));
+watchEffect(() => {
   const newCount = {
     [MediaType.TEXT]: 0,
     [MediaType.IMAGE]: 0,
@@ -267,13 +254,7 @@ watch(storeRefs.releases, () => {
   });
 });
 
-onMounted(() => {
-  releaseStore.resetDates();
-  releaseStore.loadDisplayReleases(false);
-});
-
 // FUNCTIONS
-
 function defaultLatest(): Date {
   // some releases have dates in the future, so get them at most one year in the future
   const latest = new Date();
@@ -339,6 +320,7 @@ function paginate(event: { previous: number; current: number }) {
   }
   releaseStore.loadDisplayReleases(true);
 }
+
 function searchMedium(event: SearchEvent) {
   const query = event.query.toLowerCase();
 
@@ -350,6 +332,17 @@ function searchMedium(event: SearchEvent) {
     return medium.title.toLowerCase().includes(query);
   });
 }
+
+function ignoreList(value: List) {
+  listSuggestion.value = null;
+  releaseStore.ignoreList(value.id);
+}
+
+function ignoreMedium(value: SimpleMedium) {
+  mediumSuggestion.value = null;
+  releaseStore.ignoreMedium(value.id);
+}
+
 function searchList(event: SearchEvent) {
   const query = event.query.toLowerCase();
 
@@ -385,6 +378,7 @@ function changeReadStatus(release: DisplayReleaseItem): void {
       });
     });
 }
+
 function refresh() {
   isRefreshing.value = true;
   releaseStore.loadDisplayReleases(true).finally(() => (isRefreshing.value = false));

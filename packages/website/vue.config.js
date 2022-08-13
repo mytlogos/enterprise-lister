@@ -17,7 +17,8 @@ module.exports = {
   },
   pluginOptions: {
     webpackBundleAnalyzer: {
-      openAnalyzer: false
+      openAnalyzer: false,
+      analyzerMode: "disabled",
     }
   }
 };
