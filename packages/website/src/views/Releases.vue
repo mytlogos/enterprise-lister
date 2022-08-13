@@ -48,6 +48,17 @@
         />
         <label for="ignorelist-input">Ignore List Title</label>
       </span>
+      <div class="form-check form-switch me-2 align-self-center">
+        <input
+          id="scrollable"
+          v-model="releaseStore.scrollable"
+          class="form-check-input"
+          type="checkbox"
+          role="switch"
+          :checked="releaseStore.scrollable"
+        />
+        <label class="form-check-label" for="scrollable">Scrollable Table</label>
+      </div>
     </div>
     <div v-if="onlyMedia.length">
       <div class="px-1">Required Media:</div>
@@ -95,7 +106,7 @@
     </div>
     <DataTable
       :value="computedReleases"
-      scrollable
+      :scrollable="releaseStore.scrollable"
       scroll-height="800px"
       :virtual-scroller-options="{ itemSize: 50 }"
       :loading="releaseStore.fetching"
@@ -155,7 +166,7 @@
 </template>
 <script lang="ts" setup>
 import { StoreList as List, MediaType, SimpleMedium, DisplayReleaseItem } from "../siteTypes";
-import { watchEffect, computed, ref } from "vue";
+import { watchEffect, computed, ref, watch } from "vue";
 import { HttpClient } from "../Httpclient";
 import { PrimeIcons } from "primevue/api";
 import { useReleaseStore } from "../store/releases";
@@ -234,7 +245,19 @@ const readFilter = computed({
 });
 
 // WATCHES
-watchEffect(() => releaseStore.loadDisplayReleases(false));
+watch(
+  () => [
+    releaseStore.ignoreMedia,
+    releaseStore.ignoreLists,
+    releaseStore.onlyLists,
+    releaseStore.onlyMedia,
+    releaseStore.latest,
+    releaseStore.until,
+    releaseStore.readFilter,
+  ],
+  () => releaseStore.loadDisplayReleases(false),
+  { immediate: true },
+);
 watchEffect(() => {
   const newCount = {
     [MediaType.TEXT]: 0,

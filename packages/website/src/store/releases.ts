@@ -37,7 +37,8 @@ export const useReleaseStore = defineStore("releases", {
     },
   },
   state: () => ({
-    readFilter: false as boolean,
+    scrollable: false,
+    readFilter: false,
     typeFilter: 0 as 0 | MediaType,
     onlyMedia: [] as Id[],
     onlyLists: [] as Id[],
@@ -140,51 +141,43 @@ export const useReleaseStore = defineStore("releases", {
 
       try {
         const response = await HttpClient.getDisplayReleases(...args);
-        // replace previous releases if necessary
-        const releases: DisplayReleaseItem[] = [];
-        // when filter changed while a previous query is still running, it may lead to wrong results
-        // should not happen because no two fetches should happen at the same time
 
         const mediumIdMap = new Map<number, MinMedium>();
         const mediaStore = useMediaStore();
 
         // insert fetched releases at the corresponding place
-        releases.push(
-          ...response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
-            if (!(item.date instanceof Date)) {
-              item.date = new Date(item.date);
-            }
-            const key = item.episodeId + item.link;
+        this.releases = response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
+          if (!(item.date instanceof Date)) {
+            item.date = new Date(item.date);
+          }
+          const key = item.episodeId + item.link;
 
-            let medium: SimpleMedium | undefined = mediaStore.media[item.mediumId];
+          let medium: SimpleMedium | undefined = mediaStore.media[item.mediumId];
 
-            if (!medium) {
-              // build map only if necessary and previously empty
-              if (!mediumIdMap.size) {
-                response.media.forEach((responseMedium) => {
-                  mediumIdMap.set(responseMedium.id, responseMedium);
-                });
-              } else {
-                medium = mediumIdMap.get(item.mediumId);
-              }
+          if (!medium) {
+            // build map only if necessary and previously empty
+            if (!mediumIdMap.size) {
+              response.media.forEach((responseMedium) => {
+                mediumIdMap.set(responseMedium.id, responseMedium);
+              });
+            } else {
+              medium = mediumIdMap.get(item.mediumId);
             }
-            return {
-              key,
-              date: formatDate(item.date),
-              episodeId: item.episodeId,
-              link: item.link,
-              mediumId: item.mediumId,
-              mediumTitle: medium?.title || "Unknown",
-              medium: medium?.medium || 0,
-              read: item.progress >= 1,
-              time: item.date.getTime(),
-              title: item.title,
-              locked: item.locked,
-            };
-          }),
-        );
-        releases.sort((a: DisplayReleaseItem, b: DisplayReleaseItem) => b.time - a.time);
-        this.releases = releases;
+          }
+          return {
+            key,
+            date: formatDate(item.date),
+            episodeId: item.episodeId,
+            link: item.link,
+            mediumId: item.mediumId,
+            mediumTitle: medium?.title || "Unknown",
+            medium: medium?.medium || 0,
+            read: item.progress >= 1,
+            time: item.date.getTime(),
+            title: item.title,
+            locked: item.locked,
+          };
+        });
       } catch (error) {
         console.error(error);
       } finally {
