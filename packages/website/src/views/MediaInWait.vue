@@ -1,36 +1,65 @@
 <template>
   <div class="container-fluid p-0">
-    <h1 id="media-title">MediaInWait</h1>
+    <h1 id="media-title" class="ms-3">MediaInWait</h1>
     <Toolbar>
       <template #start>
         <div class="me-sm-2">
-          <input v-model="data.titleSearch" class="form-control" placeholder="Search in Title" type="text" />
+          <input-text v-model="data.titleSearch" placeholder="Search in Title" type="text" />
         </div>
         <media-filter v-model:state="data.typeFilter" class="me-2 w-auto" />
+        <span class="p-float-label me-2">
+          <label for="resultLimit" style="margin-left: 5em">Limit</label>
+          <input-number
+            id="resultLimit"
+            v-model="data.resultLimit"
+            show-buttons
+            button-layout="horizontal"
+            decrement-button-class="p-button-danger"
+            increment-button-class="p-button-success"
+            increment-button-icon="pi pi-plus"
+            decrement-button-icon="pi pi-minus"
+            :min="50"
+            :max="500"
+            :step="50"
+          />
+        </span>
+        <div class="me-2">
+          <checkbox id="show-links" v-model="data.showLinks" class="align-middle" :binary="true" />
+          <label class="ms-1" for="show-links">Show Links</label>
+        </div>
         <template v-if="data.lastFetched < data.currentFetchId"> Loading... </template>
-        <span v-else class="w-auto"> {{ data.media.length }} Results</span>
+        <span v-else class="w-auto">
+          {{ data.media.length }}{{ data.media.length === data.resultLimit ? "+" : "" }} Results</span
+        >
       </template>
     </Toolbar>
-    <table class="table table-striped table-hover" aria-describedby="media-title">
-      <thead class="table-dark">
-        <tr>
-          <th scope="col">Title</th>
-          <th scope="col">Type</th>
-          <th scope="col">Domain</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="medium of data.media" :key="medium.link" role="button" @click="selectItem($event, medium)">
-          <td>
-            <a :href="medium.link" target="_blank" rel="noopener noreferrer">
-              {{ medium.title }}
-            </a>
-          </td>
-          <td><type-icon :type="medium.medium" /></td>
-          <td>{{ getDomain(medium) }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <data-table
+      class="p-datatable-sm"
+      :value="data.media"
+      striped-rows
+      sort-field="title"
+      :sort-order="1"
+      :loading="data.fetching"
+      :row-class="() => 'clickable'"
+      @row-click="selectItem"
+    >
+      <template #empty> No records found </template>
+      <template #loading> Loading records, please wait... </template>
+      <Column field="title" header="Title" sortable>
+        <template #body="slotProps">
+          <a :href="slotProps.data.link" target="_blank" rel="noopener noreferrer">
+            {{ slotProps.data.title }}
+          </a>
+        </template>
+      </Column>
+      <Column field="medium" header="Type" sortable>
+        <template #body="slotProps"><type-icon :type="slotProps.data.medium" /></template>
+      </Column>
+      <Column v-if="data.showLinks" field="link" header="Link" sortable />
+      <Column header="Domain">
+        <template #body="slotProps">{{ getDomain(slotProps.data) }}</template>
+      </Column>
+    </data-table>
   </div>
   <add-unused-modal v-model:item="data.selectedItem" :similar-items="data.similarItems" />
 </template>
@@ -42,6 +71,7 @@ import typeIcon from "../components/type-icon.vue";
 import MediaFilter from "../components/media-filter.vue";
 import AddUnusedModal from "../components/modal/add-unused-modal.vue";
 import { computed, reactive, watchEffect } from "vue";
+import { DataTableRowEditCancelEvent } from "primevue/datatable";
 
 interface Data {
   titleSearch: string;
@@ -52,10 +82,13 @@ interface Data {
   currentFetchId: number;
   selectedItem?: MediumInWait;
   similarItems: MediumInWait[];
+  resultLimit: number;
+  showLinks: boolean;
 }
 
 const data = reactive<Data>({
   titleSearch: "",
+  resultLimit: 100,
   media: [],
   typeFilter: 0,
   fetching: false,
@@ -63,6 +96,7 @@ const data = reactive<Data>({
   currentFetchId: 0,
   selectedItem: undefined,
   similarItems: [],
+  showLinks: false,
 });
 
 const filteredMedia = computed((): MediumInWait[] => {
@@ -91,20 +125,21 @@ watchEffect(() => {
   });
 });
 
-function selectItem(event: Event, item: MediumInWait): void {
+function selectItem(event: DataTableRowEditCancelEvent): void {
   // do not select when clicking on a link
-  if (event.target && (event.target as Element).hasAttribute("href")) {
+  if (event.originalEvent.target && (event.originalEvent.target as Element).hasAttribute("href")) {
     return;
   }
-  data.selectedItem = item;
+  data.selectedItem = event.data;
 }
 async function fetch() {
+  data.fetching = true;
   const fetchId = ++data.currentFetchId;
   try {
     const result = await HttpClient.getAllMediaInWaits({
       title: data.titleSearch || undefined,
       medium: data.typeFilter || undefined,
-      limit: 100,
+      limit: data.resultLimit,
     });
 
     if (data.lastFetched > fetchId) {
@@ -116,6 +151,7 @@ async function fetch() {
   } catch (error) {
     console.error(error);
   }
+  data.fetching = false;
 }
 
 function getDomain(item: MediumInWait): string {
@@ -146,3 +182,8 @@ function getDomain(item: MediumInWait): string {
   return link;
 }
 </script>
+<style>
+.clickable {
+  cursor: pointer;
+}
+</style>
