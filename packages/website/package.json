@@ -23,7 +23,7 @@
     "d3-scale-chromatic": "^3.0.0",
     "jsonschema": "^1.4.1",
     "mitt": "^3.0.0",
-    "pinia": "^2.0.17",
+    "pinia": "^2.0.18",
     "pinia-plugin-persistedstate": "^2.1.1",
     "primeicons": "^5.0.0",
     "primevue": "^3.15.0",
