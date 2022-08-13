@@ -4,11 +4,18 @@
       <i
         v-if="stateCount"
         v-badge="stateCount[slotProps.option.value]"
+        v-tooltip.top="slotProps.option.tooltip"
         class="fas"
         :class="slotProps.option.class"
         aria-hidden="true"
       />
-      <i v-else class="fas" :class="slotProps.option.class" aria-hidden="true" />
+      <i
+        v-else
+        v-tooltip.top="slotProps.option.tooltip"
+        class="fas"
+        :class="slotProps.option.class"
+        aria-hidden="true"
+      />
     </template>
   </SelectButton>
 </template>

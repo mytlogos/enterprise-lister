@@ -170,21 +170,11 @@
         </Column>
       </data-table>
       <p-dialog v-model:visible="displayEditDialog" header="Edit List">
-        <span class="p-float-label">
+        <span class="p-float-label mt-4 mb-2">
           <input-text id="edit-list-name" v-model="editingList.name" name="name" required type="text" />
           <label for="edit-list-name">Name</label>
         </span>
-        <SelectButton
-          v-model="editingList.medium"
-          class="d-inline-block"
-          :options="typeFilterValues"
-          data-key="value"
-          option-value="value"
-        >
-          <template #option="slotProps">
-            <i v-tooltip.top="slotProps.option.tooltip" :class="slotProps.option.icon" aria-hidden="true" />
-          </template>
-        </SelectButton>
+        <MediaFilter v-model:state="editingList.medium" />
         <template #footer>
           <p-button label="Close" icon="pi pi-times" class="p-button-text" @click="displayEditDialog = false" />
           <p-button label="Save" icon="pi pi-check" @click="saveList" />
@@ -206,9 +196,10 @@ import {
 } from "../siteTypes";
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
+import MediaFilter from "../components/media-filter.vue";
 import { computed, ref, watch, watchEffect } from "vue";
 import { mergeMediaToc } from "../init";
-import { FilterMatchMode, FilterService, PrimeIcons } from "primevue/api";
+import { FilterMatchMode, FilterService } from "primevue/api";
 import { DataTableRowEditCancelEvent } from "primevue/datatable";
 import { AutoCompleteCompleteEvent } from "primevue/autocomplete";
 import { List } from "enterprise-core/dist/types";
@@ -266,28 +257,6 @@ const stateOptions = [
   ReleaseStateType.Complete,
   ReleaseStateType.Discontinued,
   ReleaseStateType.Dropped,
-];
-const typeFilterValues = [
-  {
-    tooltip: "Search Text Media",
-    icon: PrimeIcons.BOOK,
-    value: MediaType.TEXT,
-  },
-  {
-    tooltip: "Search Image Media",
-    icon: PrimeIcons.IMAGE,
-    value: MediaType.IMAGE,
-  },
-  {
-    tooltip: "Search Video Media",
-    icon: PrimeIcons.YOUTUBE,
-    value: MediaType.VIDEO,
-  },
-  {
-    tooltip: "Search Audio Media",
-    icon: PrimeIcons.VOLUME_OFF,
-    value: MediaType.AUDIO,
-  },
 ];
 const addItemLoading = ref(false);
 const deleteItemLoading = ref(false);
@@ -393,6 +362,8 @@ watch(loadingMedia, (newValue: number[][], oldValue: number[][]) => {
 
 // FUNCTIONS
 const toast = useToast();
+const confirm = useConfirm();
+
 function startListEdit() {
   editingList.value.name = storeSelectedList.value?.name || "";
   editingList.value.medium = storeSelectedList.value?.medium || 0;
@@ -458,7 +429,7 @@ function deleteList() {
   if (!listId) {
     return;
   }
-  useConfirm().require({
+  confirm.require({
     message: "Are you sure you want to proceed?",
     header: "Confirmation",
     icon: "pi pi-exclamation-triangle",
@@ -492,7 +463,7 @@ function confirmDeleteListItem(data: Medium) {
   if (!list || !mediumId) {
     return;
   }
-  useConfirm().require({
+  confirm.require({
     message: `Remove '${data.title}' from List '${list.name}'?`,
     header: "Confirmation",
     icon: "pi pi-exclamation-triangle",

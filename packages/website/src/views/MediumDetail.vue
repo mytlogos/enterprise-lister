@@ -375,6 +375,7 @@ onMounted(() => {
 
 // FUNCTIONS
 const toast = useToast();
+const confirm = useConfirm();
 
 function actionOnMarked(action: "delete" | "read" | "unread") {
   if (action === "delete") {
@@ -670,7 +671,7 @@ function onSave() {
 }
 
 function confirmDeleteToc(data: FullMediumToc) {
-  useConfirm().require({
+  confirm.require({
     message: `Remove ToC '${data.link}' on '${getDomain(data.link)}'?`,
     header: "Confirmation",
     icon: "pi pi-exclamation-triangle",
