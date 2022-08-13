@@ -1,3 +1,19 @@
+# [2.10.0](https://github.com/mytlogos/enterprise-lister/compare/v2.9.1...v2.10.0) (2022-08-13)
+
+
+### Bug Fixes
+
+* **website:** fix 'hide completed' filter ([ea40b94](https://github.com/mytlogos/enterprise-lister/commit/ea40b944fd40c4dbb8546d632a141eba87a3f4a3))
+* **website:** fix add list ([bc96e94](https://github.com/mytlogos/enterprise-lister/commit/bc96e948da4cc94109011c8eee00b021d036c4fa))
+* **website:** fix lists view ([4c6d3bc](https://github.com/mytlogos/enterprise-lister/commit/4c6d3bc4a6f47ba6f5214738a4c30128fcf17cce))
+* **website:** fix Search UI ([7305e4b](https://github.com/mytlogos/enterprise-lister/commit/7305e4bee7527810ecae689ab1024249e9947166))
+* **website:** fix wrong parameter in action ([1810352](https://github.com/mytlogos/enterprise-lister/commit/181035257ff8c1a59a7c51f94bd25dd642338b84))
+
+
+### Features
+
+* **website:** improve MediaInWait ([47b2071](https://github.com/mytlogos/enterprise-lister/commit/47b20716dc17241c762834a8d26dcc76ccf41b96))
+
 ## [2.9.1](https://github.com/mytlogos/enterprise-lister/compare/v2.9.0...v2.9.1) (2022-08-13)
 
 
