@@ -4,12 +4,18 @@
     <form>
       <div class="row">
         <label class="col-sm-2 col-form-label">Username:</label>
-        <input v-model="user" class="col-sm-4 form-control" placeholder="Your username" title="Username" type="text" />
+        <input
+          v-model="data.user"
+          class="col-sm-4 form-control"
+          placeholder="Your username"
+          title="Username"
+          type="text"
+        />
       </div>
       <div class="row">
         <label class="col-sm-2 col-form-label">Password:</label>
         <input
-          v-model="pw"
+          v-model="data.pw"
           class="col-sm-4 form-control"
           placeholder="Your password"
           title="Password"
@@ -19,7 +25,7 @@
       <div class="row">
         <label class="col-sm-2 col-form-label">Repeat Password:</label>
         <input
-          v-model="pwRepeat"
+          v-model="data.pwRepeat"
           class="col-sm-4 form-control"
           placeholder="Repeat your password"
           title="Repeat your Password"
@@ -32,35 +38,25 @@
     </form>
   </div>
 </template>
-<script lang="ts">
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { reactive, watchEffect } from "vue";
 import { useUserStore } from "../store/store";
 
-export default defineComponent({
-  name: "Register",
-  props: {
-    show: { type: Boolean, required: true },
-    error: { type: String, required: true },
-  },
-  data(): { user: string; pw: string; pwRepeat: string } {
-    return {
-      user: "",
-      pw: "",
-      pwRepeat: "",
-    };
-  },
-  watch: {
-    show(newValue: boolean): void {
-      if (!newValue) {
-        this.user = "";
-        this.pw = "";
-      }
-    },
-  },
-  methods: {
-    sendForm(): void {
-      useUserStore().register({ user: this.user, pw: this.pw, pwRepeat: this.pwRepeat });
-    },
-  },
+const props = defineProps<{ show: boolean; error: string }>();
+const data = reactive({
+  user: "",
+  pw: "",
+  pwRepeat: "",
 });
+
+watchEffect(() => {
+  if (!props.show) {
+    data.user = "";
+    data.pw = "";
+  }
+});
+
+function sendForm(): void {
+  useUserStore().register({ user: data.user, pw: data.pw, pwRepeat: data.pwRepeat });
+}
 </script>

@@ -1,19 +1,18 @@
-import { useExternalUserStore } from "../../store/externaluser";
 <template>
   <modal :error="error" :show="show" @finish="sendForm()">
     <template #title> Login </template>
     <template #input>
       <label>
         Identifier:
-        <input v-model="user" class="user" placeholder="Your identifier" title="Identifier" type="text" />
+        <input v-model="data.user" class="user" placeholder="Your identifier" title="Identifier" type="text" />
       </label>
       <label>
         Password:
-        <input v-model="pw" class="pw" placeholder="Your password" title="Password" type="password" />
+        <input v-model="data.pw" class="pw" placeholder="Your password" title="Password" type="password" />
       </label>
       <label>
-        <select v-model="selected">
-          <option v-for="option in options" :key="option" :value="option.value">
+        <select v-model="data.selected">
+          <option v-for="option in options" :key="option.value" :value="option.value">
             {{ option.name }}
           </option>
         </select>
@@ -24,55 +23,44 @@ import { useExternalUserStore } from "../../store/externaluser";
   </modal>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import modal from "./modal.vue";
-import { defineComponent, PropType } from "vue";
+import { watch, PropType, reactive, toRef, computed } from "vue";
 import { useExternalUserStore } from "../../store/externaluser";
 
-interface Option {
+export interface Option {
   name: string;
   link: string;
   value: number;
 }
 
-export default defineComponent({
-  name: "AddExternalModal",
-  components: { modal },
-  props: {
-    show: Boolean,
-    error: { type: String, required: true },
-    options: { type: Array as PropType<Option[]>, required: true },
-  },
-  data(): { user: string; pw: string; selected: number } {
-    return {
-      user: "",
-      pw: "",
-      selected: 0,
-    };
-  },
-  computed: {
-    currentLink(): string {
-      const option = this.options.find((value) => value.value === this.selected);
-      return option ? option.link : "#";
-    },
-  },
-  watch: {
-    show(show: boolean): void {
-      if (!show) {
-        this.user = "";
-        this.pw = "";
-      }
-    },
-  },
-  methods: {
-    sendForm(): void {
-      useExternalUserStore().addExternalUser({
-        identifier: this.user,
-        pwd: this.pw,
-        // @ts-expect-error
-        type: this.selected,
-      });
-    },
-  },
+const props = defineProps({
+  show: Boolean,
+  error: { type: String, required: true },
+  options: { type: Array as PropType<Option[]>, required: true },
 });
+const data = reactive({
+  user: "",
+  pw: "",
+  selected: 0,
+});
+const currentLink = computed((): string => {
+  const option = props.options.find((value) => value.value === data.selected);
+  return option ? option.link : "#";
+});
+
+watch(toRef(props, "show"), (show: boolean): void => {
+  if (!show) {
+    data.user = "";
+    data.pw = "";
+  }
+});
+function sendForm(): void {
+  useExternalUserStore().addExternalUser({
+    identifier: data.user,
+    pwd: data.pw,
+    // @ts-expect-error
+    type: data.selected,
+  });
+}
 </script>

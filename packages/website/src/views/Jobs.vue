@@ -2,17 +2,21 @@
   <div class="container-fluid">
     <h1 id="jobs-title">Jobs</h1>
     <div class="row">
-      <span class="col-2">Running Jobs: {{ summary.running }}</span>
+      <span class="col-2">Running Jobs: {{ data.summary.running }}</span>
       <span class="col-2">Network Queries: </span>
       <span class="col"
-        >{{ totalJobsStats.minnetwork }}-{{ totalJobsStats.avgnetwork }}-{{ totalJobsStats.maxnetwork }}</span
+        >{{ data.totalJobsStats.minnetwork }}-{{ data.totalJobsStats.avgnetwork }}-{{
+          data.totalJobsStats.maxnetwork
+        }}</span
       >
     </div>
     <div class="row">
-      <span class="col-2">Waiting Jobs: {{ summary.waiting }}</span>
+      <span class="col-2">Waiting Jobs: {{ data.summary.waiting }}</span>
       <span class="col-2">Network Send: </span>
       <span class="col"
-        >{{ totalJobsStats.minsend }}-{{ round(totalJobsStats.avgsend) }}-{{ totalJobsStats.maxsend }}</span
+        >{{ data.totalJobsStats.minsend }}-{{ round(data.totalJobsStats.avgsend, 2) }}-{{
+          data.totalJobsStats.maxsend
+        }}</span
       >
     </div>
     <div class="row">
@@ -20,47 +24,55 @@
         >Lagging Jobs:
         <span
           class="badge"
-          :class="summary.lagging / (summary.waiting + summary.running) > 0.1 ? 'bg-danger' : 'bg-success'"
+          :class="
+            data.summary.lagging / (data.summary.waiting + data.summary.running) > 0.1 ? 'bg-danger' : 'bg-success'
+          "
         >
-          {{ summary.lagging }}
+          {{ data.summary.lagging }}
         </span>
       </span>
       <span class="col-2">Network Received:</span>
       <span class="col"
-        >{{ totalJobsStats.minreceived }}-{{ round(totalJobsStats.avgreceived) }}-{{ totalJobsStats.maxreceived }}</span
+        >{{ data.totalJobsStats.minreceived }}-{{ round(data.totalJobsStats.avgreceived, 2) }}-{{
+          data.totalJobsStats.maxreceived
+        }}</span
       >
     </div>
     <div class="row">
-      <span class="col-2">Total Jobs failed: {{ round(totalJobsStats.failed * 100) }}%</span>
+      <span class="col-2">Total Jobs failed: {{ round(data.totalJobsStats.failed * 100, 2) }}%</span>
       <span class="col-2">SQL Queries: </span>
-      <span class="col">{{ totalJobsStats.minQ }}-{{ round(totalJobsStats.queries) }}-{{ totalJobsStats.maxQ }}</span>
+      <span class="col"
+        >{{ data.totalJobsStats.minQ }}-{{ round(data.totalJobsStats.queries, 2) }}-{{ data.totalJobsStats.maxQ }}</span
+      >
     </div>
     <div class="row">
-      <span class="col-2">Total Jobs succeeded: {{ round(totalJobsStats.succeeded * 100) }}%</span>
+      <span class="col-2">Total Jobs succeeded: {{ round(data.totalJobsStats.succeeded * 100, 2) }}%</span>
       <span class="col-2">Duration: </span>
       <span class="col"
-        >{{ totalJobsStats.minD }}-{{ round(totalJobsStats.avgduration) }}-{{ totalJobsStats.maxD }}</span
+        >{{ data.totalJobsStats.minD }}-{{ round(data.totalJobsStats.avgduration, 2) }}-{{
+          data.totalJobsStats.maxD
+        }}</span
       >
     </div>
     <div class="row">
       <span class="col-2" />
       <span class="col-2">Created: </span>
-      <span class="col">{{ totalJobsStats.allcreate }}</span>
+      <span class="col">{{ data.totalJobsStats.allcreate }}</span>
     </div>
     <div class="row">
       <span class="col-2" />
       <span class="col-2">Updated: </span>
-      <span class="col">{{ totalJobsStats.allupdate }}</span>
+      <span class="col">{{ data.totalJobsStats.allupdate }}</span>
     </div>
     <div class="row">
       <span class="col-2" />
       <span class="col-2">Deleted: </span>
-      <span class="col">{{ totalJobsStats.alldelete }}</span>
+      <span class="col">{{ data.totalJobsStats.alldelete }}</span>
     </div>
     <data-table
-      v-model:filters="filters"
+      v-model:filters="data.filters"
       class="p-datatable-sm"
-      :loading="isLoading"
+      :loading="data.isLoading"
       :value="computedJobs"
       striped-rows
       paginator-position="both"
@@ -85,7 +97,7 @@
       </column>
       <column field="state" header="Status" sortable />
       <column field="runningSince" header="Time Running" sortable>
-        <template #body="slotProps">{{ absoluteToRelative(slotProps.data.runningSince) }}</template>
+        <template #body="slotProps">{{ dateToRelative(slotProps.data.runningSince) }}</template>
       </column>
       <column field="runningSince" header="Running Since" sortable>
         <template #body="slotProps">{{ dateToString(slotProps.data.runningSince) }}</template>
@@ -94,37 +106,37 @@
         <template #body="slotProps">{{ dateToString(slotProps.data.nextRun) }}</template>
       </column>
       <column field="failed" header="Failed" sortable>
-        <template #body="slotProps">{{ round(slotProps.data.failed) }}</template>
+        <template #body="slotProps">{{ round(slotProps.data.failed, 2) }}</template>
       </column>
       <column field="duration" header="Avg Duration" sortable>
-        <template #body="slotProps">{{ round(slotProps.data.duration) }}</template>
+        <template #body="slotProps">{{ round(slotProps.data.duration, 2) }}</template>
       </column>
       <column field="network_requests" header="Network" sortable>
-        <template #body="slotProps">{{ round(slotProps.data.network_requests) }}</template>
+        <template #body="slotProps">{{ round(slotProps.data.network_requests, 2) }}</template>
       </column>
       <column field="network_received" header="Received" sortable>
-        <template #body="slotProps">{{ round(slotProps.data.network_received) }}</template>
+        <template #body="slotProps">{{ round(slotProps.data.network_received, 2) }}</template>
       </column>
       <column field="lagging" header="Lagging" sortable>
-        <template #body="slotProps">{{ round(slotProps.data.lagging) }}</template>
+        <template #body="slotProps">{{ round(slotProps.data.lagging, 2) }}</template>
       </column>
       <column field="sql_queries" header="SQL Queries" sortable>
-        <template #body="slotProps">{{ round(slotProps.data.sql_queries) }}</template>
+        <template #body="slotProps">{{ round(slotProps.data.sql_queries, 2) }}</template>
       </column>
       <column field="count" header="Count" sortable />
     </data-table>
   </div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { HttpClient } from "../Httpclient";
-import { defineComponent } from "vue";
+import { computed, reactive } from "vue";
 import { AllJobStats, Job } from "../siteTypes";
 import { absoluteToRelative, formatDate, round } from "../init";
 import { JobStatSummary } from "enterprise-core/dist/types";
 import { FilterMatchMode } from "primevue/api";
-import { mapStores } from "pinia";
 import { useMediaStore } from "../store/media";
+import { useToast } from "primevue/usetoast";
 
 interface LiveJob {
   /**
@@ -187,6 +199,101 @@ interface Data {
 const tocRegex = /toc-(\d+)-(.+)/;
 const domainRegex = /https?:\/\/(.+\.)?(\w+)(\.\w+)\/?.*/;
 
+const mediaStore = useMediaStore();
+const data = reactive<Data>({
+  isLoading: false,
+  jobs: [],
+  sortedOn: {
+    state: 1,
+    runningSince: 1,
+    nextRun: 1,
+  },
+  now: new Date(),
+  liveJobs: {},
+  totalJobsStats: {
+    count: 0,
+    avgnetwork: 0,
+    minnetwork: 0,
+    maxnetwork: 0,
+    avgreceived: 0,
+    minreceived: 0,
+    maxreceived: 0,
+    avgsend: 0,
+    minsend: 0,
+    maxsend: 0,
+    avgduration: 0,
+    maxD: 0,
+    minD: 0,
+    allupdate: 0,
+    allcreate: 0,
+    alldelete: 0,
+    failed: 0,
+    succeeded: 0,
+    queries: 0,
+    maxQ: 0,
+    minQ: 0,
+    avglagging: 0,
+  },
+  jobStats: [],
+  summary: {
+    waiting: 0,
+    running: 0,
+    lagging: 0,
+  },
+  filters: {
+    name: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  },
+});
+
+// COMPUTED
+const computedJobs = computed((): JobItem[] => {
+  const jobs = [...data.jobStats];
+  const sortEntries = Object.entries(data.sortedOn) as Array<[keyof JobItem, number]>;
+  console.log("Sorting Jobs on Fields: " + JSON.stringify(data.sortedOn));
+
+  jobs.sort((a, b) => {
+    if (a.job_state === "enabled" && b.job_state === "disabled") {
+      return 1;
+    }
+    if (a.job_state === "disabled" && b.job_state === "enabled") {
+      return -1;
+    }
+    for (const [key, order] of sortEntries) {
+      if (!order) {
+        continue;
+      }
+
+      const aValue = a[key];
+      const bValue = b[key];
+
+      if (aValue && !bValue) {
+        return 1;
+      }
+      if (!aValue && bValue) {
+        return -1;
+      }
+
+      if (aValue && bValue) {
+        if (aValue > bValue) {
+          return 1 * order;
+        }
+
+        if (aValue < bValue) {
+          return -1 * order;
+        }
+      }
+    }
+    return 0;
+  });
+  return jobs;
+});
+
+// TODO: add filtering
+loadData();
+
+// FUNCTIONS
+const toast = useToast();
+
 function getDefaultJobStatSummmary(): JobStatSummary {
   return {
     name: "",
@@ -224,201 +331,102 @@ function getDefaultJobStatSummmary(): JobStatSummary {
   };
 }
 
-export default defineComponent({
-  name: "Jobs",
-  data(): Data {
-    return {
-      isLoading: false,
-      jobs: [],
-      sortedOn: {
-        state: 1,
-        runningSince: 1,
-        nextRun: 1,
-      },
-      now: new Date(),
-      liveJobs: {},
-      totalJobsStats: {
-        count: 0,
-        avgnetwork: 0,
-        minnetwork: 0,
-        maxnetwork: 0,
-        avgreceived: 0,
-        minreceived: 0,
-        maxreceived: 0,
-        avgsend: 0,
-        minsend: 0,
-        maxsend: 0,
-        avgduration: 0,
-        maxD: 0,
-        minD: 0,
-        allupdate: 0,
-        allcreate: 0,
-        alldelete: 0,
-        failed: 0,
-        succeeded: 0,
-        queries: 0,
-        maxQ: 0,
-        minQ: 0,
-        avglagging: 0,
-      },
-      jobStats: [],
-      summary: {
-        waiting: 0,
-        running: 0,
-        lagging: 0,
-      },
-      filters: {
-        name: { value: null, matchMode: FilterMatchMode.CONTAINS },
-      },
-    };
-  },
-  computed: {
-    ...mapStores(useMediaStore),
-    computedJobs(): JobItem[] {
-      const jobs = [...this.jobStats];
-      const sortEntries = Object.entries(this.sortedOn) as Array<[keyof JobItem, number]>;
-      console.log("Sorting Jobs on Fields: " + JSON.stringify(this.sortedOn));
+async function loadData() {
+  if (data.isLoading) {
+    return;
+  }
+  data.isLoading = true;
+  const summaryPromise = HttpClient.getJobsStatsSummary();
+  const jobPromise = HttpClient.getJobs();
+  const nameMap: Record<string, JobItem> = {};
 
-      jobs.sort((a, b) => {
-        if (a.job_state === "enabled" && b.job_state === "disabled") {
-          return 1;
+  try {
+    let running = 0;
+    let waiting = 0;
+    let lagging = 0;
+    const now = new Date();
+    const defaultJobStatSummmary = getDefaultJobStatSummmary();
+    const jobs = await jobPromise;
+
+    for (const datum of jobs) {
+      if (datum.runningSince) {
+        datum.runningSince = new Date(datum.runningSince);
+      }
+      if (datum.nextRun) {
+        datum.nextRun = new Date(datum.nextRun);
+      }
+      if (datum.state === "running") {
+        running++;
+      } else {
+        waiting++;
+        // only enabled jobs can lag
+        if (datum.nextRun && datum.nextRun < now && datum.job_state !== "disabled") {
+          lagging++;
         }
-        if (a.job_state === "disabled" && b.job_state === "enabled") {
-          return -1;
-        }
-        for (const [key, order] of sortEntries) {
-          if (!order) {
-            continue;
-          }
-
-          const aValue = a[key];
-          const bValue = b[key];
-
-          if (aValue && !bValue) {
-            return 1;
-          }
-          if (!aValue && bValue) {
-            return -1;
-          }
-
-          if (aValue && bValue) {
-            if (aValue > bValue) {
-              return 1 * order;
-            }
-
-            if (aValue < bValue) {
-              return -1 * order;
-            }
-          }
-        }
-        return 0;
-      });
-      return jobs;
-    },
-  },
-  async mounted() {
-    // TODO: add filtering
-    this.loadData();
-  },
-  methods: {
-    async loadData() {
-      if (this.isLoading) {
-        return;
+        // waiting jobs should not have data value set
+        datum.runningSince = null;
       }
-      this.isLoading = true;
-      const summaryPromise = HttpClient.getJobsStatsSummary();
-      const jobPromise = HttpClient.getJobs();
-      const nameMap: Record<string, JobItem> = {};
-
-      try {
-        let running = 0;
-        let waiting = 0;
-        let lagging = 0;
-        const now = new Date();
-        const defaultJobStatSummmary = getDefaultJobStatSummmary();
-        const jobs = await jobPromise;
-
-        for (const datum of jobs) {
-          if (datum.runningSince) {
-            datum.runningSince = new Date(datum.runningSince);
-          }
-          if (datum.nextRun) {
-            datum.nextRun = new Date(datum.nextRun);
-          }
-          if (datum.state === "running") {
-            running++;
-          } else {
-            waiting++;
-            // only enabled jobs can lag
-            if (datum.nextRun && datum.nextRun < now && datum.job_state !== "disabled") {
-              lagging++;
-            }
-            // waiting jobs should not have this value set
-            datum.runningSince = null;
-          }
-          if (datum.job_state !== "disabled") {
-            nameMap[datum.name] = Object.assign({}, defaultJobStatSummmary, datum);
-          }
-        }
-        this.summary.running = running;
-        this.summary.waiting = waiting;
-        this.summary.lagging = lagging;
-      } catch (error) {
-        this.$toast.add({
-          summary: "Error quering Jobs",
-          detail: error + "",
-          closable: true,
-          severity: "error",
-        });
+      if (datum.job_state !== "disabled") {
+        nameMap[datum.name] = Object.assign({}, defaultJobStatSummmary, datum);
       }
-      try {
-        const stats = await summaryPromise;
+    }
+    data.summary.running = running;
+    data.summary.waiting = waiting;
+    data.summary.lagging = lagging;
+  } catch (error) {
+    toast.add({
+      summary: "Error quering Jobs",
+      detail: error + "",
+      closable: true,
+      severity: "error",
+    });
+  }
+  try {
+    const stats = await summaryPromise;
 
-        for (const value of stats) {
-          if (value.name in nameMap) {
-            Object.assign(nameMap[value.name], value);
-          }
-        }
-        this.jobStats = Object.values(nameMap);
-      } catch (error) {
-        this.$toast.add({
-          summary: "Error quering JobsSummaries",
-          detail: error + "",
-          closable: true,
-          severity: "error",
-        });
+    for (const value of stats) {
+      if (value.name in nameMap) {
+        Object.assign(nameMap[value.name], value);
       }
+    }
+    data.jobStats = Object.values(nameMap);
+  } catch (error) {
+    toast.add({
+      summary: "Error quering JobsSummaries",
+      detail: error + "",
+      closable: true,
+      severity: "error",
+    });
+  }
 
-      this.jobStats = Object.values(nameMap);
-      this.isLoading = false;
-    },
-    dateToString(date?: Date | null): string {
-      if (!date) {
-        return "";
-      }
-      return formatDate(date, true);
-    },
-    nameToString(name: string): string {
-      const match = tocRegex.exec(name);
+  data.jobStats = Object.values(nameMap);
+  data.isLoading = false;
+}
 
-      if (!match) {
-        return name;
-      }
-      const id = Number.parseInt(match[1]);
-      const medium = this.mediaStore.media[id];
-      const link = match[2];
-      const domainName = domainRegex.exec(link);
-      return `Toc: ${medium?.title || "Deleted Medium"} of ${domainName?.[2] || ""}`;
-    },
-    absoluteToRelative(date?: Date | null): string {
-      if (!date) {
-        return "";
-      }
-      return absoluteToRelative(date, this.now);
-    },
-    round(value: number): number {
-      return round(value, 2);
-    },
-  },
-});
+function dateToString(date?: Date | null): string {
+  if (!date) {
+    return "";
+  }
+  return formatDate(date, true);
+}
+
+function nameToString(name: string): string {
+  const match = tocRegex.exec(name);
+
+  if (!match) {
+    return name;
+  }
+  const id = Number.parseInt(match[1]);
+  const medium = mediaStore.media[id];
+  const link = match[2];
+  const domainName = domainRegex.exec(link);
+  return `Toc: ${medium?.title || "Deleted Medium"} of ${domainName?.[2] || ""}`;
+}
+
+function dateToRelative(date?: Date | null): string {
+  if (!date) {
+    return "";
+  }
+  return absoluteToRelative(date, data.now);
+}
 </script>

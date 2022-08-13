@@ -3,14 +3,14 @@
     <Toolbar>
       <template #start>
         <span class="p-float-label me-2">
-          <input-text id="title" v-model="title" type="text" @keyup.enter="search" />
+          <input-text id="title" v-model="data.title" type="text" @keyup.enter="search" />
           <label for="title">Title</label>
         </span>
-        <p-button class="btn btn-dark me-2" :loading="isSearching" label="Search" @click.left="search" />
-        <media-filter :state="type" @update:state="type = $event" />
+        <p-button class="btn btn-dark me-2" :loading="data.isSearching" label="Search" @click.left="search" />
+        <media-filter :state="data.type" @update:state="data.type = $event" />
       </template>
     </Toolbar>
-    <data-view :value="result" layout="grid" :paginator="true" :rows="35" data-key="link">
+    <data-view :value="data.result" layout="grid" :paginator="true" :rows="35" data-key="link">
       <template #empty>
         <div class="text-center my-5">No records found.</div>
       </template>
@@ -59,7 +59,7 @@
             <div class="row" style="padding: 0 15px">
               <label> Title </label>
               <input
-                v-model="medium.title"
+                v-model="data.medium.title"
                 class="form-control w-100"
                 name="title"
                 required
@@ -70,13 +70,13 @@
             </div>
             <div class="row" style="padding: 0 15px">
               <label>Medium</label>
-              <type-icon :type="medium.medium" class="form-control-plaintext" />
+              <type-icon :type="data.medium.medium" class="form-control-plaintext" />
             </div>
             <div class="row mx-3">
               <label>Add Medium to List</label>
-              <select v-model="selectedList" class="form-select" title="Select list to add medium to:">
+              <select v-model="data.selectedList" class="form-select" title="Select list to add medium to:">
                 <option disabled selected value="">Select list to add medium to</option>
-                <option v-for="list in lists" :key="list.id" :value="list.id">
+                <option v-for="list in listStore.lists" :key="list.id" :value="list.id">
                   {{ list.name }}
                 </option>
               </select>
@@ -92,16 +92,15 @@
   </div>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import { HttpClient } from "../Httpclient";
-import { defineComponent } from "vue";
+import { onMounted, reactive } from "vue";
 import { MediaType, SearchResult } from "../siteTypes";
 import ToolTip from "bootstrap/js/dist/tooltip";
 import Modal from "bootstrap/js/dist/modal";
 import TypeIcon from "../components/type-icon.vue";
 import mediaFilter from "../components/media-filter.vue";
 import { useListStore } from "../store/lists";
-import { mapState } from "pinia";
 
 interface Data {
   title: string;
@@ -118,80 +117,70 @@ interface Data {
   isSearching: boolean;
 }
 
-export default defineComponent({
-  name: "Search",
-  components: {
-    mediaFilter,
-    typeIcon: TypeIcon,
+const listStore = useListStore();
+const data = reactive<Data>({
+  title: "",
+  type: MediaType.TEXT,
+  result: [],
+  medium: {
+    title: "",
+    url: "",
+    medium: 0,
   },
-  data(): Data {
-    return {
-      title: "",
-      type: MediaType.TEXT,
-      result: [],
-      medium: {
-        title: "",
-        url: "",
-        medium: 0,
-      },
-      selectedList: 0,
-      tooltips: [],
-      addModal: null,
-      isSearching: false,
-    };
-  },
-  computed: {
-    ...mapState(useListStore, ["lists"]),
-  },
-  mounted() {
-    // eslint-disable-next-line @typescript-eslint/quotes
-    this.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
-    this.addModal = new Modal("#add-modal");
-  },
-  methods: {
-    search() {
-      if (this.isSearching) {
-        return;
-      }
-      this.isSearching = true;
-      HttpClient.search(this.title, this.type)
-        .then((result) => (this.result = result.flat()))
-        .finally(() => (this.isSearching = false));
-    },
-    select(result: SearchResult) {
-      this.medium.title = result.title;
-      this.medium.url = result.link;
-      this.medium.medium = result.medium;
-    },
-    add() {
-      HttpClient.createMedium({
-        title: this.medium.title,
-        medium: this.medium.medium,
-      })
-        .then((result) => {
-          return Promise.all([
-            HttpClient.addToc(this.medium.url, result.id),
-            HttpClient.addListItem({ listId: this.selectedList, mediumId: [result.id] }),
-          ]);
-        })
-        .then(() => {
-          const index = this.result.findIndex((value) => value.link === this.medium.url);
-
-          if (index >= 0) {
-            this.result.splice(index, 1);
-          }
-
-          this.medium.title = "";
-          this.medium.url = "";
-          this.medium.medium = 0;
-          this.addModal?.hide();
-        })
-        .catch((reason) => {
-          console.error(reason);
-        });
-    },
-  },
+  selectedList: 0,
+  tooltips: [],
+  addModal: null,
+  isSearching: false,
 });
+
+onMounted(() => {
+  // eslint-disable-next-line @typescript-eslint/quotes
+  data.tooltips = [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map((item) => new ToolTip(item));
+  data.addModal = new Modal("#add-modal");
+});
+
+function search() {
+  if (data.isSearching) {
+    return;
+  }
+  data.isSearching = true;
+  HttpClient.search(data.title, data.type)
+    .then((result) => (data.result = result.flat()))
+    .finally(() => (data.isSearching = false));
+}
+
+function select(result: SearchResult) {
+  data.medium.title = result.title;
+  data.medium.url = result.link;
+  data.medium.medium = result.medium;
+}
+function add() {
+  HttpClient.createMedium({
+    title: data.medium.title,
+    medium: data.medium.medium,
+  })
+    .then((result) => {
+      return Promise.all([
+        HttpClient.addToc(data.medium.url, result.id),
+        HttpClient.addListItem({ listId: data.selectedList, mediumId: [result.id] }),
+      ]);
+    })
+    .then(() => {
+      const index = data.result.findIndex((value) => value.link === data.medium.url);
+
+      if (index >= 0) {
+        data.result.splice(index, 1);
+      }
+
+      data.medium.title = "";
+      data.medium.url = "";
+      data.medium.medium = 0;
+      data.addModal?.hide();
+    })
+    .catch((reason) => {
+      console.error(reason);
+    });
+}
 </script>
 
 <style scoped>

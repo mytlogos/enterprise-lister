@@ -6,7 +6,7 @@
           <label for="modifications" style="margin-left: 5em">Min. Modifications</label>
           <input-number
             id="modifications"
-            v-model="minModifications"
+            v-model="data.minModifications"
             show-buttons
             button-layout="horizontal"
             decrement-button-class="p-button-danger"
@@ -16,20 +16,20 @@
             :min="0"
           />
         </span>
-        <Dropdown v-model="type" :options="types" placeholder="Any" :show-clear="true" />
+        <Dropdown v-model="data.type" :options="types" placeholder="Any" :show-clear="true" />
       </template>
     </toolbar>
 
     <DataTable
-      v-model:rows="rowsPerPage"
-      v-model:filters="filters"
+      v-model:rows="data.rowsPerPage"
+      v-model:filters="data.filters"
       class="p-datatable-sm"
       :value="computedJobs"
-      :loading="loading"
+      :loading="data.loading"
       striped-rows
       :paginator="true"
       :lazy="true"
-      :total-records="total"
+      :total-records="data.total"
       :auto-layout="true"
       :page-link-size="3"
       paginator-template="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink RowsPerPageDropdown"
@@ -92,41 +92,41 @@
       </Column>
       <Column field="duration" header="Duration">
         <template #body="slotProps">
-          {{ round(slotProps.data.duration) }}
+          {{ round(slotProps.data.duration, 2) }}
         </template>
       </Column>
       <Column field="network" header="Network">
         <template #body="slotProps">
-          {{ round(slotProps.data.network) }}
+          {{ round(slotProps.data.network, 2) }}
         </template>
       </Column>
       <Column field="received" header="Received">
         <template #body="slotProps">
-          {{ round(slotProps.data.received) }}
+          {{ round(slotProps.data.received, 2) }}
         </template>
       </Column>
       <Column field="queries" header="Queries">
         <template #body="slotProps">
-          {{ round(slotProps.data.queries) }}
+          {{ round(slotProps.data.queries, 2) }}
         </template>
       </Column>
       <Column field="modifications" header="Modifications">
         <template #body="slotProps">
-          {{ round(slotProps.data.modifications) }}
+          {{ round(slotProps.data.modifications, 2) }}
         </template>
       </Column>
     </DataTable>
   </div>
 </template>
-<script lang="ts">
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { computed, reactive, watchEffect } from "vue";
 import { formatDate, round } from "../init";
 import { HttpClient } from "../Httpclient";
 import { JobTrack, Modification } from "../siteTypes";
 import { JobHistoryResult, ScrapeName } from "enterprise-core/dist/types";
 import { FilterMatchMode } from "primevue/api";
-import { mapStores } from "pinia";
 import { useMediaStore } from "../store/media";
+import { useToast } from "primevue/usetoast";
 
 const tocRegex = /toc-(\d+)-(.+)/;
 const domainRegex = /https?:\/\/(.+\.)?(\w+)(\.\w+)\/?.*/;
@@ -168,156 +168,144 @@ interface FilterEvent {
   sortOrder: null;
 }
 
-export default defineComponent({
-  name: "JobHistory",
-  data() {
-    return {
-      jobs: [] as HistoryItem[],
-      now: new Date(),
-      minModifications: -1,
-      loading: false,
-      total: 0,
-      rowsPerPage: 100,
-      currentPage: 0,
-      pages: [] as Date[],
-      state: undefined as undefined | JobHistoryResult,
-      type: undefined as undefined | ScrapeName,
-      name: undefined as undefined | string,
-      statuses: ["failed", "success", "warning"] as JobHistoryResult[],
-      types: [
-        ScrapeName.checkTocs,
-        ScrapeName.feed,
-        ScrapeName.news,
-        ScrapeName.newsAdapter,
-        ScrapeName.oneTimeToc,
-        ScrapeName.oneTimeUser,
-        ScrapeName.queueExternalUser,
-        ScrapeName.queueTocs,
-        ScrapeName.remapMediaParts,
-        ScrapeName.searchForToc,
-        ScrapeName.toc,
-      ],
-      filters: {
-        name: { value: null, matchMode: FilterMatchMode.CONTAINS },
-        state: { value: null, matchMode: FilterMatchMode.EQUALS },
-      },
-    };
-  },
-  computed: {
-    computedJobs(): HistoryItem[] {
-      return this.jobs.filter((item) => item.modifications >= this.minModifications);
-    },
-    ...mapStores(useMediaStore),
-  },
-  watch: {
-    rowsPerPage() {
-      this.fetch();
-    },
-    type() {
-      this.fetch();
-    },
-  },
-  mounted() {
-    this.fetch();
-  },
-  methods: {
-    onPage(event: PageEvent) {
-      this.currentPage = event.page;
-      this.fetch();
-    },
-    onFilter(event: FilterEvent) {
-      this.name = event.filters.name.value;
-      this.state = event.filters.state.value;
-      this.fetch();
-      console.log(event);
-    },
-    jobStateResult(state: JobHistoryResult) {
-      switch (state) {
-        case "success":
-          return "success";
-        case "failed":
-          return "danger";
-        case "warning":
-          return "warning";
-        default:
-          return "info";
-      }
-    },
-    dateToString(date?: Date | null): string {
-      if (!date) {
-        return "";
-      }
-      return formatDate(date, true);
-    },
-    nameToString(name: string): string {
-      const match = tocRegex.exec(name);
-
-      if (!match) {
-        return name;
-      }
-      const id = Number.parseInt(match[1]);
-      const medium = this.mediaStore.media[id];
-      const link = match[2];
-      const domainName = domainRegex.exec(link);
-      return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName?.[2] || ""}`;
-    },
-    round(value: number): number {
-      return round(value, 2);
-    },
-    async fetch() {
-      if (this.loading) {
-        return;
-      }
-      this.loading = true;
-      try {
-        // fetch storage jobs data
-        const pagination = await HttpClient.getJobHistoryPaginated({
-          limit: this.rowsPerPage,
-          since: this.pages[this.currentPage]?.toISOString(),
-          name: this.name,
-          result: this.state,
-          type: this.type,
-        });
-        this.total = pagination.total;
-
-        if (pagination.next) {
-          this.pages[this.currentPage + 1] = new Date(pagination.next);
-        }
-
-        this.jobs = pagination.items.map((item) => {
-          let track: JobTrack | undefined;
-          try {
-            track = JSON.parse(item.message);
-          } catch (error) {
-            // ignore parse errors
-          }
-          const start = new Date(item.start);
-          const end = new Date(item.end);
-          return {
-            name: item.name,
-            state: item.result,
-            start,
-            end,
-            duration: end.getTime() - start.getTime(),
-            network: track?.network.count || 0,
-            received: track?.network.received || 0,
-            queries: track?.queryCount || 0,
-            modifications: Object.values(track?.modifications || {}).reduce(
-              (previous: number, current: Modification): number => {
-                return previous + current.created + current.deleted + current.updated;
-              },
-              0,
-            ),
-          };
-        });
-      } catch (error) {
-        this.$toast.add({
-          severity: "error",
-          summary: "Failed to load History",
-        });
-      }
-      this.loading = false;
-    },
+const mediaStore = useMediaStore();
+const types = [
+  ScrapeName.checkTocs,
+  ScrapeName.feed,
+  ScrapeName.news,
+  ScrapeName.newsAdapter,
+  ScrapeName.oneTimeToc,
+  ScrapeName.oneTimeUser,
+  ScrapeName.queueExternalUser,
+  ScrapeName.queueTocs,
+  ScrapeName.remapMediaParts,
+  ScrapeName.searchForToc,
+  ScrapeName.toc,
+];
+const statuses: JobHistoryResult[] = ["failed", "success", "warning"];
+const data = reactive({
+  jobs: [] as HistoryItem[],
+  now: new Date(),
+  minModifications: -1,
+  loading: false,
+  total: 0,
+  rowsPerPage: 100,
+  currentPage: 0,
+  pages: [] as Date[],
+  state: undefined as undefined | JobHistoryResult,
+  type: undefined as undefined | ScrapeName,
+  name: undefined as undefined | string,
+  filters: {
+    name: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    state: { value: null, matchMode: FilterMatchMode.EQUALS },
   },
 });
+
+const computedJobs = computed(() => {
+  return data.jobs.filter((item) => item.modifications >= data.minModifications);
+});
+
+watchEffect(() => fetch());
+
+const toast = useToast();
+
+function onPage(event: PageEvent) {
+  data.currentPage = event.page;
+  fetch();
+}
+
+function onFilter(event: FilterEvent) {
+  data.name = event.filters.name.value;
+  data.state = event.filters.state.value;
+  fetch();
+  console.log(event);
+}
+
+function jobStateResult(state: JobHistoryResult) {
+  switch (state) {
+    case "success":
+      return "success";
+    case "failed":
+      return "danger";
+    case "warning":
+      return "warning";
+    default:
+      return "info";
+  }
+}
+
+function dateToString(date?: Date | null): string {
+  if (!date) {
+    return "";
+  }
+  return formatDate(date, true);
+}
+
+function nameToString(name: string): string {
+  const match = tocRegex.exec(name);
+
+  if (!match) {
+    return name;
+  }
+  const id = Number.parseInt(match[1]);
+  const medium = mediaStore.media[id];
+  const link = match[2];
+  const domainName = domainRegex.exec(link);
+  return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName?.[2] || ""}`;
+}
+
+async function fetch() {
+  if (data.loading) {
+    return;
+  }
+  data.loading = true;
+  try {
+    // fetch storage jobs data
+    const pagination = await HttpClient.getJobHistoryPaginated({
+      limit: data.rowsPerPage,
+      since: data.pages[data.currentPage]?.toISOString(),
+      name: data.name,
+      result: data.state,
+      type: data.type,
+    });
+    data.total = pagination.total;
+
+    if (pagination.next) {
+      data.pages[data.currentPage + 1] = new Date(pagination.next);
+    }
+
+    data.jobs = pagination.items.map((item) => {
+      let track: JobTrack | undefined;
+      try {
+        track = JSON.parse(item.message);
+      } catch (error) {
+        // ignore parse errors
+      }
+      const start = new Date(item.start);
+      const end = new Date(item.end);
+      return {
+        name: item.name,
+        state: item.result,
+        start,
+        end,
+        duration: end.getTime() - start.getTime(),
+        network: track?.network.count || 0,
+        received: track?.network.received || 0,
+        queries: track?.queryCount || 0,
+        modifications: Object.values(track?.modifications || {}).reduce(
+          (previous: number, current: Modification): number => {
+            return previous + current.created + current.deleted + current.updated;
+          },
+          0,
+        ),
+      };
+    });
+  } catch (error) {
+    toast.add({
+      severity: "error",
+      summary: "Failed to load History",
+    });
+  }
+  data.loading = false;
+}
 </script>

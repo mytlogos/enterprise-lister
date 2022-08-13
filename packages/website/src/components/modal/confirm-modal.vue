@@ -8,17 +8,16 @@
   </modal>
 </template>
 
-<script lang="ts">
+<script lang="ts" setup>
 import modal from "./modal.vue";
-import { defineComponent } from "vue";
 
-export default defineComponent({
-  name: "ConfirmModal",
-  components: { modal },
-  props: {
-    text: { type: String, required: true },
-    show: Boolean,
-    error: { type: String, required: true },
-  },
+defineProps({
+  text: { type: String, required: true },
+  show: Boolean,
+  error: { type: String, required: true },
 });
+
+function logout(params: string) {
+  // TODO: implement?
+}
 </script>

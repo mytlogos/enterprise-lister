@@ -36,8 +36,8 @@
   </Menubar>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { computed, onMounted, ref } from "vue";
 import "@popperjs/core/dist/umd/popper.min.js";
 import "bootstrap/js/dist/dropdown";
 import Menubar from "primevue/menubar";
@@ -45,168 +45,162 @@ import { MenuItem as OriginalMenuItem } from "primevue/menuitem";
 import { HttpClient } from "../Httpclient";
 import { UserNotification } from "enterprise-core/dist/types";
 import { notify } from "../notifications";
-import { mapStores } from "pinia";
 import { useUserStore } from "../store/store";
+import { useToast } from "primevue/usetoast";
 
 type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | { name: string } };
 
-export default defineComponent({
-  name: "AppHeader",
-  components: { Menubar },
-  data() {
-    return {
-      loggedInItems: [
-        {
-          label: "Add Medium",
-          to: { name: "addMedium" },
-        },
-        {
-          label: "Add List",
-          to: { name: "addList" },
-        },
-        {
-          label: "Read History",
-          to: { name: "readHistory" },
-        },
-        {
-          label: "Lists",
-          to: { name: "lists" },
-        },
-        {
-          label: "Releases",
-          to: { name: "releases" },
-        },
-        {
-          label: "Media",
-          to: { name: "media" },
-        },
-        {
-          label: "Unused Media",
-          to: { name: "media-in-wait" },
-        },
-        {
-          label: "Search",
-          to: { name: "search" },
-        },
-        {
-          label: "Administration",
-          items: [
-            {
-              label: "Status",
-              to: { name: "status" },
-            },
-            {
-              label: "Jobs",
-              to: { name: "jobs" },
-            },
-            {
-              label: "Job Statistics",
-              to: { name: "job-stats" },
-            },
-            {
-              label: "Hooks",
-              to: { name: "hooks" },
-            },
-            {
-              label: "Job History",
-              to: { name: "jobhistory" },
-            },
-            {
-              label: "Live Jobs",
-              to: { name: "joblive" },
-            },
-          ],
-        },
-      ],
-      loggedOffItems: [
-        {
-          label: "Register",
-          to: { name: "register" },
-        },
-        {
-          label: "Login",
-          to: { name: "login" },
-        },
-      ],
-      notifications: [] as UserNotification[],
-    };
+// STORES
+const userStore = useUserStore();
+
+// DATA
+const loggedInItems = [
+  {
+    label: "Add Medium",
+    to: { name: "addMedium" },
   },
-  computed: {
-    ...mapStores(useUserStore),
-    menuItems() {
-      const items: MenuItem[] = [
-        {
-          label: "Home",
-          to: { name: "home" },
-        },
-      ];
-
-      if (this.userStore.loggedIn) {
-        items.push(
-          ...this.loggedInItems,
-          {
-            label: this.userStore.name,
-            icon: "pi pi-fw pi-user",
-            to: { name: "settings" },
-          },
-          {
-            label: "Logout",
-            to: { name: "home" },
-            command: () => this.logout(),
-            icon: "pi pi-fw pi-power-off",
-          },
-        );
-      } else {
-        items.push(...this.loggedOffItems);
-      }
-      return items as OriginalMenuItem[];
-    },
+  {
+    label: "Add List",
+    to: { name: "addList" },
   },
-  mounted() {
-    this.checkNotifications();
+  {
+    label: "Read History",
+    to: { name: "readHistory" },
   },
-  methods: {
-    logout(): void {
-      this.userStore.logout().catch((error) => {
-        this.$toast.add({
-          summary: "Logout failed",
-          detail: error + "",
-          closable: true,
-          severity: "error",
-        });
-      });
-    },
-    checkNotifications() {
-      this.getLatestNotifications();
-      // check every minute at most
-      setInterval(() => this.getLatestNotifications(), 1000 * 60);
-    },
-    async getLatestNotifications() {
-      await this.userStore.checkNotificationCounts();
-
-      const now = new Date();
-      now.setDate(now.getDate() - 5);
-      const data = await HttpClient.getNotifications(now, false, 5);
-
-      const notifications = data.map((value) => {
-        const userNotification = value as UserNotification;
-        userNotification.date = new Date(userNotification.date);
-        return userNotification;
-      });
-
-      if (notifications.length) {
-        const titleSuffix =
-          this.userStore.user.unreadNotificationsCount > 1
-            ? ` +${this.userStore.user.unreadNotificationsCount - 1} more`
-            : "";
-        notify({ title: notifications[0].title + titleSuffix, content: notifications[0].content });
-      }
-      this.notifications = notifications;
-    },
-
-    toggle(event: any) {
-      (this.$refs.op as any).toggle(event);
-    },
+  {
+    label: "Lists",
+    to: { name: "lists" },
   },
+  {
+    label: "Releases",
+    to: { name: "releases" },
+  },
+  {
+    label: "Media",
+    to: { name: "media" },
+  },
+  {
+    label: "Unused Media",
+    to: { name: "media-in-wait" },
+  },
+  {
+    label: "Search",
+    to: { name: "search" },
+  },
+  {
+    label: "Administration",
+    items: [
+      {
+        label: "Status",
+        to: { name: "status" },
+      },
+      {
+        label: "Jobs",
+        to: { name: "jobs" },
+      },
+      {
+        label: "Job Statistics",
+        to: { name: "job-stats" },
+      },
+      {
+        label: "Hooks",
+        to: { name: "hooks" },
+      },
+      {
+        label: "Job History",
+        to: { name: "jobhistory" },
+      },
+      {
+        label: "Live Jobs",
+        to: { name: "joblive" },
+      },
+    ],
+  },
+];
+const loggedOffItems = [
+  {
+    label: "Register",
+    to: { name: "register" },
+  },
+  {
+    label: "Login",
+    to: { name: "login" },
+  },
+];
+const notifications = ref<UserNotification[]>([]);
+
+// COMPUTED
+const menuItems = computed(() => {
+  const items: MenuItem[] = [
+    {
+      label: "Home",
+      to: { name: "home" },
+    },
+  ];
+
+  if (userStore.loggedIn) {
+    items.push(
+      ...loggedInItems,
+      {
+        label: userStore.name,
+        icon: "pi pi-fw pi-user",
+        to: { name: "settings" },
+      },
+      {
+        label: "Logout",
+        to: { name: "home" },
+        command: () => logout(),
+        icon: "pi pi-fw pi-power-off",
+      },
+    );
+  } else {
+    items.push(...loggedOffItems);
+  }
+  return items as OriginalMenuItem[];
 });
+
+// LIFECYCLE EVENTS
+onMounted(() => {
+  checkNotifications();
+});
+
+// FUNCTIONS
+const toast = useToast();
+
+function logout(): void {
+  userStore.logout().catch((error) => {
+    toast.add({
+      summary: "Logout failed",
+      detail: error + "",
+      closable: true,
+      severity: "error",
+    });
+  });
+}
+function checkNotifications() {
+  getLatestNotifications();
+  // check every minute at most
+  setInterval(() => getLatestNotifications(), 1000 * 60);
+}
+
+async function getLatestNotifications() {
+  await userStore.checkNotificationCounts();
+
+  const now = new Date();
+  now.setDate(now.getDate() - 5);
+  const data = await HttpClient.getNotifications(now, false, 5);
+
+  const newNotifications = data.map((value) => {
+    const userNotification = value as UserNotification;
+    userNotification.date = new Date(userNotification.date);
+    return userNotification;
+  });
+
+  if (newNotifications.length) {
+    const titleSuffix =
+      userStore.user.unreadNotificationsCount > 1 ? ` +${userStore.user.unreadNotificationsCount - 1} more` : "";
+    notify({ title: newNotifications[0].title + titleSuffix, content: newNotifications[0].content });
+  }
+  notifications.value = newNotifications;
+}
 </script>

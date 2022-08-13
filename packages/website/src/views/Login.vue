@@ -4,12 +4,18 @@
     <form>
       <div class="row">
         <label class="col-sm-2 col-form-label">Username:</label>
-        <input v-model="user" class="col-sm-4 form-control" placeholder="Your username" title="Username" type="text" />
+        <input
+          v-model="data.user"
+          class="col-sm-4 form-control"
+          placeholder="Your username"
+          title="Username"
+          type="text"
+        />
       </div>
       <div class="row">
         <label class="col-sm-2 col-form-label">Password:</label>
         <input
-          v-model="pw"
+          v-model="data.pw"
           class="col-sm-4 form-control"
           placeholder="Your password"
           title="Password"
@@ -23,32 +29,18 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { reactive } from "vue";
 import { useUserStore } from "../store/store";
 
-export default defineComponent({
-  name: "Login",
-  data(): { user: string; pw: string; error: string; show: boolean } {
-    return {
-      error: "",
-      show: true,
-      user: "",
-      pw: "",
-    };
-  },
-  watch: {
-    show(newValue: boolean): void {
-      if (!newValue) {
-        this.user = "";
-        this.pw = "";
-      }
-    },
-  },
-  methods: {
-    sendForm(): void {
-      useUserStore().login({ user: this.user, pw: this.pw });
-    },
-  },
+const data = reactive({
+  error: "",
+  show: true,
+  user: "",
+  pw: "",
 });
+
+function sendForm(): void {
+  useUserStore().login({ user: data.user, pw: data.pw });
+}
 </script>

@@ -74,14 +74,15 @@
   </div>
 </template>
 <script lang="ts">
-import { defineComponent, PropType } from "vue";
+import { PropType, ref, toRef, watch } from "vue";
 import { clone, deepEqual, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
 import { SearchSingle, SearchConfig } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
-
+</script>
+<script lang="ts" setup>
 function defaultSingle(): SearchSingle {
   return {
     _$: "",
@@ -94,66 +95,62 @@ function defaultSingle(): SearchSingle {
   };
 }
 
-export default defineComponent({
-  name: "SearchConfig",
-  components: {
-    RequestConfig,
-    RegexMap,
+const props = defineProps({
+  idPrefix: {
+    type: String,
+    required: true,
   },
-  props: {
-    idPrefix: {
-      type: String,
-      required: true,
-    },
-    modelValue: {
-      type: Object as PropType<SearchConfig>,
-      required: true,
-    },
-  },
-  emits: ["update:modelValue", "delete"],
-  data: () => ({
-    id: nextId(),
-    data: {} as SearchConfig,
-    logger: new Logger("search-config"),
-  }),
-  watch: {
-    data: {
-      handler(newValue: SearchConfig) {
-        if (deepEqual(newValue, this.modelValue)) {
-          this.logger.info("Did not update search-config");
-        } else {
-          this.logger.info("Updated search-config");
-          this.$emit("update:modelValue", newValue);
-        }
-      },
-      deep: true,
-    },
-    modelValue: {
-      handler(newValue: SearchConfig) {
-        if (!deepEqual(newValue, this.data)) {
-          this.data = clone(newValue);
-        }
-      },
-      deep: true,
-      immediate: true,
-    },
-  },
-  methods: {
-    remove(array: any[], index: number) {
-      array.splice(index, 1);
-    },
-    toggleCustomRequest(item: SearchConfig["data"][0]) {
-      if (item._request) {
-        item._request = undefined;
-      } else {
-        item._request = {};
-      }
-    },
-    addSchema() {
-      this.data.data.push(defaultSingle());
-    },
+  modelValue: {
+    type: Object as PropType<SearchConfig>,
+    required: true,
   },
 });
+const emits = defineEmits(["update:modelValue", "delete"]);
+const id = nextId();
+const data = ref<SearchConfig>({
+  searchUrl: "",
+  data: [],
+  regexes: {},
+});
+const logger = new Logger("search-config-" + id);
+
+watch(
+  data,
+  (newValue) => {
+    if (deepEqual(newValue, props.modelValue)) {
+      logger.info("Did not update search-config");
+    } else {
+      logger.info("Updated search-config");
+      emits("update:modelValue", newValue);
+    }
+  },
+  { deep: true },
+);
+watch(
+  toRef(props, "modelValue"),
+  (newValue) => {
+    if (!deepEqual(newValue, data.value)) {
+      data.value = clone(newValue);
+    }
+  },
+  { deep: true, immediate: true },
+);
+
+function remove(array: any[], index: number) {
+  array.splice(index, 1);
+}
+
+function toggleCustomRequest(item: SearchConfig["data"][0]) {
+  if (item._request) {
+    item._request = undefined;
+  } else {
+    item._request = {};
+  }
+}
+
+function addSchema() {
+  data.value.data.push(defaultSingle());
+}
 </script>
 <style scoped>
 .card[aria-expanded="true"] {
