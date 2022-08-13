@@ -1,3 +1,11 @@
+## [2.9.1](https://github.com/mytlogos/enterprise-lister/compare/v2.9.0...v2.9.1) (2022-08-13)
+
+
+### Bug Fixes
+
+* **website:** fix const assignment ([f56b13a](https://github.com/mytlogos/enterprise-lister/commit/f56b13a668915372ddddc8d4f6d9a9917ac109fc))
+* **website:** menu model must be reactive ([0822c89](https://github.com/mytlogos/enterprise-lister/commit/0822c89f0d165b28dab0e3f6eaf469fe5245fd70))
+
 # [2.9.0](https://github.com/mytlogos/enterprise-lister/compare/v2.8.1...v2.9.0) (2022-08-11)
 
 
