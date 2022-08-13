@@ -1,3 +1,15 @@
+# [2.11.0](https://github.com/mytlogos/enterprise-lister/compare/v2.10.0...v2.11.0) (2022-08-13)
+
+
+### Bug Fixes
+
+* **website:** add missing package ([4e6f4fb](https://github.com/mytlogos/enterprise-lister/commit/4e6f4fb16547cbe010886c2208a9801bb734441b))
+
+
+### Features
+
+* **website:** allow disabling datable scroll ([8ed67c5](https://github.com/mytlogos/enterprise-lister/commit/8ed67c5bf5da3f301f535d1f5a3da02c744a517c))
+
 # [2.10.0](https://github.com/mytlogos/enterprise-lister/compare/v2.9.1...v2.10.0) (2022-08-13)
 
 
