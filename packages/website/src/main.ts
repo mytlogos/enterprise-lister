@@ -4,6 +4,7 @@ import "@fortawesome/fontawesome-free/css/all.css";
 import "primevue/resources/themes/saga-blue/theme.css"; // theme
 import "primevue/resources/primevue.min.css"; // core css
 import "primeicons/primeicons.css"; // icons
+import "primeflex/primeflex.css"; // flex utilities
 import Router from "./router";
 import AppComponent from "./App.vue";
 import "./registerServiceWorker";
