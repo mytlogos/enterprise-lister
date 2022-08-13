@@ -271,7 +271,7 @@ const filteredMedia = computed((): Medium[] => {
       return false;
     }
     return hideCompleted.value
-      ? medium.stateTL === ReleaseState.Complete && medium.readEpisodes !== medium.totalEpisodes
+      ? medium.stateTL !== ReleaseState.Complete || medium.readEpisodes !== medium.totalEpisodes
       : true;
   });
 });
