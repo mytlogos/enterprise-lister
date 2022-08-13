@@ -37,7 +37,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import "@popperjs/core/dist/umd/popper.min.js";
 import "bootstrap/js/dist/dropdown";
 import Menubar from "primevue/menubar";
@@ -156,7 +156,7 @@ const menuItems = computed(() => {
   } else {
     items.push(...loggedOffItems);
   }
-  return items as OriginalMenuItem[];
+  return reactive(items) as OriginalMenuItem[];
 });
 
 // LIFECYCLE EVENTS
