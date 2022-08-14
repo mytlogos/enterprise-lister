@@ -81,7 +81,7 @@ async function sendMessage(message: string) {
   }
 }
 
-type findByType<Union, Type> = Union extends { messageType: Type } ? Union : never;
+export type findByType<Union, Type extends EventType> = Union extends { messageType: Type } ? Union : never;
 type EventType = ChannelMessage["messageType"];
 type WSEventType = "disconnected" | "connected";
 
