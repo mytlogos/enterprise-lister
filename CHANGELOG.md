@@ -1,3 +1,18 @@
+# [2.13.0](https://github.com/mytlogos/enterprise-lister/compare/v2.12.0...v2.13.0) (2022-08-14)
+
+
+### Bug Fixes
+
+* **server:** server crashing if target unreachable ([73e47ed](https://github.com/mytlogos/enterprise-lister/commit/73e47ed94da48153efac045f97fc122f44d4f8ca))
+* **website:** address warnings and errors ([d023878](https://github.com/mytlogos/enterprise-lister/commit/d0238782cd875f7ff05e21a1923f25b960df02aa))
+* **website:** check navigation after hydration ([932ce5b](https://github.com/mytlogos/enterprise-lister/commit/932ce5b82efd746835a77c2ba97876e99b2f4cfd))
+* **website:** jobhistory fetch loop ([5010ed3](https://github.com/mytlogos/enterprise-lister/commit/5010ed3194f460e5972b8ec6219ba8a5576b3f48))
+
+
+### Features
+
+* **website:** improve livejobs ui ([f6690ee](https://github.com/mytlogos/enterprise-lister/commit/f6690eed4177f0a3407a5bea65ec5b3f218b669e))
+
 # [2.12.0](https://github.com/mytlogos/enterprise-lister/compare/v2.11.0...v2.12.0) (2022-08-14)
 
 
