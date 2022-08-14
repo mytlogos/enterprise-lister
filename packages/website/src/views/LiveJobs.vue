@@ -1,53 +1,55 @@
 <template>
   <div>
     <div class="container-fluid">
-      <div class="row w-50">
-        <span class="col-3">Created: {{ data.created }}</span>
-        <span class="col-3">Updated: {{ data.updated }}</span>
-        <span class="col-3">Deleted: {{ data.deleted }}</span>
-      </div>
-      <div class="row w-50">
-        <span class="col-3">Database Queries: {{ data.databaseQueries }}</span>
-        <span class="col-3">Network Queries: {{ data.networkQueries }}</span>
-      </div>
-      <div class="row w-50">
-        <span class="col-3">Success: {{ data.succeeded }}</span>
-        <span class="col-3">Failure: {{ data.failed }}</span>
-        <span class="col-3">Other: {{ data.other }}</span>
-      </div>
-      <div class="row w-50">
-        <span class="col-3">
-          JobQueue:
-          <span title="Active Jobs">{{ data.jobQueueCurrent }}</span>
-          /
-          <span title="Queued Jobs">{{ data.jobQueueQueued }}</span>
-          /
-          <span title="Maximum Size">{{ data.jobQueueMax }}</span>
-        </span>
+      <div class="w-50">
+        <div class="row">
+          <span class="col-sm-3">Created: {{ data.created }}</span>
+          <span class="col-sm-3">Updated: {{ data.updated }}</span>
+          <span class="col-sm-3">Deleted: {{ data.deleted }}</span>
+        </div>
+        <div class="row">
+          <span class="col-sm-3">Database Queries: {{ data.databaseQueries }}</span>
+          <span class="col-sm-3">Network Queries: {{ data.networkQueries }}</span>
+        </div>
+        <div class="row">
+          <span class="col-sm-3">Success: {{ data.succeeded }}</span>
+          <span class="col-sm-3">Failure: {{ data.failed }}</span>
+          <span class="col-sm-3">Other: {{ data.other }}</span>
+        </div>
+        <div class="row">
+          <span class="col-sm-3">
+            JobQueue:
+            <span title="Active Jobs">{{ data.jobQueueCurrent }}</span>
+            /
+            <span title="Queued Jobs">{{ data.jobQueueQueued }}</span>
+            /
+            <span title="Maximum Size">{{ data.jobQueueMax }}</span>
+          </span>
+        </div>
       </div>
       <div class="row">
-        <div class="col-4">
+        <div class="col-sm-4">
           RequestQueues:
-          <ul class="list-group">
+          <ul class="list-group live">
             <li
               v-for="item in data.requestQueues"
               :key="item.queueName"
-              class="list-group-item"
+              class="list-group-item row"
               :class="{ 'bg-light': !item.working }"
               :title="item.working ? 'Queue is active' : 'Queue is not active'"
             >
-              <span class="col-4 d-inline-block" title="Queue Name"> {{ item.queueName }}</span>
-              <span class="col-4 d-inline-block" title="Maximum Interval">{{ item.maxInterval }}</span>
-              <span class="col-4 d-inline-block" title="Queued">{{ item.queued }}</span>
+              <span class="col-sm-4 d-inline-block" title="Queue Name"> {{ item.queueName }}</span>
+              <span class="col-sm-4 d-inline-block" title="Maximum Interval">{{ item.maxInterval }}</span>
+              <span class="col-sm-4 d-inline-block" title="Queued">{{ item.queued }}</span>
             </li>
           </ul>
         </div>
-        <div class="col-6">
+        <div class="col-sm-6">
           JobQueue:
-          <ul class="list-group">
+          <ul class="list-group live">
             <li v-for="item in data.activeJobs" :key="item.id" class="list-group-item row">
-              <span class="col-3"> {{ formatDate(item.start) }}</span>
-              <span class="col-3">{{ item.name }}</span>
+              <span class="col-sm-3"> {{ formatDate(item.start) }}</span>
+              <span class="col-sm-3">{{ item.name }}</span>
             </li>
           </ul>
         </div>
@@ -244,3 +246,16 @@ function addRequestQueueListener() {
   }
 }
 </script>
+<style scoped>
+@media (max-width: 576px) {
+  li.row {
+    margin: 0;
+  }
+}
+@media (min-width: 576px) {
+  .live {
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+  }
+}
+</style>
