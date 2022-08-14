@@ -227,5 +227,5 @@ const router = createRouter({
     },
   ],
 });
-// FIXME remove query from this shit after redirect
+
 export default router;

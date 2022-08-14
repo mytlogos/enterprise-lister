@@ -52,18 +52,14 @@ export const useExternalUserStore = defineStore("externaluser", {
         console.error(error);
       }
     },
-    async addExternalUser(data: { identifier: string; pwd: string }) {
+    async addExternalUser(data: { identifier: string; pwd: string; type: number }) {
       if (!data.identifier) {
-        // TODO: commit("addExternalUserModalError", "Identifier is missing!");
+        throw Error("Identifier is missing!");
       } else if (!data.pwd) {
-        // TODO: commit("addExternalUserModalError", "Password is missing!");
+        throw Error("Password is missing!");
       } else {
-        try {
-          const externalUser: ExternalUser = await HttpClient.addExternalUser(data);
-          this.addExternalUserLocal(externalUser);
-        } catch (error) {
-          // TODO: commit("addExternalUserModalError", String(error));
-        }
+        const externalUser: ExternalUser = await HttpClient.addExternalUser({ externalUser: data });
+        this.addExternalUserLocal(externalUser);
       }
     },
     async deleteExternalUser(uuid: string) {

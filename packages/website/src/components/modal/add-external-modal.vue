@@ -1,23 +1,26 @@
 <template>
-  <modal :error="error" :show="show" @finish="sendForm()">
+  <modal :error="data.error" :show="show" @update:show="emits('update:show', $event)" @finish="sendForm()">
     <template #title> Login </template>
     <template #input>
-      <label>
-        Identifier:
-        <input v-model="data.user" class="user" placeholder="Your identifier" title="Identifier" type="text" />
-      </label>
-      <label>
-        Password:
-        <input v-model="data.pw" class="pw" placeholder="Your password" title="Password" type="password" />
-      </label>
-      <label>
-        <select v-model="data.selected">
-          <option v-for="option in options" :key="option.value" :value="option.value">
-            {{ option.name }}
-          </option>
-        </select>
-      </label>
-      <a target="_blank" rel="noopener noreferrer" :href="currentLink"> Open External </a>
+      <span class="p-float-label me-2 mb-2 mt-2">
+        <input-text id="identifier" v-model="data.user" type="text" />
+        <label for="identifier"> Identifier</label>
+      </span>
+      <span class="p-float-label me-2 mb-2">
+        <input-text id="password" v-model="data.pw" type="password" />
+        <label for="password">Password</label>
+      </span>
+      <dropdown
+        v-model="data.selected"
+        :options="options"
+        class="mb-2"
+        option-label="name"
+        option-value="value"
+        placeholder="External User Type"
+      />
+      <div>
+        <a target="_blank" rel="noopener noreferrer" :href="currentLink"> Open External </a>
+      </div>
     </template>
     <template #finish> Add </template>
   </modal>
@@ -36,14 +39,18 @@ export interface Option {
 
 const props = defineProps({
   show: Boolean,
-  error: { type: String, required: true },
   options: { type: Array as PropType<Option[]>, required: true },
 });
+
+const emits = defineEmits(["update:show"]);
+
 const data = reactive({
   user: "",
   pw: "",
+  error: "",
   selected: 0,
 });
+
 const currentLink = computed((): string => {
   const option = props.options.find((value) => value.value === data.selected);
   return option ? option.link : "#";
@@ -55,12 +62,20 @@ watch(toRef(props, "show"), (show: boolean): void => {
     data.pw = "";
   }
 });
+
 function sendForm(): void {
-  useExternalUserStore().addExternalUser({
-    identifier: data.user,
-    pwd: data.pw,
-    // @ts-expect-error
-    type: data.selected,
-  });
+  useExternalUserStore()
+    .addExternalUser({
+      identifier: data.user,
+      pwd: data.pw,
+      type: data.selected,
+    })
+    .then(() => {
+      // if no error, close modal
+      emits("update:show", false);
+    })
+    .catch((error: Error) => {
+      data.error = error.message;
+    });
 }
 </script>

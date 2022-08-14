@@ -18,7 +18,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="close">Close</button>
-          <button class="btn btn-primary" type="button" @click="$emit('finish'), close()">
+          <button class="btn btn-primary" type="button" @click="emits('finish')">
             <slot name="finish"> Save </slot>
           </button>
         </div>
@@ -27,7 +27,6 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { emitBusEvent } from "../../bus";
 import { onMounted, onUnmounted, reactive, ref, toRef, watch } from "vue";
 import Modal from "bootstrap/js/dist/modal";
 
@@ -36,7 +35,7 @@ const props = defineProps({
   show: Boolean,
 });
 
-const emits = defineEmits(["finish", "close"]);
+const emits = defineEmits(["finish", "close", "update:show"]);
 const data = reactive({
   closing: false,
   modal: null as Modal | null,
@@ -59,6 +58,7 @@ onMounted((): void => {
   modalElement.addEventListener("hidden.bs.modal", () => close());
   document.addEventListener("click", listener, { capture: true });
 });
+
 onUnmounted(() => {
   document.removeEventListener("click", listener, { capture: true });
 });
@@ -73,12 +73,13 @@ function listener(evt: MouseEvent) {
     close();
   }
 }
+
 function close(): void {
   if (data.closing || !props.show) {
     return;
   }
   data.closing = true;
   emits("close");
-  emitBusEvent("reset:modal");
+  emits("update:show", false);
 }
 </script>

@@ -30,6 +30,7 @@ import {
   DeleteListMedium,
   DeleteToc,
   GetHistoryJobsPaginated,
+  PostExternalUser,
   PostList,
   PostListMedium,
 } from "enterprise-server/dist/validation";
@@ -353,8 +354,8 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.externalUser.all.get);
   },
 
-  addExternalUser(externalUser: { identifier: string; pwd: string }): Promise<ExternalUser> {
-    return this.queryServer(serverRestApi.api.user.externalUser.post, { externalUser });
+  addExternalUser(query: Query<PostExternalUser>): Promise<ExternalUser> {
+    return this.queryServer(serverRestApi.api.user.externalUser.post, query);
   },
 
   deleteExternalUser(uuid: string): Promise<any> {

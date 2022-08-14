@@ -80,6 +80,5 @@ globalThis.app = app;
 // @ts-expect-error
 globalThis.router = Router;
 
-// TODO rework news, add the read property to news item itself instead of asking for it
 // TODO login mechanism, check if it was already logged in before
 // TODO give a reason for any rejects

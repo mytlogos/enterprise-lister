@@ -22,29 +22,24 @@
           </td>
           <td class="d-flex">
             <template v-if="item.identifier">
-              <i class="btn delete fas fa-times btn-danger" aria-hidden="true" @click="markDeleteItem(item)" />
+              <i class="btn delete fas fa-times btn-danger me-2" aria-hidden="true" @click="markDeleteItem(item)" />
               <i class="refresh fas fa-sync-alt btn btn-secondary" aria-hidden="true" @click="refreshItem(item)" />
             </template>
           </td>
         </tr>
       </tbody>
     </table>
-    <add-external-modal :error="data.add.error" :options="data.hosts" :show="data.add.show" />
-    <confirm-modal
-      :error="data.confirm.error"
-      :show="data.confirm.show"
-      :text="data.confirm.text"
-      @yes="deleteItem()"
-    />
+    <add-external-modal v-model:show="data.add.show" :options="data.hosts" />
   </div>
 </template>
 
 <script lang="ts" setup>
 import addExternalModal from "./modal/add-external-modal.vue";
-import confirmModal from "./modal/confirm-modal.vue";
 import { useExternalUserStore } from "../store/externaluser";
 import { computed, reactive } from "vue";
 import { EmptyObject, ExternalUser } from "../siteTypes";
+import { useConfirm } from "primevue/useconfirm";
+import { useToast } from "primevue/usetoast";
 
 interface ExternalListHost {
   link: string;
@@ -61,12 +56,6 @@ interface Data {
     show: boolean;
     error: string;
   };
-  confirm: {
-    show: boolean;
-    error: string;
-    text: string;
-  };
-  markDelete: string | null;
   hosts: Array<{
     name: string;
     link: string;
@@ -84,12 +73,6 @@ const data = reactive<Data>({
     show: false,
     error: "",
   },
-  confirm: {
-    show: false,
-    error: "",
-    text: "",
-  },
-  markDelete: null,
   hosts: [
     // TODO get options from server
     {
@@ -102,8 +85,8 @@ const data = reactive<Data>({
 
 // COMPUTED
 const filteredData = computed(() => {
-  return useExternalUserStore()
-    .externalUser.filter((value) => value)
+  return externalUserStore.externalUser
+    .filter((value) => value)
     .map((value): ExternalUserItem => {
       const host = data.hosts.find((hostValue) => hostValue.value === value.type);
       if (!host) {
@@ -115,18 +98,31 @@ const filteredData = computed(() => {
 });
 
 // FUNCTIONS
-function markDeleteItem(item: ExternalUserItem | EmptyObject): void {
-  data.markDelete = item.uuid;
-  data.confirm.text =
-    "Are you sure you want to delete" + item.identifier + "\nof " + item.host.name + " from this site?";
-  // item.show = true;
-  // TODO fix this modal? issue
-}
-function deleteItem(): void {
-  if (!data.markDelete) {
-    return;
-  }
-  externalUserStore.deleteExternalUser(data.markDelete);
+const toast = useToast();
+const confirm = useConfirm();
+
+function markDeleteItem(item: ExternalUserItem): void {
+  confirm.require({
+    message: "Are you sure you want to remove" + item.identifier + "\nof " + item.host.name + " from this site?",
+    header: "Confirmation",
+    icon: "pi pi-exclamation-triangle",
+    acceptClass: "p-button-danger",
+    accept: () => {
+      externalUserStore
+        .deleteExternalUser(item.uuid)
+        .then(() => {
+          toast.add({ severity: "info", summary: "Confirmed", detail: "External User removed", life: 3000 });
+        })
+        .catch((reason) => {
+          toast.add({
+            severity: "error",
+            summary: "Delete failed",
+            detail: JSON.stringify(reason),
+            life: 3000,
+          });
+        });
+    },
+  });
 }
 
 function refreshItem(item: ExternalUser | EmptyObject): void {
