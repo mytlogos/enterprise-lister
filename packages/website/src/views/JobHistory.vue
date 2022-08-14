@@ -119,7 +119,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, reactive, watchEffect } from "vue";
+import { computed, reactive, watch } from "vue";
 import { formatDate, round } from "../init";
 import { HttpClient } from "../Httpclient";
 import { JobTrack, Modification } from "../siteTypes";
@@ -205,19 +205,21 @@ const computedJobs = computed(() => {
   return data.jobs.filter((item) => item.modifications >= data.minModifications);
 });
 
-watchEffect(() => fetch());
+watch(
+  () => [data.currentPage, data.rowsPerPage, data.name, data.state, data.type],
+  () => fetch(),
+  { immediate: true },
+);
 
 const toast = useToast();
 
 function onPage(event: PageEvent) {
   data.currentPage = event.page;
-  fetch();
 }
 
 function onFilter(event: FilterEvent) {
   data.name = event.filters.name.value;
   data.state = event.filters.state.value;
-  fetch();
   console.log(event);
 }
 
