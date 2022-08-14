@@ -1,12 +1,12 @@
 import { HttpClient } from "../Httpclient";
 import { User } from "../siteTypes";
-import router from "../router";
 import { useListStore } from "./lists";
 import { useExternalUserStore } from "./externaluser";
 import { useHookStore } from "./hooks";
 import { UserNotification } from "enterprise-core/dist/types";
 import { useMediaStore } from "./media";
 import { defineStore } from "pinia";
+import { useRouter } from "vue-router";
 
 type UserState = ReturnType<typeof useUserStore>["$state"];
 
@@ -28,8 +28,41 @@ function setUser(state: UserState, user: User) {
   state.session = user.session;
 }
 
+let hydrateCallback: () => void;
+let alreadyHydrated = false;
+
+export const userHydrated = new Promise<void>((resolve) => {
+  if (alreadyHydrated) {
+    resolve();
+    return;
+  }
+  let resolved = false;
+  // resolve at most 500ms later
+  const id = setTimeout(() => {
+    console.warn("user store hydration took too long");
+    resolved = true;
+    resolve();
+  }, 500);
+
+  hydrateCallback = () => {
+    if (resolved) {
+      return;
+    }
+    clearTimeout(id);
+    resolve();
+  };
+});
+
 export const useUserStore = defineStore("user", {
-  persist: true,
+  persist: {
+    afterRestore() {
+      alreadyHydrated = true;
+
+      if (hydrateCallback) {
+        hydrateCallback();
+      }
+    },
+  },
   state: () => ({
     user: {
       unreadNotificationsCount: 0,
@@ -64,6 +97,8 @@ export const useUserStore = defineStore("user", {
       this.$patch((state) => setUser(state, user));
 
       if (userChanged) {
+        const router = useRouter();
+
         if (router.currentRoute.value.path === "/login" || router.currentRoute.value.path === "/register") {
           // automatically navigate to view under home if successfully logged in
           await router.push("/").catch(console.error);

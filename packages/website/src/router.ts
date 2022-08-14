@@ -1,6 +1,6 @@
+import { getActivePinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
-import { pinia } from "./store/pinia";
-import { useUserStore } from "./store/store";
+import { userHydrated, useUserStore } from "./store/store";
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
@@ -230,9 +230,15 @@ const router = createRouter({
   ],
 });
 
-const userStore = useUserStore(pinia);
+let userStore: ReturnType<typeof useUserStore> | undefined;
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
+  if (!userStore) {
+    userStore = useUserStore(getActivePinia());
+  }
+
+  await userHydrated;
+
   if (!userStore.loggedIn && (!to.name || !["login", "register"].includes(to.name.toString()))) {
     return { name: "login" };
   }
