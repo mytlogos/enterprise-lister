@@ -209,7 +209,7 @@
 
 <script lang="ts" setup>
 import { computed, reactive } from "vue";
-import { AddMedium, MediaType, Medium, ReleaseState as ReleaseStateType } from "../siteTypes";
+import { AddMedium, MediaType, ReleaseState as ReleaseStateType } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import TypeIcon from "../components/type-icon.vue";
 import ReleaseState from "../components/release-state.vue";
@@ -295,10 +295,9 @@ function send(): void {
   }
   data.creating = true;
 
-  HttpClient.createMedium(result)
+  useMediaStore()
+    .addMedium(result)
     .then((medium) => {
-      useMediaStore().addMediumLocal(medium as Medium);
-
       if (data.toc) {
         return HttpClient.addToc(data.toc, medium.id).catch((error) => {
           toast.add({

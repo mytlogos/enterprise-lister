@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { pinia } from "./store/pinia";
+import { useUserStore } from "./store/store";
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
@@ -226,6 +228,14 @@ const router = createRouter({
       component: () => import(/* webpackChunkName: "read" */ "./views/ErrorView.vue"),
     },
   ],
+});
+
+const userStore = useUserStore(pinia);
+
+router.beforeEach((to) => {
+  if (!userStore.loggedIn && (!to.name || !["login", "register"].includes(to.name.toString()))) {
+    return { name: "login" };
+  }
 });
 
 export default router;

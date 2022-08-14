@@ -14,6 +14,8 @@ function userClear(state: UserState) {
   state.name = "";
   state.uuid = "";
   state.session = "";
+  state.user.readNotificationsCount = 0;
+  state.user.unreadNotificationsCount = 0;
   useListStore().lists = [];
   useMediaStore().media = {};
   useExternalUserStore().externalUser = [];
@@ -30,11 +32,6 @@ export const useUserStore = defineStore("user", {
   persist: true,
   state: () => ({
     user: {
-      settings: {},
-      columns: [
-        { name: "Author", prop: "author", show: true },
-        { name: "Artist", prop: "artist", show: true },
-      ],
       unreadNotificationsCount: 0,
       readNotificationsCount: 0,
     },
@@ -61,44 +58,36 @@ export const useUserStore = defineStore("user", {
         hookStore.loadHooks(),
       ]);
     },
-    async changeUser(user: User, modal?: string) {
+
+    async changeUser(user: User) {
       const userChanged = user && this.uuid !== user.uuid;
       this.$patch((state) => setUser(state, user));
 
-      if (modal) {
-        // TODO: commit("resetModal", modal);
-      }
-
       if (userChanged) {
-        // TODO: load first and then change page, or reverse?
-        await this.load();
-
-        if (router.currentRoute.value.path === "/login") {
+        if (router.currentRoute.value.path === "/login" || router.currentRoute.value.path === "/register") {
           // automatically navigate to view under home if successfully logged in
           await router.push("/").catch(console.error);
-          console.log("pushed home");
         }
+
+        await this.load();
       }
     },
+
     async login(data: { user: string; pw: string }) {
       if (!data.user) {
-        // TODO: commit("loginModalError", "Username is missing");
-        return;
-      } else if (!data.pw) {
-        // TODO: commit("loginModalError", "Password is missing");
-        return;
+        throw Error("Username is missing");
       }
-      try {
-        // FIXME modal does not close after successful login
-        const newUser = await HttpClient.login(data.user, data.pw);
-        this.changeUser(newUser, "login");
-      } catch (error) {
-        // TODO: commit("loginModalError", String(error));
+      if (!data.pw) {
+        throw Error("Password is missing");
       }
+      const newUser = await HttpClient.login(data.user, data.pw);
+      this.changeUser(newUser);
     },
+
     immediateLogout() {
       this.$patch(userClear);
     },
+
     async logout() {
       const loggedOut = await HttpClient.logout();
       this.$patch(userClear);
@@ -107,25 +96,28 @@ export const useUserStore = defineStore("user", {
         throw Error("An error occurred while logging out");
       }
     },
+
     async register(data: { user: string; pw: string; pwRepeat: string }) {
       if (!data.user) {
-        // TODO: commit("registerModalError", "Username is missing");
-      } else if (!data.pw) {
-        // TODO: commit("registerModalError", "Password is missing");
-      } else if (!data.pwRepeat) {
-        // TODO: commit("registerModalError", "Password was not repeated");
-      } else if (data.pwRepeat !== data.pw) {
-        // TODO: commit("registerModalError", "Repeated Password is not password");
-      } else {
-        try {
-          const newUser = await HttpClient.register(data.user, data.pw, data.pwRepeat);
-          await this.changeUser(newUser, "register");
-        } catch (error) {
-          // TODO: commit("registerModalError", String(error));
-        }
+        throw Error("Username is missing");
       }
+      if (!data.pw) {
+        throw Error("Password is missing");
+      }
+      if (!data.pwRepeat) {
+        throw Error("Password was not repeated");
+      }
+      if (data.pwRepeat !== data.pw) {
+        throw Error("Repeated Password is not password");
+      }
+      const newUser = await HttpClient.register(data.user, data.pw, data.pwRepeat);
+      await this.changeUser(newUser);
     },
+
     async checkNotificationCounts() {
+      if (!this.loggedIn) {
+        return;
+      }
       const [unreadCount, readCount] = await Promise.all([
         HttpClient.getNotificationsCount(false),
         HttpClient.getNotificationsCount(true),
@@ -133,11 +125,19 @@ export const useUserStore = defineStore("user", {
       this.user.unreadNotificationsCount = unreadCount;
       this.user.readNotificationsCount = readCount;
     },
+
     async readNotification(data: UserNotification) {
+      if (!this.loggedIn) {
+        return;
+      }
       await HttpClient.readNotification(data.id);
       this.checkNotificationCounts();
     },
+
     async readAllNotifications() {
+      if (!this.loggedIn) {
+        return;
+      }
       await HttpClient.readAllNotifications();
       this.checkNotificationCounts();
     },

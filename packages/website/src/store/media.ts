@@ -32,27 +32,13 @@ export const useMediaStore = defineStore("media", {
     },
   },
   actions: {
-    addMediumLocal(medium: Medium | Medium[]) {
-      if (Array.isArray(medium)) {
-        medium.forEach((item) => {
-          if (!item.id) {
-            throw Error("missing id on medium");
-          }
-          this.media[item.id] = item;
-        });
-      } else {
-        if (!medium.id) {
-          throw Error("missing id on medium");
-        }
-        this.media[medium.id] = medium;
-      }
-    },
     updateMediumLocal(medium: SimpleMedium) {
       if (!medium.id) {
         throw Error("missing id on medium");
       }
       Object.assign(this.media[medium.id], medium);
     },
+
     deleteMediumLocal(id: number) {
       if (!(id in this.media)) {
         throw Error("invalid mediumId");
@@ -68,6 +54,7 @@ export const useMediaStore = defineStore("media", {
         }
       });
     },
+
     deleteTocLocal(data: { mediumId: number; link: string }) {
       const medium = this.secondaryMedia[data.mediumId];
       if (!medium) {
@@ -75,6 +62,7 @@ export const useMediaStore = defineStore("media", {
       }
       medium.tocs = medium.tocs.filter((toc) => toc.link !== data.link);
     },
+
     async loadMedia() {
       try {
         const [data, secondaryData] = await Promise.all([HttpClient.getAllMedia(), HttpClient.getAllSecondaryMedia()]);
@@ -101,23 +89,20 @@ export const useMediaStore = defineStore("media", {
         console.error(error);
       }
     },
-    addMedium(data: AddMedium) {
+
+    async addMedium(data: AddMedium) {
       if (!data.title) {
-        // TODO: commit("addMediumModalError", "Missing title");
+        throw Error("Missing title");
       } else if (!data.medium) {
-        // TODO: commit("addMediumModalError", "Missing type");
+        throw Error("Missing Type");
       } else {
-        HttpClient.createMedium(data)
-          .then((medium) => {
-            // @ts-expect-error
-            this.addMediumLocal(medium);
-          })
-          .catch((error) => {
-            // TODO: notify error
-            console.error(error);
-          });
+        const medium = await HttpClient.createMedium(data);
+        if (!medium.id) {
+          throw Error("missing id on medium");
+        }
+        this.media[medium.id] = medium as Medium;
+        return medium;
       }
-      // TODO implement addMedium
     },
 
     editMedium(data: { id: number; prop: string }) {

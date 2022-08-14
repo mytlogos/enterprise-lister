@@ -197,7 +197,7 @@ import {
 import typeIcon from "../components/type-icon.vue";
 import releaseState from "../components/release-state.vue";
 import MediaFilter from "../components/media-filter.vue";
-import { computed, ref, watch, watchEffect } from "vue";
+import { computed, ref, watchEffect } from "vue";
 import { mergeMediaToc } from "../init";
 import { FilterMatchMode, FilterService } from "primevue/api";
 import { DataTableRowEditCancelEvent } from "primevue/datatable";
@@ -241,7 +241,6 @@ const selectedMedium = ref<SimpleMedium | null>(null);
 const mediumSuggestions = ref<Medium[]>([]);
 const editingList = ref(emptyMinList());
 const editingRows = ref<Medium[]>([]);
-const loadingMedia = ref<number[][]>([]);
 const selectedList = ref<null | DisplayList>(null);
 const displayEditDialog = ref(false);
 const filters = {
@@ -333,31 +332,6 @@ watchEffect(() => {
     editingList.value = emptyMinList();
   }
 });
-
-watch(loadingMedia, (newValue: number[][], oldValue: number[][]) => {
-  // TODO: use function or remove it
-  console.log("New:", newValue, "Old", oldValue);
-  const missingBatches = newValue.filter((batch) => !oldValue.includes(batch));
-
-  for (const missingBatch of missingBatches) {
-    // load missing media
-    HttpClient.getMedia(missingBatch)
-      .then((media) => mediaStore.addMediumLocal(media))
-      .catch((error) => {
-        // TODO: display error
-        console.log(error);
-      })
-      .finally(() => {
-        // remove batch so it will be regarded as loaded, regardless whether it failed or not
-        const index = loadingMedia.value.indexOf(missingBatch);
-
-        if (index > 0) {
-          loadingMedia.value.splice(index, 1);
-        }
-      });
-  }
-});
-
 // LIFECYCLE EVENTS
 
 // FUNCTIONS
@@ -396,10 +370,10 @@ function saveList() {
   };
 
   editListLoading.value = true;
-  HttpClient.updateList(currentList)
+  listsStore
+    .updateList(currentList)
     .then((success) => {
       if (success) {
-        listsStore.updateListLocal(currentList);
         toast.add({ severity: "success", summary: "Saved", detail: "List changes were saved", life: 3000 });
       } else {
         toast.add({
@@ -435,11 +409,10 @@ function deleteList() {
     icon: "pi pi-exclamation-triangle",
     acceptClass: "p-button-danger",
     accept: () => {
-      // TODO: make this an action
       deleteListLoading.value = true;
-      HttpClient.deleteList(listId)
+      listsStore
+        .deleteList(listId)
         .then(() => {
-          listsStore.deleteListLocal(listId);
           // select the next list
           selectedList.value = displayedLists.value.find((list) => list.id !== listId) || null;
           toast.add({ severity: "info", summary: "Confirmed", detail: "Record deleted", life: 3000 });
@@ -471,9 +444,9 @@ function confirmDeleteListItem(data: Medium) {
     accept: () => {
       deleteItemLoading.value = true;
 
-      HttpClient.deleteListItem({ listId: list.id, mediumId: [mediumId] })
+      listsStore
+        .deleteListItem({ listId: list.id, mediumId })
         .then(() => {
-          listsStore.removeListItemLocal({ listId: list.id, mediumId });
           toast.add({ severity: "info", summary: "Confirmed", detail: "Item removed from List", life: 3000 });
         })
         .catch((reason) => {

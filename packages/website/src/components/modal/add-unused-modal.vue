@@ -148,7 +148,7 @@
         </li>
       </ul>
     </template>
-    <template #finish> Add Medium</template>
+    <template #finish>Add Medium</template>
   </modal>
   <div
     id="alert-toast"

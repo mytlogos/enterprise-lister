@@ -20,18 +20,9 @@ export const useListStore = defineStore("lists", {
     userListsLocal(lists: List[]): void {
       this.lists = lists.map((list) => ({ ...list, external: false }));
     },
-    addListLocal(list: StoreInternalList) {
-      list.external = false;
-      this.lists.push(list);
-    },
-    deleteListLocal(id: number) {
-      const index = this.lists.findIndex((value) => value.id === id);
-      if (index < 0) {
-        throw Error("invalid listId");
-      }
-      this.lists.splice(index, 1);
-    },
-    removeListItemLocal(payload: { listId: number; mediumId: number }) {
+    async deleteListItem(payload: { listId: number; mediumId: number }) {
+      await HttpClient.deleteListItem({ listId: payload.listId, mediumId: [payload.mediumId] });
+
       const list = this.lists.find((value) => value.id === payload.listId);
       if (!list) {
         throw Error("invalid listId");
@@ -45,7 +36,13 @@ export const useListStore = defineStore("lists", {
       }
       list.items.push(payload.mediumId);
     },
-    updateListLocal(updateList: List) {
+    async updateList(updateList: List) {
+      const success = await HttpClient.updateList(updateList);
+
+      if (!success) {
+        return false;
+      }
+
       const list = this.lists.find((value: List) => value.id === updateList.id);
 
       if (list) {
@@ -53,6 +50,7 @@ export const useListStore = defineStore("lists", {
       } else {
         console.error("Cannot find list to update for id:", updateList.id);
       }
+      return true;
     },
     async loadLists() {
       try {
@@ -65,23 +63,28 @@ export const useListStore = defineStore("lists", {
     },
 
     async addList(data: { name: string; medium: number }) {
-      // TODO: check if list already exists
-      if (!data.name) {
-        // TODO: commit("addListModalError", "Missing name");
-      } else if (!data.medium) {
-        // TODO: commit("addListModalError", "Missing type");
-      } else {
-        return HttpClient.createList({ list: { name: data.name, medium: data.medium } }).then((list) => {
-          // @ts-expect-error
-          this.addListLocal(list);
-          // TODO: commit("resetModal", "addList");
-        });
+      if (this.lists.find((value) => value.name === data.name)) {
+        throw Error("Duplicate List Name");
       }
+      if (!data.name) {
+        throw Error("Missing name");
+      }
+      if (!data.medium) {
+        throw Error("Missing Type");
+      }
+
+      const list = await HttpClient.createList({ list: { name: data.name, medium: data.medium } });
+      this.lists.push({ ...list, external: false });
     },
 
     async deleteList(id: number) {
       await HttpClient.deleteList(id);
-      this.deleteListLocal(id);
+
+      const index = this.lists.findIndex((value) => value.id === id);
+      if (index < 0) {
+        throw Error("invalid listId");
+      }
+      this.lists.splice(index, 1);
     },
   },
 });

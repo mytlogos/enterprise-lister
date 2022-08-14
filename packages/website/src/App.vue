@@ -61,7 +61,7 @@ async function loginState() {
     console.log(`Logged In: ${loggedIn.value} New User: `, newUser);
 
     if (!loggedIn.value && newUser) {
-      await userStore.changeUser(newUser, "login");
+      await userStore.changeUser(newUser);
     } else {
       throw Error();
     }

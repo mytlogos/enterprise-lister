@@ -87,14 +87,15 @@ const data = reactive<Data>({
 const filteredData = computed(() => {
   return externalUserStore.externalUser
     .filter((value) => value)
-    .map((value): ExternalUserItem => {
+    .map((value): ExternalUserItem | undefined => {
       const host = data.hosts.find((hostValue) => hostValue.value === value.type);
       if (!host) {
-        // FIXME: do not throw error, display error and filter this out
-        throw Error("no host for external user: " + JSON.stringify(value));
+        console.warn("no host for external user:", value);
+        return undefined;
       }
       return { ...value, host };
-    });
+    })
+    .filter((value): value is ExternalUserItem => !!value);
 });
 
 // FUNCTIONS

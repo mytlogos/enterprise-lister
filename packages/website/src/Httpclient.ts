@@ -336,7 +336,6 @@ export const HttpClient = {
       return Promise.reject(new Error("already logged in"));
     }
     if (psw !== pswRepeat) {
-      // TODO show incorrect password
       return Promise.reject(new Error("repeated password does not match new password"));
     }
 
@@ -347,7 +346,7 @@ export const HttpClient = {
   },
 
   logout(): Promise<boolean> {
-    return this.queryServer(serverRestApi.api.user.logout.post).then((result) => result.loggedOut);
+    return this.queryServer(serverRestApi.api.user.logout.post);
   },
 
   getExternalUser(): Promise<ExternalUser[]> {

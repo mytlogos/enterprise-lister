@@ -56,6 +56,10 @@ const userStore = useUserStore();
 // DATA
 const loggedInItems = [
   {
+    label: "Home",
+    to: { name: "home" },
+  },
+  {
     label: "Add Medium",
     to: { name: "addMedium" },
   },
@@ -131,12 +135,7 @@ const notifications = ref<UserNotification[]>([]);
 
 // COMPUTED
 const menuItems = computed(() => {
-  const items: MenuItem[] = [
-    {
-      label: "Home",
-      to: { name: "home" },
-    },
-  ];
+  const items: MenuItem[] = [];
 
   if (userStore.loggedIn) {
     items.push(
@@ -177,6 +176,7 @@ function logout(): void {
     });
   });
 }
+
 function checkNotifications() {
   getLatestNotifications();
   // check every minute at most
@@ -185,6 +185,11 @@ function checkNotifications() {
 
 async function getLatestNotifications() {
   await userStore.checkNotificationCounts();
+
+  if (!userStore.loggedIn) {
+    notifications.value = [];
+    return;
+  }
 
   const now = new Date();
   now.setDate(now.getDate() - 5);

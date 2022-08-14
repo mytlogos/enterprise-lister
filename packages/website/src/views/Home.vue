@@ -26,8 +26,6 @@ import { computed } from "vue";
 import { MediaType, ReleaseState } from "../siteTypes";
 import { useMediaStore } from "../store/media";
 
-// TYPES
-
 // STORES
 const mediaStore = useMediaStore();
 
@@ -69,8 +67,6 @@ const mediaCount = computed(() => {
     states: Object.values(stateTlCounts),
   };
 });
-
-// WATCHES
 
 // FUNCTIONS
 </script>
