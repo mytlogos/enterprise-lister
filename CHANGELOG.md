@@ -1,3 +1,15 @@
+# [2.12.0](https://github.com/mytlogos/enterprise-lister/compare/v2.11.0...v2.12.0) (2022-08-14)
+
+
+### Bug Fixes
+
+* **website:** fix externaluser view ([518a4d2](https://github.com/mytlogos/enterprise-lister/commit/518a4d2ddb13c54f78fed23b057bc1a3324ec702))
+
+
+### Features
+
+* **website:** improve website ui ([7a7859c](https://github.com/mytlogos/enterprise-lister/commit/7a7859c1f7e283214a733af22a6a0de986c9f180))
+
 # [2.11.0](https://github.com/mytlogos/enterprise-lister/compare/v2.10.0...v2.11.0) (2022-08-13)
 
 
