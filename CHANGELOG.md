@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/mytlogos/enterprise-lister/compare/v2.13.0...v2.14.0) (2022-08-15)
+
+
+### Features
+
+* **scraper:** implement better scheduling ([da57133](https://github.com/mytlogos/enterprise-lister/commit/da571333de62b3aa73f78358121d1ce426af1c24))
+
 # [2.13.0](https://github.com/mytlogos/enterprise-lister/compare/v2.12.0...v2.13.0) (2022-08-14)
 
 
