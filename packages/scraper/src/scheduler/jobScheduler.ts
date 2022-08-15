@@ -46,13 +46,17 @@ export class JobScheduler {
   private fetching = false;
   private paused = true;
   private readonly jobMap = new Map<number | string, Job>();
+
+  /**
+   * JobItems of currently queued or running jobs
+   */
   private readonly jobItems = [] as JobItem[];
   private readonly nameIdList: Array<[number, string]> = [];
   private intervalId: Optional<Timeout>;
   private readonly schedulingStrategy: SchedulingStrategy;
 
   public constructor() {
-    this.schedulingStrategy = Strategies.REQUEST_QUEUE_BALANCED;
+    this.schedulingStrategy = Strategies.JOBS_QUEUE_FORCED_BALANCED;
   }
 
   public on(event: string, callback: (value: any) => undefined | EmptyPromise): void {
@@ -259,8 +263,6 @@ export class JobScheduler {
         if (this.filter && !this.filter(job)) {
           continue;
         }
-
-        this.jobItems.push(job);
 
         if (key.event) {
           this.queueEmittableJob(key, job);
@@ -524,6 +526,9 @@ export class JobScheduler {
   }
 
   private setJobListener(job: Job, item: JobItem) {
+    // remember job item until it is finished
+    this.jobItems.push(item);
+
     job.onStart = async () => {
       if (item.name) {
         this.jobMap.set(item.name, job);
