@@ -1,4 +1,12 @@
-import { AsyncLocalStorage, createHook, AsyncResource } from "async_hooks";
+import {
+  AsyncLocalStorage,
+  createHook,
+  AsyncResource,
+  executionAsyncId,
+  executionAsyncResource,
+  triggerAsyncId,
+} from "async_hooks";
+import { writeSync } from "fs";
 import { Optional } from "./types";
 
 const localStorage = new AsyncLocalStorage();
@@ -9,6 +17,8 @@ interface HistoryItem {
   context: string;
 }
 
+// BUG: https://github.com/nodejs/node/issues/43148
+// when debugging, it may loose some Promise init events, causing the asynclocalstorage to lose context state
 createHook({
   before() {
     const store: Store | any = localStorage.getStore();
@@ -109,6 +119,31 @@ createHook({
   },
 }).enable();
 
+/**
+ * Utility Hook for debugging
+ */
+export const asyncDebugHook = createHook({
+  before(asyncId) {
+    writeSync(process.stdout.fd, `[before]: ${asyncId}\n`);
+  },
+  after(asyncId) {
+    writeSync(process.stdout.fd, `[after]: ${asyncId}\n`);
+  },
+  init(asyncId, type, triggerAsyncId, resource) {
+    writeSync(
+      process.stdout.fd,
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
+      `[init]: ${asyncId}, type=${type}, trigger=${triggerAsyncId}, resource=${resource + ""}\n`,
+    );
+  },
+  promiseResolve(asyncId) {
+    writeSync(process.stdout.fd, `[promiseResolve]: ${asyncId}\n`);
+  },
+  destroy(asyncId) {
+    writeSync(process.stdout.fd, `[destroy]: ${asyncId}\n`);
+  },
+});
+
 export type Store = Map<StoreKey, any>;
 const stores = new Map<number, Store>();
 const defaultContext = "base";
@@ -129,6 +164,18 @@ export function asyncContext<T extends (...fArgs: any[]) => any>(func: T): T {
     return localStorage.run(store, () => {
       return func(...values);
     });
+  };
+}
+
+/**
+ * Utility function for debugging
+ * @returns info
+ */
+export function asyncContextInfo() {
+  return {
+    executionAsyncId: executionAsyncId(),
+    executionAsyncResource: executionAsyncResource(),
+    triggerAsyncId: triggerAsyncId(),
   };
 }
 
@@ -169,6 +216,32 @@ export function getStores(): Map<number, Store> {
     map.set(key, new Map(store));
   }
   return map;
+}
+
+/**
+ * Simplify try {} finally {} constructs
+ * by using this helper with a callback.
+ *
+ * @param name context name to add and remove
+ * @param callback callback to contextify
+ * @returns the result of the callback call
+ */
+export function inContext<Callback extends () => any>(name: string, callback: Callback): ReturnType<Callback> {
+  let returnedPromise = false;
+  try {
+    setContext(name);
+    const result = callback();
+
+    if (result?.then && result.finally) {
+      returnedPromise = true;
+      return result.finally(() => removeContext(name));
+    }
+    return result;
+  } finally {
+    if (!returnedPromise) {
+      removeContext(name);
+    }
+  }
 }
 
 export function setContext(name: string): void {
@@ -258,6 +331,7 @@ export function bindContext<Func extends TakeManyFunction>(func: Func): Func & {
  * Possible keys for the Store.
  */
 export enum StoreKey {
+  ABORT = "abort",
   RUNNING = "running",
   HISTORY = "history",
   WAITING = "waiting",

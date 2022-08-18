@@ -22,6 +22,10 @@ import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { ParseError, ValidationError } from "./error";
 import { networkInterfaces } from "os";
 
+export function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === "AbortError";
+}
+
 export function isNumberOrArray(value: number | any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
 }

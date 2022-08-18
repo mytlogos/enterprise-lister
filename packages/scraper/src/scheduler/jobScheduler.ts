@@ -1,5 +1,5 @@
-import { ScrapeEvent, ScraperHelper } from "../externals/scraperTools";
-import { Job, JobQueue, OutsideJob } from "./jobQueue";
+import { ScraperHelper } from "../externals/scraperTools";
+import { JobQueue, OutsideJob } from "./jobQueue";
 import { getElseSet, isString, maxValue, removeLike, stringify } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import {
@@ -14,30 +14,18 @@ import {
 import { jobStorage, notificationStorage } from "enterprise-core/dist/database/storages/storage";
 import * as dns from "dns";
 import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
-import Timeout = NodeJS.Timeout;
-import { EndJobChannelMessage, StartJobChannelMessage, TocRequest } from "../externals/types";
+import { StartJobChannelMessage } from "../externals/types";
 import { getNewsAdapter, load } from "../externals/hookManager";
-import { ScrapeJob } from "./scrapeJobs";
+import { ScrapeJob, scrapeMapping } from "./scrapeJobs";
 import diagnostic_channel from "diagnostics_channel";
 import { SchedulingStrategy, Strategies } from "./scheduling";
-import { JobError } from "enterprise-core/dist/error";
 import { gracefulShutdown } from "enterprise-core/dist/exit";
+import { createJob, Job } from "./job";
 
 const missingConnections = new Set<Date>();
 const jobChannel = diagnostic_channel.channel("enterprise-jobs");
 
 export class JobScheduler {
-  private static initStore(item: JobItem) {
-    const store = getStore();
-
-    if (store) {
-      const label = getElseSet(store, StoreKey.LABEL, () => ({}));
-      label.job_id = item.id;
-      label.job_name = item.name;
-      store.set(StoreKey.LAST_RUN, item.lastRun);
-    }
-  }
-
   public automatic = true;
   public filter: undefined | ((item: JobItem) => boolean);
 
@@ -48,11 +36,11 @@ export class JobScheduler {
   private readonly jobMap = new Map<number | string, Job>();
 
   /**
-   * JobItems of currently queued or running jobs
+   * Jobs of currently queued or running jobs
    */
-  private readonly jobItems = [] as JobItem[];
+  private readonly jobs: Job[] = [];
   private readonly nameIdList: Array<[number, string]> = [];
-  private intervalId: Optional<Timeout>;
+  private intervalId: Optional<NodeJS.Timeout>;
   private readonly schedulingStrategy: SchedulingStrategy;
 
   public constructor() {
@@ -183,6 +171,9 @@ export class JobScheduler {
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
+
+    this.jobs.forEach((job) => job.abort());
+    this.jobs.length = 0;
   }
 
   /**
@@ -254,20 +245,22 @@ export class JobScheduler {
     });
   }
 
-  private addDependant(jobsMap: Map<ScrapeJob, JobItem[]>): void {
+  private addDependant(jobsMap: Map<ScrapeJob, Job[]>): void {
     for (const [key, value] of jobsMap.entries()) {
       for (const job of value) {
+        // skip jobs which are already known to be running/queued
         if (this.jobMap.has(job.id)) {
           continue;
         }
-        if (this.filter && !this.filter(job)) {
+
+        if (this.filter && !this.filter(job.currentItem)) {
           continue;
         }
 
         if (key.event) {
           this.queueEmittableJob(key, job);
         } else {
-          this.queueJob(key, job);
+          this.queueJob(job);
         }
       }
     }
@@ -403,7 +396,10 @@ export class JobScheduler {
       schedulable: this.queue.schedulableJobs,
       total: this.queue.totalJobs,
     });
-    const jobs: JobItem[] = await this.schedulingStrategy(this.queue, this.jobItems);
+    const jobs: JobItem[] = await this.schedulingStrategy(
+      this.queue,
+      this.jobs.map((job) => job.currentItem),
+    );
     this.processJobItems(jobs);
     logger.info("fetched jobs", {
       running: this.queue.runningJobs,
@@ -414,210 +410,32 @@ export class JobScheduler {
   }
 
   private processJobItems(items: JobItem[]) {
-    const jobMap = new Map<ScrapeJob, JobItem[]>();
+    const jobMap = new Map<ScrapeJob, Job[]>();
     items.forEach((value) => {
-      let args: Optional<any>;
-      let jobType: ScrapeJob;
-      switch (value.type) {
-        case ScrapeName.newsAdapter:
-          jobType = ScrapeJob.newsAdapter;
-          args = value.arguments;
-          break;
-        case ScrapeName.checkTocs:
-          jobType = ScrapeJob.checkTocs;
-          break;
-        case ScrapeName.feed:
-          jobType = ScrapeJob.feed;
-          args = value.arguments;
-          break;
-        case ScrapeName.news:
-          jobType = ScrapeJob.news;
-          args = value.arguments;
-          break;
-        case ScrapeName.oneTimeToc:
-          jobType = ScrapeJob.oneTimeToc;
-          args = JSON.parse(value.arguments as string);
-          break;
-        case ScrapeName.oneTimeUser:
-          jobType = ScrapeJob.oneTimeUser;
-          args = JSON.parse(value.arguments as string);
-          break;
-        case ScrapeName.queueExternalUser:
-          jobType = ScrapeJob.queueExternalUser;
-          args = JSON.parse(value.arguments as string);
-          break;
-        case ScrapeName.queueTocs:
-          jobType = ScrapeJob.queueTocs;
-          break;
-        case ScrapeName.remapMediaParts:
-          jobType = ScrapeJob.remapMediaParts;
-          break;
-        case ScrapeName.toc:
-          jobType = ScrapeJob.toc;
-          args = JSON.parse(value.arguments as string) as TocRequest;
-          args.lastRequest = value.lastRun;
-          break;
-        case ScrapeName.searchForToc:
-          jobType = ScrapeJob.searchForToc;
-          args = JSON.parse(value.arguments as string);
-          break;
-        default:
-          logger.warn("unknown job type", { job_type: value.type });
-          return;
+      const job = createJob(value);
+      const scrapeJob = scrapeMapping.get(value.type);
+
+      if (!scrapeJob) {
+        logger.warn("no scrape job available", { job_id: value.id, job_type: value.type });
+        return;
       }
-      value.arguments = args;
-      getElseSet(jobMap, jobType, () => []).push(value);
+
+      if (job) {
+        getElseSet(jobMap, scrapeJob, () => []).push(job);
+      }
     });
     this.addDependant(jobMap);
   }
 
-  private queueEmittableJob(jobType: ScrapeJob, item: JobItem) {
-    const job = this.queue.addJob(item.id, () => {
-      JobScheduler.initStore(item);
+  private queueEmittableJob(jobType: ScrapeJob, job: Job) {
+    this.queue.addJob(job);
+    job.once("done", async (error, result) => {
       if (!jobType.event) {
         logger.warn("running emittable job without event name", { job_type: jobType.name });
         return Promise.resolve();
       }
-      if (Array.isArray(item.arguments)) {
-        return this.collectEmittable(jobType.event, jobType.func(...item.arguments));
-      } else {
-        return this.collectEmittable(jobType.event, jobType.func(item.arguments));
-      }
-    });
-    this.setJobListener(job, item);
-    return job;
-  }
 
-  private queueJob(jobType: ScrapeJob, item: JobItem) {
-    const job = this.queue.addJob(item.id, () => {
-      JobScheduler.initStore(item);
-      if (Array.isArray(item.arguments)) {
-        this.processJobCallback(jobType.func(...item.arguments));
-      } else {
-        this.processJobCallback(jobType.func(item.arguments));
-      }
-    });
-    this.setJobListener(job, item);
-    return job;
-  }
-
-  private processJobCallback(
-    result: JobRequest | JobRequest[] | Promise<JobRequest | JobRequest[]>,
-  ): EmptyPromise | undefined {
-    if (!result) {
-      return;
-    }
-    if (result instanceof Promise) {
-      return result.then((value) => value && this.processJobCallbackResult(value));
-    } else {
-      this.processJobCallbackResult(result);
-    }
-  }
-
-  private processJobCallbackResult(value: JobRequest | JobRequest[]): void {
-    if (!value) {
-      return;
-    }
-    if (Array.isArray(value)) {
-      this.addJobs(...value).catch(logger.error);
-    } else {
-      this.addJobs(value).catch(logger.error);
-    }
-  }
-
-  private setJobListener(job: Job, item: JobItem) {
-    // remember job item until it is finished
-    this.jobItems.push(item);
-
-    job.onStart = async () => {
-      if (item.name) {
-        this.jobMap.set(item.name, job);
-        this.nameIdList.push([item.id, item.name]);
-      }
-      this.jobMap.set(item.id, job);
-      item.state = JobState.RUNNING;
-      item.runningSince = new Date();
-
-      await jobStorage.updateJobs(item);
-      logger.info("Job is running now", { job_name: item.name, job_id: item.id });
-
-      if (jobChannel.hasSubscribers) {
-        jobChannel.publish({
-          messageType: "jobs",
-          type: "started",
-          jobName: item.name,
-          jobId: item.id,
-          timestamp: Date.now(),
-        } as StartJobChannelMessage);
-      }
-    };
-    job.onDone = async () => {
-      const end = new Date();
-
-      if (item.name) {
-        this.jobMap.delete(item.name);
-        removeLike(this.nameIdList, (value) => value[0] === item.id);
-      }
-
-      removeLike(this.jobItems, (value) => value.id === item.id);
-      this.jobMap.delete(item.id);
-      const newJobs = await jobStorage.getAfterJobs(item.id);
-      this.processJobItems(newJobs);
-
-      if (item.deleteAfterRun) {
-        await jobStorage.removeJobs(item, end);
-      } else {
-        item.lastRun = new Date();
-        item.previousScheduledAt = item.nextRun;
-
-        if (item.interval > 0) {
-          if (item.interval < 60000) {
-            item.interval = 60000;
-          }
-          item.nextRun = new Date(item.lastRun.getTime() + item.interval);
-        }
-        item.state = JobState.WAITING;
-        await jobStorage.updateJobs(item, end);
-      }
-      logger.info("Job finished now", { job_name: item.name, job_id: item.id });
-
-      if (jobChannel.hasSubscribers) {
-        const store = getStore();
-        if (!store) {
-          throw new JobError("missing store - is this running outside a AsyncLocalStorage Instance?");
-        }
-
-        const result = store.get(StoreKey.RESULT);
-        jobChannel.publish({
-          messageType: "jobs",
-          type: "finished",
-          jobName: item.name,
-          jobId: item.id,
-          jobType: item.type,
-          jobTrack: {
-            modifications: store.get(StoreKey.MODIFICATIONS) || {},
-            network: store.get(StoreKey.NETWORK) || {
-              count: 0,
-              sent: 0,
-              received: 0,
-              history: [],
-            },
-            queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
-          },
-          result,
-          reason: result !== "success" ? store.get(StoreKey.MESSAGE) : undefined,
-          timestamp: Date.now(),
-        } as EndJobChannelMessage);
-      }
-    };
-  }
-
-  private collectEmittable(eventName: ScrapeEvent, value: Promise<any>): EmptyPromise {
-    // TODO: 23.06.2019 collect e.g. 10 resolved items and then emit them, or emit them periodically if available
-    // TODO: 23.06.2019 add timeout?
-    return value
-      .then((content) => this.helper.emit(eventName, content))
-      .catch(async (reason) => {
+      if (error) {
         const store = getStore();
         if (store) {
           const jobLabel = store.get(StoreKey.LABEL) ?? {};
@@ -625,16 +443,69 @@ export class JobScheduler {
           await notificationStorage
             .insertNotification({
               title: `Job Error for '${jobLabel.job_name + ""}'`,
-              content: reason.message,
+              content: error.message,
               date: new Date(),
               key: "job-" + jobLabel.job_id,
               type: "error",
             })
             .catch(logger.error);
         }
-        await this.helper.emit(eventName + ":error", reason);
-        return reason;
-      });
+        await this.helper.emit(jobType.event + ":error", error);
+      } else {
+        this.helper.emit(jobType.event, result);
+      }
+    });
+    this.setJobListener(job);
+    return job;
+  }
+
+  private queueJob(job: Job) {
+    this.queue.addJob(job);
+
+    job.once("done", async (error, result: undefined | JobRequest | JobRequest[]) => {
+      if (error) {
+        logger.error(error);
+        return;
+      }
+      if (!result) {
+        return;
+      }
+      logger.info("job produced job requests", { job_id: job.id });
+
+      if (Array.isArray(result)) {
+        await this.addJobs(...result).catch(logger.error);
+      } else {
+        await this.addJobs(result).catch(logger.error);
+      }
+    });
+    this.setJobListener(job);
+    return job;
+  }
+
+  private setJobListener(job: Job) {
+    // remember job until it is finished
+    this.jobs.push(job);
+    const item = job.currentItem;
+
+    job.once("before", async () => {
+      if (item.name) {
+        this.jobMap.set(item.name, job);
+        this.nameIdList.push([item.id, item.name]);
+      }
+      this.jobMap.set(item.id, job);
+    });
+
+    job.once("after", async () => {
+      if (item.name) {
+        this.jobMap.delete(item.name);
+        removeLike(this.nameIdList, (value) => value[0] === item.id);
+      }
+
+      removeLike(this.jobs, (value) => value.id === item.id);
+      this.jobMap.delete(item.id);
+      const newJobs = await jobStorage.getAfterJobs(item.id);
+      this.processJobItems(newJobs);
+    });
   }
 }
 

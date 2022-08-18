@@ -33,3 +33,11 @@ export class ScrapeJob {
     return this.name;
   }
 }
+
+export const scrapeMapping: ReadonlyMap<ScrapeName, ScrapeJob> = new Map(
+  Object.values(ScrapeJob)
+    .filter((value) => value instanceof ScrapeJob)
+    .map((value) => {
+      return [value.name, value];
+    }),
+);

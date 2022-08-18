@@ -1,12 +1,12 @@
-/* eslint-disable @typescript-eslint/no-invalid-void-type */
-import { remove, removeLike, stringify, getElseSet } from "enterprise-core/dist/tools";
+import { remove, removeLike, stringify, getElseSet, isAbortError } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
-import { JobRequest, EmptyPromise, Optional, Nullable } from "enterprise-core/dist/types";
-import { getStore, runAsync, setContext, removeContext, StoreKey } from "enterprise-core/dist/asyncStorage";
+import { JobRequest, Optional, Nullable } from "enterprise-core/dist/types";
+import { getStore, runAsync, StoreKey, inContext } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
 import diagnostics_channel from "diagnostics_channel";
 import { JobQueueChannelMessage } from "../externals/types";
 import { JobError } from "enterprise-core/dist/error";
+import { Job } from "./job";
 
 const queueChannel = diagnostics_channel.channel("enterprise-jobqueue");
 
@@ -172,14 +172,11 @@ export class JobQueue {
    * @param job the job to execute, a valid function
    * @return Job for registering callbacks before and after executing a job
    */
-  public addJob(jobId: number, job: JobCallback): Job {
+  public addJob(job: Job): void {
     const wasEmpty = this.isEmpty();
     let lastRun: Nullable<number> = null;
 
-    const info: Job = {};
     const internJob: InternJob = {
-      jobId,
-      executed: 0,
       active: true,
       job,
       set lastRun(last: number) {
@@ -189,13 +186,12 @@ export class JobQueue {
         // @ts-expect-error
         return lastRun;
       },
-      jobInfo: info,
     };
     this.waitingJobs.push(internJob);
+
     if (wasEmpty) {
       this.setInterval();
     }
-    return info;
   }
 
   /**
@@ -207,7 +203,7 @@ export class JobQueue {
    * @return boolean true if there was a job removed from the active or waiting queue
    */
   public removeJob(job: Job): boolean {
-    const predicate = (value: InternJob) => value.jobInfo === job;
+    const predicate = (value: InternJob) => value.job.id === job.id;
     return removeLike(this.waitingJobs, predicate) || removeLike(this.activeJobs, predicate);
   }
 
@@ -291,8 +287,7 @@ export class JobQueue {
     for (const job of this.activeJobs) {
       jobs.push({
         active: job.active,
-        executed: job.executed,
-        jobId: job.jobId,
+        jobId: job.job.id,
         lastRun: job.lastRun,
         running: job.running,
         startRun: job.startRun,
@@ -301,8 +296,7 @@ export class JobQueue {
     for (const job of this.waitingJobs) {
       jobs.push({
         active: job.active,
-        executed: job.executed,
-        jobId: job.jobId,
+        jobId: job.job.id,
         lastRun: job.lastRun,
         running: job.running,
         startRun: job.startRun,
@@ -314,24 +308,26 @@ export class JobQueue {
   private _done(job: InternJob) {
     remove(this.activeJobs, job);
     job.running = false;
+
     if (job.startRun) {
       const store = getStore();
 
       if (!store) {
         throw new JobError("Missing Store! Are you sure this was running in an AsyncResource?");
       }
+
       const running = store.get(StoreKey.RUNNING);
       const waiting = store.get(StoreKey.WAITING);
+
       logger.info("Job finished running", {
-        job_id: job.jobId,
+        job_id: job.job.id,
         job_running: running + "ms",
         job_waiting: waiting + "ms",
-        job_times_executed: job.executed,
       });
       job.lastRun = Date.now();
       job.startRun = 0;
     } else {
-      logger.info("Cancelling already finished job", { job_id: job.jobId });
+      logger.info("Cancelling already finished job", { job_id: job.job.id });
     }
   }
 
@@ -379,56 +375,80 @@ export class JobQueue {
 
   private executeJob(toExecute: InternJob) {
     toExecute.running = true;
-    this.activeJobs.push(toExecute);
     toExecute.startRun = Date.now();
-    const store = new Map();
-    runAsync(toExecute.jobId, store, async () => {
+    this.activeJobs.push(toExecute);
+
+    const store = toExecute.job.jobStore;
+
+    (async () => {
       try {
-        if (toExecute.jobInfo.onStart) {
-          try {
-            setContext("Job-OnStart");
-            await this.executeCallback(toExecute.jobInfo.onStart);
-          } catch (error) {
-            logger.error("onStart threw an error", { job_id: toExecute.jobId, reason: stringify(error) });
-          } finally {
-            removeContext("Job-OnStart");
-          }
+        // wrap each "stage" in runAsync of localstorage,
+        // so that even if one stage loses context for whatever reason,
+        // it should not affect the other stages
+        const stop = await runAsync(toExecute.job.id, store, () =>
+          inContext("Job-beforeRun", async () => {
+            try {
+              return await toExecute.job.beforeRun();
+            } catch (error) {
+              if (isAbortError(error)) {
+                throw error;
+              }
+              logger.error("beforeRun threw an error", { job_id: toExecute.job.id, reason: stringify(error) });
+              return true;
+            }
+          }),
+        );
+
+        if (stop) {
+          return;
         }
-        setContext("Job");
-        await this.executeCallback(async () => {
-          toExecute.executed++;
-          logger.info("executing job", { job_id: toExecute.jobId });
-          return toExecute.job(() => this._done(toExecute));
-        });
-        // set default result value if not already set
-        getElseSet(store, "result", () => "success");
-        const message = createJobMessage(store);
-        store.set("message", stringify(message));
+
+        await runAsync(toExecute.job.id, store, () =>
+          inContext("Job-Running", async () => {
+            logger.info("executing job", { job_id: toExecute.job.id });
+
+            await toExecute.job.runJob();
+
+            // set default result value if not already set
+            getElseSet(store, StoreKey.RESULT, () => "success");
+            const message = createJobMessage(store);
+            store.set(StoreKey.MESSAGE, stringify(message));
+          }),
+        );
       } catch (error) {
-        remove(this.waitingJobs, toExecute);
-        store.set("result", "failed");
+        if (isAbortError(error)) {
+          store.set(StoreKey.RESULT, "aborted");
+        } else {
+          store.set(StoreKey.RESULT, "failed");
+        }
+
         const message = {
           ...createJobMessage(store),
           reason: typeof error === "object" && error && (error as Error).message,
         };
-        store.set("message", stringify(message));
-        logger.error("Job threw an error", { job_id: toExecute.jobId, reason: stringify(error) });
-      } finally {
-        removeContext("Job");
-        this._done(toExecute);
+        store.set(StoreKey.MESSAGE, stringify(message));
 
-        if (toExecute.jobInfo.onDone) {
-          try {
-            setContext("Job-OnDone");
-            await this.executeCallback(toExecute.jobInfo.onDone);
-          } catch (error) {
-            logger.error("onDone threw an error", { job_id: toExecute.jobId, reason: stringify(error) });
-          } finally {
-            removeContext("Job-OnDone");
-          }
+        if (isAbortError(error)) {
+          logger.error("Job aborted", { job_id: toExecute.job.id, job_status: toExecute.job.jobStatus });
+        } else {
+          logger.error("Job threw an error", { job_id: toExecute.job.id, reason: stringify(error) });
         }
+      } finally {
+        await runAsync(toExecute.job.id, store, async () => {
+          this._done(toExecute);
+
+          await inContext("Job-afterRun", async () => {
+            try {
+              return await toExecute.job.afterRun();
+            } catch (error) {
+              logger.error("afterRun threw an error", { job_id: toExecute.job.id, reason: stringify(error) });
+            }
+          });
+
+          toExecute.job.finished();
+        });
       }
-    });
+    })().catch(logger.error);
   }
 
   private setInterval(duration?: number) {
@@ -457,44 +477,31 @@ export class JobQueue {
     }
   }
 
-  private executeCallback(callback: () => any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      try {
-        const result = callback();
-        resolve(result);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  }
-
   /**
    * Publish the current state of this JobQueue to the diagnostics_channel.
    */
   private publish() {
     if (queueChannel.hasSubscribers) {
-      queueChannel.publish({
+      const message: JobQueueChannelMessage = {
         messageType: "jobqueue",
         active: this.activeJobs.length,
         queued: this.waitingJobs.length,
         max: this.maxActive,
-      } as JobQueueChannelMessage);
+      };
+      queueChannel.publish(message);
     }
   }
 }
 
 export type JobCallback =
-  | ((done: () => void) => void | JobRequest | JobRequest[])
-  | (() => Promise<void | JobRequest | JobRequest[]>);
+  | ((done: () => void) => undefined | JobRequest | JobRequest[])
+  | (() => Promise<undefined | JobRequest | JobRequest[]>);
 
 interface InternJob {
-  readonly jobInfo: Job;
-  readonly job: JobCallback;
-  jobId: number;
+  readonly job: Job;
   startRun?: number;
   running?: boolean;
   active: boolean;
-  executed: number;
   lastRun: Nullable<number>;
 }
 
@@ -503,11 +510,5 @@ export interface OutsideJob {
   startRun?: number;
   running?: boolean;
   active: boolean;
-  executed: number;
   lastRun: Nullable<number>;
-}
-
-export interface Job {
-  onStart?: () => void | EmptyPromise;
-  onDone?: () => void | EmptyPromise;
 }

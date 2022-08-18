@@ -304,10 +304,7 @@ export class JobContext extends SubContext {
   }
 
   public getJobsById(jobIds: number[]): Promise<JobItem[]> {
-    return this.queryInList(
-      "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND id IN (??);",
-      [jobIds],
-    ) as Promise<JobItem[]>;
+    return this.queryInList("SELECT * FROM jobs WHERE id IN (??);", [jobIds]) as Promise<JobItem[]>;
   }
 
   public getJobsByName(names: string[]): Promise<JobItem[]> {
