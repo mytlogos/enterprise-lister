@@ -1,3 +1,10 @@
+# [2.15.0](https://github.com/mytlogos/enterprise-lister/compare/v2.14.0...v2.15.0) (2022-08-18)
+
+
+### Features
+
+* **scraper:** implement abortable jobs ([39d37cd](https://github.com/mytlogos/enterprise-lister/commit/39d37cdce48d531d3128ad9be45e7b9a7085558b))
+
 # [2.14.0](https://github.com/mytlogos/enterprise-lister/compare/v2.13.0...v2.14.0) (2022-08-15)
 
 
