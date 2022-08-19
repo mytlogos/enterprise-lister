@@ -42,7 +42,7 @@ import {
   storage,
 } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, UrlError } from "../externals/errors";
-import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
+import { getStore, getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { MissingEntityError, ValidationError } from "enterprise-core/dist/error";
 import { DisabledHookError } from "../externals/hookManager";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
@@ -561,8 +561,7 @@ export async function tocHandler(result: TocResult): EmptyPromise {
  * @param date date to check
  */
 function getLatestDate(date: Date): Date {
-  const store = getStore();
-  const lastRun = store?.get(StoreKey.LAST_RUN) as Date | undefined;
+  const lastRun = getStoreValue(StoreKey.LAST_RUN);
 
   // check if lastrun does not exist or is earlier than given date
   if (!lastRun || lastRun < date) {

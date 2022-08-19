@@ -27,9 +27,9 @@ import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
 import { escapeLike } from "../storages/storageTools";
-import { getStore, StoreKey } from "../../asyncStorage";
+import { requireStore, StoreKey } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
-import { DatabaseError, JobError, ValidationError } from "../../error";
+import { DatabaseError, ValidationError } from "../../error";
 
 interface CountValue<T> {
   count: number;
@@ -512,10 +512,7 @@ export class JobContext extends SubContext {
       if (value.arguments && !isString(value.arguments)) {
         args = JSON.stringify(value.arguments);
       }
-      const store = getStore();
-      if (!store) {
-        throw new JobError("missing store - is this running outside a AsyncLocalStorage Instance?");
-      }
+      const store = requireStore();
       const result = store.get(StoreKey.RESULT) || "success";
       const message = store.get(StoreKey.MESSAGE) || JSON.stringify({ message: "No Message" });
 

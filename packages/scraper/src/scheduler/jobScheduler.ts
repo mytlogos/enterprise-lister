@@ -437,12 +437,13 @@ export class JobScheduler {
 
       if (error) {
         const store = getStore();
+
         if (store) {
-          const jobLabel = store.get(StoreKey.LABEL) ?? {};
+          const jobLabel = store.get(StoreKey.LABEL) ?? { job_name: "unknown", job_id: 0 };
 
           await notificationStorage
             .insertNotification({
-              title: `Job Error for '${jobLabel.job_name + ""}'`,
+              title: `Job Error for '${jobLabel.job_name}'`,
               content: error.message,
               date: new Date(),
               key: "job-" + jobLabel.job_id,
@@ -452,7 +453,7 @@ export class JobScheduler {
         }
         await this.helper.emit(jobType.event + ":error", error);
       } else {
-        this.helper.emit(jobType.event, result);
+        await this.helper.emit(jobType.event, result);
       }
     });
     this.setJobListener(job);

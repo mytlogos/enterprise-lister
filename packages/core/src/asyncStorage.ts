@@ -7,7 +7,8 @@ import {
   triggerAsyncId,
 } from "async_hooks";
 import { writeSync } from "fs";
-import { Optional } from "./types";
+import { AsyncContextError } from "./error";
+import { Modification, Optional } from "./types";
 
 const localStorage = new AsyncLocalStorage();
 
@@ -27,7 +28,7 @@ createHook({
       return;
     }
     const running = store.get(StoreKey.RUNNING);
-    let history: HistoryItem[] = store.get(StoreKey.HISTORY);
+    let history = store.get(StoreKey.HISTORY);
 
     if (running == null) {
       store.set(StoreKey.RUNNING, 0);
@@ -80,7 +81,8 @@ createHook({
       store.set(StoreKey.RUNNING, 0);
       running = 0;
     }
-    let history: HistoryItem[] = store.get(StoreKey.HISTORY);
+    let history = store.get(StoreKey.HISTORY);
+
     if (!history) {
       history = [];
       store.set(StoreKey.HISTORY, history);
@@ -144,7 +146,62 @@ export const asyncDebugHook = createHook({
   },
 });
 
-export type Store = Map<StoreKey, any>;
+/**
+ * Possible keys for the Store.
+ */
+export enum StoreKey {
+  ABORT = "abort",
+  RUNNING = "running",
+  HISTORY = "history",
+  WAITING = "waiting",
+  RUN_START = "runStart",
+  WAIT_START = "waitStart",
+  CONTEXT = "context",
+  LABEL = "label",
+  QUERY_COUNT = "queryCount",
+  MODIFICATIONS = "modifications",
+  RESULT = "result",
+  MESSAGE = "message",
+  NETWORK = "network",
+  LAST_RUN = "lastRun",
+  ERROR = "error",
+  LAST_REQUEST_URL = "last_request_url", // after redirects
+}
+
+export interface StoreMapping {
+  [StoreKey.ABORT]: AbortSignal;
+  [StoreKey.RUNNING]: number;
+  [StoreKey.HISTORY]: HistoryItem[];
+  [StoreKey.WAITING]: number;
+  [StoreKey.RUN_START]: number;
+  [StoreKey.WAIT_START]: number;
+  [StoreKey.CONTEXT]: string[];
+  [StoreKey.LABEL]: { job_id: number; job_name: string };
+  [StoreKey.QUERY_COUNT]: number;
+  [StoreKey.MODIFICATIONS]: Record<string, Modification>;
+  [StoreKey.RESULT]: "success" | "warning" | "failed" | "aborted";
+  [StoreKey.MESSAGE]: string;
+  [StoreKey.NETWORK]: {
+    count: number;
+    sent: number;
+    received: number;
+    history: Array<{ url: string; method: string; statusCode: number; send: number; received: number }>;
+  };
+  [StoreKey.LAST_RUN]: Date;
+  [StoreKey.ERROR]: unknown;
+  [StoreKey.LAST_REQUEST_URL]: string;
+}
+
+export interface Store<Mapping = StoreMapping> extends Map<keyof Mapping, any> {
+  forEach<K extends keyof Mapping>(
+    callbackfn: (value: Mapping[K], key: K, map: Map<keyof Mapping, any>) => void,
+    thisArg?: any,
+  ): void;
+
+  get<K extends keyof Mapping>(key: K): Mapping[K] | undefined;
+  set<K extends keyof Mapping>(key: K, value: Mapping[K]): this;
+}
+
 const stores = new Map<number, Store>();
 const defaultContext = "base";
 
@@ -193,7 +250,7 @@ export function setStoreValue(key: StoreKey, value: any, force = false) {
   }
 }
 
-export function getStoreValue(key: StoreKey, force = false): Optional<any> {
+export function getStoreValue<K extends keyof StoreMapping>(key: K, force = false): Optional<StoreMapping[K]> {
   const store = getStore();
 
   if (store) {
@@ -205,6 +262,15 @@ export function getStoreValue(key: StoreKey, force = false): Optional<any> {
 
 export function getStore(): Optional<Store> {
   return localStorage.getStore() as Optional<Store>;
+}
+
+export function requireStore(): Store {
+  const store = localStorage.getStore() as Optional<Store>;
+
+  if (!store) {
+    throw new AsyncContextError("missing store - is this running outside AsyncLocalStorage.run?");
+  }
+  return store;
 }
 
 /**
@@ -325,26 +391,4 @@ export function runAsync<T extends (...fArgs: any[]) => any>(
  */
 export function bindContext<Func extends TakeManyFunction>(func: Func): Func & { asyncResource: AsyncResource } {
   return AsyncResource.bind(func) as Func & { asyncResource: AsyncResource };
-}
-
-/**
- * Possible keys for the Store.
- */
-export enum StoreKey {
-  ABORT = "abort",
-  RUNNING = "running",
-  HISTORY = "history",
-  WAITING = "waiting",
-  RUN_START = "runStart",
-  WAIT_START = "waitStart",
-  CONTEXT = "context",
-  LABEL = "label",
-  QUERY_COUNT = "queryCount",
-  MODIFICATIONS = "modifications",
-  RESULT = "result",
-  MESSAGE = "message",
-  NETWORK = "network",
-  LAST_RUN = "lastRun",
-  ERROR = "error",
-  LAST_REQUEST_URL = "last_request_url", // after redirects
 }

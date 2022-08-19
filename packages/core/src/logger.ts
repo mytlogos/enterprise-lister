@@ -2,7 +2,7 @@ import winston, { format } from "winston";
 import { isString, jsonReplacer, stringify } from "./tools";
 import { join as joinPath } from "path";
 import env from "./env";
-import { getStore, StoreKey } from "./asyncStorage";
+import { getStoreValue, StoreKey } from "./asyncStorage";
 import DailyRotateFile from "winston-daily-rotate-file";
 import LokiTransport from "winston-loki";
 import { MESSAGE } from "triple-beam";
@@ -123,14 +123,10 @@ let exitHandled = false;
 process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info("Exit Program", { code }));
 
 function log(level: string, value: any, meta: LogMeta = {}) {
-  const store = getStore();
+  const label = getStoreValue(StoreKey.LABEL);
 
-  if (store) {
-    const label = store.get(StoreKey.LABEL);
-
-    if (typeof label === "object" && label) {
-      Object.assign(meta, label);
-    }
+  if (typeof label === "object" && label) {
+    Object.assign(meta, label);
   }
   if (!isString(value)) {
     value = stringify(value);

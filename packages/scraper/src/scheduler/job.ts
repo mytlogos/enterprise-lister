@@ -84,7 +84,7 @@ type JobStatus = "waiting" | "beforeRun" | "running" | "afterRun" | "end";
  */
 export class Job {
   private readonly controller = new AbortController();
-  private readonly store = new Map();
+  private readonly store: Store = new Map();
 
   /**
    * The lifecycle of jobs goes one way: waiting -> beforeRun -> running -> afterRun -> end
@@ -95,7 +95,11 @@ export class Job {
 
   public constructor(private readonly job: () => any | Promise<any>, private readonly original: JobItem) {
     this.store.set(StoreKey.ABORT, this.controller.signal);
-    this.store.set(StoreKey.LAST_RUN, original.lastRun);
+
+    if (original.lastRun) {
+      this.store.set(StoreKey.LAST_RUN, original.lastRun);
+    }
+
     this.store.set(StoreKey.LABEL, { job_id: original.id, job_name: original.name });
     this.currentItem = structuredClone(original);
   }
@@ -208,7 +212,7 @@ export class Job {
 
     if (jobChannel.hasSubscribers) {
       const store = this.store;
-      const result = store.get(StoreKey.RESULT);
+      const result = store.get(StoreKey.RESULT) || "success";
 
       const message: EndJobChannelMessage = {
         messageType: "jobs",

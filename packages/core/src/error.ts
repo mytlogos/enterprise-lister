@@ -70,6 +70,14 @@ export class JobError extends Error {
   }
 }
 
+export class AsyncContextError extends Error {
+  public constructor(message: string) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, AsyncContextError);
+  }
+}
+
 export class NotImplementedError extends Error {
   public constructor(message: string) {
     super(message);

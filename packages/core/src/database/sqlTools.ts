@@ -44,9 +44,7 @@ export function storeModifications(key: ModificationKey, queryType: QueryType, r
   if (!store) {
     return;
   }
-  const modifications = getElseSet(store, StoreKey.MODIFICATIONS, () => {
-    return {};
-  });
+  const modifications = getElseSet(store, StoreKey.MODIFICATIONS, () => ({}));
   const modification: Modification = getElseSetObj(modifications, key, () => {
     return { created: 0, deleted: 0, updated: 0 };
   });
