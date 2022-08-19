@@ -1,3 +1,10 @@
+## [2.15.1](https://github.com/mytlogos/enterprise-lister/compare/v2.15.0...v2.15.1) (2022-08-19)
+
+
+### Bug Fixes
+
+* add async store typing ([d7129d5](https://github.com/mytlogos/enterprise-lister/commit/d7129d59fb5994ac042040944054558c5babb371))
+
 # [2.15.0](https://github.com/mytlogos/enterprise-lister/compare/v2.14.0...v2.15.0) (2022-08-18)
 
 
