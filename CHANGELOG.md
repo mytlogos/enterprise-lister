@@ -1,3 +1,10 @@
+## [2.15.2](https://github.com/mytlogos/enterprise-lister/compare/v2.15.1...v2.15.2) (2022-08-20)
+
+
+### Bug Fixes
+
+* restrict diagnostics_channel typings ([cb235c3](https://github.com/mytlogos/enterprise-lister/commit/cb235c3b6afcc0de2635be7ef3de8bd19f3a01d6))
+
 ## [2.15.1](https://github.com/mytlogos/enterprise-lister/compare/v2.15.0...v2.15.1) (2022-08-19)
 
 
