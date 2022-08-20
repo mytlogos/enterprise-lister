@@ -233,9 +233,7 @@ const router = createRouter({
 let userStore: ReturnType<typeof useUserStore> | undefined;
 
 router.beforeEach(async (to) => {
-  if (!userStore) {
-    userStore = useUserStore(getActivePinia());
-  }
+  userStore ??= useUserStore(getActivePinia());
 
   await userHydrated;
 

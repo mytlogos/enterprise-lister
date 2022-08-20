@@ -300,7 +300,7 @@ export class UserContext extends SubContext {
    */
   private async _getUser(uuid: Uuid, session: string): Promise<User> {
     if (!uuid) {
-      return Promise.reject(new ValidationError("missing uuid"));
+      throw new ValidationError("missing uuid");
     }
     const user: User = {
       externalUser: [],

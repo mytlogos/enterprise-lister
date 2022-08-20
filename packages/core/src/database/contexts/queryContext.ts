@@ -81,12 +81,7 @@ export class QueryContext implements ConnectionContext {
   private readonly subClassMap: Map<new (parentContext: QueryContext) => any, any> = new Map();
 
   private getSubInstanceLazy<T>(constructor: new (parentContext: QueryContext) => T): T {
-    let value = this.subClassMap.get(constructor);
-    if (!value) {
-      value = new constructor(this);
-      this.subClassMap.set(constructor, value);
-    }
-    return value;
+    return getElseSet(this.subClassMap, constructor, () => new constructor(this));
   }
 
   public get databaseContext(): DatabaseContext {

@@ -464,9 +464,7 @@ export class EpisodeContext extends SubContext {
             // -1 is reserved for all episodes, which do not have any volume/part assigned
             volIndex = lowestIndexObj && lowestIndexObj.totalIndex < 0 ? --lowestIndexObj.totalIndex : -2;
           }
-          if (!volumeTitle) {
-            volumeTitle = "Volume " + volIndex;
-          }
+          volumeTitle ??= "Volume " + volIndex;
           const addedVolume = await this.parentContext.partContext.addPart(
             // @ts-expect-error
             { title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id },
@@ -527,10 +525,7 @@ export class EpisodeContext extends SubContext {
           episodeIndex = latestEpisode && latestEpisode.totalIndex < 0 ? --latestEpisode.totalIndex : -1;
         }
 
-        let chapter = value.chapter;
-        if (!chapter) {
-          chapter = "Chapter " + episodeIndex;
-        }
+        const chapter = value.chapter ?? "Chapter " + episodeIndex;
 
         const episode = await this.addEpisode({
           id: 0,

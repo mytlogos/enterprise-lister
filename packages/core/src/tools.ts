@@ -283,11 +283,7 @@ export function contains(s1: string, s2: string): boolean {
 export function countOccurrence<T>(array: T[]): Map<T, number> {
   const occurrenceMap: Map<T, number> = new Map();
   for (const value of array) {
-    let counted = occurrenceMap.get(value);
-
-    if (!counted) {
-      counted = 0;
-    }
+    const counted = occurrenceMap.get(value) ?? 0;
     occurrenceMap.set(value, counted + 1);
   }
   return occurrenceMap;

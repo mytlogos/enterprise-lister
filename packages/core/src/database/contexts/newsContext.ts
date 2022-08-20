@@ -109,9 +109,7 @@ export class NewsContext extends SubContext {
         "(SELECT uuid FROM external_user WHERE local_uuid = ?))))" +
         "ORDER BY date DESC LIMIT 100";
 
-      if (!till) {
-        till = new Date();
-      }
+      till ??= new Date();
       parameter = [till, uuid, uuid];
       if (since) {
         parameter.unshift(since);

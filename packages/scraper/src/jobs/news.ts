@@ -101,10 +101,7 @@ async function processMediumNews(
   });
 
   let standardPart = await partStorage.getStandardPart(mediumId);
-
-  if (!standardPart) {
-    standardPart = await partStorage.createStandardPart(mediumId);
-  }
+  standardPart ??= await partStorage.createStandardPart(mediumId);
 
   if (!standardPart || !standardPart.id) {
     throw new DatabaseError(`could not create standard part for mediumId: '${mediumId}'`);

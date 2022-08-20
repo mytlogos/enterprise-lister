@@ -234,12 +234,7 @@ function processRequest(uri: string, otherRequest?: Request, queueToUse = queues
     throw Error("not a valid url: " + uri);
   }
 
-  let queue: any = queueToUse.get(host);
-
-  if (!queue) {
-    queueToUse.set(host, (queue = new Queue(host, limit)));
-  }
-
+  const queue = getElseSet(queueToUse, host, () => new Queue(host, limit));
   const toUseRequest: Request = otherRequest || request;
   return { toUseRequest, queue };
 }
@@ -268,9 +263,7 @@ export const queueCheerioRequestBuffered: QueueRequest<CheerioStatic> = (
 ): Promise<CheerioStatic> => {
   const { toUseRequest, queue } = processRequest(uri, otherRequest);
 
-  if (!options) {
-    options = { uri };
-  }
+  options ??= { uri };
   options.resolveWithFullResponse = true;
 
   return queue.push(async () => {
@@ -349,9 +342,7 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
       if (/^cloudflare/i.test("" + resp.caseless.get("server"))) {
         resp.destroy();
 
-        if (!options) {
-          options = { uri };
-        }
+        options ??= { uri };
         options.transform = transformCheerio;
         resolve(request(options));
         return;
@@ -372,10 +363,7 @@ function streamHtmlParser2(resolve: Resolve<CheerioStatic>, reject: Reject, uri:
 
 export const queueCheerioRequestStream: QueueRequest<CheerioStatic> = (uri, options): Promise<CheerioStatic> => {
   const { queue } = processRequest(uri);
-
-  if (!options) {
-    options = { uri };
-  }
+  options ??= { uri };
   return queue.push(() => new Promise((resolve, reject) => streamHtmlParser2(resolve, reject, uri, options)));
 };
 
@@ -428,11 +416,7 @@ export const queueFastRequestFullResponse: QueueRequest<FullResponse> = (
 function queueWithLimit(key: string, callback: Callback, limit?: number, queueToUse?: Map<string, Queue>) {
   queueToUse = queueToUse || queues;
 
-  let queue: any = queueToUse.get(key);
-
-  if (!queue) {
-    queueToUse.set(key, (queue = new Queue(key, limit)));
-  }
+  const queue = getElseSet(queueToUse, key, () => new Queue(key, limit));
   return queue.push(callback);
 }
 

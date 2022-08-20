@@ -153,14 +153,11 @@ async function getTocMedium(toc: Toc, uuid?: Uuid): Promise<MediumTocContent> {
   let currentToc = await mediumStorage.getSpecificToc(mediumId, toc.link);
 
   // add toc if it does not still exist, instead of throwing an error
-  if (!currentToc) {
-    const id = await mediumStorage.addToc(mediumId, toc.link);
-    currentToc = {
-      link: toc.link,
-      mediumId,
-      id,
-    };
-  }
+  currentToc ??= {
+    link: toc.link,
+    mediumId,
+    id: await mediumStorage.addToc(mediumId, toc.link),
+  };
 
   // TODO: how to handle multiple authors, artists?, json array, csv, own table?
   const author = toc.authors?.length ? toc.authors[0].name : undefined;

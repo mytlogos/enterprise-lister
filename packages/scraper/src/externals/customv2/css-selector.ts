@@ -136,9 +136,7 @@ function bottomUpSearch(input: Element, limit: Limit, fallback?: () => Path | nu
     i++;
   }
 
-  if (!path) {
-    path = findUniquePath(stack, fallback);
-  }
+  path ??= findUniquePath(stack, fallback);
 
   return path;
 }

@@ -636,9 +636,7 @@ export const HttpClient = {
       if (!uuid) {
         throw Error("cannot send user message if no user is logged in");
       }
-      if (!query) {
-        query = {};
-      }
+      query ??= {};
       query.uuid = uuid;
       query.session = store.session;
     }

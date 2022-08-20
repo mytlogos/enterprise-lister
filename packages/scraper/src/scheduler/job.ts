@@ -279,10 +279,7 @@ export class Job {
 
   public once<E extends keyof Events>(event: E, listener: Events[E]): this {
     let listeners = this.events[event];
-
-    if (!listeners) {
-      listeners = this.events[event] = [];
-    }
+    listeners ??= this.events[event] = [];
 
     let fired = false;
     // @ts-expect-error

@@ -252,10 +252,12 @@ export class MediumContext extends SubContext {
     }
 
     for (const toc of tocs) {
-      let secondary = idMap.get(toc.mediumId);
-      if (!secondary) {
-        secondary = { id: toc.mediumId, readEpisodes: 0, totalEpisodes: 0, tocs: [] };
-      }
+      const secondary = getElseSet(idMap, toc.mediumId, () => ({
+        id: toc.mediumId,
+        readEpisodes: 0,
+        totalEpisodes: 0,
+        tocs: [],
+      }));
       secondary.tocs.push(toc);
     }
 
@@ -395,11 +397,7 @@ export class MediumContext extends SubContext {
     }
     const synonymMap = new Map<number, { mediumId: number; synonym: string[] }>();
     synonyms.forEach((value: any) => {
-      let synonym = synonymMap.get(value.medium_id);
-      if (!synonym) {
-        synonym = { mediumId: value.medium_id, synonym: [] };
-        synonymMap.set(value.medium_id, synonym);
-      }
+      const synonym = getElseSet(synonymMap, value.medium_id, () => ({ mediumId: value.medium_id, synonym: [] }));
       synonym.synonym.push(value.synonym);
     });
     return [...synonymMap.values()];

@@ -1,6 +1,6 @@
 import { mediumStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
-import { hasMediaType, maxValue } from "enterprise-core/dist/tools";
+import { getElseSet, hasMediaType, maxValue } from "enterprise-core/dist/tools";
 import { TocSearchMedium, JobRequest, ScrapeName, Optional } from "enterprise-core/dist/types";
 import { tocScraperEntries, tocDiscoveryEntries, getHooks } from "../externals/hookManager";
 
@@ -12,11 +12,7 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
   const mediaWithoutTocs = mediaTocs
     .filter((value) => {
       if (value.link) {
-        let links = mediaWithTocs.get(value.id);
-
-        if (!links) {
-          mediaWithTocs.set(value.id, (links = []));
-        }
+        const links = getElseSet(mediaWithTocs, value.id, () => []);
         links.push(value.link);
         return false;
       }

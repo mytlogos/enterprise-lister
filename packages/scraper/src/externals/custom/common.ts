@@ -1,6 +1,6 @@
 import { Cheerio, CheerioAPI, Element } from "cheerio";
 import { Options } from "cloudscraper";
-import { getStore } from "enterprise-core/dist/asyncStorage";
+import { getStore, Store } from "enterprise-core/dist/asyncStorage";
 import logger from "enterprise-core/dist/logger";
 import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import { Nullable } from "enterprise-core/dist/types";
@@ -39,6 +39,8 @@ export interface Trace {
   callCounts: Record<string, number>;
   enableTrace: boolean;
 }
+
+export type TraceStore = Store<Trace>;
 
 /**
  * Serializes a Cheerio Object into html or its selected items in a html string array.
@@ -81,7 +83,7 @@ function clone(value: any): any | string {
 function traceWrap<T extends (...args: any[]) => any>(target: T): T {
   // @ts-expect-error
   return (...args: Parameters<T>): ReturnType<T> => {
-    const store = getStore() as undefined | Map<keyof Trace, Trace[keyof Trace]>;
+    const store = getStore() as undefined | TraceStore;
 
     // no store means no tracing, so exit as light weight as possible
     if (!store || !store.get("enableTrace")) {
@@ -93,7 +95,7 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
     // every function should have a name
     // except unnamed (arrow) function expressions which are not bound to an variable, e.g. taken as parameter
     if (!functionName) {
-      const nextId = ((store.get("unnamedIds") as number) || 0) + 1;
+      const nextId = (store.get("unnamedIds") ?? 0) + 1;
       store.set("unnamedIds", nextId);
       functionName = "Unnamed" + nextId;
     }

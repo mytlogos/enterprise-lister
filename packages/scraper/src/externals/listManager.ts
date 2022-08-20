@@ -101,7 +101,7 @@ class SimpleNovelUpdates implements ListManager {
 
   public async scrapeMedia(media: ScrapeMedium[]): Promise<ScrapeMedium[]> {
     if (!media) {
-      return Promise.resolve([]);
+      return [];
     }
     return Promise.all(
       media.map(async (value) => {
