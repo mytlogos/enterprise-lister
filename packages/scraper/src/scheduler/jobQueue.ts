@@ -1,6 +1,6 @@
 import { remove, removeLike, stringify, getElseSet, isAbortError } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
-import { JobRequest, Optional, Nullable } from "enterprise-core/dist/types";
+import { Optional, Nullable } from "enterprise-core/dist/types";
 import { runAsync, StoreKey, inContext, requireStore } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
 import { channel } from "diagnostics_channel";
@@ -162,13 +162,11 @@ export class JobQueue {
   }
 
   /**
-   * Queue a new Job with the given jobId.
+   * Queue a new Job.
    * The JobId is used for identification and logging.
-   * There can be multiple jobs with the same JobId and/or JobCallback.
-   * A Job can return new JobRequests (TODO: JobRequests are unnecessary for JobQueue).
+   * There can be multiple jobs with the same JobId.
    *
-   * @param jobId the jobId, any number
-   * @param job the job to execute, a valid function
+   * @param job the job to execute
    * @return Job for registering callbacks before and after executing a job
    */
   public addJob(job: Job): void {
@@ -221,7 +219,6 @@ export class JobQueue {
    */
   public pause(): void {
     this.queueActive = false;
-
     this.stopInterval();
   }
 
@@ -276,7 +273,7 @@ export class JobQueue {
 
   /**
    * Get a shallow copy of the internal representation of the jobs.
-   * Does not return any callbacks or the jobcallback itself.
+   * Does not return any callbacks or the job callback itself.
    * The jobs can at most be identified by the jobId given when the job was queued.
    *
    * @return Array<OutsideJob> an array of the internal jobs.
@@ -486,10 +483,6 @@ export class JobQueue {
     }
   }
 }
-
-export type JobCallback =
-  | ((done: () => void) => undefined | JobRequest | JobRequest[])
-  | (() => Promise<undefined | JobRequest | JobRequest[]>);
 
 interface InternJob {
   readonly job: Job;

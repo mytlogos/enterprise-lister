@@ -14,7 +14,6 @@ import {
   ScrapeName,
 } from "enterprise-core/dist/types";
 import { MediaType } from "enterprise-core/dist/tools";
-import { JobCallback } from "../scheduler/jobQueue";
 import { ListScrapeResult } from "./listManager";
 
 /**
@@ -54,6 +53,9 @@ export interface JobQueueChannelMessage extends BasicChannelMessage {
   max: number;
 }
 
+/**
+ * Type diagnostics_channel module more restrictively.
+ */
 declare module "diagnostics_channel" {
   interface ScraperMapping {
     "enterprise-jobqueue": JobQueueChannelMessage;
@@ -121,34 +123,6 @@ export interface StartJobChannelMessage extends BasicJobChannelMessage {
   jobName: string;
   jobId: number;
   timestamp: number;
-}
-
-export interface ScraperJob {
-  type: string;
-  onSuccess?: () => void;
-  onDone?: () => undefined | ScraperJob | ScraperJob[];
-  onFailure?: (reason?: any) => void;
-  cb: (item: any) => Promise<any>;
-}
-
-export interface OneTimeEmittableJob extends ScraperJob {
-  type: "onetime_emittable";
-  key: string;
-  item: any;
-}
-
-export interface PeriodicEmittableJob extends ScraperJob {
-  type: "periodic_emittable";
-  interval: number;
-  key: string;
-  item: any;
-}
-
-// @ts-expect-error
-export interface PeriodicJob extends ScraperJob {
-  type: "periodic";
-  interval: number;
-  cb: JobCallback;
 }
 
 export interface Hook {
