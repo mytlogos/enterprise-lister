@@ -35,7 +35,7 @@
         </div>
         <router-link
           class="btn fa fa-edit align-self-start"
-          :to="{ name: 'editHook', params: { hookId: item.id } }"
+          :to="{ name: getHookEditRouterName(item), params: { hookId: item.id } }"
           aria-hidden="true"
         />
         <div>{{ item.comment }}</div>
@@ -86,5 +86,20 @@ async function toggleCustomHook(item: CustomHook) {
 }
 function isCustomItemActive(item: CustomHook): boolean {
   return item.hookState === HookState.ENABLED;
+}
+
+function getHookEditRouterName(item: CustomHook) {
+  let hookConfig: any;
+  try {
+    hookConfig = JSON.parse(item.state);
+  } catch (error) {
+    return;
+  }
+
+  if ("version" in hookConfig && hookConfig.version === 2) {
+    return "editHookv2";
+  } else {
+    return "editHook";
+  }
 }
 </script>
