@@ -10,7 +10,7 @@
         placeholder="Name required"
         required
       />
-      <div class="col-3 form-check form-switch ms-2">
+      <div class="col-3 form-check form-switch ms-5">
         <input
           id="hookEnabled"
           v-model="data.enabled"
