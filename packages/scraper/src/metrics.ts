@@ -1,6 +1,5 @@
 import { Counter, Gauge } from "prom-client";
-import { channel } from "diagnostics_channel";
-import { EndJobChannelMessage, JobQueueChannelMessage } from "./externals/types";
+import { subscribe } from "diagnostics_channel";
 
 const jobMaxCount = new Gauge({
   name: "scraper_job_count_max",
@@ -53,39 +52,27 @@ const jobNetworkReceivedCount = new Counter({
   labelNames: ["jobType"],
 });
 
-channel("enterprise-jobqueue").subscribe((message) => {
-  if (message && typeof message !== "object") {
-    return;
-  }
-  // @ts-expect-error
-  if ("messageType" in message && message.messageType === "jobqueue") {
-    const item = message as any as JobQueueChannelMessage;
-
-    jobMaxCount.set(item.max);
-    jobQueueCount.set(item.queued);
-    jobActiveCount.set(item.active);
-  }
+subscribe("enterprise-jobqueue", (message) => {
+  jobMaxCount.set(message.max);
+  jobQueueCount.set(message.queued);
+  jobActiveCount.set(message.active);
 });
 
-channel("enterprise-jobs").subscribe((message) => {
-  if (message && typeof message !== "object") {
-    return;
-  }
-  // @ts-expect-error
-  if ("messageType" in message && message.messageType === "jobs" && message.type === "finished") {
-    const item = message as any as EndJobChannelMessage;
+subscribe("enterprise-jobs", (message) => {
+  if (message.type === "finished") {
+    jobResultCount.inc({ result: message.result, jobType: message.jobType }, 1);
 
-    jobResultCount.inc({ result: item.result, jobType: item.jobType }, 1);
-
-    for (const [key, value] of Object.entries(item.jobTrack.modifications)) {
-      jobModificationsCount.inc({ type: "delete", entity: key, jobType: item.jobType }, value.deleted);
-      jobModificationsCount.inc({ type: "update", entity: key, jobType: item.jobType }, value.updated);
-      jobModificationsCount.inc({ type: "insert", entity: key, jobType: item.jobType }, value.created);
+    for (const [key, value] of Object.entries(message.jobTrack.modifications)) {
+      jobModificationsCount.inc({ type: "delete", entity: key, jobType: message.jobType }, value.deleted);
+      jobModificationsCount.inc({ type: "update", entity: key, jobType: message.jobType }, value.updated);
+      jobModificationsCount.inc({ type: "insert", entity: key, jobType: message.jobType }, value.created);
     }
 
-    jobDBQueryCount.inc({ jobType: item.jobType }, item.jobTrack.queryCount);
-    jobNetworkQueryCount.inc({ jobType: item.jobType }, item.jobTrack.network.count);
-    jobNetworkSendCount.inc({ jobType: item.jobType }, item.jobTrack.network.sent);
-    jobNetworkReceivedCount.inc({ jobType: item.jobType }, item.jobTrack.network.received);
+    const label = { jobType: message.jobType };
+
+    jobDBQueryCount.inc(label, message.jobTrack.queryCount);
+    jobNetworkQueryCount.inc(label, message.jobTrack.network.count);
+    jobNetworkSendCount.inc(label, message.jobTrack.network.sent);
+    jobNetworkReceivedCount.inc(label, message.jobTrack.network.received);
   }
 });

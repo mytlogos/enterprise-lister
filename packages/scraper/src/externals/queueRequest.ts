@@ -23,7 +23,6 @@ import logger from "enterprise-core/dist/logger";
 import { AsyncResource } from "async_hooks";
 import { Optional } from "enterprise-core/dist/types";
 import { channel } from "diagnostics_channel";
-import { RequestQueueChannelMessage } from "./types";
 
 const queueChannel = channel("enterprise-requestqueue");
 
@@ -166,7 +165,7 @@ export class Queue {
         queueName: this.name,
         queued: this.queue.length,
         working: this.working,
-      } as RequestQueueChannelMessage);
+      });
     }
   }
 }

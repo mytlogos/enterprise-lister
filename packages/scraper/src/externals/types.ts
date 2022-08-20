@@ -54,6 +54,34 @@ export interface JobQueueChannelMessage extends BasicChannelMessage {
   max: number;
 }
 
+declare module "diagnostics_channel" {
+  interface ScraperMapping {
+    "enterprise-jobqueue": JobQueueChannelMessage;
+    "enterprise-jobs": JobChannelMessage;
+    "enterprise-requestqueue": RequestQueueChannelMessage;
+  }
+
+  type ChannelNames = keyof ScraperMapping;
+
+  interface TypedChannel<K extends ChannelNames> extends Channel {
+    readonly name: K;
+
+    publish(message: ScraperMapping[K]): void;
+
+    subscribe(onMessage: TypedChannelListener<K>): void;
+
+    unsubscribe(onMessage: TypedChannelListener<K>): void;
+  }
+
+  type TypedChannelListener<K extends ChannelNames> = (message: ScraperMapping[K], name: K) => void;
+
+  function channel<K extends ChannelNames>(name: K): TypedChannel<K>;
+
+  function subscribe<K extends ChannelNames>(name: K, onMessage: TypedChannelListener<K>): void;
+
+  function unsubscribe<K extends ChannelNames>(name: K, onMessage: TypedChannelListener<K>): void;
+}
+
 export type JobWSRequest = "START_JOBS" | "STOP_JOBS";
 
 /**

@@ -3,12 +3,11 @@ import logger from "enterprise-core/dist/logger";
 import { JobRequest, Optional, Nullable } from "enterprise-core/dist/types";
 import { runAsync, StoreKey, inContext, requireStore } from "enterprise-core/dist/asyncStorage";
 import Timeout = NodeJS.Timeout;
-import diagnostics_channel from "diagnostics_channel";
-import { JobQueueChannelMessage } from "../externals/types";
+import { channel } from "diagnostics_channel";
 import { JobError } from "enterprise-core/dist/error";
 import { Job } from "./job";
 
-const queueChannel = diagnostics_channel.channel("enterprise-jobqueue");
+const queueChannel = channel("enterprise-jobqueue");
 
 function createJobMessage(store: Map<string, any>) {
   const message = {
@@ -478,13 +477,12 @@ export class JobQueue {
    */
   private publish() {
     if (queueChannel.hasSubscribers) {
-      const message: JobQueueChannelMessage = {
+      queueChannel.publish({
         messageType: "jobqueue",
         active: this.activeJobs.length,
         queued: this.waitingJobs.length,
         max: this.maxActive,
-      };
-      queueChannel.publish(message);
+      });
     }
   }
 }

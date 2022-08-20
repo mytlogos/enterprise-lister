@@ -17,13 +17,13 @@ import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { StartJobChannelMessage } from "../externals/types";
 import { getNewsAdapter, load } from "../externals/hookManager";
 import { ScrapeJob, scrapeMapping } from "./scrapeJobs";
-import diagnostic_channel from "diagnostics_channel";
+import { channel } from "diagnostics_channel";
 import { SchedulingStrategy, Strategies } from "./scheduling";
 import { gracefulShutdown } from "enterprise-core/dist/exit";
 import { createJob, Job } from "./job";
 
 const missingConnections = new Set<Date>();
-const jobChannel = diagnostic_channel.channel("enterprise-jobs");
+const jobChannel = channel("enterprise-jobs");
 
 export class JobScheduler {
   public automatic = true;

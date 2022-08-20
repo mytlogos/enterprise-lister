@@ -1,7 +1,7 @@
 import Websocket from "ws";
 import logger from "enterprise-core/dist/logger";
 import { remove } from "enterprise-core/dist/tools";
-import diagnostic_channel from "diagnostics_channel";
+import { ChannelNames, subscribe, unsubscribe } from "diagnostics_channel";
 import { ScraperChannel, WSRequest } from "./externals/types";
 import { DefaultJobScraper } from "./scheduler/jobScheduler";
 import { publishQueues } from "./externals/queueRequest";
@@ -66,7 +66,7 @@ class SocketChannelListener {
   private readonly listenerSockets: Websocket[] = [];
   private readonly channel: ScraperChannel;
 
-  public constructor(channel: ScraperChannel) {
+  public constructor(channel: ChannelNames) {
     this.channel = channel;
   }
 
@@ -97,8 +97,7 @@ class SocketChannelListener {
 
     // subscribe to channel if it is the first socket
     if (this.listenerSockets.length === 1) {
-      const channel = diagnostic_channel.channel(this.channel);
-      channel.subscribe(this.getListener());
+      subscribe(this.channel, this.getListener());
     }
   }
 
@@ -107,13 +106,7 @@ class SocketChannelListener {
 
     // unsubscribe to channel if it has no sockets which listen
     if (!this.listenerSockets.length) {
-      const channel = diagnostic_channel.channel(this.channel);
-
-      if (channel.unsubscribe) {
-        channel.unsubscribe(this.getListener());
-      } else {
-        logger.warn("Tried to unsubscribe from an inactive channel", { channel_name: channel.name });
-      }
+      unsubscribe(this.channel, this.getListener());
     }
   }
 }
