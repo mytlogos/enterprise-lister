@@ -1,11 +1,13 @@
 <template>
-  <div class="container p-4">
+  <div class="p-4">
     <div class="row mb-3 align-items-center">
-      <p-button label="Show Hook Model" @click="data.showHookModel = true" />
-      <p-button class="mt-1" label="Show Config Model" @click="data.showConfigModel = true" />
-      <label for="validationCustom01" class="form-label" style="flex: 0.12 0 0%">Hook name</label>
+      <div>
+        <p-button class="mb-2 ms-2" label="Show Hook Model" @click="data.showHookModel = true" />
+        <p-button class="mb-2 ms-2" label="Show Config Model" @click="data.showConfigModel = true" />
+      </div>
+      <label for="hookName" class="form-label" style="flex: 0.12 0 0%">Hook name</label>
       <input
-        id="validationCustom01"
+        id="hookName"
         v-model="data.name"
         type="text"
         class="col form-control"
@@ -132,7 +134,7 @@ import NewsConfig from "./news-config.vue";
 import TocConfig from "./toc-config.vue";
 import SearchConfig from "./search-config.vue";
 import DownloadConfig from "./download-config.vue";
-import Regex from "../regex.vue";
+import regex from "../regex.vue";
 
 const props = defineProps({
   hook: {
@@ -147,7 +149,7 @@ const props = defineProps({
 const emits = defineEmits(["update:hook", "update:config"]);
 const logger = new Logger("custom-hook-form");
 const data = reactive({
-  name: "",
+  name: props.hook.name,
   hookModel: { ...props.hook },
   configModel: { ...props.config },
   showHookModel: false,
@@ -213,6 +215,7 @@ watch(
   (newValue) => {
     if (!deepEqual(newValue, data.hookModel)) {
       data.hookModel = { ...newValue };
+      data.name = newValue.name;
     }
   },
   { deep: true },

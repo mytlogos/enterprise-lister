@@ -1,20 +1,20 @@
 <template>
-  <div class="w-100">
-    <div class="row">
+  <div class="container">
+    <div class="row px-4">
       <div class="col text-end">
         <button class="btn btn-success" @click="save">Save</button>
       </div>
     </div>
-    <div v-if="data.createResult === 'success'" class="alert alert-success" role="alert">
+    <div v-if="data.createResult === 'success'" class="alert alert-success px-4" role="alert">
       Successfully saved CustomHook {{ data.value.name }}
     </div>
-    <div v-else-if="data.createResult === 'failed'" class="alert alert-danger" role="alert">
+    <div v-else-if="data.createResult === 'failed'" class="alert alert-danger px-4" role="alert">
       Failed saving CustomHook {{ data.value.name }}
     </div>
-    <div v-if="data.invalid.length" class="alert alert-danger" role="alert">
+    <div v-if="data.invalid.length" class="alert alert-danger px-4" role="alert">
       <p v-for="line in data.invalid" :key="line">{{ line }}</p>
     </div>
-    <div class="row">
+    <div class="row px-4">
       <div class="col">
         <div class="row g-3 align-items-center">
           <div class="col-auto">
@@ -26,20 +26,20 @@
         </div>
       </div>
       <div class="col text-end">
-        <button class="btn btn-primary me-1" :disabled="!data.value['news']" @click="testHook('news')">
+        <button class="btn btn-primary me-1 mb-1" :disabled="!data.value['news']" @click="testHook('news')">
           Test News
         </button>
         <button
-          class="btn btn-primary me-1"
+          class="btn btn-primary me-1 mb-1"
           :disabled="!data.value['toc'] || (Array.isArray(data.value.toc) && !data.value.toc.length)"
           @click="testHook('toc')"
         >
           Test ToC
         </button>
-        <button class="btn btn-primary me-1" :disabled="!data.value['search']" @click="testHook('search')">
+        <button class="btn btn-primary me-1 mb-1" :disabled="!data.value['search']" @click="testHook('search')">
           Test Search
         </button>
-        <button class="btn btn-primary" :disabled="!data.value['download']" @click="testHook('download')">
+        <button class="btn btn-primary mb-1" :disabled="!data.value['download']" @click="testHook('download')">
           Test Download
         </button>
       </div>
@@ -198,7 +198,7 @@ function cleanEmptySelectors(data?: Record<string, any>) {
     if (typeof value === "string" && !value.trim()) {
       data[key] = undefined;
     } else if (typeof value === "object") {
-      data.cleanEmptySelectors(value);
+      cleanEmptySelectors(value);
     }
   }
 }
