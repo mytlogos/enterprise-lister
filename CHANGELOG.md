@@ -1,3 +1,11 @@
+## [2.16.1](https://github.com/mytlogos/enterprise-lister/compare/v2.16.0...v2.16.1) (2022-08-22)
+
+
+### Bug Fixes
+
+* **server:** add missing file ([3522f18](https://github.com/mytlogos/enterprise-lister/commit/3522f18a69ea4bc198dcae06cad0237b924609a6))
+* unable to save or test custom v2 hook ([3393ada](https://github.com/mytlogos/enterprise-lister/commit/3393adad3175090b14c19f21b7b133d2fa03e3b1))
+
 # [2.16.0](https://github.com/mytlogos/enterprise-lister/compare/v2.15.2...v2.16.0) (2022-08-22)
 
 
