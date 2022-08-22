@@ -74,7 +74,7 @@
       <toc-config
         v-if="data.configModel.toc"
         v-model="data.configModel.toc"
-        id-prefix="'toc'"
+        id-prefix="toc"
         @delete="removeConfig('toc')"
       />
       <search-config
