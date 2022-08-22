@@ -223,6 +223,7 @@ export interface JobTrack {
   modifications: Record<string, Modification>;
   network: NetworkTrack;
   queryCount: number;
+  error?: { name: string; message: string };
 }
 
 export type JobHistoryItem = ServerJobHistoryItem & {

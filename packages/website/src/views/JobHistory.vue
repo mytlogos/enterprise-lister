@@ -23,6 +23,7 @@
     <DataTable
       v-model:rows="data.rowsPerPage"
       v-model:filters="data.filters"
+      v-model:expandedRows="expandedRows"
       class="p-datatable-sm"
       :value="computedJobs"
       :loading="data.loading"
@@ -32,6 +33,7 @@
       :total-records="data.total"
       :auto-layout="true"
       :page-link-size="3"
+      data-key="key"
       paginator-template="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink RowsPerPageDropdown"
       :rows-per-page-options="[100, 200, 500]"
       responsive-layout="scroll"
@@ -44,6 +46,7 @@
       <template #empty>
         <div class="text-center my-5">No records found.</div>
       </template>
+      <Column :expander="true" header-style="width: 3rem" />
       <Column field="name" header="Name" :show-filter-menu="false">
         <template #body="slotProps">
           {{ nameToString(slotProps.data.name) }}
@@ -115,11 +118,39 @@
           {{ round(slotProps.data.modifications, 2) }}
         </template>
       </Column>
+      <template #expansion="slotProps">
+        <div>
+          <router-link v-slot="{ navigate }" :to="{ name: 'job', params: { jobId: slotProps.data.jobId } }" custom>
+            <p-button label="View Job" @click="navigate" />
+          </router-link>
+          <div v-if="slotProps.data.error">{{ slotProps.data.error.name }}: {{ slotProps.data.error.message }}</div>
+          <h6>Modifications</h6>
+          <data-table
+            v-if="Object.keys(slotProps.data).length"
+            :value="recordToArray(slotProps.data.modificationsDetail)"
+          >
+            <template #empty>
+              <div class="text-center my-5">No records found.</div>
+            </template>
+            <Column field="key" header="Type" />
+            <Column field="created" header="Created" />
+            <Column field="updated" header="Updated" />
+            <Column field="deleted" header="Deleted" />
+          </data-table>
+          <span v-else>: None</span>
+          <h6>Network History</h6>
+          <ul class="list-group">
+            <li v-for="(item, index) in slotProps.data.networkHistory" :key="index" class="list-group-item">
+              {{ item.url }} - {{ item.method }} - {{ item.statusCode }}
+            </li>
+          </ul>
+        </div>
+      </template>
     </DataTable>
   </div>
 </template>
 <script lang="ts" setup>
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { formatDate, round } from "../init";
 import { HttpClient } from "../Httpclient";
 import { JobTrack, Modification } from "../siteTypes";
@@ -141,6 +172,10 @@ interface HistoryItem {
   received: number;
   queries: number;
   modifications: number;
+  error: JobTrack["error"];
+  networkHistory: NonNullable<JobTrack["network"]["history"]>;
+  modificationsDetail: NonNullable<JobTrack["modifications"]>;
+  jobId: number;
 }
 
 interface PageEvent {
@@ -200,6 +235,7 @@ const data = reactive({
     state: { value: null, matchMode: FilterMatchMode.EQUALS },
   },
 });
+const expandedRows = ref([]);
 
 const computedJobs = computed(() => {
   return data.jobs.filter((item) => item.modifications >= data.minModifications);
@@ -291,15 +327,20 @@ async function fetch() {
         start,
         end,
         duration: end.getTime() - start.getTime(),
-        network: track?.network.count || 0,
-        received: track?.network.received || 0,
-        queries: track?.queryCount || 0,
-        modifications: Object.values(track?.modifications || {}).reduce(
+        network: track?.network.count ?? 0,
+        received: track?.network.received ?? 0,
+        queries: track?.queryCount ?? 0,
+        modifications: Object.values(track?.modifications ?? {}).reduce(
           (previous: number, current: Modification): number => {
             return previous + current.created + current.deleted + current.updated;
           },
           0,
         ),
+        error: track?.error,
+        modificationsDetail: track?.modifications ?? {},
+        networkHistory: track?.network.history ?? [],
+        jobId: item.id,
+        key: item.id + "-" + item.end,
       };
     });
   } catch (error) {
@@ -309,5 +350,11 @@ async function fetch() {
     });
   }
   data.loading = false;
+}
+function recordToArray(record: Record<string, any>): any[] {
+  return Object.entries(record).map(([key, value]) => {
+    value.key = key;
+    return value;
+  });
 }
 </script>
