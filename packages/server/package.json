@@ -40,7 +40,7 @@
     "@types/compression": "^1.7.2",
     "@types/debug": "^4.1.5",
     "@types/http-errors": "^1.8.2",
-    "@types/jest": "^28.1.6",
+    "@types/jest": "^28.1.7",
     "@types/js-yaml": "^4.0.5",
     "@types/localtunnel": "^2.0.1",
     "@types/morgan": "^1.9.3",
