@@ -1,3 +1,10 @@
+## [2.16.2](https://github.com/mytlogos/enterprise-lister/compare/v2.16.1...v2.16.2) (2022-08-22)
+
+
+### Bug Fixes
+
+* **scraper:** no content after redirect ([95f3f7f](https://github.com/mytlogos/enterprise-lister/commit/95f3f7f36d94d583240544e4b7c795d1f891aa23))
+
 ## [2.16.1](https://github.com/mytlogos/enterprise-lister/compare/v2.16.0...v2.16.1) (2022-08-22)
 
 
