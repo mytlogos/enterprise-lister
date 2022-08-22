@@ -5,60 +5,139 @@
       <input id="enabledSwitch" v-model="enabled" type="checkbox" class="form-check-input" />
       <label class="form-check-label" for="enabledSwitch">Job enabled</label>
     </div>
-    <table class="table table-hover">
-      <caption class="sr-only">
-        Job History
-      </caption>
-      <thead>
-        <tr>
-          <th scope="col">Nr.</th>
-          <th scope="col">Name</th>
-          <th scope="col">Result</th>
-          <th scope="col">Duration</th>
-          <th scope="col">Network</th>
-          <th scope="col">Received</th>
-          <th scope="col">Queries</th>
-          <th scope="col">Start</th>
-          <th scope="col">End</th>
-        </tr>
-      </thead>
-      <tbody>
-        <template v-for="(item, index) in data.history" :key="item.id">
-          <tr data-bs-toggle="collapse" :data-bs-target="'.collapse-' + index">
-            <td>{{ index + 1 }}</td>
-            <td>{{ nameToString(item.name) }}</td>
-            <td>
-              <span
-                class="badge"
-                :class="
-                  item.result === 'success'
-                    ? 'bg-success'
-                    : item.result === 'failed'
-                    ? 'bg-danger'
-                    : item.result === 'warning'
-                    ? 'bg-warning text-dark'
-                    : 'bg-light text-dark'
-                "
-              >
-                {{ item.result }}
-              </span>
-            </td>
-            <td>{{ itemToRelativeTime(item) }}</td>
-            <td>
-              {{ trackingStat(item, (value) => String(value.network.count || 0)) }}
-            </td>
-            <td>
-              {{ trackingStat(item, (value) => String(value.network.received || 0)) }}
-            </td>
-            <td>
-              {{ trackingStat(item, (value) => String(value.queryCount || 0)) }}
-            </td>
-            <td>{{ formatDate(item.start) }}</td>
-            <td>{{ formatDate(item.end) }}</td>
-          </tr>
+    <DataTable
+      v-model:filters="data.filters"
+      v-model:expandedRows="expandedRows"
+      class="p-datatable-sm"
+      :value="data.history"
+      :loading="data.loading"
+      striped-rows
+      :paginator="true"
+      :auto-layout="true"
+      :rows="100"
+      data-key="key"
+      paginator-template="CurrentPageReport FirstPageLink PrevPageLink PageLinks NextPageLink RowsPerPageDropdown"
+      :rows-per-page-options="[100, 200, 500]"
+      current-page-report-template="Showing {first} to {last} of {totalRecords}"
+      paginator-position="both"
+      filter-display="row"
+    >
+      <template #empty>
+        <div class="text-center my-5">No records found.</div>
+      </template>
+      <Column :expander="true" header-style="width: 3rem" />
+      <Column field="state" header="Status" :show-filter-menu="false">
+        <template #body="slotProps">
+          <tag :value="slotProps.data.result" :severity="jobStateResult(slotProps.data.result)" />
         </template>
-      </tbody>
-    </table>
+        <template #filter="{ filterModel, filterCallback }">
+          <Dropdown
+            v-model="filterModel.value"
+            :options="statuses"
+            placeholder="Any"
+            class="p-column-filter"
+            :show-clear="true"
+            @change="filterCallback()"
+          >
+            <template #value="slotProps">
+              <tag :value="slotProps.value || 'Any'" :severity="jobStateResult(slotProps.value)" />
+            </template>
+            <template #option="slotProps">
+              <tag :value="slotProps.option" :severity="jobStateResult(slotProps.option)" />
+            </template>
+          </Dropdown>
+        </template>
+      </Column>
+      <Column field="duration" header="Duration" :sortable="true">
+        <template #body="slotProps"> {{ slotProps.data.duration }}s </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <InputNumber v-model="filterModel.value" @keydown.enter="filterCallback()" />
+        </template>
+      </Column>
+      <Column field="network" header="Network" :sortable="true">
+        <template #body="slotProps">
+          {{ slotProps.data.network_queries }}
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <InputNumber v-model="filterModel.value" @keydown.enter="filterCallback()" />
+        </template>
+      </Column>
+      <Column field="received" header="Received" :sortable="true">
+        <template #body="slotProps">
+          {{ slotProps.data.network_received }}
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <InputNumber v-model="filterModel.value" @keydown.enter="filterCallback()" />
+        </template>
+      </Column>
+      <Column field="queries" header="Queries" :sortable="true">
+        <template #body="slotProps">
+          {{ slotProps.data.queries }}
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <InputNumber v-model="filterModel.value" @keydown.enter="filterCallback()" />
+        </template>
+      </Column>
+      <Column field="modifications" header="Modifications" :sortable="true">
+        <template #body="slotProps">
+          {{ slotProps.data.modifications }}
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <InputNumber v-model="filterModel.value" @keydown.enter="filterCallback()" />
+        </template>
+      </Column>
+      <Column field="start" header="Start" :sortable="true">
+        <template #body="slotProps">
+          {{ formatDate(slotProps.data.start) }}
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <Calendar
+            v-model="filterModel.value"
+            date-format="mm/dd/yy"
+            placeholder="mm/dd/yyyy"
+            @date-select="filterCallback"
+          />
+        </template>
+      </Column>
+      <Column field="end" header="End" :sortable="true">
+        <template #body="slotProps">
+          {{ formatDate(slotProps.data.end) }}
+        </template>
+        <template #filter="{ filterModel, filterCallback }">
+          <Calendar
+            v-model="filterModel.value"
+            date-format="mm/dd/yy"
+            placeholder="mm/dd/yyyy"
+            @date-select="filterCallback"
+          />
+        </template>
+      </Column>
+      <template #expansion="slotProps">
+        <div>
+          <div v-if="slotProps.data.error">{{ slotProps.data.error.name }}: {{ slotProps.data.error.message }}</div>
+          <h6>Modifications</h6>
+          <data-table
+            v-if="Object.keys(slotProps.data).length"
+            :value="recordToArray(slotProps.data.modificationsDetail)"
+          >
+            <template #empty>
+              <div class="text-center my-5">No records found.</div>
+            </template>
+            <Column field="key" header="Type" />
+            <Column field="created" header="Created" />
+            <Column field="updated" header="Updated" />
+            <Column field="deleted" header="Deleted" />
+          </data-table>
+          <span v-else>: None</span>
+          <h6>Network History</h6>
+          <ul class="list-group">
+            <li v-for="(item, index) in slotProps.data.networkHistory" :key="index" class="list-group-item">
+              {{ item.url }} - {{ item.method }} - {{ item.statusCode }}
+            </li>
+          </ul>
+        </div>
+      </template>
+    </DataTable>
   </div>
 </template>
 
@@ -66,14 +145,19 @@
 import { HttpClient } from "../Httpclient";
 import { reactive, ref, watchEffect } from "vue";
 import { Job, JobHistoryItem, JobTrack } from "../siteTypes";
-import { formatDate, absoluteToRelative, isString } from "../init";
+import { formatDate, recordToArray } from "../init";
 import { useMediaStore } from "../store/media";
+import { JobHistoryResult, Modification } from "enterprise-core/dist/types";
+import { FilterMatchMode } from "primevue/api";
 
 interface Data {
   job?: Job;
   history: JobHistoryItem[];
+  loading: boolean;
+  filters: any;
 }
 
+const statuses: JobHistoryResult[] = ["failed", "success", "warning"];
 const tocRegex = /toc-(\d+)-(.+)/;
 const domainRegex = /https?:\/\/(.+\.)?(\w+)(\.\w+)\/?.*/;
 
@@ -82,8 +166,20 @@ const props = defineProps<{ id: number }>();
 const data = reactive<Data>({
   job: undefined,
   history: [],
+  loading: true,
+  filters: {
+    state: { value: null, matchMode: FilterMatchMode.EQUALS },
+    duration: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
+    network: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
+    received: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
+    queries: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
+    modifications: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
+    start: { value: null, matchMode: FilterMatchMode.DATE_AFTER },
+    end: { value: null, matchMode: FilterMatchMode.DATE_AFTER },
+  },
 });
 const enabled = ref(true);
+const expandedRows = ref([]);
 
 // WATCHES
 watchEffect(() => {
@@ -110,21 +206,41 @@ watchEffect(() => {
 });
 
 // GENERIC SETUP
-HttpClient.getJobDetails(props.id).then((value) => {
-  data.job = value.job;
-  enabled.value = value.job?.job_state === "enabled";
+HttpClient.getJobDetails(props.id)
+  .then((value) => {
+    data.job = value.job;
+    enabled.value = value.job?.job_state === "enabled";
 
-  for (const history of value.history) {
-    try {
-      history.message = JSON.parse(history.message as string);
-    } catch {
-      // ignore it as it may not be json but a plain string
+    for (const history of value.history) {
+      let track: JobTrack | undefined;
+      try {
+        track = JSON.parse(history.message as string);
+        history.message = track as JobTrack;
+      } catch {
+        // ignore it as it may not be json but a plain string
+      }
+      history.start = new Date(history.start);
+      history.end = new Date(history.end);
+      // @ts-expect-error
+      history.modificationsDetail = track?.modifications ?? {};
+      // @ts-expect-error
+      history.modifications = Object.values(history.modificationsDetail).reduce(
+        // @ts-expect-error
+        (previous: number, current: Modification) => {
+          return previous + current.created + current.updated + current.deleted;
+        },
+        0,
+      );
+      // @ts-expect-error
+      history.networkHistory = track?.network.history ?? [];
+      // @ts-expect-error
+      history.jobId = history.id;
+      // @ts-expect-error
+      history.key = history.id + "-" + history.end;
     }
-    history.start = new Date(history.start);
-    history.end = new Date(history.end);
-  }
-  data.history = value.history;
-});
+    data.history = value.history;
+  })
+  .finally(() => (data.loading = false));
 
 // FUNCTIONS
 function nameToString(name: string): string {
@@ -140,15 +256,16 @@ function nameToString(name: string): string {
   return `Toc: ${medium ? medium.title : "Deleted Medium"} of ${domainName?.[2] || ""}`;
 }
 
-function itemToRelativeTime(item: JobHistoryItem): string {
-  if (!item.start || !item.end) {
-    console.log("Wrong Item:", item);
-    return "";
+function jobStateResult(state: JobHistoryResult) {
+  switch (state) {
+    case "success":
+      return "success";
+    case "failed":
+      return "danger";
+    case "warning":
+      return "warning";
+    default:
+      return "info";
   }
-  return absoluteToRelative(item.start, item.end);
-}
-
-function trackingStat(item: JobHistoryItem, accessor: (track: JobTrack) => string): string {
-  return isString(item.message) ? "" : accessor(item.message);
 }
 </script>

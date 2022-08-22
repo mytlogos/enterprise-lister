@@ -38,6 +38,7 @@ import ConfirmDialog from "primevue/confirmdialog";
 import ConfirmationService from "primevue/confirmationservice";
 import Inplace from "primevue/inplace";
 import Divider from "primevue/divider";
+import Calendar from "primevue/calendar";
 
 const app = createApp(AppComponent);
 // @ts-expect-error
@@ -71,6 +72,7 @@ app.component("ListBox", ListBox);
 app.component("ConfirmDialog", ConfirmDialog);
 app.component("Inplace", Inplace);
 app.component("Divider", Divider);
+app.component("Calendar", Calendar);
 app.directive("badge", BadgeDirective);
 app.directive("tooltip", Tooltip);
 Router.isReady().then(() => app.mount("#app"));

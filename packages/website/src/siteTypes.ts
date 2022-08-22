@@ -226,9 +226,9 @@ export interface JobTrack {
   error?: { name: string; message: string };
 }
 
-export type JobHistoryItem = ServerJobHistoryItem & {
+export interface JobHistoryItem extends Omit<ServerJobHistoryItem, "message"> {
   message: string | JobTrack;
-};
+}
 
 export interface JobDetails {
   job?: Job;

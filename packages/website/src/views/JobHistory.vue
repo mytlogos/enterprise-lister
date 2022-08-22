@@ -85,12 +85,12 @@
       </Column>
       <Column field="start" header="Start">
         <template #body="slotProps">
-          {{ dateToString(slotProps.data.start) }}
+          {{ formatDate(slotProps.data.start) }}
         </template>
       </Column>
       <Column field="end" header="End">
         <template #body="slotProps">
-          {{ dateToString(slotProps.data.end) }}
+          {{ formatDate(slotProps.data.end) }}
         </template>
       </Column>
       <Column field="duration" header="Duration">
@@ -151,7 +151,7 @@
 </template>
 <script lang="ts" setup>
 import { computed, reactive, ref, watch } from "vue";
-import { formatDate, round } from "../init";
+import { formatDate, round, recordToArray } from "../init";
 import { HttpClient } from "../Httpclient";
 import { JobTrack, Modification } from "../siteTypes";
 import { JobHistoryResult, ScrapeName } from "enterprise-core/dist/types";
@@ -272,13 +272,6 @@ function jobStateResult(state: JobHistoryResult) {
   }
 }
 
-function dateToString(date?: Date | null): string {
-  if (!date) {
-    return "";
-  }
-  return formatDate(date, true);
-}
-
 function nameToString(name: string): string {
   const match = tocRegex.exec(name);
 
@@ -315,7 +308,7 @@ async function fetch() {
     data.jobs = pagination.items.map((item) => {
       let track: JobTrack | undefined;
       try {
-        track = JSON.parse(item.message);
+        track = JSON.parse(item.message as string);
       } catch (error) {
         // ignore parse errors
       }
@@ -350,11 +343,5 @@ async function fetch() {
     });
   }
   data.loading = false;
-}
-function recordToArray(record: Record<string, any>): any[] {
-  return Object.entries(record).map(([key, value]) => {
-    value.key = key;
-    return value;
-  });
 }
 </script>

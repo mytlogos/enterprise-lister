@@ -544,3 +544,10 @@ export function customHookHelper<T extends { data: any[] }>(
     },
   };
 }
+
+export function recordToArray(record: Record<string, any>): any[] {
+  return Object.entries(record).map(([key, value]) => {
+    value.key = key;
+    return value;
+  });
+}
