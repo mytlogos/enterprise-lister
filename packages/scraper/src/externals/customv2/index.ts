@@ -15,10 +15,11 @@ import logger from "enterprise-core/dist/logger";
 import { Context } from "vm";
 import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
-import { queueRequest } from "../queueRequest";
+import { queueRequest, queueRequestFullResponse } from "../queueRequest";
 import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/types";
 import { datePattern } from "./analyzer";
 import { validateEpisodeNews, validateToc } from "./validation";
+import { FullResponse } from "cloudscraper";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
 
@@ -133,6 +134,42 @@ function createScraper(regexes: Record<string, JsonRegex>) {
             return ReleaseState.Unknown;
         }
       },
+      /**
+       * Transform the transformPattern with the result groups of matching the
+       * regex behind regexName against value.
+       *
+       * value: https://google.de
+       * regex with name "domain": https://([^/]+)
+       * filter: | transform:domain,"ftp://$1"
+       * result: ftp://google.de
+       *
+       * @param value filter value
+       * @param regexName regex name, must be defined
+       * @param transformPattern the pattern to transform
+       * @returns a transformed pattern, with the placeholder replaced with the result groups
+       */
+      transform(value: string, regexName: string, transformPattern: string) {
+        if (!value) {
+          return;
+        }
+        const regex = parsedRegex[regexName];
+        if (!regex) {
+          throw Error(`error="unknown regex" name=${regexName}`);
+        }
+        const match = regex.exec(value.trim());
+
+        if (!match) {
+          return;
+        }
+
+        let result = transformPattern;
+
+        for (let index = 1; index < match.length; index++) {
+          const group = match[index];
+          result = result.replaceAll("$" + index, group ?? "");
+        }
+        return result;
+      },
     },
   });
 }
@@ -199,7 +236,7 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
     }
     for (const episode of episodes) {
       validateEpisodeNews(episode, true);
-      episode.date = new Date(episode.date);
+      episode.date = episode.date ? new Date(episode.date) : new Date();
     }
     return { episodes };
   };
@@ -216,6 +253,8 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
 
   const scraper: TocScraper = async (link: string): Promise<Toc[]> => {
     const results = [];
+    let lastUrl = link;
+
     for (const datum of tocConfig.data) {
       const selector = {
         ...datum,
@@ -231,12 +270,17 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
           } as unknown as Selector,
         ]);
       }
-      if (datum._request) {
-        const html = await makeRequest(link, {}, datum._request);
-        results.push(await x(html, datum._$, [selector as unknown as Selector]));
-      } else {
-        results.push(await x(link, datum._$, [selector as unknown as Selector]));
+      datum._request ??= {};
+      datum._request.fullResponse = true;
+      // if multiple tocConfig.data are defined and a later config uses
+      // a custom request, it may depend on a new redirected location
+      // instead of the currently saved/requested one
+      const response: FullResponse = await makeRequest(lastUrl, {}, datum._request);
+
+      if (lastUrl === link) {
+        lastUrl = response.request.uri.href;
       }
+      results.push(await x(response.body, datum._$, [selector as unknown as Selector]));
     }
     const tocs = merge(results);
     tocs.forEach((toc: any) => {
@@ -483,7 +527,9 @@ function makeRequest(targetUrl: string, context: Context, requestConfig?: Reques
   logger.debug("Requesting url: " + targetUrl);
   if (requestConfig?.jsonResponse) {
     return queueRequest(targetUrl, options).then((value) => JSON.parse(value));
-  } else {
-    return queueRequest(targetUrl, options);
   }
+  if (requestConfig?.fullResponse) {
+    return queueRequestFullResponse(targetUrl, options);
+  }
+  return queueRequest(targetUrl, options);
 }

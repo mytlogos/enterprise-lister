@@ -82,7 +82,7 @@ const newsEpisodeSchema = schema({
     date: schema.string({ format: "date-time" }),
     locked: schema.boolean(),
   },
-  required: ["mediumTitle", "mediumType", "episodeTitle", "episodeIndex", "episodeTotalIndex", "link", "date"],
+  required: ["mediumTitle", "mediumType", "episodeTitle", "episodeIndex", "episodeTotalIndex", "link"],
 });
 
 const tocEpisodeSchema = schema({
