@@ -1,3 +1,19 @@
+# [2.16.0](https://github.com/mytlogos/enterprise-lister/compare/v2.15.2...v2.16.0) (2022-08-22)
+
+
+### Bug Fixes
+
+* **website:** fix custom hook view v2 ([ce4f0d3](https://github.com/mytlogos/enterprise-lister/commit/ce4f0d37541c8062a86ee7124d560345323262f6))
+* **website:** fix invalid prefix ([75b4201](https://github.com/mytlogos/enterprise-lister/commit/75b420102d5c1cd006b83519700c7143d503eb8c))
+* **website:** fix overlapping controls ([2789b46](https://github.com/mytlogos/enterprise-lister/commit/2789b465abc157ccc877320b835a911e59fafd18))
+* **website:** route v2 customhooks to correct view ([605bd32](https://github.com/mytlogos/enterprise-lister/commit/605bd32e976715b632d85c8d682c62cc7e02644f))
+
+
+### Features
+
+* **website:** improve job history ui ([13223a2](https://github.com/mytlogos/enterprise-lister/commit/13223a2d95b9119cc3ad5666a3d3e86b94d2b85f))
+* **website:** improve job ui ([5724e13](https://github.com/mytlogos/enterprise-lister/commit/5724e13f486c46b029b68030475bfa64f26e7260))
+
 ## [2.15.2](https://github.com/mytlogos/enterprise-lister/compare/v2.15.1...v2.15.2) (2022-08-20)
 
 
