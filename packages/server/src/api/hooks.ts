@@ -12,6 +12,7 @@ import { createHandler } from "./apiTools";
 import { HookTest, HookTestV2 } from "../types";
 import { CustomHookError } from "enterprise-scraper/dist/externals/custom/errors";
 import { RestResponseError } from "../errors";
+import { ValidatorResultError } from "jsonschema";
 
 export const getAllHooks = createHandler(() => {
   return load(true).then(() => hookStorage.getAllStream());
@@ -89,7 +90,15 @@ const testHookV2 = createHandler(async (req) => {
   } else {
     return Promise.reject(Errors.INVALID_INPUT);
   }
-  return resultPromise;
+
+  try {
+    return await resultPromise;
+  } catch (error) {
+    if (error instanceof ValidatorResultError) {
+      throw new RestResponseError(400, "invalid result", error);
+    }
+    throw error;
+  }
 });
 
 const createCustomHook = createHandler((req) => {

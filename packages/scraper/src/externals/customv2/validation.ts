@@ -161,7 +161,6 @@ const requestConfigSchema = schema({
           properties: {
             "Content-Type": schema.string(),
           },
-          required: ["Content-Type"],
         },
         method: schema.string(),
       },
@@ -264,7 +263,6 @@ const tocConfigSchema = schema({
               partialIndex: schema.string(),
               releaseDate: schema.string(),
             },
-            required: ["_$", "title", "url", "combiIndex", "totalIndex", "releaseDate"],
           },
         },
         required: ["_$"],

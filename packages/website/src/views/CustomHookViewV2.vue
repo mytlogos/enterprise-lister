@@ -128,10 +128,10 @@ load();
 function testHook(hookKey: keyof HookConfig) {
   const hookConfig = clone(data.value);
 
-  cleanEmptySelectors(hookConfig.download?.data);
-  cleanEmptySelectors(hookConfig.news?.data);
-  cleanEmptySelectors(hookConfig.toc?.data);
-  cleanEmptySelectors(hookConfig.search?.data);
+  cleanEmptySelectors(hookConfig.download?.data, ["flags"]);
+  cleanEmptySelectors(hookConfig.news?.data, ["flags"]);
+  cleanEmptySelectors(hookConfig.toc?.data, ["flags"]);
+  cleanEmptySelectors(hookConfig.search?.data, ["flags"]);
 
   // only set value if it is a valid config
   try {
@@ -190,15 +190,15 @@ function load() {
   }
 }
 
-function cleanEmptySelectors(data?: Record<string, any>) {
-  if (!data) {
+function cleanEmptySelectors(record?: Record<string, any>, ignore: string[]) {
+  if (!record) {
     return;
   }
-  for (const [key, value] of Object.entries(data)) {
-    if (typeof value === "string" && !value.trim()) {
-      data[key] = undefined;
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === "string" && !value.trim() && !ignore.includes(key)) {
+      record[key] = undefined;
     } else if (typeof value === "object") {
-      cleanEmptySelectors(value);
+      cleanEmptySelectors(value, ignore);
     }
   }
 }
@@ -214,10 +214,10 @@ function save() {
   }
 
   const cloned = clone(data.value);
-  cleanEmptySelectors(cloned.download?.data);
-  cleanEmptySelectors(cloned.news?.data);
-  cleanEmptySelectors(cloned.toc?.data);
-  cleanEmptySelectors(cloned.search?.data);
+  cleanEmptySelectors(cloned.download?.data, ["flags"]);
+  cleanEmptySelectors(cloned.news?.data, ["flags"]);
+  cleanEmptySelectors(cloned.toc?.data, ["flags"]);
+  cleanEmptySelectors(cloned.search?.data, ["flags"]);
 
   // only set value if it is a valid config
   try {

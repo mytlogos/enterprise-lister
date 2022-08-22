@@ -222,7 +222,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
         _$: undefined,
         _request: undefined,
       };
-      if (datum.content) {
+      if (datum.content?._$) {
         // @ts-expect-error
         selector.content = x(datum.content._$, [
           {
