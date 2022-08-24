@@ -1,3 +1,10 @@
+## [2.18.1](https://github.com/mytlogos/enterprise-lister/compare/v2.18.0...v2.18.1) (2022-08-24)
+
+
+### Bug Fixes
+
+* **scraper:** fix notification content too long ([b76a0ab](https://github.com/mytlogos/enterprise-lister/commit/b76a0ab8829d97c77f05c7e44c9508956c3a3117))
+
 # [2.18.0](https://github.com/mytlogos/enterprise-lister/compare/v2.17.0...v2.18.0) (2022-08-24)
 
 
