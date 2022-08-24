@@ -368,7 +368,7 @@ const downloadConfigSchema = schema({
           index: schema.string(),
           content: schema.string(),
         },
-        required: ["_$", "mediumTitle", "episodeTitle", "content"],
+        required: ["_$"],
       },
     },
   },

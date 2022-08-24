@@ -232,6 +232,14 @@ searchForToc.medium = MediaType.VIDEO;
 searchForToc.blindSearch = true;
 search.medium = MediaType.VIDEO;
 
+/**
+ * Should have gotten the download links.
+ * But should not work anymore.
+ *
+ * @param link link of the episode
+ * @returns download content
+ * @deprecated behind recaptcha
+ */
 async function contentDownloader(link: string): Promise<EpisodeContent[]> {
   const episodeRegex = /https:\/\/www\d*\.gogoanime\.(vc|wiki)\/.+-episode-(\d+)/;
   const exec = episodeRegex.exec(link);
