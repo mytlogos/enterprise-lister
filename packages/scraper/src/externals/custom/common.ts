@@ -74,9 +74,13 @@ function clone(value: any): any | string {
     return undefined;
   }
   try {
-    return JSON.parse(JSON.stringify(value, replacer));
+    return structuredClone(value);
   } catch (error) {
-    return "Clone failed";
+    try {
+      return JSON.parse(JSON.stringify(value, replacer));
+    } catch (error2) {
+      return "Clone failed";
+    }
   }
 }
 
