@@ -10,6 +10,7 @@ import {
 } from "../types";
 import { HookConfig, JsonRegex, NewsNestedResult, NewsSingleResult, RequestConfig } from "./types";
 import Xray, { Selector } from "x-ray";
+import absolutes from "x-ray/lib/absolutes";
 import jsonpath from "jsonpath";
 import logger from "enterprise-core/dist/logger";
 import { extractFromRegex } from "../custom/common";
@@ -19,6 +20,7 @@ import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/ty
 import { datePattern } from "./analyzer";
 import { validateEpisodeNews, validateToc } from "./validation";
 import { FullResponse } from "cloudscraper";
+import { load } from "cheerio";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
 type Context = Record<string, any>;
@@ -199,13 +201,14 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
       datum._request ??= {};
       datum._request.fullResponse = true;
       const response: FullResponse = await makeRequest(newsConfig.newsUrl, context, datum._request);
+      const $ = absolutes(response.request.uri.href, load(response.body));
 
-      if (Object.keys(datum._contextSelectors).length) {
-        const contextResult = await x(response.body, datum._contextSelectors);
+      if (Object.keys(datum._contextSelectors ?? {}).length) {
+        const contextResult = await x($, datum._contextSelectors);
         Object.assign(context, contextResult);
       }
 
-      results.push(await x(response.body, datum._$, [selector]));
+      results.push(await x($, datum._$, [selector]));
     }
     const items = results.reduce((previous, current) => [...previous, ...current], []);
     const episodes: EpisodeNews[] = [];
@@ -294,12 +297,14 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
         lastUrl = response.request.uri.href;
       }
 
-      if (Object.keys(datum._contextSelectors).length) {
-        const contextResult = await x(response.body, datum._contextSelectors);
+      const $ = absolutes(response.request.uri.href, load(response.body));
+
+      if (Object.keys(datum._contextSelectors ?? {}).length) {
+        const contextResult = await x($, datum._contextSelectors);
         Object.assign(context, contextResult);
       }
 
-      results.push(await x(response.body, datum._$, [selector as unknown as Selector]));
+      results.push(await x($, datum._$, [selector as unknown as Selector]));
     }
     const tocs = merge(results);
     tocs.forEach((toc: any) => {
@@ -368,14 +373,16 @@ function createDownloadScraper(config: HookConfig): ContentDownloader | undefine
 
       datum._request ??= {};
       datum._request.fullResponse = true;
-      const response: FullResponse = await makeRequest(link, context, datum._request);
 
-      if (Object.keys(datum._contextSelectors).length) {
-        const contextResult = await x(response.body, datum._contextSelectors);
+      const response: FullResponse = await makeRequest(link, context, datum._request);
+      const $ = absolutes(response.request.uri.href, load(response.body));
+
+      if (Object.keys(datum._contextSelectors ?? {}).length) {
+        const contextResult = await x($, datum._contextSelectors);
         Object.assign(context, contextResult);
       }
 
-      results.push(await x(response.body, datum._$, [selector as unknown as Selector]));
+      results.push(await x($, datum._$, [selector as unknown as Selector]));
     }
     return merge(results);
   };
