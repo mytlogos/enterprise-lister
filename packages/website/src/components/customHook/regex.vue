@@ -1,12 +1,13 @@
 <template>
   <div class="row">
     <div class="col">
-      <label for="pattern" class="form-label">{{ regexName }}</label>
+      <label v-if="props.showLabel" for="pattern" class="form-label">{{ regexName }}</label>
       <prism-editor v-model="pattern" class="my-editor form-control" :highlight="highlighter" />
     </div>
-    <div class="col-2">
-      <label for="pattern" class="form-label">Flags</label>
-      <input id="pattern" v-model="flags" type="text" class="form-control" placeholder="Flags" />
+    <div class="col-2" :class="{ 'p-float-label': !props.showLabel }">
+      <label v-if="props.showLabel" for="pattern" class="form-label">Flags</label>
+      <input-text id="pattern" v-model="flags" type="text" />
+      <label v-if="!props.showLabel" for="pattern" class="form-label">Flags</label>
     </div>
   </div>
 </template>
@@ -27,6 +28,10 @@ const props = defineProps({
   regexName: {
     type: String,
     default: () => "Regex",
+  },
+  showLabel: {
+    type: Boolean,
+    default: true,
   },
 });
 

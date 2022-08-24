@@ -1,25 +1,38 @@
 <template>
-  <button class="btn btn-primary mt-3" role="button" @click="addRegex">Add Regex</button>
-  <div class="row mb-3">
-    <div class="col">
-      <label for="hookBase" class="form-label">Regex Name</label>
-      <input id="hookBase" v-model="data.name" type="text" class="form-control" placeholder="Name" />
+  <div class="mt-2">
+    <h6>Regexes</h6>
+    <div class="grid p-fluid">
+      <div class="col-12 md:col-4">
+        <span class="p-float-label">
+          <input-text v-model="data.name" />
+          <label class="form-label">Name</label>
+        </span>
+      </div>
+      <div class="col-12 md:col-4">
+        <regex v-model="data.regex" :show-label="false" />
+      </div>
+      <div class="col-12 md:col-2">
+        <p-button label="Add Regex" @click="addRegex" />
+      </div>
     </div>
-    <div class="col">
-      <regex v-model="data.regex" />
-    </div>
-  </div>
-  <div v-for="entry in Object.entries(modelValue)" :key="entry[0]" class="row mb-3">
-    <div class="col">
-      <span>{{ entry[0] }}</span>
-      <span>{{ entry[1] }}</span>
+    <div v-for="(_, key) in data.regexMap" :key="key" class="grid p-fluid mt-1">
+      <div class="col-12 md:col-4">
+        <input-text :model-value="key" disabled />
+      </div>
+      <div class="col-12 md:col-4">
+        <regex v-model="data.regexMap[key]" :show-label="false" />
+      </div>
+      <div class="col-12 md:col-2">
+        <p-button label="Remove" @click="removeRegex(key)" />
+      </div>
     </div>
   </div>
 </template>
 <script lang="ts" setup>
-import { PropType, reactive } from "vue";
+import { PropType, reactive, watch } from "vue";
 import Regex from "../regex.vue";
 import { JsonRegex } from "enterprise-scraper/dist/externals/customv2/types";
+import { deepEqual } from "../../../init";
 
 function defaultRegex() {
   return { pattern: "", flags: "" };
@@ -40,14 +53,42 @@ const emits = defineEmits(["update:modelValue", "delete"]);
 const data = reactive({
   name: "",
   regex: defaultRegex(),
+  regexMap: {} as Record<string, JsonRegex>,
 });
+
+watch(
+  () => data.regexMap,
+  () => {
+    emits("update:modelValue", { ...data.regexMap });
+  },
+  {
+    deep: true,
+  },
+);
+
+watch(
+  () => props.modelValue,
+  () => {
+    if (deepEqual(props.modelValue, data.regexMap)) {
+      return;
+    }
+    data.regexMap = props.modelValue ? { ...props.modelValue } : {};
+  },
+  {
+    deep: true,
+  },
+);
 
 function addRegex() {
   if (!data.name || !data.regex.pattern) {
     return;
   }
-  emits("update:modelValue", { ...props.modelValue, [data.name]: data.regex });
+  data.regexMap[data.name] = data.regex;
   data.regex = defaultRegex();
   data.name = "";
+}
+
+function removeRegex(key: keyof typeof data.regexMap) {
+  delete data.regexMap[key];
 }
 </script>
