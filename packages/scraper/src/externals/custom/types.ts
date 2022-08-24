@@ -152,6 +152,10 @@ export interface BaseHookConfig {
   medium: MediaType;
   base: string;
   domain: JsonRegex;
+  news?: any;
+  search?: any;
+  toc?: any;
+  download?: any;
 }
 
 export interface HookConfig extends BaseHookConfig {

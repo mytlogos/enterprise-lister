@@ -48,6 +48,7 @@
             </button>
             <request-config v-if="item._request" v-model="item._request" />
           </div>
+          <context-selectors v-model="item._contextSelectors" />
           <div>
             <label for="hookBase" class="form-label">Root Selector</label>
             <input id="hookBase" v-model="item._$" type="text" class="form-control" placeholder="Selector" />
@@ -78,6 +79,7 @@ import { PropType, ref, toRef } from "vue";
 import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
+import ContextSelectors from "./context-selectors.vue";
 import { SearchSingle, SearchConfig } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
@@ -87,6 +89,7 @@ function defaultSingle(): SearchSingle {
   return {
     _$: "",
     _request: undefined,
+    _contextSelectors: {},
     medium: "",
     title: "",
     author: "",

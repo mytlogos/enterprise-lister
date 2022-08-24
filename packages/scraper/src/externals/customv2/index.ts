@@ -12,7 +12,6 @@ import { HookConfig, JsonRegex, NewsNestedResult, NewsSingleResult, RequestConfi
 import Xray, { Selector } from "x-ray";
 import jsonpath from "jsonpath";
 import logger from "enterprise-core/dist/logger";
-import { Context } from "vm";
 import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
 import { queueRequest, queueRequestFullResponse } from "../queueRequest";
@@ -22,6 +21,7 @@ import { validateEpisodeNews, validateToc } from "./validation";
 import { FullResponse } from "cloudscraper";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
+type Context = Record<string, any>;
 
 // TODO: add filter for text to date
 export interface CustomHook<T extends HookConfig = HookConfig> {
@@ -180,6 +180,7 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
     return;
   }
   const x = createScraper(newsConfig.regexes);
+  const context: Context = {};
 
   const scraper: NewsScraper = async (): Promise<NewsScrapeResult> => {
     const results: Array<Array<NewsNestedResult | NewsSingleResult>> = [];
@@ -192,9 +193,19 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
         const releases = Object.assign({}, datum.releases, { _$: undefined });
         selector.releases = x(datum.releases._$, [releases]);
       } else {
-        Object.assign(selector, datum, { _$: undefined, _request: undefined });
+        Object.assign(selector, datum, { _$: undefined, _request: undefined, _contextSelectors: undefined });
       }
-      results.push(await x(newsConfig.newsUrl, datum._$, [selector]));
+
+      datum._request ??= {};
+      datum._request.fullResponse = true;
+      const response: FullResponse = await makeRequest(newsConfig.newsUrl, context, datum._request);
+
+      if (Object.keys(datum._contextSelectors).length) {
+        const contextResult = await x(response.body, datum._contextSelectors);
+        Object.assign(context, contextResult);
+      }
+
+      results.push(await x(response.body, datum._$, [selector]));
     }
     const items = results.reduce((previous, current) => [...previous, ...current], []);
     const episodes: EpisodeNews[] = [];
@@ -249,6 +260,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
   if (!tocConfig) {
     return;
   }
+  const context: Context = {};
   const x = createScraper(tocConfig.regexes);
 
   const scraper: TocScraper = async (link: string): Promise<Toc[]> => {
@@ -260,6 +272,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
         ...datum,
         _$: undefined,
         _request: undefined,
+        _contextSelectors: undefined,
       };
       if (datum.content?._$) {
         // @ts-expect-error
@@ -275,11 +288,17 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
       // if multiple tocConfig.data are defined and a later config uses
       // a custom request, it may depend on a new redirected location
       // instead of the currently saved/requested one
-      const response: FullResponse = await makeRequest(lastUrl, {}, datum._request);
+      const response: FullResponse = await makeRequest(lastUrl, context, datum._request);
 
       if (lastUrl === link) {
         lastUrl = response.request.uri.href;
       }
+
+      if (Object.keys(datum._contextSelectors).length) {
+        const contextResult = await x(response.body, datum._contextSelectors);
+        Object.assign(context, contextResult);
+      }
+
       results.push(await x(response.body, datum._$, [selector as unknown as Selector]));
     }
     const tocs = merge(results);
@@ -334,6 +353,7 @@ function createDownloadScraper(config: HookConfig): ContentDownloader | undefine
   }
 
   const x = createScraper(downloadConfig.regexes);
+  const context: Context = {};
 
   const scraper: ContentDownloader = async (link) => {
     const results = [];
@@ -342,14 +362,20 @@ function createDownloadScraper(config: HookConfig): ContentDownloader | undefine
         ...datum,
         _$: undefined,
         _request: undefined,
+        _contextSelectors: undefined,
         content: [datum.content],
       };
-      if (datum._request) {
-        const html = await makeRequest(link, {}, datum._request);
-        results.push(await x(html, datum._$, [selector as unknown as Selector]));
-      } else {
-        results.push(await x(link, datum._$, [selector as unknown as Selector]));
+
+      datum._request ??= {};
+      datum._request.fullResponse = true;
+      const response: FullResponse = await makeRequest(link, context, datum._request);
+
+      if (Object.keys(datum._contextSelectors).length) {
+        const contextResult = await x(response.body, datum._contextSelectors);
+        Object.assign(context, contextResult);
       }
+
+      results.push(await x(response.body, datum._$, [selector as unknown as Selector]));
     }
     return merge(results);
   };
@@ -453,7 +479,7 @@ function templateString(value: string, context: Context): string {
       variableName = match[1];
     }
 
-    if (!(variableName in context.variables)) {
+    if (!(variableName in context)) {
       throw new CustomHookError(
         `Unknown Variable '${variableName}', original: '${originalName}'!`,
         CustomHookErrorCodes.TEMPLATE_UNKNOWN_VARIABLE,
@@ -467,7 +493,7 @@ function templateString(value: string, context: Context): string {
       );
     }
 
-    let variableValue = context.variables[variableName];
+    let variableValue = context[variableName];
 
     if (match) {
       variableValue = variableValue[Number(match[2])];

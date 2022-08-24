@@ -63,6 +63,12 @@ const jsonRegexMapSchema = schema({
   additionalProperties: jsonRegexSchema,
 });
 
+const contextSelectorsSchema = schema({
+  id: "/ContextSelectorRecord",
+  type: "object",
+  additionalProperties: schema.string(),
+});
+
 const newsEpisodeSchema = schema({
   id: "/NewsEpisode",
   type: "object",
@@ -177,6 +183,7 @@ const newsNestedSchema = schema({
   type: "object",
   properties: {
     _request: requestConfigSchema,
+    _contextSelectors: contextSelectorsSchema,
     type: schema.string(),
     _$: schema.string(),
     mediumTitle: schema.string(),
@@ -207,6 +214,7 @@ const newsSingleSchema = schema({
   properties: {
     type: schema.string(),
     _request: requestConfigSchema,
+    _contextSelectors: contextSelectorsSchema,
     _$: schema.string(),
     mediumTitle: schema.string(),
     mediumTocLink: schema.string(),
@@ -250,6 +258,7 @@ const tocConfigSchema = schema({
         properties: {
           _$: schema.string(),
           _request: requestConfigSchema,
+          _contextSelectors: contextSelectorsSchema,
           title: schema.string(),
           statusTl: schema.string(),
           content: {
@@ -283,6 +292,7 @@ const searchConfigSchema = schema({
         type: "object",
         properties: {
           _request: requestConfigSchema,
+          _contextSelectors: contextSelectorsSchema,
           _$: schema.string(),
           link: schema.string(),
           title: schema.string(),
@@ -308,6 +318,7 @@ const downloadConfigSchema = schema({
         properties: {
           _$: schema.string(),
           _request: requestConfigSchema,
+          _contextSelectors: contextSelectorsSchema,
           mediumTitle: schema.string(),
           episodeTitle: schema.string(),
           index: schema.string(),

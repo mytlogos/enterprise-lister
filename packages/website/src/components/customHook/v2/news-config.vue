@@ -47,6 +47,7 @@
               {{ item._request ? "Remove" : "Use" }} Custom Request Configuration
             </button>
             <request-config v-if="item._request" v-model="item._request" />
+            <context-selectors v-model="item._contextSelectors" />
           </div>
           <select-button
             :model-value="item.type"
@@ -251,6 +252,7 @@ import { toRef, PropType, ref } from "vue";
 import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
+import ContextSelectors from "./context-selectors.vue";
 import { NewsConfig, NewsNested, NewsSingle } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
@@ -261,6 +263,7 @@ function defaultSingle(): NewsSingle {
     type: "single",
     _$: "",
     _request: undefined,
+    _contextSelectors: {},
     mediumTitle: "",
     mediumTocLink: "",
     partIndex: "",
@@ -275,11 +278,12 @@ function defaultSingle(): NewsSingle {
   };
 }
 
-function nestedToSingle(config: NewsNested) {
+function nestedToSingle(config: NewsNested): NewsSingle {
   return {
     type: "single",
     _$: config._$,
     _request: config._request,
+    _contextSelectors: config._contextSelectors,
     mediumTitle: config.mediumTitle,
     mediumTocLink: config.mediumTocLink,
     partIndex: config.releases.partIndex,
@@ -294,11 +298,12 @@ function nestedToSingle(config: NewsNested) {
   };
 }
 
-function singleToNested(config: NewsSingle) {
+function singleToNested(config: NewsSingle): NewsNested {
   return {
     type: "nested",
     _$: config._$,
     _request: config._request,
+    _contextSelectors: config._contextSelectors,
     mediumTitle: config.mediumTitle,
     mediumTocLink: config.mediumTocLink,
     releases: {

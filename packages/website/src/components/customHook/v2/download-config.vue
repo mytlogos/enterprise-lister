@@ -26,7 +26,7 @@
           </div>
         </div>
         <button class="btn btn-primary mt-3" role="button" @click="addSchema">Add Config</button>
-        <div v-for="(item, index) in modelValue.data" :key="index" class="row mb-3">
+        <div v-for="(item, index) in data.data" :key="index" class="row mb-3">
           <div class="d-flex">
             <i
               aria-hidden="true"
@@ -41,6 +41,7 @@
               {{ item._request ? "Remove" : "Use" }} Custom Request Configuration
             </button>
             <request-config v-if="item._request" v-model="item._request" />
+            <context-selectors v-model="item._contextSelectors" />
           </div>
           <div>
             <label for="hookBase" class="form-label">Root Selector</label>
@@ -84,6 +85,7 @@ import { PropType, ref, toRef } from "vue";
 import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
+import ContextSelectors from "./context-selectors.vue";
 import { DownloadSingle, DownloadConfig } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
@@ -93,6 +95,7 @@ function defaultSingle(): DownloadSingle {
   return {
     _$: "",
     _request: undefined,
+    _contextSelectors: {},
     content: "",
     episodeTitle: "",
     mediumTitle: "",

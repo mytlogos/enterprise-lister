@@ -36,6 +36,7 @@ export interface NewsNested {
   type: "nested";
   _$: string;
   _request?: RequestConfig;
+  _contextSelectors: Record<string, string>;
   mediumTitle: string;
   mediumTocLink: string;
 
@@ -57,6 +58,7 @@ export interface NewsSingle {
   type: "single";
   _$: string;
   _request?: RequestConfig;
+  _contextSelectors: Record<string, string>;
   mediumTitle: string;
   mediumTocLink: string;
   partIndex?: string;
@@ -73,6 +75,7 @@ export interface NewsSingle {
 export interface SearchSingle {
   _$: string;
   _request?: RequestConfig;
+  _contextSelectors: Record<string, string>;
   coverUrl?: string;
   link: string;
   title: string;
@@ -83,6 +86,7 @@ export interface SearchSingle {
 export interface DownloadSingle {
   _$: string;
   _request?: RequestConfig;
+  _contextSelectors: Record<string, string>;
   mediumTitle: string;
   episodeTitle: string;
   index?: string;
@@ -93,6 +97,7 @@ export interface DownloadSingle {
 export interface TocSingle {
   _$: string;
   _request?: RequestConfig;
+  _contextSelectors: Record<string, string>;
   title: string;
   content: {
     _$: string;
@@ -131,25 +136,26 @@ export interface RequestConfig {
   options?: Omit<Options, "url" | "uri">;
 }
 
-export interface NewsConfig {
+export interface BaseScrapeConfig {
   regexes: Record<string, JsonRegex>;
+  data: Record<string, any> | Array<Record<string, any>>;
+}
+
+export interface NewsConfig extends BaseScrapeConfig {
   data: Array<NewsNested | NewsSingle>;
   newsUrl: string;
 }
 
-export interface SearchConfig {
-  regexes: Record<string, JsonRegex>;
+export interface SearchConfig extends BaseScrapeConfig {
   data: SearchSingle[];
   searchUrl: string;
 }
 
-export interface TocConfig {
-  regexes: Record<string, JsonRegex>;
+export interface TocConfig extends BaseScrapeConfig {
   data: TocSingle[];
 }
 
-export interface DownloadConfig {
-  regexes: Record<string, JsonRegex>;
+export interface DownloadConfig extends BaseScrapeConfig {
   data: DownloadSingle[];
 }
 
