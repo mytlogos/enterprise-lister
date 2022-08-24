@@ -1,3 +1,16 @@
+# [2.18.0](https://github.com/mytlogos/enterprise-lister/compare/v2.17.0...v2.18.0) (2022-08-24)
+
+
+### Bug Fixes
+
+* **scraper:** fix too restrictive validation ([9daa1ba](https://github.com/mytlogos/enterprise-lister/commit/9daa1ba65325297858b5ceab04d8108791ccab53))
+* **scraper:** urls not absolute ([790c35a](https://github.com/mytlogos/enterprise-lister/commit/790c35a9b705de11e8cc768c1b62cdf8cf4c08f8))
+
+
+### Features
+
+* implement generating toc episodes in customv2 ([eb79f73](https://github.com/mytlogos/enterprise-lister/commit/eb79f739ba311f1a5b5058247d3c57414e07d609))
+
 # [2.17.0](https://github.com/mytlogos/enterprise-lister/compare/v2.16.2...v2.17.0) (2022-08-24)
 
 
