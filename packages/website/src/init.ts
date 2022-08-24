@@ -1,4 +1,4 @@
-import { Ref, watch } from "vue";
+import { isProxy, isRef, Ref, toRaw, unref, watch } from "vue";
 import { SimpleMedium, FullMediumToc, StringKey } from "./siteTypes";
 
 /**
@@ -377,8 +377,25 @@ export function createComputedProperty(propName: string, property: string) {
   };
 }
 
+/**
+ * Clone a value with structuredClone, falling back to JSON if it fails.
+ * Tries to unwrap any Vue Proxies before cloning.
+ * Does not modify the original object.
+ *
+ * @param value value to clone
+ * @returns an independent clone of the value
+ */
 export function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
+  if (isRef<T>(value)) {
+    value = unref(value);
+  } else if (isProxy(value)) {
+    value = toRaw(value);
+  }
+  try {
+    return structuredClone(value);
+  } catch (error) {
+    return JSON.parse(JSON.stringify(value));
+  }
 }
 
 export function deepEqual(actual: any, expected: any): boolean {
