@@ -1,3 +1,10 @@
+## [2.18.2](https://github.com/mytlogos/enterprise-lister/compare/v2.18.1...v2.18.2) (2022-08-24)
+
+
+### Bug Fixes
+
+* **scraper:** prefer structuredClone ([717f59d](https://github.com/mytlogos/enterprise-lister/commit/717f59d912c6ac85af2602cf6e8878ba82856e00))
+
 ## [2.18.1](https://github.com/mytlogos/enterprise-lister/compare/v2.18.0...v2.18.1) (2022-08-24)
 
 
