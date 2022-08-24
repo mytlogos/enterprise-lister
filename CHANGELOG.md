@@ -1,3 +1,12 @@
+# [2.17.0](https://github.com/mytlogos/enterprise-lister/compare/v2.16.2...v2.17.0) (2022-08-24)
+
+
+### Features
+
+* implement context selectors in customv2 ([f6dc7d9](https://github.com/mytlogos/enterprise-lister/commit/f6dc7d9090e20b5d8a4d4a46bdb0a3ec52e6e916))
+* **website:** improve regex components ([1e50af5](https://github.com/mytlogos/enterprise-lister/commit/1e50af52ffb699a5ad97475ff55156e807418726))
+* **website:** use better clone ([d6bc7f8](https://github.com/mytlogos/enterprise-lister/commit/d6bc7f8799f9884c0a04c7e5c7e5dc2ce1d64935))
+
 ## [2.16.2](https://github.com/mytlogos/enterprise-lister/compare/v2.16.1...v2.16.2) (2022-08-22)
 
 
