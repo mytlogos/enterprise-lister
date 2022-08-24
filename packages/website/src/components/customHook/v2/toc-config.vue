@@ -43,6 +43,11 @@
             <request-config v-if="item._request" v-model="item._request" />
           </div>
           <context-selectors v-model="item._contextSelectors" />
+          <select-button
+            :model-value="getType(item)"
+            :options="types"
+            @update:model-value="convertConfig($event, data.data, index)"
+          />
           <div>
             <label for="hookBase" class="form-label">Root Selector</label>
             <input id="hookBase" v-model="item._$" type="text" class="form-control" placeholder="Selector" />
@@ -83,80 +88,104 @@
             <label for="hookBase" class="form-label">Status TL</label>
             <input id="hookBase" v-model="item.artists" type="text" class="form-control" placeholder="Artists" />
           </div>
-          <div>Content</div>
-          <div>
-            <label for="hookBase" class="form-label">Content Base Selector</label>
-            <input
-              id="hookBase"
-              v-model="item.content._$"
-              type="text"
-              class="form-control"
-              placeholder="Base Selector"
-            />
+          <div v-if="isGenerator(item)" class="mt-2">
+            <h6>Generator</h6>
+            <span class="mt-4 p-float-label">
+              <input-text v-model="item._generator.maxIndex" class="w-100" type="text" />
+              <label class="form-label">Max Index Selector</label>
+            </span>
+            <regex v-model="item._generator.urlRegex" />
+            <span class="mt-4 p-float-label">
+              <input-text v-model="item._generator.urlTemplate" class="w-100" type="text" />
+              <label class="form-label">Url Template</label>
+            </span>
+            <span class="mt-4 p-float-label">
+              <input-text v-model="item._generator.titleTemplate" class="w-100" type="text" />
+              <label class="form-label">Title Template</label>
+            </span>
           </div>
-          <div>
-            <label for="hookBase" class="form-label">Release Title</label>
-            <input
-              id="hookBase"
-              v-model="item.content.title"
-              type="text"
-              class="form-control"
-              placeholder="Release Title"
-            />
-          </div>
-          <div>
-            <label for="hookBase" class="form-label">Release Index</label>
-            <input
-              id="hookBase"
-              v-model="item.content.combiIndex"
-              type="text"
-              class="form-control"
-              placeholder="Release Index"
-            />
-          </div>
-          <div>
-            <label for="hookBase" class="form-label">Release TotalIndex</label>
-            <input
-              id="hookBase"
-              v-model="item.content.totalIndex"
-              type="text"
-              class="form-control"
-              placeholder="Release TotalIndex"
-            />
-          </div>
-          <div>
-            <label for="hookBase" class="form-label">Release PartialIndex</label>
-            <input
-              id="hookBase"
-              v-model="item.content.partialIndex"
-              type="text"
-              class="form-control"
-              placeholder="Release PartialIndex"
-            />
-          </div>
-          <div>
-            <label for="hookBase" class="form-label">Release Url</label>
-            <input
-              id="hookBase"
-              v-model="item.content.url"
-              type="text"
-              class="form-control"
-              placeholder="Release Url"
-            />
-          </div>
-          <div>
-            <label for="hookBase" class="form-label">Releasedate</label>
-            <input
-              id="hookBase"
-              v-model="item.content.releaseDate"
-              type="text"
-              class="form-control"
-              placeholder="Releasedate"
-            />
-          </div>
-          <div>
-            <label for="hookBase" class="form-label">Locked</label>
-            <input id="hookBase" v-model="item.content.locked" type="text" class="form-control" placeholder="Locked" />
+          <div v-else>
+            <h6>Content</h6>
+            <div>
+              <label for="hookBase" class="form-label">Content Base Selector</label>
+              <input
+                id="hookBase"
+                v-model="item.content._$"
+                type="text"
+                class="form-control"
+                placeholder="Base Selector"
+              />
+            </div>
+            <div>
+              <label for="hookBase" class="form-label">Release Title</label>
+              <input
+                id="hookBase"
+                v-model="item.content.title"
+                type="text"
+                class="form-control"
+                placeholder="Release Title"
+              />
+            </div>
+            <div>
+              <label for="hookBase" class="form-label">Release Index</label>
+              <input
+                id="hookBase"
+                v-model="item.content.combiIndex"
+                type="text"
+                class="form-control"
+                placeholder="Release Index"
+              />
+            </div>
+            <div>
+              <label for="hookBase" class="form-label">Release TotalIndex</label>
+              <input
+                id="hookBase"
+                v-model="item.content.totalIndex"
+                type="text"
+                class="form-control"
+                placeholder="Release TotalIndex"
+              />
+            </div>
+            <div>
+              <label for="hookBase" class="form-label">Release PartialIndex</label>
+              <input
+                id="hookBase"
+                v-model="item.content.partialIndex"
+                type="text"
+                class="form-control"
+                placeholder="Release PartialIndex"
+              />
+            </div>
+            <div>
+              <label for="hookBase" class="form-label">Release Url</label>
+              <input
+                id="hookBase"
+                v-model="item.content.url"
+                type="text"
+                class="form-control"
+                placeholder="Release Url"
+              />
+            </div>
+            <div>
+              <label for="hookBase" class="form-label">Releasedate</label>
+              <input
+                id="hookBase"
+                v-model="item.content.releaseDate"
+                type="text"
+                class="form-control"
+                placeholder="Releasedate"
+              />
+            </div>
+            <div>
+              <label for="hookBase" class="form-label">Locked</label>
+              <input
+                id="hookBase"
+                v-model="item.content.locked"
+                type="text"
+                class="form-control"
+                placeholder="Locked"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -168,8 +197,9 @@ import { ref, toRef, PropType } from "vue";
 import { customHookHelper, idGenerator, Logger } from "../../../init";
 import RequestConfig from "../request-config.vue";
 import RegexMap from "./regex-map.vue";
+import Regex from "../regex.vue";
 import ContextSelectors from "./context-selectors.vue";
-import { TocSingle, TocConfig } from "enterprise-scraper/dist/externals/customv2/types";
+import { TocSingle, TocConfig, TocGenerator } from "enterprise-scraper/dist/externals/customv2/types";
 
 const nextId = idGenerator();
 </script>
@@ -191,6 +221,7 @@ const data = ref<TocConfig>({
   regexes: {},
 });
 const logger = new Logger("toc-config-" + id);
+const types: Array<"Single" | "Generator"> = ["Single", "Generator"];
 
 const { toggleCustomRequest, addSchema } = customHookHelper(
   data,
@@ -199,6 +230,80 @@ const { toggleCustomRequest, addSchema } = customHookHelper(
   logger,
   emits,
 );
+
+type DataItem = TocSingle | TocGenerator;
+
+function isGenerator(value: DataItem): value is TocGenerator {
+  return "_generator" in value;
+}
+
+function getType(value: DataItem): typeof types[0] {
+  if ("_generator" in value) {
+    return "Generator";
+  } else {
+    return "Single";
+  }
+}
+
+function convertConfig(newType: typeof types[0], data: DataItem[], index: number) {
+  if (newType === "Single") {
+    data[index] = convertGeneratorToSingle(data[index] as TocGenerator);
+  } else {
+    data[index] = convertSingleToGenerator(data[index] as TocSingle);
+  }
+}
+
+function convertSingleToGenerator(value: TocSingle): TocGenerator {
+  return {
+    _$: "",
+    _request: value._request,
+    _contextSelectors: value._contextSelectors,
+    _generator: {
+      maxIndex: "",
+      urlRegex: { flags: "", pattern: "" },
+      urlTemplate: "",
+      titleTemplate: "",
+    },
+    title: value.title,
+    synonyms: value.synonyms,
+    link: value.link,
+    langCOO: value.langCOO,
+    langTL: value.langTL,
+    statusCOO: value.statusCOO,
+    statusTl: value.statusTl,
+    authors: value.authors,
+    artists: value.artists,
+  };
+}
+
+function convertGeneratorToSingle(value: TocGenerator): TocSingle {
+  return {
+    _$: "",
+    _request: value._request,
+    _contextSelectors: value._contextSelectors,
+    title: value.title,
+    content: {
+      _$: "",
+      title: "",
+      combiIndex: "",
+      totalIndex: "",
+      partialIndex: "",
+      url: "",
+      releaseDate: "",
+      noTime: "",
+      locked: "",
+      tocId: "",
+    },
+    synonyms: value.synonyms,
+    link: value.link,
+    langCOO: value.langCOO,
+    langTL: value.langTL,
+    statusCOO: value.statusCOO,
+    statusTl: value.statusTl,
+    authors: value.authors,
+    artists: value.artists,
+  };
+}
 
 function defaultSingle(): TocSingle {
   return {

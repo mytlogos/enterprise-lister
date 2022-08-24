@@ -276,8 +276,14 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
         _$: undefined,
         _request: undefined,
         _contextSelectors: undefined,
+        _generator: undefined,
+        content: undefined,
+        maxIndex: undefined as string | undefined, // used for TocGenerator
       };
-      if (datum.content?._$) {
+
+      if ("_generator" in datum) {
+        selector.maxIndex = datum._generator.maxIndex;
+      } else if (datum.content?._$) {
         // @ts-expect-error
         selector.content = x(datum.content._$, [
           {
@@ -304,7 +310,61 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
         Object.assign(context, contextResult);
       }
 
-      results.push(await x($, datum._$, [selector as unknown as Selector]));
+      let result: any[] = await x($, datum._$, [selector as unknown as Selector]);
+
+      // the generator mode is for targets, which follow a strict pattern:
+      // no date, predictable links, maximum index always visible, all chapters have no index gap
+      // this misses any chapters with partialindices
+      if ("_generator" in datum) {
+        const urlMatch = toRegex(datum._generator.urlRegex).exec(lastUrl);
+
+        let urlTemplate = datum._generator.urlTemplate;
+
+        if (urlMatch) {
+          for (let index = 1; index < urlMatch.length; index++) {
+            const group = urlMatch[index];
+            urlTemplate = urlTemplate.replaceAll("$" + index, group ?? "");
+          }
+        }
+
+        result = result
+          .map((value) => {
+            const maxIndex = Number(value.maxIndex);
+
+            if (isNaN(maxIndex)) {
+              return undefined;
+            }
+            delete value.maxIndex;
+
+            // assuming it starts from 1 (ignore the minority which starts from zero)
+            const generatorContext = { ...context };
+            const content = [];
+            const commonDate = new Date().toJSON();
+
+            for (let i = 1; i <= maxIndex; i++) {
+              generatorContext.index = i;
+              const episodeContent = {
+                title: templateString(datum._generator.titleTemplate, generatorContext),
+                combiIndex: i,
+                totalIndex: i,
+                url: templateString(urlTemplate, generatorContext),
+                releaseDate: commonDate,
+                noTime: true,
+              };
+              content.push(episodeContent);
+            }
+            value.content = content;
+            return value;
+          })
+          .filter((value): value is any => !!value);
+      }
+      result.forEach((partialToc: any) => {
+        // if not provided, set the toc link to the current toc location
+        if (!partialToc.link) {
+          partialToc.link = lastUrl;
+        }
+      });
+      results.push(result);
     }
     const tocs = merge(results);
     tocs.forEach((toc: any) => {

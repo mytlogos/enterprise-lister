@@ -94,6 +94,27 @@ export interface DownloadSingle {
   content: string;
 }
 
+export interface TocGenerator {
+  _$: string;
+  _request?: RequestConfig;
+  _contextSelectors: Record<string, string>;
+  _generator: {
+    maxIndex: string; // x-ray selector
+    urlRegex: JsonRegex;
+    urlTemplate: string; // regex replace and context template
+    titleTemplate: string;
+  };
+  title: string;
+  synonyms?: string;
+  link: string;
+  langCOO?: string;
+  langTL?: string;
+  statusCOO?: string;
+  statusTl?: string;
+  authors?: string;
+  artists?: string;
+}
+
 export interface TocSingle {
   _$: string;
   _request?: RequestConfig;
@@ -152,7 +173,7 @@ export interface SearchConfig extends BaseScrapeConfig {
 }
 
 export interface TocConfig extends BaseScrapeConfig {
-  data: TocSingle[];
+  data: Array<TocSingle | TocGenerator>;
 }
 
 export interface DownloadConfig extends BaseScrapeConfig {

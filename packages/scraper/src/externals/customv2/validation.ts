@@ -246,6 +246,69 @@ const newsConfigSchema = schema({
   },
   required: ["newsUrl", "data", "regexes"],
 });
+
+const tocSingleSchema = schema({
+  id: "/TocSingle",
+  type: "object",
+  properties: {
+    _$: schema.string(),
+    _request: requestConfigSchema,
+    _contextSelectors: contextSelectorsSchema,
+    title: schema.string(),
+    statusTl: schema.string(),
+    synonyms: schema.string(),
+    link: schema.string(),
+    langCOO: schema.string(),
+    langTL: schema.string(),
+    statusCOO: schema.string(),
+    authors: schema.string(),
+    artists: schema.string(),
+    content: {
+      type: "object",
+      properties: {
+        _$: schema.string(),
+        title: schema.string(),
+        url: schema.string(),
+        combiIndex: schema.string(),
+        totalIndex: schema.string(),
+        partialIndex: schema.string(),
+        releaseDate: schema.string(),
+      },
+    },
+  },
+  required: ["_$"],
+});
+
+const tocGeneratorSchema = schema({
+  id: "/TocGenerator",
+  type: "object",
+  properties: {
+    _$: schema.string(),
+    _request: requestConfigSchema,
+    _contextSelectors: contextSelectorsSchema,
+    _generator: {
+      type: "object",
+      properties: {
+        maxIndex: schema.string({ minLength: 1 }),
+        urlRegex: jsonRegexSchema,
+        urlTemplate: schema.string({ minLength: 2 }),
+        titleTemplate: schema.string({ minLength: 2 }),
+      },
+      required: ["maxIndex", "urlRegex", "urlTemplate", "titleTemplate"],
+    },
+    title: schema.string(),
+    statusTl: schema.string(),
+    synonyms: schema.string(),
+    link: schema.string(),
+    langCOO: schema.string(),
+    langTL: schema.string(),
+    statusCOO: schema.string(),
+    authors: schema.string(),
+    artists: schema.string(),
+  },
+  required: ["_$", "_generator"],
+});
+
 const tocConfigSchema = schema({
   id: "/TocConfig",
   type: "object",
@@ -254,32 +317,13 @@ const tocConfigSchema = schema({
     data: {
       type: "array",
       items: {
-        type: "object",
-        properties: {
-          _$: schema.string(),
-          _request: requestConfigSchema,
-          _contextSelectors: contextSelectorsSchema,
-          title: schema.string(),
-          statusTl: schema.string(),
-          content: {
-            type: "object",
-            properties: {
-              _$: schema.string(),
-              title: schema.string(),
-              url: schema.string(),
-              combiIndex: schema.string(),
-              totalIndex: schema.string(),
-              partialIndex: schema.string(),
-              releaseDate: schema.string(),
-            },
-          },
-        },
-        required: ["_$"],
+        oneOf: [tocSingleSchema, tocGeneratorSchema],
       },
     },
   },
   required: ["data", "regexes"],
 });
+
 const searchConfigSchema = schema({
   id: "/SearchConfig",
   type: "object",
