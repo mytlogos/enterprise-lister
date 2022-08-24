@@ -444,7 +444,7 @@ export class JobScheduler {
           await notificationStorage
             .insertNotification({
               title: `Job Error for '${jobLabel.job_name}'`,
-              content: error.message,
+              content: error.message.slice(0, 700),
               date: new Date(),
               key: "job-" + jobLabel.job_id,
               type: "error",
