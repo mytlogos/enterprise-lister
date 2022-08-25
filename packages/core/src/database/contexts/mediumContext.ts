@@ -19,10 +19,11 @@ import {
   TypedQuery,
   Id,
 } from "../../types";
-import { count, Errors, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
+import { count, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications } from "../sqlTools";
+import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
 
 export class MediumContext extends SubContext {
   public async getSpecificToc(id: number, link: string): VoidablePromise<FullMediumToc> {
@@ -50,11 +51,11 @@ export class MediumContext extends SubContext {
    */
   public async addMedium(medium: SimpleMedium, uuid?: Uuid): Promise<SimpleMedium> {
     if (!medium || !medium.medium || !medium.title) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError(`Invalid Medium: ${medium?.title}-${medium?.medium}`));
     }
     const result = await this.query("INSERT INTO medium(medium, title) VALUES (?,?);", [medium.medium, medium.title]);
     if (!Number.isInteger(result.insertId)) {
-      throw Error(`invalid ID: ${result.insertId}`);
+      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId + ""}`);
     }
     storeModifications("medium", "insert", result);
 
@@ -80,7 +81,7 @@ export class MediumContext extends SubContext {
       const result = resultArray[0];
 
       if (!result) {
-        throw Error(`Medium with id ${mediumId} does not exist`);
+        throw new MissingEntityError(`Medium with id ${mediumId} does not exist`);
       }
       return {
         id: result.id,
@@ -139,7 +140,7 @@ export class MediumContext extends SubContext {
     synonyms.forEach((value) => {
       const medium = idMap.get(value.mediumId);
       if (!medium) {
-        throw Error("missing medium for queried synonyms");
+        throw new MissingEntityError("missing medium for queried synonyms");
       }
 
       if (!medium.synonyms) {
@@ -163,7 +164,7 @@ export class MediumContext extends SubContext {
       mediumId: result.id,
       medium: result.medium,
       title: result.title,
-      synonyms: (synonyms[0] && synonyms[0].synonym) || [],
+      synonyms: synonyms[0]?.synonym || [],
     };
   }
 
@@ -179,7 +180,7 @@ export class MediumContext extends SubContext {
       const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
 
       const currentReadResult = await this.query(
-        "SELECT * FROM " +
+        "SELECT user_episode.episode_id FROM " +
           "(SELECT * FROM user_episode " +
           "WHERE episode_id IN (SELECT id from episode " +
           "WHERE part_id IN (SELECT id FROM part " +
@@ -212,9 +213,8 @@ export class MediumContext extends SubContext {
         universe: result.universe,
         parts: partsResult.map((packet: any) => packet.id),
         currentRead: currentReadResult[0] ? currentReadResult[0].episode_id : undefined,
-        latestReleases: latestReleasesResult.map((packet: any) => packet.id),
+        latestReleased: latestReleasesResult.map((packet: any) => packet.id),
         unreadEpisodes: unReadResult.map((packet: any) => packet.id),
-        latestReleased: [],
       };
     });
   }
@@ -230,10 +230,9 @@ export class MediumContext extends SubContext {
 
   public async getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
     const readStatsPromise = this.query(
-      "SELECT part.medium_id as id, COUNT(part.medium_id) as totalEpisodes, COUNT(user.episode_id) as readEpisodes " +
+      "SELECT part.medium_id as id, COUNT(*) as totalEpisodes , COUNT(case when episode.id in (select episode_id from user_episode where ? = user_uuid and progress = 1) then 1 else null end) as readEpisodes " +
         "FROM part " +
         "INNER JOIN episode ON part.id=episode.part_id " +
-        "LEFT JOIN (SELECT * FROM user_episode WHERE ? = user_uuid AND progress = 1) as user ON user.episode_id=episode.id " +
         "GROUP BY part.medium_id;",
       uuid,
     );
@@ -253,10 +252,12 @@ export class MediumContext extends SubContext {
     }
 
     for (const toc of tocs) {
-      let secondary = idMap.get(toc.mediumId);
-      if (!secondary) {
-        secondary = { id: toc.mediumId, readEpisodes: 0, totalEpisodes: 0, tocs: [] };
-      }
+      const secondary = getElseSet(idMap, toc.mediumId, () => ({
+        id: toc.mediumId,
+        readEpisodes: 0,
+        totalEpisodes: 0,
+        tocs: [],
+      }));
       secondary.tocs.push(toc);
     }
 
@@ -272,7 +273,7 @@ export class MediumContext extends SubContext {
    * Gets one or multiple media from the storage.
    */
   public getLikeMedium<T extends MultiSingleValue<LikeMediumQuery>>(likeMedia: T): PromiseMultiSingle<T, LikeMedium> {
-    return promiseMultiSingle(likeMedia, async (value) => {
+    return promiseMultiSingle(likeMedia, async (value): Promise<LikeMedium> => {
       const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
       const escapedTitle = escapeLike(value.title, { singleQuotes: true });
 
@@ -288,8 +289,8 @@ export class MediumContext extends SubContext {
       return {
         medium: result[0],
         title: value.title,
-        link: value.link,
-      } as LikeMedium;
+        link: value.link || "",
+      };
     });
   }
 
@@ -297,7 +298,7 @@ export class MediumContext extends SubContext {
    * Updates a medium from the storage.
    */
   public async updateMediumToc(mediumToc: FullMediumToc): Promise<boolean> {
-    const keys = [
+    const keys: Array<keyof FullMediumToc> = [
       "countryOfOrigin",
       "languageOfOrigin",
       "author",
@@ -312,7 +313,7 @@ export class MediumContext extends SubContext {
     ];
 
     if (isInvalidId(mediumToc.mediumId) || !mediumToc.link) {
-      throw Error("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
+      throw new ValidationError("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
     }
     const conditions = [];
 
@@ -346,7 +347,7 @@ export class MediumContext extends SubContext {
    * Updates a medium from the storage.
    */
   public async updateMedium(medium: UpdateMedium): Promise<boolean> {
-    const keys = [
+    const keys: Array<keyof UpdateMedium> = [
       "countryOfOrigin",
       "languageOfOrigin",
       "author",
@@ -367,7 +368,7 @@ export class MediumContext extends SubContext {
       delete medium.medium;
     }
     if (!Number.isInteger(medium.id) || medium.id <= 0) {
-      throw Error("invalid medium, id, title or medium is invalid: " + JSON.stringify(medium));
+      throw new ValidationError("invalid medium, id, title or medium is invalid: " + JSON.stringify(medium));
     }
     const result = await this.update(
       "medium",
@@ -396,11 +397,7 @@ export class MediumContext extends SubContext {
     }
     const synonymMap = new Map<number, { mediumId: number; synonym: string[] }>();
     synonyms.forEach((value: any) => {
-      let synonym = synonymMap.get(value.medium_id);
-      if (!synonym) {
-        synonym = { mediumId: value.medium_id, synonym: [] };
-        synonymMap.set(value.medium_id, synonym);
-      }
+      const synonym = getElseSet(synonymMap, value.medium_id, () => ({ mediumId: value.medium_id, synonym: [] }));
       synonym.synonym.push(value.synonym);
     });
     return [...synonymMap.values()];
@@ -466,11 +463,21 @@ export class MediumContext extends SubContext {
     ) as Promise<FullMediumToc[]>;
   }
 
+  public getTocs(tocIds: number[]): Promise<FullMediumToc[]> {
+    return this.queryInList(
+      "SELECT id, medium_id as mediumId, link, " +
+        "countryOfOrigin, languageOfOrigin, author, title," +
+        "medium, artist, lang, stateOrigin, stateTL, series, universe " +
+        "FROM medium_toc WHERE id IN (??);",
+      [tocIds],
+    ) as Promise<FullMediumToc[]>;
+  }
+
   public async removeMediumToc(mediumId: number, link: string): Promise<boolean> {
     const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(link);
 
     if (!domainRegMatch) {
-      throw Error("Invalid Toc, Unable to extract Domain: " + link);
+      throw new ValidationError("Invalid link, Unable to extract Domain: " + link);
     }
 
     await this.parentContext.jobContext.removeJobLike("name", `toc-${mediumId}-${link}`);
@@ -646,14 +653,16 @@ export class MediumContext extends SubContext {
 
   public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<Id> {
     if (!destMedium || !destMedium.medium || !destMedium.title) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(
+        new ValidationError(`Invalid destination Medium: ${destMedium?.title}-${destMedium?.medium}`),
+      );
     }
     const result = await this.query("INSERT IGNORE INTO medium(medium, title) VALUES (?,?);", [
       destMedium.medium,
       destMedium.title,
     ]);
     if (!Number.isInteger(result.insertId)) {
-      throw Error(`invalid ID: ${result.insertId}`);
+      throw new ValidationError(`insert failed, invalid ID: ${result.insertId + ""}`);
     }
     storeModifications("medium", "insert", result);
     let mediumId: number;
@@ -666,7 +675,7 @@ export class MediumContext extends SubContext {
         destMedium.title,
       ]);
       if (!realMedium.length) {
-        throw Error("Expected a MediumId, but got nothing");
+        throw new MissingEntityError("Expected a MediumId, but got nothing");
       }
       mediumId = realMedium[0].id;
     } else {
@@ -681,7 +690,7 @@ export class MediumContext extends SubContext {
     const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(toc);
 
     if (!domainRegMatch) {
-      throw Error("Invalid Toc, Unable to extract Domain: " + toc);
+      throw new ValidationError("Invalid TocLink, Unable to extract Domain: " + toc);
     }
 
     const domain = domainRegMatch[1];
@@ -690,7 +699,7 @@ export class MediumContext extends SubContext {
     const standardPartId = await this.parentContext.partContext.getStandardPartId(destMediumId);
 
     if (!standardPartId) {
-      throw Error("medium does not have a standard part");
+      throw new DatabaseError("medium does not have a standard part");
     }
 
     const updatedTocResult = await this.query(

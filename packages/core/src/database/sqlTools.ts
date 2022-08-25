@@ -1,5 +1,5 @@
 import { OkPacket } from "mysql";
-import { getStore } from "../asyncStorage";
+import { getStore, StoreKey } from "../asyncStorage";
 import { getElseSet, getElseSetObj } from "../tools";
 
 interface Modification {
@@ -44,9 +44,7 @@ export function storeModifications(key: ModificationKey, queryType: QueryType, r
   if (!store) {
     return;
   }
-  const modifications = getElseSet(store, "modifications", () => {
-    return {};
-  });
+  const modifications = getElseSet(store, StoreKey.MODIFICATIONS, () => ({}));
   const modification: Modification = getElseSetObj(modifications, key, () => {
     return { created: 0, deleted: 0, updated: 0 };
   });
@@ -60,7 +58,7 @@ export function storeModifications(key: ModificationKey, queryType: QueryType, r
   }
 }
 
-type CountKey = "queryCount";
+type CountKey = StoreKey.QUERY_COUNT;
 
 /**
  * Increases the counter for the given key.

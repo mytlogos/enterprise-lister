@@ -5,7 +5,7 @@ import * as cheerio from "cheerio";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
 import { checkTocContent } from "../scraperTools";
-import { SearchResult as TocSearchResult, searchToc } from "./directTools";
+import { getText, LogType, scraperLog, SearchResult as TocSearchResult, searchToc } from "./directTools";
 import { UrlError } from "../errors";
 import request from "../request";
 
@@ -29,27 +29,35 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const linkMatch = linkPattern.exec(link);
 
     if (!linkMatch) {
-      logger.warn(`Unknown GogoAnime News Link Format: '${link}'`);
+      scraperLog("warn", LogType.CONTENT_FORMAT, "gogoanime", {
+        url: link,
+      });
       continue;
     }
     const tocLink = linkMatch[1] + "category/" + linkMatch[2];
 
     const episodeTitleElement = newsRow.children(".episode");
 
-    const mediumTitle = sanitizeString(mediumElement.text());
+    const mediumTitle = sanitizeString(getText(mediumElement));
 
-    const rawTitle = sanitizeString(episodeTitleElement.text());
+    const rawTitle = sanitizeString(getText(episodeTitleElement));
     const groups = titlePattern.exec(rawTitle);
 
     if (!groups) {
-      logger.warn(`Unknown GogoAnime News Format: '${episodeTitleElement.text()}' for '${mediumTitle}'`);
+      scraperLog("warn", LogType.TITLE_FORMAT, "gogoanime", {
+        url: link,
+        unknown_title: rawTitle,
+      });
       continue;
     }
 
     const episodeTitle = sanitizeString(groups[0]);
     const episodeIndices = extractIndices(groups, 1, 2, 4);
     if (!episodeIndices) {
-      logger.warn(`unknown news format on gogoAnime: ${episodeTitle}`);
+      scraperLog("warn", LogType.INDEX_FORMAT, "gogoanime", {
+        url: link,
+        unknown_index: episodeTitle,
+      });
       continue;
     }
     news.push({
@@ -83,16 +91,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   const $ = await request.getCheerio({ url: urlString });
   const contentElement = $(".content_left .main_body");
 
-  const animeTitle = sanitizeString(contentElement.find("h1").text());
+  const animeTitle = sanitizeString(getText(contentElement.find("h1")));
 
   if (!animeTitle) {
-    logger.warn("toc link with no title: " + urlString);
+    scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "gogoanime", {
+      url: urlString,
+    });
     return [];
   }
 
   const episodePages = contentElement.find("#episode_page li");
   if (episodePages.length < 1) {
-    logger.warn("toc link with no episodes: " + urlString);
+    scraperLog("warn", LogType.NO_EPISODES, "gogoanime", {
+      url: urlString,
+    });
     return [];
   }
   const content: TocEpisode[] = [];
@@ -101,10 +113,13 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
   for (let i = 0; i < episodePages.length; i++) {
     const episodePage = episodePages.eq(i);
-    const exec = pageReg.exec(episodePage.text());
+    const exec = pageReg.exec(getText(episodePage));
 
     if (!exec) {
-      logger.warn(`could not match toc episode Page text on '${urlString}'`);
+      logger.warn("could not match toc episode Page text", {
+        scraper: "gogoanime",
+        url: urlString,
+      });
       continue;
     }
     const pageMaxIndex = Number(exec[1]);
@@ -128,14 +143,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < infoElements.length; i++) {
     const element = infoElements.eq(i);
 
-    if (element.text().toLocaleLowerCase().includes("status")) {
+    if (getText(element).toLocaleLowerCase().includes("status")) {
       releaseStateElement = element.parent();
     }
   }
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = releaseStateElement.text().toLowerCase();
+    const releaseStateString = getText(releaseStateElement).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {
@@ -189,12 +204,14 @@ async function search(searchWords: string): Promise<SearchResult[]> {
 
     const coverElement = linkElement.find("[style]");
 
-    const text = sanitizeString(linkElement.text());
+    const text = sanitizeString(getText(linkElement));
     const link = linkElement.attr("href") as string;
     const coverStyle = coverElement.attr("style") as string;
     const exec = coverRegex.exec(coverStyle);
     if (!exec) {
-      logger.warn(`On search gogoanime: Style with coverLink not matchable '${coverStyle}'`);
+      logger.warn(`on search: Style with coverLink not matchable '${coverStyle}'`, {
+        scraper: "gogoanime",
+      });
       continue;
     }
     searchResults.push({
@@ -214,11 +231,21 @@ searchForToc.medium = MediaType.VIDEO;
 searchForToc.blindSearch = true;
 search.medium = MediaType.VIDEO;
 
+/**
+ * Should have gotten the download links.
+ * But should not work anymore.
+ *
+ * @param link link of the episode
+ * @returns download content
+ * @deprecated behind recaptcha
+ */
 async function contentDownloader(link: string): Promise<EpisodeContent[]> {
   const episodeRegex = /https:\/\/www\d*\.gogoanime\.(vc|wiki)\/.+-episode-(\d+)/;
   const exec = episodeRegex.exec(link);
   if (!exec) {
-    logger.warn(`invalid gogoanime episode link: '${link}'`);
+    scraperLog("warn", LogType.INVALID_LINK, "gogoanime", {
+      url: link,
+    });
     return [];
   }
   const $ = await request.getCheerio({ url: link });
@@ -227,7 +254,7 @@ async function contentDownloader(link: string): Promise<EpisodeContent[]> {
   const downloadPage = await request.getCheerio({ url: outSideLink.attr("href") as string });
 
   const downloadLink = downloadPage(".dowload a").first().attr("href") as string;
-  const mediumTitle = sanitizeString($(".anime-info a").text());
+  const mediumTitle = sanitizeString(getText($(".anime-info a")));
 
   return [
     {

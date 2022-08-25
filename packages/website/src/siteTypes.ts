@@ -1,4 +1,4 @@
-import { CustomHook, JobHistoryItem as ServerJobHistoryItem } from "enterprise-core/dist/types";
+import { CustomHook, ExternalList, JobHistoryItem as ServerJobHistoryItem, List } from "enterprise-core/dist/types";
 
 export type ClickListener = (evt: MouseEvent) => void;
 export type KeyboardListener = (evt: KeyboardEvent) => void;
@@ -18,10 +18,6 @@ export enum MediaType {
   IMAGE = 0x8,
 }
 
-export interface Medium {
-  id: number;
-}
-
 export interface TransferMedium {
   mediumId: any;
   listId: any;
@@ -36,16 +32,8 @@ export interface TransferList {
   external: any;
 }
 
-export interface List {
-  name: string;
-  id: number;
-  external: boolean;
-  show: boolean;
-  items: number[];
-}
-
 export interface SimpleMedium {
-  id?: number;
+  id: number;
   countryOfOrigin?: string;
   languageOfOrigin?: string;
   author?: string;
@@ -127,22 +115,19 @@ export interface User {
   session: string;
 }
 
-export interface ExternalList {
-  uuid?: string;
-  id: number;
-  name: string;
-  medium: number;
-  url: string;
-  items: number[];
-  external: boolean;
-  show: boolean;
+export interface StoreInternalList extends List {
+  external: false;
+}
+
+export interface StoreExternalList extends ExternalList {
+  external: true;
 }
 
 export interface ExternalUser {
   uuid: string;
   identifier: string;
   type: number;
-  readonly lists: ExternalList[];
+  readonly lists: StoreExternalList[];
   lastScrape?: Date;
   cookies?: string | null;
 }
@@ -238,11 +223,12 @@ export interface JobTrack {
   modifications: Record<string, Modification>;
   network: NetworkTrack;
   queryCount: number;
+  error?: { name: string; message: string };
 }
 
-export type JobHistoryItem = ServerJobHistoryItem & {
+export interface JobHistoryItem extends Omit<ServerJobHistoryItem, "message"> {
   message: string | JobTrack;
-};
+}
 
 export interface JobDetails {
   job?: Job;
@@ -354,6 +340,8 @@ export interface MinMedium {
 export interface StoreUser {
   settings: any;
   columns: Column[];
+  unreadNotificationsCount: number;
+  readNotificationsCount: number;
 }
 
 export interface Modal {
@@ -377,12 +365,20 @@ export interface VuexStore {
   name: string;
   uuid: string;
   modals: Modals;
-  releases: ReleaseStore;
-  externalUser: ExternalUserStore;
-  media: MediaStore;
-  lists: ListsStore;
-  news: NewsStore;
-  hooks: CustomHookStore;
+}
+
+export interface DisplayReleaseItem {
+  episodeId: number;
+  title: string;
+  link: string;
+  mediumId: number;
+  medium: number;
+  mediumTitle: string;
+  locked?: boolean;
+  date: string;
+  time: number;
+  read: boolean;
+  key: string;
 }
 
 export interface ReleaseStore {
@@ -392,20 +388,17 @@ export interface ReleaseStore {
   onlyLists: number[];
   ignoreMedia: number[];
   ignoreLists: number[];
+  latest: Date;
+  until: Date;
+  releases: DisplayReleaseItem[];
+  lastFetch?: { args: string; date: number };
+  fetching: boolean;
 }
 
-export interface ExternalUserStore {
-  externalUser: ExternalUser[];
-}
+export type StoreList = StoreInternalList | StoreExternalList;
 
 export interface ListsStore {
-  lists: List[];
-}
-
-export interface MediaStore {
-  media: Record<number, SimpleMedium>;
-  secondaryMedia: Record<number, SecondaryMedium>;
-  episodesOnly: boolean;
+  lists: StoreInternalList[];
 }
 
 export interface NewsStore {

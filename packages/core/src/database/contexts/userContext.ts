@@ -2,6 +2,14 @@ import { SubContext } from "./subContext";
 import { SimpleUser, User, Uuid, Nullable, UpdateUser } from "../../types";
 import { allTypes, BcryptHash, Errors, Hasher, Hashes } from "../../tools";
 import { v1 as uuidGenerator, v4 as sessionGenerator } from "uuid";
+import {
+  CredentialError,
+  DatabaseError,
+  DuplicateEntityError,
+  MissingEntityError,
+  SessionError,
+  ValidationError,
+} from "../../error";
 
 /**
  * Checks whether the password equals to the given hash
@@ -20,7 +28,7 @@ const verifyPassword = (password: string, hash: string, alg: string, salt: strin
   const hashAlgorithm = Hashes.find((value) => value.tag === alg);
 
   if (!hashAlgorithm) {
-    throw Error("no such algorithm " + alg);
+    throw new ValidationError("no such algorithm " + alg);
   }
 
   return hashAlgorithm.equals(password, hash, salt);
@@ -43,12 +51,12 @@ export class UserContext extends SubContext {
    */
   public async register(userName: string, password: string, ip: string): Promise<User> {
     if (!userName || !password) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("missing username or password"));
     }
     const user = await this.query("SELECT * FROM user WHERE name = ?;", userName);
     // if there is a result in array, userName is not new, so abort
     if (user.length) {
-      return Promise.reject(new Error(Errors.USER_EXISTS_ALREADY));
+      return Promise.reject(new DuplicateEntityError(Errors.USER_EXISTS_ALREADY));
     }
     // if userName is new, proceed to register
     const id = uuidGenerator();
@@ -78,21 +86,21 @@ export class UserContext extends SubContext {
    */
   public async loginUser(userName: string, password: string, ip: string): Promise<User> {
     if (!userName || !password) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("missing username or password"));
     }
     const result = await this.query("SELECT * FROM user WHERE name = ?;", userName);
 
     if (!result.length) {
-      return Promise.reject(new Error(Errors.USER_DOES_NOT_EXIST));
+      return Promise.reject(new MissingEntityError(Errors.USER_DOES_NOT_EXIST));
     } else if (result.length !== 1) {
-      return Promise.reject(new Error(Errors.CORRUPT_DATA));
+      return Promise.reject(new DatabaseError("got multiple user for the same name"));
     }
 
     const user = result[0];
     const uuid = user.uuid;
 
     if (!(await verifyPassword(password, user.password, user.alg, user.salt))) {
-      return Promise.reject(new Error(Errors.INVALID_CREDENTIALS));
+      return Promise.reject(new CredentialError(Errors.INVALID_CREDENTIALS));
     }
     // if there exists a session already for that device, remove it
     await this.delete("user_log", { column: "ip", value: ip });
@@ -162,7 +170,7 @@ export class UserContext extends SubContext {
     const sessionRecord = result[0];
 
     if (!sessionRecord || !sessionRecord.session_key) {
-      throw Error("user has no session");
+      throw new SessionError("user has no session");
     }
 
     return this._getUser(uuid, sessionRecord.session_key);
@@ -238,7 +246,7 @@ export class UserContext extends SubContext {
   public async updateUser(uuid: Uuid, user: UpdateUser): Promise<boolean> {
     if (user.newPassword && user.password) {
       if (!(await this.verifyPassword(uuid, user.password))) {
-        throw Error(Errors.INVALID_CREDENTIALS);
+        throw new CredentialError(Errors.INVALID_CREDENTIALS);
       }
     }
     return this.update(
@@ -250,8 +258,9 @@ export class UserContext extends SubContext {
         }
 
         if (user.newPassword) {
+          // this should never happen, as verifyPassword should then fail?
           if (!user.password) {
-            return Promise.reject(new Error(Errors.INVALID_INPUT));
+            return Promise.reject(new ValidationError("missing password"));
           }
           const { salt, hash } = await StandardHash.hash(user.newPassword);
 
@@ -291,7 +300,7 @@ export class UserContext extends SubContext {
    */
   private async _getUser(uuid: Uuid, session: string): Promise<User> {
     if (!uuid) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      throw new ValidationError("missing uuid");
     }
     const user: User = {
       externalUser: [],

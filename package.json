@@ -1,6 +1,6 @@
 {
   "name": "enterprise-other",
-  "version": "1.26.2",
+  "version": "2.18.2",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -8,11 +8,11 @@
     "test:e2e": "vue-cli-service test:e2e",
     "lint": "npm run lint:server && npm run lint:website",
     "commit": "npx git-cz",
-    "generate:api": "node dist/server/misc/openapi/generate.js",
+    "generate:api": "node packages/server/dist/misc/openapi/generate.js",
     "lint:server": "eslint -c packages/server/.eslintrc.js packages/server/src/",
     "lint:website": "eslint packages/website/",
     "lintfix": "eslint --fix 'packages/**/*.{js,ts,vue}'",
-    "migrate": "node dist/server/misc/migrate.js",
+    "migrate": "node packages/server/dist/misc/migrate.js",
     "pm2": "pm2 start",
     "pm2:refresh": "pm2 restart ecosystem.config.js --update-env",
     "start": "npm run start:server &; npm run start:crawler &",
@@ -22,35 +22,34 @@
     "test:debug": "node --inspect --inspect-brk node_modules/.bin/jest --runInBand"
   },
   "devDependencies": {
-    "@commitlint/cli": "^16.0.1",
-    "@commitlint/config-conventional": "^16.0.0",
-    "@commitlint/prompt": "^16.0.0",
+    "@commitlint/cli": "^17.0.3",
+    "@commitlint/config-conventional": "^17.0.3",
+    "@commitlint/prompt": "^17.0.3",
     "@google/semantic-release-replace-plugin": "^1.1.0",
     "@semantic-release/changelog": "^6.0.1",
+    "@semantic-release/exec": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/release-notes-generator": "^10.0.3",
-    "@typescript-eslint/eslint-plugin": "^5.8.1",
-    "@typescript-eslint/parser": "^5.8.1",
-    "@vue/eslint-config-standard": "^6.0.0",
-    "@vue/eslint-config-typescript": "^9.1.0",
-    "commitizen": "^4.2.3",
+    "@typescript-eslint/eslint-plugin": "^5.33.0",
+    "@typescript-eslint/parser": "^5.33.0",
+    "@vue/eslint-config-standard-with-typescript": "^8.0.0",
+    "commitizen": "^4.2.5",
     "cz-conventional-changelog": "^3.3.0",
-    "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-config-standard": "^16.0.3",
-    "eslint-plugin-import": "^2.25.3",
-    "eslint-plugin-jsdoc": "^37.4.2",
+    "eslint": "^8.21.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-jsdoc": "^39.3.6",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prefer-arrow": "^1.2.3",
-    "eslint-plugin-prettier": "^4.0.0",
-    "eslint-plugin-promise": "^5.2.0",
-    "eslint-plugin-vue": "^8.2.0",
-    "husky": "^7.0.4",
-    "jest-junit": "^13.0.0",
-    "prettier": "^2.5.1",
-    "semantic-release": "^18.0.1",
-    "ts-jest": "^27.1.2",
-    "ts-node": "^10.4.0"
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-vue": "^9.3.0",
+    "jest-junit": "^14.0.0",
+    "prettier": "^2.7.1",
+    "semantic-release": "^19.0.3",
+    "ts-jest": "^28.0.7",
+    "ts-node": "^10.9.1"
   },
   "jest-junit": {
     "outputDirectory": "reports",
@@ -66,6 +65,9 @@
       "autoprefixer": {}
     }
   },
+  "engines": {
+    "node": ">= 18.7.0"
+  },
   "browserslist": [
     "> 1%",
     "last 2 versions",
@@ -74,11 +76,6 @@
   "config": {
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
-    }
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "npx --no-install commitlint --edit $1"
     }
   },
   "workspaces": [

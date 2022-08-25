@@ -2,15 +2,16 @@ import { DataBaseBuilder } from "./databaseBuilder";
 import { ColumnBuilder } from "./columnBuilder";
 import { TableSchema } from "./tableSchema";
 import { ColumnSchema } from "./columnSchema";
-import { TableParser } from "./tableParser";
+import { parseDataColumn, parseForeignKey, parsePrimaryKey, parseUnique } from "./tableParser";
 import { InvalidationType } from "./databaseTypes";
+import { SchemaError } from "../error";
 
 export class TableBuilder {
-  private columns: ColumnSchema[] = [];
+  private readonly columns: ColumnSchema[] = [];
   private name?: string;
   private main?: boolean;
   private invalidationTable?: boolean;
-  private invalidationColumn?: string;
+  private readonly invalidationColumn?: string;
   private readonly databaseBuilder: DataBaseBuilder;
   private readonly stubTable = new TableSchema([], "");
   private readonly invalidations: Array<{ type: InvalidationType; table?: string }> = [];
@@ -26,9 +27,9 @@ export class TableBuilder {
   }
 
   public parseColumn(column: string): this {
-    const dataColumn = TableParser.parseDataColumn(this.stubTable, this.databaseBuilder.tables, column);
+    const dataColumn = parseDataColumn(this.stubTable, this.databaseBuilder.tables, column);
     if (!dataColumn) {
-      throw Error("could not parse column");
+      throw new SchemaError("could not parse column");
     }
     this.stubTable.columns.push(dataColumn);
     return this;
@@ -42,13 +43,13 @@ export class TableBuilder {
   public parseMeta(data: string): this {
     const uppedData = data.toUpperCase();
     if (uppedData.startsWith("PRIMARY KEY")) {
-      TableParser.parsePrimaryKey(this.stubTable, this.databaseBuilder.tables, data);
+      parsePrimaryKey(this.stubTable, this.databaseBuilder.tables, data);
     } else if (uppedData.startsWith("FOREIGN KEY")) {
-      TableParser.parseForeignKey(this.stubTable, this.databaseBuilder.tables, data);
+      parseForeignKey(this.stubTable, this.databaseBuilder.tables, data);
     } else if (uppedData.startsWith("UNIQUE")) {
-      TableParser.parseUnique(this.stubTable, this.databaseBuilder.tables, data);
+      parseUnique(this.stubTable, this.databaseBuilder.tables, data);
     } else {
-      throw Error(`unknown meta: ${data}`);
+      throw new SchemaError(`unknown meta: ${data}`);
     }
     return this;
   }
@@ -79,7 +80,7 @@ export class TableBuilder {
 
   public build(): TableSchema {
     if (!this.name) {
-      throw Error("table has no name");
+      throw new SchemaError("table has no name");
     }
     const table = new TableSchema(
       [...this.columns, ...this.stubTable.columns],

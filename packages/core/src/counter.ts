@@ -1,6 +1,6 @@
 export class Counter<K> {
-  private map = new Map<K, number>();
-  private ignoreKeys: K[] = [];
+  private readonly map = new Map<K, number>();
+  private readonly ignoreKeys: K[] = [];
 
   public count(key: K): number {
     const previous = this.map.get(key);
@@ -40,6 +40,6 @@ export class Counter<K> {
 
   public getCount(key: K): number {
     const previous = this.map.get(key);
-    return previous ? previous : 0;
+    return previous || 0;
   }
 }

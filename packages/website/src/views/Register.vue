@@ -1,65 +1,52 @@
 <template>
-  <div class="container">
+  <div class="container text-center">
     <h1>Register</h1>
     <form>
-      <div class="row">
-        <label class="col-sm-2 col-form-label">Username:</label>
-        <input v-model="user" class="col-sm-4 form-control" placeholder="Your username" title="Username" type="text" />
-      </div>
-      <div class="row">
-        <label class="col-sm-2 col-form-label">Password:</label>
-        <input
-          v-model="pw"
-          class="col-sm-4 form-control"
-          placeholder="Your password"
-          title="Password"
-          type="password"
-        />
-      </div>
-      <div class="row">
-        <label class="col-sm-2 col-form-label">Repeat Password:</label>
-        <input
-          v-model="pwRepeat"
-          class="col-sm-4 form-control"
-          placeholder="Repeat your password"
-          title="Repeat your Password"
-          type="password"
-        />
-      </div>
-      <button class="btn btn-primary" type="button" @click="sendForm()">Register</button>
-      <div class="lost">Forgot your password?</div>
-      <div class="error" />
+      <span class="p-float-label mb-2">
+        <label for="name">Username</label>
+        <input-text id="name" v-model="data.user" type="text" />
+      </span>
+      <span class="p-float-label mb-2">
+        <label for="password">Password</label>
+        <input-text id="password" v-model="data.pw" type="password" />
+      </span>
+      <span class="p-float-label mb-2">
+        <label for="pw-repeat">Repeat Password</label>
+        <input-text id="pw-repeat" v-model="data.pwRepeat" type="password" />
+      </span>
+      <p-button label="Register" :loading="data.loading" @click="sendForm()" />
+      <div class="error mt-2">{{ data.error }}</div>
     </form>
   </div>
 </template>
-<script lang="ts">
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { reactive } from "vue";
+import { useUserStore } from "../store/store";
 
-export default defineComponent({
-  name: "Register",
-  props: {
-    show: { type: Boolean, required: true },
-    error: { type: String, required: true },
-  },
-  data(): { user: string; pw: string; pwRepeat: string } {
-    return {
-      user: "",
-      pw: "",
-      pwRepeat: "",
-    };
-  },
-  watch: {
-    show(newValue: boolean): void {
-      if (!newValue) {
-        this.user = "";
-        this.pw = "";
-      }
-    },
-  },
-  methods: {
-    sendForm(): void {
-      this.$store.dispatch("register", { user: this.user, pw: this.pw, pwRepeat: this.pwRepeat });
-    },
-  },
+const data = reactive({
+  user: "",
+  pw: "",
+  pwRepeat: "",
+  error: "",
+  loading: false,
 });
+
+function sendForm(): void {
+  data.loading = true;
+  useUserStore()
+    .register({ user: data.user, pw: data.pw, pwRepeat: data.pwRepeat })
+    .catch((reason) => {
+      if (reason instanceof Error) {
+        data.error = reason.message;
+      } else {
+        data.error = JSON.stringify(reason);
+      }
+    })
+    .finally(() => (data.loading = false));
+}
 </script>
+<style scoped>
+.container {
+  max-width: 560px;
+}
+</style>

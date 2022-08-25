@@ -46,6 +46,10 @@ tests/api_requests
 ignore/
 *.uxf
 *test*.js
+*.txt
+*.csv
+*.ods
+*.md
 jspm_packages/
 
 # TypeScript v1 declaration files
@@ -96,6 +100,7 @@ packages/**/*.vue.js.map
 *.json
 packages/server/src/ignore/
 dist/
+data/
 
 # vscode project files
 .vscode

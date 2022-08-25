@@ -1,4 +1,6 @@
+import { getActivePinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
+import { userHydrated, useUserStore } from "./store/store";
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
@@ -14,14 +16,6 @@ const router = createRouter({
       path: "/list",
       name: "lists",
       component: () => import(/* webpackChunkName: "lists" */ "./views/Lists.vue"),
-    },
-    {
-      path: "/news",
-      name: "news",
-      // route level code-splitting
-      // this generates a separate chunk (news.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import(/* webpackChunkName: "news" */ "./views/News.vue"),
     },
     {
       path: "/settings",
@@ -74,12 +68,6 @@ const router = createRouter({
     {
       path: "/releases",
       name: "releases",
-      props: (to) => {
-        return {
-          read: to.query.read ? to.query.read === "true" : undefined,
-          type: to.query.type ? Number(to.query.type) : 0,
-        };
-      },
       // route level code-splitting
       // this generates a separate chunk (login.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
@@ -193,6 +181,14 @@ const router = createRouter({
           component: () => import(/* webpackChunkName: "admin" */ "./views/CustomHookView.vue"),
         },
         {
+          path: "addHookV2",
+          name: "addHookV2",
+          // route level code-splitting
+          // this generates a separate chunk (login.[hash].js) for this route
+          // which is lazy-loaded when the route is visited.
+          component: () => import(/* webpackChunkName: "admin" */ "./views/CustomHookViewV2.vue"),
+        },
+        {
           path: "editHook/:hookId(\\d+)",
           name: "editHook",
           props: (to) => {
@@ -205,6 +201,15 @@ const router = createRouter({
           // which is lazy-loaded when the route is visited.
           component: () => import(/* webpackChunkName: "admin" */ "./views/CustomHookView.vue"),
         },
+        {
+          path: "editHookv2/:hookId(\\d+)",
+          name: "editHookv2",
+          props: (to) => ({ id: Number.parseInt(to.params.hookId as string) }),
+          // route level code-splitting
+          // this generates a separate chunk (login.[hash].js) for this route
+          // which is lazy-loaded when the route is visited.
+          component: () => import(/* webpackChunkName: "admin" */ "./views/CustomHookViewV2.vue"),
+        },
       ],
     },
     {
@@ -216,6 +221,14 @@ const router = createRouter({
       component: () => import(/* webpackChunkName: "read" */ "./views/Search.vue"),
     },
     {
+      path: "/notifications",
+      name: "notifications",
+      // route level code-splitting
+      // this generates a separate chunk (login.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      component: () => import(/* webpackChunkName: "read" */ "./views/Notifications.vue"),
+    },
+    {
       path: "/:pathMatch(.*)*",
       name: "Not Found",
       // route level code-splitting
@@ -225,5 +238,17 @@ const router = createRouter({
     },
   ],
 });
-// FIXME remove query from this shit after redirect
+
+let userStore: ReturnType<typeof useUserStore> | undefined;
+
+router.beforeEach(async (to) => {
+  userStore ??= useUserStore(getActivePinia());
+
+  await userHydrated;
+
+  if (!userStore.loggedIn && (!to.name || !["login", "register"].includes(to.name.toString()))) {
+    return { name: "login" };
+  }
+});
+
 export default router;

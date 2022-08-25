@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(16);
+const dataBaseBuilder = new DataBaseBuilder(19);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -181,6 +181,7 @@ dataBaseBuilder
 dataBaseBuilder
   .getTableBuilder()
   .setName("episode_release")
+  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
   .parseColumn("episode_id INT UNSIGNED NOT NULL")
   // TODO: look through all ~35000 releases without toc_id and set this to "not null" if possible
   .parseColumn("toc_id INT UNSIGNED")
@@ -190,7 +191,8 @@ dataBaseBuilder
   .parseColumn("releaseDate DATETIME NOT NULL")
   .parseColumn("locked BOOLEAN DEFAULT 0")
   .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(episode_id, url)")
+  .parseMeta("PRIMARY KEY(id)")
+  .parseMeta("UNIQUE (episode_id, url)")
   .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
   .parseMeta("FOREIGN KEY(toc_id) REFERENCES medium_toc(id)")
   .build();
@@ -408,6 +410,28 @@ dataBaseBuilder
   .parseMeta("PRIMARY KEY(name)")
   .build();
 
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("notifications")
+  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
+  .parseColumn("title VARCHAR(200) NOT NULL")
+  .parseColumn("content VARCHAR(500) NOT NULL")
+  .parseColumn("date DATETIME NOT NULL")
+  .parseColumn("type VARCHAR(200) NOT NULL")
+  .parseColumn("key VARCHAR(200) NOT NULL")
+  .parseMeta("PRIMARY KEY(id)")
+  .build();
+
+dataBaseBuilder
+  .getTableBuilder()
+  .setName("notifications_read")
+  .parseColumn("id INT UNSIGNED NOT NULL")
+  .parseColumn("uuid CHAR(36) NOT NULL")
+  .parseMeta("PRIMARY KEY(id, uuid)")
+  .parseMeta("FOREIGN KEY (uuid) REFERENCES user(uuid)")
+  .parseMeta("FOREIGN KEY (id) REFERENCES notifications(id)")
+  .build();
+
 dataBaseBuilder.addMigrations(...Migrations);
 
 /*
@@ -447,7 +471,7 @@ dataBaseBuilder.getTableBuilder()
     .setName("service_settings")
     .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
-    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)");*/
+    .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)"); */
 
 dataBaseBuilder
   .getTableBuilder()

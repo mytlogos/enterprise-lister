@@ -1,8 +1,10 @@
 import { Cheerio, CheerioAPI, Element } from "cheerio";
-import { getStore } from "enterprise-core/dist/asyncStorage";
+import { getStore, Store } from "enterprise-core/dist/asyncStorage";
 import logger from "enterprise-core/dist/logger";
 import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
+import { Nullable } from "enterprise-core/dist/types";
 import * as url from "url";
+import { getText } from "../direct/directTools";
 import request, { BasicRequestConfig, RequestConfig as GetConfig } from "../request";
 import { CustomHookError, CustomHookErrorCodes } from "./errors";
 import {
@@ -37,13 +39,15 @@ export interface Trace {
   enableTrace: boolean;
 }
 
+export type TraceStore = Store<Trace>;
+
 /**
  * Serializes a Cheerio Object into html or its selected items in a html string array.
- * @param key property key
+ * @param _key property key
  * @param value property value
  * @returns serializable value
  */
-function replacer(key: unknown, value: any): unknown {
+function replacer(_key: unknown, value: any): unknown {
   if ((typeof value === "object" || typeof value === "function") && value && typeof value.html === "function") {
     if (typeof value.eq === "function" && typeof value.length === "number") {
       const serialized = [];
@@ -69,16 +73,20 @@ function clone(value: any): any | string {
     return undefined;
   }
   try {
-    return JSON.parse(JSON.stringify(value, replacer));
+    return structuredClone(value);
   } catch (error) {
-    return "Clone failed";
+    try {
+      return JSON.parse(JSON.stringify(value, replacer));
+    } catch (error2) {
+      return "Clone failed";
+    }
   }
 }
 
 function traceWrap<T extends (...args: any[]) => any>(target: T): T {
   // @ts-expect-error
   return (...args: Parameters<T>): ReturnType<T> => {
-    const store = getStore() as undefined | Map<keyof Trace, Trace[keyof Trace]>;
+    const store = getStore() as undefined | TraceStore;
 
     // no store means no tracing, so exit as light weight as possible
     if (!store || !store.get("enableTrace")) {
@@ -90,7 +98,7 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
     // every function should have a name
     // except unnamed (arrow) function expressions which are not bound to an variable, e.g. taken as parameter
     if (!functionName) {
-      const nextId = ((store.get("unnamedIds") as number) || 0) + 1;
+      const nextId = (store.get("unnamedIds") ?? 0) + 1;
       store.set("unnamedIds", nextId);
       functionName = "Unnamed" + nextId;
     }
@@ -133,9 +141,10 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
         const lastTrace = callStack[callStack.length - 1];
 
         if (lastTrace !== functionTrace) {
-          logger.warn(
-            `Last Call trace does not match expected one: Expected: ${functionTrace.name}-${functionTrace.callCount}, Found: ${lastTrace?.name}-${lastTrace?.callCount}`,
-          );
+          logger.warn("Last Call trace does not match expected one", {
+            expected: `${functionTrace.name}-${functionTrace.callCount}`,
+            found: `${lastTrace?.name}-${lastTrace?.callCount}`,
+          });
         } else {
           callStack.pop();
         }
@@ -147,9 +156,10 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
       const lastTrace = callStack[callStack.length - 1];
 
       if (lastTrace !== functionTrace) {
-        logger.warn(
-          `Last Call trace does not match expected one: Expected: ${functionTrace.name}-${functionTrace.callCount}, Found: ${lastTrace?.name}-${lastTrace?.callCount}`,
-        );
+        logger.warn("Last Call trace does not match expected one", {
+          expected: `${functionTrace.name}-${functionTrace.callCount}`,
+          found: `${lastTrace?.name}-${lastTrace?.callCount}`,
+        });
       } else {
         callStack.pop();
       }
@@ -196,14 +206,12 @@ const coerceType = traceWrap(function coerceType(value: string, type: TransferTy
     });
   }
   if (type === "date") {
-    const lowerDate = value.toLowerCase();
-    let date;
+    let date: Nullable<Date> = new Date(value);
 
-    if (lowerDate.includes("now") || lowerDate.includes("ago")) {
+    if (!date || Number.isNaN(date.getTime())) {
       date = relativeToAbsoluteTime(value);
-    } else {
-      date = new Date(value);
     }
+
     if (!date || Number.isNaN(date.getTime())) {
       throw new CustomHookError(
         `Could not coerce value '${value}' into a valid date`,
@@ -319,7 +327,7 @@ export const extractValue = traceWrap(function extractValue(result: any, targetK
         if (
           Array.isArray(transferTarget) &&
           transferTarget.length &&
-          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] == context.multipleIndex
+          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] === context.multipleIndex
         ) {
           transferTarget = transferTarget[transferTarget.length - 1];
         } else {
@@ -375,7 +383,7 @@ const getTransferContext = traceWrap(function getTransferContext<Target extends 
         if (
           Array.isArray(transferTarget) &&
           transferTarget.length &&
-          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] == context.multipleIndex
+          transferTarget[transferTarget.length - 1][EXTRACT_ITEM_INDEX] === context.multipleIndex
         ) {
           // reuse item
           transferTarget = transferTarget[transferTarget.length - 1];
@@ -445,7 +453,7 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
 ) {
   const transfers: Array<SimpleTransfer<Target>> = selector.transfers || [];
 
-  let text: string | undefined = undefined;
+  let text: string | undefined;
   let html: string | null = null;
 
   for (const transfer of transfers) {
@@ -459,8 +467,8 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
       }
       value = html;
     } else {
-      if (text == undefined) {
-        text = sanitizeString(element.text().trim());
+      if (text == null) {
+        text = sanitizeString(getText(element).trim());
       }
       value = text;
     }
@@ -474,8 +482,8 @@ const applyBasicSelector = traceWrap(function applyBasicSelector<Target extends 
     if (variable.extract) {
       value = getAttributeValue(element, variable.extract, base);
     } else {
-      if (text == undefined) {
-        text = sanitizeString(element.text().trim());
+      if (text == null) {
+        text = sanitizeString(getText(element).trim());
       }
       value = text;
     }
@@ -493,7 +501,7 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
 ) {
   const transfers: Array<RegexTransfer<Target>> = selector.transfers || [];
 
-  let match: RegExpExecArray | null | undefined = undefined;
+  let match: RegExpExecArray | null | undefined;
 
   for (const transfer of transfers) {
     let value: string;
@@ -501,8 +509,8 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
     if (typeof transfer.extract === "object" && Object.keys(transfer.extract).length) {
       value = getAttributeValue(element, transfer.extract, base);
     } else if (typeof transfer.extract === "string") {
-      if (match === undefined) {
-        const text = sanitizeString(element.text().trim());
+      if (match == null) {
+        const text = sanitizeString(getText(element).trim());
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {
@@ -534,8 +542,8 @@ const applyRegexSelector = traceWrap(function applyRegexSelector<Target extends 
     if (variable.extract) {
       value = getAttributeValue(element, variable.extract, base);
     } else if (variable.value) {
-      if (match === undefined) {
-        const text = sanitizeString(element.text().trim());
+      if (match == null) {
+        const text = sanitizeString(getText(element).trim());
         match = toRegex(selector.regex).exec(text);
 
         if (!match) {
@@ -622,8 +630,8 @@ export const extractJSON = traceWrap(function extractJSON<Target extends object,
     }
   }
 
-  console.log(`Matched selector ${selector.selector} found ${found.length} matches`);
-  console.log(`Has multiple: ${!!selector.multiple}`);
+  logger.debug(`Matched selector ${selector.selector} found ${found.length as string} matches`);
+  logger.debug(`Has multiple: ${!!selector.multiple + ""}`);
 
   let results: Array<Partial<Target>> = [];
 
@@ -666,11 +674,11 @@ export const extractJSON = traceWrap(function extractJSON<Target extends object,
       const currentPartial = results[index];
       const nexts = nextBuckets[index];
 
-      let multipleBucket: Array<Partial<Target>> | undefined = undefined;
+      let multipleBucket: Array<Partial<Target>> | undefined;
 
       for (const bucket of nexts) {
         if (bucket.length > 1) {
-          if (multipleBucket != undefined) {
+          if (multipleBucket != null) {
             throw new CustomHookError(
               "Multiple Child Selectors of the same parent with multiple=true are not allowed",
               CustomHookErrorCodes.MULTIPLE_IN_MULTIPLE_SIBLINGS,
@@ -711,7 +719,7 @@ export const extract = traceWrap(function extract<Target extends object>(
   context: Context = defaultContext(),
 ): Array<Partial<Target>> {
   const found = element.find(selector.selector);
-  console.log(`Matched selector ${selector.selector} found ${found.length} matches`);
+  logger.debug(`Matched selector ${selector.selector} found ${found.length} matches`);
   let results: Array<Partial<Target>> = [];
 
   if ((selector.multiple && found.length > 1) || found.length === 1) {
@@ -753,11 +761,11 @@ export const extract = traceWrap(function extract<Target extends object>(
       const currentPartial = results[index];
       const nexts = nextBuckets[index];
 
-      let multipleBucket: Array<Partial<Target>> | undefined = undefined;
+      let multipleBucket: Array<Partial<Target>> | undefined;
 
       for (const bucket of nexts) {
         if (bucket.length > 1) {
-          if (multipleBucket != undefined) {
+          if (multipleBucket != null) {
             throw new CustomHookError(
               "Multiple Child Selectors of the same parent with multiple=true are not allowed",
               CustomHookErrorCodes.MULTIPLE_IN_MULTIPLE_SIBLINGS,
@@ -801,7 +809,7 @@ const mergeSameIndexSymbol = traceWrap(function mergeSameIndexSymbol(
   const filter = (value: Record<string | symbol, any>) => {
     const index = value[EXTRACT_ITEM_INDEX];
 
-    if (index != undefined) {
+    if (index != null) {
       if (indices[index]) {
         merge(indices[index], value);
       } else {
@@ -822,7 +830,7 @@ const mergeSameIndexSymbol = traceWrap(function mergeSameIndexSymbol(
 
 export const merge = traceWrap(function merge<T extends any[] | Record<string, any>>(target: T, source: T): T {
   if (Array.isArray(target) && Array.isArray(source)) {
-    if (target[0] && target[0][EXTRACT_ITEM_INDEX] != undefined) {
+    if (target[0]?.[EXTRACT_ITEM_INDEX] != null) {
       mergeSameIndexSymbol(target, source);
     } else {
       target.push(...source);
@@ -837,7 +845,9 @@ export const merge = traceWrap(function merge<T extends any[] | Record<string, a
           merge(targetValue, sourceValue);
         } else {
           throw new CustomHookError(
-            `Cannot merge non object values: key: '${key}', target: '${targetValue}', source: '${sourceValue}'`,
+            `Cannot merge non object values: key: '${key}', target: '${targetValue + ""}', source: '${
+              sourceValue + ""
+            }'`,
             CustomHookErrorCodes.MERGE_TYPE_NON_OBJECT,
             {
               target,
@@ -874,7 +884,7 @@ export const merge = traceWrap(function merge<T extends any[] | Record<string, a
 const templateString = traceWrap(function templateString(value: string, context: Context): string {
   const originalValue = value;
   const braces: Array<{ type: string; index: number }> = [];
-  let lastBrace: { type: string; index: number } | undefined = undefined;
+  let lastBrace: { type: string; index: number } | undefined;
 
   for (let index = 0; index < value.length; index++) {
     const char = value[index];
@@ -951,7 +961,7 @@ const templateString = traceWrap(function templateString(value: string, context:
       variableValue = variableValue[Number(match[2])];
     }
 
-    if (variableValue == undefined) {
+    if (variableValue == null) {
       throw new CustomHookError(
         `Variable '${originalName}' has no value!`,
         CustomHookErrorCodes.TEMPLATE_VARIABLE_NO_VALUE,
@@ -969,7 +979,7 @@ const templateString = traceWrap(function templateString(value: string, context:
   for (const [replaceName, replaceValue] of Object.entries(replaceables)) {
     value = value.replaceAll(`{${replaceName}}`, replaceValue);
   }
-  console.log(`Templated Value '${originalValue}' into ${value}`);
+  logger.debug(`Templated Value '${originalValue}' into ${value}`);
   return value;
 });
 
@@ -1005,9 +1015,12 @@ export const makeRequest = traceWrap(function makeRequest(
   }
   options.url = targetUrl;
 
-  console.log("Requesting url: " + targetUrl);
+  logger.debug("Requesting url: " + targetUrl);
   if (requestConfig?.jsonResponse) {
     return request.getJson(options as unknown as GetConfig<string>);
+  }
+  if (requestConfig?.fullResponse) {
+    return request.request(options as any);
   }
   return request.getCheerio(options as unknown as GetConfig<string>);
 });

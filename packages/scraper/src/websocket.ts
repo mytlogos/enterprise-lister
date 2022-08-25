@@ -1,19 +1,29 @@
 import Websocket from "ws";
 import logger from "enterprise-core/dist/logger";
 import { remove } from "enterprise-core/dist/tools";
-import diagnostic_channel from "diagnostics_channel";
+import { ChannelNames, subscribe, unsubscribe } from "diagnostics_channel";
 import { ScraperChannel, WSRequest } from "./externals/types";
-import { DefaultJobScraper } from "./externals/jobScraperManager";
-import { publishQueues } from "./externals/queueManager";
+import { DefaultJobScraper } from "./scheduler/jobScheduler";
+import { publishQueues } from "./externals/queueRequest";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 const ws = new Websocket.Server({
   port: 3001,
 });
 
 ws.on("connection", (socket) => {
+  registerOnExitHandler(() => new Promise((resolve, reject) => ws.close((err) => (err ? reject(err) : resolve()))));
   socket.on("message", (data) => {
     try {
-      const msg = data.toString() as WSRequest;
+      let msg: WSRequest;
+
+      if (Buffer.isBuffer(data)) {
+        msg = data.toString() as WSRequest;
+      } else if (data instanceof ArrayBuffer) {
+        msg = new TextDecoder().decode(data) as WSRequest;
+      } else {
+        msg = data.map((value) => value.toString()).join() as WSRequest;
+      }
 
       switch (msg) {
         case "START_JOBS":
@@ -53,10 +63,10 @@ ws.on("connection", (socket) => {
 });
 
 class SocketChannelListener {
-  private listenerSockets = [] as Websocket[];
-  private channel: ScraperChannel;
+  private readonly listenerSockets: Websocket[] = [];
+  private readonly channel: ScraperChannel;
 
-  public constructor(channel: ScraperChannel) {
+  public constructor(channel: ChannelNames) {
     this.channel = channel;
   }
 
@@ -70,7 +80,7 @@ class SocketChannelListener {
       return this.listener;
     }
     const sockets = this.listenerSockets;
-    this.listener = function jobListener(msg: unknown) {
+    this.listener = function channelListener(msg: unknown) {
       for (const socket of sockets) {
         try {
           socket.send(JSON.stringify(msg));
@@ -87,8 +97,7 @@ class SocketChannelListener {
 
     // subscribe to channel if it is the first socket
     if (this.listenerSockets.length === 1) {
-      const channel = diagnostic_channel.channel(this.channel);
-      channel.subscribe(this.getListener());
+      subscribe(this.channel, this.getListener());
     }
   }
 
@@ -97,13 +106,7 @@ class SocketChannelListener {
 
     // unsubscribe to channel if it has no sockets which listen
     if (!this.listenerSockets.length) {
-      const channel = diagnostic_channel.channel(this.channel);
-
-      if (channel.unsubscribe) {
-        channel.unsubscribe(this.getListener());
-      } else {
-        logger.warn("Tried to unsubscribe from an inactive channel", channel);
-      }
+      unsubscribe(this.channel, this.getListener());
     }
   }
 }

@@ -6,6 +6,11 @@ VERSION=$1
 
 echo $@
 
+if [ -z ${VERSION} ];
+then
+  VERSION=$(curl --silent "https://api.github.com/repos/mytlogos/enterprise-lister/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")')
+fi
+
 wget "https://github.com/mytlogos/enterprise-lister/releases/download/$VERSION/dist-src.zip"
 
 unzip dist-src.zip

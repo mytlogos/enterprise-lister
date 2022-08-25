@@ -1,4 +1,5 @@
 import * as tools from "../../../tools";
+import { internetTester } from "../../../internetTester";
 import * as storage from "../../../database/storages/storage";
 import { episodeStorage } from "../../../database/storages/storage";
 import {
@@ -28,7 +29,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // await tearDownTestDatabase();
-  tools.internetTester.stop();
+  internetTester.stop();
   return storage.stopStorage();
 });
 
@@ -249,12 +250,12 @@ describe("episodeContext", () => {
   describe("addRelease", () => {
     it("should not throw when using valid parameters", async () => {
       const [episode] = await fillEpisodeTable();
-      const release = {
+      const release: EpisodeRelease = {
         episodeId: episode.id,
         releaseDate: new Date(),
         title: "hi",
         url: "https://book.url/test/",
-      } as EpisodeRelease;
+      };
       await expect(episodeStorage.addRelease(release)).resolves.toEqual(release);
     });
   });
@@ -278,12 +279,12 @@ describe("episodeContext", () => {
   describe("updateRelease", () => {
     it("should not throw when using valid parameters", async () => {
       const [episode] = await fillEpisodeTable();
-      const release = {
+      const release: EpisodeRelease = {
         episodeId: episode.id,
         releaseDate: new Date(),
         title: "hi",
         url: "https://book.url/test/",
-      } as EpisodeRelease;
+      };
       release.releaseDate.setMilliseconds(0);
 
       // FIXME: currently getReleases returns null values for properties which do not contain the null type

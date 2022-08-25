@@ -11,9 +11,9 @@ import {
   Id,
   ExternalStorageUser,
   JobTrack,
+  ScrapeName,
 } from "enterprise-core/dist/types";
 import { MediaType } from "enterprise-core/dist/tools";
-import { JobCallback } from "../jobManager";
 import { ListScrapeResult } from "./listManager";
 
 /**
@@ -53,6 +53,37 @@ export interface JobQueueChannelMessage extends BasicChannelMessage {
   max: number;
 }
 
+/**
+ * Type diagnostics_channel module more restrictively.
+ */
+declare module "diagnostics_channel" {
+  interface ScraperMapping {
+    "enterprise-jobqueue": JobQueueChannelMessage;
+    "enterprise-jobs": JobChannelMessage;
+    "enterprise-requestqueue": RequestQueueChannelMessage;
+  }
+
+  type ChannelNames = keyof ScraperMapping;
+
+  interface TypedChannel<K extends ChannelNames> extends Channel {
+    readonly name: K;
+
+    publish(message: ScraperMapping[K]): void;
+
+    subscribe(onMessage: TypedChannelListener<K>): void;
+
+    unsubscribe(onMessage: TypedChannelListener<K>): void;
+  }
+
+  type TypedChannelListener<K extends ChannelNames> = (message: ScraperMapping[K], name: K) => void;
+
+  function channel<K extends ChannelNames>(name: K): TypedChannel<K>;
+
+  function subscribe<K extends ChannelNames>(name: K, onMessage: TypedChannelListener<K>): void;
+
+  function unsubscribe<K extends ChannelNames>(name: K, onMessage: TypedChannelListener<K>): void;
+}
+
 export type JobWSRequest = "START_JOBS" | "STOP_JOBS";
 
 /**
@@ -74,6 +105,7 @@ export type JobChannelMessage = StartJobChannelMessage | EndJobChannelMessage;
 export interface EndJobChannelMessage extends BasicJobChannelMessage {
   messageType: "jobs";
   type: "finished";
+  jobType: ScrapeName;
   jobName: string;
   jobId: number;
   timestamp: number;
@@ -91,34 +123,6 @@ export interface StartJobChannelMessage extends BasicJobChannelMessage {
   jobName: string;
   jobId: number;
   timestamp: number;
-}
-
-export interface ScraperJob {
-  type: string;
-  onSuccess?: () => void;
-  onDone?: () => void | ScraperJob | ScraperJob[];
-  onFailure?: (reason?: any) => void;
-  cb: (item: any) => Promise<any>;
-}
-
-export interface OneTimeEmittableJob extends ScraperJob {
-  type: "onetime_emittable";
-  key: string;
-  item: any;
-}
-
-export interface PeriodicEmittableJob extends ScraperJob {
-  type: "periodic_emittable";
-  interval: number;
-  key: string;
-  item: any;
-}
-
-// @ts-expect-error
-export interface PeriodicJob extends ScraperJob {
-  type: "periodic";
-  interval: number;
-  cb: JobCallback;
 }
 
 export interface Hook {

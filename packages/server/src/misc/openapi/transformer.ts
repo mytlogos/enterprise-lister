@@ -73,8 +73,8 @@ export async function generateValidator(data: Readonly<OpenApiObject>): Promise<
 
 abstract class TemplateGenerator {
   protected root: Readonly<OpenApiObject>;
-  private templateSource: string;
-  private templateTarget: string;
+  private readonly templateSource: string;
+  private readonly templateTarget: string;
 
   protected constructor(data: Readonly<OpenApiObject>, templateSource: string, templateTarget: string) {
     this.root = data;
@@ -101,7 +101,7 @@ abstract class TemplateGenerator {
       }
       if (schema.type === "Enum" && schema.title) {
         // @ts-expect-error
-        if (schema.enum && schema.enum[enumNameSymbol]) {
+        if (schema.enum?.[enumNameSymbol]) {
           schemata[schema.title] = schema;
           schema.enum.forEach((value) => this.setSchemata(schemata, value));
         } else {
@@ -142,7 +142,7 @@ abstract class TemplateGenerator {
     if (operation.requestBody && !isRefObj(operation.requestBody)) {
       const typeObject: MediaTypeObject = operation.requestBody.content["application/json"];
 
-      if (typeObject && typeObject.schema) {
+      if (typeObject?.schema) {
         const schema = this.getSchema(typeObject.schema) as SchemaObject;
 
         if (schema.title) {
@@ -196,8 +196,8 @@ function camelCase(s: string): string {
 }
 
 class TSTemplateGenerator extends TemplateGenerator {
-  private keyReg = /\/+/g;
-  private validKeyReg = /^[a-z_][a-zA-Z_0-9]*$/;
+  private readonly keyReg = /\/+/g;
+  private readonly validKeyReg = /^[a-z_][a-zA-Z_0-9]*$/;
 
   public constructor(data: Readonly<OpenApiObject>, source: string, target: string) {
     super(data, source, target);
@@ -216,9 +216,9 @@ class TSTemplateGenerator extends TemplateGenerator {
       const genericType = this.schemaToJSType(items);
 
       if (genericType.toString().match(/^\w+$/)) {
-        return new handlebars.SafeString(`${genericType}[]`);
+        return new handlebars.SafeString(`${genericType.toString()}[]`);
       }
-      return new handlebars.SafeString(`Array<${genericType}>`);
+      return new handlebars.SafeString(`Array<${genericType.toString()}>`);
     } else if (schema.type === "Enum") {
       return schema.title || "unknown";
     } else if (schema.type === "object") {
@@ -235,7 +235,7 @@ class TSTemplateGenerator extends TemplateGenerator {
       const properties = entries
         .map((entry) => {
           const subSchema = isRefObj(entry[1]) ? this.resolveReference(entry[1]) : entry[1];
-          return `${entry[0]}: ${this.schemaToJSType(subSchema)}`;
+          return `${entry[0]}: ${this.schemaToJSType(subSchema).toString()}`;
         })
         .join("; ");
       return new handlebars.SafeString(`{ ${properties} }`);
@@ -259,7 +259,7 @@ class TSTemplateGenerator extends TemplateGenerator {
         valueType = this.schemaToJSType(valueSchema as SchemaObject);
       }
 
-      return new handlebars.SafeString(`Record<${this.schemaToJSType(keyType)}, ${valueType}>`);
+      return new handlebars.SafeString(`Record<${this.schemaToJSType(keyType).toString()}, ${valueType}>`);
     } else if (schema.type === "integer") {
       return "number";
     }
@@ -292,7 +292,7 @@ class TSTemplateGenerator extends TemplateGenerator {
       return new handlebars.SafeString(
         param
           .filter((value) => !autoIncluded.includes(value.name))
-          .map((value) => `${value.name}: ${this.schemaToJSType(value.type)}`)
+          .map((value) => `${value.name}: ${this.schemaToJSType(value.type).toString()}`)
           .join(", "),
       );
     });
@@ -396,7 +396,7 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
       if (schema.type === "Enum" && schema.title) {
         result.push(schema.title);
         // @ts-expect-error
-        if (schema.enum && schema.enum[enumNameSymbol]) {
+        if (schema.enum?.[enumNameSymbol]) {
           result.push(...schema.enum.flatMap((value) => this.gatherSchemataNames(value)));
         } else {
           console.log(`Enum '${schema.title}' without enum values or enum names!`);
@@ -417,7 +417,7 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
   private addHandler() {
     handlebars.registerHelper("paramToReturnType", (apiParams: TemplateApiParam[]) => {
       return new handlebars.SafeString(
-        `{ ${apiParams.map((value) => `${value.name}: ${this.schemaToJSType(value.type)}`).join("; ")} }`,
+        `{ ${apiParams.map((value) => `${value.name}: ${this.schemaToJSType(value.type).toString()}`).join("; ")} }`,
       );
     });
     handlebars.registerHelper("toConvertName", (schema: SchemaObject) => {

@@ -8,14 +8,16 @@ import { getHook as getMangaDexHook } from "./direct/mangadexScraper";
 import { getHook as getWebnovelHook } from "./direct/webnovelScraper";
 import { getHook as getQUndergroundHook } from "./direct/undergroundScraper";
 import { getHook as getNovelFullHook } from "./direct/novelFullScraper";
-import { getHook as getBoxnovelHook } from "./direct/boxNovelScraper";
 import { getHook as getOpenLibraryHook } from "./direct/openLibraryScraper";
 import { ContentDownloader, Hook, NewsScraper, SearchScraper, TocScraper, TocSearchScraper } from "./types";
 import { customHookStorage, hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { getListManagerHooks } from "./listManager";
 import { MediaType, multiSingle } from "enterprise-core/dist/tools";
 import { HookConfig } from "./custom/types";
+import { HookConfig as HookConfigV2 } from "./customv2/types";
+import { createHook as createHookV2 } from "./customv2";
 import { createHook } from "./custom/customScraper";
+import { ValidationError } from "enterprise-core/dist/error";
 
 function getRawHooks(): Hook[] {
   return [
@@ -45,6 +47,7 @@ const tocDiscovery: Map<RegExp, TocSearchScraper> = new Map();
 const newsAdapter: NewsScraper[] = [];
 const searchAdapter: SearchScraper[] = [];
 const nameHookMap = new Map<string, Hook>();
+const disabledHooks = new Set<string>();
 let timeoutId: NodeJS.Timeout | undefined;
 
 export enum HookState {
@@ -52,24 +55,35 @@ export enum HookState {
   DISABLED = "disabled",
 }
 
-async function loadCustomHooks(): Promise<Hook[]> {
+function isHookConfigV2(config: HookConfig | HookConfigV2): config is HookConfigV2 {
+  return "version" in config && config.version === 2;
+}
+
+async function loadCustomHooks(): Promise<{ custom: Hook[]; disabled: Set<string> }> {
   const hooks: CustomHookEntity[] = await customHookStorage.getHooks();
 
   const loadedCustomHooks: Hook[] = [];
+  const disabled = new Set<string>();
 
   for (const hookEntity of hooks) {
     if (hookEntity.hookState === HookState.DISABLED) {
+      disabled.add(hookEntity.name);
       continue;
     }
-    let hookConfig: HookConfig;
+    let hookConfig: HookConfig | HookConfigV2;
     try {
       hookConfig = JSON.parse(hookEntity.state);
     } catch (error) {
-      logger.warn("Could not parse HookState of CustomHook " + hookEntity.name);
+      logger.warn("Could not parse HookState of CustomHook", { hook_name: hookEntity.name });
       continue;
     }
 
-    const customHook = createHook(hookConfig);
+    let customHook;
+    if (isHookConfigV2(hookConfig)) {
+      customHook = createHookV2(hookConfig);
+    } else {
+      customHook = createHook(hookConfig);
+    }
     loadedCustomHooks.push({
       name: customHook.name,
       medium: customHook.medium,
@@ -83,7 +97,7 @@ async function loadCustomHooks(): Promise<Hook[]> {
       tocAdapter: customHook.tocAdapter,
     });
   }
-  return loadedCustomHooks;
+  return { custom: loadedCustomHooks, disabled };
 }
 
 async function loadRawHooks() {
@@ -119,10 +133,12 @@ export async function load(unloadedOnly = false): EmptyPromise {
     return;
   }
   timeoutId = undefined;
-  const hooks = await loadRawHooks();
-  hooks.push(...(await loadCustomHooks()));
 
-  // remove registered hooks
+  const hooks = await loadRawHooks();
+  const customResult = await loadCustomHooks();
+  hooks.push(...customResult.custom);
+
+  // remove registered hooks, now that no asynchronous steps are left
   redirects.length = 0;
   tocScraper.clear();
   episodeDownloader.clear();
@@ -130,7 +146,9 @@ export async function load(unloadedOnly = false): EmptyPromise {
   newsAdapter.length = 0;
   searchAdapter.length = 0;
   nameHookMap.clear();
+  disabledHooks.clear();
 
+  customResult.disabled.forEach((name) => disabledHooks.add(name));
   loadedHooks = hooks;
   registerHooks(loadedHooks);
 
@@ -144,8 +162,8 @@ export async function load(unloadedOnly = false): EmptyPromise {
 }
 
 export class DisabledHookError extends Error {
-  public constructor(name: string) {
-    super("Called a function on the disabled Hook '" + name + "'");
+  public constructor(name: string, called = true) {
+    super(called ? "Called a function on the disabled Hook '" + name + "'" : name);
     this.name = "DisabledHookError";
   }
 }
@@ -174,10 +192,10 @@ function disableHook(hook: Hook): Hook {
 function registerHooks(hook: Hook[] | Hook): void {
   multiSingle(hook, (value: Hook) => {
     if (!value.name) {
-      throw Error("hook without name!");
+      throw new ValidationError("hook without name!");
     }
     if (nameHookMap.has(value.name)) {
-      throw Error(`encountered hook with name '${value.name}' twice`);
+      throw new ValidationError(`encountered hook with name '${value.name}' twice`);
     }
     nameHookMap.set(value.name, value);
 
@@ -247,10 +265,22 @@ export function getHooks(): Hook[] {
   return [...loadedHooks];
 }
 
+/**
+ * Get the Hook with the given name.
+ * Each hook has a unique name.
+ *
+ * @param name name of the hook
+ * @returns a loaded hook
+ * @throws DisabledHookError If the hook with the given name is disabled
+ * @throws if no hook with the given name is loaded
+ */
 export function getHook(name: string): Hook {
   const hook = nameHookMap.get(name);
   if (!hook) {
-    throw Error(`there is no hook with name: '${name}'`);
+    if (disabledHooks.has(name)) {
+      throw new DisabledHookError(`trying to access disabled hook '${name}'`, false);
+    }
+    throw new ValidationError(`there is no hook with name: '${name}'`);
   }
   return hook;
 }

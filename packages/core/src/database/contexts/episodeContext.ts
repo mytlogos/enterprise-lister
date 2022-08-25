@@ -24,7 +24,6 @@ import {
 import {
   checkIndices,
   combiIndex,
-  Errors,
   getElseSet,
   ignore,
   MediaType,
@@ -39,6 +38,7 @@ import { MysqlServerError } from "../mysqlError";
 import { escapeLike } from "../storages/storageTools";
 import { OkPacket } from "mysql";
 import { storeModifications, toSqlList } from "../sqlTools";
+import { DatabaseError, ValidationError } from "../../error";
 
 export class EpisodeContext extends SubContext {
   /**
@@ -97,12 +97,12 @@ export class EpisodeContext extends SubContext {
 
     const releasePromise = this.query(
       "SELECT er.episode_id as episodeId, er.title, er.url as link, er.releaseDate as date, er.locked, medium_id as mediumId, progress " +
-        "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?) ORDER BY releaseDate DESC LIMIT 500) as er " +
+        "FROM (SELECT * FROM episode_release WHERE releaseDate < ? AND (? IS NULL OR releaseDate > ?) ORDER BY releaseDate DESC LIMIT 10000) as er " +
         "INNER JOIN episode ON episode.id=er.episode_id " +
         "LEFT JOIN (SELECT * FROM user_episode WHERE user_uuid = ?) as ue ON episode.id=ue.episode_id " +
         "INNER JOIN part ON part.id=part_id " +
         additionalMainQuery +
-        `WHERE ${progressCondition}${filterQuery};`,
+        `WHERE ${progressCondition}${filterQuery} LIMIT 500;`,
       [latestDate, untilDate, untilDate, uuid, read, read],
     );
     const mediaPromise: Promise<Array<{ id: number; title: string; medium: MediaType }>> = this.query(
@@ -293,7 +293,7 @@ export class EpisodeContext extends SubContext {
     readDate: Nullable<Date>,
   ): Promise<boolean> {
     if (progress < 0 || progress > 1) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError(`Invalid Progress: ${progress}`));
     }
     const results = await this.multiInsert(
       "REPLACE INTO user_episode " + "(user_uuid, episode_id, progress, read_date) " + "VALUES ",
@@ -332,10 +332,12 @@ export class EpisodeContext extends SubContext {
         "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
         [value.novel, value.chapter, value.chapIndex],
       );
-      const episodeId: Optional<number> = resultArray[0] && resultArray[0].episode_id;
+      const episodeId: Optional<number> = resultArray[0]?.episode_id;
 
       if (episodeId == null) {
-        const msg = `could not find an episode for '${value.novel}', '${value.chapter}', '${value.chapIndex}'`;
+        const msg = `could not find an episode for '${value.novel}', '${value.chapter + ""}', '${
+          value.chapIndex + ""
+        }'`;
         logger.info(msg);
         return;
       }
@@ -378,7 +380,7 @@ export class EpisodeContext extends SubContext {
         !value.novel ||
         (!value.chapIndex && !value.chapter) ||
         // do not mark episode if they are a teaser only
-        (value.chapter && value.chapter.match(teaserMatcher))
+        value.chapter?.match(teaserMatcher)
       ) {
         return;
       }
@@ -388,7 +390,7 @@ export class EpisodeContext extends SubContext {
         [value.novel, value.chapter, value.chapIndex],
       );
       // if a similar/same result was mapped to an episode before, get episode_id and update read
-      if (resultArray[0] && resultArray[0].episode_id != null) {
+      if (resultArray[0]?.episode_id != null) {
         const insertResult = await this.query(
           "INSERT IGNORE INTO user_episode (user_uuid, episode_id,progress) VALUES (?,?,0);",
           [uuid, resultArray[0].episode_id],
@@ -419,7 +421,7 @@ export class EpisodeContext extends SubContext {
           },
           uuid,
         );
-        bestMedium = { id: addedMedium.insertId, title: value.novel };
+        bestMedium = { id: addedMedium.id as number, title: value.novel };
         // TODO add medium if it is not known?
       }
 
@@ -462,9 +464,7 @@ export class EpisodeContext extends SubContext {
             // -1 is reserved for all episodes, which do not have any volume/part assigned
             volIndex = lowestIndexObj && lowestIndexObj.totalIndex < 0 ? --lowestIndexObj.totalIndex : -2;
           }
-          if (!volumeTitle) {
-            volumeTitle = "Volume " + volIndex;
-          }
+          volumeTitle ??= "Volume " + volIndex;
           const addedVolume = await this.parentContext.partContext.addPart(
             // @ts-expect-error
             { title: volumeTitle, totalIndex: volIndex, mediumId: bestMedium.id },
@@ -486,7 +486,7 @@ export class EpisodeContext extends SubContext {
       }
 
       if (!Number.isInteger(volumeId) || volumeId <= 0) {
-        throw Error("no volume id available");
+        throw new ValidationError("no volume id available");
       }
 
       const episodeSelectArray: Array<{ id: number; part_id: number; link: string }> = await this.query(
@@ -506,7 +506,7 @@ export class EpisodeContext extends SubContext {
 
       const episodeSelect = episodeSelectArray[0];
 
-      let episodeId = episodeSelect && episodeSelect.id;
+      let episodeId = episodeSelect?.id;
 
       if (episodeId == null) {
         let episodeIndex = Number(value.chapIndex);
@@ -525,10 +525,7 @@ export class EpisodeContext extends SubContext {
           episodeIndex = latestEpisode && latestEpisode.totalIndex < 0 ? --latestEpisode.totalIndex : -1;
         }
 
-        let chapter = value.chapter;
-        if (!chapter) {
-          chapter = "Chapter " + episodeIndex;
-        }
+        const chapter = value.chapter ?? "Chapter " + episodeIndex;
 
         const episode = await this.addEpisode({
           id: 0,
@@ -577,7 +574,7 @@ export class EpisodeContext extends SubContext {
       releases,
       (release) => {
         if (!release.episodeId) {
-          throw Error("missing episodeId on release");
+          throw new ValidationError("missing episodeId on release");
         }
         return [
           release.episodeId,
@@ -728,7 +725,7 @@ export class EpisodeContext extends SubContext {
     // @ts-expect-error
     return promiseMultiSingle(episodes, async (episode: SimpleEpisode): Promise<Episode> => {
       if (episode.partId == null || episode.partId <= 0) {
-        throw Error("episode without partId");
+        throw new ValidationError(`episode without partId: ${episode.partId}`);
       }
       let insertId: Optional<number>;
       const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
@@ -757,7 +754,7 @@ export class EpisodeContext extends SubContext {
         insertId = result[0].id;
       }
       if (!Number.isInteger(insertId)) {
-        throw Error(`invalid ID ${insertId}`);
+        throw new ValidationError(`invalid ID ${insertId + ""}`);
       }
 
       if (episode.releases) {
@@ -774,7 +771,7 @@ export class EpisodeContext extends SubContext {
         releases: episode.releases,
         progress: 0,
         readDate: null,
-      } as Episode;
+      };
     }).then(async (value: MultiSingleValue<Episode>) => {
       if (insertReleases.length) {
         await this.addRelease(insertReleases);
@@ -791,7 +788,7 @@ export class EpisodeContext extends SubContext {
    */
   public async getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
     const episodes: Optional<any[]> = await this.queryInList(
-      "SELECT * FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
+      "SELECT episode.*, ue.progress, ue.read_date FROM episode LEFT JOIN user_episode ue ON episode.id=ue.episode_id " +
         "WHERE (user_uuid IS NULL OR user_uuid=?) AND episode.id IN (??);",
       [uuid, id],
     );
@@ -809,7 +806,7 @@ export class EpisodeContext extends SubContext {
     releases.forEach((value) => {
       const episode = idMap.get(value.episodeId);
       if (!episode) {
-        throw Error("episode missing for queried release");
+        throw new DatabaseError("episode missing for queried release");
       }
       if (!episode.releases) {
         episode.releases = [];
@@ -853,7 +850,7 @@ export class EpisodeContext extends SubContext {
     releases.forEach((value) => {
       const episode = idMap.get(value.episodeId);
       if (!episode) {
-        throw Error("missing episode for release");
+        throw new DatabaseError("missing episode for release");
       }
       if (!episode.releases) {
         episode.releases = [];
@@ -934,7 +931,7 @@ export class EpisodeContext extends SubContext {
     releases.forEach((value) => {
       const episode = idMap.get(value.episodeId);
       if (!episode) {
-        throw Error("missing episode for release");
+        throw new DatabaseError("missing episode for release");
       }
       if (!episode.releases) {
         episode.releases = [];

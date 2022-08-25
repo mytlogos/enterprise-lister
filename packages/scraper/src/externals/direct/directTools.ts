@@ -1,4 +1,4 @@
-import logger from "enterprise-core/dist/logger";
+import logger, { LogLevel, LogMeta } from "enterprise-core/dist/logger";
 import { EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson } from "../types";
 import {
   combiIndex,
@@ -13,6 +13,37 @@ import { ReleaseState, TocSearchMedium, Optional, Nullable } from "enterprise-co
 import { checkTocContent } from "../scraperTools";
 import * as cheerio from "cheerio";
 import request from "../request";
+import { ValidationError } from "enterprise-core/dist/error";
+
+export enum LogType {
+  INDEX_FORMAT = "unknown index format",
+  TIME_FORMAT = "changed time format",
+  TITLE_FORMAT = "changed title format",
+  CONTENT_FORMAT = "changed content format",
+  LINK_FORMAT = "changed link format",
+  MEDIUM_TITLE_FORMAT = "changed medium title format",
+  NO_EPISODES = "no episodes found",
+  INVALID_LINK = "invalid link",
+  API_CHANGED = "api changed",
+}
+
+/**
+ * Get the text of element and all its descendants, except data nodes like style and script.
+ */
+export function getText(element: cheerio.Cheerio<cheerio.AnyNode>): string {
+  // workaround till commit https://github.com/cheeriojs/cheerio/commit/03a28fa1d975685a9a07648bed5ba250e265fd64 lands
+  if (!element.length) {
+    return "";
+  }
+  return element.prop("innerText") || "";
+}
+
+export function scraperLog(level: LogLevel, value: LogType, scraper: string, meta?: LogMeta) {
+  logger.log(level, value, {
+    ...(meta || {}),
+    scraper,
+  });
+}
 
 export function getTextContent(
   novelTitle: string,
@@ -21,11 +52,11 @@ export function getTextContent(
   content: string,
 ): EpisodeContent[] {
   if (!novelTitle || !episodeTitle) {
-    logger.warn("episode link with no novel or episode title: " + urlString);
+    logger.warn("episode link with no novel or episode title", { url: urlString });
     return [];
   }
   if (!content) {
-    logger.warn("episode link with no content: " + urlString);
+    logger.warn("episode link with no content", { url: urlString });
     return [];
   }
   const chapterGroups = /^\s*Chapter\s*(\d+(\.\d+)?)/.exec(episodeTitle);
@@ -62,7 +93,7 @@ export function extractLinkable($: cheerio.CheerioAPI, selector: string, uri: st
   for (let i = 0; i < elements.length; i++) {
     const element = elements.eq(i);
 
-    const name = sanitizeString(element.text());
+    const name = sanitizeString(getText(element));
     const link = new url.URL(element.attr("href") as string, uri).href;
 
     result.push({ name, link });
@@ -77,7 +108,7 @@ export async function searchTocCheerio(
   searchLink: (parameter: string) => string,
   linkSelector: string,
 ): Promise<undefined | Toc> {
-  logger.info(`searching for ${medium.title} on ${uri}`);
+  logger.info("searching for toc", { medium_title: medium.title, url: uri });
   const words = medium.title.split(/\s+/).filter((value) => value);
   let tocLink = "";
   let searchWords = "";
@@ -103,7 +134,7 @@ export async function searchTocCheerio(
     for (let i = 0; i < links.length; i++) {
       const linkElement = links.eq(i);
 
-      const text = sanitizeString(linkElement.text());
+      const text = sanitizeString(getText(linkElement));
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         tocLink = linkElement.attr("href") as string;
@@ -119,15 +150,14 @@ export async function searchTocCheerio(
   if (tocLink) {
     const tocs = await tocScraper(tocLink);
 
-    if (tocs && tocs.length) {
+    if (tocs?.length) {
       return tocs[0];
     } else {
-      logger.warn("a possible toc link could not be scraped: " + tocLink);
+      logger.warn("a possible toc link could not be scraped", { url: tocLink });
     }
   } else {
-    logger.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+    logger.info("no toc link found", { medium_id: medium.mediumId, medium_title: medium.title, url: uri });
   }
-  return;
 }
 
 export interface SearchResult {
@@ -152,7 +182,7 @@ function searchForWords(
     for (let i = 0; i < links.length; i++) {
       const linkElement = links.eq(i);
 
-      const text = sanitizeString(linkElement.text());
+      const text = sanitizeString(getText(linkElement));
 
       if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
         const tocLink = linkElement.attr("href") as string;
@@ -169,7 +199,7 @@ export async function searchToc(
   uri: string,
   searchLink: (searchString: string) => Promise<SearchResult>,
 ): Promise<undefined | Toc> {
-  logger.info(`searching for ${medium.title} on ${uri}`);
+  logger.info("searching for toc", { medium_title: medium.title, url: uri });
   const words = medium.title.split(/\s+/).filter((value) => value);
   let tocLink = "";
   let searchString = "";
@@ -197,15 +227,14 @@ export async function searchToc(
   if (tocLink) {
     const tocs = await tocScraper(tocLink);
 
-    if (tocs && tocs.length) {
+    if (tocs?.length) {
       return tocs[0];
     } else {
-      logger.warn("a possible toc link could not be scraped: " + tocLink);
+      logger.warn("a possible toc link could not be scraped", { url: tocLink });
     }
   } else {
-    logger.info(`no toc link found on ${uri} for ${medium.mediumId}: '${medium.title}'`);
+    logger.info("no toc link found", { medium_id: medium.mediumId, medium_title: medium.title, url: uri });
   }
-  return;
 }
 
 export interface TocPiece {
@@ -329,7 +358,7 @@ class TocLinkedList implements Iterable<Node> {
     let node: Optional<Node> = this.start;
     return {
       next(): IteratorResult<Node> {
-        if (node && node.next) {
+        if (node?.next) {
           node = node.next;
           if (node.next) {
             return { value: node };
@@ -555,7 +584,7 @@ type IndexCalc = (reg: RegExpExecArray) => number;
 
 function markWithRegex(regExp: RegExp, title: string, type: TocMatchType, matches: TocMatch[], matchAfter?: IndexCalc) {
   if (!regExp.flags.includes("g")) {
-    throw Error("Need a Regex with global Flag enabled, else it will crash");
+    throw new ValidationError("Need a Regex with global Flag enabled, else it will crash");
   }
   for (let match = regExp.exec(title); match; match = regExp.exec(title)) {
     matches.push({
@@ -660,7 +689,7 @@ function adjustPartialIndices(contentIndex: number, contents: InternalTocContent
 }
 
 function convertToTocEpisode(totalIndex: number, partialIndex: number, index: number, value: UnusedPiece) {
-  const episode = {
+  const episode: InternalTocEpisode = {
     type: "episode",
     combiIndex: 0,
     totalIndex,
@@ -672,7 +701,7 @@ function convertToTocEpisode(totalIndex: number, partialIndex: number, index: nu
     releaseDate: value.releaseDate,
     originalTitle: value.title,
     part: value.part,
-  } as InternalTocEpisode;
+  };
   episode.combiIndex = combiIndex(episode);
   return episode;
 }
@@ -699,13 +728,14 @@ function adjustPartialIndicesLinked(node: InternalTocEpisode, ascending: boolean
       break;
     }
     if (content.partialIndex != null && content.partialIndex !== currentPartialIndex) {
-      logger.warn(
-        `trying to overwrite partialIndex on existing one with ${currentPartialIndex}: ${stringify({
+      logger.warn("trying to overwrite partialIndex on existing one", {
+        newPartialIndex: currentPartialIndex,
+        previous: stringify({
           ...content,
           next: null,
           previous: null,
-        })}`,
-      );
+        }),
+      });
     } else {
       content.partialIndex = currentPartialIndex;
       content.combiIndex = combiIndex(content);
@@ -736,11 +766,11 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
     }
     let insertNeighbour = content;
     for (let i = content.totalIndex + 1; i <= content.episodeRange; i++) {
-      const episode = {
+      const episode: InternalTocEpisode = {
         ...content,
         next: undefined,
         previous: undefined,
-      } as InternalTocEpisode;
+      };
       episode.totalIndex = i;
       episode.combiIndex = combiIndex(episode);
       rangeInserter.call(contents, episode, insertNeighbour);
@@ -1009,7 +1039,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
       usedMatches.push(match);
       const partialWrappingMatch = matches.find((value) => match.from <= value.from && value.to > match.to);
 
-      const episode = {
+      const episode: InternalTocEpisode = {
         type: "episode",
         combiIndex: indices.combi,
         totalIndex: indices.total,
@@ -1019,7 +1049,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
         title: "",
         originalTitle: tocPiece.title,
         match,
-      } as InternalTocEpisode;
+      };
       if (secondaryIndices && !partialWrappingMatch) {
         // for now ignore any fraction, normally it should only have the format of 1-4, not 1.1-1.4 or similar
         episode.episodeRange = secondaryIndices.total;
@@ -1113,7 +1143,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
         possibleVolume = state.volumeMap.get(volIndices.combi);
 
         if (!possibleVolume) {
-          const internalTocPart = {
+          const internalTocPart: InternalTocPart = {
             type: "part",
             combiIndex: volIndices.combi,
             totalIndex: volIndices.total,
@@ -1121,7 +1151,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
             title: "",
             originalTitle: "",
             episodes: [],
-          } as InternalTocPart;
+          };
           // need to be valid to be acknowledged
           try {
             checkTocContent(internalTocPart);
@@ -1157,7 +1187,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
           title: "",
           originalTitle: tocPiece.title,
           match,
-        } as InternalTocEpisode);
+        });
       }
     } else if (!possibleVolume && match.type === "volume") {
       if (match.match[9]) {
@@ -1172,7 +1202,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
         possibleVolume = state.volumeMap.get(volIndices.combi);
 
         if (!possibleVolume) {
-          const internalTocPart = {
+          const internalTocPart: InternalTocPart = {
             type: "part",
             combiIndex: volIndices.combi,
             totalIndex: volIndices.total,
@@ -1180,7 +1210,7 @@ function mark(tocPiece: TocContentPiece, state: TocScrapeState): Node[] {
             title: "",
             originalTitle: "",
             episodes: [],
-          } as InternalTocPart;
+          };
           // need to be valid to be acknowledged
           try {
             checkTocContent(internalTocPart);

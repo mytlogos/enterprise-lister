@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createHandler } from "./apiTools";
 import env from "enterprise-core/dist/env";
+import logger from "enterprise-core/dist/logger";
 import Websocket from "ws";
 import request from "enterprise-scraper/dist/externals/request";
 
@@ -18,7 +19,8 @@ function setWSListener(src: Websocket, target: Websocket) {
   };
   src.onclose = (ev) => {
     if (target.readyState !== target.CLOSED && target.readyState !== target.CLOSING) {
-      target.close(ev.code, ev.reason);
+      // status code "CLOSE_NORMAL" see https://kapeli.com/cheat_sheets/WebSocket_Status_Codes.docset/Contents/Resources/Documents/index
+      target.close(1000, ev.reason);
     }
     const index = liveSockets.indexOf(src);
 
@@ -26,6 +28,8 @@ function setWSListener(src: Websocket, target: Websocket) {
       liveSockets.splice(index, 1);
     }
   };
+  src.onerror = (ev) => logger.error(ev.message);
+  target.onerror = (ev) => logger.error(ev.message);
 }
 
 export function crawlerRouter(): Router {

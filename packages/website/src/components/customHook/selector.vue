@@ -121,17 +121,20 @@ import {
   SimpleTransfer,
   VariableExtractor as VarExtractor,
 } from "enterprise-scraper/dist/externals/custom/types";
-import { defineComponent, PropType } from "vue";
+import { computed, toRef, PropType, ref, watch } from "vue";
 import ValueTransfer from "./value-transfer.vue";
 import VariableExtractor from "./variable-extractor.vue";
 import { clone, idGenerator, Logger, deepEqual, toArray } from "../../init";
 import { SelectorType, SelectorValueType } from "../../siteTypes";
 import Regex from "./regex.vue";
 
-// this relies on the fact that a component is loaded only once
+// relies on the fact that a component is loaded only once?
 const nextId = idGenerator();
-
-function model(prop: ModelValue) {
+// default export is required?
+export default {};
+</script>
+<script lang="ts" setup>
+function toModel(prop: ModelValue) {
   return {
     children: toArray(prop.children as any) as Array<Selector<any> | JsonSelector<any, any>>,
     transfers: toArray(prop.transfers as any) as Array<
@@ -146,140 +149,129 @@ function model(prop: ModelValue) {
 
 type ModelValue = Selector<any> | JsonSelector<any, any>;
 
-export default defineComponent({
-  name: "Selector",
-  components: {
-    VariableExtractor,
-    ValueTransfer,
-    Regex,
+const props = defineProps({
+  selectorTypes: {
+    type: Array as unknown as PropType<SelectorType>,
+    required: true,
   },
-  props: {
-    selectorTypes: {
-      // @ts-expect-error
-      type: Array as PropType<SelectorType>,
-      required: true,
-    },
-    modelValue: {
-      type: Object as PropType<Selector<any> | JsonSelector<any, any>>,
-      required: true,
-    },
-  },
-  emits: ["update:modelValue", "delete"],
-  data() {
-    const id = nextId();
-    return {
-      id,
-      logger: new Logger("selector-" + id),
-      model: model(this.modelValue),
-    };
-  },
-  computed: {
-    currentSelectorType(): SelectorValueType {
-      if (this.selectorTypes.length === 1 && this.selectorTypes[0] === "json") {
-        return "json";
-      }
-      if (this.selectorTypes.includes("regex") && (this.model.regex.pattern || this.model.regex.flags)) {
-        return "regex";
-      }
-      return "text";
-    },
-    allowRegex(): boolean {
-      return this.selectorTypes.includes("regex");
-    },
-    selectorTitle() {
-      // @ts-expect-error
-      if (this.selectorTypes.includes("json")) {
-        return "JSON Property";
-      }
-      return "CSS";
-    },
-    selectorPlaceholder() {
-      // @ts-expect-error
-      if (this.selectorTypes.includes("json")) {
-        return "authors.[*].name";
-      }
-      return "body > *";
-    },
-  },
-  watch: {
-    model: {
-      handler(newValue: ReturnType<typeof model>) {
-        const result = clone(this.modelValue);
-
-        result.variables = [...newValue.variables];
-        result.transfers = [...newValue.transfers] as any[];
-        result.children = [...newValue.children] as any[];
-
-        result.multiple = newValue.multiple;
-        result.selector = newValue.selector;
-
-        if (this.currentSelectorType === "regex") {
-          // @ts-expect-error
-          result.regex = newValue.regex;
-        }
-
-        if (deepEqual(result, this.modelValue)) {
-          this.logger.info("Did not update modelValue");
-        } else {
-          this.logger.info("Updated modelValue");
-          this.$emit("update:modelValue", result);
-        }
-      },
-      deep: true,
-    },
-    modelValue: {
-      handler(newValue: ModelValue) {
-        const result = clone(this.model);
-
-        result.variables = toArray(newValue.variables);
-        result.transfers = toArray(newValue.transfers as any);
-        result.children = toArray(newValue.children as any);
-
-        result.multiple = newValue.multiple || false;
-        result.selector = newValue.selector;
-        result.regex = ("regex" in newValue && (newValue.regex as JsonRegex)) || { pattern: "", flags: "" };
-
-        if (deepEqual(result, this.model)) {
-          this.logger.info("Did not update model from prop");
-        } else {
-          this.logger.info("Updated model from prop");
-          this.model = result;
-        }
-      },
-      deep: true,
-    },
-  },
-  methods: {
-    remove(array: any[], index: number) {
-      array.splice(index, 1);
-    },
-    addVariable() {
-      this.model.variables.push({
-        variableName: "",
-        value: "",
-        extract: undefined,
-      });
-    },
-    addTransfer() {
-      this.model.transfers.push({
-        targetKey: "",
-        type: "string",
-        optional: false,
-        html: false,
-        mapping: undefined,
-      });
-    },
-    addChild() {
-      this.model.children.push({
-        selector: "",
-        multiple: false,
-        children: [],
-        transfers: [],
-        variables: [],
-      });
-    },
+  modelValue: {
+    type: Object as PropType<ModelValue>,
+    required: true,
   },
 });
+const emits = defineEmits(["update:modelValue", "delete"]);
+const id = nextId();
+const logger = new Logger("selector-" + id);
+const model = ref(toModel(props.modelValue));
+
+const currentSelectorType = computed((): SelectorValueType => {
+  if (props.selectorTypes.length === 1 && props.selectorTypes[0] === "json") {
+    return "json";
+  }
+  if (props.selectorTypes.includes("regex") && (model.value.regex.pattern || model.value.regex.flags)) {
+    return "regex";
+  }
+  return "text";
+});
+const allowRegex = computed((): boolean => {
+  return props.selectorTypes.includes("regex");
+});
+const selectorTitle = computed(() => {
+  // @ts-expect-error
+  if (props.selectorTypes.includes("json")) {
+    return "JSON Property";
+  }
+  return "CSS";
+});
+const selectorPlaceholder = computed(() => {
+  // @ts-expect-error
+  if (props.selectorTypes.includes("json")) {
+    return "authors.[*].name";
+  }
+  return "body > *";
+});
+
+watch(
+  model,
+  (newValue: ReturnType<typeof toModel>) => {
+    const result = clone(props.modelValue);
+
+    result.variables = [...newValue.variables];
+    result.transfers = [...newValue.transfers] as any[];
+    result.children = [...newValue.children] as any[];
+
+    result.multiple = newValue.multiple;
+    result.selector = newValue.selector;
+
+    if (currentSelectorType.value === "regex") {
+      // @ts-expect-error
+      result.regex = newValue.regex;
+    }
+
+    if (deepEqual(result, props.modelValue)) {
+      logger.info("Did not update modelValue");
+    } else {
+      logger.info("Updated modelValue");
+      emits("update:modelValue", result);
+    }
+  },
+  { deep: true },
+);
+
+watch(
+  toRef(props, "modelValue"),
+  (newValue: ModelValue) => {
+    const result = clone(model.value);
+
+    result.variables = toArray(newValue.variables);
+    result.transfers = toArray(newValue.transfers as any);
+    result.children = toArray(newValue.children as any);
+
+    result.multiple = newValue.multiple || false;
+    result.selector = newValue.selector;
+    result.regex = ("regex" in newValue && (newValue.regex as JsonRegex)) || { pattern: "", flags: "" };
+
+    if (deepEqual(result, model.value)) {
+      logger.info("Did not update model from prop");
+    } else {
+      logger.info("Updated model from prop");
+      model.value = result;
+    }
+  },
+  { deep: true },
+);
+
+function remove(array: any[], index: number) {
+  array.splice(index, 1);
+}
+
+function addVariable() {
+  model.value.variables.push({
+    variableName: "",
+    value: "",
+    extract: undefined,
+  });
+}
+
+function addTransfer() {
+  model.value.transfers.push({
+    targetKey: "",
+    type: "string",
+    optional: false,
+    html: false,
+    mapping: undefined,
+  });
+}
+
+function addChild() {
+  model.value.children.push({
+    selector: "",
+    multiple: false,
+    children: [],
+    transfers: [],
+    variables: [],
+  });
+}
 </script>
 <style scoped>
 .card[aria-expanded="true"] {

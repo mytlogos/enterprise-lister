@@ -2,12 +2,13 @@
 import dns from "dns";
 import logger from "../logger";
 import * as tools from "../tools";
+import { internetTester } from "../internetTester";
 import { v1, NIL as NIL_UUID, v4 } from "uuid";
 import { Nullable } from "../types";
 
 process.on("unhandledRejection", () => console.log("an unhandled rejection!"));
 process.on("uncaughtException", (args) => console.log("an unhandled exception!", args));
-afterAll(() => tools.internetTester.stop());
+afterAll(() => internetTester.stop());
 
 type TimeUnit = "Seconds" | "Minutes" | "Hours" | "Date" | "Week" | "Month" | "FullYear";
 
@@ -113,20 +114,25 @@ describe("testing tool.js", () => {
     let up = false;
 
     beforeAll(() => {
-      // @ts-expect-error
-      jest.spyOn(dns.promises, "lookup").mockImplementation(() => (up ? Promise.resolve() : Promise.reject()));
-      jest.spyOn(tools.internetTester, "isOnline").mockImplementation(() => up);
+      jest
+        .spyOn(dns.promises, "lookup")
+        .mockImplementation(() =>
+          up ? Promise.resolve({ address: "", family: 0 }) : Promise.reject(Error("is down")),
+        );
+      jest.spyOn(internetTester, "isOnline").mockImplementation(() => up);
     });
+    beforeEach(() => internetTester.stop());
     afterAll(() => internetMocks.forEach((value) => value.mockRestore()));
 
     it("should fire online event within time limit", () => {
       jest.setTimeout(3000);
+      internetTester.start();
       return tools.delay(500).then(() => {
         return new Promise<void>((resolve, reject) => {
           try {
-            expect(tools.internetTester.isOnline()).toBe(false);
-            tools.internetTester.on("online", () => {
-              expect(tools.internetTester.isOnline()).toBe(true);
+            expect(internetTester.isOnline()).toBe(false);
+            internetTester.on("online", () => {
+              expect(internetTester.isOnline()).toBe(true);
               resolve();
             });
             up = true;
@@ -138,12 +144,13 @@ describe("testing tool.js", () => {
     });
     it("should fire offline event within time limit", () => {
       jest.setTimeout(3000);
+      internetTester.start();
       return tools.delay(500).then(() => {
         return new Promise<void>((resolve, reject) => {
           try {
-            expect(tools.internetTester.isOnline()).toBe(true);
-            tools.internetTester.on("offline", () => {
-              expect(tools.internetTester.isOnline()).toBe(false);
+            expect(internetTester.isOnline()).toBe(true);
+            internetTester.on("offline", () => {
+              expect(internetTester.isOnline()).toBe(false);
               resolve();
             });
             up = false;
@@ -154,6 +161,7 @@ describe("testing tool.js", () => {
       });
     });
     it("should be called at least once", async () => {
+      internetTester.start();
       await tools.delay(1100);
       expect(dns.promises.lookup).toBeCalled();
     });
@@ -198,6 +206,7 @@ describe("testing tool.js", () => {
       tools.removeLike(items, (item) => item === "1");
       expect(items).toEqual([1, 2, 3, 4]);
       // @ts-expect-error
+      // eslint-disable-next-line eqeqeq
       tools.removeLike(items, (item) => item == "1");
       expect(items).toEqual([2, 3, 4]);
 
@@ -567,7 +576,7 @@ describe("testing tool.js", () => {
   describe("test countOccurrence", () => {
     it("should work correctly", () => {
       const result = tools.countOccurrence([1, 5, 2, 3, 4, 5, 5, null, null, null]);
-      expect([...result.entries()].sort()).toEqual([
+      expect([...result.entries()].sort((a, b) => (a[0] || 0) - (b[0] || 0))).toEqual([
         [null, 3],
         [1, 1],
         [2, 1],

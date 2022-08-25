@@ -16,11 +16,15 @@ import emojiRegex from "emoji-regex";
 import * as fs from "fs";
 import * as path from "path";
 import { Query } from "mysql";
-import * as dns from "dns";
-import EventEmitter from "events";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { setTimeout as setTimeoutPromise } from "timers/promises";
+import { ParseError, ValidationError } from "./error";
+import { networkInterfaces } from "os";
+
+export function isAbortError(error: unknown): error is Error {
+  return error instanceof Error && error.name === "AbortError";
+}
 
 export function isNumberOrArray(value: number | any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
@@ -87,7 +91,7 @@ export function promiseMultiSingle<T, R>(
   cb: multiSingleCallback<Unpack<T>, R>,
 ): PromiseMultiSingle<T, Unpack<R>> {
   if (typeof cb !== "function") {
-    return Promise.reject(new TypeError(`callback is not a function: '${cb}'`)) as any;
+    return Promise.reject(new TypeError(`callback is not a function: '${cb + ""}'`)) as any;
   }
   if (Array.isArray(item)) {
     const maxIndex = item.length - 1;
@@ -279,11 +283,7 @@ export function contains(s1: string, s2: string): boolean {
 export function countOccurrence<T>(array: T[]): Map<T, number> {
   const occurrenceMap: Map<T, number> = new Map();
   for (const value of array) {
-    let counted = occurrenceMap.get(value);
-
-    if (!counted) {
-      counted = 0;
-    }
+    const counted = occurrenceMap.get(value) ?? 0;
     occurrenceMap.set(value, counted + 1);
   }
   return occurrenceMap;
@@ -396,7 +396,7 @@ export function min<T>(array: T[], comparator: keyof T | Comparator<T>): Optiona
  * @param relative string to parse to a absolute time
  */
 export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
-  let exec: Nullable<string[]> = /\s*(\d+|an?)\s+(\w+)\s+(ago)\s*/i.exec(relative);
+  let exec: Nullable<string[]> = /\s*(\d+|an?)\s+(\w+)(\s+(ago))?\s*/i.exec(relative);
   if (!exec) {
     if (!relative || relative.toLowerCase() !== "just now") {
       return null;
@@ -405,11 +405,11 @@ export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
   }
   const [, value, unit] = exec;
   const absolute = new Date();
-  const timeValue = value && value.match("an?") ? 1 : Number(value);
+  const timeValue = value?.match("an?") ? 1 : Number(value);
 
   // should not happen?
   if (Number.isNaN(timeValue)) {
-    throw new Error(`'${value}' is not a number`);
+    throw new TypeError(`'${value}' is not a number`);
   }
 
   if (/^(s|secs?|seconds?)$/.test(unit)) {
@@ -427,7 +427,7 @@ export function relativeToAbsoluteTime(relative: string): Nullable<Date> {
   } else if (/^(years?)$/.test(unit)) {
     absolute.setFullYear(absolute.getFullYear() - timeValue);
   } else {
-    throw new Error(`unknown time unit: '${unit}'`);
+    throw new ParseError(`unknown time unit: '${unit}'`);
   }
   return absolute;
 }
@@ -449,6 +449,7 @@ export const delay = setTimeoutPromise;
  */
 export function equalsRelease(firstRelease?: EpisodeRelease, secondRelease?: EpisodeRelease): boolean {
   return (
+    // eslint-disable-next-line eqeqeq
     firstRelease == secondRelease ||
     (!!firstRelease &&
       !!secondRelease &&
@@ -457,6 +458,7 @@ export function equalsRelease(firstRelease?: EpisodeRelease, secondRelease?: Epi
       firstRelease.tocId === secondRelease.tocId &&
       !!firstRelease.locked === !!secondRelease.locked &&
       // tslint:disable-next-line:triple-equals
+      // eslint-disable-next-line eqeqeq
       firstRelease.sourceType == secondRelease.sourceType &&
       firstRelease.title === secondRelease.title)
   );
@@ -592,10 +594,10 @@ export const ShaHash: ShaHasher = {
 
   innerHash(text, salt) {
     if (!isString(text)) {
-      throw TypeError(`'${text}' not a string`);
+      throw TypeError(`'${text + ""}' not a string`);
     }
     if (!isString(salt)) {
-      throw TypeError(`'${salt}' not a string`);
+      throw TypeError(`'${salt + ""}' not a string`);
     }
     const hash = crypto.createHash("sha512");
     hash.update(salt + text);
@@ -615,7 +617,7 @@ export const Md5Hash: Hasher = {
   hash(text: string) {
     return promisify(() => {
       if (!isString(text)) {
-        throw TypeError(`'${text}' not a string`);
+        throw TypeError(`'${text + ""}' not a string`);
       }
       const newsHash = crypto.createHash("md5").update(text).digest("hex");
       return { hash: newsHash };
@@ -725,7 +727,7 @@ export function promisify<T>(callback: () => T): Promise<T> {
 export function combiIndex(value: Indexable): number {
   const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
   if (Number.isNaN(combi)) {
-    throw Error(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex}'`);
+    throw new ParseError(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex + ""}'`);
   }
   return combi;
 }
@@ -739,10 +741,10 @@ export function combiIndex(value: Indexable): number {
  */
 export function checkIndices(value: Indexable): void {
   if (value.totalIndex == null || value.totalIndex < -1 || !Number.isInteger(value.totalIndex)) {
-    throw Error("invalid toc content, totalIndex invalid");
+    throw new ValidationError("invalid toc content, totalIndex invalid");
   }
   if (value.partialIndex != null && (value.partialIndex < 0 || !Number.isInteger(value.partialIndex))) {
-    throw Error("invalid toc content, partialIndex invalid");
+    throw new ValidationError("invalid toc content, partialIndex invalid");
   }
 }
 
@@ -778,17 +780,17 @@ const indexRegex = /(-?\d+)(\.(\d+))?/;
  */
 export function separateIndex(value: number): Indexable {
   if (!isNumber(value)) {
-    throw Error("not a number");
+    throw new TypeError("not a number");
   }
   const exec = indexRegex.exec(value + "");
   if (!exec) {
-    throw Error("not a number");
+    throw new TypeError("not a number");
   }
   const totalIndex = Number(exec[1]);
   const partialIndex = exec[3] != null ? Number(exec[3]) : undefined;
 
   if (Number.isNaN(totalIndex) || Number.isNaN(partialIndex)) {
-    throw Error("invalid number");
+    throw new TypeError("invalid number");
   }
   return { totalIndex, partialIndex };
 }
@@ -891,15 +893,7 @@ export function isQuery(value: unknown): value is Query {
  * @param value value to validate as an uuid
  */
 export function validUuid(value: unknown): value is Uuid {
-  return isString(value) && value.length == 36 && validateUuid(value);
-}
-
-export interface InternetTester extends EventEmitter.EventEmitter {
-  on(evt: "online" | "offline", listener: (previousSince: Date) => void): this;
-
-  isOnline(): boolean;
-
-  stop(): void;
+  return isString(value) && value.length === 36 && validateUuid(value);
 }
 
 export function getDate(value: string): Nullable<Date> {
@@ -912,8 +906,8 @@ export function getDate(value: string): Nullable<Date> {
  * From Stackoverflow: https://stackoverflow.com/a/41956372
  */
 export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number {
-  let lo = -1,
-    hi = array.length;
+  let lo = -1;
+  let hi = array.length;
   while (1 + lo < hi) {
     const mi = lo + ((hi - lo) >> 1);
     if (pred(array[mi])) {
@@ -950,60 +944,20 @@ export function batch<T>(array: T[], batchSize: number): T[][] {
   return batches;
 }
 
-class InternetTesterImpl extends EventEmitter.EventEmitter implements InternetTester {
-  private offline?: boolean = undefined;
-  private since: Date = new Date();
-  private stopLoop = false;
-
-  public constructor() {
-    super();
-    // should never call catch callback
-    this.checkInternet().catch(console.error);
-  }
-
-  public on(evt: "online" | "offline", listener: (previousSince: Date) => void): this {
-    super.on(evt, listener);
-
-    if (this.offline != null && this.since != null) {
-      if (this.offline && evt === "offline") {
-        listener(this.since);
-      }
-      if (!this.offline && evt === "online") {
-        listener(this.since);
-      }
+/**
+ * Get the first interface on the current local network.
+ * Must be on the '192.168.x.x' subnet.
+ */
+export function getMainInterface(): string | undefined {
+  for (const arrays of Object.values(networkInterfaces())) {
+    if (!Array.isArray(arrays)) {
+      continue;
     }
-    return this;
-  }
+    const foundIpInterface = arrays.find((value) => value.family === "IPv4");
 
-  public isOnline() {
-    return !this.offline;
-  }
-
-  public stop() {
-    this.stopLoop = true;
-  }
-
-  private async checkInternet() {
-    while (!this.stopLoop) {
-      try {
-        await dns.promises.lookup("google.com");
-        if (this.offline || this.offline == null) {
-          this.offline = false;
-          const since = new Date();
-          this.emit("online", this.since);
-          this.since = since;
-        }
-      } catch (e) {
-        if (!this.offline) {
-          this.offline = true;
-          const since = new Date();
-          this.emit("offline", this.since);
-          this.since = since;
-        }
-      }
-      await setTimeoutPromise(1000);
+    if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
+      continue;
     }
+    return foundIpInterface.address;
   }
 }
-
-export const internetTester: InternetTester = new InternetTesterImpl();

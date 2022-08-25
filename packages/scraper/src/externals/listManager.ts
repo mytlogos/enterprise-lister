@@ -1,11 +1,14 @@
 import url from "url";
-import { Errors, isString, MediaType, unique } from "enterprise-core/dist/tools";
+import { Errors, isString, MediaType, stringify, unique } from "enterprise-core/dist/tools";
 import { CookieJar } from "tough-cookie";
 import { Hook, Toc } from "./types";
 import logger from "enterprise-core/dist/logger";
 import * as cheerio from "cheerio";
 import { ReleaseState, EmptyPromise, Optional } from "enterprise-core/dist/types";
 import request, { Requestor } from "./request";
+import { ValidationError } from "enterprise-core/dist/error";
+import { ScraperError } from "./errors";
+import { getText } from "./direct/directTools";
 
 interface SimpleReadingList {
   menu: string;
@@ -80,7 +83,7 @@ class SimpleNovelUpdates implements ListManager {
 
   public async scrapeLists(): Promise<ListScrapeResult> {
     if (!this.profile || !this.id) {
-      throw Error("no valid user data injected");
+      throw new ValidationError("no valid user data injected");
     }
     const result: ListScrapeResult = { feed: [], lists: [], media: [] };
     const [list, numberLists] = await this.scrapeList(0);
@@ -97,7 +100,7 @@ class SimpleNovelUpdates implements ListManager {
 
   public async scrapeMedia(media: ScrapeMedium[]): Promise<ScrapeMedium[]> {
     if (!media) {
-      return Promise.resolve([]);
+      return [];
     }
     return Promise.all(
       media.map(async (value) => {
@@ -111,19 +114,19 @@ class SimpleNovelUpdates implements ListManager {
     const link = medium.title.link;
 
     const $ = await SimpleNovelUpdates.loadCheerio(link);
-    medium.title.text = $(".seriestitlenu").text().trim();
+    medium.title.text = getText($(".seriestitlenu")).trim();
     const synonyms = $("#editassociated").contents();
 
-    const lang = $("#showlang").text().trim();
+    const lang = getText($("#showlang")).trim();
     const authors = $("#showauthors a");
     const artists = $("#showartists a");
-    const statusCoo = $("#editstatus").text().trim();
-    const statusTL = $("#showtranslated").text().trim();
+    const statusCoo = getText($("#editstatus")).trim();
+    const statusTL = getText($("#showtranslated")).trim();
 
     medium.synonyms = [];
 
     for (let i = 0; i < synonyms.length; i += 2) {
-      const synonym = synonyms.eq(i).text().trim();
+      const synonym = getText(synonyms.eq(i)).trim();
       medium.synonyms.push(synonym);
     }
 
@@ -145,7 +148,7 @@ class SimpleNovelUpdates implements ListManager {
         const authorElement = authors.eq(i);
         const author = {
           link: authorElement.attr("href") as string,
-          name: authorElement.text().trim(),
+          name: getText(authorElement).trim(),
         };
         medium.authors.push(author);
       }
@@ -157,7 +160,7 @@ class SimpleNovelUpdates implements ListManager {
         const artistElement = artists.eq(i);
         const artist = {
           link: artistElement.attr("href") as string,
-          name: artistElement.text().trim(),
+          name: getText(artistElement).trim(),
         };
         medium.artists.push(artist);
       }
@@ -168,7 +171,7 @@ class SimpleNovelUpdates implements ListManager {
       medium.latest = NovelUpdates.scrapeListRow(3, tableData);
     }
     // @ts-expect-error
-    medium.latest.date = tableData.first().text().trim();
+    medium.latest.date = getText(tableData.first()).trim();
   }
 
   public stringifyCookies(): string {
@@ -202,12 +205,12 @@ class SimpleNovelUpdates implements ListManager {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       method: "POST",
-      data: `action=nu_prevew&pagenum=${page}&intUserID=${this.id}&isMobile=`,
+      data: `action=nu_prevew&pagenum=${page}&intUserID=${this.id as string}&isMobile=`,
     });
 
     const lastIndexOf = response.data.lastIndexOf("}");
     if (!lastIndexOf) {
-      throw Error("expected a json object contained in message, got " + response);
+      throw new ScraperError("expected a json object contained in message, got " + stringify(response));
     }
     const listData: SimpleReadingList = JSON.parse(response.data.substring(0, lastIndexOf + 1));
     const nameReg = />\s*(\w+)\s*<\s*\/\s*span\s*>/g;
@@ -228,8 +231,8 @@ class SimpleNovelUpdates implements ListManager {
       const tableData = row.children();
 
       const link = tableData.eq(1).children("a").first();
-      const title = { text: link.text().trim(), link: link.attr("href") as string };
-      const stand = tableData.eq(2).text();
+      const title = { text: getText(link).trim(), link: link.attr("href") as string };
+      const stand = getText(tableData.eq(2));
 
       const progressExec = progressReg.exec(stand);
 
@@ -261,7 +264,7 @@ class SimpleNovelUpdates implements ListManager {
 class NovelUpdates implements ListManager {
   public static scrapeListRow(i: number, tableData: cheerio.Cheerio<cheerio.Element>) {
     const link = tableData.eq(i).children("a").first();
-    return { text: link.text().trim(), link: link.attr("href") as string };
+    return { text: getText(link).trim(), link: link.attr("href") as string };
   }
 
   public jar: any;
@@ -307,7 +310,7 @@ class NovelUpdates implements ListManager {
     const listElement = $(".l-content #cssmenu ul li");
 
     if (!listElement.length) {
-      return Promise.reject(new Error(Errors.INVALID_SESSION));
+      return Promise.reject(new ScraperError(Errors.INVALID_SESSION));
     }
 
     const lists = [];
@@ -320,7 +323,7 @@ class NovelUpdates implements ListManager {
       link = new url.URL(link, this.baseURI).href;
 
       const list: ScrapeList = {
-        name: element.text().trim(),
+        name: getText(element).trim(),
         link,
         medium: MediaType.TEXT,
         media: [],
@@ -333,7 +336,7 @@ class NovelUpdates implements ListManager {
     }
 
     if (!currentList) {
-      throw Error("Current Novelupdates List not found!");
+      throw new ScraperError("Current Novelupdates List not found!");
     }
 
     const feed: string[] = [];
@@ -383,15 +386,15 @@ class NovelUpdates implements ListManager {
     const $ = await this.loadCheerio(link);
     const synonyms = $("#editassociated").contents();
 
-    const lang = $("#showlang").text().trim();
+    const lang = getText($("#showlang")).trim();
     const authors = $("#showauthors a");
     const artists = $("#showartists a");
-    // const statusCOO = $("#editstatus").text().trim();
+    // const statusCOO = getText($("#editstatus")).trim();
 
     medium.synonyms = [];
 
     for (let i = 0; i < synonyms.length; i += 2) {
-      const synonym = synonyms.eq(i).text().trim();
+      const synonym = getText(synonyms.eq(i)).trim();
       medium.synonyms.push(synonym);
     }
 
@@ -407,7 +410,7 @@ class NovelUpdates implements ListManager {
         const authorElement = authors.eq(i);
         const author = {
           link: authorElement.attr("href") as string,
-          name: authorElement.text().trim(),
+          name: getText(authorElement).trim(),
         };
         medium.authors.push(author);
       }
@@ -419,7 +422,7 @@ class NovelUpdates implements ListManager {
         const artistElement = artists.eq(i);
         const artist = {
           link: artistElement.attr("href") as string,
-          name: artistElement.text().trim(),
+          name: getText(artistElement).trim(),
         };
         medium.artists.push(artist);
       }
@@ -430,7 +433,7 @@ class NovelUpdates implements ListManager {
       medium.latest = NovelUpdates.scrapeListRow(3, tableData);
     }
     // @ts-expect-error
-    medium.latest.date = tableData.first().text().trim();
+    medium.latest.date = getText(tableData.first()).trim();
   }
 
   public stringifyCookies() {
@@ -540,7 +543,7 @@ export interface ScrapeMedium {
 }
 
 async function novelUpdatesTocAdapter(uri: string) {
-  /*const pageInfo = await storage.getPageInfo(uri, "scraped");
+  /* const pageInfo = await storage.getPageInfo(uri, "scraped");
 
     if (pageInfo.values) {
         const date = new Date(pageInfo.values[0]);
@@ -548,7 +551,7 @@ async function novelUpdatesTocAdapter(uri: string) {
             // do not search a toc on novelupdates twice a day
             return [];
         }
-    }*/
+    } */
   const medium: ScrapeMedium = {
     current: {},
     latest: {},
@@ -604,7 +607,7 @@ export function factory(type: number, cookies?: string): ListManager {
     instance = new SimpleNovelUpdates();
   }
   if (!instance) {
-    throw Error("unknown list manager");
+    throw new ValidationError("unknown list manager");
   }
   instance.parseAndReplaceCookies(cookies);
   return instance;

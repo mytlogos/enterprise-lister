@@ -1,50 +1,52 @@
-import { AddMedium, List, MediaStore, Medium, SecondaryMedium, SimpleMedium, StringKey, VuexStore } from "../siteTypes";
-import { Module, useStore } from "vuex";
+import { AddMedium, Medium, SecondaryMedium, SimpleMedium, StringKey } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
 import { mergeMediaTocProp } from "../init";
+import { defineStore } from "pinia";
+import { useListStore } from "./lists";
 
-const module: Module<MediaStore, VuexStore> = {
-  state: () => ({
+export interface MediaStore {
+  media: Record<number, Medium>;
+  secondaryMedia: Record<number, SecondaryMedium>;
+  episodesOnly: boolean;
+}
+
+export const useMediaStore = defineStore("media", {
+  persist: true,
+  state: (): MediaStore => ({
     media: {},
     secondaryMedia: {},
     episodesOnly: false,
   }),
   getters: {
-    getMedium(state) {
-      return (id: number): SimpleMedium => state.media[id];
-    },
-    getMergedProp(state) {
+    getMergedProp() {
       return <T extends StringKey<SimpleMedium>>(medium: Medium, prop: T): SimpleMedium[T] => {
-        const secondMedium = state.secondaryMedia[medium.id];
+        if (!medium.id) {
+          throw Error("missing id on medium");
+        }
+        const secondMedium = this.secondaryMedia[medium.id];
         return mergeMediaTocProp(medium, secondMedium?.tocs || [], prop);
       };
     },
-    media(state): SimpleMedium[] {
-      return Object.values(state.media);
+    mediaList(): Medium[] {
+      return Object.values(this.media);
     },
   },
-  mutations: {
-    userMedia(state, media: Record<number, SimpleMedium>) {
-      state.media = media;
-    },
-    userSecondaryMedia(state, media: Record<number, SecondaryMedium>) {
-      state.secondaryMedia = media;
-    },
-    addMedium(state, medium: Medium | Medium[]) {
-      if (Array.isArray(medium)) {
-        medium.forEach((item) => (state.media[item.id] = item));
-      } else {
-        state.media[medium.id] = medium;
+  actions: {
+    updateMediumLocal(medium: SimpleMedium) {
+      if (!medium.id) {
+        throw Error("missing id on medium");
       }
+      Object.assign(this.media[medium.id], medium);
     },
-    deleteMedium(state, id: number) {
-      if (!(id in state.media)) {
+
+    deleteMediumLocal(id: number) {
+      if (!(id in this.media)) {
         throw Error("invalid mediumId");
       }
 
-      delete state.media[id];
+      delete this.media[id];
 
-      useStore().state.lists.forEach((value: List) => {
+      useListStore().lists.forEach((value: { items: number[] }) => {
         const listIndex = value.items.findIndex((itemId: number) => itemId === id);
 
         if (listIndex >= 0) {
@@ -52,12 +54,16 @@ const module: Module<MediaStore, VuexStore> = {
         }
       });
     },
-    episodesOnly(state, value: boolean) {
-      state.episodesOnly = value;
+
+    deleteTocLocal(data: { mediumId: number; link: string }) {
+      const medium = this.secondaryMedia[data.mediumId];
+      if (!medium) {
+        throw Error("invalid mediumId");
+      }
+      medium.tocs = medium.tocs.filter((toc) => toc.link !== data.link);
     },
-  },
-  actions: {
-    async loadMedia({ commit }) {
+
+    async loadMedia() {
       try {
         const [data, secondaryData] = await Promise.all([HttpClient.getAllMedia(), HttpClient.getAllSecondaryMedia()]);
         const media: Record<number, SimpleMedium> = {};
@@ -76,29 +82,30 @@ const module: Module<MediaStore, VuexStore> = {
           }
         }
 
-        commit("userMedia", media);
-        commit("userSecondaryMedia", secondaryMedia);
+        // @ts-expect-error
+        this.media = media;
+        this.secondaryMedia = secondaryMedia;
       } catch (error) {
         console.error(error);
       }
     },
-    addMedium({ commit }, data: AddMedium) {
+
+    async addMedium(data: AddMedium) {
       if (!data.title) {
-        commit("addMediumModalError", "Missing title");
+        throw Error("Missing title");
       } else if (!data.medium) {
-        commit("addMediumModalError", "Missing type");
+        throw Error("Missing Type");
       } else {
-        HttpClient.createMedium(data)
-          .then((medium) => {
-            commit("addMedium", medium);
-            commit("resetModal", "addMedium");
-          })
-          .catch((error) => commit("addMediumModalError", String(error)));
+        const medium = await HttpClient.createMedium(data);
+        if (!medium.id) {
+          throw Error("missing id on medium");
+        }
+        this.media[medium.id] = medium as Medium;
+        return medium;
       }
-      // TODO implement addMedium
     },
 
-    editMedium({ commit }, data: { id: number; prop: string }) {
+    editMedium(data: { id: number; prop: string }) {
       if (data.id == null || !data.prop) {
         // TODO handle this better
         throw Error();
@@ -108,17 +115,16 @@ const module: Module<MediaStore, VuexStore> = {
       // TODO implement editMedium
     },
 
-    deleteMedium({ commit }, id: number) {
+    deleteMedium(id: number) {
       if (id == null) {
         // TODO handle this better
         throw Error();
       } else {
         HttpClient.deleteMedium(id)
-          .then(() => commit("deleteMedium", id))
+          .then(() => this.deleteMediumLocal(id))
           .catch((error) => console.log(error));
       }
       // TODO implement deleteMedium
     },
   },
-};
-export default module;
+});

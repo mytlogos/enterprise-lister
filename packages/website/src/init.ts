@@ -1,3 +1,4 @@
+import { isProxy, isRef, Ref, toRaw, unref, watch } from "vue";
 import { SimpleMedium, FullMediumToc, StringKey } from "./siteTypes";
 
 /**
@@ -6,7 +7,7 @@ import { SimpleMedium, FullMediumToc, StringKey } from "./siteTypes";
 export function hexToRgbA(hex: string, opacity = 1) {
   if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex) && (opacity < 1 || opacity > 0)) {
     let c = hex.substring(1).split("");
-    if (c.length == 3) {
+    if (c.length === 3) {
       c = [c[0], c[0], c[1], c[1], c[2], c[2]];
     }
     const fullHex = Number("0x" + c.join(""));
@@ -68,7 +69,7 @@ export type AnyFunction = (...args: any[]) => any;
  * @param timeout time to execute function after last call in ms
  * @returns nothing
  */
-export function debounce<Func extends AnyFunction, thisValue = void>(
+export function debounce<Func extends AnyFunction, thisValue = undefined>(
   this: thisValue,
   func: Func,
   timeout = 500,
@@ -313,8 +314,8 @@ export function isString(value: unknown): value is string {
  * From Stackoverflow: https://stackoverflow.com/a/41956372
  */
 export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number {
-  let lo = -1,
-    hi = array.length;
+  let lo = -1;
+  let hi = array.length;
   while (1 + lo < hi) {
     const mi = lo + ((hi - lo) >> 1);
     if (pred(array[mi])) {
@@ -376,15 +377,32 @@ export function createComputedProperty(propName: string, property: string) {
   };
 }
 
+/**
+ * Clone a value with structuredClone, falling back to JSON if it fails.
+ * Tries to unwrap any Vue Proxies before cloning.
+ * Does not modify the original object.
+ *
+ * @param value value to clone
+ * @returns an independent clone of the value
+ */
 export function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
+  if (isRef<T>(value)) {
+    value = unref(value);
+  } else if (isProxy(value)) {
+    value = toRaw(value);
+  }
+  try {
+    return structuredClone(value);
+  } catch (error) {
+    return JSON.parse(JSON.stringify(value));
+  }
 }
 
 export function deepEqual(actual: any, expected: any): boolean {
   if (!!actual !== !!expected) {
     return false;
   }
-  if (!!actual === false) {
+  if (!actual) {
     return true;
   }
   if (typeof actual !== typeof expected) {
@@ -477,4 +495,76 @@ export function toArray<T>(value: T[] | T | undefined): T[] {
   } else {
     return [];
   }
+}
+
+/**
+ * Timing Logger for debugging purposes.
+ * Start of time is the construction of an instance.
+ * Each PerfLogger.time call logs the time since start and since previous time call.
+ */
+export class PerfLogger {
+  private readonly start: number;
+  private previous?: number;
+
+  public constructor(private readonly tag: string) {
+    this.start = Date.now();
+  }
+
+  public time(msg: string) {
+    const now = Date.now();
+    const diffStart = now - this.start;
+    const diffPrevious = now - (this.previous || now);
+    console.log(`[${this.tag}](${diffStart};${diffPrevious}): ${msg}`);
+    this.previous = now;
+  }
+}
+
+export function customHookHelper<T extends { data: any[] }>(
+  data: Ref<T>,
+  modelValue: Ref<T>,
+  createSchema: () => T["data"][0],
+  logger: Logger,
+  emits: (event: "update:modelValue", ...args: any[]) => void,
+) {
+  return {
+    dataUnwatcher: watch(
+      data,
+      (newValue) => {
+        if (!deepEqual(newValue, modelValue.value)) {
+          logger.info("Updated config");
+          emits("update:modelValue", newValue);
+        }
+      },
+      { deep: true },
+    ),
+
+    modelUnwatcher: watch(
+      modelValue,
+      (newValue) => {
+        if (!deepEqual(newValue, data.value)) {
+          data.value = clone(newValue);
+        }
+      },
+      { deep: true, immediate: true },
+    ),
+
+    toggleCustomRequest(item: T["data"][0]) {
+      if (item._request) {
+        item._request = undefined;
+      } else {
+        item._request = {};
+      }
+    },
+
+    addSchema() {
+      data.value.data.push(createSchema());
+    },
+  };
+}
+
+export function recordToArray(record: Record<string, any>): any[] {
+  return Object.entries(record).map(([key, value]) => {
+    value.key = key;
+    return value;
+  });
 }

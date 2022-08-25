@@ -4,8 +4,9 @@ import * as url from "url";
 import logger from "enterprise-core/dist/logger";
 import { extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
-import { UrlError } from "../errors";
+import { ScraperError, UrlError } from "../errors";
 import { Requestor } from "../request";
+import { getText } from "./directTools";
 
 const request = new Requestor(undefined, true);
 
@@ -27,14 +28,14 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
     const span = newsRow.children("span").eq(0);
     span.remove();
 
-    const mediumTitle = sanitizeString(newsRow.text());
+    const mediumTitle = sanitizeString(getText(newsRow));
 
-    const rawTitle = sanitizeString(span.text());
+    const rawTitle = sanitizeString(getText(span));
     const groups = titlePattern.exec(rawTitle);
 
     if (!groups) {
       // TODO: 19.07.2019 log or just ignore?, kissAnime has news designated with 'episode', ona or ova only
-      logger.warn(`Unknown KissAnime News Format: '${span.text()}' for '${mediumTitle}'`);
+      logger.warn(`Unknown KissAnime News Format: '${rawTitle}' for '${mediumTitle}'`);
       continue;
     }
 
@@ -137,7 +138,9 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   }
   const $ = await request.getCheerio({ url: urlString });
   const contentElement = $("#container > #leftside");
-  const animeTitle = contentElement.find(".bigBarContainer > .barContent > div > a:first-child").first().text().trim();
+  const animeTitle = getText(
+    contentElement.find(".bigBarContainer > .barContent > div > a:first-child").first(),
+  ).trim();
 
   const episodeElements = contentElement.find(".episodeList .listing > tbody > tr:has(td)");
 
@@ -159,10 +162,10 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const episodeElement = episodeElements.eq(i);
     const columns = episodeElement.children();
 
-    const date = new Date(columns.eq(1).text().trim());
+    const date = new Date(getText(columns.eq(1)).trim());
 
     const titleElement = columns.eq(0).find("a");
-    const titleString = sanitizeString(titleElement.text());
+    const titleString = sanitizeString(getText(titleElement));
     const episodeGroups = chapReg.exec(titleString);
 
     if (Number.isNaN(date.getDate()) || !episodeGroups) {
@@ -177,7 +180,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
     const indices = extractIndices(episodeGroups, 1, 2, 4);
 
     if (!indices) {
-      throw Error(`changed format on kissAnime, got no indices for: '${titleString}'`);
+      throw new ScraperError(`changed format on kissAnime, got no indices for: '${titleString}'`);
     }
 
     let title = "Episode " + indices.combi;
@@ -186,7 +189,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
       const multiIndices = extractIndices(episodeGroups, 6, 7, 9);
 
       if (!multiIndices) {
-        throw Error(`changed format on kissAnime, got no indices for multi: '${titleString}'`);
+        throw new ScraperError(`changed format on kissAnime, got no indices for multi: '${titleString}'`);
       }
       if (indices.total < multiIndices.total) {
         for (let totalIndex = indices.total + 1; totalIndex <= multiIndices.total; totalIndex++) {
@@ -231,14 +234,14 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   for (let i = 0; i < infoElements.length; i++) {
     const element = infoElements.eq(i);
 
-    if (element.text().toLocaleLowerCase().includes("status")) {
+    if (getText(element).toLocaleLowerCase().includes("status")) {
       releaseStateElement = element.parent();
     }
   }
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateElement) {
-    const releaseStateString = releaseStateElement.text().toLowerCase();
+    const releaseStateString = getText(releaseStateElement).toLowerCase();
     if (releaseStateString.includes("complete")) {
       releaseState = ReleaseState.Complete;
     } else if (releaseStateString.includes("ongoing")) {
@@ -280,7 +283,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
   for (let i = 0; i < links.length; i++) {
     const linkElement = links.eq(i);
 
-    const text = sanitizeString(linkElement.text());
+    const text = sanitizeString(getText(linkElement));
     const link = new url.URL(linkElement.attr("href") as string, BASE_URI).href;
 
     searchResults.push({ link, title: text, medium: MediaType.IMAGE });

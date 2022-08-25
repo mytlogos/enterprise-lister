@@ -20,13 +20,16 @@ import {
   Id,
   JobStatSummary,
   JobTrack,
+  QueryJobHistory,
+  Paginated,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle } from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
 import { escapeLike } from "../storages/storageTools";
-import { getStore } from "../../asyncStorage";
+import { requireStore, StoreKey } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
+import { DatabaseError, ValidationError } from "../../error";
 
 interface CountValue<T> {
   count: number;
@@ -260,7 +263,7 @@ export class JobContext extends SubContext {
     }
     if (["type", "name", "arguments"].includes(column)) {
       if (!isString(value)) {
-        throw Error(`trying to delete jobs from column '${column}' without a string value: ${value}`);
+        throw new TypeError(`trying to delete jobs from column '${column}' without a string value: ${value + ""}`);
       }
       const like = escapeLike(value, {
         noBoundaries: true,
@@ -301,10 +304,7 @@ export class JobContext extends SubContext {
   }
 
   public getJobsById(jobIds: number[]): Promise<JobItem[]> {
-    return this.queryInList(
-      "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND id IN (??);",
-      [jobIds],
-    ) as Promise<JobItem[]>;
+    return this.queryInList("SELECT * FROM jobs WHERE id IN (??);", [jobIds]) as Promise<JobItem[]>;
   }
 
   public getJobsByName(names: string[]): Promise<JobItem[]> {
@@ -337,7 +337,7 @@ export class JobContext extends SubContext {
       let runAfter: Optional<number>;
 
       // @ts-expect-error
-      if (value.runAfter && value.runAfter.id && Number.isInteger(value.runAfter.id)) {
+      if (value.runAfter?.id && Number.isInteger(value.runAfter.id)) {
         // @ts-expect-error
         runAfter = value.runAfter.id;
       }
@@ -356,7 +356,7 @@ export class JobContext extends SubContext {
         );
         // the only reason it should fail to insert is when its name constraint is violated
         if (!result.insertId) {
-          throw Error("could not add job: " + JSON.stringify(value) + " nor find it");
+          throw new DatabaseError("could not add job: " + JSON.stringify(value) + " nor find it");
         } else {
           // @ts-expect-error
           value.id = result.insertId;
@@ -404,7 +404,7 @@ export class JobContext extends SubContext {
           // for now updateJobs is used only to switch between the running states running and waiting
           updates.push("runningSince = ?");
           if (value.state === JobState.RUNNING && !value.runningSince) {
-            throw Error("No running since value on running job!");
+            throw new ValidationError("No running_since value on running job!");
           }
           values.push(value.runningSince);
 
@@ -447,7 +447,6 @@ export class JobContext extends SubContext {
   public async getJobHistoryStream(since: Date, limit: number): Promise<TypedQuery<JobHistoryItem>> {
     let query = "SELECT * FROM job_history WHERE start < ? ORDER BY start DESC";
     const values = [since.toISOString()] as any[];
-    console.log(values);
 
     if (limit >= 0) {
       query += " LIMIT ?;";
@@ -460,86 +459,126 @@ export class JobContext extends SubContext {
     return this.query("SELECT * FROM job_history ORDER BY start;");
   }
 
+  /**
+   * Return a paginated query result.
+   * Returns at most 1000 items but at least 5.
+   *
+   * @param filter the query filter
+   * @returns an array of items
+   */
+  public async getJobHistoryPaginated(filter: QueryJobHistory): Promise<Paginated<JobHistoryItem, "start">> {
+    let conditions = "WHERE start < ?";
+    // to transform the date into the correct form in the local timezone
+    // else the database misses it with the timezoneoffset
+    const since = new Date(filter.since);
+    since.setMinutes(since.getMinutes() - since.getTimezoneOffset());
+    const values: any[] = [since.toISOString()];
+
+    if (filter.name) {
+      values.push(`%${filter.name}%`);
+      conditions += " AND name like ?";
+    }
+
+    if (filter.type) {
+      values.push(filter.type);
+      conditions += " AND type = ?";
+    }
+
+    if (filter.result) {
+      values.push(filter.result);
+      conditions += " AND result = ?";
+    }
+
+    conditions += " ORDER BY start DESC";
+    const countValues = [...values];
+
+    const limit = " LIMIT ?;";
+    values.push(Math.max(Math.min(filter.limit, 1000), 5));
+
+    const totalPromise = this.query("SELECT count(*) as total FROM job_history " + conditions, countValues);
+    const items: JobHistoryItem[] = await this.query("SELECT * FROM job_history " + conditions + limit, values);
+    const [{ total }]: [{ total: number }] = await totalPromise;
+
+    return {
+      items,
+      next: items[items.length - 1] && new Date(items[items.length - 1].start),
+      total,
+    };
+  }
+
   private async addJobHistory(jobs: JobItem | JobItem[], finished: Date): EmptyPromise {
     await promiseMultiSingle(jobs, async (value: JobItem) => {
       let args = value.arguments;
       if (value.arguments && !isString(value.arguments)) {
         args = JSON.stringify(value.arguments);
       }
-      const store = getStore();
-      if (!store) {
-        throw Error("missing store - is this running outside a AsyncLocalStorage Instance?");
-      }
-      const context = store.get("history");
-      const result = store.get("result") || "success";
-      const message = store.get("message") || "Missing Message";
+      const store = requireStore();
+      const result = store.get(StoreKey.RESULT) || "success";
+      const message = store.get(StoreKey.MESSAGE) || JSON.stringify({ message: "No Message" });
 
-      const jobTrack = {
-        modifications: store.get("modifications") || {},
-        network: store.get("network") || {
+      const jobTrack: JobTrack = {
+        modifications: store.get(StoreKey.MODIFICATIONS) || {},
+        network: store.get(StoreKey.NETWORK) || {
           count: 0,
           sent: 0,
           received: 0,
           history: [],
         },
-        queryCount: store.get("queryCount") || 0,
-      } as JobTrack;
+        queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
+      };
 
       let [item] = (await this.query("SELECT * FROM job_stat_summary WHERE name = ?", [
         value.name,
       ])) as JobStatSummary[];
 
-      if (!item) {
-        item = {
-          name: value.name,
-          type: value.type,
-          count: 0,
-          failed: 0,
-          succeeded: 0,
-          network_requests: 0,
-          network_send: 0,
-          network_received: 0,
-          duration: 0,
-          updated: 0,
-          created: 0,
-          deleted: 0,
-          sql_queries: 0,
-          lagging: 0,
-          min_network_requests: 0,
-          min_network_send: 0,
-          min_network_received: 0,
-          min_duration: 0,
-          min_updated: 0,
-          min_created: 0,
-          min_deleted: 0,
-          min_sql_queries: 0,
-          min_lagging: 0,
-          max_network_requests: 0,
-          max_network_send: 0,
-          max_network_received: 0,
-          max_duration: 0,
-          max_updated: 0,
-          max_created: 0,
-          max_deleted: 0,
-          max_sql_queries: 0,
-          max_lagging: 0,
-        };
-      }
+      item ??= {
+        name: value.name,
+        type: value.type,
+        count: 0,
+        failed: 0,
+        succeeded: 0,
+        network_requests: 0,
+        network_send: 0,
+        network_received: 0,
+        duration: 0,
+        updated: 0,
+        created: 0,
+        deleted: 0,
+        sql_queries: 0,
+        lagging: 0,
+        min_network_requests: 0,
+        min_network_send: 0,
+        min_network_received: 0,
+        min_duration: 0,
+        min_updated: 0,
+        min_created: 0,
+        min_deleted: 0,
+        min_sql_queries: 0,
+        min_lagging: 0,
+        max_network_requests: 0,
+        max_network_send: 0,
+        max_network_received: 0,
+        max_duration: 0,
+        max_updated: 0,
+        max_created: 0,
+        max_deleted: 0,
+        max_sql_queries: 0,
+        max_lagging: 0,
+      };
       item.count++;
       const modifications = Object.values(jobTrack.modifications);
-      modifications.forEach((value) => {
-        const created = value.created;
-        item.created += created;
-        item.min_created = Math.min(item.min_created, created);
-        item.max_created = Math.max(item.max_created, created);
+      modifications.forEach((modification) => {
+        item.created += modification.created;
+        item.min_created = Math.min(item.min_created, modification.created);
+        item.max_created = Math.max(item.max_created, modification.created);
 
-        item.updated += value.updated;
-        item.min_updated = Math.min(item.min_updated, value.updated);
-        item.max_updated = Math.max(item.max_updated, value.updated);
+        item.updated += modification.updated;
+        item.min_updated = Math.min(item.min_updated, modification.updated);
+        item.max_updated = Math.max(item.max_updated, modification.updated);
 
-        item.deleted += value.deleted;
-        item.min_deleted = Math.min(item.min_deleted, value.deleted);
-        item.max_deleted = Math.max(item.max_deleted, value.deleted);
+        item.deleted += modification.deleted;
+        item.min_deleted = Math.min(item.min_deleted, modification.deleted);
+        item.max_deleted = Math.max(item.max_deleted, modification.deleted);
       });
       item.sql_queries = jobTrack.queryCount;
       item.min_sql_queries = Math.min(jobTrack.queryCount);
@@ -608,16 +647,16 @@ export class JobContext extends SubContext {
       let created = 0;
       let updated = 0;
       let deleted = 0;
-      modifications.forEach((value) => {
-        created += value.created;
-        updated += value.updated;
-        deleted += value.deleted;
+      modifications.forEach((modification) => {
+        created += modification.created;
+        updated += modification.updated;
+        deleted += modification.deleted;
       });
 
       const queries = jobTrack.queryCount;
-      const network_received = jobTrack.network.received || 0;
-      const network_send = jobTrack.network.sent || 0;
-      const network_requests = jobTrack.network.count || 0;
+      const networkReceived = jobTrack.network.received || 0;
+      const networkSend = jobTrack.network.sent || 0;
+      const networkRequests = jobTrack.network.count || 0;
 
       return this.query(
         "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments, created, updated, deleted, queries, network_queries, network_received, network_send)" +
@@ -640,9 +679,9 @@ export class JobContext extends SubContext {
           updated,
           deleted,
           queries,
-          network_requests,
-          network_received,
-          network_send,
+          networkRequests,
+          networkReceived,
+          networkSend,
         ],
       );
     });

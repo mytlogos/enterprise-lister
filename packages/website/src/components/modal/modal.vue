@@ -18,7 +18,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="close">Close</button>
-          <button class="btn btn-primary" type="button" @click="$emit('finish'), close()">
+          <button class="btn btn-primary" type="button" @click="emits('finish')">
             <slot name="finish"> Save </slot>
           </button>
         </div>
@@ -26,65 +26,60 @@
     </div>
   </div>
 </template>
-<script lang="ts">
-import { emitBusEvent } from "../../bus";
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { onMounted, onUnmounted, reactive, ref, toRef, watch } from "vue";
 import Modal from "bootstrap/js/dist/modal";
 
-export default defineComponent({
-  name: "Modal",
-  props: {
-    error: { type: String, required: true },
-    show: Boolean,
-  },
-  emits: ["finish", "close"],
-  data() {
-    return {
-      closing: false,
-      modal: null as Modal | null,
-      listener: (evt: MouseEvent) => {
-        if (!this.$refs.root) {
-          return;
-        }
-        // noinspection JSCheckFunctionSignatures
-        if (!(this.$refs.root as HTMLElement).contains(evt.target as Node | null) && this.show) {
-          evt.stopImmediatePropagation();
-          evt.preventDefault();
-          this.close();
-        }
-      },
-    };
-  },
-  watch: {
-    show() {
-      if (this.show) {
-        this.closing = false;
-        this.modal?.show();
-      } else {
-        this.modal?.hide();
-      }
-    },
-  },
-  mounted(): void {
-    console.log(this.$refs);
-    const modalElement = this.$refs.root as HTMLElement;
-    this.modal = new Modal(modalElement);
-
-    modalElement.addEventListener("hidden.bs.modal", () => this.close());
-    document.addEventListener("click", this.listener, { capture: true });
-  },
-  unmounted() {
-    document.removeEventListener("click", this.listener, { capture: true });
-  },
-  methods: {
-    close(): void {
-      if (this.closing || !this.show) {
-        return;
-      }
-      this.closing = true;
-      this.$emit("close");
-      emitBusEvent("reset:modal");
-    },
-  },
+const props = defineProps({
+  error: { type: String, required: true },
+  show: Boolean,
 });
+
+const emits = defineEmits(["finish", "close", "update:show"]);
+const data = reactive({
+  closing: false,
+  modal: null as Modal | null,
+});
+const root = ref<HTMLInputElement | null>(null);
+
+watch(toRef(props, "show"), () => {
+  if (props.show) {
+    data.closing = false;
+    data.modal?.show();
+  } else {
+    data.modal?.hide();
+  }
+});
+
+onMounted((): void => {
+  const modalElement = root.value as HTMLElement;
+  data.modal = new Modal(modalElement);
+
+  modalElement.addEventListener("hidden.bs.modal", () => close());
+  document.addEventListener("click", listener, { capture: true });
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", listener, { capture: true });
+});
+
+function listener(evt: MouseEvent) {
+  if (!root.value) {
+    return;
+  }
+  if (!root.value.contains(evt.target as Node | null) && props.show) {
+    evt.stopImmediatePropagation();
+    evt.preventDefault();
+    close();
+  }
+}
+
+function close(): void {
+  if (data.closing || !props.show) {
+    return;
+  }
+  data.closing = true;
+  emits("close");
+  emits("update:show", false);
+}
 </script>

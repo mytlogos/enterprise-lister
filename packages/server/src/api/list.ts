@@ -1,115 +1,87 @@
 import { internalListStorage } from "enterprise-core/dist/database/storages/storage";
-import { Errors, stringToNumberList, isNumberOrArray, isString } from "enterprise-core/dist/tools";
 import { Router } from "express";
-import { createHandler, extractQueryParam } from "./apiTools";
+import {
+  DeleteList,
+  DeleteListMedium,
+  deleteListMediumSchema,
+  deleteListSchema,
+  GetList,
+  GetListMedium,
+  getListMediumSchema,
+  getListSchema,
+  PostList,
+  postListMediumSchema,
+  postListSchema,
+  PutList,
+  PutListMedium,
+  putListMediumSchema,
+  putListSchema,
+} from "../validation";
+import { castQuery, createHandler, extractQueryParam } from "./apiTools";
 
-export const getList = createHandler((req) => {
-  let listId: string | number[] = extractQueryParam(req, "listId");
-  const uuid = extractQueryParam(req, "uuid");
-  let media: string | number[] = extractQueryParam(req, "media");
+export const getList = createHandler(
+  (req) => {
+    const { listId, media, uuid } = castQuery<GetList>(req);
+    return internalListStorage.getList(listId, media || [], uuid);
+  },
+  { query: getListSchema },
+);
 
-  if (!media) {
-    media = "";
-  }
-  if (!listId) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
+export const postList = createHandler(
+  (req) => {
+    const { uuid, list }: PostList = req.body;
+    return internalListStorage.addList(uuid, list);
+  },
+  { body: postListSchema },
+);
 
-  if (isString(listId)) {
-    listId = stringToNumberList(listId);
-  }
-  media = stringToNumberList(media);
+export const putList = createHandler(
+  (req) => {
+    const { list }: PutList = req.body;
+    return internalListStorage.updateList(list);
+  },
+  { body: putListSchema },
+);
 
-  return internalListStorage.getList(listId, media, uuid);
-});
+export const deleteList = createHandler(
+  (req) => {
+    const { listId, uuid }: DeleteList = req.body;
+    return internalListStorage.deleteList(listId, uuid);
+  },
+  { body: deleteListSchema },
+);
 
-export const postList = createHandler((req) => {
-  const { uuid, list } = req.body;
-  if (!list) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return internalListStorage.addList(uuid, list);
-});
+export const getListMedium = createHandler(
+  (req) => {
+    const { listId, media, uuid } = castQuery<GetListMedium>(req);
+    return internalListStorage.getList(listId, media, uuid);
+  },
+  { query: getListMediumSchema },
+);
 
-export const putList = createHandler((req) => {
-  const { uuid, list } = req.body;
-  if (!list) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  // TODO: 05.09.2019 should this not be update list?
-  return internalListStorage.addList(uuid, list);
-});
+export const postListMedium = createHandler(
+  (req) => {
+    const { listId, mediumId, uuid } = req.body;
+    return internalListStorage.addItemToList({ listId, id: mediumId }, uuid);
+  },
+  { body: postListMediumSchema },
+);
 
-export const deleteList = createHandler((req) => {
-  const { listId, uuid } = req.body;
-  if (!listId || !Number.isInteger(listId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return internalListStorage.deleteList(listId, uuid);
-});
+export const putListMedium = createHandler(
+  (req) => {
+    const { oldListId, newListId, mediumId }: PutListMedium = req.body;
+    return internalListStorage.moveMedium(oldListId, newListId, mediumId);
+  },
+  { body: putListMediumSchema },
+);
 
-export const getListMedium = createHandler((req) => {
-  const listId = Number.parseInt(extractQueryParam(req, "listId"));
-  const uuid = extractQueryParam(req, "uuid");
-  let media: string | number[] = extractQueryParam(req, "media");
-
-  if (!media || !isString(media)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-
-  media = stringToNumberList(media);
-
-  if (!listId || (Array.isArray(media) && !media.length)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return internalListStorage.getList(listId, media, uuid);
-});
-
-export const postListMedium = createHandler((req) => {
-  const { listId, mediumId, uuid } = req.body;
-
-  if (!listId || !Number.isInteger(listId) || !mediumId || !isNumberOrArray(mediumId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return internalListStorage.addItemToList({ listId, id: mediumId }, uuid);
-});
-
-export const putListMedium = createHandler((req) => {
-  const { oldListId, newListId } = req.body;
-  let { mediumId } = req.body;
-
-  if (!Number.isInteger(mediumId)) {
-    // FIXME: should expect number[] not string
-    if (isString(mediumId)) {
-      mediumId = stringToNumberList(mediumId);
-
-      if (!mediumId.length) {
-        return Promise.resolve(false);
-      }
-    } else {
-      mediumId = undefined;
-    }
-  }
-  if (!oldListId || !newListId || !mediumId) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return internalListStorage.moveMedium(oldListId, newListId, mediumId);
-});
-
-export const deleteListMedium = createHandler((req) => {
-  const { listId } = req.body;
-  let { mediumId } = req.body;
-
-  // FIXME: expect number[] nod string
-  // if it is a string, it is likely a list of episodeIds was send
-  if (isString(mediumId)) {
-    mediumId = stringToNumberList(mediumId);
-  }
-  if (!listId || !mediumId || !isNumberOrArray(mediumId)) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return internalListStorage.removeMedium(listId, mediumId);
-});
+export const deleteListMedium = createHandler(
+  (req) => {
+    const { listId, mediumId }: DeleteListMedium = req.body;
+    return internalListStorage.removeMedium(listId, mediumId);
+  },
+  { body: deleteListMediumSchema },
+);
 
 export const getAllLists = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");

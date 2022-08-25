@@ -85,8 +85,6 @@ export interface SimpleMedium {
   stateTL?: ReleaseState;
   series?: string;
   universe?: string;
-
-  [key: string]: any;
 }
 
 /**
@@ -1009,7 +1007,7 @@ export interface PageInfo {
  * T extends R   -> U
  * T extends R[] -> U[]
  */
-export type MultiSingle<T, U> = T extends Array<infer R> ? U[] : U;
+export type MultiSingle<T, U> = T extends any[] ? U[] : U;
 
 /**
  * When Type is either a lone value or an array of values.
@@ -1022,7 +1020,7 @@ export type MultiSingleValue<T> = T[] | T;
  * T extends R   -> U
  * T extends R[] -> U[]
  */
-export type PromiseMultiSingle<T, U> = Promise<T extends Array<infer R> ? U[] : U>;
+export type PromiseMultiSingle<T, U> = Promise<T extends any[] ? U[] : U>;
 
 /**
  * Convenience type of a lone number or an array of numbers.
@@ -1035,7 +1033,7 @@ export type MultiSingleNumber = MultiSingleValue<number>;
  * T extends R   -> Optional<U>   // may be undefined
  * T extends R[] -> U[] | never[] // an array of U or an empty array
  */
-export type OptionalMultiSingle<T, U> = T extends Array<infer R> ? U[] | never[] : Optional<U>;
+export type OptionalMultiSingle<T, U> = T extends any[] ? U[] | never[] : Optional<U>;
 
 /**
  * A Promise with an Optional Value.
@@ -1102,6 +1100,27 @@ export type NonNull<T, K extends StringKeys<T>> = T & {
   [S in K]-?: T[K];
 };
 
+export type RequiredKeys<T> = {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  [K in keyof T]-?: {} extends { [P in K]: T[K] } ? never : K;
+}[keyof T];
+
+export type OptionalKeys<T> = {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  [K in keyof T]-?: {} extends { [P in K]: T[K] } ? K : never;
+}[keyof T];
+
+export type ExcludeOptionalProps<T> = Pick<T, RequiredKeys<T>>;
+
+export type ExcludeRequiredProps<T> = Pick<T, OptionalKeys<T>>;
+
+/**
+ * Transform record to a jsonable Type
+ */
+export type Json<T extends Record<string, any>> = {
+  [K in keyof T]: T[K] extends Date ? string : T[K] extends Record<string, any> ? Json<T[K]> : T[K];
+};
+
 export type Primitive = string | number | boolean;
 
 export interface Invalidation {
@@ -1157,6 +1176,8 @@ export type Link = string;
  *       type: integer
  */
 export type Id = number;
+
+export type Insert<T extends { id: Id }> = Omit<T, "id"> & Partial<Pick<T, "id">>;
 
 export enum ScrapeName {
   searchForToc = "searchForToc",
@@ -1418,6 +1439,8 @@ export interface JobStats extends AllJobStats {
   name: string;
 }
 
+export type JobHistoryResult = "warning" | "failed" | "success";
+
 /**
  * @openapi
  * components:
@@ -1454,7 +1477,7 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
   scheduled_at: Date;
   start: Date;
   end: Date;
-  result: string;
+  result: JobHistoryResult;
   message: string;
   context: string;
   created?: number;
@@ -1467,6 +1490,20 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
   lagging?: number;
   duration?: number;
 };
+
+export interface Paginated<T, K extends keyof T> {
+  items: T[];
+  next: T[K];
+  total: number;
+}
+
+export interface QueryJobHistory {
+  since: Date;
+  limit: number;
+  type?: ScrapeName;
+  result?: JobHistoryResult;
+  name?: string;
+}
 
 export interface Modification {
   created: number;
@@ -1870,4 +1907,45 @@ export interface CustomHook {
   updated_at?: Date;
   hookState: HookState;
   comment: string;
+}
+
+export interface QueryItems {
+  episodeReleases: number[]; // by episode id
+  episodes: number[];
+  partEpisodes: number[]; // by part id
+  partReleases: number[]; // by part id
+  parts: number[];
+  media: number[];
+  tocs: number[]; // by toc id
+  mediaTocs: number[]; // by medium id
+  mediaLists: number[];
+  externalMediaLists: number[];
+  externalUser: string[];
+}
+
+export interface QueryItemsResult {
+  episodeReleases: EpisodeRelease[]; // by episode id
+  episodes: Episode[];
+  partEpisodes: Record<number, number[]>; // by part id
+  partReleases: Record<number, SimpleRelease[]>; // by part id
+  parts: Part[];
+  media: SimpleMedium[];
+  tocs: FullMediumToc[]; // by toc id
+  mediaTocs: FullMediumToc[]; // by medium id
+  mediaLists: List[];
+  externalMediaLists: ExternalList[];
+  externalUser: ExternalUser[];
+}
+
+export interface Notification {
+  id: number;
+  title: string;
+  content: string;
+  date: Date;
+  key: string;
+  type: string;
+}
+
+export interface UserNotification extends Notification {
+  read: boolean;
 }

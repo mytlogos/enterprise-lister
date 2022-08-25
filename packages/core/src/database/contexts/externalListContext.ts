@@ -1,8 +1,11 @@
 import { SubContext } from "./subContext";
-import { ExternalList, Uuid } from "../../types";
-import { Errors, promiseMultiSingle, multiSingle } from "../../tools";
+import { ExternalList, Id, Insert, Uuid } from "../../types";
+import { promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { OkPacket } from "mysql";
+import { DatabaseError, ValidationError } from "../../error";
+
+export type UpdateExternalList = Partial<ExternalList> & { id: Id };
 
 export class ExternalListContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<ExternalList[]> {
@@ -24,7 +27,7 @@ export class ExternalListContext extends SubContext {
    * @param {ExternalList} externalList
    * @return {Promise<ExternalList>}
    */
-  public async addExternalList(userUuid: Uuid, externalList: ExternalList): Promise<ExternalList> {
+  public async addExternalList(userUuid: Uuid, externalList: Insert<ExternalList>): Promise<ExternalList> {
     const result = await this.query(
       "INSERT INTO external_reading_list " + "(name, user_uuid, medium, url) " + "VALUES(?,?,?,?);",
       [externalList.name, userUuid, externalList.medium, externalList.url],
@@ -33,7 +36,7 @@ export class ExternalListContext extends SubContext {
     const insertId = result.insertId;
 
     if (!Number.isInteger(insertId)) {
-      throw Error(`invalid ID ${insertId}`);
+      throw new DatabaseError(`invalid ID ${insertId + ""}`);
     }
 
     return {
@@ -48,7 +51,7 @@ export class ExternalListContext extends SubContext {
   /**
    * Updates an external list.
    */
-  public async updateExternalList(externalList: ExternalList): Promise<boolean> {
+  public async updateExternalList(externalList: UpdateExternalList): Promise<boolean> {
     const result = await this.update(
       "external_reading_list",
       (updates, values) => {
@@ -158,7 +161,7 @@ export class ExternalListContext extends SubContext {
     // then take it as uuid from user and get the standard listId of 'Standard' list
     if (medium.listId == null || !Number.isInteger(medium.listId)) {
       if (!uuid) {
-        throw Error(Errors.INVALID_INPUT);
+        throw new ValidationError("missing uuid parameter");
       }
       const idResult = await this.query(
         "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",

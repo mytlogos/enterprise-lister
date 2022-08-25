@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { ConfigurationError } from "./error";
 import { findProjectDirPath } from "./tools";
 
 let config;
@@ -18,7 +19,7 @@ if (config.error) {
 }
 
 if (!config.parsed) {
-  throw Error("env variables missing");
+  throw new ConfigurationError("env variables missing");
 }
 
 interface Config {
@@ -34,6 +35,7 @@ interface Config {
   measure: boolean;
   development: boolean;
   stopScrapeEvents: boolean;
+  lokiUrl?: string;
 }
 
 /**
@@ -52,12 +54,18 @@ const appConfig: Config = {
   measure: !!Number(process.env.measure || config.parsed.measure),
   development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",
   stopScrapeEvents: !!Number(process.env.stopScrapeEvents || config.parsed.stopScrapeEvents),
+  lokiUrl: process.env.lokiUrl || config.parsed.lokiUrl,
 };
+
+const optionalVars = new Set(["lokiUrl"] as Array<keyof Config>);
 
 // this should not output sensitive information
 for (const [key, value] of Object.entries(appConfig)) {
   if (value == null || Number.isNaN(value)) {
-    throw Error(`Config Error: ${key} has invalid Value: ${value}`);
+    if (optionalVars.has(key as keyof Config)) {
+      continue;
+    }
+    throw new ConfigurationError(`Config Error: ${key} has invalid Value: ${value + ""}`);
   }
 }
 

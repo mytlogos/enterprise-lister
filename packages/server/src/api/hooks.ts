@@ -5,11 +5,14 @@ import { runAsync } from "enterprise-core/dist/asyncStorage";
 import { ScraperHook, CustomHook } from "enterprise-core/dist/types";
 import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { createHook } from "enterprise-scraper/dist/externals/custom/customScraper";
+import { createHook as createHookV2 } from "enterprise-scraper/dist/externals/customv2";
+import { HookConfig as HookConfigV2 } from "enterprise-scraper/dist/externals/customv2/types";
 import { Router } from "express";
 import { createHandler } from "./apiTools";
-import { HookTest } from "@/types";
+import { HookTest, HookTestV2 } from "../types";
 import { CustomHookError } from "enterprise-scraper/dist/externals/custom/errors";
 import { RestResponseError } from "../errors";
+import { ValidatorResultError } from "jsonschema";
 
 export const getAllHooks = createHandler(() => {
   return load(true).then(() => hookStorage.getAllStream());
@@ -57,12 +60,45 @@ const testHook = createHandler(async (req) => {
       // translate custom hook errors into RestResponseError for informing user
       if (error instanceof CustomHookError) {
         error.data.trace = Object.fromEntries(store);
-        throw new RestResponseError(error.code, error.msg, error.data);
+        throw new RestResponseError(error.code, error.message, error.data);
       } else {
         throw error;
       }
     }
   });
+});
+
+const testHookV2 = createHandler(async (req) => {
+  const { config, key, param }: HookTestV2 = req.body;
+  const allowed: Array<keyof HookConfigV2> = ["download", "news", "search", "toc"];
+
+  if (!allowed.includes(key)) {
+    return Promise.reject(Errors.INVALID_INPUT);
+  }
+
+  const hook = createHookV2(config);
+
+  let resultPromise;
+  if (key === "download" && hook.contentDownloadAdapter) {
+    resultPromise = hook.contentDownloadAdapter(param);
+  } else if (key === "news" && hook.newsAdapter) {
+    resultPromise = hook.newsAdapter();
+  } else if (key === "search" && hook.searchAdapter) {
+    resultPromise = hook.searchAdapter(param, hook.medium);
+  } else if (key === "toc" && hook.tocAdapter) {
+    resultPromise = hook.tocAdapter(param);
+  } else {
+    return Promise.reject(Errors.INVALID_INPUT);
+  }
+
+  try {
+    return await resultPromise;
+  } catch (error) {
+    if (error instanceof ValidatorResultError) {
+      throw new RestResponseError(400, "invalid result", error);
+    }
+    throw error;
+  }
 });
 
 const createCustomHook = createHandler((req) => {
@@ -141,6 +177,7 @@ export function hooksRouter(): Router {
   hookRoute.put(putHook);
 
   router.post("/test", testHook);
+  router.post("/testv2", testHookV2);
 
   const customHookRoute = router.route("/custom");
   customHookRoute.post(createCustomHook);

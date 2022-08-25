@@ -4,6 +4,8 @@ import logger from "enterprise-core/dist/logger";
 import { max, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist/database/storages/storage";
 import request from "../request";
+import { ScraperError } from "../errors";
+import { scraperLog, LogType, getText } from "./directTools";
 
 export const sourceType = "qidian_underground";
 
@@ -23,10 +25,10 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
   for (let tocRowIndex = 0; tocRowIndex < tocRows.length; tocRowIndex++) {
     const tocRow = tocRows.eq(tocRowIndex);
     const mediumElement = tocRow.prev();
-    const mediumTitle = sanitizeString(mediumElement.contents().first().text().trim());
+    const mediumTitle = sanitizeString(getText(mediumElement.contents().first()).trim());
 
     if (!mediumTitle) {
-      logger.warn("changed format on qidianUnderground");
+      scraperLog("warn", LogType.MEDIUM_TITLE_FORMAT, "underground", { url: uri });
       return;
     }
 
@@ -38,7 +40,10 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
       // but normally qidianUnderground thinks we have utc+1, also winter time all around?
       date.setHours(date.getHours() - 1);
       if (date > now) {
-        logger.warn("changed time format on qidianUnderground");
+        scraperLog("warn", LogType.TIME_FORMAT, "underground", {
+          url: uri,
+          unknown_time: timeStampElement.attr("title"),
+        });
         continue;
       }
     }
@@ -55,10 +60,13 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
         logger.warn(`missing href attribute for '${mediumTitle}' on qidianUnderground`);
         continue;
       }
-      const exec = chapterReg.exec(sanitizeString(titleElement.text()));
+      const exec = chapterReg.exec(sanitizeString(getText(titleElement)));
 
       if (!exec) {
-        logger.warn("changed format on qidianUnderground");
+        scraperLog("warn", LogType.TITLE_FORMAT, "underground", {
+          url: uri,
+          unknown_title: getText(titleElement),
+        });
         continue;
       }
 
@@ -100,10 +108,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
     const maxPreviousRelease = max(previous.releases, "releaseDate");
     const maxCurrentRelease = max(current.releases, "releaseDate");
 
-    return (
-      ((maxPreviousRelease && maxPreviousRelease.releaseDate.getTime()) || 0) -
-      ((maxCurrentRelease && maxCurrentRelease.releaseDate.getTime()) || 0)
-    );
+    return (maxPreviousRelease?.releaseDate.getTime() || 0) - (maxCurrentRelease?.releaseDate.getTime() || 0);
   });
 
   const chapIndexReg = /(\d+)\s*$/;
@@ -123,7 +128,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
 
       if (!exec) {
         logger.warn("news title does not end chapter index on qidianUnderground");
-        return;
+        return undefined;
       }
       if (Number(exec[1]) > latestRelease.totalIndex) {
         return true;
@@ -163,7 +168,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
   const newEpisodes = news.map((value): SimpleEpisode => {
     const exec = chapIndexReg.exec(value.title);
     if (!exec) {
-      throw Error(`'${value.title}' does not end with chapter number`);
+      throw new ScraperError(`'${value.title}' does not end with chapter number`);
     }
     const totalIndex = Number(exec[1]);
     return {
@@ -200,7 +205,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
 
     const contentChildren = contentElement.children();
 
-    const episodeTitle = sanitizeString(contentChildren.find("h2").first().remove().text().trim());
+    const episodeTitle = sanitizeString(getText(contentChildren.find("h2").first().remove()).trim());
     const content = contentChildren.html();
 
     if (!episodeTitle) {

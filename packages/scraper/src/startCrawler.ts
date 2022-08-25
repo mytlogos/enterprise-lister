@@ -1,9 +1,9 @@
-import { startCrawler } from "./jobHandler";
-import { DefaultJobScraper } from "./externals/jobScraperManager";
+import { startCrawler } from "./scheduler/jobHandler";
+import { DefaultJobScraper } from "./scheduler/jobScheduler";
 import { startStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
 import { createServer, Server, ServerResponse } from "http";
-import { stringify } from "enterprise-core/dist/tools";
+import { stringify, getMainInterface } from "enterprise-core/dist/tools";
 import { AppStatus } from "enterprise-core/dist/status";
 import { getStores } from "enterprise-core/dist/asyncStorage";
 import os from "os";
@@ -20,6 +20,12 @@ import {
 } from "./externals/hookManager";
 import path from "path";
 import { readFileSync } from "fs";
+import "./metrics";
+
+// start websocket server
+// eslint-disable-next-line import/first
+import "./websocket";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 collectDefaultMetrics({
   labels: {
@@ -27,11 +33,8 @@ collectDefaultMetrics({
   },
 });
 
-// start websocket server
-import "./websocket";
-
 const debugMessenger = debug("enterprise-lister:crawler");
-logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
+logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
 // first start storage, then crawler, as crawler depends on storage
 startStorage();
 startCrawler();
@@ -182,25 +185,25 @@ function onError(error: any) {
 }
 
 function onListening() {
+  registerOnExitHandler(() => {
+    return new Promise((resolve, reject) => {
+      server.close((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  });
   const address = server.address();
   console.log("Listening: ", address);
 
   if (address != null) {
     const bind = typeof address === "string" ? "pipe " + address : "port " + address.port;
 
-    const networkInterfaces = os.networkInterfaces();
-    for (const arrays of Object.values(networkInterfaces)) {
-      if (!Array.isArray(arrays)) {
-        continue;
-      }
-      const foundIpInterface = arrays.find((value) => value.family === "IPv4");
-
-      if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
-        continue;
-      }
-      debugMessenger(`Listening on ${bind} with Ip: '${foundIpInterface && foundIpInterface.address}'`);
-      logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV}'`);
-      break;
-    }
+    const interfaceIp = getMainInterface() || "";
+    debugMessenger(`Listening on ${bind} with Ip: '${interfaceIp}'`);
+    logger.info(`Process PID: ${process.pid} in environment '${process.env.NODE_ENV || ""}'`);
   }
 }

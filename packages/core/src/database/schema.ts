@@ -178,5 +178,3 @@ userTable.update({
   name: "",
   password: "",
 });
-
-type TestTable = Entity<typeof userTable>;

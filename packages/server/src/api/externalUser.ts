@@ -1,9 +1,20 @@
 import { externalUserStorage, jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { factory } from "enterprise-scraper/dist/externals/listManager";
-import { Errors, isString } from "enterprise-core/dist/tools";
+import { Errors } from "enterprise-core/dist/tools";
 import { DisplayExternalUser, ExternalUser, ScrapeName } from "enterprise-core/dist/types";
 import { Router } from "express";
-import { createHandler, extractQueryParam } from "./apiTools";
+import { castQuery, createHandler, extractQueryParam } from "./apiTools";
+import { ValidationError } from "enterprise-core/dist/error";
+import {
+  DeleteExternalUser,
+  deleteExternalUserSchema,
+  GetExternalUser,
+  getExternalUserSchema,
+  PostExternalUser,
+  postExternalUserSchema,
+  RefreshExternalUser,
+  refreshExternalUserSchema,
+} from "../validation";
 
 function toDisplayExternalUser(value: ExternalUser): DisplayExternalUser {
   return {
@@ -14,95 +25,81 @@ function toDisplayExternalUser(value: ExternalUser): DisplayExternalUser {
     uuid: value.uuid,
   };
 }
-export const getExternalUser = createHandler((req) => {
-  const externalUuidString = extractQueryParam(req, "externalUuid");
 
-  if (!externalUuidString || !isString(externalUuidString)) {
-    // TODO: 23.07.2019 check if valid uuid
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  try {
-    let externalUuid;
-    if (externalUuidString.startsWith("[") && externalUuidString.endsWith("]")) {
-      externalUuid = externalUuidString
-        .substr(1, externalUuidString.length - 2)
-        .split(",")
-        .map((value) => value.trim());
-    } else {
-      externalUuid = externalUuidString;
-    }
-    return externalUserStorage.getExternalUser(externalUuid).then((value) => {
-      if (Array.isArray(value)) {
-        return value.map(toDisplayExternalUser);
-      }
-      return toDisplayExternalUser(value);
-    });
-  } catch (e) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-});
+export const getExternalUser = createHandler(
+  async (req) => {
+    const { externalUuid } = castQuery<GetExternalUser>(req);
+    const value = await externalUserStorage.getExternalUser(externalUuid);
+    return value.map(toDisplayExternalUser);
+  },
+  { query: getExternalUserSchema },
+);
 
-export const postExternalUser = createHandler((req) => {
-  const { uuid, externalUser } = req.body;
-
-  if (!externalUser) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return (async () => {
+export const postExternalUser = createHandler(
+  async (req) => {
+    const { uuid, externalUser }: PostExternalUser = req.body;
     const listManager = factory(Number(externalUser.type));
     const valid = await listManager.test({ identifier: externalUser.identifier, password: externalUser.pwd });
 
     if (!valid) {
-      return Promise.reject(new Error(Errors.INVALID_DATA));
+      throw new ValidationError(Errors.INVALID_DATA);
     }
-    delete externalUser.pwd;
-    externalUser.cookies = listManager.stringifyCookies();
+    const addExternalUser: ExternalUser = {
+      identifier: externalUser.identifier,
+      lists: [],
+      localUuid: uuid,
+      type: externalUser.type,
+      uuid: "",
+      cookies: listManager.stringifyCookies(),
+    };
 
-    return externalUserStorage.addExternalUser(uuid, externalUser).then((value) => {
+    return externalUserStorage.addExternalUser(uuid, addExternalUser).then((value) => {
       if (Array.isArray(value)) {
-        throw Error("Did not expect an Array");
+        // is this check even necessary?
+        throw new ValidationError("Did not expect an Array");
       }
       return toDisplayExternalUser(value);
     });
-  })();
-});
+  },
+  { body: postExternalUserSchema },
+);
 
-export const deleteExternalUser = createHandler((req) => {
-  const { externalUuid, uuid } = req.body;
-  if (!externalUuid) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  return externalUserStorage.deleteExternalUser(externalUuid, uuid);
-});
+export const deleteExternalUser = createHandler(
+  (req) => {
+    const { externalUuid, uuid }: DeleteExternalUser = req.body;
+    return externalUserStorage.deleteExternalUser(externalUuid, uuid);
+  },
+  { body: deleteExternalUserSchema },
+);
 
 export const getAllExternalUser = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
   return externalUserStorage.getAll(uuid);
 });
 
-export const refreshExternalUser = createHandler((req) => {
-  const externalUuid = extractQueryParam(req, "externalUuid");
-  if (!externalUuid) {
-    return Promise.reject(Errors.INVALID_INPUT);
-  }
-  const externalUserWithCookies = externalUserStorage.getExternalUserWithCookies(externalUuid);
-  const storePromise = externalUserWithCookies.then((value) =>
-    jobStorage.addJobs({
+export const refreshExternalUser = createHandler(
+  async (req) => {
+    const { externalUuid } = castQuery<RefreshExternalUser>(req);
+
+    const externalUserWithCookies = await externalUserStorage.getExternalUserWithCookies(externalUuid);
+
+    await jobStorage.addJobs({
       type: ScrapeName.oneTimeUser,
       interval: -1,
       deleteAfterRun: true,
       runImmediately: true,
-      name: `${ScrapeName.oneTimeUser}-${value.uuid}`,
+      name: `${ScrapeName.oneTimeUser}-${externalUserWithCookies.uuid}`,
       arguments: JSON.stringify({
-        link: value.uuid,
-        userId: value.userUuid,
-        externalUserId: value.uuid,
-        info: value.cookies,
+        link: externalUserWithCookies.uuid,
+        userId: externalUserWithCookies.userUuid,
+        externalUserId: externalUserWithCookies.uuid,
+        info: externalUserWithCookies.cookies,
       }),
-    }),
-  );
-  return storePromise.then(() => true);
-});
+    });
+    return true;
+  },
+  { query: refreshExternalUserSchema },
+);
 
 /**
  * Creates the ExternalUser API Router.

@@ -11,18 +11,19 @@ import {
 import { equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { escapeLike } from "../storages/storageTools";
+import { DatabaseError } from "../../error";
 
 export class MediumInWaitContext extends SubContext {
   public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {
     const title = sanitizeString(medium.title);
-    const newMedium: SimpleMedium | Medium = await this.parentContext.mediumContext.addMedium({
+    const newMedium: SimpleMedium = await this.parentContext.mediumContext.addMedium({
       title,
       medium: medium.medium,
     });
 
     const id = newMedium.id;
     if (!id) {
-      throw Error("no medium id available");
+      throw new DatabaseError("no medium id available");
     }
     const toDeleteMediaInWaits = [medium];
 
@@ -51,11 +52,13 @@ export class MediumInWaitContext extends SubContext {
 
     await this.deleteMediaInWait(toDeleteMediaInWaits);
     const parts = await this.parentContext.partContext.getMediumParts(id);
-    newMedium.parts = parts.map((value) => value.id);
-    newMedium.latestReleased = [];
-    newMedium.currentRead = 0;
-    newMedium.unreadEpisodes = [];
-    return newMedium as Medium;
+    return {
+      ...newMedium,
+      parts: parts.map((value) => value.id),
+      latestReleased: [],
+      currentRead: 0,
+      unreadEpisodes: [],
+    };
   }
 
   public async consumeMediaInWait(mediumId: number, same: MediumInWait[]): Promise<boolean> {

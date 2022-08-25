@@ -1,0 +1,69 @@
+name: Node.js CI PR Build-Test
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'packages/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["16.x"]
+    env:
+      dbHost: "localhost"
+      dbPassword: "none"
+      dbUser: enterprise
+      dbPort: 3306
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: write
+    steps:
+      - run: sudo service mysql stop
+
+      - uses: getong/mariadb-action@v1.1
+        with:
+          mariadb version: "10.6" # Optional, default value is "latest". The version of the MariaDB
+          mysql database: "enterprise" # Optional, default value is "test". The specified database which will be create
+          mysql root password: "${{ env.dbPassword }}" # Required if "mysql user" is empty, default is empty. The root superuser password
+          mysql user: "${{ env.dbUser }}" # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
+          mysql password: "${{ env.dbPassword }}" # Required if "mysql user" exists. The password for the "mysql user"
+
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm install
+      - run: npm run build --ws
+      # runs npm test and comments coverage on pr
+      - uses: mattallty/jest-github-action@v1
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          coverage-comment: false
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure() # run this step even if previous step failed
+        continue-on-error: true
+        with:
+          name: JEST Tests # Name of the check run which will be created
+          path: reports/jest-*.xml # Path to test results
+          reporter: jest-junit # Format of test results
+
+      - uses: artiomtr/jest-coverage-report-action@v2.0-rc.6
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          threshold: 30
+          test-script: npx jest --silent --ci --coverage --coverageReporters="text" --coverageReporters="text-summary" --testLocationInResults --json --outputFile="report.json" --forceExit
+        continue-on-error: true

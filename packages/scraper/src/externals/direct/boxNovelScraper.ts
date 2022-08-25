@@ -17,11 +17,20 @@ import {
   sanitizeString,
 } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
-import { getTextContent, SearchResult as TocSearchResult, searchToc, extractLinkable } from "./directTools";
+import {
+  getTextContent,
+  SearchResult as TocSearchResult,
+  searchToc,
+  extractLinkable,
+  scraperLog,
+  LogType,
+  getText,
+} from "./directTools";
 import { checkTocContent } from "../scraperTools";
 import { MissingResourceError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 import request, { ResponseError } from "../request";
+import { ValidationError } from "enterprise-core/dist/error";
 
 interface NovelSearchResponse {
   success: boolean;
@@ -108,7 +117,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 
   const $ = await request.getCheerio({ url: urlString });
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
-  const novelTitle = sanitizeString(mediumTitleElement.text());
+  const novelTitle = sanitizeString(getText(mediumTitleElement));
 
   const chaTit = $(".cha-tit h3");
   let directContentElement: cheerio.Cheerio<cheerio.Element>;
@@ -121,7 +130,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     if (firstChild.is(".cha-words")) {
       directContentElement = firstChild;
     }
-    episodeTitle = sanitizeString(chaTit.text());
+    episodeTitle = sanitizeString(getText(chaTit));
   } else {
     const entryTitle = $("h1.entry-title").remove();
 
@@ -129,12 +138,12 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
       const currentChapter = $("option[selected]").first();
 
       if (!currentChapter.length) {
-        logger.warn("changed title format for chapters on boxNovel for " + urlString);
+        scraperLog("warn", LogType.TITLE_FORMAT, "boxnovel", { url: urlString });
         return [];
       }
-      episodeTitle = sanitizeString(currentChapter.text());
+      episodeTitle = sanitizeString(getText(currentChapter));
     } else {
-      episodeTitle = sanitizeString(entryTitle.text());
+      episodeTitle = sanitizeString(getText(entryTitle));
     }
     directContentElement = $(".reading-content");
   }
@@ -142,7 +151,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
   const content = directContentElement.html();
 
   if (!content) {
-    logger.warn("changed content format for chapters on boxNovel: " + urlString);
+    scraperLog("warn", LogType.CONTENT_FORMAT, "boxnovel", { url: urlString });
     return [];
   }
 
@@ -165,7 +174,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
       if (error.code === "404") {
         throw new MissingResourceError("Toc not found on BoxNovel", tocLink);
       } else {
-        throw e;
+        throw e as Error;
       }
     } else {
       throw e;
@@ -178,7 +187,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 
   const mediumTitleElement = $(".post-title h3");
   mediumTitleElement.find("span").remove();
-  const mediumTitle = sanitizeString(mediumTitleElement.text());
+  const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
   const content: TocContent[] = [];
   const items = $(".wp-manga-chapter");
@@ -195,10 +204,10 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     const titleElement = newsRow.find("a");
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
-    let episodeTitle = sanitizeString(titleElement.text());
+    let episodeTitle = sanitizeString(getText(titleElement));
 
     const timeStampElement = newsRow.find(".chapter-release-date");
-    const dateString = timeStampElement.text().trim();
+    const dateString = getText(timeStampElement).trim();
     const lowerDate = dateString.toLowerCase();
 
     let date;
@@ -209,7 +218,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }
 
     if (!date || date > new Date()) {
-      logger.warn("changed time format on boxNovel: " + tocLink);
+      scraperLog("warn", LogType.TIME_FORMAT, "boxnovel", { url: tocLink });
       return [];
     }
     let regexResult = titleRegex.exec(episodeTitle) || numberTitleRegex.exec(episodeTitle);
@@ -223,9 +232,11 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
         if (lowerTitle.startsWith("extra")) {
           continue;
         }
-        logger.warn(
-          `changed title format on boxNovel: ${tocLink}, unknown title: ${episodeTitle}, unknown link: ${link}`,
-        );
+        scraperLog("warn", LogType.TITLE_FORMAT, "boxnovel", {
+          url: tocLink,
+          unknown_title: episodeTitle,
+          unknown_link: link,
+        });
         return [];
       }
     } else if (regexResult.index) {
@@ -249,26 +260,26 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }
 
     if (!episodeIndices) {
-      throw Error(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
+      throw new ValidationError(`title format changed on boxNovel, got no indices for '${episodeTitle}'`);
     }
     const previousTitle = seenEpisodes.get(episodeIndices.combi);
     if (previousTitle && previousTitle === episodeTitle) {
       continue;
     }
     seenEpisodes.set(episodeIndices.combi, episodeTitle);
-    const chapterContent = {
+    const chapterContent: TocEpisode = {
       combiIndex: episodeIndices.combi,
       totalIndex: episodeIndices.total,
       partialIndex: episodeIndices.fraction,
       url: link,
       releaseDate: date,
       title: episodeTitle,
-    } as TocEpisode;
+    };
     checkTocContent(chapterContent);
     content.push(chapterContent);
   }
   const releaseStateElement = $("div.post-content_item:nth-child(2) > div:nth-child(2)");
-  const releaseStateString = releaseStateElement.text().toLowerCase();
+  const releaseStateString = getText(releaseStateElement).toLowerCase();
   let releaseState: ReleaseState = ReleaseState.Unknown;
 
   if (releaseStateString.includes("complete")) {
@@ -307,7 +318,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
     const mediumTitleElement = newsRow.find(".post-title a");
     const tocLink = new url.URL(mediumTitleElement.attr("href") as string, uri).href.replace("-boxnovel", "");
 
-    const mediumTitle = sanitizeString(mediumTitleElement.text());
+    const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
     const titleElement = newsRow.find(".chapter-item .chapter a");
     const timeElements = newsRow.find(".chapter-item .post-on");
@@ -316,9 +327,9 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
       const chapterTitleElement = titleElement.eq(j);
       const link = new url.URL(chapterTitleElement.attr("href") as string, uri).href;
 
-      const episodeTitle = sanitizeString(chapterTitleElement.text());
+      const episodeTitle = sanitizeString(getText(chapterTitleElement));
       const timeStampElement = timeElements.eq(j);
-      const dateString = timeStampElement.text().trim();
+      const dateString = getText(timeStampElement).trim();
       const lowerDate = dateString.toLowerCase();
 
       let date: Nullable<Date>;
@@ -330,12 +341,12 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
       }
 
       if (!date || date > new Date()) {
-        logger.warn("changed time format on boxNovel: news");
+        scraperLog("warn", LogType.TIME_FORMAT, "boxnovel", { url: uri });
         return;
       }
       const regexResult = titleRegex.exec(episodeTitle);
       if (!regexResult) {
-        logger.warn("changed title format on boxNovel: news");
+        scraperLog("warn", LogType.TITLE_FORMAT, "boxnovel", { url: uri, unknown_title: episodeTitle });
         return;
       }
       let partIndices;
@@ -344,7 +355,7 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
         partIndices = extractIndices(regexResult, 3, 4, 6);
 
         if (!partIndices) {
-          logger.info(`unknown news format on boxnovel: ${episodeTitle}`);
+          scraperLog("warn", LogType.INDEX_FORMAT, "boxnovel", { url: uri, unknown_index: episodeTitle });
           continue;
         }
       }
@@ -354,12 +365,12 @@ async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: Episod
         episodeIndices = extractIndices(regexResult, 8, 9, 11);
 
         if (!episodeIndices) {
-          logger.info(`unknown news format on boxnovel: ${episodeTitle}`);
+          scraperLog("warn", LogType.INDEX_FORMAT, "boxnovel", { url: uri, unknown_index: episodeTitle });
           continue;
         }
       }
       if (episodeIndices == null || episodeIndices.combi == null) {
-        logger.warn("changed title format on boxNovel: news");
+        scraperLog("warn", LogType.INDEX_FORMAT, "boxnovel", { url: uri, unknown_index: episodeTitle });
         return;
       }
       episodeNews.push({

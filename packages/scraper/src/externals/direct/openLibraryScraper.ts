@@ -5,6 +5,7 @@ import { MediaType } from "enterprise-core/dist/tools";
 import { UrlError } from "../errors";
 import { SearchResult } from "enterprise-core/dist/types";
 import request from "../request";
+import { ValidationError } from "enterprise-core/dist/error";
 
 const BASE_URI = "https://openlibrary.org/";
 
@@ -77,7 +78,7 @@ async function toc(tocLink: string): Promise<Toc[]> {
     const publishDate = new Date(data.publish_date);
 
     if (Number.isNaN(publishDate.getDate())) {
-      throw Error("Invalid Time: " + data.publish_date);
+      throw new ValidationError("Invalid Time: " + data.publish_date);
     }
 
     const tocContent: TocEpisode[] = data?.table_of_contents?.map((value, index) => {
@@ -150,7 +151,7 @@ async function search(text: string, medium: number): Promise<SearchResult[]> {
       return {
         link: `${BASE_URI}api/books?bibkeys=OLID:${value.cover_edition_key}&jscmd=data&format=json`,
         title: value.title,
-        author: value.author_name && value.author_name[0],
+        author: value.author_name?.[0],
         coverUrl: `https://covers.openlibrary.org/b/id/${value.cover_i}-M.jpg`,
         medium: MediaType.TEXT,
       };

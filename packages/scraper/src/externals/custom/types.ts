@@ -1,3 +1,4 @@
+import { MediaType } from "enterprise-core/dist/tools";
 import { EpisodeNews, SearchResult } from "enterprise-core/dist/types";
 import { EpisodeContent, Toc } from "../types";
 import { BasicRequestConfig } from "../request";
@@ -18,6 +19,9 @@ type Transfer<Target extends object> = SimpleTransfer<Target> | RegexTransfer<Ta
 export type TransferType = "string" | "decimal" | "integer" | "date";
 export type ArrayType = "[*]";
 
+// @ts-expect-error
+type NewType<K extends keyof O & (string | number), O extends object> = `${K}.${RecursiveKeyOf<O[K]>}`;
+
 /**
  * Modified from https://stackoverflow.com/a/65333050
  * to infer element type of arrays.
@@ -28,7 +32,7 @@ export type RecursiveKeyOf<TObj extends object> = {
       ? `${TKey}` | `${TKey}.${ArrayType}.${RecursiveKeyOf<U>}`
       : `${TKey}`
     : TObj[TKey] extends object
-    ? `${TKey}` | `${TKey}.${RecursiveKeyOf<TObj[TKey]>}`
+    ? `${TKey}` | NewType<TKey, TObj>
     : `${TKey}`;
 }[keyof TObj & (string | number)];
 
@@ -123,6 +127,7 @@ export interface RequestConfig {
   templateUrl?: string;
   templateBody?: string;
   jsonResponse?: boolean;
+  fullResponse?: boolean;
   options?: Omit<BasicRequestConfig<never>, "url" | "uri">;
 }
 
@@ -142,11 +147,19 @@ export interface JsonRegex {
 
 export type HookDomain = string | JsonRegex | RegExp;
 
-export interface HookConfig {
+export interface BaseHookConfig {
   name: string;
-  medium: number;
+  medium: MediaType;
   base: string;
   domain: JsonRegex;
+  news?: any;
+  search?: any;
+  toc?: any;
+  download?: any;
+}
+
+export interface HookConfig extends BaseHookConfig {
+  version: 1;
   search?: SearchConfig;
   download?: DownloadConfig;
   toc?: TocConfig | TocConfig[];

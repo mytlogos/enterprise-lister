@@ -1,97 +1,211 @@
 <template>
-  <nav class="navbar navbar-expand-xl navbar-dark bg-dark">
-    <div class="container-fluid">
-      <!-- TODO: set active dynamically via router? -->
-      <router-link :to="{ name: 'home' }" tag="a" class="nav-link navbar-brand active"> Enterprise </router-link>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#navbarSupportedContent"
-        aria-controls="navbarSupportedContent"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div id="navbarSupportedContent" class="collapse navbar-collapse">
-        <ul class="navbar-nav me-auto">
-          <template v-if="loggedIn">
-            <li class="nav-item">
-              <router-link :to="{ name: 'addMedium' }" tag="a" class="nav-link"> Add Medium </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'addList' }" tag="a" class="nav-link"> Add List </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'news' }" tag="a" class="nav-link"> News </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'readHistory' }" tag="a" class="nav-link"> Read History </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'lists' }" tag="a" class="nav-link"> Lists </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'releases' }" tag="a" class="nav-link"> Releases </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'media' }" tag="a" class="nav-link"> Media </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'media-in-wait' }" tag="a" class="nav-link"> Unused Media </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'search' }" tag="a" class="nav-link"> Search </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'status' }" tag="a" class="nav-link"> Administration </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'settings' }" tag="a" class="nav-link">
-                <img alt="Settings" src="../assets/config_icon.png" />
-              </router-link>
-            </li>
-          </template>
-          <template v-else>
-            <li class="nav-item">
-              <router-link :to="{ name: 'register' }" tag="a" class="nav-link"> Register </router-link>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'login' }" tag="a" class="nav-link"> Login </router-link>
-            </li>
-          </template>
-        </ul>
-        <ul class="navbar-nav">
-          <template v-if="loggedIn">
-            <li class="nav-item my-auto">
-              <span class="text-light">{{ name }}</span>
-            </li>
-            <li class="nav-item">
-              <router-link :to="{ name: 'home' }" tag="a" class="nav-link" @click="logout"> Logout </router-link>
-            </li>
-          </template>
+  <Menubar :model="menuItems">
+    <template #end>
+      <div class="dropdown">
+        <p-button
+          id="notifications"
+          type="button"
+          :badge="(userStore.user.unreadNotificationsCount || '') + ''"
+          icon="pi pi-bell"
+          class="dropdown-toggle p-button-text p-button-plain w-100 px-2"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+        ></p-button>
+        <ul class="dropdown-menu" aria-labelledby="notifications">
+          <toolbar>
+            <template #start>
+              <p-button label="Read all" class="btn btn-primary me-2" @click="userStore.readAllNotifications()" />
+              <router-link :to="{ name: 'notifications' }" class="btn btn-primary">View all</router-link>
+            </template>
+          </toolbar>
+          <li v-for="item in notifications" :key="item.id" class="dropdown-item" style="max-width: 100vw">
+            <div class="card">
+              <div class="card-header">{{ item.title }}</div>
+              <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">{{ item.date.toLocaleString() }}</h6>
+                <p class="card-text text-truncate">
+                  {{ item.content }}
+                </p>
+                <a href="#" class="btn btn-primary" @click="userStore.readNotification(item)">Read</a>
+              </div>
+            </div>
+          </li>
         </ul>
       </div>
-    </div>
-  </nav>
+    </template>
+  </Menubar>
 </template>
 
-<script lang="ts">
-import { defineComponent } from "vue";
-import { mapGetters, mapState } from "vuex";
-import "bootstrap/js/dist/collapse";
+<script lang="ts" setup>
+import { computed, onMounted, reactive, ref } from "vue";
+import "@popperjs/core/dist/umd/popper.min.js";
+import "bootstrap/js/dist/dropdown";
+import Menubar from "primevue/menubar";
+import { MenuItem as OriginalMenuItem } from "primevue/menuitem";
+import { HttpClient } from "../Httpclient";
+import { UserNotification } from "enterprise-core/dist/types";
+import { notify } from "../notifications";
+import { useUserStore } from "../store/store";
+import { useToast } from "primevue/usetoast";
 
-export default defineComponent({
-  name: "AppHeader",
-  computed: {
-    ...mapState(["name"]),
-    ...mapGetters(["loggedIn"]),
+type MenuItem = Omit<OriginalMenuItem, "to"> & { to?: string | { name: string } };
+
+// STORES
+const userStore = useUserStore();
+
+// DATA
+const loggedInItems = [
+  {
+    label: "Home",
+    to: { name: "home" },
   },
-  methods: {
-    logout(): void {
-      this.$store.dispatch("logout");
-    },
+  {
+    label: "Add Medium",
+    to: { name: "addMedium" },
   },
+  {
+    label: "Add List",
+    to: { name: "addList" },
+  },
+  {
+    label: "Read History",
+    to: { name: "readHistory" },
+  },
+  {
+    label: "Lists",
+    to: { name: "lists" },
+  },
+  {
+    label: "Releases",
+    to: { name: "releases" },
+  },
+  {
+    label: "Media",
+    to: { name: "media" },
+  },
+  {
+    label: "Unused Media",
+    to: { name: "media-in-wait" },
+  },
+  {
+    label: "Search",
+    to: { name: "search" },
+  },
+  {
+    label: "Administration",
+    items: [
+      {
+        label: "Status",
+        to: { name: "status" },
+      },
+      {
+        label: "Jobs",
+        to: { name: "jobs" },
+      },
+      {
+        label: "Job Statistics",
+        to: { name: "job-stats" },
+      },
+      {
+        label: "Hooks",
+        to: { name: "hooks" },
+      },
+      {
+        label: "Job History",
+        to: { name: "jobhistory" },
+      },
+      {
+        label: "Live Jobs",
+        to: { name: "joblive" },
+      },
+    ],
+  },
+];
+const loggedOffItems = [
+  {
+    label: "Register",
+    to: { name: "register" },
+  },
+  {
+    label: "Login",
+    to: { name: "login" },
+  },
+];
+const notifications = ref<UserNotification[]>([]);
+
+// COMPUTED
+const menuItems = computed(() => {
+  const items: MenuItem[] = [];
+
+  if (userStore.loggedIn) {
+    items.push(
+      ...loggedInItems,
+      {
+        label: userStore.name,
+        icon: "pi pi-fw pi-user",
+        to: { name: "settings" },
+      },
+      {
+        label: "Logout",
+        to: { name: "home" },
+        command: () => logout(),
+        icon: "pi pi-fw pi-power-off",
+      },
+    );
+  } else {
+    items.push(...loggedOffItems);
+  }
+  return reactive(items) as OriginalMenuItem[];
 });
+
+// LIFECYCLE EVENTS
+onMounted(() => {
+  checkNotifications();
+});
+
+// FUNCTIONS
+const toast = useToast();
+
+function logout(): void {
+  userStore.logout().catch((error) => {
+    toast.add({
+      summary: "Logout failed",
+      detail: error + "",
+      closable: true,
+      severity: "error",
+    });
+  });
+}
+
+function checkNotifications() {
+  getLatestNotifications();
+  // check every minute at most
+  setInterval(() => getLatestNotifications(), 1000 * 60);
+}
+
+async function getLatestNotifications() {
+  await userStore.checkNotificationCounts();
+
+  if (!userStore.loggedIn) {
+    notifications.value = [];
+    return;
+  }
+
+  const now = new Date();
+  now.setDate(now.getDate() - 5);
+  const data = await HttpClient.getNotifications(now, false, 5);
+
+  const newNotifications = data.map((value) => {
+    const userNotification = value as UserNotification;
+    userNotification.date = new Date(userNotification.date);
+    return userNotification;
+  });
+
+  if (newNotifications.length) {
+    const titleSuffix =
+      userStore.user.unreadNotificationsCount > 1 ? ` +${userStore.user.unreadNotificationsCount - 1} more` : "";
+    notify({ title: newNotifications[0].title + titleSuffix, content: newNotifications[0].content });
+  }
+  notifications.value = newNotifications;
+}
 </script>

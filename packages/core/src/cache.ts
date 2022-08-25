@@ -61,7 +61,7 @@ export class Cache extends NodeCache {
       const maxValue = max(keys, (previous, current) => (this.getTtl(previous) || 0) - (this.getTtl(current) || 0));
 
       if (!maxValue) {
-        logger.warn(`could not find max value: '${keys}'`);
+        logger.warn(`could not find max value: '${keys + ""}'`);
       } else {
         this.del(maxValue);
       }

@@ -1,52 +1,72 @@
 import { HttpClient } from "../Httpclient";
-import { User, VuexStore } from "../siteTypes";
-import router from "../router";
-import { Commit, createStore, createLogger } from "vuex";
-import persistedState from "vuex-persistedstate";
-import releaseStore from "./releases";
-import modalStore from "./modals";
-import listStore from "./lists";
-import mediumStore from "./media";
-import externalUserStore from "./externaluser";
-import newsStore from "./news";
-import hookStore from "./hooks";
+import { User } from "../siteTypes";
+import { useListStore } from "./lists";
+import { useExternalUserStore } from "./externaluser";
+import { useHookStore } from "./hooks";
+import { UserNotification } from "enterprise-core/dist/types";
+import { useMediaStore } from "./media";
+import { defineStore } from "pinia";
+import { useRouter } from "vue-router";
 
-function userClear(commit: Commit) {
-  commit("userName", "");
-  commit("userId", "");
-  commit("userSession", "");
-  commit("userLists", []);
-  commit("userMedia", []);
-  commit("userExternalUser", []);
+type UserState = ReturnType<typeof useUserStore>["$state"];
+
+function userClear(state: UserState) {
+  state.name = "";
+  state.uuid = "";
+  state.session = "";
+  state.user.readNotificationsCount = 0;
+  state.user.unreadNotificationsCount = 0;
+  useListStore().lists = [];
+  useMediaStore().media = {};
+  useExternalUserStore().externalUser = [];
 }
 
-function setUser(commit: Commit, user: User) {
-  userClear(commit);
-  commit("userName", user.name);
-  commit("userId", user.uuid);
-  commit("userSession", user.session);
+function setUser(state: UserState, user: User) {
+  userClear(state);
+  state.name = user.name;
+  state.uuid = user.uuid;
+  state.session = user.session;
 }
 
-export const store = createStore({
-  strict: true,
-  plugins: [createLogger(), persistedState()],
-  modules: {
-    releases: releaseStore,
-    modals: modalStore,
-    lists: listStore,
-    externalUser: externalUserStore,
-    media: mediumStore,
-    news: newsStore,
-    hooks: hookStore,
+let hydrateCallback: () => void;
+let alreadyHydrated = false;
+
+export const userHydrated = new Promise<void>((resolve) => {
+  if (alreadyHydrated) {
+    resolve();
+    return;
+  }
+  let resolved = false;
+  // resolve at most 500ms later
+  const id = setTimeout(() => {
+    console.warn("user store hydration took too long");
+    resolved = true;
+    resolve();
+  }, 500);
+
+  hydrateCallback = () => {
+    if (resolved) {
+      return;
+    }
+    clearTimeout(id);
+    resolve();
+  };
+});
+
+export const useUserStore = defineStore("user", {
+  persist: {
+    afterRestore() {
+      alreadyHydrated = true;
+
+      if (hydrateCallback) {
+        hydrateCallback();
+      }
+    },
   },
-  // @ts-expect-error
-  state: (): VuexStore => ({
+  state: () => ({
     user: {
-      settings: {},
-      columns: [
-        { name: "Author", prop: "author", show: true },
-        { name: "Artist", prop: "artist", show: true },
-      ],
+      unreadNotificationsCount: 0,
+      readNotificationsCount: 0,
     },
     name: "",
     session: "",
@@ -57,87 +77,104 @@ export const store = createStore({
       return !!state.uuid;
     },
   },
-  mutations: {
-    userName(state, name: string) {
-      state.name = name;
-    },
-    userId(state, id: string) {
-      state.uuid = id;
-    },
-    userSession(state, session: string) {
-      state.session = session;
-    },
-  },
   actions: {
-    async load({ dispatch }) {
+    async load() {
+      const mediaStore = useMediaStore();
+      const listStore = useListStore();
+      const hookStore = useHookStore();
+      const externalUserStore = useExternalUserStore();
+
       await Promise.all([
-        dispatch("loadMedia"),
-        dispatch("loadLists"),
-        dispatch("loadExternalUser"),
-        dispatch("loadHooks"),
+        mediaStore.loadMedia(),
+        listStore.loadLists(),
+        externalUserStore.loadExternalUser(),
+        hookStore.loadHooks(),
       ]);
     },
-    async changeUser({ commit, dispatch, state }, { user, modal }: { user: User; modal: string }) {
-      const userChanged = user && state.uuid !== user.uuid;
-      setUser(commit, user);
-      commit("resetModal", modal);
+
+    async changeUser(user: User) {
+      const userChanged = user && this.uuid !== user.uuid;
+      this.$patch((state) => setUser(state, user));
 
       if (userChanged) {
-        await dispatch("load");
+        const router = useRouter();
 
-        if (router.currentRoute.value.path === "/login") {
+        if (router.currentRoute.value.path === "/login" || router.currentRoute.value.path === "/register") {
           // automatically navigate to view under home if successfully logged in
           await router.push("/").catch(console.error);
-          console.log("pushed home");
         }
-      }
-    },
-    async login({ commit, dispatch }, data: { user: string; pw: string }) {
-      if (!data.user) {
-        commit("loginModalError", "Username is missing");
-        return;
-      } else if (!data.pw) {
-        commit("loginModalError", "Password is missing");
-        return;
-      }
-      try {
-        // FIXME modal does not close after successful login
-        const newUser = await HttpClient.login(data.user, data.pw);
-        await dispatch("changeUser", { user: newUser, modal: "login" });
-      } catch (error) {
-        commit("loginModalError", String(error));
-      }
-    },
-    async logout({ commit }) {
-      try {
-        const loggedOut = await HttpClient.logout();
-        userClear(commit);
 
-        if (!loggedOut) {
-          commit("errorModalError", "An error occurred while logging out");
-        }
-      } catch (error) {
-        commit("errorModalError", String(error));
+        await this.load();
       }
-      // TODO implement logout
     },
-    async register({ commit, dispatch }, data: { user: string; pw: string; pwRepeat: string }) {
+
+    async login(data: { user: string; pw: string }) {
       if (!data.user) {
-        commit("registerModalError", "Username is missing");
-      } else if (!data.pw) {
-        commit("registerModalError", "Password is missing");
-      } else if (!data.pwRepeat) {
-        commit("registerModalError", "Password was not repeated");
-      } else if (data.pwRepeat !== data.pw) {
-        commit("registerModalError", "Repeated Password is not password");
-      } else {
-        try {
-          const newUser = await HttpClient.register(data.user, data.pw, data.pwRepeat);
-          await dispatch("changeUser", { user: newUser, modal: "register" });
-        } catch (error) {
-          commit("registerModalError", String(error));
-        }
+        throw Error("Username is missing");
       }
+      if (!data.pw) {
+        throw Error("Password is missing");
+      }
+      const newUser = await HttpClient.login(data.user, data.pw);
+      this.changeUser(newUser);
+    },
+
+    immediateLogout() {
+      this.$patch(userClear);
+    },
+
+    async logout() {
+      const loggedOut = await HttpClient.logout();
+      this.$patch(userClear);
+
+      if (!loggedOut) {
+        throw Error("An error occurred while logging out");
+      }
+    },
+
+    async register(data: { user: string; pw: string; pwRepeat: string }) {
+      if (!data.user) {
+        throw Error("Username is missing");
+      }
+      if (!data.pw) {
+        throw Error("Password is missing");
+      }
+      if (!data.pwRepeat) {
+        throw Error("Password was not repeated");
+      }
+      if (data.pwRepeat !== data.pw) {
+        throw Error("Repeated Password is not password");
+      }
+      const newUser = await HttpClient.register(data.user, data.pw, data.pwRepeat);
+      await this.changeUser(newUser);
+    },
+
+    async checkNotificationCounts() {
+      if (!this.loggedIn) {
+        return;
+      }
+      const [unreadCount, readCount] = await Promise.all([
+        HttpClient.getNotificationsCount(false),
+        HttpClient.getNotificationsCount(true),
+      ]);
+      this.user.unreadNotificationsCount = unreadCount;
+      this.user.readNotificationsCount = readCount;
+    },
+
+    async readNotification(data: UserNotification) {
+      if (!this.loggedIn) {
+        return;
+      }
+      await HttpClient.readNotification(data.id);
+      this.checkNotificationCounts();
+    },
+
+    async readAllNotifications() {
+      if (!this.loggedIn) {
+        return;
+      }
+      await HttpClient.readAllNotifications();
+      this.checkNotificationCounts();
     },
   },
 });

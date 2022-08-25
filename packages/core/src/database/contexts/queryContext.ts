@@ -14,8 +14,10 @@ import {
   Primitive,
   DataStats,
   NewData,
+  QueryItems,
+  QueryItemsResult,
 } from "../../types";
-import { Errors, getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
+import { getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
 import { Query, OkPacket } from "mysql";
@@ -32,16 +34,18 @@ import { JobContext } from "./jobContext";
 import { MediumInWaitContext } from "./mediumInWaitContext";
 import { ConnectionContext } from "../databaseTypes";
 import env from "../../env";
-import { setContext, removeContext } from "../../asyncStorage";
+import { setContext, removeContext, StoreKey } from "../../asyncStorage";
 import { storeCount } from "../sqlTools";
 import { ScraperHookContext } from "./scraperHookContext";
 import { AppEventContext } from "./appEventContext";
 import { CustomHookContext } from "./customHookContext";
+import { DatabaseError, NotImplementedError, UnsupportedError, ValidationError } from "../../error";
+import { NotificationContext } from "./notificationContext";
 
 const database = "enterprise";
 
 type ParamCallback<T> = (value: UnpackArray<T>) => any[] | any;
-type UpdateCallback = (updates: string[], values: any[]) => void | EmptyPromise;
+type UpdateCallback = (updates: string[], values: any[]) => undefined | EmptyPromise;
 export type SqlPrimitive = Primitive | Date;
 export type QueryValue = SqlPrimitive | SqlPrimitive[];
 export type QueryInValue = SqlPrimitive | Array<SqlPrimitive | SqlPrimitive[]>;
@@ -73,100 +77,71 @@ function emptyPacket() {
  * A Class for consecutive queries on the same connection.
  */
 export class QueryContext implements ConnectionContext {
-  private con: Connection;
-  // tslint:disable-next-line:variable-name
-  private _databaseContext?: DatabaseContext;
-  // tslint:disable-next-line:variable-name
-  private _userContext?: UserContext;
-  // tslint:disable-next-line:variable-name
-  private _externalUserContext?: ExternalUserContext;
-  // tslint:disable-next-line:variable-name
-  private _episodeContext?: EpisodeContext;
-  // tslint:disable-next-line:variable-name
-  private _externalListContext?: ExternalListContext;
-  // tslint:disable-next-line:variable-name
-  private _internalListContext?: InternalListContext;
-  // tslint:disable-next-line:variable-name
-  private _jobContext?: JobContext;
-  // tslint:disable-next-line:variable-name
-  private _mediumContext?: MediumContext;
-  // tslint:disable-next-line:variable-name
-  private _mediumInWaitContext?: MediumInWaitContext;
-  // tslint:disable-next-line:variable-name
-  private _newsContext?: NewsContext;
-  // tslint:disable-next-line:variable-name
-  private _partContext?: PartContext;
-  // tslint:disable-next-line:variable-name
-  private _scraperHookContext?: ScraperHookContext;
-  // tslint:disable-next-line:variable-name
-  private _appEventContext?: AppEventContext;
-  // tslint:disable-next-line:variable-name
-  private _customHookContext?: CustomHookContext;
+  private readonly con: Connection;
+  private readonly subClassMap: Map<new (parentContext: QueryContext) => any, any> = new Map();
+
+  private getSubInstanceLazy<T>(constructor: new (parentContext: QueryContext) => T): T {
+    return getElseSet(this.subClassMap, constructor, () => new constructor(this));
+  }
 
   public get databaseContext(): DatabaseContext {
-    return this._databaseContext ? this._databaseContext : (this._databaseContext = new DatabaseContext(this));
+    return this.getSubInstanceLazy(DatabaseContext);
   }
 
   public get userContext(): UserContext {
-    return this._userContext ? this._userContext : (this._userContext = new UserContext(this));
+    return this.getSubInstanceLazy(UserContext);
   }
 
   public get partContext(): PartContext {
-    return this._partContext ? this._partContext : (this._partContext = new PartContext(this));
+    return this.getSubInstanceLazy(PartContext);
   }
 
   public get mediumContext(): MediumContext {
-    return this._mediumContext ? this._mediumContext : (this._mediumContext = new MediumContext(this));
+    return this.getSubInstanceLazy(MediumContext);
   }
 
   public get episodeContext(): EpisodeContext {
-    return this._episodeContext ? this._episodeContext : (this._episodeContext = new EpisodeContext(this));
+    return this.getSubInstanceLazy(EpisodeContext);
   }
 
   public get newsContext(): NewsContext {
-    return this._newsContext ? this._newsContext : (this._newsContext = new NewsContext(this));
+    return this.getSubInstanceLazy(NewsContext);
   }
 
   public get externalListContext(): ExternalListContext {
-    return this._externalListContext
-      ? this._externalListContext
-      : (this._externalListContext = new ExternalListContext(this));
+    return this.getSubInstanceLazy(ExternalListContext);
   }
 
   public get externalUserContext(): ExternalUserContext {
-    return this._externalUserContext
-      ? this._externalUserContext
-      : (this._externalUserContext = new ExternalUserContext(this));
+    return this.getSubInstanceLazy(ExternalUserContext);
   }
 
   public get internalListContext(): InternalListContext {
-    return this._internalListContext
-      ? this._internalListContext
-      : (this._internalListContext = new InternalListContext(this));
+    return this.getSubInstanceLazy(InternalListContext);
   }
 
   public get jobContext(): JobContext {
-    return this._jobContext ? this._jobContext : (this._jobContext = new JobContext(this));
+    return this.getSubInstanceLazy(JobContext);
   }
 
   public get mediumInWaitContext(): MediumInWaitContext {
-    return this._mediumInWaitContext
-      ? this._mediumInWaitContext
-      : (this._mediumInWaitContext = new MediumInWaitContext(this));
+    return this.getSubInstanceLazy(MediumInWaitContext);
   }
 
   public get scraperHookContext(): ScraperHookContext {
-    return this._scraperHookContext
-      ? this._scraperHookContext
-      : (this._scraperHookContext = new ScraperHookContext(this));
+    return this.getSubInstanceLazy(ScraperHookContext);
   }
 
   public get appEventContext(): AppEventContext {
-    return this._appEventContext ? this._appEventContext : (this._appEventContext = new AppEventContext(this));
+    return this.getSubInstanceLazy(AppEventContext);
   }
 
   public get customHookContext(): CustomHookContext {
-    return this._customHookContext ? this._customHookContext : (this._customHookContext = new CustomHookContext(this));
+    return this.getSubInstanceLazy(CustomHookContext);
+  }
+
+  public get notificationContext(): NotificationContext {
+    return this.getSubInstanceLazy(NotificationContext);
   }
 
   public constructor(con: Connection) {
@@ -215,14 +190,14 @@ export class QueryContext implements ConnectionContext {
 
   public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
     if (!result.preliminary) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid Result: missing preliminary value"));
     }
     return promiseMultiSingle(result.result, async (value: MetaResult) => {
       const resultArray: any[] = await this.query(
         "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
         [value.novel, value.chapter, value.chapIndex],
       );
-      if (resultArray[0] && resultArray[0].episode_id != null) {
+      if (resultArray[0]?.episode_id != null) {
         return null;
       }
       // TODO implement
@@ -232,7 +207,7 @@ export class QueryContext implements ConnectionContext {
 
   public saveResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
     if (!result.preliminary) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid Result: missing preliminary value"));
     }
     return promiseMultiSingle(result.result, async (value) => {
       if (!result.accept) {
@@ -247,7 +222,7 @@ export class QueryContext implements ConnectionContext {
 
   public async getPageInfo(link: string, key: string): Promise<PageInfo> {
     if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
-      return Promise.reject(Errors.INVALID_INPUT);
+      throw new ValidationError("invalid link or key");
     }
     const query: any[] = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
     return {
@@ -259,14 +234,14 @@ export class QueryContext implements ConnectionContext {
 
   public async updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): EmptyPromise {
     if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
-      return Promise.reject(Errors.INVALID_INPUT);
+      throw new ValidationError("invalid link or key");
     }
     await this.removePageInfo(link, key, toDeleteValues);
 
     await Promise.all(
       values.map((value) => {
         if (!value || !validate.isString(value)) {
-          throw Errors.INVALID_INPUT;
+          throw new TypeError("value is not a string: " + typeof value);
         }
         return this.query("INSERT INTO page_info (link, keyString, value) VALUES(?,?,?)", [link, key, value]);
       }),
@@ -275,14 +250,14 @@ export class QueryContext implements ConnectionContext {
 
   public async removePageInfo(link: string, key?: string, toDeleteValues?: string[]): EmptyPromise {
     if (!validate.isString(link) || !link || (key && !validate.isString(key))) {
-      return Promise.reject(Errors.INVALID_INPUT);
+      throw new ValidationError("invalid link or key");
     }
     if (key) {
       if (toDeleteValues) {
         await Promise.all(
           toDeleteValues.map((value) => {
             if (!value || !validate.isString(value)) {
-              throw Errors.INVALID_INPUT;
+              throw new ValidationError("value not a string: " + typeof value);
             }
             // TODO: 29.06.2019 use 'value IN (list)'
             return this.query("DELETE FROM page_info WHERE link=? AND keyString=? AND value=?", [link, key, value]);
@@ -297,7 +272,7 @@ export class QueryContext implements ConnectionContext {
   }
 
   public async queueNewTocs(): EmptyPromise {
-    throw Error("not supported");
+    throw new NotImplementedError("queueNewTocs not supported");
   }
 
   public async getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
@@ -344,17 +319,18 @@ export class QueryContext implements ConnectionContext {
     if (query.length > 20 && env.development) {
       logger.debug(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
     }
+    const start = Date.now();
     let result;
     try {
       setContext("sql-query");
       result = await this.con.query(query, parameter);
-      storeCount("queryCount");
+      storeCount(StoreKey.QUERY_COUNT);
     } finally {
       removeContext("sql-query");
     }
 
-    if (Array.isArray(result) && result.length > 1000) {
-      logger.debug(`${result.length} Results for ${query}`);
+    if (Array.isArray(result) && result.length > 10) {
+      logger.debug(`[${Date.now() - start}ms] ${result.length} Results for ${query} - Parameter: '${parameter + ""}'`);
     }
     return result;
   }
@@ -376,7 +352,7 @@ export class QueryContext implements ConnectionContext {
    */
   public async delete(table: string, ...condition: Condition[]): Promise<OkPacket> {
     if (!condition || (Array.isArray(condition) && !condition.length)) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid delete condition"));
     }
     let query = `DELETE FROM ${mySql.escapeId(table)} WHERE `;
     const values: any[] = [];
@@ -400,13 +376,13 @@ export class QueryContext implements ConnectionContext {
    */
   public async update(table: string, cb: UpdateCallback, ...condition: Condition[]): Promise<OkPacket> {
     if (!condition || (Array.isArray(condition) && !condition.length)) {
-      return Promise.reject(new Error(Errors.INVALID_INPUT));
+      return Promise.reject(new ValidationError("Invalid update condition"));
     }
     const updates: string[] = [];
     const values: any[] = [];
 
     const updatePromise = cb(updates, values);
-    if (updatePromise && updatePromise.then) {
+    if (updatePromise) {
       await updatePromise;
     }
 
@@ -450,7 +426,7 @@ export class QueryContext implements ConnectionContext {
     let paramCount = -1;
     const param: any[] = [];
 
-    multiSingle(value, (item, index, lastItem) => {
+    multiSingle(value, (item, _index, lastItem) => {
       const items = paramCallback(item);
       if (Array.isArray(items)) {
         param.push(...items);
@@ -528,7 +504,7 @@ export class QueryContext implements ConnectionContext {
     const listPlaceholderIndex = query.indexOf("??");
 
     if (listPlaceholderIndex !== query.lastIndexOf("??")) {
-      throw Error("Invalid Query: multiple Listplaceholder are currently not allowed");
+      throw new UnsupportedError("Invalid Query: multiple Listplaceholder are currently not allowed");
     }
     const params: Array<[string, any[]]> = [];
     const listParams = placeHolderValues
@@ -536,7 +512,7 @@ export class QueryContext implements ConnectionContext {
       .filter((v) => v) as Array<[any[], number]>;
 
     if (listParams.length > 1) {
-      throw Error("Using multiple ListParams is not supported");
+      throw new UnsupportedError("Using multiple ListParams is not supported");
     }
     if (listParams.length) {
       const [listParam, index] = listParams[0];
@@ -561,7 +537,7 @@ export class QueryContext implements ConnectionContext {
       params.push([placeholder, placeHolderValues]);
     }
     if (!params.length) {
-      throw Error(`no params for '${query}'`);
+      throw new DatabaseError(`no params for '${query}'`);
     }
     const result: any[][] = await Promise.all(
       params.map((param) => {
@@ -582,11 +558,12 @@ export class QueryContext implements ConnectionContext {
 
   public async getNew(uuid: Uuid, date = new Date(0)): Promise<NewData> {
     const episodeReleasePromise = this.query(
-      "SELECT episode_id as episodeId, title, url, releaseDate, locked " + "FROM episode_release WHERE updated_at > ?",
+      "SELECT episode_id as episodeId, title, url, releaseDate, locked, toc_id as tocId " +
+        "FROM episode_release WHERE updated_at > ?",
       date,
     );
     const episodePromise = this.query(
-      "SELECT id, part_id as partId, totalIndex, partialIndex, " +
+      "SELECT episode.id, part_id as partId, totalIndex, partialIndex, " +
         "user_episode.progress, user_episode.read_date as readDate " +
         "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
         "WHERE (user_episode.user_uuid IS NULL OR user_episode.user_uuid = ?) " +
@@ -698,7 +675,7 @@ export class QueryContext implements ConnectionContext {
     }
 
     for (const part of parts) {
-      const mediumParts: any = getElseSetObj(media, part.medium_id, () => new Object());
+      const mediumParts: any = getElseSetObj(media, part.medium_id, () => ({}));
       mediumParts[part.id] = getElseSet(partMap, part.id, () => emptyPart);
     }
 
@@ -727,6 +704,48 @@ export class QueryContext implements ConnectionContext {
       lists,
       extLists,
       extUser,
+    };
+  }
+
+  public async queryItems(uuid: Uuid, query: QueryItems): Promise<QueryItemsResult> {
+    const [
+      externalUser,
+      externalMediaLists,
+      mediaLists,
+      mediaTocs,
+      tocs,
+      media,
+      parts,
+      partReleases,
+      partEpisodes,
+      episodes,
+      episodeReleases,
+    ] = await Promise.all([
+      this.externalUserContext.getExternalUser(query.externalUser),
+      Promise.all(query.externalMediaLists.map((id) => this.externalListContext.getExternalList(id))),
+      this.internalListContext.getShallowList(query.mediaLists, uuid),
+      this.mediumContext.getMediumTocs(query.mediaTocs),
+      this.mediumContext.getTocs(query.tocs),
+      this.mediumContext.getSimpleMedium(query.media),
+      this.partContext.getParts(query.parts, uuid, false),
+      this.partContext.getPartReleases(query.partReleases),
+      this.partContext.getPartItems(query.partEpisodes),
+      this.episodeContext.getEpisode(query.episodes, uuid),
+      this.episodeContext.getReleases(query.episodeReleases),
+    ]);
+
+    return {
+      episodeReleases, // by episode id
+      episodes,
+      partEpisodes, // by part id
+      partReleases, // by part id
+      parts,
+      media,
+      tocs, // by toc id
+      mediaTocs, // by medium id
+      mediaLists,
+      externalMediaLists,
+      externalUser,
     };
   }
 

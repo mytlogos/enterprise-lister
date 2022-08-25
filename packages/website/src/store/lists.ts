@@ -1,76 +1,90 @@
-import { List, ListsStore, VuexStore } from "../siteTypes";
-import { Module } from "vuex";
+import { StoreInternalList, StoreList } from "../siteTypes";
 import { HttpClient } from "../Httpclient";
+import { List } from "enterprise-core/src/types";
+import { defineStore } from "pinia";
+import { useExternalUserStore } from "./externaluser";
 
-const module: Module<ListsStore, VuexStore> = {
+export const useListStore = defineStore("lists", {
+  persist: true,
   state: () => ({
-    lists: [],
+    lists: [] as StoreInternalList[],
   }),
   getters: {
-    allLists(state, _getters, rootState): List[] {
-      const externalLists = rootState.externalUser.externalUser.flatMap((value) => value.lists);
-      return [...state.lists, ...externalLists];
+    allLists(): StoreList[] {
+      const externalLists = useExternalUserStore().externalUser.flatMap((value) => value.lists);
+      return [...this.lists, ...externalLists];
     },
   },
-  mutations: {
-    userLists(state, lists: List[]): void {
-      state.lists = [...lists];
+
+  actions: {
+    userListsLocal(lists: List[]): void {
+      this.lists = lists.map((list) => ({ ...list, external: false }));
     },
-    addList(state, list: List) {
-      list.show = false;
-      list.external = false;
-      state.lists.push(list);
-    },
-    deleteList(state, id: number) {
-      const index = state.lists.findIndex((value) => value.id === id);
-      if (index < 0) {
-        throw Error("invalid mediumId");
+    async deleteListItem(payload: { listId: number; mediumId: number }) {
+      await HttpClient.deleteListItem({ listId: payload.listId, mediumId: [payload.mediumId] });
+
+      const list = this.lists.find((value) => value.id === payload.listId);
+      if (!list) {
+        throw Error("invalid listId");
       }
-      state.lists.splice(index, 1);
+      list.items = list.items.filter((id) => id !== payload.mediumId);
     },
-    updateList(state, updateList: List) {
-      const list = state.lists.find((value: List) => value.id === updateList.id);
+    addListItemLocal(payload: { listId: number; mediumId: number }) {
+      const list = this.lists.find((value) => value.id === payload.listId);
+      if (!list) {
+        throw Error("invalid listId");
+      }
+      list.items.push(payload.mediumId);
+    },
+    async updateList(updateList: List) {
+      const success = await HttpClient.updateList(updateList);
+
+      if (!success) {
+        return false;
+      }
+
+      const list = this.lists.find((value: List) => value.id === updateList.id);
 
       if (list) {
         Object.assign(list, updateList);
       } else {
         console.error("Cannot find list to update for id:", updateList.id);
       }
+      return true;
     },
-  },
-  actions: {
-    async loadLists({ commit }) {
+    async loadLists() {
       try {
         const lists = await HttpClient.getLists();
-        commit("userLists", lists);
+        this.userListsLocal(lists);
         console.log("Finished loading Lists", lists);
       } catch (error) {
         console.error(error);
       }
     },
 
-    addList({ commit }, data: { name: string; type: number }) {
-      if (!data.name) {
-        commit("addListModalError", "Missing name");
-      } else if (!data.type) {
-        commit("addListModalError", "Missing type");
-      } else {
-        HttpClient.createList(data)
-          .then((list) => {
-            commit("addList", list);
-            commit("resetModal", "addList");
-          })
-          .catch((error) => commit("addListModalError", String(error)));
+    async addList(data: { name: string; medium: number }) {
+      if (this.lists.find((value) => value.name === data.name)) {
+        throw Error("Duplicate List Name");
       }
+      if (!data.name) {
+        throw Error("Missing name");
+      }
+      if (!data.medium) {
+        throw Error("Missing Type");
+      }
+
+      const list = await HttpClient.createList({ list: { name: data.name, medium: data.medium } });
+      this.lists.push({ ...list, external: false });
     },
 
-    deleteList({ commit }, id: number) {
-      HttpClient.deleteList(id)
-        .then(() => {
-          commit("deleteList", id);
-        })
-        .catch((error) => console.log(error));
+    async deleteList(id: number) {
+      await HttpClient.deleteList(id);
+
+      const index = this.lists.findIndex((value) => value.id === id);
+      if (index < 0) {
+        throw Error("invalid listId");
+      }
+      this.lists.splice(index, 1);
     },
   },
-};
-export default module;
+});

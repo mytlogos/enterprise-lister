@@ -13,4 +13,6 @@ export interface CoreConfig {
   };
 }
 
-export default {} as CoreConfig;
+// TODO: implement alternative config mechanism?
+const config: CoreConfig = {} as any;
+export default config;

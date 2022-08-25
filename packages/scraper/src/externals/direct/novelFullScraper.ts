@@ -20,9 +20,12 @@ import {
   TocMetaPiece,
   TocPiece,
   extractLinkable,
+  LogType,
+  scraperLog,
+  getText,
 } from "./directTools";
 import { checkTocContent } from "../scraperTools";
-import { UrlError } from "../errors";
+import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 import request from "../request";
 
@@ -53,8 +56,8 @@ async function search(text: string): Promise<SearchResult[]> {
     const coverElement = resultElement.find("img.cover");
 
     const coverLink = new url.URL(coverElement.attr("src") as string, uri).href;
-    const author = sanitizeString(authorElement.text());
-    const title = sanitizeString(linkElement.text());
+    const author = sanitizeString(getText(authorElement));
+    const title = sanitizeString(getText(linkElement));
     let tocLink = linkElement.attr("href") as string;
     tocLink = new url.URL(tocLink, uri).href;
 
@@ -64,23 +67,24 @@ async function search(text: string): Promise<SearchResult[]> {
 }
 
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
-  if (!urlString.match(/^https?:\/\/novelfull\.com\/.+\/.+\d+.+/)) {
-    logger.warn("invalid chapter link for novelFull: " + urlString);
+  const pattern = /^https?:\/\/novelfull\.com\/.+\/.+\d+.+/;
+  if (!urlString.match(pattern)) {
+    scraperLog("warn", LogType.INVALID_LINK, "novelfull", { link: urlString, expected: pattern.source });
     return [];
   }
 
   const $ = await request.getCheerio({ url: urlString });
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
-  const novelTitle = sanitizeString(mediumTitleElement.text());
+  const novelTitle = sanitizeString(getText(mediumTitleElement));
 
-  const episodeTitle = sanitizeString($(".chapter-title").text());
+  const episodeTitle = sanitizeString(getText($(".chapter-title")));
   const directContentElement = $("#chapter-content");
   directContentElement.find("script, ins").remove();
 
   const content = directContentElement.html();
 
   if (!content) {
-    logger.warn("no content on novelFull for " + urlString);
+    scraperLog("warn", LogType.CONTENT_FORMAT, "novelfull", { url: urlString });
     return [];
   }
 
@@ -92,7 +96,7 @@ function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
   let releaseState: ReleaseState = ReleaseState.Unknown;
   const releaseStateElement = $('a[href^="/status/"]');
 
-  const releaseStateString = releaseStateElement.text().toLowerCase();
+  const releaseStateString = getText(releaseStateElement).toLowerCase();
   if (releaseStateString.includes("complete")) {
     end = true;
     releaseState = ReleaseState.Complete;
@@ -101,7 +105,7 @@ function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
     releaseState = ReleaseState.Ongoing;
   }
   const mediumTitleElement = $(".desc .title").first();
-  const mediumTitle = sanitizeString(mediumTitleElement.text());
+  const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
   const authors = extractLinkable($, 'a[href^="/author/"]', BASE_URI);
 
@@ -141,7 +145,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
         for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
           const newsRow = items.eq(itemIndex);
           const link = new url.URL(newsRow.attr("href") as string, uri).href;
-          const episodeTitle = sanitizeString(newsRow.text());
+          const episodeTitle = sanitizeString(getText(newsRow));
           yield { title: episodeTitle, url: link, releaseDate: now } as EpisodePiece;
         }
 
@@ -151,7 +155,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
 
         // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
         if (i > 300) {
-          logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
+          logger.error(new ScraperError(`Could not reach end of TOC '${toc.link}'`));
           break;
         }
       }
@@ -216,7 +220,10 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     if (!toc.title) {
       toc.title = tocSnippet.title;
     } else if (tocSnippet.title && tocSnippet.title !== toc.title) {
-      logger.warn(`Mismatched Title on Toc Pages on novelFull: '${toc.title}' and '${tocSnippet.title}': ` + tocLink);
+      logger.warn(`Mismatched Title on Toc Pages: '${toc.title}' and '${tocSnippet.title}'`, {
+        url: tocLink,
+        scraper: "novelfull",
+      });
       return [];
     }
     if (!toc.content) {
@@ -234,7 +241,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
     }
     // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
     if (i > 300) {
-      logger.error(new Error(`Could not reach end of TOC '${toc.link}'`));
+      logger.error(new ScraperError(`Could not reach end of TOC '${toc.link}'`));
       break;
     }
   }
@@ -248,7 +255,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromise<Toc> {
   // TODO: 20.07.2019 scrape alternative titles and author too
   const mediumTitleElement = $(".desc .title").first();
-  const mediumTitle = sanitizeString(mediumTitleElement.text());
+  const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
   const content: TocContent[] = [];
   const indexPartMap: Map<number, TocPart> = new Map<number, TocPart>();
@@ -262,28 +269,28 @@ async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromis
 
     const link = new url.URL(newsRow.attr("href") as string, uri).href;
 
-    const episodeTitle = sanitizeString(newsRow.text());
+    const episodeTitle = sanitizeString(getText(newsRow));
 
     const regexResult = titleRegex.exec(episodeTitle);
 
     if (!regexResult) {
-      logger.warn(`changed title format on novelFull: '${episodeTitle}': ` + uri);
+      scraperLog("warn", LogType.TITLE_FORMAT, "novelfull", { url: uri, unknown_title: episodeTitle });
       continue;
     }
     const partIndices = extractIndices(regexResult, 3, 4, 6);
     const episodeIndices = extractIndices(regexResult, 10, 11, 13);
 
     if (!episodeIndices) {
-      throw Error(`title format changed on fullNovel, got no indices for '${episodeTitle}'`);
+      throw new ScraperError(`title format changed on fullNovel, got no indices for '${episodeTitle}'`);
     }
 
-    const episode = {
+    const episode: TocEpisode = {
       combiIndex: episodeIndices.combi,
       totalIndex: episodeIndices.total,
       partialIndex: episodeIndices.fraction,
       url: link,
       title: episodeTitle,
-    } as TocEpisode;
+    };
     checkTocContent(episode);
 
     if (partIndices) {
@@ -330,18 +337,21 @@ async function newsAdapter(): Promise<NewsScrapeResult> {
 
     const mediumTitleElement = newsRow.find(".col-title a");
     const tocLink = new url.URL(mediumTitleElement.attr("href") as string, uri).href;
-    const mediumTitle = sanitizeString(mediumTitleElement.text());
+    const mediumTitle = sanitizeString(getText(mediumTitleElement));
 
     const titleElement = newsRow.find(".col-chap a");
     const link = new url.URL(titleElement.attr("href") as string, uri).href;
 
-    const episodeTitle = sanitizeString(titleElement.text());
+    const episodeTitle = sanitizeString(getText(titleElement));
 
     const timeStampElement = newsRow.find(".col-time");
-    const date = relativeToAbsoluteTime(timeStampElement.text().trim());
+    const date = relativeToAbsoluteTime(getText(timeStampElement).trim());
 
     if (!date || date > new Date()) {
-      logger.warn(`changed time format on novelFull: '${date}' from '${timeStampElement.text().trim()}': news`);
+      scraperLog("warn", LogType.TIME_FORMAT, "novelfull", {
+        url: uri,
+        unknown_time: getText(timeStampElement) || undefined,
+      });
       continue;
     }
     let regexResult: Nullable<string[]> = titleRegex.exec(episodeTitle);
@@ -357,7 +367,7 @@ async function newsAdapter(): Promise<NewsScrapeResult> {
 
       if (!abbrev || !match) {
         if (!episodeTitle.startsWith("Side")) {
-          logger.warn(`changed title format on novelFull: '${episodeTitle}': news`);
+          scraperLog("warn", LogType.TITLE_FORMAT, "novelfull", { url: uri, unknown_title: episodeTitle });
         }
         continue;
       }
@@ -371,7 +381,7 @@ async function newsAdapter(): Promise<NewsScrapeResult> {
     const episodeIndices = extractIndices(regexResult, 4, 5, 7);
 
     if (!episodeIndices) {
-      logger.warn(`changed title format on novelFull: '${episodeTitle}': news`);
+      scraperLog("warn", LogType.TITLE_FORMAT, "novelfull", { url: uri, unknown_title: episodeTitle });
       continue;
     }
     episodeNews.push({

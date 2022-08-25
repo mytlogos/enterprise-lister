@@ -1,13 +1,15 @@
+/* eslint-disable import/first */
 "use strict";
 jest.mock("axios");
 import * as directTools from "../../../externals/direct/directTools";
 import * as tools from "enterprise-core/dist/tools";
+import { internetTester } from "enterprise-core/dist/internetTester";
 import fs from "fs";
 import * as cheerio from "cheerio";
 import { EmptyPromise } from "enterprise-core/dist/types";
 
 afterAll(() => {
-  tools.internetTester.stop();
+  internetTester.stop();
 });
 
 interface TocSnippet {
@@ -35,18 +37,13 @@ async function* novelfullGenerator(pages: string[], mediumType = tools.MediaType
     const content = await fs.promises.readFile(page, "utf8");
     const $ = cheerio.load(content);
     const mediumTitleElement = $(".desc .title").first();
-    const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
+    const mediumTitle = tools.sanitizeString(directTools.getText(mediumTitleElement));
 
     const items = $(".list-chapter li a");
 
-    const releaseStatusString = $(".info-holder .info div:nth-child(4) a").text().trim().toLowerCase();
+    const releaseStatusString = directTools.getText($(".info-holder .info div:nth-child(4) a")).trim().toLowerCase();
 
-    let end = false;
-    if (releaseStatusString === "ongoing") {
-      end = false;
-    } else if (releaseStatusString === "completed") {
-      end = true;
-    }
+    const end = releaseStatusString === "completed";
     if (!tocYielded) {
       const tocMeta = {
         title: mediumTitle,
@@ -60,7 +57,7 @@ async function* novelfullGenerator(pages: string[], mediumType = tools.MediaType
     for (let i = 0; i < items.length; i++) {
       const newsRow = items.eq(i);
       const link = newsRow.attr("href");
-      const episodeTitle = tools.sanitizeString(newsRow.text());
+      const episodeTitle = tools.sanitizeString(directTools.getText(newsRow));
       yield {
         title: episodeTitle,
         url: link as string,
@@ -80,21 +77,16 @@ async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType
   const $ = cheerio.load(content);
   const mediumTitleElement = $(".post-title h3");
   mediumTitleElement.find("span").remove();
-  const mediumTitle = tools.sanitizeString(mediumTitleElement.text());
+  const mediumTitle = tools.sanitizeString(directTools.getText(mediumTitleElement));
 
   const items = $(".wp-manga-chapter");
 
-  const releaseStatusString = $(".post-status .post-content_item:nth-child(2) .summary-content")
-    .text()
+  const releaseStatusString = directTools
+    .getText($(".post-status .post-content_item:nth-child(2) .summary-content"))
     .trim()
     .toLowerCase();
 
-  let end = false;
-  if (releaseStatusString === "ongoing") {
-    end = false;
-  } else if (releaseStatusString === "completed") {
-    end = true;
-  }
+  const end = releaseStatusString === "completed";
   const tocMeta = {
     title: mediumTitle,
     mediumType,
@@ -108,7 +100,7 @@ async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType
     const link = titleElement.attr("href");
 
     const timeStampElement = newsRow.find(".chapter-release-date");
-    const dateString = timeStampElement.text().trim();
+    const dateString = directTools.getText(timeStampElement).trim();
     const lowerDate = dateString.toLowerCase();
 
     let date;
@@ -119,7 +111,7 @@ async function* boxNovelGenerator(resource: string, mediumType = tools.MediaType
     }
 
     yield {
-      title: titleElement.text(),
+      title: directTools.getText(titleElement),
       url: link as string,
       releaseDate: date as Date,
     };
@@ -284,7 +276,7 @@ async function testStaticCase(
   // @ts-expect-error
   const contents = await directTools.scrapeToc(generator);
   // @ts-expect-error
-  const createResult = expected[0] && expected[0].episodes ? createParts : createReleases;
+  const createResult = expected[0]?.episodes ? createParts : createReleases;
 
   // @ts-expect-error
   expect(contents).toEqual(createResult(now, ...expected));
@@ -334,7 +326,7 @@ async function testCase(casePath: string): EmptyPromise {
   if (caseData.domain === "novelfull") {
     generator = novelfullGenerator(caseData.pages);
   } else {
-    throw Error(`no known generator for domain ${caseData.domain}`);
+    throw Error(`no known generator for case ${JSON.stringify(caseData)}`);
   }
 
   const contents = await directTools.scrapeToc(generator);

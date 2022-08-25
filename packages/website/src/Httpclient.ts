@@ -1,7 +1,5 @@
-import { store } from "./store/store";
 import {
   ExternalUser,
-  List,
   Medium,
   News,
   User,
@@ -26,9 +24,19 @@ import {
   Part,
   JobHistoryItem,
 } from "./siteTypes";
-import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary } from "enterprise-core/src/types";
-import { HookTest, Status } from "enterprise-server/src/types";
-import { CustomHook } from "enterprise-core/dist/types";
+import { AddPart, AppEvent, AppEventFilter, EmptyPromise, JobStatSummary, List } from "enterprise-core/src/types";
+import { HookTest, HookTestV2, Status } from "enterprise-server/src/types";
+import {
+  DeleteListMedium,
+  DeleteToc,
+  GetHistoryJobsPaginated,
+  PostExternalUser,
+  PostList,
+  PostListMedium,
+} from "enterprise-server/dist/validation";
+import { CustomHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
+import qs from "qs";
+import { useUserStore } from "./store/store";
 
 /**
  * Allowed Methods for the API.
@@ -72,6 +80,9 @@ const restApi = createRestDefinition({
         history: {
           get: true,
         },
+        "history-paginated": {
+          get: true,
+        },
         stats: {
           summary: {
             get: true,
@@ -94,6 +105,9 @@ const restApi = createRestDefinition({
         get: true,
         put: true,
         test: {
+          post: true,
+        },
+        testv2: {
           post: true,
         },
         custom: {
@@ -197,6 +211,18 @@ const restApi = createRestDefinition({
           get: true,
         },
       },
+      notification: {
+        get: true,
+      },
+      "notification-read": {
+        post: true,
+      },
+      "notification-read-all": {
+        post: true,
+      },
+      "notification-count": {
+        get: true,
+      },
     },
   },
 });
@@ -214,7 +240,7 @@ function createRestDefinition<T extends Record<string, any>>(value: T): Rest<T> 
 }
 
 function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
-  const api = {} as RestAPI<any>;
+  const api: RestAPI<any> = {};
   const apis = [api];
   const values = [value];
   const paths = [""];
@@ -224,13 +250,18 @@ function createRestApi<T extends typeof restApi>(value: T): RestAPI<T> {
     const path = paths.pop();
     const currentApi = apis.pop() as RestAPI<any>;
 
+    if (path == null || last == null || currentApi == null) {
+      break;
+    }
+
     for (const key in last) {
       if (key in Methods) {
-        // @ts-expect-error
-        currentApi[key] = {
+        const method: MethodObject = {
           method: Methods[key as MethodName],
-          path: path,
-        } as MethodObject;
+          path,
+        };
+        // @ts-expect-error
+        currentApi[key] = method;
       } else {
         const subPath = path ? path + "/" + key : key;
         const subApi = {};
@@ -258,9 +289,15 @@ interface MethodObject {
   readonly path: string;
 }
 
+/**
+ * The properties uuid and session are added automatically.
+ * So a query parameter does not need to specify them.
+ */
+type Query<T> = Omit<T, "uuid" | "session">;
+
 export const HttpClient = {
   get loggedIn(): boolean {
-    return store.getters.loggedIn;
+    return useUserStore().loggedIn;
   },
 
   _checkLogin: null as null | Promise<User>,
@@ -280,11 +317,11 @@ export const HttpClient = {
   login(userName: string, psw: string): Promise<User> {
     // need to be logged out to login
     if (HttpClient.loggedIn) {
-      return Promise.reject();
+      return Promise.reject(new Error("already logged in"));
     }
 
     if (!userName || !psw) {
-      return Promise.reject();
+      return Promise.reject(new Error("missing username or password"));
     }
 
     return this.queryServer(serverRestApi.api.login.post, {
@@ -296,11 +333,10 @@ export const HttpClient = {
   register(userName: string, psw: string, pswRepeat: string): Promise<User> {
     // need to be logged out to login
     if (HttpClient.loggedIn) {
-      return Promise.reject();
+      return Promise.reject(new Error("already logged in"));
     }
     if (psw !== pswRepeat) {
-      // TODO show incorrect password
-      return Promise.reject();
+      return Promise.reject(new Error("repeated password does not match new password"));
     }
 
     return this.queryServer(serverRestApi.api.register.post, {
@@ -310,23 +346,24 @@ export const HttpClient = {
   },
 
   logout(): Promise<boolean> {
-    return this.queryServer(serverRestApi.api.user.logout.post).then((result) => result.loggedOut);
+    return this.queryServer(serverRestApi.api.user.logout.post);
   },
 
   getExternalUser(): Promise<ExternalUser[]> {
     return this.queryServer(serverRestApi.api.user.externalUser.all.get);
   },
 
-  addExternalUser(externalUser: { identifier: string; pwd: string }): Promise<ExternalUser> {
-    return this.queryServer(serverRestApi.api.user.externalUser.post, { externalUser });
+  addExternalUser(query: Query<PostExternalUser>): Promise<ExternalUser> {
+    return this.queryServer(serverRestApi.api.user.externalUser.post, query);
   },
 
   deleteExternalUser(uuid: string): Promise<any> {
     return this.queryServer(serverRestApi.api.user.externalUser.delete, { externalUuid: uuid });
   },
 
-  createList(list: { name: string; type: number }): Promise<List> {
-    return this.queryServer(serverRestApi.api.user.list.post, { list }).then((newList) => Object.assign(list, newList));
+  async createList(param: Query<PostList>): Promise<List> {
+    const newList = await this.queryServer(serverRestApi.api.user.list.post, param);
+    return Object.assign(param.list, newList);
   },
 
   updateList(list: List): Promise<boolean> {
@@ -360,15 +397,15 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.medium.allSecondary.get);
   },
 
-  getMedia(media: number | number[]): Promise<Medium | Medium[]> {
+  getMedia(media: number[]): Promise<Medium[]> {
     if (Array.isArray(media) && !media.length) {
-      return Promise.reject();
+      return Promise.reject(new Error("empty media array"));
     }
     return this.queryServer(serverRestApi.api.user.medium.get, { mediumId: media });
   },
 
   updateMedium(data: SimpleMedium): Promise<boolean> {
-    return this.queryServer(serverRestApi.api.user.medium.post, { medium: data });
+    return this.queryServer(serverRestApi.api.user.medium.put, { medium: data });
   },
 
   deleteMedium(id: number): Promise<void> {
@@ -446,8 +483,8 @@ export const HttpClient = {
    * @param episodeId the episode/s to set the progress to
    * @param progress the new progress value
    */
-  updateProgress(episodeId: number | number[], progress: number): Promise<boolean> {
-    return this.queryServer(serverRestApi.api.user.medium.progress.post, { episodeId, progress });
+  updateProgress(episodeId: number[], progress: number, readDate = new Date()): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user.medium.progress.post, { episodeId, progress, readDate });
   },
 
   getJobs(): Promise<Job[]> {
@@ -456,6 +493,10 @@ export const HttpClient = {
 
   getJobHistory(since?: Date, limit?: number): Promise<JobHistoryItem[]> {
     return this.queryServer(serverRestApi.api.user.jobs.history.get, { since, limit });
+  },
+
+  getJobHistoryPaginated(query: GetHistoryJobsPaginated): Promise<Paginated<JobHistoryItem, "start">> {
+    return this.queryServer(serverRestApi.api.user.jobs["history-paginated"].get, query);
   },
 
   postJobEnabled(id: number, enabled: boolean): Promise<Job[]> {
@@ -503,12 +544,20 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.toc.post, { toc: link, mediumId: id });
   },
 
+  deleteToc(query: Query<DeleteToc>): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user.toc.delete, query);
+  },
+
   search(title: string, type: MediaType): Promise<SearchResult[]> {
     return this.queryServer(serverRestApi.api.user.search.get, { text: title, medium: type });
   },
 
-  addListItem(listId: number, mediumId: number): Promise<void> {
-    return this.queryServer(serverRestApi.api.user.list.medium.post, { listId, mediumId });
+  addListItem(query: Query<PostListMedium>): Promise<void> {
+    return this.queryServer(serverRestApi.api.user.list.medium.post, query);
+  },
+
+  deleteListItem(query: Query<DeleteListMedium>): Promise<void> {
+    return this.queryServer(serverRestApi.api.user.list.medium.delete, query);
   },
 
   getHooks(): Promise<ScraperHook[]> {
@@ -521,6 +570,10 @@ export const HttpClient = {
 
   testHook(hook: HookTest): Promise<any> {
     return this.queryServer(serverRestApi.api.user.hook.test.post, hook);
+  },
+
+  testHookV2(hook: HookTestV2): Promise<any> {
+    return this.queryServer(serverRestApi.api.user.hook.testv2.post, hook);
   },
 
   createCustomHook(hook: CustomHook): Promise<CustomHook> {
@@ -555,22 +608,37 @@ export const HttpClient = {
     return this.queryServer(serverRestApi.api.user.crawler.jobs.get);
   },
 
+  getNotifications(from: Date, read: boolean, size?: number): Promise<Notification[]> {
+    return this.queryServer(serverRestApi.api.user.notification.get, { from, read, size });
+  },
+
+  readNotification(id: Id): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user["notification-read"].post, { id });
+  },
+
+  readAllNotifications(): Promise<boolean> {
+    return this.queryServer(serverRestApi.api.user["notification-read-all"].post);
+  },
+
+  getNotificationsCount(read: boolean): Promise<number> {
+    return this.queryServer(serverRestApi.api.user["notification-count"].get, { read });
+  },
+
   async queryServer({ path, method }: { path: string; method?: string }, query?: any): Promise<any> {
     // if path includes user, it needs to be authenticated
     if (path.includes("user")) {
       if (this._checkLogin) {
         await this._checkLogin;
       }
-      const uuid = store.state.uuid;
+      const store = useUserStore();
+      const uuid = store.uuid;
 
       if (!uuid) {
         throw Error("cannot send user message if no user is logged in");
       }
-      if (!query) {
-        query = {};
-      }
+      query ??= {};
       query.uuid = uuid;
-      query.session = store.state.session;
+      query.session = store.session;
     }
     const init = {
       method,
@@ -578,19 +646,12 @@ export const HttpClient = {
         "Content-Type": "application/json; charset=utf-8",
       },
     };
-    const url = new URL(`${window.location.origin}/${path}`);
+    let url = `${window.location.origin}/${path}`;
     if (query) {
       if (method === Methods.get) {
-        Object.keys(query).forEach((key) => {
-          const value = query[key];
-          if (Array.isArray(value)) {
-            url.searchParams.append(key, `[${value.map((v) => (typeof v === "string" ? `"${v}"` : v)).join(",")}]`);
-          } else {
-            url.searchParams.append(key, value);
-          }
-        });
+        url += "?" + qs.stringify(query);
       } else {
-        // @ts-ignore
+        // @ts-expect-error
         init.body = JSON.stringify(query);
       }
     }
@@ -598,10 +659,27 @@ export const HttpClient = {
     const result = await response.json();
 
     if (!response.ok) {
+      if (result.error) {
+        if (result.error === "INVALID_SESSION") {
+          const sessionResponse = await fetch(`${window.location.origin}/api/`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json; charset=utf-8",
+            },
+          });
+          if (sessionResponse.ok) {
+            const sessionResult: Nullable<SimpleUser> = await sessionResponse.json();
+
+            const store = useUserStore();
+            if (sessionResult) {
+              store.changeUser(sessionResult);
+            } else {
+              store.immediateLogout();
+            }
+          }
+        }
+      }
       return Promise.reject(result);
-    }
-    if (result.error) {
-      return Promise.reject(result.error);
     }
     return result;
   },

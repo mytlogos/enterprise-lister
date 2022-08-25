@@ -2,12 +2,14 @@ import diagram from "dgram";
 import { isString } from "enterprise-core/dist/tools";
 import env from "enterprise-core/dist/env";
 import logger from "enterprise-core/dist/logger";
+import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
 const PORT = env.port;
 
 const server = diagram.createSocket("udp4");
 
 server.on("listening", () => {
+  registerOnExitHandler(() => new Promise((resolve) => server.close(resolve)));
   const address = server.address();
   server.setBroadcast(true);
   if (isString(address)) {
@@ -23,9 +25,14 @@ server.on("message", (message, remote) => {
   }
   try {
     const decoded = message.toString();
-    logger.info(`UDP Message received: ${remote.address}:${remote.port} - ${decoded}`);
+    logger.info("UDP Message received", {
+      remote_address: remote.address,
+      remote_port: remote.port,
+      received: decoded,
+    });
 
-    if ("DISCOVER_SERVER_REQUEST_ENTERPRISE" === decoded) {
+    if (decoded === "DISCOVER_SERVER_REQUEST_ENTERPRISE") {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       logger.info(`server was discovered in ${env.development} and ${process.env.NODE_ENV}`);
 
       const response = "ENTERPRISE_" + (env.development ? "DEV" : "PROD");
@@ -36,7 +43,11 @@ server.on("message", (message, remote) => {
         if (err) {
           throw err;
         }
-        logger.info(`UDP message '${buffer.toString()}' sent to ${remote.address}:${remote.port}`);
+        logger.info("UDP message sent", {
+          remote_address: remote.address,
+          remote_port: remote.port,
+          sent: response,
+        });
         client.close();
       });
     }

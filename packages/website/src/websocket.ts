@@ -1,28 +1,31 @@
 import { ChannelMessage, WSRequest } from "enterprise-scraper/dist/externals/types";
-import { store } from "./store/store";
+import { useUserStore } from "./store/store";
 
 let socket: WebSocket | null = null;
 // correct mapping of WSEventListener is not yet known/possible
 const listenerMap = new Map<EventType, Set<WSEventListener<any>>>();
 const wsListenerMap = new Map<WSEventType, Set<() => void>>();
 
+function runCatching(listener: () => void): void {
+  try {
+    listener();
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 function createSocket() {
   const url = new URL("ws://" + window.location.host + "/api/user/crawler/live");
+  const store = useUserStore();
 
-  url.searchParams.append("uuid", store.state.uuid);
-  url.searchParams.append("session", store.state.session);
+  url.searchParams.append("uuid", store.uuid);
+  url.searchParams.append("session", store.session);
 
   socket = new WebSocket(url.toString());
   // remove socket on close
   socket.onclose = () => {
     socket = null;
-    wsListenerMap.get("disconnected")?.forEach((listener) => {
-      try {
-        listener();
-      } catch (error) {
-        console.error(error);
-      }
-    });
+    wsListenerMap.get("disconnected")?.forEach(runCatching);
   };
   socket.onmessage = (event) => {
     const data = event.data;
@@ -45,13 +48,7 @@ function createSocket() {
     }
   };
   socket.addEventListener("open", () => {
-    wsListenerMap.get("connected")?.forEach((listener) => {
-      try {
-        listener();
-      } catch (error) {
-        console.error(error);
-      }
-    });
+    wsListenerMap.get("connected")?.forEach(runCatching);
   });
 }
 
@@ -84,7 +81,7 @@ async function sendMessage(message: string) {
   }
 }
 
-type findByType<Union, Type> = Union extends { messageType: Type } ? Union : never;
+export type findByType<Union, Type extends EventType> = Union extends { messageType: Type } ? Union : never;
 type EventType = ChannelMessage["messageType"];
 type WSEventType = "disconnected" | "connected";
 
@@ -108,18 +105,18 @@ interface WebSocketClient {
  * An Interface for a websocket to the Crawler.
  * The socket is only active if at least on listener is registered.
  */
-export default {
+const client: WebSocketClient = {
   get isConnected(): boolean {
     return socket !== null;
   },
 
   addEventListener(event: WSEventType | EventType, listener: (...args: any[]) => void): void {
     if (event === "connected" || event === "disconnected") {
-      const listeners = wsListenerMap.get(event);
-      if (!listeners) {
+      const wsListeners = wsListenerMap.get(event);
+      if (!wsListeners) {
         wsListenerMap.set(event, new Set([listener]));
       } else {
-        listeners.add(listener);
+        wsListeners.add(listener);
       }
       return;
     }
@@ -134,10 +131,10 @@ export default {
   },
   removeEventListener(event: WSEventType | EventType, listener: (...args: any[]) => void): void {
     if (event === "connected" || event === "disconnected") {
-      const listeners = wsListenerMap.get(event);
-      listeners?.delete(listener);
+      const wsListeners = wsListenerMap.get(event);
+      wsListeners?.delete(listener);
 
-      if (listeners && !listeners.size) {
+      if (wsListeners && !wsListeners.size) {
         wsListenerMap.delete(event);
       }
       return;
@@ -165,4 +162,5 @@ export default {
     }
     checkSocket();
   },
-} as WebSocketClient;
+};
+export default client;

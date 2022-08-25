@@ -5,14 +5,15 @@ import { delay, equalsIgnore, getElseSet } from "../tools";
 import { DatabaseContext } from "./contexts/databaseContext";
 import logger from "../logger";
 import { EmptyPromise, Nullable } from "../types";
+import { MigrationError } from "../error";
 
 export class SchemaManager {
   private databaseName = "";
   private dataBaseVersion = 0;
-  private tables: TableSchema[] = [];
+  private readonly tables: TableSchema[] = [];
   private mainTable: Nullable<TableSchema> = null;
-  private trigger: Trigger[] = [];
-  private migrations: Migration[] = [];
+  private readonly trigger: Trigger[] = [];
+  private readonly migrations: Migration[] = [];
 
   public initTableSchema(database: DatabaseSchema, databaseName: string): void {
     this.databaseName = databaseName;
@@ -30,7 +31,7 @@ export class SchemaManager {
     if (!canMigrate) {
       await (async function wait(retry = 0) {
         if (retry > 9) {
-          throw Error("cannot start migration check, as migration flag is still set after 10 retries");
+          throw new MigrationError("cannot start migration check, as migration flag is still set after 10 retries");
         }
         await delay(1000);
 
@@ -110,14 +111,18 @@ export class SchemaManager {
         .filter((value) => this.tables.find((table) => table.name === value.Table))
         .map((value) => context.dropTrigger(value.Trigger).then(() => triggerDeleted++)),
     );
-    logger.info(`Created ${triggerCreated} Triggers, ${tablesCreated} Tables and dropped ${triggerDeleted} Triggers`);
+    logger.info("db check missing", {
+      created_trigger: triggerCreated,
+      deleted_trigger: triggerDeleted,
+      tables_created: tablesCreated,
+    });
   }
 
   private async migrate(context: DatabaseContext) {
     const versionResult = await context.getDatabaseVersion();
     let previousVersion = 0;
 
-    if (versionResult && versionResult[0] && versionResult[0].version > 0) {
+    if (versionResult?.[0] && versionResult[0].version > 0) {
       previousVersion = versionResult[0].version;
     }
 
@@ -126,7 +131,7 @@ export class SchemaManager {
       logger.info("Storage Version is up-to-date");
       return;
     } else if (currentVersion < previousVersion) {
-      throw Error("database version is smaller in code than in database");
+      throw new MigrationError("database version is smaller in code than in database");
     }
 
     if (previousVersion === 0) {
@@ -152,13 +157,13 @@ export class SchemaManager {
           break;
         }
         if (!foundMigration) {
-          throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
+          throw new MigrationError(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
         }
       }
       if (directMigration == null && (!migrations.length || lastMigrationVersion !== currentVersion)) {
-        throw Error(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
+        throw new MigrationError(`no migration plan found from '${previousVersion}' to '${currentVersion}'`);
       }
-      logger.info(`Starting Migration of Storage from ${previousVersion} to ${currentVersion}`);
+      logger.info("Starting Migration of Storage", { from: previousVersion, to: currentVersion });
       if (directMigration) {
         await directMigration.migrate(context);
       } else {
@@ -169,7 +174,7 @@ export class SchemaManager {
     }
     // FIXME: 10.08.2019 inserting new database version does not seem to work
     await context.updateDatabaseVersion(currentVersion);
-    logger.info(`successfully migrated storage from version ${previousVersion} to ${currentVersion}`);
+    logger.info("successfully migrated storage", { from: previousVersion, to: currentVersion });
   }
 
   private getShortest(previousVersion: number) {
