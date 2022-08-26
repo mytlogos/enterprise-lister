@@ -1,3 +1,10 @@
+## [2.19.2](https://github.com/mytlogos/enterprise-lister/compare/v2.19.1...v2.19.2) (2022-08-26)
+
+
+### Bug Fixes
+
+* **scraper:** auto generate headers ([d25b6e9](https://github.com/mytlogos/enterprise-lister/commit/d25b6e90e4feb6af5795eeba5d1cdad3c2bba9d4))
+
 ## [2.19.1](https://github.com/mytlogos/enterprise-lister/compare/v2.19.0...v2.19.1) (2022-08-26)
 
 
