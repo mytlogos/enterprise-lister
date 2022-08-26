@@ -213,7 +213,7 @@ export class Readability {
   private _articleLang?: string | null;
 
   public constructor(doc: Document, options?: ReadabilityOptions) {
-    if (!doc || !doc.documentElement) {
+    if (!doc?.documentElement) {
       throw new Error("First argument to Readability constructor should be a document object.");
     }
     options = options || {};
@@ -1507,7 +1507,7 @@ export class Readability {
           // Strip CDATA markers if present
           const content = jsonLdElement.textContent?.replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "") || "";
           let parsed = JSON.parse(content);
-          if (!parsed["@context"] || !parsed["@context"].match(/^https?:\/\/schema\.org$/)) {
+          if (!parsed["@context"]?.match(/^https?:\/\/schema\.org$/)) {
             return;
           }
 
@@ -1517,7 +1517,7 @@ export class Readability {
             });
           }
 
-          if (!parsed || !parsed["@type"] || !parsed["@type"].match(this.REGEXPS.jsonLdArticleTypes)) {
+          if (!parsed?.["@type"]?.match(this.REGEXPS.jsonLdArticleTypes)) {
             return;
           }
 

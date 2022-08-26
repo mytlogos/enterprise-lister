@@ -132,7 +132,7 @@ export class PartContext extends SubContext {
       "SELECT * FROM part WHERE medium_id = ? AND combiIndex IN (??);",
       [mediumId, partCombiIndex],
     );
-    if (!parts || !parts.length) {
+    if (!parts?.length) {
       return [];
     }
 
@@ -159,7 +159,7 @@ export class PartContext extends SubContext {
    */
   public async getParts<T extends MultiSingleNumber>(partId: T, uuid: Uuid, full = true): Promise<Part[]> {
     const parts: Optional<any[]> = await this.queryInList("SELECT * FROM part WHERE id IN (??);", [partId]);
-    if (!parts || !parts.length) {
+    if (!parts?.length) {
       return [];
     }
     const partIdMap = new Map<number, any>();

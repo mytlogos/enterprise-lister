@@ -51,7 +51,7 @@ export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
     const promises = [];
     for (const value of episodeMap.values()) {
       const [newsItem] = value;
-      if (!newsItem || !newsItem.mediumTitle || !newsItem.mediumType) {
+      if (!newsItem?.mediumTitle || !newsItem.mediumType) {
         continue;
       }
       promises.push(
@@ -84,7 +84,7 @@ async function processMediumNews(
 ): Promise<MediumInWait | undefined> {
   const likeMedium: LikeMedium = await mediumStorage.getLikeMedium({ title, type });
 
-  if (!likeMedium || !likeMedium.medium || !likeMedium.medium.id) {
+  if (!likeMedium?.medium?.id) {
     if (tocLink) {
       return { title, medium: type, link: tocLink };
     }
@@ -103,7 +103,7 @@ async function processMediumNews(
   let standardPart = await partStorage.getStandardPart(mediumId);
   standardPart ??= await partStorage.createStandardPart(mediumId);
 
-  if (!standardPart || !standardPart.id) {
+  if (!standardPart?.id) {
     throw new DatabaseError(`could not create standard part for mediumId: '${mediumId}'`);
   }
 

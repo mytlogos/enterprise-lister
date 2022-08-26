@@ -62,7 +62,7 @@ export class MediumInWaitContext extends SubContext {
   }
 
   public async consumeMediaInWait(mediumId: number, same: MediumInWait[]): Promise<boolean> {
-    if (!same || !same.length) {
+    if (!same?.length) {
       return false;
     }
     await Promise.all(

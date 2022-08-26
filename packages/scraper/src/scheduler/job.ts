@@ -252,7 +252,7 @@ export class Job {
   private async emit<E extends keyof Events>(event: E, ...args: Parameters<Events[E]>): Promise<boolean> {
     const handler: EventListener[E] = this.events[event];
 
-    if (!handler || !handler.length) {
+    if (!handler?.length) {
       return false;
     }
 

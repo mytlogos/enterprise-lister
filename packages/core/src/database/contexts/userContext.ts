@@ -169,7 +169,7 @@ export class UserContext extends SubContext {
 
     const sessionRecord = result[0];
 
-    if (!sessionRecord || !sessionRecord.session_key) {
+    if (!sessionRecord?.session_key) {
       throw new SessionError("user has no session");
     }
 

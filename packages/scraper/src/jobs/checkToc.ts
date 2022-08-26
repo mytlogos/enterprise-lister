@@ -58,7 +58,7 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
           mediumTocs,
         );
       }
-      if (mediumTocs.some((mediumToc) => hooks.every((hook) => !hook.domainReg || !hook.domainReg.test(mediumToc)))) {
+      if (mediumTocs.some((mediumToc) => hooks.every((hook) => !hook.domainReg?.test(mediumToc)))) {
         return searchTocJob(
           mediumId,
           tocSearchMedia.find((searchMedium) => searchMedium.mediumId === mediumId),

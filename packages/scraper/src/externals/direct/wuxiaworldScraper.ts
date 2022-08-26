@@ -320,7 +320,7 @@ async function search(text: string): Promise<SearchResult[]> {
 
   const searchResult: SearchResult[] = [];
 
-  if (!parsed.result || !parsed.items || !parsed.items.length) {
+  if (!parsed.result || !parsed.items?.length) {
     return searchResult;
   }
   for (const item of parsed.items) {

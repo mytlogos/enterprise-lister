@@ -238,7 +238,7 @@ export function parseDataColumn(table: TableSchema, _tables: TableSchema[], valu
         i++;
         const defaultValueObj = getExpressionValue(parts, i);
 
-        if (!defaultValueObj || !defaultValueObj.value) {
+        if (!defaultValueObj?.value) {
           logger.warn(`no default value specified for '${name}' of ${table.name}`);
           return null;
         }
@@ -255,7 +255,7 @@ export function parseDataColumn(table: TableSchema, _tables: TableSchema[], valu
         i++;
         const updateValueObj = getExpressionValue(parts, i);
 
-        if (!updateValueObj || !updateValueObj.value) {
+        if (!updateValueObj?.value) {
           logger.warn(`no update value specified for '${name}' of ${table.name}`);
           return null;
         }

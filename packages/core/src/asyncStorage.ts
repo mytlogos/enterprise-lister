@@ -24,7 +24,7 @@ createHook({
   before() {
     const store: Store | any = localStorage.getStore();
 
-    if (!store || !store.has) {
+    if (!(store instanceof Map)) {
       return;
     }
     const running = store.get(StoreKey.RUNNING);

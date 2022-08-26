@@ -777,7 +777,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
       insertNeighbour = episode;
     }
   }
-  if (!state.tocMeta || !state.tocMeta.end) {
+  if (!state.tocMeta?.end) {
     let possibleStartNode: Optional<Node>;
     let volumeEncountered = false;
     for (const content of contents.iterate(ascending)) {

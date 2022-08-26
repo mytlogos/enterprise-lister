@@ -172,7 +172,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 
 async function scrapeSearch(searchString: string, searchMedium: TocSearchMedium): Promise<TocSearchResult> {
   const searchResults = await search(searchString);
-  if (!searchResults || !searchResults.length) {
+  if (!searchResults?.length) {
     return { done: true };
   }
   for (const searchResult of searchResults) {

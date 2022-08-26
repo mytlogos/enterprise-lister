@@ -98,7 +98,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
     type: MediaType.TEXT,
   });
 
-  if (!likeMedium || !likeMedium.medium || !likeMedium.medium.id) {
+  if (!likeMedium?.medium?.id) {
     return;
   }
   const mediumId = likeMedium.medium.id;

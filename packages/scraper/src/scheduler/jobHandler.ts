@@ -242,7 +242,7 @@ function partEpisodesReleaseChanges(
   storageEpisodes: Readonly<CombinedEpisode[]>,
   storageReleases: Readonly<EpisodeRelease[]>,
 ): PartChanges {
-  if (!value.part || !value.part.id) {
+  if (!value.part?.id) {
     throw new ValidationError(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
   }
   const episodeMap = new Map<
@@ -400,7 +400,7 @@ function filterToDeleteReleases(tocId: number, changes: PartChanges, releases: E
 
       // to delete the release either the episode of it should not be defined or the release
       // (same url only, as same episodeId and tocId is already given) should not be available
-      if (!tocReleases || !tocReleases.find((other) => other.url === release.url)) {
+      if (!tocReleases?.find((other) => other.url === release.url)) {
         deleteReleases.push(release);
       }
     }
@@ -529,7 +529,7 @@ export async function tocHandler(result: TocResult): EmptyPromise {
     )} ${uuid || ""}`,
   );
 
-  if (!tocs || !tocs.length) {
+  if (!tocs?.length) {
     return;
   }
 
@@ -825,7 +825,7 @@ async function listHandler(result: ExternalListResult): EmptyPromise {
       const likeMedium = likeMedia.find((like: LikeMedium) => {
         return like && like.link === scrapeMedium.title.link;
       });
-      if (!likeMedium || !likeMedium.medium) {
+      if (!likeMedium?.medium) {
         throw new MissingEntityError("missing medium in storage for " + scrapeMedium.title.link);
       }
       return likeMedium.medium.id;

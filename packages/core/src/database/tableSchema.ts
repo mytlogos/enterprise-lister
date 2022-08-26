@@ -44,7 +44,7 @@ export class TableSchema {
             if (!foreignKey) {
               throw new SchemaError("invalid foreign key: is undefined");
             }
-            if (!foreignKey.table || !foreignKey.table.name) {
+            if (!foreignKey.table?.name) {
               throw new SchemaError("invalid foreign key: empty table");
             }
             return `FOREIGN KEY (${value.name}) REFERENCES ${foreignKey.table.name}(${foreignKey.name})`;

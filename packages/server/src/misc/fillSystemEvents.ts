@@ -103,7 +103,7 @@ async function streamed() {
   const maxDiff = 1000 * 3600; // at most a hour difference
 
   jobs.on("result", (value) => {
-    if (!value.start || !value.start.getTime) {
+    if (!value.start?.getTime) {
       console.log(value);
       return;
     }

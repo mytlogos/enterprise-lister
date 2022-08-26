@@ -50,7 +50,7 @@ export class MediumContext extends SubContext {
    * Adds a medium to the storage.
    */
   public async addMedium(medium: SimpleMedium, uuid?: Uuid): Promise<SimpleMedium> {
-    if (!medium || !medium.medium || !medium.title) {
+    if (!medium?.medium || !medium?.title) {
       return Promise.reject(new ValidationError(`Invalid Medium: ${medium?.title}-${medium?.medium}`));
     }
     const result = await this.query("INSERT INTO medium(medium, title) VALUES (?,?);", [medium.medium, medium.title]);
@@ -652,7 +652,7 @@ export class MediumContext extends SubContext {
   }
 
   public async splitMedium(sourceMediumId: number, destMedium: SimpleMedium, toc: string): Promise<Id> {
-    if (!destMedium || !destMedium.medium || !destMedium.title) {
+    if (!destMedium?.medium || !destMedium.title) {
       return Promise.reject(
         new ValidationError(`Invalid destination Medium: ${destMedium?.title}-${destMedium?.medium}`),
       );
