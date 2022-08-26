@@ -1,3 +1,10 @@
+## [2.19.3](https://github.com/mytlogos/enterprise-lister/compare/v2.19.2...v2.19.3) (2022-08-26)
+
+
+### Bug Fixes
+
+* **scraper:** disable gpu for headless chrome ([9b84f1e](https://github.com/mytlogos/enterprise-lister/commit/9b84f1e1bd38eec6e2a57687570c287524e4bd40))
+
 ## [2.19.2](https://github.com/mytlogos/enterprise-lister/compare/v2.19.1...v2.19.2) (2022-08-26)
 
 
