@@ -44,6 +44,7 @@ import {
   DownloadEpisode,
   downloadEpisodeSchema,
   getAllAppEventsSchema,
+  GetAssociatedEpisode,
   getAssociatedEpisodeSchema,
   GetNotifications,
   GetNotificationsCount,
@@ -178,9 +179,11 @@ export const getLists = getAllLists;
 
 export const getAssociatedEpisode = createHandler(
   (req) => {
-    const url = extractQueryParam(req, "url");
+    const { url }: GetAssociatedEpisode = req.query as any;
     return episodeStorage.getAssociatedEpisode(url);
-});
+  },
+  { query: getAssociatedEpisodeSchema },
+);
 
 export const search = createHandler(
   (req) => {

@@ -194,8 +194,8 @@ import {
   SimpleMedium,
   ReleaseState as ReleaseStateType,
 } from "../siteTypes";
-import typeIcon from "../components/type-icon.vue";
-import releaseState from "../components/release-state.vue";
+import TypeIcon from "../components/type-icon.vue";
+import ReleaseState from "../components/release-state.vue";
 import MediaFilter from "../components/media-filter.vue";
 import { computed, ref, watchEffect } from "vue";
 import { mergeMediaToc } from "../init";

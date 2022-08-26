@@ -89,7 +89,7 @@ function traceWrap<T extends (...args: any[]) => any>(target: T): T {
     const store = getStore() as undefined | TraceStore;
 
     // no store means no tracing, so exit as light weight as possible
-    if (!store || !store.get("enableTrace")) {
+    if (!store?.get("enableTrace")) {
       return target(...args);
     }
 

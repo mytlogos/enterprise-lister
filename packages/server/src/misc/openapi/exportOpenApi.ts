@@ -1,5 +1,5 @@
-import ts from "typescript";
-import {
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import ts, {
   CallExpression,
   FunctionDeclaration,
   Identifier,
@@ -27,6 +27,7 @@ import {
   enumNameSymbol,
   keyTypeSymbol,
 } from "./types";
+import { stringify } from "enterprise-core/dist/tools";
 
 interface DocEntry {
   name?: string;
@@ -125,6 +126,7 @@ interface NullType extends TypeResult {
   literalValue?: null;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface PromiseType extends TypeResult {
   type: "Promise";
   genericType: TypeResult;
@@ -254,9 +256,9 @@ export function generateExpressApiObject(fileNames: string[], options: ts.Compil
 }
 
 class TypeInferrer {
-  private checker: ts.TypeChecker;
+  private readonly checker: ts.TypeChecker;
   private counter = 0;
-  private inErrorBlock = false;
+  private readonly inErrorBlock = false;
 
   public constructor(checker: ts.TypeChecker) {
     this.checker = checker;
@@ -271,7 +273,7 @@ class TypeInferrer {
       const symbol = this.getSymbol(node);
 
       if (!symbol) {
-        log("No Symbol for Identifier: " + node);
+        log("No Symbol for Identifier: " + stringify(node));
       } else {
         const type = this.checker.getTypeOfSymbolAtLocation(symbol, node);
 
@@ -635,8 +637,8 @@ class TypeInferrer {
   }
 
   private convertRecordType(type: ts.Type) {
-    const keyType = type.aliasTypeArguments && type.aliasTypeArguments[0];
-    const valueType = type.aliasTypeArguments && type.aliasTypeArguments[1];
+    const keyType = type.aliasTypeArguments?.[0];
+    const valueType = type.aliasTypeArguments?.[1];
 
     if (!keyType || !valueType) {
       log("Missing either key or alias type for Record!");
@@ -650,7 +652,7 @@ class TypeInferrer {
   }
 
   private convertPartialType(type: ts.Type) {
-    const keyType = type.aliasTypeArguments && type.aliasTypeArguments[0];
+    const keyType = type.aliasTypeArguments?.[0];
 
     if (!keyType) {
       log("Missing type parameter for Partial!");
@@ -671,8 +673,8 @@ class TypeInferrer {
   }
 
   private convertPickType(type: ts.Type, typeNode?: ts.TypeNode) {
-    const targetType = type.aliasTypeArguments && type.aliasTypeArguments[0];
-    const keysType = type.aliasTypeArguments && type.aliasTypeArguments[1];
+    const targetType = type.aliasTypeArguments?.[0];
+    const keysType = type.aliasTypeArguments?.[1];
 
     if (!targetType || !keysType) {
       log("Missing target or keys type parameter for Pick!");
@@ -926,13 +928,13 @@ class TypeInferrer {
 }
 
 class Parser {
-  private routerVariables: Set<ts.Symbol> = new Set();
-  private routerMap: Map<ts.Symbol, RouterEntry> = new Map();
-  private routeMap: Map<ts.Symbol, RouteEntry> = new Map();
+  private readonly routerVariables: Set<ts.Symbol> = new Set();
+  private readonly routerMap: Map<ts.Symbol, RouterEntry> = new Map();
+  private readonly routeMap: Map<ts.Symbol, RouteEntry> = new Map();
   private currentlyConvertingRouter: Nullable<ts.Symbol> = null;
-  private checker: ts.TypeChecker;
+  private readonly checker: ts.TypeChecker;
   public functionMap: Map<ts.Symbol, FunctionEntry> = new Map();
-  private inferrer: TypeInferrer;
+  private readonly inferrer: TypeInferrer;
 
   public constructor(checker: ts.TypeChecker) {
     this.checker = checker;
@@ -966,7 +968,7 @@ class Parser {
       const routerEntry = this.routerMap.get(returnedRouter);
 
       if (!routerEntry) {
-        throw Error("No entry available for: " + returnedRouter);
+        throw Error("No entry available for: " + stringify(returnedRouter));
       }
       this.currentlyConvertingRouter = returnedRouter;
       result[name] = this.routerEntryToResult(routerEntry);
@@ -986,12 +988,14 @@ class Parser {
         continue;
       }
       if (subRouterSymbol === this.currentlyConvertingRouter) {
-        throw Error("Currently converting Router is recursively a sub router of itself!: " + subRouterSymbol);
+        throw Error(
+          "Currently converting Router is recursively a sub router of itself!: " + stringify(subRouterSymbol),
+        );
       }
       const subRouterEntry = this.routerMap.get(subRouterSymbol);
 
       if (!subRouterEntry) {
-        throw Error("Sub router as no entry: " + subRouterSymbol);
+        throw Error("Sub router has no entry: " + stringify(subRouterSymbol));
       }
       routerResult.subRouter[routerPath] = this.routerEntryToResult(subRouterEntry);
     }
@@ -1055,7 +1059,7 @@ class Parser {
       }
       if (ts.isFunctionLike(initializer)) {
         stackElement = this.createStackElement(initializer, valueDeclaration.name);
-      } else if (ts.isIdentifierOrPrivateIdentifier(initializer)) {
+      } else if (ts.isMemberName(initializer)) {
         // TODO: 10.08.2020 middleware aliases like putProgress
         return this.middlewareToResult(initializer);
       } else {
@@ -1089,7 +1093,7 @@ class Parser {
         middlewareResult.returnTypes[Number(code)] = response.body;
       }
     }
-    log(`Middleware ${middleware.getText()} has no returnType: ${middlewareResult.returnTypes == null}`);
+    log(`Middleware ${middleware.getText()} has no returnType: ${(middlewareResult.returnTypes == null) + ""}`);
     return middlewareResult;
   }
 
@@ -1428,7 +1432,7 @@ class Parser {
       // or a call of a super type of express.Response like http.ServerResponse or http.OutgoingMessage
       log("Unknown call on response: " + callExpression.getText());
     }
-    if (container.responseInfo[statusCode] && container.responseInfo[statusCode].body) {
+    if (container.responseInfo[statusCode]?.body) {
       // TODO: check really if same status code
       // merge if it is
       log("Response exists already!");
@@ -1560,7 +1564,6 @@ class Parser {
           const call = getFirst(initializer, SyntaxKind.CallExpression) as CallExpression;
           if (call.arguments.length !== 1) {
             log("Require exactly on argument for method 'route' on position: " + call.pos);
-            return;
           } else {
             const expression = call.arguments[0];
             const routerEntry = this.getRouterEntry(routerSymbol);
@@ -1905,7 +1908,7 @@ function nextNode(node: ts.Node): Nullable<ts.Node> {
     // get the next node for the parent and look for the earliest node
     let earliestNode = nextNode(node.parent);
 
-    while (earliestNode && earliestNode.getChildCount()) {
+    while (earliestNode?.getChildCount()) {
       earliestNode = earliestNode.getChildAt(0);
     }
     return earliestNode;
@@ -2158,10 +2161,10 @@ function toSchema(params?: TypeResult | null): SchemaObject | undefined {
     const requiredProperties = [];
 
     for (const [key, value] of Object.entries(obj.properties)) {
-      const property_schema = toSchema(value);
+      const propertySchema = toSchema(value);
 
-      if (property_schema) {
-        properties[key] = property_schema;
+      if (propertySchema) {
+        properties[key] = propertySchema;
       }
       if (value && !value.optional) {
         requiredProperties.push(key);

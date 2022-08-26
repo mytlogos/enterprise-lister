@@ -1,4 +1,4 @@
-import { EpisodeContent, Hook, Toc, TocContent, TocEpisode, TocPart, NewsScrapeResult } from "../types";
+import { EpisodeContent, Hook, Toc, TocContent, NewsScrapeResult } from "../types";
 import {
   EpisodeNews,
   ReleaseState,
@@ -24,7 +24,6 @@ import {
   scraperLog,
   getText,
 } from "./directTools";
-import { checkTocContent } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 import request from "../request";
@@ -182,144 +181,6 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
     return [toc];
   }
   return [];
-}
-
-async function tocAdapter(tocLink: string): Promise<Toc[]> {
-  const uri = BASE_URI;
-
-  const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
-  if (!linkMatch) {
-    throw new UrlError("not a valid toc url for NovelFull: " + tocLink, tocLink);
-  }
-  const toc: {
-    title?: string;
-    content?: TocContent[];
-    synonyms?: string[];
-    mediumType: MediaType;
-    partsOnly?: boolean;
-    end?: boolean;
-    link: string;
-  } = {
-    link: tocLink,
-    mediumType: MediaType.TEXT,
-  };
-  tocLink = `${BASE_URI}index.php/${linkMatch[1]}?page=`;
-
-  for (let i = 1; ; i++) {
-    const $ = await request.getCheerio({ url: tocLink + i });
-
-    if ($('.info a[href="/status/Completed"]').length) {
-      toc.end = true;
-    }
-    const tocSnippet = await scrapeTocPage($, uri);
-
-    if (!tocSnippet) {
-      break;
-    }
-
-    if (!toc.title) {
-      toc.title = tocSnippet.title;
-    } else if (tocSnippet.title && tocSnippet.title !== toc.title) {
-      logger.warn(`Mismatched Title on Toc Pages: '${toc.title}' and '${tocSnippet.title}'`, {
-        url: tocLink,
-        scraper: "novelfull",
-      });
-      return [];
-    }
-    if (!toc.content) {
-      toc.content = tocSnippet.content;
-    } else {
-      toc.content.push(...tocSnippet.content);
-    }
-    if (!toc.synonyms) {
-      toc.synonyms = tocSnippet.synonyms;
-    } else if (tocSnippet.synonyms) {
-      toc.synonyms.push(...tocSnippet.synonyms);
-    }
-    if ($(".pagination .last.disabled, .pagination .next.disabled").length) {
-      break;
-    }
-    // no novel has more than 300 toc pages (300 * 50 -> 15000 Chapters)
-    if (i > 300) {
-      logger.error(new ScraperError(`Could not reach end of TOC '${toc.link}'`));
-      break;
-    }
-  }
-
-  if (!toc.content || !toc.title) {
-    return [];
-  }
-  return [toc as Toc];
-}
-
-async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromise<Toc> {
-  // TODO: 20.07.2019 scrape alternative titles and author too
-  const mediumTitleElement = $(".desc .title").first();
-  const mediumTitle = sanitizeString(getText(mediumTitleElement));
-
-  const content: TocContent[] = [];
-  const indexPartMap: Map<number, TocPart> = new Map<number, TocPart>();
-  const items = $(".list-chapter li a");
-
-  const titleRegex = /(vol(\.|ume)?\s*((\d+)(\.(\d+))?).+)?((ch(\.|a?.?p?.?t?.?e?.?r?.?)?)|-)\s*((\d+)(\.(\d+))?)/i;
-  // TODO: 24.07.2019 has volume, 'intermission', 'gossips', 'skill introduction', 'summary'
-  //  for now it skips those, maybe do it with lookAheads in the rows or sth similar
-  for (let i = 0; i < items.length; i++) {
-    const newsRow = items.eq(i);
-
-    const link = new url.URL(newsRow.attr("href") as string, uri).href;
-
-    const episodeTitle = sanitizeString(getText(newsRow));
-
-    const regexResult = titleRegex.exec(episodeTitle);
-
-    if (!regexResult) {
-      scraperLog("warn", LogType.TITLE_FORMAT, "novelfull", { url: uri, unknown_title: episodeTitle });
-      continue;
-    }
-    const partIndices = extractIndices(regexResult, 3, 4, 6);
-    const episodeIndices = extractIndices(regexResult, 10, 11, 13);
-
-    if (!episodeIndices) {
-      throw new ScraperError(`title format changed on fullNovel, got no indices for '${episodeTitle}'`);
-    }
-
-    const episode: TocEpisode = {
-      combiIndex: episodeIndices.combi,
-      totalIndex: episodeIndices.total,
-      partialIndex: episodeIndices.fraction,
-      url: link,
-      title: episodeTitle,
-    };
-    checkTocContent(episode);
-
-    if (partIndices) {
-      let part: Optional<TocPart> = indexPartMap.get(partIndices.combi);
-
-      if (!part) {
-        part = {
-          episodes: [],
-          combiIndex: partIndices.combi,
-          totalIndex: partIndices.total,
-          partialIndex: partIndices.fraction,
-          title: "Vol." + partIndices.combi,
-        };
-        checkTocContent(part, true);
-
-        indexPartMap.set(partIndices.combi, part);
-        content.push(part);
-      }
-      part.episodes.push(episode);
-    } else {
-      content.push(episode);
-    }
-  }
-  return {
-    link: "",
-    content,
-    title: mediumTitle,
-    mediumType: MediaType.TEXT,
-  };
 }
 
 async function newsAdapter(): Promise<NewsScrapeResult> {

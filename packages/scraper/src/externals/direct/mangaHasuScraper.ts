@@ -136,7 +136,6 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
       continue;
     }
     let partIndices;
-    let partTitle;
 
     if (groups[2]) {
       partIndices = extractIndices(groups, 2, 3, 5);
@@ -148,7 +147,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
         });
         continue;
       }
-      partTitle = `Vol. ${partIndices.combi}`;
+      // partTitle = `Vol. ${partIndices.combi}`;
       // TODO: unused part title, should this be removed or used?
     }
 

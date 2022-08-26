@@ -72,7 +72,7 @@ async function readHook(openApiObject: OpenApiObject) {
   }
 }
 
-async function writeHook(openApiObject: OpenApiObject) {
+export async function writeHook(openApiObject: OpenApiObject) {
   const hookOutput: any = {};
   const methods = ["get", "delete", "post", "put"];
 

@@ -1,6 +1,6 @@
 import handlebars from "handlebars";
 import fs from "fs/promises";
-import { findAbsoluteProjectDirPath } from "enterprise-core/dist/tools";
+import { findAbsoluteProjectDirPath, stringify } from "enterprise-core/dist/tools";
 import { join } from "path";
 import {
   OpenApiObject,
@@ -259,7 +259,7 @@ class TSTemplateGenerator extends TemplateGenerator {
         valueType = this.schemaToJSType(valueSchema as SchemaObject);
       }
 
-      return new handlebars.SafeString(`Record<${this.schemaToJSType(keyType).toString()}, ${valueType}>`);
+      return new handlebars.SafeString(`Record<${this.schemaToJSType(keyType).toString()}, ${stringify(valueType)}>`);
     } else if (schema.type === "integer") {
       return "number";
     }
@@ -318,7 +318,7 @@ class TSTemplateGenerator extends TemplateGenerator {
       const isStr = isString(value);
       // @ts-expect-error
       const name = enumValue[enumNameSymbol] ? enumValue[enumNameSymbol][index] : index;
-      return new handlebars.SafeString(`${name} = ${isStr ? '"' : ""}${value}${isStr ? '"' : ""},`);
+      return new handlebars.SafeString(`${name + ""} = ${isStr ? '"' : ""}${value + ""}${isStr ? '"' : ""},`);
     });
 
     handlebars.registerHelper("toType", (type?: SchemaObject) => {
@@ -431,23 +431,23 @@ class TSRequestValidatorGenerator extends TSTemplateGenerator {
     });
     handlebars.registerHelper("toTSValue", (value) => {
       if (isString(value)) {
-        return new handlebars.SafeString(`"${value}"`);
+        return new handlebars.SafeString(`"${value + ""}"`);
       } else if (isBoolean(value)) {
-        return `${value}`;
+        return value + "";
       } else if (isNumber(value)) {
-        return `${value}`;
+        return value + "";
       } else if (value === null) {
         return "null";
       } else if (value === undefined) {
         return "undefined";
       }
-      throw Error(`Unknown TSValue: '${value}'`);
+      throw Error(`Unknown TSValue: '${value + ""}'`);
     });
     handlebars.registerHelper("findEnumMember", (value: any, enumValues: any[]) => {
       const index = enumValues.indexOf(value);
 
       if (index < 0) {
-        throw Error(`Unknown EnumValue: '${value}'`);
+        throw Error(`Unknown EnumValue: '${value + ""}'`);
       }
       // @ts-expect-error
       return enumValues[enumNameSymbol] ? enumValues[enumNameSymbol][index] : index;

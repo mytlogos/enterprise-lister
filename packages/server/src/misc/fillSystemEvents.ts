@@ -94,6 +94,7 @@ async function complete() {
   process.exit(0);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function streamed() {
   const jobs = await jobStorage.getJobHistoryStream(new Date(), -1);
 

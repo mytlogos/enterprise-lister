@@ -165,34 +165,6 @@ export interface SearchResult {
   done: boolean;
 }
 
-function searchForWords(
-  linkSelector: string,
-  medium: TocSearchMedium,
-  uri: string,
-  searchLink: (parameter: string) => string,
-): (searchString: string) => Promise<SearchResult> {
-  return async (word: string): Promise<SearchResult> => {
-    const $ = await request.getCheerio({ url: searchLink(word) });
-
-    const links = $(linkSelector);
-
-    if (!links.length) {
-      return { done: true };
-    }
-    for (let i = 0; i < links.length; i++) {
-      const linkElement = links.eq(i);
-
-      const text = sanitizeString(getText(linkElement));
-
-      if (equalsIgnore(text, medium.title) || medium.synonyms.some((s) => equalsIgnore(text, s))) {
-        const tocLink = linkElement.attr("href") as string;
-        return { value: new url.URL(tocLink, uri).href, done: true };
-      }
-    }
-    return { done: false };
-  };
-}
-
 export async function searchToc(
   medium: TocSearchMedium,
   tocScraper: TocScraper,
@@ -472,10 +444,6 @@ function isUnusedPiece(value: Node): value is UnusedPiece {
   return value.type === "unusedPiece";
 }
 
-function isPartPiece(value: any): value is PartPiece {
-  return value.episodes;
-}
-
 function isTocMetaPiece(value: any): value is TocMetaPiece {
   return Number.isInteger(value.mediumType);
 }
@@ -629,65 +597,6 @@ interface TocScrapeState {
   tocMeta?: InternalToc;
 }
 
-function adjustPartialIndices(contentIndex: number, contents: InternalTocContent[], ascending: boolean): void {
-  const content = contents[contentIndex] as InternalTocEpisode;
-  const partialLimit = content.partCount;
-
-  if (partialLimit) {
-    const totalIndex = content.totalIndex;
-    const currentPartialIndex = content.partialIndex;
-
-    if (currentPartialIndex == null) {
-      logger.warn("partialLimit but no partialIndex for: " + stringify(content));
-    } else {
-      for (let j = contentIndex + 1; j < contents.length; j++) {
-        const next = contents[j];
-
-        if (!isInternalEpisode(next) || !next.match) {
-          continue;
-        }
-        if (next.totalIndex !== totalIndex) {
-          break;
-        }
-        const nextPartialIndex = currentPartialIndex + (ascending ? 1 : -1);
-
-        if (nextPartialIndex < 1 || nextPartialIndex > partialLimit) {
-          break;
-        }
-        if (next.partialIndex != null && next.partialIndex !== nextPartialIndex) {
-          logger.warn(
-            `trying to overwrite partialIndex on existing one with ${nextPartialIndex}: ${stringify(content)}`,
-          );
-        } else {
-          next.partialIndex = nextPartialIndex;
-          next.combiIndex = combiIndex(next);
-        }
-      }
-      for (let j = contentIndex - 1; j >= 0; j--) {
-        const previous = contents[j];
-
-        if (!isInternalEpisode(previous) || !previous.match) {
-          continue;
-        }
-        if (previous.totalIndex !== totalIndex) {
-          break;
-        }
-        const nextPartialIndex = currentPartialIndex + (ascending ? -1 : 1);
-
-        if (nextPartialIndex < 1 || nextPartialIndex > partialLimit) {
-          break;
-        }
-        if (previous.partialIndex != null && previous.partialIndex !== nextPartialIndex) {
-          logger.warn("trying to overwrite partialIndex on existing one: " + stringify(content));
-        } else {
-          previous.partialIndex = nextPartialIndex;
-          previous.combiIndex = combiIndex(previous);
-        }
-      }
-    }
-  }
-}
-
 function convertToTocEpisode(totalIndex: number, partialIndex: number, index: number, value: UnusedPiece) {
   const episode: InternalTocEpisode = {
     type: "episode",
@@ -809,11 +718,7 @@ function adjustTocContentsLinked(contents: TocLinkedList, state: TocScrapeState)
     }
   }
   let minPartialIndex;
-  let startPiecesCount = 0;
   for (const content of contents.iterate(ascending)) {
-    if (isUnusedPiece(content)) {
-      startPiecesCount++;
-    }
     if (isInternalEpisode(content)) {
       if (content.totalIndex === 0) {
         minPartialIndex = content.partialIndex;

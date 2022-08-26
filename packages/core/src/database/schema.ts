@@ -96,6 +96,7 @@ type ColumnType<U extends SqlPrimitive> = U extends "varchar"
   ? BoolColumn
   : BasicColumn<U>;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function defineColumn<U extends SqlPrimitive>(type: U): ColumnType<U> {
   return {
     type,

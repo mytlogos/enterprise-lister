@@ -1,7 +1,7 @@
 import { DatabaseSchema, Migration } from "./databaseTypes";
 import { TableSchema } from "./tableSchema";
 import { Trigger } from "./trigger";
-import { delay, equalsIgnore, getElseSet } from "../tools";
+import { delay, equalsIgnore } from "../tools";
 import { DatabaseContext } from "./contexts/databaseContext";
 import logger from "../logger";
 import { EmptyPromise, Nullable } from "../types";
@@ -176,62 +176,6 @@ export class SchemaManager {
     await context.updateDatabaseVersion(currentVersion);
     logger.info("successfully migrated storage", { from: previousVersion, to: currentVersion });
   }
-
-  private getShortest(previousVersion: number) {
-    const root: Root = {
-      children: [],
-    };
-    const fromVersionMap: Map<number, Node[]> = new Map();
-
-    for (const migration of this.migrations) {
-      const fromMigrations = getElseSet(fromVersionMap, migration.fromVersion, () => []);
-      fromMigrations.push({ migration, children: [], parents: [] });
-    }
-    for (const [from, value] of fromVersionMap.entries()) {
-      if (from === previousVersion) {
-        root.children.push(...value);
-
-        for (const node of value) {
-          node.parents.push(root);
-        }
-      }
-      if (from <= previousVersion) {
-        continue;
-      }
-      for (const node of value) {
-        const nodes = fromVersionMap.get(node.migration.toVersion);
-
-        if (nodes == null) {
-          continue;
-        }
-        node.children.push(...nodes);
-
-        for (const child of nodes) {
-          child.parents.push(node);
-        }
-      }
-    }
-    const currentPathMap: Map<Migration, Migration[]> = new Map();
-    const visited = [];
-    const queue: Array<Root | Node> = [root];
-
-    while (queue.length > 0) {
-      const firstElement: Root | Node = queue[0];
-      queue.splice(0, 1);
-
-      if (isNode(firstElement)) {
-        // TODO: 08.08.2019 implement this
-      }
-    }
-  }
-}
-
-function isRoot(value: any): value is Root {
-  return value.children && !value.migration;
-}
-
-function isNode(value: any): value is Node {
-  return value.children && value.migration;
 }
 
 interface Root {
