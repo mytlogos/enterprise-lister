@@ -1,3 +1,23 @@
+# [2.19.0](https://github.com/mytlogos/enterprise-lister/compare/v2.18.2...v2.19.0) (2022-08-26)
+
+
+### Bug Fixes
+
+* **scraper:** add missing header ([f50cdae](https://github.com/mytlogos/enterprise-lister/commit/f50cdae32c470054800608191f12812f6ea6aa32))
+* **scraper:** add missing request file ([ea73038](https://github.com/mytlogos/enterprise-lister/commit/ea73038c741d6200ffc588e8f56a5ea55c5616ef))
+* **scraper:** fix deadlock ([ec12bda](https://github.com/mytlogos/enterprise-lister/commit/ec12bda5eb6ed7983c6f720194458c663f2e385c))
+* **scraper:** host header not correctly set ([6816b07](https://github.com/mytlogos/enterprise-lister/commit/6816b07422184f44f1ecd3d178a1355bc4ad80e6))
+
+
+### Features
+
+* abstract request layer ([9bf87e6](https://github.com/mytlogos/enterprise-lister/commit/9bf87e6019e9d35badd73da0679a00fc073f31e6))
+* **scraper:** better error handling ([ea700ce](https://github.com/mytlogos/enterprise-lister/commit/ea700ce20ba19c184a4f6672633addb2f299da3b))
+* **scraper:** initial cloudflare module ([0a2cb8b](https://github.com/mytlogos/enterprise-lister/commit/0a2cb8b78078e9ed5fd7163f76b5135bb1669853))
+* **scraper:** integrate cloudflare module ([1f66509](https://github.com/mytlogos/enterprise-lister/commit/1f66509ed6523d8a96e53e9706c81db69c41902f))
+* **scraper:** replace request with axios ([afec096](https://github.com/mytlogos/enterprise-lister/commit/afec096322a86f7386d890bf6a1ee8dd0503eea3))
+* **scraper:** replace request with axios ([f1b2aa2](https://github.com/mytlogos/enterprise-lister/commit/f1b2aa2759507aa487747f0441f69bafb22a59d4))
+
 ## [2.18.2](https://github.com/mytlogos/enterprise-lister/compare/v2.18.1...v2.18.2) (2022-08-24)
 
 
