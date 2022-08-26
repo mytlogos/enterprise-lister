@@ -2,13 +2,17 @@ import { brotliDecompressSync } from "zlib";
 import vm from "vm";
 import https from "https";
 import crypto from "crypto";
-import { readFileSync } from "fs";
 import { BasicRequestConfig, RequestConfig, Response, ResponseType } from "./types";
 import { URL, URLSearchParams } from "url";
 import { delay } from "enterprise-core/dist/tools";
 import { RequestError, CloudflareError, CaptchaError, ParserError } from "./error";
+import { HeaderGenerator } from "header-generator";
 
-const { chrome: chromeData } = JSON.parse(readFileSync("./browsers.json", { encoding: "utf-8" }));
+const headerGenerator = new HeaderGenerator({
+  browsers: ["chrome", "firefox", "safari"],
+  devices: ["desktop"],
+  operatingSystems: ["windows"],
+});
 
 interface ByPassRequestConfig<D = any> extends BasicRequestConfig<D> {
   // Reduce Cloudflare's timeout to cloudflareMaxTimeout if it is excessive
@@ -111,18 +115,7 @@ class Context {
 }
 
 function getDefaultHeaders(defaults: any) {
-  const headers = getChromeHeaders(random(chromeData));
-  return Object.assign({}, defaults, headers);
-}
-
-function random(arr: any[]) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function getChromeHeaders(options: any) {
-  const { headers } = options;
-  headers["User-Agent"] = random(options["User-Agent"]);
-  return headers;
+  return Object.assign({}, defaults, headerGenerator.getHeaders());
 }
 
 function caseless(headers: any) {
