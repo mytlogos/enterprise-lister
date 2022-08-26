@@ -253,7 +253,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
       downloadedContent = episodeContents;
       break;
     }
-    if (!downloadedContent || !downloadedContent.length) {
+    if (!downloadedContent?.length) {
       downloadContents.set(indexKey, {
         episodeId: episode.id,
         title: "",

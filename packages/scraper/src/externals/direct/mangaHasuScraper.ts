@@ -20,7 +20,6 @@ import {
   getText,
 } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError, ScraperError } from "../errors";
-import { Options } from "cloudscraper";
 import * as cheerio from "cheerio";
 import request, { RequestConfig } from "../request";
 

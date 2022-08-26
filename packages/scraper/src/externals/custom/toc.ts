@@ -1,11 +1,11 @@
-import { Cheerio, Element, load as loadCheerio } from "cheerio";
+import { Cheerio, Element } from "cheerio";
 import { Toc, TocScraper } from "../types";
 import { defaultContext, extract, makeRequest, merge } from "./common";
 import { HookConfig, TocConfig } from "./types";
 import { validate } from "jsonschema";
 import { JSONSchema7 } from "json-schema";
 import { CustomHookError } from "./errors";
-import { FullResponse } from "cloudscraper";
+import { Response } from "../request";
 
 const tocSchema: JSONSchema7 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -99,13 +99,13 @@ export function createTocScraper(config: HookConfig): TocScraper | undefined {
     let lastUrl = url;
 
     async function scrape(tocConfig: TocConfig) {
-      const response: FullResponse = await makeRequest(
+      const response: Response = await makeRequest(
         lastUrl,
         context,
         Object.assign(tocConfig.request || {}, { fullResponse: true }),
       );
       lastUrl = response.request.uri.href;
-      const $ = loadCheerio(response.body);
+      const $ = response.toCheerio();
       const baseUri = tocConfig.base || config.base;
 
       try {

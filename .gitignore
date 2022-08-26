@@ -100,7 +100,11 @@ packages/**/*.vue.js.map
 *.json
 packages/server/src/ignore/
 dist/
-data/
+
+# ignore directories in root folder only
+/data/
+/test/
+
 
 # vscode project files
 .vscode

@@ -140,10 +140,32 @@ export interface Response<T = any, D = any> {
   statusText: string;
   headers: ResponseHeaders;
   config: RequestConfig<D>;
-  request?: any;
+  request: Request;
 
   toCheerio(): CheerioAPI;
-  toJson(): any;
+  toJson<R>(): R;
+}
+
+/**
+ * Describes an already finished request.
+ */
+export interface Request {
+  /**
+   * The request method.
+   */
+  method: string;
+
+  /**
+   * Complete url, with protocol, host, path and query.
+   */
+  url: string;
+
+  uri: URL;
+
+  /**
+   * Headers of the request
+   */
+  headers: Record<string, undefined | number | string | string[]>;
 }
 
 export interface ResponseError<T = any, D = any> extends Error {

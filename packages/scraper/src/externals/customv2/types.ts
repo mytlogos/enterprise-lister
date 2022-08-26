@@ -1,5 +1,5 @@
-import { Options } from "cloudscraper";
 import { BaseHookConfig } from "../custom/types";
+import { RequestConfig as RequestOptions } from "../request";
 
 export interface NewsNestedResult {
   mediumTitle: string;
@@ -154,7 +154,7 @@ export interface RequestConfig {
   templateBody?: string;
   jsonResponse?: boolean;
   fullResponse?: boolean;
-  options?: Omit<Options, "url" | "uri">;
+  options?: Omit<RequestOptions<any>, "url" | "uri">;
 }
 
 export interface BaseScrapeConfig {

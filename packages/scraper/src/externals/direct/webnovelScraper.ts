@@ -75,7 +75,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
     const link = toReleaseLink(linkGroup[3], linkGroup[5]);
     const groups = titlePattern.exec(episodeTitle);
 
-    if (!groups || !groups[1]) {
+    if (!groups?.[1]) {
       logger.info(`unknown news format on webnovel: ${episodeTitle}`);
       continue;
     }
@@ -138,7 +138,7 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
     return [];
   }
 
-  if (!tocJson.data || !tocJson.data.volumeItems || !tocJson.data.volumeItems.length) {
+  if (!tocJson.data?.volumeItems?.length) {
     logger.warn("no toc content on webnovel for " + bookId);
     return [];
   }

@@ -35,6 +35,8 @@ export async function handleCloudflare(config: RequestConfig<any>, requestor: Re
     // Remove Cloudflare's email protection
     decodeEmails: false,
   };
+  // clone config so we do not make any bad modifications
+  config = structuredClone(config);
   if (config.httpAgent) {
     config.httpsAgent = new https.Agent({
       // Removes a few problematic TLSv1.0 ciphers to avoid CAPTCHA
@@ -98,6 +100,7 @@ class Context {
     this.body = options.body;
     this.href = "http://" + options.hostname + "/";
   }
+
   public atob(str: string) {
     try {
       return Buffer.from(str, "base64").toString("binary");
@@ -161,7 +164,7 @@ function decodeEmails(html: string) {
       result = decode(match[4]);
     }
 
-    html = html.substr(0, match.index) + result + html.substr(re.lastIndex);
+    html = html.substring(0, match.index) + result + html.substring(re.lastIndex);
     re.lastIndex = match.index + result.length - 1;
   }
 
@@ -169,11 +172,11 @@ function decodeEmails(html: string) {
 }
 
 function decode(hexStr: string) {
-  const key = parseInt(hexStr.substr(0, 2), 16);
+  const key = parseInt(hexStr.substring(0, 2), 16);
   let email = "";
 
   for (let codePoint, i = 2; i < hexStr.length; i += 2) {
-    codePoint = parseInt(hexStr.substr(i, 2), 16) ^ key;
+    codePoint = parseInt(hexStr.substring(i, i + 2), 16) ^ key;
     email += String.fromCharCode(codePoint);
   }
 
@@ -309,14 +312,14 @@ function onCloudflareResponse(
 
   const stringBody = body.toString("utf8");
   validateResponse(options, response, stringBody);
-  const isChallenge = stringBody.indexOf("a = document.getElementById('jschl-answer');") !== -1;
+  const isChallenge = stringBody.includes("a = document.getElementById('jschl-answer');");
 
   if (isChallenge) {
     return onChallenge(options, response, stringBody, requester);
   }
 
   const isRedirectChallenge =
-    stringBody.indexOf("You are being redirected") !== -1 || stringBody.indexOf("sucuri_cloudproxy_js") !== -1;
+    stringBody.includes("You are being redirected") || stringBody.includes("sucuri_cloudproxy_js");
 
   if (isRedirectChallenge) {
     return onRedirectChallenge(options, response, stringBody, requester);
@@ -337,7 +340,7 @@ function detectRecaptchaVersion(body: string) {
     // Test for ver2 first, as it also has ver2 fields
     return "ver2";
     // Old version < Dec 2019
-  } else if (body.indexOf("why_captcha") !== -1 || /cdn-cgi\/l\/chk_captcha/i.test(body)) {
+  } else if (body.includes("why_captcha") || /cdn-cgi\/l\/chk_captcha/i.test(body)) {
     return "ver1";
   }
 
@@ -451,7 +454,7 @@ async function onChallenge(
   options.headers.Referer = uri.href;
   // Check is form to be submitted via GET or POST
   match = body.match(/id="challenge-form" action="(.+?)" method="(.+?)"/);
-  if (match && match[2] && match[2] === "POST") {
+  if (match?.[2] && match[2] === "POST") {
     options.url = uri.protocol + "//" + uri.host + match[1];
     // Pass the payload using body form
     options.data = new URLSearchParams(payload).toString();

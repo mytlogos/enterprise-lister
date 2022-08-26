@@ -6,19 +6,13 @@ function format(lines: string[]) {
   return EOL + lines.join(EOL) + EOL + EOL;
 }
 
-// The purpose of this library:
-// 1. Have errors consistent with request/promise-core
-// 2. Prevent request/promise core from wrapping our errors
+// 1. Have errors consistent with axioserror
 // 3. Create descriptive errors.
 
 // There are two differences between these errors and the originals.
 // 1. There is a non-enumerable errorType attribute.
 // 2. The error constructor is hidden from the stacktrace.
-const BUG_REPORT = format([
-  "### Cloudflare may have changed their technique, or there may be a bug.",
-  "### Bug Reports: https://github.com/codemanki/cloudscraper/issues",
-  "### Check the detailed exception message that follows for the cause.",
-]);
+const BUG_REPORT = format(["### Cloudflare may have changed their technique, or there may be a bug."]);
 
 const ERROR_CODES: { [key: number]: string } = {
   // Non-standard 5xx server error HTTP status codes
@@ -50,7 +44,7 @@ const ERROR_CODES: { [key: number]: string } = {
   1020: "Access Denied (Custom Firewall Rules)",
 };
 
-class SuperError extends Error {
+class GeneralRequestError extends Error {
   public readonly errorType: number;
   public readonly name: string;
   public readonly cause: any;
@@ -67,19 +61,28 @@ class SuperError extends Error {
   }
 }
 
-export class RequestError extends SuperError {
+/**
+ * TODO: align this error more with AxiosError
+ */
+export class RequestError extends GeneralRequestError {
   public constructor(cause: any, options: BasicRequestConfig<any>, response?: Response) {
     super(0, "RequestError", cause, options, response);
   }
 }
 
-export class CaptchaError extends SuperError {
+export class CloudflareHandlerError extends GeneralRequestError {
+  public constructor(type: number, name: string, cause: any, options: BasicRequestConfig<any>, response?: Response) {
+    super(type, name, cause, options, response);
+  }
+}
+
+export class CaptchaError extends CloudflareHandlerError {
   public constructor(cause: any, options: BasicRequestConfig<any>, response?: Response) {
     super(1, "CaptchaError", cause, options, response);
   }
 }
 
-export class CloudflareError extends SuperError {
+export class CloudflareError extends CloudflareHandlerError {
   // errorType 4 is a CloudflareError so this constructor is reused.
   public constructor(cause: any, options: BasicRequestConfig<any>, response?: Response) {
     super(2, "CloudflareError", cause, options, response);
@@ -93,7 +96,7 @@ export class CloudflareError extends SuperError {
   }
 }
 
-export class ParserError extends SuperError {
+export class ParserError extends CloudflareHandlerError {
   // errorType 4 is a CloudflareError so this constructor is reused.
   public constructor(cause: any, options: BasicRequestConfig<any>, response?: Response) {
     super(3, "ParserError", cause, options, response);
@@ -101,13 +104,13 @@ export class ParserError extends SuperError {
   }
 }
 
-export class StatusCodeError extends SuperError {
+export class StatusCodeError extends GeneralRequestError {
   public constructor(cause: any, options: BasicRequestConfig<any>, response?: Response) {
     super(5, "StatusCodeError", cause, options, response);
   }
 }
 
-export class TransformError extends SuperError {
+export class TransformError extends GeneralRequestError {
   public constructor(cause: any, options: BasicRequestConfig<any>, response?: Response) {
     super(6, "TransformError", cause, options, response);
   }
