@@ -122,8 +122,9 @@ export class Requestor {
     config: R,
   ): Promise<Response<P, T>> {
     // using puppeteer in chromium requires disabling the sandbox
+    // disable-gpu for headless environments, e.g. docker
     puppeteerBrowser ??= puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu"],
     });
 
     const browser = await puppeteerBrowser;
