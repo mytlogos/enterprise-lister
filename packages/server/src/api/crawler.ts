@@ -1,13 +1,12 @@
 import { Router } from "express";
-import request from "request-promise-native";
 import { createHandler } from "./apiTools";
 import env from "enterprise-core/dist/env";
 import logger from "enterprise-core/dist/logger";
 import Websocket from "ws";
+import request from "enterprise-scraper/dist/externals/request";
 
-const getJobs = createHandler(async () => {
-  const result = await request.get("http://" + env.crawlerHost + ":" + env.crawlerPort + "/");
-  return JSON.parse(result);
+const getJobs = createHandler(() => {
+  return request.getJson({ url: "http://" + env.crawlerHost + ":" + env.crawlerPort + "/" });
 });
 
 const liveSockets = [] as Websocket[];

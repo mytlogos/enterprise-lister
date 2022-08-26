@@ -8,7 +8,6 @@ import {
   VoidablePromise,
   Nullable,
 } from "enterprise-core/dist/types";
-import { queueCheerioRequest } from "../queueRequest";
 import * as url from "url";
 import { extractIndices, MediaType, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import { isTocEpisode, isTocPart } from "../../tools";
@@ -28,6 +27,7 @@ import {
 import { checkTocContent } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
+import request from "../request";
 
 const BASE_URI = "https://novelfull.com/";
 
@@ -43,7 +43,7 @@ async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
 
 async function search(text: string): Promise<SearchResult[]> {
   const encodedText = encodeURIComponent(text);
-  const $ = await queueCheerioRequest(BASE_URI + "search?keyword=" + encodedText);
+  const $ = await request.getCheerio({ url: BASE_URI + "search?keyword=" + encodedText });
 
   const uri = BASE_URI;
   const results = $(".col-truyen-main .row");
@@ -73,7 +73,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
     return [];
   }
 
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
   const mediumTitleElement = $("ol.breadcrumb li:nth-child(2) a");
   const novelTitle = sanitizeString(getText(mediumTitleElement));
 
@@ -134,7 +134,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
   const contents: TocContent[] = await scrapeToc(
     (async function* itemGenerator(): AsyncGenerator<TocPiece, void> {
       for (let i = 1; ; i++) {
-        const $ = await queueCheerioRequest(pagedTocLink + i);
+        const $ = await request.getCheerio({ url: pagedTocLink + i });
 
         if (!toc) {
           toc = extractTocSnippet($, tocLink);
@@ -206,7 +206,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
   tocLink = `${BASE_URI}index.php/${linkMatch[1]}?page=`;
 
   for (let i = 1; ; i++) {
-    const $ = await queueCheerioRequest(tocLink + i);
+    const $ = await request.getCheerio({ url: tocLink + i });
 
     if ($('.info a[href="/status/Completed"]').length) {
       toc.end = true;
@@ -324,7 +324,7 @@ async function scrapeTocPage($: cheerio.CheerioAPI, uri: string): VoidablePromis
 
 async function newsAdapter(): Promise<NewsScrapeResult> {
   const uri = BASE_URI;
-  const $ = await queueCheerioRequest(uri);
+  const $ = await request.getCheerio({ url: uri });
   const items = $("#list-index .list-new .row");
 
   const episodeNews: EpisodeNews[] = [];

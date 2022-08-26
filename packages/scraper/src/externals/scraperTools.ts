@@ -4,9 +4,6 @@ import { Episode, Uuid, SearchResult, EmptyPromise, Optional } from "enterprise-
 import logger from "enterprise-core/dist/logger";
 import { ContentDownloader, DownloadContent, EpisodeContent, Hook, Toc, TocContent } from "./types";
 import { Cache } from "enterprise-core/dist/cache";
-import request from "request";
-import { FullResponse } from "cloudscraper";
-import { queueFastRequestFullResponse } from "./queueRequest";
 import env from "enterprise-core/dist/env";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError } from "./errors";
@@ -19,6 +16,7 @@ import {
   noRedirect,
   tocScraperEntries,
 } from "./hookManager";
+import request, { Response } from "./request";
 import { ValidationError } from "enterprise-core/dist/error";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
 
@@ -255,7 +253,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
       downloadedContent = episodeContents;
       break;
     }
-    if (!downloadedContent || !downloadedContent.length) {
+    if (!downloadedContent?.length) {
       downloadContents.set(indexKey, {
         episodeId: episode.id,
         title: "",
@@ -295,21 +293,8 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
   return [...downloadContents.values()];
 }
 
-function checkLinkWithInternet(link: string): Promise<FullResponse> {
-  return new Promise((resolve, reject) => {
-    request
-      .head(link)
-      .on("response", (res) => {
-        // noinspection TypeScriptValidateJSTypes
-        if (res.caseless.get("server") === "cloudflare") {
-          resolve(queueFastRequestFullResponse(link));
-        } else {
-          resolve(res);
-        }
-      })
-      .on("error", reject)
-      .end();
-  });
+function checkLinkWithInternet(link: string): Promise<Response> {
+  return request.head({ url: link });
 }
 
 export function checkLink(link: string, linkKey?: string): Promise<string> {

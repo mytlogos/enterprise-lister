@@ -1,6 +1,6 @@
 /* eslint-disable import/first */
 "use strict";
-jest.mock("request-promise-native");
+jest.mock("axios");
 
 import fs from "fs";
 import * as cheerio from "cheerio";
@@ -43,6 +43,8 @@ describe.skip("testing boxNovel Hook toc", () => {
 
   beforeAll(() => {
     hookMocks.push(
+      // FIXME: spy on request
+      // @ts-expect-error
       jest.spyOn(queueManager, "queueCheerioRequest").mockImplementation((args) => {
         let path;
         if (args === "https://boxnovel.com/novel/i-am-a-missing-resource") {

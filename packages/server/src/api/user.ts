@@ -33,7 +33,7 @@ import os from "os";
 import { readFile } from "fs/promises";
 import path from "path";
 import appConfig from "enterprise-core/dist/env";
-import requestPromise from "request-promise-native";
+import request from "enterprise-scraper/dist/externals/request";
 import {
   AddBookmarked,
   addBookmarkedSchema,
@@ -180,9 +180,7 @@ export const getAssociatedEpisode = createHandler(
   (req) => {
     const url = extractQueryParam(req, "url");
     return episodeStorage.getAssociatedEpisode(url);
-  },
-  { query: getAssociatedEpisodeSchema },
-);
+});
 
 export const search = createHandler(
   (req) => {
@@ -304,16 +302,14 @@ async function getDatabaseStatus(): Promise<DatabaseStatus> {
 
 async function getCrawlerStatus(): Promise<CrawlerStatus> {
   try {
-    const status = await requestPromise.get({
+    const status = await request.getJson({
       url: `http://${appConfig.crawlerHost}:${appConfig.crawlerPort}/status`,
       timeout: 500, // milliseconds
     });
 
     let statusObject: CrawlerStatus;
 
-    if (isString(status)) {
-      statusObject = JSON.parse(status);
-    } else if (status && typeof status === "object" && !Array.isArray(status)) {
+    if (status && typeof status === "object" && !Array.isArray(status)) {
       statusObject = status;
     } else {
       return {

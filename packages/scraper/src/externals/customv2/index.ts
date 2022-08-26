@@ -15,12 +15,10 @@ import jsonpath from "jsonpath";
 import logger from "enterprise-core/dist/logger";
 import { extractFromRegex } from "../custom/common";
 import { CustomHookError, CustomHookErrorCodes } from "../custom/errors";
-import { queueRequest, queueRequestFullResponse } from "../queueRequest";
 import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/types";
 import { datePattern } from "./analyzer";
 import { validateEpisodeNews, validateToc } from "./validation";
-import { FullResponse } from "cloudscraper";
-import { load } from "cheerio";
+import request, { Response } from "../request";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
 type Context = Record<string, any>;
@@ -200,8 +198,8 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
 
       datum._request ??= {};
       datum._request.fullResponse = true;
-      const response: FullResponse = await makeRequest(newsConfig.newsUrl, context, datum._request);
-      const $ = absolutes(response.request.uri.href, load(response.body));
+      const response: Response = await makeRequest(newsConfig.newsUrl, context, datum._request);
+      const $ = absolutes(response.request.uri.href, response.toCheerio());
 
       if (Object.keys(datum._contextSelectors ?? {}).length) {
         const contextResult = await x($, datum._contextSelectors);
@@ -297,13 +295,13 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
       // if multiple tocConfig.data are defined and a later config uses
       // a custom request, it may depend on a new redirected location
       // instead of the currently saved/requested one
-      const response: FullResponse = await makeRequest(lastUrl, context, datum._request);
+      const response: Response = await makeRequest(lastUrl, context, datum._request);
 
       if (lastUrl === link) {
         lastUrl = response.request.uri.href;
       }
 
-      const $ = absolutes(response.request.uri.href, load(response.body));
+      const $ = absolutes(response.request.uri.href, response.toCheerio());
 
       if (Object.keys(datum._contextSelectors ?? {}).length) {
         const contextResult = await x($, datum._contextSelectors);
@@ -434,8 +432,8 @@ function createDownloadScraper(config: HookConfig): ContentDownloader | undefine
       datum._request ??= {};
       datum._request.fullResponse = true;
 
-      const response: FullResponse = await makeRequest(link, context, datum._request);
-      const $ = absolutes(response.request.uri.href, load(response.body));
+      const response: Response = await makeRequest(link, context, datum._request);
+      const $ = absolutes(response.request.uri.href, response.toCheerio());
 
       if (Object.keys(datum._contextSelectors ?? {}).length) {
         const contextResult = await x($, datum._contextSelectors);
@@ -618,11 +616,12 @@ function makeRequest(targetUrl: string, context: Context, requestConfig?: Reques
   options.url = targetUrl;
 
   logger.debug("Requesting url: " + targetUrl);
+
   if (requestConfig?.jsonResponse) {
-    return queueRequest(targetUrl, options).then((value) => JSON.parse(value));
+    return request.request({ ...options, url: targetUrl }).then((response) => response.toJson());
   }
   if (requestConfig?.fullResponse) {
-    return queueRequestFullResponse(targetUrl, options);
+    return request.request({ ...options, url: targetUrl });
   }
-  return queueRequest(targetUrl, options);
+  return request.request({ ...options, url: targetUrl }).then((response) => response.toCheerio());
 }

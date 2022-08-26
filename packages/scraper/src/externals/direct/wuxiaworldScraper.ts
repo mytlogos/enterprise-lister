@@ -2,10 +2,10 @@ import { EpisodeContent, Hook, Toc, TocPart, NewsScrapeResult } from "../types";
 import { EpisodeNews, SearchResult, TocSearchMedium, VoidablePromise, Nullable } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
-import { queueCheerioRequest, queueRequest } from "../queueRequest";
 import { countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { UrlError } from "../errors";
+import request from "../request";
 import { getText } from "./directTools";
 
 const BASE_URI = "https://www.wuxiaworld.com/";
@@ -13,7 +13,7 @@ const BASE_URI = "https://www.wuxiaworld.com/";
 async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
   const uri = BASE_URI;
 
-  const $ = await queueCheerioRequest(uri);
+  const $ = await request.getCheerio({ url: uri });
   const newsRows = $(".table-novels tbody tr");
 
   const episodeNews: EpisodeNews[] = [];
@@ -113,7 +113,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   if (!/^https?:\/\/www\.wuxiaworld\.com\/novel\/[^/]+\/?$/.test(urlString)) {
     throw new UrlError("not a toc link for WuxiaWorld: " + urlString, urlString);
   }
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
   const contentElement = $(".content");
   const novelTitle = sanitizeString(getText(contentElement.find("h2").first()));
   const volumes = contentElement.find("#accordion > .panel");
@@ -237,7 +237,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
   const mainElement = $(".content");
   const novelTitle = sanitizeString(getText(mainElement.find(".top-bar-area .caption a").first()));
   const episodeTitle = sanitizeString(getText(mainElement.find(".panel .caption h4").first()));
@@ -289,8 +289,9 @@ async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
       continue;
     }
     searchWord += " " + word;
-    const responseJson = await queueRequest(BASE_URI + "api/novels/search?query=" + searchWord);
-    const parsed: NovelSearchResponse = JSON.parse(responseJson);
+    const parsed: NovelSearchResponse = await request.getJson({
+      url: BASE_URI + "api/novels/search?query=" + searchWord,
+    });
 
     if (parsed.result && parsed.items && parsed.items.length) {
       const foundItem = parsed.items.find(
@@ -315,8 +316,7 @@ async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
 
 async function search(text: string): Promise<SearchResult[]> {
   const word = encodeURIComponent(text);
-  const responseJson = await queueRequest(BASE_URI + "api/novels/search?query=" + word);
-  const parsed: NovelSearchResponse = JSON.parse(responseJson);
+  const parsed: NovelSearchResponse = await request.getJson({ url: BASE_URI + "api/novels/search?query=" + word });
 
   const searchResult: SearchResult[] = [];
 

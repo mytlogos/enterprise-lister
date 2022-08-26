@@ -1,6 +1,6 @@
 /* eslint-disable import/first */
 "use strict";
-jest.mock("request-promise-native");
+jest.mock("axios");
 import * as directTools from "../../../externals/direct/directTools";
 import * as tools from "enterprise-core/dist/tools";
 import { internetTester } from "enterprise-core/dist/internetTester";

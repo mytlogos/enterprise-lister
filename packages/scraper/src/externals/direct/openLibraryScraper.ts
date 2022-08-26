@@ -2,9 +2,9 @@
 
 import { Hook, Toc, TocEpisode } from "../types";
 import { MediaType } from "enterprise-core/dist/tools";
-import { queueRequest } from "../queueRequest";
 import { UrlError } from "../errors";
 import { SearchResult } from "enterprise-core/dist/types";
+import request from "../request";
 import { ValidationError } from "enterprise-core/dist/error";
 
 const BASE_URI = "https://openlibrary.org/";
@@ -70,8 +70,7 @@ async function toc(tocLink: string): Promise<Toc[]> {
     throw new UrlError("Invalid Toc Link!", tocLink);
   }
 
-  const response = await queueRequest(tocLink);
-  const result: OpenLibraryBookResponse = JSON.parse(response);
+  const result: OpenLibraryBookResponse = await request.getJson({ url: tocLink });
 
   const tocs: Toc[] = [];
 
@@ -143,7 +142,7 @@ async function search(text: string, medium: number): Promise<SearchResult[]> {
   if (medium !== MediaType.TEXT) {
     return [];
   }
-  const response = await queueRequest(`${BASE_URI}search.json?q=${encodeURIComponent(text)}`);
+  const response = await request.getJson({ url: `${BASE_URI}search.json?q=${encodeURIComponent(text)}` });
   const result: OpenLibrarySearchResult = JSON.parse(response);
   // not all have cover_edition_key, ignore those, that dont have it for now
   return result.docs

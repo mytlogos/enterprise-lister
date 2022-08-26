@@ -1,6 +1,5 @@
 import logger, { LogLevel, LogMeta } from "enterprise-core/dist/logger";
 import { EpisodeContent, TocContent, TocEpisode, TocPart, TocScraper, Toc, LinkablePerson } from "../types";
-import { queueCheerioRequest } from "../queueRequest";
 import {
   combiIndex,
   equalsIgnore,
@@ -13,6 +12,7 @@ import * as url from "url";
 import { ReleaseState, TocSearchMedium, Optional, Nullable } from "enterprise-core/dist/types";
 import { checkTocContent } from "../scraperTools";
 import * as cheerio from "cheerio";
+import request from "../request";
 import { ValidationError } from "enterprise-core/dist/error";
 
 export enum LogType {
@@ -124,7 +124,7 @@ export async function searchTocCheerio(
     if (searchWords.length < 4) {
       continue;
     }
-    const $ = await queueCheerioRequest(searchLink(searchWords));
+    const $ = await request.getCheerio({ url: searchLink(searchWords) });
 
     const links = $(linkSelector);
 
@@ -172,7 +172,7 @@ function searchForWords(
   searchLink: (parameter: string) => string,
 ): (searchString: string) => Promise<SearchResult> {
   return async (word: string): Promise<SearchResult> => {
-    const $ = await queueCheerioRequest(searchLink(word));
+    const $ = await request.getCheerio({ url: searchLink(word) });
 
     const links = $(linkSelector);
 

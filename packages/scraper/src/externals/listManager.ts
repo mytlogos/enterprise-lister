@@ -1,12 +1,11 @@
-import request from "request-promise-native";
 import url from "url";
-import { Errors, isString, MediaType, unique } from "enterprise-core/dist/tools";
-import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "./queueRequest";
+import { Errors, isString, MediaType, stringify, unique } from "enterprise-core/dist/tools";
 import { CookieJar } from "tough-cookie";
 import { Hook, Toc } from "./types";
 import logger from "enterprise-core/dist/logger";
 import * as cheerio from "cheerio";
 import { ReleaseState, EmptyPromise, Optional } from "enterprise-core/dist/types";
+import request, { Requestor } from "./request";
 import { ValidationError } from "enterprise-core/dist/error";
 import { ScraperError } from "./errors";
 import { getText } from "./direct/directTools";
@@ -40,7 +39,7 @@ class SimpleNovelUpdates implements ListManager {
   }
 
   private static loadCheerio(link: string): Promise<cheerio.CheerioAPI> {
-    return queueCheerioRequest(link, { url: link });
+    return request.getCheerio({ url: link });
   }
 
   private static getStatusCoo(s: string): ReleaseState {
@@ -183,9 +182,8 @@ class SimpleNovelUpdates implements ListManager {
     const identifier = isString(credentials) ? credentials : credentials.identifier;
     const urlString = "https://www.novelupdates.com/readlist/?uname=" + encodeURIComponent(identifier);
     try {
-      const response = await queueRequestFullResponse(urlString, {
+      const response = await request.post({
         url: urlString,
-        method: "POST",
       });
       const href = response.request.uri.href;
       if (href && /^https?:\/\/www\.novelupdates\.com\/user\/\d+/.test(href)) {
@@ -201,20 +199,20 @@ class SimpleNovelUpdates implements ListManager {
 
   private async scrapeList(page: number): Promise<[ScrapeList, number]> {
     const uri = "https://www.novelupdates.com/wp-admin/admin-ajax.php";
-    const response = await queueRequest(uri, {
-      uri,
+    const response = await request.get({
+      url: uri,
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       method: "POST",
-      body: `action=nu_prevew&pagenum=${page}&intUserID=${this.id as string}&isMobile=`,
+      data: `action=nu_prevew&pagenum=${page}&intUserID=${this.id as string}&isMobile=`,
     });
 
-    const lastIndexOf = response.lastIndexOf("}");
+    const lastIndexOf = response.data.lastIndexOf("}");
     if (!lastIndexOf) {
-      throw new ScraperError("expected a json object contained in message, got " + response);
+      throw new ScraperError("expected a json object contained in message, got " + stringify(response));
     }
-    const listData: SimpleReadingList = JSON.parse(response.substring(0, lastIndexOf + 1));
+    const listData: SimpleReadingList = JSON.parse(response.data.substring(0, lastIndexOf + 1));
     const nameReg = />\s*(\w+)\s*<\s*\/\s*span\s*>/g;
     const lists = [];
     let exec;
@@ -271,7 +269,7 @@ class NovelUpdates implements ListManager {
 
   public jar: any;
 
-  private defaults: any;
+  private defaults: Requestor = request;
   private readonly baseURI: string;
 
   private constructor() {
@@ -285,9 +283,10 @@ class NovelUpdates implements ListManager {
     }
     return (
       this.defaults
-        .get(this.baseURI)
+        .get({ url: this.baseURI })
         .then(() =>
-          this.defaults.post("https://www.novelupdates.com/login", {
+          this.defaults.post({
+            url: "https://www.novelupdates.com/login",
             form: {
               log: credentials.identifier,
               pwd: credentials.password,
@@ -458,10 +457,7 @@ class NovelUpdates implements ListManager {
     //     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
     //         "(KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36",
     // };
-    this.defaults = request.defaults({
-      jar: request.jar(this.jar.store),
-      simple: false,
-    });
+    this.defaults = new Requestor(undefined, this.jar);
   }
 
   /**
@@ -469,8 +465,9 @@ class NovelUpdates implements ListManager {
    * @param {string} link
    * @return {Promise<cheerio.CheerioAPI>}
    */
-  public loadCheerio(link: string): Promise<cheerio.CheerioAPI> {
-    return queueCheerioRequest(link, { url: link }, this.defaults);
+  public async loadCheerio(link: string): Promise<cheerio.CheerioAPI> {
+    const response = await this.defaults.get({ url: link });
+    return response.toCheerio();
   }
 
   public scrapeList($: cheerio.CheerioAPI, media: ScrapeMedium[], feed: string[]): ScrapeMedium[] {

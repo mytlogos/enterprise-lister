@@ -1,23 +1,29 @@
 import { EpisodeContent, Hook, Toc, TocEpisode, TocPart, NewsScrapeResult } from "../types";
 import { EpisodeContentData, EpisodeNews, ReleaseState, Optional } from "enterprise-core/dist/types";
 import * as url from "url";
-import { queueCheerioRequest, queueRequest } from "../queueRequest";
 import logger from "enterprise-core/dist/logger";
-import { extractIndices, hasProp, MediaType, sanitizeString } from "enterprise-core/dist/tools";
-import * as request from "request";
+import { extractIndices, ignore, hasProp, MediaType, sanitizeString } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, ScraperError, UrlError } from "../errors";
 import { extractLinkable, getText, LogType, scraperLog } from "./directTools";
+import { CookieJar } from "tough-cookie";
+import { Requestor } from "../request";
 
 const BASE_URI = "https://mangadex.org/";
-const jar = request.jar();
-jar.setCookie("mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;", BASE_URI, {
-  secure: false,
-});
+const jar = new CookieJar();
+jar.setCookie(
+  "mangadex_filter_langs=1; expires=Sun, 16 Jul 2119 18:59:17 GMT; domain=mangadex.org;",
+  BASE_URI,
+  {
+    secure: false,
+  },
+  ignore,
+);
+const request = new Requestor(undefined, jar);
 
 function loadJson(urlString: string): Promise<any> {
-  return queueRequest(urlString).then((body) => JSON.parse(body));
+  return request.getJson({ url: urlString });
 }
 
 interface ChapterResponse {
@@ -143,7 +149,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 
   const uri = BASE_URI;
   const requestLink = uri + "updates";
-  const $ = await queueCheerioRequest(requestLink, { jar, uri: requestLink });
+  const $ = await request.getCheerio({ url: requestLink });
   const newsRows = $(".table tbody tr");
 
   const episodeNews: EpisodeNews[] = [];
@@ -292,7 +298,7 @@ async function scrapeTocPage(
   uri: string,
   urlString: string,
 ): Promise<boolean> {
-  const $ = await queueCheerioRequest(urlString);
+  const $ = await request.getCheerio({ url: urlString });
   const contentElement = $("#content");
 
   if (getText(contentElement.find(".alert-danger")).match(/Manga .+? (not available)|(does not exist)/i)) {

@@ -8,7 +8,6 @@ import {
   Optional,
 } from "enterprise-core/dist/types";
 import * as url from "url";
-import { queueCheerioRequest } from "../queueRequest";
 import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
 import { checkTocContent } from "../scraperTools";
@@ -21,12 +20,14 @@ import {
   getText,
 } from "./directTools";
 import { MissingResourceError, UrlError, UnreachableError, ScraperError } from "../errors";
-import { Options } from "cloudscraper";
 import * as cheerio from "cheerio";
+import request, { RequestConfig } from "../request";
 
-async function tryRequest(link: string, options?: Options, retry = 0): Promise<cheerio.CheerioAPI> {
+async function tryRequest(link: string, options?: RequestConfig<any>, retry = 0): Promise<cheerio.CheerioAPI> {
   try {
-    return await queueCheerioRequest(link);
+    options = options || { url: link };
+    options.url = link;
+    return await request.getCheerio(options);
   } catch (error) {
     // mangahasu likes to throw an Internal Server Error every now and then
     if (hasProp(error, "statusCode") && error.statusCode === 500) {
@@ -413,7 +414,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
       "Content-Type": "application/x-www-form-urlencoded",
     },
     method: "POST",
-    body,
+    data: body,
   });
 
   const links = $("a.a-item");
@@ -448,7 +449,7 @@ async function search(searchWords: string): Promise<SearchResult[]> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     method: "POST",
-    body,
+    data: body,
   });
   const searchResults: SearchResult[] = [];
   const links = $("a.a-item");

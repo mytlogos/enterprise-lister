@@ -1,7 +1,7 @@
-import { Options } from "cloudscraper";
 import { MediaType } from "enterprise-core/dist/tools";
 import { EpisodeNews, SearchResult } from "enterprise-core/dist/types";
 import { EpisodeContent, Toc } from "../types";
+import { BasicRequestConfig } from "../request";
 
 export type AttributeSelector = BasicAttributeSelector | AttributeRegexSelector;
 
@@ -128,7 +128,7 @@ export interface RequestConfig {
   templateBody?: string;
   jsonResponse?: boolean;
   fullResponse?: boolean;
-  options?: Omit<Options, "url" | "uri">;
+  options?: Omit<BasicRequestConfig<never>, "url" | "uri">;
 }
 
 export type TocConfig = BasicScraperConfig<Selector<Toc>>;

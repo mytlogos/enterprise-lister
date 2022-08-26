@@ -1,7 +1,8 @@
 import { startCrawler } from "./scheduler/jobHandler";
+import { DefaultJobScraper } from "./scheduler/jobScheduler";
 import { startStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
-import { createServer, Server } from "http";
+import { createServer, Server, ServerResponse } from "http";
 import { stringify, getMainInterface } from "enterprise-core/dist/tools";
 import { AppStatus } from "enterprise-core/dist/status";
 import { getStores } from "enterprise-core/dist/asyncStorage";
@@ -47,88 +48,115 @@ function scraperEntry<T extends { hookName?: string }>(entry: [RegExp, T]): { pa
     name: entry[1].hookName,
   };
 }
-/**
- * Create HTTP server.
- */
-const server: Server = createServer((req, res) => {
-  if (req.url === "/metrics") {
-    res.setHeader("Content-Type", register.contentType);
-    register
-      .metrics()
-      .then((metrics) => res.end(metrics))
-      .catch((reason) => {
-        res.statusCode = 500;
-        res.end();
-        logger.error(reason);
-      });
-    return;
-  }
-  if (req.url === "/status") {
-    const packageJsonPath = path.join(path.dirname(__dirname), "package.json");
 
-    let packageJson: any;
+function metricsHandler(res: ServerResponse) {
+  res.setHeader("Content-Type", register.contentType);
+  register
+    .metrics()
+    .then((metrics) => res.end(metrics))
+    .catch((reason) => {
+      res.statusCode = 500;
+      res.end();
+      logger.error(reason);
+    });
+}
 
-    try {
-      const packageString = readFileSync(packageJsonPath, { encoding: "utf8" });
-      packageJson = JSON.parse(packageString);
-    } catch (error) {
-      packageJson = { project_version: "Error" };
-    }
-    res.write(
-      stringify({
-        cpu_average: os.loadavg(),
-        memory: process.memoryUsage(),
-        freemem: os.freemem(),
-        totalmem: os.totalmem(),
-        uptime: os.uptime(),
-        project_version: packageJson.version,
-        node_version: process.version,
-        config: {
-          dbConLimit: env.dbConLimit,
-          dbHost: env.dbHost,
-          dbUser: env.dbUser,
-          dbPort: env.dbPort,
-          crawlerHost: env.crawlerHost,
-          crawlerPort: env.crawlerPort,
-          crawlerWSPort: env.crawlerWSPort,
-          port: env.port,
-          measure: env.measure,
-          development: env.development,
-          stopScrapeEvents: env.stopScrapeEvents,
-        },
-        hooks: {
-          all: getHooks().map((hook) => {
-            return {
-              name: hook.name,
-              medium: hook.medium,
-              domain: hook.domainReg + "",
-            };
-          }),
-          toc: tocScraperEntries().map(scraperEntry),
-          download: episodeDownloaderEntries().map(scraperEntry),
-          search: getAllSearcher().map((entry) => {
-            return {
-              name: entry.hookName,
-            };
-          }),
-          tocSearch: tocDiscoveryEntries().map(scraperEntry),
-          news: getNewsAdapter().map((entry) => {
-            return {
-              link: entry.link,
-              name: entry.hookName,
-            };
-          }),
-        },
-      }),
-    );
-    res.end();
-    return;
+function statusHandler(res: ServerResponse) {
+  const packageJsonPath = path.join(path.dirname(__dirname), "package.json");
+
+  let packageJson: any;
+
+  try {
+    const packageString = readFileSync(packageJsonPath, { encoding: "utf8" });
+    packageJson = JSON.parse(packageString);
+  } catch (error) {
+    packageJson = { project_version: "Error" };
   }
+  res.setHeader("Content-Type", "	application/json; charset=utf-8");
+  res.write(
+    stringify({
+      cpu_average: os.loadavg(),
+      memory: process.memoryUsage(),
+      freemem: os.freemem(),
+      totalmem: os.totalmem(),
+      uptime: os.uptime(),
+      project_version: packageJson.version,
+      node_version: process.version,
+      config: {
+        dbConLimit: env.dbConLimit,
+        dbHost: env.dbHost,
+        dbUser: env.dbUser,
+        dbPort: env.dbPort,
+        crawlerHost: env.crawlerHost,
+        crawlerPort: env.crawlerPort,
+        crawlerWSPort: env.crawlerWSPort,
+        port: env.port,
+        measure: env.measure,
+        development: env.development,
+        stopScrapeEvents: env.stopScrapeEvents,
+      },
+      hooks: {
+        all: getHooks().map((hook) => {
+          return {
+            name: hook.name,
+            medium: hook.medium,
+            domain: hook.domainReg + "",
+          };
+        }),
+        toc: tocScraperEntries().map(scraperEntry),
+        download: episodeDownloaderEntries().map(scraperEntry),
+        search: getAllSearcher().map((entry) => {
+          return {
+            name: entry.hookName,
+          };
+        }),
+        tocSearch: tocDiscoveryEntries().map(scraperEntry),
+        news: getNewsAdapter().map((entry) => {
+          return {
+            link: entry.link,
+            name: entry.hookName,
+          };
+        }),
+      },
+    }),
+  );
+  res.end();
+}
+
+function storesHandler(res: ServerResponse) {
   const stores = getStores();
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.write(stringify(stores));
   res.end();
+}
+
+function jobsHandler(res: ServerResponse) {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.write(stringify(DefaultJobScraper.getJobs()));
+  res.end();
+}
+
+/**
+ * Create HTTP server.
+ */
+const server: Server = createServer((req, res) => {
+  if (req.url === "/metrics") {
+    metricsHandler(res);
+    return;
+  }
+  if (req.url === "/status") {
+    statusHandler(res);
+    return;
+  }
+  if (req.url === "/" || req.url === "") {
+    storesHandler(res);
+    return;
+  }
+  if (req.url === "/jobs") {
+    jobsHandler(res);
+  }
 });
 server.listen(env.crawlerPort);
 server.on("error", onError);

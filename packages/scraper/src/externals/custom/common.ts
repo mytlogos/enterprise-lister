@@ -1,12 +1,11 @@
 import { Cheerio, CheerioAPI, Element } from "cheerio";
-import { Options } from "cloudscraper";
 import { getStore, Store } from "enterprise-core/dist/asyncStorage";
 import logger from "enterprise-core/dist/logger";
 import { getElseSet, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import { Nullable } from "enterprise-core/dist/types";
 import * as url from "url";
 import { getText } from "../direct/directTools";
-import { queueCheerioRequest, queueRequest, queueRequestFullResponse } from "../queueRequest";
+import request, { BasicRequestConfig, RequestConfig as GetConfig } from "../request";
 import { CustomHookError, CustomHookErrorCodes } from "./errors";
 import {
   JsonRegex,
@@ -989,8 +988,7 @@ export const makeRequest = traceWrap(function makeRequest(
   context: Context,
   requestConfig?: RequestConfig,
 ): Promise<CheerioAPI | any> {
-  // @ts-expect-error
-  const options: Options = {};
+  const options: BasicRequestConfig<string> = {};
 
   if (requestConfig) {
     if (requestConfig.regexUrl && requestConfig.transformUrl) {
@@ -1009,21 +1007,20 @@ export const makeRequest = traceWrap(function makeRequest(
       targetUrl = templateString(requestConfig.templateUrl, context);
     }
     if (requestConfig.templateBody) {
-      options.body = templateString(requestConfig.templateBody, context);
+      options.data = templateString(requestConfig.templateBody, context);
     }
     if (requestConfig.options) {
       Object.assign(options, requestConfig.options);
     }
   }
-  // @ts-expect-error
   options.url = targetUrl;
 
   logger.debug("Requesting url: " + targetUrl);
   if (requestConfig?.jsonResponse) {
-    return queueRequest(targetUrl, options).then((value) => JSON.parse(value));
+    return request.getJson(options as unknown as GetConfig<string>);
   }
   if (requestConfig?.fullResponse) {
-    return queueRequestFullResponse(targetUrl, options);
+    return request.request(options as any);
   }
-  return queueCheerioRequest(targetUrl, options);
+  return request.getCheerio(options as unknown as GetConfig<string>);
 });

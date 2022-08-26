@@ -11,28 +11,17 @@ import {
 import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
-import { queueCheerioRequest, queueRequest } from "../queueRequest";
-import * as request from "request-promise-native";
 import { checkTocContent } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";
+import { Cookie } from "tough-cookie";
 import * as cheerio from "cheerio";
+import { Requestor } from "../request";
 import { getText } from "./directTools";
 
-const jar = request.jar();
-const defaultRequest = request.defaults({
-  jar,
-});
-
+const request = new Requestor(undefined, true);
 const BASE_URI = "https://www.webnovel.com/";
 
-const initPromise = queueRequest(
-  BASE_URI,
-  {
-    method: "HEAD",
-    uri: BASE_URI,
-  },
-  defaultRequest,
-).then(ignore);
+const initPromise = request.head({ url: BASE_URI }).then(ignore);
 
 function toReleaseLink(bookId: string, chapterId: string): Link {
   return `${BASE_URI}book/${bookId}/${chapterId}/`;
@@ -44,7 +33,7 @@ function toTocLink(bookId: string): Link {
 
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
   const uri = BASE_URI;
-  const $ = await queueCheerioRequest(uri);
+  const $ = await request.getCheerio({ url: uri });
   const newsRows = $("#LatUpdate tbody > tr");
 
   const news: EpisodeNews[] = [];
@@ -86,7 +75,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
     const link = toReleaseLink(linkGroup[3], linkGroup[5]);
     const groups = titlePattern.exec(episodeTitle);
 
-    if (!groups || !groups[1]) {
+    if (!groups?.[1]) {
       logger.info(`unknown news format on webnovel: ${episodeTitle}`);
       continue;
     }
@@ -121,8 +110,20 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
   return scrapeTocPage(bookId);
 }
 
+function getCookies(): Promise<Cookie[]> {
+  return new Promise((resolve, reject) => {
+    request.jar.getCookies(BASE_URI, (error, cookies) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(cookies);
+      }
+    });
+  });
+}
+
 async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> {
-  const csrfCookie = jar.getCookies(BASE_URI).find((value) => value.key === "_csrfToken");
+  const csrfCookie = (await getCookies()).find((value) => value.key === "_csrfToken");
 
   if (!csrfCookie) {
     logger.warn("csrf cookie not found for webnovel");
@@ -137,7 +138,7 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
     return [];
   }
 
-  if (!tocJson.data || !tocJson.data.volumeItems || !tocJson.data.volumeItems.length) {
+  if (!tocJson.data?.volumeItems?.length) {
     logger.warn("no toc content on webnovel for " + bookId);
     return [];
   }
@@ -205,24 +206,21 @@ async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> 
 }
 
 function loadBody(urlString: string): Promise<cheerio.CheerioAPI> {
-  return initPromise.then(() => queueCheerioRequest(urlString, undefined, defaultRequest));
+  return initPromise.then(() => request.getCheerio({ url: urlString }));
 }
 
-function loadJson(urlString: string, retry = 0): Promise<any> {
-  return initPromise
-    .then(() => queueRequest(urlString, undefined, defaultRequest))
-    .then((body) => {
-      try {
-        return JSON.parse(body);
-      } catch (error) {
-        // sometimes the response body is incomplete for whatever reason
-        // so retry once to get it right, else forget it
-        if (retry >= 2) {
-          throw error;
-        }
-        return loadJson(urlString, retry + 1);
-      }
-    });
+async function loadJson(urlString: string, retry = 0): Promise<any> {
+  await initPromise;
+  try {
+    return await request.getJson({ url: urlString });
+  } catch (error) {
+    // sometimes the response body is incomplete for whatever reason
+    // so retry once to get it right, else forget it
+    if (retry >= 2) {
+      throw error;
+    }
+    return loadJson(urlString, retry + 1);
+  }
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
