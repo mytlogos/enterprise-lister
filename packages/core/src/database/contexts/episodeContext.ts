@@ -187,7 +187,7 @@ export class EpisodeContext extends SubContext {
       "SELECT * FROM episode_release WHERE episode_id IN (??)",
       [episodeId],
     );
-    if (!resultArray || !resultArray.length) {
+    if (!resultArray?.length) {
       return [];
     }
     return resultArray.map((value: any): EpisodeRelease => {
@@ -211,7 +211,7 @@ export class EpisodeContext extends SubContext {
       "SELECT * FROM episode_release WHERE locate(?, url) = 1 AND episode_id IN (??);",
       [host, episodeId],
     );
-    if (!resultArray || !resultArray.length) {
+    if (!resultArray?.length) {
       return [];
     }
     return resultArray.map((value: any): EpisodeRelease => {
@@ -699,7 +699,7 @@ export class EpisodeContext extends SubContext {
       chapterLink,
     );
 
-    if (!results || !results.length) {
+    if (!results?.length) {
       return {
         episodeTitle: "",
         index: 0,
@@ -792,7 +792,7 @@ export class EpisodeContext extends SubContext {
         "WHERE (user_uuid IS NULL OR user_uuid=?) AND episode.id IN (??);",
       [uuid, id],
     );
-    if (!episodes || !episodes.length) {
+    if (!episodes?.length) {
       return [];
     }
     const idMap = new Map<number, any>();
@@ -836,7 +836,7 @@ export class EpisodeContext extends SubContext {
       "SELECT * FROM episode WHERE part_id = ? AND combiIndex IN (??);",
       [partId, index],
     );
-    if (!episodes || !episodes.length) {
+    if (!episodes?.length) {
       return [];
     }
     const availableIndices: number[] = [];
@@ -888,7 +888,7 @@ export class EpisodeContext extends SubContext {
             `,
       mediumId,
     );
-    if (!episodes || !episodes.length) {
+    if (!episodes?.length) {
       return [];
     }
     return episodes.map((value) => {
@@ -917,7 +917,7 @@ export class EpisodeContext extends SubContext {
         "WHERE medium_id = ? AND episode.combiIndex IN (??);",
       [mediumId, index],
     );
-    if (!episodes || !episodes.length) {
+    if (!episodes?.length) {
       return [];
     }
     const availableIndices: number[] = [];

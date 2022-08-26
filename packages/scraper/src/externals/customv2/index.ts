@@ -385,7 +385,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
   return scraper;
 }
 
-function merge<T>(results: T[]): T {
+function merge<T extends Record<string, any>>(results: T[]): T {
   return results.reduce((previous, current) => {
     if (Array.isArray(current) && Array.isArray(previous)) {
       const smaller = previous.length < current.length ? previous : current;

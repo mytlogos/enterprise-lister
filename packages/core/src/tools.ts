@@ -834,10 +834,11 @@ export function hasProp<T, U extends string | number | symbol>(obj: T, propName:
   return obj && propName in obj;
 }
 
-export function hasPropType<V, T = any, U extends string | number | symbol = string | number | symbol>(
-  obj: T,
-  propName: U,
-): obj is T & { [P in U]: V } {
+export function hasPropType<
+  V,
+  T extends Record<string, any> = Record<string, any>,
+  U extends string | number | symbol = string | number | symbol,
+>(obj: T, propName: U): obj is T & { [P in U]: V } {
   return obj && propName in obj;
 }
 
@@ -955,7 +956,7 @@ export function getMainInterface(): string | undefined {
     }
     const foundIpInterface = arrays.find((value) => value.family === "IPv4");
 
-    if (!foundIpInterface || !foundIpInterface.address || !foundIpInterface.address.startsWith("192.168.")) {
+    if (!foundIpInterface?.address?.startsWith("192.168.")) {
       continue;
     }
     return foundIpInterface.address;
