@@ -1,3 +1,10 @@
+## [2.19.4](https://github.com/mytlogos/enterprise-lister/compare/v2.19.3...v2.19.4) (2022-08-26)
+
+
+### Bug Fixes
+
+* **server:** add missing validation ([28b21b3](https://github.com/mytlogos/enterprise-lister/commit/28b21b386f651e6b524c855448224c488011331a))
+
 ## [2.19.3](https://github.com/mytlogos/enterprise-lister/compare/v2.19.2...v2.19.3) (2022-08-26)
 
 
