@@ -1,3 +1,10 @@
+## [2.19.5](https://github.com/mytlogos/enterprise-lister/compare/v2.19.4...v2.19.5) (2022-08-27)
+
+
+### Bug Fixes
+
+* **scraper:** using wrong url in custom scraper ([1edbe94](https://github.com/mytlogos/enterprise-lister/commit/1edbe94a88d0206c6154e16e1a824ebbda39368a))
+
 ## [2.19.4](https://github.com/mytlogos/enterprise-lister/compare/v2.19.3...v2.19.4) (2022-08-26)
 
 
