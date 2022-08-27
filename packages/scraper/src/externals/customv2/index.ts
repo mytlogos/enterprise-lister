@@ -266,7 +266,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
 
   const scraper: TocScraper = async (link: string): Promise<Toc[]> => {
     const results = [];
-    let lastUrl = link;
+    let firstResponseUrl: string | undefined;
 
     for (const datum of tocConfig.data) {
       const selector = {
@@ -295,11 +295,8 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
       // if multiple tocConfig.data are defined and a later config uses
       // a custom request, it may depend on a new redirected location
       // instead of the currently saved/requested one
-      const response: Response = await makeRequest(lastUrl, context, datum._request);
-
-      if (lastUrl === link) {
-        lastUrl = response.request.uri.href;
-      }
+      const response: Response = await makeRequest(firstResponseUrl ?? link, context, datum._request);
+      firstResponseUrl ??= response.request.uri.href;
 
       const $ = absolutes(response.request.uri.href, response.toCheerio());
 
@@ -314,7 +311,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
       // no date, predictable links, maximum index always visible, all chapters have no index gap
       // this misses any chapters with partialindices
       if ("_generator" in datum) {
-        const urlMatch = toRegex(datum._generator.urlRegex).exec(lastUrl);
+        const urlMatch = toRegex(datum._generator.urlRegex).exec(firstResponseUrl);
 
         let urlTemplate = datum._generator.urlTemplate;
 
@@ -359,7 +356,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
       result.forEach((partialToc: any) => {
         // if not provided, set the toc link to the current toc location
         if (!partialToc.link) {
-          partialToc.link = lastUrl;
+          partialToc.link = firstResponseUrl;
         }
       });
       results.push(result);
