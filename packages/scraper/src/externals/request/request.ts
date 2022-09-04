@@ -8,8 +8,11 @@ import logger from "enterprise-core/dist/logger";
 import { BasicRequestConfig, RequestConfig, Response } from "./types";
 import { handleCloudflare } from "./cloudflare";
 import { CloudflareHandlerError, RequestError } from "./error";
-import puppeteer from "puppeteer";
 import { ClientRequest } from "http";
+import puppeteer from "puppeteer-extra";
+import { HTTPRequest, HTTPResponse, Protocol, Browser } from "puppeteer";
+import puppeteerStealthPlugin from "puppeteer-extra-plugin-stealth";
+puppeteer.use(puppeteerStealthPlugin());
 
 function transformAxiosResponse(response: AxiosResponse): Response {
   const axiosRequest: ClientRequest = response.request;
@@ -36,7 +39,7 @@ function transformAxiosResponse(response: AxiosResponse): Response {
   };
 }
 
-let puppeteerBrowser: Promise<puppeteer.Browser> | undefined;
+let puppeteerBrowser: Promise<Browser> | undefined;
 
 /**
  * Configurable Wrapper for network http communication.
@@ -110,7 +113,7 @@ export class Requestor {
 
       return transformAxiosResponse(response);
     }).catch((error) => {
-      if (error instanceof CloudflareHandlerError && config.method === "GET") {
+      if (error instanceof CloudflareHandlerError && error.response?.config.method === "get") {
         return this.usePuppeteer(config);
       }
       // rethrow error if should not be handled by puppeteer
@@ -133,7 +136,7 @@ export class Requestor {
     // enable request interception to reduce network load
     // also disables cache
     page.setRequestInterception(true);
-    page.on("request", (pageRequest) => {
+    page.on("request", (pageRequest: HTTPRequest) => {
       const resourceType = pageRequest.resourceType();
 
       // we do not need media and styles
@@ -144,9 +147,9 @@ export class Requestor {
       }
     });
 
-    const possibleResponses: puppeteer.HTTPResponse[] = [];
+    const possibleResponses: HTTPResponse[] = [];
 
-    page.on("response", (response) => {
+    page.on("response", (response: HTTPResponse) => {
       const resourceType = response.request().resourceType();
 
       if (resourceType === "document") {
@@ -154,16 +157,19 @@ export class Requestor {
       }
     });
 
-    // wait until 0 network connections are mady for 500ms
-    await page.goto(config.url, { waitUntil: "networkidle0" });
+    await page.goto(config.url);
+    // wait until 0 network connections are mady for 5000ms
+    await page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 });
 
     let response: Response<P, T>;
 
-    if (possibleResponses.length > 1) {
-      throw new RequestError("multiple responses to choose from", config);
+    if (possibleResponses.length < 1) {
+      throw new RequestError("no responses to choose from", config);
     } else {
-      const puppeteerResponse = possibleResponses[0];
-      const body = await puppeteerResponse.text();
+      let puppeteerResponse = possibleResponses.find((r) => r.url() === config.url);
+      puppeteerResponse ??= possibleResponses[possibleResponses.length - 1];
+
+      const body = await page.content();
       const puppeteerRequest = puppeteerResponse.request();
 
       response = {
@@ -185,7 +191,8 @@ export class Requestor {
         },
 
         toJson(): any {
-          return puppeteerResponse.json();
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          return puppeteerResponse!.json();
         },
       };
     }
@@ -196,7 +203,7 @@ export class Requestor {
     // clear cookies from store, so we do not have any possibly conflicting cookies
     await jar.removeAllCookies();
 
-    cookies.forEach(async (cookie) => {
+    cookies.forEach(async (cookie: Protocol.Network.Cookie) => {
       const toughCookie = fromJSON({
         key: cookie.name,
         value: cookie.value,

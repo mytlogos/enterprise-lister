@@ -323,6 +323,12 @@ function onCloudflareResponse(
     return onChallenge(options, response, stringBody, requester);
   }
 
+  const isOtherChallenge = stringBody.includes('id="challenge-running"');
+
+  // TODO: solve this challenge
+  if (isOtherChallenge) {
+    throw new CloudflareError(response.statusCode, options, response);
+  }
   // All is good
   return Promise.resolve(onRequestComplete(options, response, body, isHtml));
 }
