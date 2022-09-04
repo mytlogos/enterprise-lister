@@ -1,3 +1,16 @@
+# [2.20.0](https://github.com/mytlogos/enterprise-lister/compare/v2.19.6...v2.20.0) (2022-09-04)
+
+
+### Bug Fixes
+
+* **core:** typescript directive ([457b025](https://github.com/mytlogos/enterprise-lister/commit/457b025980a3fee512878d10d8e612ce81e48c93))
+
+
+### Features
+
+* improve scraper requests ([9bc8809](https://github.com/mytlogos/enterprise-lister/commit/9bc88096aaf9b8adc25b7d593dd30a9a4ad8b28d))
+* **scraper:** abort long running jobs first ([6d360a5](https://github.com/mytlogos/enterprise-lister/commit/6d360a5128616c66ddf473090984ca0527a5ece6))
+
 ## [2.19.6](https://github.com/mytlogos/enterprise-lister/compare/v2.19.5...v2.19.6) (2022-09-04)
 
 
