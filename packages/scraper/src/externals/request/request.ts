@@ -3,7 +3,7 @@ import { fromJSON, CookieJar } from "tough-cookie";
 import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import { CheerioAPI, load } from "cheerio";
 import { getQueueKey, queueWork } from "../queueRequest";
-import { delay } from "enterprise-core/dist/tools";
+import { abortable, delay } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import { BasicRequestConfig, RequestConfig, Response } from "./types";
 import { handleCloudflare } from "./cloudflare";
@@ -12,6 +12,7 @@ import { ClientRequest } from "http";
 import puppeteer from "puppeteer-extra";
 import { HTTPRequest, HTTPResponse, Protocol, Browser } from "puppeteer";
 import puppeteerStealthPlugin from "puppeteer-extra-plugin-stealth";
+import { getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
 puppeteer.use(puppeteerStealthPlugin());
 
 function transformAxiosResponse(response: AxiosResponse): Response {
@@ -101,7 +102,10 @@ export class Requestor {
     return handleCloudflare(config, async (requestConfig) => {
       let response: AxiosResponse;
       try {
-        response = await this.#instance.request<string, AxiosResponse, T>(requestConfig);
+        response = await this.#instance.request<string, AxiosResponse, T>({
+          ...requestConfig,
+          signal: getStoreValue(StoreKey.ABORT),
+        });
       } catch (error) {
         if (axios.isAxiosError(error)) {
           const transformed = error.response ? transformAxiosResponse(error.response) : undefined;
@@ -124,6 +128,8 @@ export class Requestor {
   private async usePuppeteer<P = any, T = any, R extends RequestConfig<T> = RequestConfig<T>>(
     config: R,
   ): Promise<Response<P, T>> {
+    const signal = getStoreValue(StoreKey.ABORT);
+    signal?.throwIfAborted();
     // using puppeteer in chromium requires disabling the sandbox
     // disable-gpu for headless environments, e.g. docker
     puppeteerBrowser ??= puppeteer.launch({
@@ -131,7 +137,13 @@ export class Requestor {
     });
 
     const browser = await puppeteerBrowser;
+    signal?.throwIfAborted();
+
     const page = await browser.newPage();
+
+    if (signal) {
+      signal.addEventListener("abort", () => page.close(), { once: true });
+    }
 
     // enable request interception to reduce network load
     // also disables cache
@@ -157,9 +169,12 @@ export class Requestor {
       }
     });
 
-    await page.goto(config.url);
+    signal?.throwIfAborted();
+    await abortable(page.goto(config.url), signal);
+
+    signal?.throwIfAborted();
     // wait until 0 network connections are mady for 5000ms
-    await page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 });
+    await abortable(page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 }), signal);
 
     let response: Response<P, T>;
 
@@ -169,6 +184,7 @@ export class Requestor {
       let puppeteerResponse = possibleResponses.find((r) => r.url() === config.url);
       puppeteerResponse ??= possibleResponses[possibleResponses.length - 1];
 
+      signal?.throwIfAborted();
       const body = await page.content();
       const puppeteerRequest = puppeteerResponse.request();
 
@@ -197,6 +213,7 @@ export class Requestor {
       };
     }
 
+    signal?.throwIfAborted();
     const cookies = await page.cookies();
     const jar = this.jar;
 
@@ -222,6 +239,8 @@ export class Requestor {
     });
 
     await page.close();
+
+    signal?.throwIfAborted();
     return response;
   }
 

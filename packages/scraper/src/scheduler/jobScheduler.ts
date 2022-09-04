@@ -337,19 +337,31 @@ export class JobScheduler {
       const maxDate = maxValue(timeoutDates);
 
       now.setMinutes(-30);
-      // if there at least 5 jobs which started 30 min before but did not finish,
-      // when there is at least one timeout, stop this process (pm2 should restart it then again)
-      if (maxDate) {
-        if (maxDate < now && this.queue.invalidRunning(maxDate, 5)) {
-          logger.error("Restarting Process due to long running jobs");
+
+      // ignore this if network connection is flaky
+      // e.g. if in the last 30m a dns lookup failed
+      if (maxDate && maxDate >= now) {
+        return;
+      }
+
+      // a single job should not take more than 10 minutes
+      // after which it is aborted
+      const softMaxJobRunningTime = 10 * 60 * 1000;
+      const hardMaxJobRunningTime = 15 * 60 * 1000;
+
+      const longRunningJobs = this.jobs.filter((job) => job.getRunningDuration() > softMaxJobRunningTime);
+
+      for (const job of longRunningJobs) {
+        // if aborting did not finish the job after 5 min
+        // stop this process and exit as graceful as possible
+        if (job.getRunningDuration() > hardMaxJobRunningTime) {
+          logger.error("Restarting Process due to long running jobs", {
+            job_name: job.currentItem.name,
+            job_id: job.id,
+          });
           gracefulShutdown();
-          return;
-        }
-        now.setHours(-2);
-        if (maxDate < now && this.queue.invalidRunning(maxDate, 1)) {
-          logger.error("Restarting Process due to long running jobs");
-          gracefulShutdown();
-          return;
+        } else if (!job.isAborted()) {
+          job.abort();
         }
       }
     } catch (e) {

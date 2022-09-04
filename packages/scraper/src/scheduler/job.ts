@@ -79,7 +79,7 @@ type JobStatus = "waiting" | "beforeRun" | "running" | "afterRun" | "end";
  * Tries to abort the job on a best-effort basis.
  * Each stage checks in-between if job was aborted.
  *
- * To work better, the actual jobs should check via getStore().get(StoreKey.ABORT)
+ * To work better, the actual jobs should check via getStoreValue(StoreKey.ABORT)
  * if this context was aborted.
  */
 export class Job {
@@ -91,6 +91,7 @@ export class Job {
    */
   private status: JobStatus = "waiting";
   private readonly events: EventListener = Object.create(null);
+  private startRun = 0;
   public readonly currentItem: JobItem;
 
   public constructor(private readonly job: () => any | Promise<any>, private readonly original: JobItem) {
@@ -116,10 +117,24 @@ export class Job {
     return this.original.id;
   }
 
+  /**
+   * Time elapsed since Job was in state="running".
+   *
+   * @returns time in millis
+   */
+  public getRunningDuration() {
+    if (this.status === "running") {
+      return this.startRun ? Date.now() - this.startRun : 0;
+    } else {
+      return 0;
+    }
+  }
+
   public async runJob() {
     if (this.status !== "beforeRun") {
       throw new JobError("beforeRun was not called");
     }
+    this.startRun = Date.now();
     this.status = "running";
     // throw if we try to run job, even though it is already aborted
     this.controller.signal.throwIfAborted();
@@ -243,6 +258,10 @@ export class Job {
    */
   public finished() {
     this.status = "end";
+  }
+
+  public isAborted() {
+    return this.controller.signal.aborted;
   }
 
   public abort() {

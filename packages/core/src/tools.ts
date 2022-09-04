@@ -962,3 +962,21 @@ export function getMainInterface(): string | undefined {
     return foundIpInterface.address;
   }
 }
+
+export function aborted(signal: AbortSignal): Promise<never> {
+  return new Promise((_resolve, reject) => {
+    // FIXME: for some reason, it does not have AbortSignal and Event Types from lib.dom.ts etc.
+    // @ts-expect-error
+    signal.addEventListener("abort", (event: Event) => {
+      reject(event);
+    });
+  });
+}
+
+export function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (signal) {
+    return Promise.race([promise, aborted(signal)]);
+  } else {
+    return promise;
+  }
+}
