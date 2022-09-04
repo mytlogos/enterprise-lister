@@ -158,7 +158,6 @@ export class Requestor {
     }
     if (jar) {
       this.#instance = axiosCookieJarSupport(axios.create(config) as any);
-      // @ts-expect-error
       this.#instance.defaults.jar = this.jar;
     } else {
       this.#instance = axios.create(config);
