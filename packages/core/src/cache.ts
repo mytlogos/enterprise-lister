@@ -6,7 +6,7 @@ export interface CacheOptions extends NodeCache.Options {
   size?: number;
 }
 
-export class Cache extends NodeCache {
+export class Cache<K extends NodeCache.Key, V> extends NodeCache {
   private timeOutId?: NodeJS.Timeout;
   private readonly maxSize: number;
 
@@ -20,14 +20,38 @@ export class Cache extends NodeCache {
     return this.keys().length >= this.maxSize;
   }
 
-  public set<T>(key: NodeCache.Key, value: T, ttl: NodeCache.Key): boolean;
-  public set<T>(key: NodeCache.Key, value: T): boolean;
+  public set(key: K, value: V, ttl: number): boolean;
+  public set(key: K, value: V): boolean;
 
-  public set<T>(key: NodeCache.Key, value: T, ttl?: NodeCache.Key): boolean {
+  public set(key: K, value: V, ttl?: number): boolean {
     // @ts-expect-error
     const b = super.set(key, value, ttl);
     this._trimSize();
     return b;
+  }
+
+  public get(key: K, cb: () => V): V;
+  public get(key: K): V | undefined;
+
+  /**
+   * Get value for key.
+   * Refreshes ttl if value exists.
+   * Sets value from callback if it did not exist prior
+   *
+   * @param key cache key
+   * @param cb value generator
+   * @returns value or undefined if not found and no value generator given
+   */
+  public get(key: K, cb?: () => V): V | undefined {
+    let value = super.get<V>(key);
+
+    if (!value && cb) {
+      value = cb();
+      this.set(key, value);
+    } else {
+      this.ttl(key);
+    }
+    return value;
   }
 
   public flushAll(): void {

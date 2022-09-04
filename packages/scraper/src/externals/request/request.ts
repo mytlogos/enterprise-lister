@@ -3,14 +3,15 @@ import { fromJSON, CookieJar } from "tough-cookie";
 import { wrapper as axiosCookieJarSupport } from "axios-cookiejar-support";
 import { CheerioAPI, load } from "cheerio";
 import { getQueueKey, queueWork } from "../queueRequest";
-import { abortable, delay } from "enterprise-core/dist/tools";
+import { abortable, deferableTimeout, delay } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
+import { Cache } from "enterprise-core/dist/cache";
 import { BasicRequestConfig, RequestConfig, Response } from "./types";
 import { handleCloudflare } from "./cloudflare";
 import { CloudflareHandlerError, RequestError } from "./error";
 import { ClientRequest } from "http";
 import puppeteer from "puppeteer-extra";
-import { HTTPRequest, HTTPResponse, Protocol, Browser } from "puppeteer";
+import { HTTPRequest, HTTPResponse, Protocol, Browser, Page } from "puppeteer";
 import puppeteerStealthPlugin from "puppeteer-extra-plugin-stealth";
 import { getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
 puppeteer.use(puppeteerStealthPlugin());
@@ -40,7 +41,91 @@ function transformAxiosResponse(response: AxiosResponse): Response {
   };
 }
 
-let puppeteerBrowser: Promise<Browser> | undefined;
+// remove pages after 10 minutes of inactivity
+const pages = new Cache<string, Promise<Page>>({ stdTTL: 60 * 10, useClones: false, size: 20 });
+const pageUsed = new Set<string>();
+
+pages.on("expired", (_key, value: Page) => {
+  if (!value.isClosed()) {
+    value.close();
+  }
+});
+
+// Modified from https://www.bannerbear.com/blog/ways-to-speed-up-puppeteer-screenshots/
+const minimalArgs = [
+  "--autoplay-policy=user-gesture-required",
+  "--disable-background-networking",
+  "--disable-background-timer-throttling",
+  "--disable-backgrounding-occluded-windows",
+  "--disable-breakpad",
+  "--disable-client-side-phishing-detection",
+  "--disable-component-update",
+  "--disable-default-apps",
+  "--disable-dev-shm-usage",
+  "--disable-domain-reliability",
+  "--disable-extensions",
+  "--disable-features=AudioServiceOutOfProcess",
+  "--disable-hang-monitor",
+  "--disable-ipc-flooding-protection",
+  "--disable-notifications",
+  "--disable-offer-store-unmasked-wallet-cards",
+  "--disable-popup-blocking",
+  "--disable-print-preview",
+  "--disable-prompt-on-repost",
+  "--disable-renderer-backgrounding",
+  "--disable-setuid-sandbox",
+  "--disable-speech-api",
+  "--disable-sync",
+  "--hide-scrollbars",
+  "--ignore-gpu-blacklist",
+  "--metrics-recording-only",
+  "--mute-audio",
+  "--no-default-browser-check",
+  "--no-first-run",
+  "--no-pings",
+  "--no-sandbox",
+  "--no-zygote",
+  "--password-store=basic",
+  "--use-mock-keychain",
+  "--disable-gpu",
+  "--single-process",
+];
+
+class BrowserGetter {
+  #timeoutId: undefined | NodeJS.Timeout;
+  #puppeteerBrowser: Promise<Browser> | undefined;
+
+  /**
+   * Get the current browser instance.
+   * After 15 minutes without calling this function,
+   * the browser will be closed
+   * and a new browser will be launched on the next call.
+   *
+   * @returns a puppeteer browser promise
+   */
+  public get() {
+    // clear timeout
+    if (this.#timeoutId != null) {
+      clearTimeout(this.#timeoutId);
+    }
+    // set new timeout
+    this.#timeoutId = setTimeout(() => {
+      const browserPromise = this.#puppeteerBrowser;
+      this.#timeoutId = undefined;
+      this.#puppeteerBrowser = undefined;
+
+      browserPromise?.then((browser) => browser.close()).catch(logger.error);
+    }, 1000 * 60 * 15);
+
+    // using puppeteer in chromium requires disabling the sandbox
+    // disable-gpu for headless environments, e.g. docker
+    this.#puppeteerBrowser ??= puppeteer.launch({
+      args: minimalArgs,
+    });
+    return this.#puppeteerBrowser;
+  }
+}
+const browserGetter = new BrowserGetter();
 
 /**
  * Configurable Wrapper for network http communication.
@@ -130,51 +215,88 @@ export class Requestor {
   ): Promise<Response<P, T>> {
     const signal = getStoreValue(StoreKey.ABORT);
     signal?.throwIfAborted();
-    // using puppeteer in chromium requires disabling the sandbox
-    // disable-gpu for headless environments, e.g. docker
-    puppeteerBrowser ??= puppeteer.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu"],
-    });
 
-    const browser = await puppeteerBrowser;
+    const browser = await browserGetter.get();
     signal?.throwIfAborted();
 
-    const page = await browser.newPage();
-
-    if (signal) {
-      signal.addEventListener("abort", () => page.close(), { once: true });
+    const key = getQueueKey(config.url);
+    if (!key) {
+      throw Error("no queue key for url: " + config.url);
     }
 
-    // enable request interception to reduce network load
-    // also disables cache
-    page.setRequestInterception(true);
-    page.on("request", (pageRequest: HTTPRequest) => {
-      const resourceType = pageRequest.resourceType();
+    const page = await pages.get(key, async () => {
+      const newPage = await browser.newPage();
 
-      // we do not need media and styles
-      if (["stylesheet", "image", "media", "font"].includes(resourceType)) {
-        pageRequest.abort();
-      } else {
-        pageRequest.continue();
-      }
+      // enable request interception to reduce network load
+      // also disables cache
+      newPage.setRequestInterception(true);
+      newPage.on("request", (pageRequest: HTTPRequest) => {
+        const resourceType = pageRequest.resourceType();
+
+        // we do not need media and styles
+        if (["stylesheet", "image", "media", "font"].includes(resourceType)) {
+          pageRequest.abort();
+        } else {
+          pageRequest.continue();
+        }
+      });
+
+      return newPage;
     });
+    if (pageUsed.has(key)) {
+      throw Error(`Page for key '${key}' is already being used`);
+    }
+    pageUsed.add(key);
+
+    if (signal) {
+      signal.addEventListener(
+        "abort",
+        () => {
+          pages.del(key);
+          page.close();
+        },
+        { once: true },
+      );
+    }
 
     const possibleResponses: HTTPResponse[] = [];
+    const deferrablePromise = deferableTimeout(1000, 5);
 
-    page.on("response", (response: HTTPResponse) => {
+    const responseListener = (response: HTTPResponse) => {
       const resourceType = response.request().resourceType();
 
       if (resourceType === "document") {
         possibleResponses.push(response);
       }
-    });
 
-    signal?.throwIfAborted();
-    await abortable(page.goto(config.url), signal);
+      if (!deferrablePromise.resolved) {
+        deferrablePromise.defer();
+      }
+    };
+    const requestListener = (pageRequest: HTTPRequest) => {
+      if (!deferrablePromise.resolved) {
+        deferrablePromise.defer();
+      }
+    };
 
-    signal?.throwIfAborted();
-    // wait until 0 network connections are mady for 5000ms
-    await abortable(page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 }), signal);
+    page.on("response", responseListener);
+    page.on("request", requestListener);
+
+    let content: string;
+
+    try {
+      signal?.throwIfAborted();
+      await abortable(page.goto(config.url), signal);
+
+      signal?.throwIfAborted();
+      // wait until 0 network connections are mady for 1000ms
+      await abortable(deferrablePromise.promise, signal);
+      content = await page.content();
+    } finally {
+      pageUsed.delete(key);
+      page.off("response", responseListener);
+      page.off("request", requestListener);
+    }
 
     let response: Response<P, T>;
 
@@ -185,13 +307,11 @@ export class Requestor {
       puppeteerResponse ??= possibleResponses[possibleResponses.length - 1];
 
       signal?.throwIfAborted();
-      const body = await page.content();
       const puppeteerRequest = puppeteerResponse.request();
 
       response = {
         config,
-        // @ts-expect-error
-        data: body,
+        data: content as P,
         headers: puppeteerResponse.headers(),
         status: puppeteerResponse.status(),
         statusText: puppeteerResponse.statusText(),
@@ -203,7 +323,7 @@ export class Requestor {
         },
 
         toCheerio(): CheerioAPI {
-          return load(body);
+          return load(content);
         },
 
         toJson(): any {
@@ -237,8 +357,6 @@ export class Requestor {
         await jar.setCookie(toughCookie, url);
       }
     });
-
-    await page.close();
 
     signal?.throwIfAborted();
     return response;
@@ -322,5 +440,5 @@ export class Requestor {
   }
 }
 
-export const request = new Requestor();
+export const request = new Requestor(undefined, true);
 export default request;

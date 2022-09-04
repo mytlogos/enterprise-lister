@@ -121,6 +121,7 @@ process.on("unhandledRejection", (reason: any) => {
 });
 let exitHandled = false;
 process.on("beforeExit", (code) => (exitHandled = !exitHandled) && logger.info("Exit Program", { code }));
+let closed = false;
 
 function log(level: string, value: any, meta: LogMeta = {}) {
   const label = getStoreValue(StoreKey.LABEL);
@@ -132,7 +133,7 @@ function log(level: string, value: any, meta: LogMeta = {}) {
     value = stringify(value);
   }
   // do not log on closed logger, fallback to console.log
-  if (logger.closed) {
+  if (logger.closed || closed) {
     console.log(`Logger closed, falling back to console.log: [${level}] ${value + ""} ${JSON.stringify(meta)}`);
     return;
   }
@@ -250,6 +251,7 @@ export default {
       logger.addListener("close", resolve);
     });
     logger.close();
+    closed = true;
     return promise;
   },
 };

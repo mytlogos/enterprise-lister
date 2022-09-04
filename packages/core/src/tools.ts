@@ -982,3 +982,62 @@ export function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise
     return promise;
   }
 }
+
+interface DeferableTimeoutPromise {
+  promise: Promise<void>;
+  defer: () => void;
+  resolved: boolean;
+}
+
+/**
+ * A promise which resolves after the time in timeoutMillis has passed.
+ * The resolve can be deferred, by calling the defer function.
+ * Rejects with an error if it would defer the promise such, that it
+ * would resolve after timeoutMillis * (maxRetries + 1)
+ *
+ * @param timeoutMillis the timeout value in milliseconds
+ * @param maxRetries maximum times the timeout can be repeated
+ * @returns a deferable promise
+ */
+export function deferableTimeout(timeoutMillis: number, maxRetries = 0): DeferableTimeoutPromise {
+  let resolveFunction: undefined | (() => void);
+  let rejectFunction: undefined | ((error: any) => void);
+  let timeoutId: undefined | NodeJS.Timeout;
+  let resolved = false;
+  const maxResolveTime = Date.now() + timeoutMillis * (maxRetries + 1);
+
+  const result: DeferableTimeoutPromise = {
+    resolved: false,
+
+    defer: () => {
+      if (resolved) {
+        throw Error("cannot defer a resolved promise");
+      }
+      // do not defer if it would resolve beyond maxResolveTime
+      if (Date.now() + timeoutMillis > maxResolveTime && rejectFunction) {
+        return;
+      }
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      timeoutId = setTimeout(() => {
+        resolved = true;
+        result.resolved = true;
+
+        if (resolveFunction) {
+          resolveFunction();
+        } else {
+          throw Error("No resolve function after Timeout!");
+        }
+      }, timeoutMillis);
+    },
+    promise: new Promise<void>((resolve, reject) => {
+      resolveFunction = resolve;
+      rejectFunction = reject;
+    }),
+  };
+  result.defer();
+  return result;
+}
