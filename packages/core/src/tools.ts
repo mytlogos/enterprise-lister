@@ -966,7 +966,9 @@ export function getMainInterface(): string | undefined {
 export function aborted(signal: AbortSignal): Promise<never> {
   return new Promise((_resolve, reject) => {
     // FIXME: for some reason, it does not have AbortSignal and Event Types from lib.dom.ts etc.
-    // @ts-expect-error
+    // but it does not fail in github actions lint job?
+    // eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
+    // @ts-ignore
     signal.addEventListener("abort", (event: Event) => {
       reject(event);
     });
