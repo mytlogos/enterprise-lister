@@ -1,3 +1,10 @@
+## [2.19.6](https://github.com/mytlogos/enterprise-lister/compare/v2.19.5...v2.19.6) (2022-09-04)
+
+
+### Bug Fixes
+
+* **scraper:** fix cloudflare problem ([179edfe](https://github.com/mytlogos/enterprise-lister/commit/179edfe0598201c49b6ac8231063efbd9d5fa638))
+
 ## [2.19.5](https://github.com/mytlogos/enterprise-lister/compare/v2.19.4...v2.19.5) (2022-08-27)
 
 
