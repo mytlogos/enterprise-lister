@@ -1,3 +1,10 @@
+## [2.20.1](https://github.com/mytlogos/enterprise-lister/compare/v2.20.0...v2.20.1) (2022-09-05)
+
+
+### Bug Fixes
+
+* **scraper:** calling method on promise ([9c436a0](https://github.com/mytlogos/enterprise-lister/commit/9c436a078384567961187e6c2680c4b61c0429fa))
+
 # [2.20.0](https://github.com/mytlogos/enterprise-lister/compare/v2.19.6...v2.20.0) (2022-09-04)
 
 
