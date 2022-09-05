@@ -45,10 +45,12 @@ function transformAxiosResponse(response: AxiosResponse): Response {
 const pages = new Cache<string, Promise<Page>>({ stdTTL: 60 * 10, useClones: false, size: 20 });
 const pageUsed = new Set<string>();
 
-pages.on("expired", (_key, value: Page) => {
-  if (!value.isClosed()) {
-    value.close();
-  }
+pages.on("expired", (_key, value: Promise<Page>) => {
+  value.then((page) => {
+    if (!page.isClosed()) {
+      page.close();
+    }
+  });
 });
 
 // Modified from https://www.bannerbear.com/blog/ways-to-speed-up-puppeteer-screenshots/

@@ -88,7 +88,7 @@ const logger = winston.createLogger({
         formatLogFmt(),
         // use logfmt here too
         format.printf((info) => {
-          return `${info.timestamp + ""} ${info.level}: ${info.message}`;
+          return `${info.timestamp + ""} ${info.level}: ${info.message + ""}`;
         }),
       ),
     }),
