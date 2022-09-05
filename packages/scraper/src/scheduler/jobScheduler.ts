@@ -355,12 +355,16 @@ export class JobScheduler {
         // if aborting did not finish the job after 5 min
         // stop this process and exit as graceful as possible
         if (job.getRunningDuration() > hardMaxJobRunningTime) {
-          logger.error("Restarting Process due to long running jobs", {
+          logger.error("restarting Process due to long running job", {
             job_name: job.currentItem.name,
             job_id: job.id,
           });
           gracefulShutdown();
         } else if (!job.isAborted()) {
+          logger.error("aborting long running job", {
+            job_name: job.currentItem.name,
+            job_id: job.id,
+          });
           job.abort();
         }
       }
