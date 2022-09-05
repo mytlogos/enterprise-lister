@@ -126,6 +126,13 @@ export class JobScheduler {
         deleteAfterRun: false,
         runImmediately: true,
       },
+      {
+        type: ScrapeName.removeUsedMediaInWaits,
+        interval: MilliTime.DAY,
+        name: ScrapeName.removeUsedMediaInWaits,
+        deleteAfterRun: false,
+        runImmediately: true,
+      },
     );
     await this.addJobs(...jobs);
   }
