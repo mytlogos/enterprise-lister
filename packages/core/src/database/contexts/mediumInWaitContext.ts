@@ -136,4 +136,11 @@ export class MediumInWaitContext extends SubContext {
     );
     multiSingle(results, (result) => storeModifications("medium_in_wait", "insert", result));
   }
+
+  public async deleteUsedMediumInWait() {
+    const result = await this.dmlQuery(
+      "delete from medium_in_wait where (title, medium, link) in (select title, medium, link from medium_toc);",
+    );
+    storeModifications("medium_in_wait", "delete", result);
+  }
 }

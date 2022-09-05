@@ -1191,6 +1191,7 @@ export enum ScrapeName {
   queueTocs = "queueTocs",
   remapMediaParts = "remapMediaParts",
   queueExternalUser = "queueExternalUser",
+  removeUsedMediaInWaits = "removeUsedMediaInWaits",
 }
 
 export enum JobState {

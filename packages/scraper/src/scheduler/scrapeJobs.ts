@@ -7,6 +7,7 @@ import { list } from "../jobs/oneTimeUser";
 import { queueExternalUser } from "../jobs/queueExternalUser";
 import { queueTocsJob } from "../jobs/queueTocs";
 import { remapMediaParts } from "../jobs/remapMediumParts";
+import { removeUsedMediaInWaits } from "../jobs/removeUsedMediaInWaits";
 import { searchForTocJob } from "../jobs/searchForToc";
 import { toc, oneTimeToc } from "../jobs/toc";
 
@@ -21,6 +22,11 @@ export class ScrapeJob {
   public static readonly checkTocs = new ScrapeJob(ScrapeName.checkTocs, checkTocsJob);
   public static readonly queueTocs = new ScrapeJob(ScrapeName.queueTocs, queueTocsJob);
   public static readonly remapMediaParts = new ScrapeJob(ScrapeName.remapMediaParts, remapMediaParts);
+  public static readonly removeUsedMediaInWaits = new ScrapeJob(
+    ScrapeName.removeUsedMediaInWaits,
+    removeUsedMediaInWaits,
+  );
+
   public static readonly queueExternalUser = new ScrapeJob(ScrapeName.queueExternalUser, queueExternalUser);
 
   private constructor(
