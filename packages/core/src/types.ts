@@ -1517,6 +1517,7 @@ export interface NetworkTrack {
   sent: number;
   received: number;
   cloudflareCount: number;
+  cloudflareSolved: number;
   puppeteerCount: number;
   retryCount: number;
   hooksUsed: string[];
