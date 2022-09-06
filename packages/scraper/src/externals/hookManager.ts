@@ -2,7 +2,6 @@ import { CustomHook as CustomHookEntity, EmptyPromise } from "enterprise-core/di
 import logger from "enterprise-core/dist/logger";
 import { getHook as getWWHook } from "./direct/wuxiaworldScraper";
 import { getHook as getGogoAnimeHook } from "./direct/gogoAnimeScraper";
-import { getHook as getKissAnimeHook } from "./direct/kissAnimeScraper";
 import { getHook as getMangaHasuHook } from "./direct/mangaHasuScraper";
 import { getHook as getMangaDexHook } from "./direct/mangadexScraper";
 import { getHook as getWebnovelHook } from "./direct/webnovelScraper";
@@ -22,8 +21,6 @@ import { ValidationError } from "enterprise-core/dist/error";
 function getRawHooks(): Hook[] {
   return [
     getWWHook(),
-    // site was shutdown
-    getKissAnimeHook(),
     getGogoAnimeHook(),
     getMangaDexHook(),
     getMangaHasuHook(),
