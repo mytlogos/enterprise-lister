@@ -8,7 +8,7 @@ import {
 } from "async_hooks";
 import { writeSync } from "fs";
 import { AsyncContextError } from "./error";
-import { Modification, Optional } from "./types";
+import { Modification, NetworkTrack, Optional } from "./types";
 
 const localStorage = new AsyncLocalStorage();
 
@@ -181,12 +181,7 @@ export interface StoreMapping {
   [StoreKey.MODIFICATIONS]: Record<string, Modification>;
   [StoreKey.RESULT]: "success" | "warning" | "failed" | "aborted";
   [StoreKey.MESSAGE]: string;
-  [StoreKey.NETWORK]: {
-    count: number;
-    sent: number;
-    received: number;
-    history: Array<{ url: string; method: string; statusCode: number; send: number; received: number }>;
-  };
+  [StoreKey.NETWORK]: NetworkTrack;
   [StoreKey.LAST_RUN]: Date;
   [StoreKey.ERROR]: unknown;
   [StoreKey.LAST_REQUEST_URL]: string;

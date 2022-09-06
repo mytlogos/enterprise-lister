@@ -214,6 +214,11 @@ export class Requestor {
   private async usePuppeteer<P = any, T = any, R extends RequestConfig<T> = RequestConfig<T>>(
     config: R,
   ): Promise<Response<P, T>> {
+    const networkTrack = getStoreValue(StoreKey.NETWORK);
+
+    if (networkTrack) {
+      networkTrack.puppeteerCount++;
+    }
     const signal = getStoreValue(StoreKey.ABORT);
     signal?.throwIfAborted();
 
@@ -370,6 +375,8 @@ export class Requestor {
       try {
         const response = await this.performRequest<P, T, R>(config);
 
+        // this will be catched immediately, normally such a statuscode
+        // throws already an error without having to manually throw it
         if (response.status === 429) {
           throw Error("Too many requests");
         }
@@ -378,6 +385,11 @@ export class Requestor {
       } catch (error) {
         // retry at most 3 times for 429 - Too many Requests error
         if (error instanceof RequestError && error.response?.status === 429 && tryAgain < 3) {
+          const networkTrack = getStoreValue(StoreKey.NETWORK);
+
+          if (networkTrack) {
+            networkTrack.retryCount++;
+          }
           const retryAfterValue = error.response?.headers?.["retry-after"];
           const retryAfterSeconds = Number.parseInt(retryAfterValue);
 

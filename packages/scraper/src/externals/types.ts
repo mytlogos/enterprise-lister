@@ -112,6 +112,7 @@ export interface EndJobChannelMessage extends BasicJobChannelMessage {
   result: string;
   reason?: string;
   jobTrack: JobTrack;
+  duration: number;
 }
 
 /**

@@ -3,7 +3,7 @@ import { EpisodeContentData, EpisodeNews, ReleaseState, Optional } from "enterpr
 import * as url from "url";
 import logger from "enterprise-core/dist/logger";
 import { extractIndices, ignore, hasProp, MediaType, sanitizeString } from "enterprise-core/dist/tools";
-import { checkTocContent } from "../scraperTools";
+import { checkTocContent, storeHookName } from "../scraperTools";
 import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError, ScraperError, UrlError } from "../errors";
 import { extractLinkable, getText, LogType, scraperLog } from "./directTools";
@@ -83,6 +83,7 @@ interface ChapterChapterItem {
 }
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
+  storeHookName("mangadex");
   const linkReg = /^https:\/\/mangadex\.org\/chapter\/(\d+)/;
   const exec = linkReg.exec(chapterLink);
   if (!exec) {
@@ -145,6 +146,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
+  storeHookName("mangadex");
   // TODO: 19.07.2019 set the cookie 'mangadex_filter_langs:"1"'
   //  with expiration date somewhere in 100 years to lessen load
 
@@ -257,6 +259,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+  storeHookName("mangadex");
   const urlRegex = /^https?:\/\/mangadex\.org\/title\/\d+\/[^/]+\/?$/;
 
   if (!urlRegex.test(urlString)) {

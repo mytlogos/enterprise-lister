@@ -23,7 +23,7 @@ import {
   QueryJobHistory,
   Paginated,
 } from "../../types";
-import { isString, promiseMultiSingle, multiSingle } from "../../tools";
+import { isString, promiseMultiSingle, multiSingle, defaultNetworkTrack } from "../../tools";
 import logger from "../../logger";
 import mysql from "promise-mysql";
 import { escapeLike } from "../storages/storageTools";
@@ -518,12 +518,7 @@ export class JobContext extends SubContext {
 
       const jobTrack: JobTrack = {
         modifications: store.get(StoreKey.MODIFICATIONS) || {},
-        network: store.get(StoreKey.NETWORK) || {
-          count: 0,
-          sent: 0,
-          received: 0,
-          history: [],
-        },
+        network: store.get(StoreKey.NETWORK) || defaultNetworkTrack(),
         queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
       };
 
@@ -581,8 +576,8 @@ export class JobContext extends SubContext {
         item.max_deleted = Math.max(item.max_deleted, modification.deleted);
       });
       item.sql_queries = jobTrack.queryCount;
-      item.min_sql_queries = Math.min(jobTrack.queryCount);
-      item.max_sql_queries = Math.max(jobTrack.queryCount);
+      item.min_sql_queries = Math.min(jobTrack.queryCount, item.min_sql_queries);
+      item.max_sql_queries = Math.max(jobTrack.queryCount, item.max_sql_queries);
 
       item.failed += result === "failed" ? 1 : 0;
       item.succeeded += result === "success" ? 1 : 0;

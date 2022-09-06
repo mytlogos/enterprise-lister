@@ -3,7 +3,7 @@ import { runAsync, Store, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { JobError } from "enterprise-core/dist/error";
 import logger from "enterprise-core/dist/logger";
-import { stringify } from "enterprise-core/dist/tools";
+import { defaultNetworkTrack, stringify } from "enterprise-core/dist/tools";
 import { JobItem, JobState, Optional, ScrapeName } from "enterprise-core/dist/types";
 import { EndJobChannelMessage, StartJobChannelMessage } from "../externals/types";
 import { scrapeMapping } from "./scrapeJobs";
@@ -237,16 +237,12 @@ export class Job {
         jobType: item.type,
         jobTrack: {
           modifications: store.get(StoreKey.MODIFICATIONS) || {},
-          network: store.get(StoreKey.NETWORK) || {
-            count: 0,
-            sent: 0,
-            received: 0,
-            history: [],
-          },
+          network: store.get(StoreKey.NETWORK) || defaultNetworkTrack(),
           queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
         },
         result,
         reason: result !== "success" ? store.get(StoreKey.MESSAGE) : undefined,
+        duration: Date.now() - (this.currentItem.runningSince?.getTime() ?? 0),
         timestamp: Date.now(),
       };
       jobChannel.publish(message);

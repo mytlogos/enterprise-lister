@@ -9,6 +9,7 @@ import request, { Requestor } from "./request";
 import { ValidationError } from "enterprise-core/dist/error";
 import { ScraperError } from "./errors";
 import { getText } from "./direct/directTools";
+import { storeHookName } from "./scraperTools";
 
 interface SimpleReadingList {
   menu: string;
@@ -543,6 +544,7 @@ export interface ScrapeMedium {
 }
 
 async function novelUpdatesTocAdapter(uri: string) {
+  storeHookName("novelupdates");
   /* const pageInfo = await storage.getPageInfo(uri, "scraped");
 
     if (pageInfo.values) {

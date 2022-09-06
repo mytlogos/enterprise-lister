@@ -10,7 +10,7 @@ import {
 import * as url from "url";
 import logger from "enterprise-core/dist/logger";
 import { equalsIgnore, extractIndices, MediaType, sanitizeString, delay, hasProp } from "enterprise-core/dist/tools";
-import { checkTocContent } from "../scraperTools";
+import { checkTocContent, storeHookName } from "../scraperTools";
 import {
   SearchResult as TocSearchResult,
   searchToc,
@@ -68,6 +68,7 @@ function enforceHttps(link: string): string {
 }
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
+  storeHookName("mangahasu");
   // TODO scrape more than just the first page if there is an open end
   const baseUri = BASE_URI;
   const requestUrl = baseUri + "latest-releases.html";
@@ -179,6 +180,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 }
 
 async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeContent[]> {
+  storeHookName("mangahasu");
   const $ = await tryRequest(chapterLink);
   if (getText($("head > title")) === "Page not found!") {
     throw new MissingResourceError("Missing Toc on NovelFull", chapterLink);
@@ -229,6 +231,7 @@ async function contentDownloadAdapter(chapterLink: string): Promise<EpisodeConte
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+  storeHookName("mangahasu");
   if (!/https?:\/\/mangahasu\.se\/[^/]+\.html/.test(urlString)) {
     throw new UrlError("not a toc link for MangaHasu: " + urlString, urlString);
   }
@@ -398,6 +401,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function tocSearchAdapter(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
+  storeHookName("mangahasu");
   return searchToc(searchMedium, scrapeToc, BASE_URI, (searchString) => scrapeSearch(searchString, searchMedium));
 }
 
@@ -437,6 +441,7 @@ async function scrapeSearch(searchWords: string, medium: TocSearchMedium): Promi
 }
 
 async function search(searchWords: string): Promise<SearchResult[]> {
+  storeHookName("mangahasu");
   const urlString = BASE_URI + "search/autosearch";
 
   const body = "key=" + searchWords;

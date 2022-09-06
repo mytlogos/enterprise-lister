@@ -27,10 +27,12 @@ import {
 import { ScraperError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 import request from "../request";
+import { storeHookName } from "../scraperTools";
 
 const BASE_URI = "https://novelfull.com/";
 
 async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
+  storeHookName("novelfull");
   return searchTocCheerio(
     medium,
     tocAdapterTooled,
@@ -41,6 +43,7 @@ async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
 }
 
 async function search(text: string): Promise<SearchResult[]> {
+  storeHookName("novelfull");
   const encodedText = encodeURIComponent(text);
   const $ = await request.getCheerio({ url: BASE_URI + "search?keyword=" + encodedText });
 
@@ -66,6 +69,7 @@ async function search(text: string): Promise<SearchResult[]> {
 }
 
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
+  storeHookName("novelfull");
   const pattern = /^https?:\/\/novelfull\.com\/.+\/.+\d+.+/;
   if (!urlString.match(pattern)) {
     scraperLog("warn", LogType.INVALID_LINK, "novelfull", { link: urlString, expected: pattern.source });
@@ -120,6 +124,7 @@ function extractTocSnippet($: cheerio.CheerioAPI, link: string): Toc {
 }
 
 async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
+  storeHookName("novelfull");
   const uri = BASE_URI;
 
   const linkMatch = tocLink.match("^https?://novelfull\\.com/([\\w-]+.html)$");
@@ -184,6 +189,7 @@ async function tocAdapterTooled(tocLink: string): Promise<Toc[]> {
 }
 
 async function newsAdapter(): Promise<NewsScrapeResult> {
+  storeHookName("novelfull");
   const uri = BASE_URI;
   const $ = await request.getCheerio({ url: uri });
   const items = $("#list-index .list-new .row");

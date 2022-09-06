@@ -6,12 +6,14 @@ import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist
 import request from "../request";
 import { ScraperError } from "../errors";
 import { scraperLog, LogType, getText } from "./directTools";
+import { storeHookName } from "../scraperTools";
 
 export const sourceType = "qidian_underground";
 
 const BASE_URI = "https://toc.qidianunderground.org/";
 
 async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
+  storeHookName("underground");
   const uri = BASE_URI;
 
   const $ = await request.getCheerio({ url: uri });
@@ -194,6 +196,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
+  storeHookName("underground");
   const $ = await request.getCheerio({ url: urlString });
 
   const contents = $(".center-block .well");

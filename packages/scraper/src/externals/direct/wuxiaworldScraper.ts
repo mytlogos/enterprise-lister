@@ -3,7 +3,7 @@ import { EpisodeNews, SearchResult, TocSearchMedium, VoidablePromise, Nullable }
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
 import { countOccurrence, equalsIgnore, extractIndices, MediaType, sanitizeString } from "enterprise-core/dist/tools";
-import { checkTocContent } from "../scraperTools";
+import { checkTocContent, storeHookName } from "../scraperTools";
 import { UrlError } from "../errors";
 import request from "../request";
 import { getText } from "./directTools";
@@ -11,6 +11,7 @@ import { getText } from "./directTools";
 const BASE_URI = "https://www.wuxiaworld.com/";
 
 async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
+  storeHookName("wuxiaworld");
   const uri = BASE_URI;
 
   const $ = await request.getCheerio({ url: uri });
@@ -107,6 +108,7 @@ async function scrapeNews(): VoidablePromise<NewsScrapeResult> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+  storeHookName("wuxiaworld");
   if (urlString.endsWith("-preview")) {
     return [];
   }
@@ -237,6 +239,7 @@ async function scrapeToc(urlString: string): Promise<Toc[]> {
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
+  storeHookName("wuxiaworld");
   const $ = await request.getCheerio({ url: urlString });
   const mainElement = $(".content");
   const novelTitle = sanitizeString(getText(mainElement.find(".top-bar-area .caption a").first()));
@@ -278,6 +281,7 @@ async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
 }
 
 async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
+  storeHookName("wuxiaworld");
   const words = medium.title.split(/\s+/).filter((value) => value);
   let tocLink = "";
   let searchWord = "";
@@ -315,6 +319,7 @@ async function tocSearcher(medium: TocSearchMedium): VoidablePromise<Toc> {
 }
 
 async function search(text: string): Promise<SearchResult[]> {
+  storeHookName("wuxiaworld");
   const word = encodeURIComponent(text);
   const parsed: NovelSearchResponse = await request.getJson({ url: BASE_URI + "api/novels/search?query=" + word });
 

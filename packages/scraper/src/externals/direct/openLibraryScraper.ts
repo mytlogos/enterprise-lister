@@ -6,6 +6,7 @@ import { UrlError } from "../errors";
 import { SearchResult } from "enterprise-core/dist/types";
 import request from "../request";
 import { ValidationError } from "enterprise-core/dist/error";
+import { storeHookName } from "../scraperTools";
 
 const BASE_URI = "https://openlibrary.org/";
 
@@ -64,6 +65,7 @@ interface OpenLibraryBookData {
  * @param tocLink toc link
  */
 async function toc(tocLink: string): Promise<Toc[]> {
+  storeHookName("openlibrary");
   const linkRegex = /https?:\/\/openlibrary\.org\/api\/books\?bibkeys=(ISBN|OLID):\d+&jscmd=data&format=json/;
 
   if (!linkRegex.test(tocLink)) {
@@ -139,6 +141,7 @@ interface SearchItem {
  * @param medium the medium type to filter after
  */
 async function search(text: string, medium: number): Promise<SearchResult[]> {
+  storeHookName("openlibrary");
   if (medium !== MediaType.TEXT) {
     return [];
   }

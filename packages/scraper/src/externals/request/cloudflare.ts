@@ -7,6 +7,7 @@ import { URL, URLSearchParams } from "url";
 import { delay } from "enterprise-core/dist/tools";
 import { RequestError, CloudflareError, CaptchaError, ParserError } from "./error";
 import { HeaderGenerator } from "header-generator";
+import { getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
 
 const headerGenerator = new HeaderGenerator({
   browsers: ["chrome", "firefox", "safari"],
@@ -298,6 +299,11 @@ function onCloudflareResponse(
   requester: Requester,
   isHtml: boolean,
 ): Promise<Response> {
+  const networkTrack = getStoreValue(StoreKey.NETWORK);
+
+  if (networkTrack) {
+    networkTrack.cloudflareCount++;
+  }
   if (body.length < 1) {
     // This is a 4xx-5xx Cloudflare response with an empty body.
     throw new CloudflareError(response.statusCode, options, response);

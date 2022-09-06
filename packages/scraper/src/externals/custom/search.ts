@@ -6,6 +6,7 @@ import { SearchScraper } from "../types";
 import { defaultContext, extractJSON, makeRequest } from "./common";
 import { SearchResult } from "enterprise-core/dist/types";
 import { CustomHookError } from "./errors";
+import { storeHookName } from "../scraperTools";
 
 const tocSchema: JSONSchema7 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -47,6 +48,7 @@ export function createSearchScraper(config: HookConfig): SearchScraper | undefin
   }
 
   const scraper: SearchScraper = async (text) => {
+    storeHookName(config.name);
     const context = defaultContext();
     // @ts-expect-error
     context.variables.PARAM = [text];

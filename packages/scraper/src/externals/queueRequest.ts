@@ -2,7 +2,7 @@ import { setContext, removeContext, getStore, bindContext, StoreKey } from "ente
 import http from "http";
 import https from "https";
 import { Socket } from "net";
-import { isString, getElseSet, stringify } from "enterprise-core/dist/tools";
+import { isString, getElseSet, stringify, defaultNetworkTrack } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import { AsyncResource } from "async_hooks";
 import { channel } from "diagnostics_channel";
@@ -44,9 +44,7 @@ function patchRequest(module: HttpModule, protocol: string) {
             return;
           }
 
-          const stats = getElseSet(store, StoreKey.NETWORK, () => {
-            return { count: 0, sent: 0, received: 0, history: [] };
-          });
+          const stats = getElseSet(store, StoreKey.NETWORK, defaultNetworkTrack);
           stats.count += 1;
           stats.sent += bytesSend;
           stats.received += bytesReceived;

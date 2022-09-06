@@ -11,7 +11,7 @@ import {
 import { equalsIgnore, ignore, MediaType, relativeToAbsoluteTime, sanitizeString } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
-import { checkTocContent } from "../scraperTools";
+import { checkTocContent, storeHookName } from "../scraperTools";
 import { ScraperError, UrlError } from "../errors";
 import { Cookie } from "tough-cookie";
 import * as cheerio from "cheerio";
@@ -32,6 +32,7 @@ function toTocLink(bookId: string): Link {
 }
 
 async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] } | undefined> {
+  storeHookName("webnovel");
   const uri = BASE_URI;
   const $ = await request.getCheerio({ url: uri });
   const newsRows = $("#LatUpdate tbody > tr");
@@ -96,6 +97,7 @@ async function scrapeNews(): Promise<{ news?: News[]; episodes?: EpisodeNews[] }
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+  storeHookName("webnovel");
   // wait for a normal request, to get the right cookies
   await initPromise;
 
@@ -123,6 +125,7 @@ function getCookies(): Promise<Cookie[]> {
 }
 
 async function scrapeTocPage(bookId: string, mediumId?: number): Promise<Toc[]> {
+  storeHookName("webnovel");
   const csrfCookie = (await getCookies()).find((value) => value.key === "_csrfToken");
 
   if (!csrfCookie) {
@@ -224,6 +227,7 @@ async function loadJson(urlString: string, retry = 0): Promise<any> {
 }
 
 async function scrapeContent(urlString: string): Promise<EpisodeContent[]> {
+  storeHookName("webnovel");
   let $: cheerio.CheerioAPI;
   try {
     $ = await loadBody(urlString);
@@ -334,6 +338,7 @@ interface TocResponse {
 }
 
 async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
+  storeHookName("webnovel");
   logger.info("start searching webnovel " + searchMedium.mediumId);
   const urlString = BASE_URI + "/search?keywords=" + encodeURIComponent(searchMedium.title);
   const body = await loadBody(urlString);
@@ -365,6 +370,7 @@ async function searchToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
 }
 
 async function search(text: string): Promise<SearchResult[]> {
+  storeHookName("webnovel");
   const uri = BASE_URI;
   const urlString = BASE_URI + "/search?keywords=" + encodeURIComponent(text);
   const body = await loadBody(urlString);

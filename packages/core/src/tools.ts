@@ -9,6 +9,7 @@ import {
   Nullable,
   Indexable,
   ExtractedIndex,
+  NetworkTrack,
 } from "./types";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
@@ -1040,4 +1041,17 @@ export function deferableTimeout(timeoutMillis: number, maxRetries = 0): Deferab
   };
   result.defer();
   return result;
+}
+
+export function defaultNetworkTrack(): NetworkTrack {
+  return {
+    count: 0,
+    sent: 0,
+    received: 0,
+    cloudflareCount: 0,
+    puppeteerCount: 0,
+    retryCount: 0,
+    hooksUsed: [],
+    history: [],
+  };
 }

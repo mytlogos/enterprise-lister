@@ -5,6 +5,7 @@ import { HookConfig } from "./types";
 import { CustomHookError } from "./errors";
 import { ValidationError } from "enterprise-core/dist/error";
 import request from "../request";
+import { storeHookName } from "../scraperTools";
 
 function validateEpisodeNews(episodes: Array<Partial<EpisodeNews>>): EpisodeNews[] {
   for (const episode of episodes) {
@@ -51,6 +52,7 @@ export function createNewsScraper(config: HookConfig): NewsScraper | undefined {
   const newsConfig = config.news;
 
   const scraper: NewsScraper = async () => {
+    storeHookName(config.name);
     const $ = await request.getCheerio({ url: newsConfig.newsUrl });
     const baseUri = newsConfig.base || config.base;
     const context = defaultContext();

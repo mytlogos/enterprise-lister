@@ -1516,6 +1516,10 @@ export interface NetworkTrack {
   count: number;
   sent: number;
   received: number;
+  cloudflareCount: number;
+  puppeteerCount: number;
+  retryCount: number;
+  hooksUsed: string[];
   history: Array<{
     url: string;
     method: string;

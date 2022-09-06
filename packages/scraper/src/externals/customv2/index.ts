@@ -19,6 +19,7 @@ import { EpisodeNews, ReleaseState, SearchResult } from "enterprise-core/dist/ty
 import { datePattern } from "./analyzer";
 import { validateEpisodeNews, validateToc } from "./validation";
 import request, { Response } from "../request";
+import { storeHookName } from "../scraperTools";
 
 type Conditional<T, R> = T extends undefined ? undefined : R;
 type Context = Record<string, any>;
@@ -183,6 +184,7 @@ function createNewsScraper(config: HookConfig): NewsScraper | undefined {
   const context: Context = {};
 
   const scraper: NewsScraper = async (): Promise<NewsScrapeResult> => {
+    storeHookName(config.name);
     const results: Array<Array<NewsNestedResult | NewsSingleResult>> = [];
     for (const datum of newsConfig.data) {
       const selector: Selector = {
@@ -265,6 +267,7 @@ function createTocScraper(config: HookConfig): TocScraper | undefined {
   const x = createScraper(tocConfig.regexes);
 
   const scraper: TocScraper = async (link: string): Promise<Toc[]> => {
+    storeHookName(config.name);
     const results = [];
     let firstResponseUrl: string | undefined;
 
@@ -416,6 +419,7 @@ function createDownloadScraper(config: HookConfig): ContentDownloader | undefine
   const context: Context = {};
 
   const scraper: ContentDownloader = async (link) => {
+    storeHookName(config.name);
     const results = [];
     for (const datum of downloadConfig.data) {
       const selector = {
@@ -451,6 +455,7 @@ function createSearchScraper(config: HookConfig): SearchScraper | undefined {
     return;
   }
   const scraper: SearchScraper = async (text) => {
+    storeHookName(config.name);
     const results = [];
     for (const datum of searchConfig.data) {
       if (datum._request) {

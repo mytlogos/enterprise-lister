@@ -1,6 +1,7 @@
 import { Cheerio, Element } from "cheerio";
 import { JSONSchema7 } from "json-schema";
 import { validate } from "jsonschema";
+import { storeHookName } from "../scraperTools";
 import { ContentDownloader, EpisodeContent } from "../types";
 import { defaultContext, extract, makeRequest } from "./common";
 import { CustomHookError } from "./errors";
@@ -50,6 +51,8 @@ export function createDownloadScraper(config: HookConfig): ContentDownloader | u
   }
 
   const scraper: ContentDownloader = async (url) => {
+    storeHookName(config.name);
+
     const context = defaultContext();
 
     async function scrape(downloadConfig: DownloadConfig) {

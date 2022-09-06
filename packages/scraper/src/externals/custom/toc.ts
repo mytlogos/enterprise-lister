@@ -6,6 +6,7 @@ import { validate } from "jsonschema";
 import { JSONSchema7 } from "json-schema";
 import { CustomHookError } from "./errors";
 import { Response } from "../request";
+import { storeHookName } from "../scraperTools";
 
 const tocSchema: JSONSchema7 = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -95,6 +96,7 @@ export function createTocScraper(config: HookConfig): TocScraper | undefined {
   }
 
   const scraper: TocScraper = async (url) => {
+    storeHookName(config.name);
     const context = defaultContext();
     let lastUrl = url;
 

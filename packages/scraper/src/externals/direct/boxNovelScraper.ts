@@ -26,7 +26,7 @@ import {
   LogType,
   getText,
 } from "./directTools";
-import { checkTocContent } from "../scraperTools";
+import { checkTocContent, storeHookName } from "../scraperTools";
 import { MissingResourceError, UrlError } from "../errors";
 import * as cheerio from "cheerio";
 import request, { ResponseError } from "../request";
@@ -45,10 +45,12 @@ interface NovelSearchData {
 const BASE_URI = "https://boxnovel.com/";
 
 async function tocSearch(medium: TocSearchMedium): VoidablePromise<Toc> {
+  storeHookName("boxnovel");
   return searchToc(medium, tocAdapter, BASE_URI, (searchString) => searchAjax(searchString, medium));
 }
 
 async function search(text: string): Promise<SearchResult[]> {
+  storeHookName("boxnovel");
   const urlString = BASE_URI + "wp-admin/admin-ajax.php";
   let response: NovelSearchResponse;
   const searchResults: SearchResult[] = [];
@@ -111,6 +113,7 @@ export async function searchAjax(searchWords: string, medium: TocSearchMedium): 
 }
 
 async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent[]> {
+  storeHookName("boxnovel");
   if (!urlString.match(/https:\/\/boxnovel\.com\/novel\/.+\/chapter-.+/)) {
     return [];
   }
@@ -159,6 +162,7 @@ async function contentDownloadAdapter(urlString: string): Promise<EpisodeContent
 }
 
 async function tocAdapter(tocLink: string): Promise<Toc[]> {
+  storeHookName("boxnovel");
   const uri = BASE_URI;
 
   if (!tocLink.startsWith(BASE_URI + "novel/")) {
@@ -305,6 +309,7 @@ async function tocAdapter(tocLink: string): Promise<Toc[]> {
 }
 
 async function newsAdapter(): VoidablePromise<{ news?: News[]; episodes?: EpisodeNews[] }> {
+  storeHookName("boxnovel");
   const uri = BASE_URI;
   const $ = await request.getCheerio({ url: uri });
   const items = $(".page-item-detail");

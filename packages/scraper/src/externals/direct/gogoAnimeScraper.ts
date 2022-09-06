@@ -4,7 +4,7 @@ import { EpisodeNews, ReleaseState, SearchResult, TocSearchMedium, VoidablePromi
 import * as cheerio from "cheerio";
 import logger from "enterprise-core/dist/logger";
 import * as url from "url";
-import { checkTocContent } from "../scraperTools";
+import { checkTocContent, storeHookName } from "../scraperTools";
 import { getText, LogType, scraperLog, SearchResult as TocSearchResult, searchToc } from "./directTools";
 import { UrlError } from "../errors";
 import request from "../request";
@@ -12,6 +12,7 @@ import request from "../request";
 const BASE_URI = "https://www.gogoanime.vc/";
 
 async function scrapeNews(): Promise<NewsScrapeResult> {
+  storeHookName("gogoanime");
   const uri = BASE_URI;
   const $ = await request.getCheerio({ url: uri });
 
@@ -80,6 +81,7 @@ async function scrapeNews(): Promise<NewsScrapeResult> {
 }
 
 async function scrapeToc(urlString: string): Promise<Toc[]> {
+  storeHookName("gogoanime");
   const animeAliasReg = /^https?:\/\/(www\d*\.)?gogoanime\.(vc|wiki)\/category\/(.+)/;
   const aliasExec = animeAliasReg.exec(urlString);
 
@@ -185,10 +187,12 @@ async function scrapeSearch(searchString: string, searchMedium: TocSearchMedium)
 }
 
 async function searchForToc(searchMedium: TocSearchMedium): VoidablePromise<Toc> {
+  storeHookName("gogoanime");
   return searchToc(searchMedium, scrapeToc, BASE_URI, (searchString) => scrapeSearch(searchString, searchMedium));
 }
 
 async function search(searchWords: string): Promise<SearchResult[]> {
+  storeHookName("gogoanime");
   const urlString = `https://ajax.apimovie.xyz/site/loadAjaxSearch?keyword=${encodeURIComponent(
     searchWords,
   )}&id=-1&link_web=https%3A%2F%2Fwww.gogoanime.vc%2F`;
@@ -240,6 +244,7 @@ search.medium = MediaType.VIDEO;
  * @deprecated behind recaptcha
  */
 async function contentDownloader(link: string): Promise<EpisodeContent[]> {
+  storeHookName("gogoanime");
   const episodeRegex = /https:\/\/www\d*\.gogoanime\.(vc|wiki)\/.+-episode-(\d+)/;
   const exec = episodeRegex.exec(link);
   if (!exec) {

@@ -1,6 +1,6 @@
 import { ListScrapeResult } from "./listManager";
-import { combiIndex, getElseSet, hasProp } from "enterprise-core/dist/tools";
-import { Episode, Uuid, SearchResult, EmptyPromise, Optional } from "enterprise-core/dist/types";
+import { combiIndex, defaultNetworkTrack, getElseSet, hasProp } from "enterprise-core/dist/tools";
+import { Episode, Uuid, SearchResult, EmptyPromise, Optional, NetworkTrack } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import { ContentDownloader, DownloadContent, EpisodeContent, Hook, Toc, TocContent } from "./types";
 import { Cache } from "enterprise-core/dist/cache";
@@ -19,6 +19,7 @@ import {
 import request, { Response } from "./request";
 import { ValidationError } from "enterprise-core/dist/error";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
+import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 
 interface ScrapeableFilterResult {
   available: string[];
@@ -358,4 +359,18 @@ export function checkLink(link: string, linkKey?: string): Promise<string> {
         resolve("");
       });
   });
+}
+
+/**
+ * Stores hookName in the asyncStorage as an used Hook.
+ *
+ * @param hookName name to store
+ */
+export function storeHookName(hookName: string) {
+  const store = getStore();
+
+  if (store) {
+    const track: NetworkTrack = getElseSet(store, StoreKey.NETWORK, defaultNetworkTrack);
+    track.hooksUsed.push(hookName);
+  }
 }
