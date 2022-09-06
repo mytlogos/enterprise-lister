@@ -1049,6 +1049,7 @@ export function defaultNetworkTrack(): NetworkTrack {
     sent: 0,
     received: 0,
     cloudflareCount: 0,
+    cloudflareSolved: 0,
     puppeteerCount: 0,
     retryCount: 0,
     hooksUsed: [],
