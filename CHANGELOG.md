@@ -1,3 +1,12 @@
+## [2.21.1](https://github.com/mytlogos/enterprise-lister/compare/v2.21.0...v2.21.1) (2022-09-06)
+
+
+### Bug Fixes
+
+* **core:** add missing property ([300167d](https://github.com/mytlogos/enterprise-lister/commit/300167dacf9cf2b5d81c0f06f5b7b93ab215e55a))
+* **core:** add missing property ([72cf3f7](https://github.com/mytlogos/enterprise-lister/commit/72cf3f76e1a2dccff710a194898a51b67cfc02d3))
+* **scraper:** add missing cloudflare solved metric ([ac634ec](https://github.com/mytlogos/enterprise-lister/commit/ac634ec85747502bd4fa70807978084340e9b409))
+
 # [2.21.0](https://github.com/mytlogos/enterprise-lister/compare/v2.20.1...v2.21.0) (2022-09-06)
 
 

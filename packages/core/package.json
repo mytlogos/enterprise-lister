@@ -1,6 +1,6 @@
 {
   "name": "enterprise-core",
-  "version": "2.21.0",
+  "version": "2.21.1",
   "private": true,
   "scripts": {
     "build": "tsc -p ./",
