@@ -1,3 +1,19 @@
+# [2.21.0](https://github.com/mytlogos/enterprise-lister/compare/v2.20.1...v2.21.0) (2022-09-06)
+
+
+### Bug Fixes
+
+* **scraper:** commit missing file ([0e6acfd](https://github.com/mytlogos/enterprise-lister/commit/0e6acfdfae51bb6ce78e69c5dd5065debe26326e))
+* **scraper:** log job abort ([654935e](https://github.com/mytlogos/enterprise-lister/commit/654935e27c6a1b348ce76bf391e332f1ddf37ae4))
+* **scraper:** remove outdated hook ([c764399](https://github.com/mytlogos/enterprise-lister/commit/c764399174a1a27c220ca3a2dd765e7c6f6c398c))
+* **scraper:** schedule default job ([f56e1c1](https://github.com/mytlogos/enterprise-lister/commit/f56e1c1b03c5d9305febfb4169c53d220cc2c954))
+
+
+### Features
+
+* periodically delete used MediumInWaits ([abf42a3](https://github.com/mytlogos/enterprise-lister/commit/abf42a3476b03d7dba9db7c1d05e372ef8dfde42))
+* **scraper:** expand crawler metrics ([b7f0974](https://github.com/mytlogos/enterprise-lister/commit/b7f0974fbb3be01355ff61a6b1b8e32228b7d3e8))
+
 ## [2.20.1](https://github.com/mytlogos/enterprise-lister/compare/v2.20.0...v2.20.1) (2022-09-05)
 
 
