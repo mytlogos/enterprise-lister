@@ -29,6 +29,7 @@ interface ByPassRequestConfig<D = any> extends BasicRequestConfig<D> {
 }
 
 type Requester = (config: RequestConfig<any>) => Promise<Response>;
+const DEFAULT_CHALLENGE_COUNT = 3;
 
 export async function handleCloudflare(config: RequestConfig<any>, requestor: Requester) {
   const defaultParams: ByPassRequestConfig<any> = {
@@ -36,7 +37,7 @@ export async function handleCloudflare(config: RequestConfig<any>, requestor: Re
     // Reduce Cloudflare's timeout to cloudflareMaxTimeout if it is excessive
     cloudflareMaxTimeout: 30000,
     // Support only this max challenges in row. If CF returns more, throw an error
-    challengesToSolve: 3,
+    challengesToSolve: DEFAULT_CHALLENGE_COUNT,
     // Remove Cloudflare's email protection
     decodeEmails: false,
   };
@@ -523,9 +524,14 @@ function onRedirectChallenge(options: any, response: any, body: string, requeste
   return performRequest(options, requester);
 }
 
-function onRequestComplete(options: any, response: Response, body: Buffer | string, isHtml?: boolean): Response {
+function onRequestComplete(
+  options: ByPassRequestConfig,
+  response: Response,
+  body: Buffer | string,
+  isHtml?: boolean,
+): Response {
   if (typeof options.realEncoding === "string") {
-    body = body.toString(options.realEncoding);
+    body = body.toString(options.realEncoding as BufferEncoding);
     // The resolveWithFullResponse option will resolve with the response
     // object. This changes the response.body so it is as expected.
 
@@ -536,5 +542,12 @@ function onRequestComplete(options: any, response: Response, body: Buffer | stri
     response.data = body;
   }
 
+  if (options.challengesToSolve < DEFAULT_CHALLENGE_COUNT) {
+    const networkTrack = getStoreValue(StoreKey.NETWORK);
+
+    if (networkTrack) {
+      networkTrack.cloudflareSolved++;
+    }
+  }
   return response;
 }

@@ -64,6 +64,12 @@ const jobNetworkCloudflareCount = new Counter({
   labelNames: ["jobType", "hook"],
 });
 
+const jobNetworkCloudflareSolvedCount = new Counter({
+  name: "scraper_job_cloudflare_solved_count",
+  help: "Count Clouflare challenges solved",
+  labelNames: ["jobType", "hook"],
+});
+
 const jobNetworkPuppeteerCount = new Counter({
   name: "scraper_job_puppeteer_used_count",
   help: "Count Puppeteer used",
@@ -103,6 +109,7 @@ subscribe("enterprise-jobs", (message) => {
     jobDuration.observe(label, message.duration / 1000);
     jobNetworkRetryCount.inc(label, message.jobTrack.network.retryCount);
     jobNetworkCloudflareCount.inc(label, message.jobTrack.network.cloudflareCount);
+    jobNetworkCloudflareSolvedCount.inc(label, message.jobTrack.network.cloudflareSolved);
     jobNetworkPuppeteerCount.inc(label, message.jobTrack.network.puppeteerCount);
     jobDBQueryCount.inc(label, message.jobTrack.queryCount);
     jobNetworkQueryCount.inc(label, message.jobTrack.network.count);
