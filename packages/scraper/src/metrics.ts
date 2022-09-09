@@ -83,10 +83,25 @@ const jobDuration = new Histogram({
   labelNames: ["jobType", "hook"],
 });
 
+const puppeteerActive = new Gauge({
+  name: "scraper_job_puppeteer_active",
+  help: "Puppeteer active or not",
+});
+
+const puppeteerPages = new Gauge({
+  name: "scraper_job_puppeteer_pages",
+  help: "Number of open Puppeteer Pages",
+});
+
 subscribe("enterprise-jobqueue", (message) => {
   jobMaxCount.set(message.max);
   jobQueueCount.set(message.queued);
   jobActiveCount.set(message.active);
+});
+
+subscribe("enterprise-puppeteer", (message) => {
+  puppeteerActive.set(message.browser ? 1 : 0);
+  puppeteerPages.set(message.pages);
 });
 
 subscribe("enterprise-jobs", (message) => {

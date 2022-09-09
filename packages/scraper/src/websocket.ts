@@ -2,7 +2,7 @@ import Websocket from "ws";
 import logger from "enterprise-core/dist/logger";
 import { remove } from "enterprise-core/dist/tools";
 import { ChannelNames, subscribe, unsubscribe } from "diagnostics_channel";
-import { ScraperChannel, WSRequest } from "./externals/types";
+import { WSRequest } from "./externals/types";
 import { DefaultJobScraper } from "./scheduler/jobScheduler";
 import { publishQueues } from "./externals/queueRequest";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
@@ -64,7 +64,7 @@ ws.on("connection", (socket) => {
 
 class SocketChannelListener {
   private readonly listenerSockets: Websocket[] = [];
-  private readonly channel: ScraperChannel;
+  private readonly channel: ChannelNames;
 
   public constructor(channel: ChannelNames) {
     this.channel = channel;

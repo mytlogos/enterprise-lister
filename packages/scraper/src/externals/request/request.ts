@@ -14,6 +14,7 @@ import puppeteer from "puppeteer-extra";
 import { HTTPRequest, HTTPResponse, Protocol, Browser, Page } from "puppeteer";
 import puppeteerStealthPlugin from "puppeteer-extra-plugin-stealth";
 import { getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
+import { channel } from "diagnostics_channel";
 puppeteer.use(puppeteerStealthPlugin());
 
 function transformAxiosResponse(response: AxiosResponse): Response {
@@ -41,6 +42,8 @@ function transformAxiosResponse(response: AxiosResponse): Response {
   };
 }
 
+const puppeteerChannel = channel("enterprise-puppeteer");
+
 // remove pages after 10 minutes of inactivity
 const pages = new Cache<string, Promise<Page>>({ stdTTL: 60 * 10, useClones: false, size: 20 });
 const pageUsed = new Set<string>();
@@ -50,7 +53,12 @@ pages.on("expired", (_key, value: Promise<Page>) => {
     if (!page.isClosed()) {
       page.close();
     }
+    puppeteerChannel.publish({ browser: browserGetter.isActive(), pages: pages.stats.keys });
   });
+});
+
+pages.on("set", () => {
+  puppeteerChannel.publish({ browser: browserGetter.isActive(), pages: pages.stats.keys });
 });
 
 // Modified from https://www.bannerbear.com/blog/ways-to-speed-up-puppeteer-screenshots/
@@ -115,6 +123,7 @@ class BrowserGetter {
       const browserPromise = this.#puppeteerBrowser;
       this.#timeoutId = undefined;
       this.#puppeteerBrowser = undefined;
+      pages.flushAll();
 
       browserPromise?.then((browser) => browser.close()).catch(logger.error);
     }, 1000 * 60 * 15);
@@ -126,7 +135,12 @@ class BrowserGetter {
     });
     return this.#puppeteerBrowser;
   }
+
+  public isActive() {
+    return !!this.#puppeteerBrowser;
+  }
 }
+
 const browserGetter = new BrowserGetter();
 
 /**

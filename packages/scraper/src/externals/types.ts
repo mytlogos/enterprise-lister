@@ -16,11 +16,6 @@ import {
 import { MediaType } from "enterprise-core/dist/tools";
 import { ListScrapeResult } from "./listManager";
 
-/**
- * Channels accessible in Scraper.
- */
-export type ScraperChannel = "enterprise-jobqueue" | "enterprise-jobs" | "enterprise-requestqueue";
-
 export interface BasicChannelMessage {
   messageType: string;
 }
@@ -53,6 +48,11 @@ export interface JobQueueChannelMessage extends BasicChannelMessage {
   max: number;
 }
 
+export interface PuppeteerMessage {
+  browser: boolean;
+  pages: number;
+}
+
 /**
  * Type diagnostics_channel module more restrictively.
  */
@@ -61,6 +61,7 @@ declare module "diagnostics_channel" {
     "enterprise-jobqueue": JobQueueChannelMessage;
     "enterprise-jobs": JobChannelMessage;
     "enterprise-requestqueue": RequestQueueChannelMessage;
+    "enterprise-puppeteer": PuppeteerMessage;
   }
 
   type ChannelNames = keyof ScraperMapping;
