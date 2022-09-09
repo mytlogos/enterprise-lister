@@ -1,3 +1,10 @@
+# [2.22.0](https://github.com/mytlogos/enterprise-lister/compare/v2.21.1...v2.22.0) (2022-09-09)
+
+
+### Features
+
+* **scraper:** add more puppeteer metrics ([eaceec2](https://github.com/mytlogos/enterprise-lister/commit/eaceec2d0c8b63329d81cb754906fc417ded1650))
+
 ## [2.21.1](https://github.com/mytlogos/enterprise-lister/compare/v2.21.0...v2.21.1) (2022-09-06)
 
 
