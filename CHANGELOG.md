@@ -1,3 +1,10 @@
+## [2.22.1](https://github.com/mytlogos/enterprise-lister/compare/v2.22.0...v2.22.1) (2022-09-10)
+
+
+### Bug Fixes
+
+* **scraper:** fix job arguments ([2b9b476](https://github.com/mytlogos/enterprise-lister/commit/2b9b47642dd9bab6f6f25ef9d40782aa37305740))
+
 # [2.22.0](https://github.com/mytlogos/enterprise-lister/compare/v2.21.1...v2.22.0) (2022-09-09)
 
 
