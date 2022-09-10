@@ -25,35 +25,24 @@ export function createJob(item: JobItem): Job | undefined {
 
   switch (item.type) {
     case ScrapeName.newsAdapter:
-      args = item.arguments;
-      break;
-    case ScrapeName.checkTocs:
-      break;
     case ScrapeName.feed:
-      args = item.arguments;
-      break;
     case ScrapeName.news:
       args = item.arguments;
       break;
     case ScrapeName.oneTimeToc:
-      args = JSON.parse(item.arguments as string);
-      break;
     case ScrapeName.oneTimeUser:
-      args = JSON.parse(item.arguments as string);
-      break;
     case ScrapeName.queueExternalUser:
+    case ScrapeName.searchForToc:
       args = JSON.parse(item.arguments as string);
-      break;
-    case ScrapeName.queueTocs:
-      break;
-    case ScrapeName.remapMediaParts:
       break;
     case ScrapeName.toc:
       args = JSON.parse(item.arguments as string);
       args.lastRequest = item.lastRun;
       break;
-    case ScrapeName.searchForToc:
-      args = JSON.parse(item.arguments as string);
+    case ScrapeName.checkTocs:
+    case ScrapeName.queueTocs:
+    case ScrapeName.removeUsedMediaInWaits:
+    case ScrapeName.remapMediaParts:
       break;
     default:
       logger.warn("unknown job type", { job_type: item.type, job_id: item.id });
