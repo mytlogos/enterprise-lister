@@ -207,7 +207,7 @@ export class Job {
         if (item.interval < 60000) {
           item.interval = 60000;
         }
-        item.nextRun = new Date(item.lastRun.getTime() + item.interval);
+        item.nextRun = new Date(Date.now() + item.interval);
       }
       item.state = JobState.WAITING;
       await jobStorage.updateJobs(item, end);

@@ -15,7 +15,7 @@ import {
   QueryItems,
   QueryItemsResult,
 } from "../../types";
-import { getElseSet, getElseSetObj, multiSingle, promiseMultiSingle, batch } from "../../tools";
+import { getElseSet, getElseSetObj, multiSingle, promiseMultiSingle, batch, jsonReplacer } from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
 import { DatabaseContext } from "./databaseContext";
@@ -40,6 +40,7 @@ import { DatabaseError, NotImplementedError, UnsupportedError, ValidationError }
 import { NotificationContext } from "./notificationContext";
 import { ClientBase, QueryResult } from "pg";
 import QueryStream from "pg-query-stream";
+import winston, { format } from "winston";
 
 const database = "enterprise";
 
@@ -89,6 +90,17 @@ function validateQuery(query: string, parameter: any | any[]): [string, any[]] {
   }
   return [query, parameter];
 }
+
+const queryLogger = winston.createLogger({
+  levels: winston.config.npm.levels,
+  level: "info",
+  format: format.combine(format.timestamp({ format: "DD.MM.YYYY HH:mm:ss" }), format.json({ replacer: jsonReplacer })),
+  transports: [
+    new winston.transports.File({
+      filename: "logs/postgres.log",
+    }),
+  ],
+});
 
 /**
  * A Class for consecutive queries on the same connection.
@@ -363,6 +375,10 @@ export class QueryContext implements ConnectionContext {
       throw e;
     } finally {
       removeContext("sql-query");
+      queryLogger.info({
+        message: query,
+        duration: Date.now() - start,
+      });
     }
 
     if (Array.isArray(result) && result.length > 10) {
@@ -596,7 +612,14 @@ export class QueryContext implements ConnectionContext {
       logger.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
     }
 
+    const start = Date.now();
     const stream = new QueryStream(query, parameter);
+    stream.on("end", () => {
+      queryLogger.info({
+        message: query,
+        duration: Date.now() - start,
+      });
+    });
     return this.con.query(stream);
   }
 
@@ -641,7 +664,7 @@ export class QueryContext implements ConnectionContext {
     );
     const mediumInWaitPromise = this.query("SELECT title, medium, link FROM medium_in_wait WHERE updated_at > ?", date);
     const newsPromise = this.query(
-      'SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as "read" ' +
+      "SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as read " +
         "FROM news_board LEFT JOIN news_user ON id=news_id " +
         "WHERE (user_id IS NULL OR user_id = ?) AND updated_at > ?",
       [uuid, date],

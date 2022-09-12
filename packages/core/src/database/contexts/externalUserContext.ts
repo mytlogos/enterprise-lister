@@ -17,8 +17,10 @@ export class ExternalUserContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<TypedQuery<DisplayExternalUser>> {
     const lists = await this.parentContext.externalListContext.getAll(uuid);
     return this.queryStream(
-      "SELECT uuid, local_uuid as localUuid, name as identifier, service as type FROM external_user " +
-        "WHERE local_uuid = ?;",
+      `SELECT
+      uuid, local_uuid as "localUuid", name as identifier, service as type
+      FROM external_user
+      WHERE local_uuid = ?;`,
       uuid,
     ).on("result", (row) => {
       row.lists = [];
@@ -34,10 +36,11 @@ export class ExternalUserContext extends SubContext {
    * Adds an external user of an user to the storage.
    */
   public async addExternalUser(localUuid: Uuid, externalUser: ExternalUser): Promise<ExternalUser> {
-    const result = await this.select(
-      "SELECT * FROM external_user " + "WHERE name = ? " + "AND local_uuid = ? " + "AND service = ?",
-      [externalUser.identifier, localUuid, externalUser.type],
-    );
+    const result = await this.select(`SELECT * FROM external_user WHERE name = ? AND local_uuid = ? AND service = ?`, [
+      externalUser.identifier,
+      localUuid,
+      externalUser.type,
+    ]);
     if (result.length) {
       throw new DuplicateEntityError("Duplicate ExternalUser");
     }

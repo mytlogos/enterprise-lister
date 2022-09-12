@@ -25,7 +25,11 @@ interface MinEpisode {
 
 export class PartContext extends SubContext {
   public async getAll(): Promise<TypedQuery<MinPart>> {
-    return this.queryStream("SELECT id, totalIndex, partialIndex, title, medium_id as mediumId FROM part");
+    return this.queryStream(
+      `SELECT
+      id, totalIndex as "totalIndex", partialIndex as "partialIndex", title, medium_id as "mediumId"
+      FROM part`,
+    );
   }
 
   public async getStandardPartId(mediumId: number): VoidablePromise<number> {
@@ -37,7 +41,7 @@ export class PartContext extends SubContext {
   }
 
   public async getStandardPart(mediumId: number): VoidablePromise<ShallowPart> {
-    const [standardPartResult]: any = await this.query(
+    const standardPartResult = await this.selectFirst<any>(
       "SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1",
       mediumId,
     );
@@ -53,8 +57,8 @@ export class PartContext extends SubContext {
 
     const standardPart: ShallowPart = {
       id: standardPartResult.id,
-      totalIndex: standardPartResult.totalIndex,
-      partialIndex: standardPartResult.partialIndex,
+      totalIndex: standardPartResult.totalindex,
+      partialIndex: standardPartResult.partialindex,
       title: standardPartResult.title,
       episodes: [],
       mediumId: standardPartResult.medium_id,
@@ -80,8 +84,8 @@ export class PartContext extends SubContext {
     const fullParts = parts.rows.map((value) => {
       const part = {
         id: value.id,
-        totalIndex: value.totalIndex,
-        partialIndex: value.partialIndex,
+        totalIndex: value.totalindex,
+        partialIndex: value.partialindex,
         title: value.title,
         episodes: [],
         mediumId: value.medium_id,
@@ -129,7 +133,14 @@ export class PartContext extends SubContext {
    */
   public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: MultiSingleNumber): Promise<MinPart[]> {
     const parts: Optional<any[]> = await this.queryInList(
-      "SELECT * FROM part WHERE medium_id = ? AND combiIndex IN (??);",
+      `SELECT 
+      id,
+      combiIndex as "combiIndex",
+      totalIndex as "totalIndex",
+      partialIndex as "partialIndex",
+      medium_id,
+      FROM part
+      WHERE medium_id = ? AND combiIndex IN (??);`,
       [mediumId, partCombiIndex],
     );
     if (!parts?.length) {
@@ -158,7 +169,16 @@ export class PartContext extends SubContext {
    * Returns all parts of an medium.
    */
   public async getParts<T extends MultiSingleNumber>(partId: T, uuid: Uuid, full = true): Promise<Part[]> {
-    const parts: Optional<any[]> = await this.queryInList("SELECT * FROM part WHERE id IN (??);", [partId]);
+    const parts: Optional<any[]> = await this.queryInList(
+      `SELECT 
+      id,
+      combiIndex as "combiIndex",
+      totalIndex as "totalIndex",
+      partialIndex as "partialIndex",
+      medium_id
+      FROM part WHERE id IN (??);`,
+      [partId],
+    );
     if (!parts?.length) {
       return [];
     }
@@ -214,7 +234,7 @@ export class PartContext extends SubContext {
       return {};
     }
     const episodesResult: MinEpisode[] = await this.queryInList(
-      "SELECT id, part_id as partId FROM episode WHERE part_id IN (??);",
+      'SELECT id, part_id as "partId" FROM episode WHERE part_id IN (??);',
       [partIds],
     );
 
@@ -237,7 +257,7 @@ export class PartContext extends SubContext {
       return {};
     }
     const episodesResult: Array<SimpleRelease & { part_id: number }> = await this.queryInList(
-      "SELECT episode.id as episodeId, part_id, url FROM episode_release INNER JOIN episode ON episode.id = episode_id WHERE part_id IN (??);",
+      'SELECT episode.id as "episodeId", part_id, url FROM episode_release INNER JOIN episode ON episode.id = episode_id WHERE part_id IN (??);',
       [partIds],
     );
 

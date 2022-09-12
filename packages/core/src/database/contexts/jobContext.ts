@@ -22,6 +22,7 @@ import {
   JobTrack,
   QueryJobHistory,
   Paginated,
+  ScrapeName,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle, defaultNetworkTrack } from "../../tools";
 import logger from "../../logger";
@@ -47,6 +48,51 @@ function merge<T>(mergeInto: T, merger: T, keys: Array<MergeableKey<T>>) {
 
 export interface JobQuery {
   limit?: number;
+}
+
+interface DBJobItem {
+  type: ScrapeName;
+  state: JobState;
+  interval: number;
+  deleteafterrun: boolean;
+  id: Id;
+  name: string;
+  job_state: "enabled" | "disabled";
+  runafter?: Id;
+  runningsince?: Date;
+  nextrun?: Date;
+  lastrun?: Date;
+  arguments?: string;
+}
+
+function fixDbJobProperties(dbJob: DBJobItem): JobItem {
+  return {
+    type: dbJob.type,
+    state: dbJob.state,
+    interval: dbJob.interval,
+    deleteAfterRun: dbJob.deleteafterrun,
+    id: dbJob.id,
+    name: dbJob.name,
+    job_state: dbJob.job_state,
+    runAfter: dbJob.runafter,
+    runningSince: dbJob.runningsince,
+    nextRun: dbJob.nextrun,
+    lastRun: dbJob.lastrun,
+    arguments: dbJob.arguments,
+  };
+}
+
+interface DBJobHistoryItem extends Omit<JobHistoryItem, "deleteAfterRun" | "runAfter"> {
+  runafter?: Id;
+  deleteafterrun: boolean;
+}
+
+function fixDbJobHistoryProperties(dbJob: DBJobHistoryItem): JobHistoryItem {
+  return {
+    ...dbJob,
+    runAfter: dbJob.runafter,
+    deleteAfterRun: dbJob.deleteafterrun,
+  };
 }
 
 export class JobContext extends SubContext {
@@ -81,12 +127,11 @@ export class JobContext extends SubContext {
       }
 
       if (statFilter.unit === "day") {
-        filterColumn +=
-          'TIMESTAMPADD(second, -SECOND("start")-MINUTE("start")*60-HOUR(start)*3600, start) as timepoint,';
+        filterColumn += "TIMESTAMPADD(second, -SECOND(start)-MINUTE(start)*60-HOUR(start)*3600, start) as timepoint,";
       } else if (statFilter.unit === "hour") {
-        filterColumn += 'TIMESTAMPADD(second, -SECOND("start")-MINUTE("start")*60, start) as timepoint,';
+        filterColumn += "TIMESTAMPADD(second, -SECOND(start)-MINUTE(start)*60, start) as timepoint,";
       } else if (statFilter.unit === "minute") {
-        filterColumn += 'TIMESTAMPADD(second, -SECOND("start"), start) as timepoint,';
+        filterColumn += "TIMESTAMPADD(second, -SECOND(start), start) as timepoint,";
       }
     }
     const values = await this.select<JobStats & TimeJobStats>(`
@@ -238,8 +283,8 @@ export class JobContext extends SubContext {
   }
 
   public async getJobDetails(id: number): Promise<JobDetails> {
-    const jobPromise: Promise<JobItem[]> = this.select("SELECT * FROM jobs WHERE id = ?", id);
-    const historyPromise: Promise<JobHistoryItem[]> = this.select(
+    const jobPromise = this.selectFirst<DBJobItem>("SELECT * FROM jobs WHERE id = ?", id);
+    const historyPromise = this.select<DBJobHistoryItem>(
       `
       SELECT * FROM job_history
       WHERE name = (SELECT name FROM job_history WHERE id = ? LIMIT 1)
@@ -251,8 +296,8 @@ export class JobContext extends SubContext {
     const [jobs, history] = await Promise.all([jobPromise, historyPromise]);
 
     return {
-      job: jobs[0],
-      history,
+      job: fixDbJobProperties(jobs),
+      history: history.map(fixDbJobHistoryProperties),
     };
   }
 
@@ -278,10 +323,11 @@ export class JobContext extends SubContext {
     if (limit <= 0 || !limit) {
       limit = 50;
     }
-    return this.select(
+    const items = await this.select<DBJobItem>(
       "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND job_state != 'disabled' order by nextRun LIMIT ?",
       limit,
     );
+    return items.map(fixDbJobProperties);
   }
 
   public async queryJobs({ limit }: JobQuery = {}): Promise<JobItem[]> {
@@ -289,7 +335,7 @@ export class JobContext extends SubContext {
     if (limit) {
       values.push(limit);
     }
-    return this.select(
+    const items = await this.select<DBJobItem>(
       "SELECT * FROM jobs " +
         "WHERE (nextRun IS NULL OR nextRun < NOW()) " +
         "AND state = 'waiting' AND job_state != 'disabled' " +
@@ -297,33 +343,40 @@ export class JobContext extends SubContext {
         (limit ? " LIMIT ?" : ""),
       values,
     );
+    return items.map(fixDbJobProperties);
   }
 
   public async getAllJobs(): Promise<JobItem[]> {
-    return this.select('SELECT id, name, state, runningSince, nextRun, job_state, "interval", type FROM jobs;');
+    const items = await this.select<DBJobItem>(
+      "SELECT id, name, state, runningSince, nextRun, job_state, interval, type FROM jobs;",
+    );
+    return items.map(fixDbJobProperties);
   }
 
-  public getJobsById(jobIds: number[]): Promise<JobItem[]> {
-    return this.queryInList("SELECT * FROM jobs WHERE id IN (??);", [jobIds]) as Promise<JobItem[]>;
+  public async getJobsById(jobIds: number[]): Promise<JobItem[]> {
+    const items = await this.queryInList("SELECT * FROM jobs WHERE id IN (??);", [jobIds]);
+    return items.map(fixDbJobProperties);
   }
 
-  public getJobsByName(names: string[]): Promise<JobItem[]> {
-    return this.queryInList(
+  public async getJobsByName(names: string[]): Promise<JobItem[]> {
+    const items = await this.queryInList(
       "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND name IN (??);",
       [names],
-    ) as Promise<JobItem[]>;
+    );
+    return items.map(fixDbJobProperties);
   }
 
   public async stopJobs(): EmptyPromise {
     await this.query("UPDATE jobs SET state = ?", JobState.WAITING);
-    await this.query("CREATE TEMPORARY TABLE tmp_jobs (id INT UNSIGNED NOT NULL)");
+    await this.query("CREATE TEMPORARY TABLE tmp_jobs (id INT NOT NULL)");
     await this.query("INSERT INTO tmp_jobs SELECT id from jobs");
     await this.query("DELETE FROM jobs WHERE runAfter IS NOT NULL AND runAfter NOT IN (SELECT id FROM tmp_jobs)");
-    await this.query("DROP TEMPORARY TABLE tmp_jobs");
+    await this.query("DROP TABLE tmp_jobs");
   }
 
   public async getAfterJobs(id: number): Promise<JobItem[]> {
-    return this.select('SELECT * FROM jobs WHERE "runAfter" = ? AND "state" != \'running\'', id);
+    const result = await this.select<DBJobItem>("SELECT * FROM jobs WHERE runAfter = ? AND state != 'running'", id);
+    return result.map(fixDbJobProperties);
   }
 
   public async addJobs<T extends MultiSingleValue<JobRequest>>(jobs: T): PromiseMultiSingle<T, JobItem> {
@@ -350,7 +403,7 @@ export class JobContext extends SubContext {
       } else {
         const result = await this.query(
           "INSERT INTO jobs " +
-            '("type", "name", "state", "interval", "deleteAfterRun", "runAfter", "arguments", "nextRun", "job_state") ' +
+            "(type, name, state, interval, deleteAfterRun, runAfter, arguments, nextRun, job_state) " +
             "VALUES (?,?,?,?,?,?,?,?, 'enabled') ON CONFLICT DO NOTHING RETURNING id",
           [value.type, value.name, JobState.WAITING, value.interval, value.deleteAfterRun, runAfter, args, nextRun],
         );
@@ -383,7 +436,7 @@ export class JobContext extends SubContext {
   public async removeJob(key: string | number): EmptyPromise {
     let result;
     if (isString(key)) {
-      result = await this.query('DELETE FROM jobs WHERE "name" = ?', key);
+      result = await this.query("DELETE FROM jobs WHERE name = ?", key);
     } else {
       result = await this.query("DELETE FROM jobs WHERE id = ?", key);
     }
@@ -434,8 +487,9 @@ export class JobContext extends SubContext {
     }
   }
 
-  public getJobsInState(state: JobState): Promise<JobItem[]> {
-    return this.select("SELECT * FROM jobs WHERE state = ? order by nextRun", state);
+  public async getJobsInState(state: JobState): Promise<JobItem[]> {
+    const items = await this.select<DBJobItem>("SELECT * FROM jobs WHERE state = ? order by nextRun", state);
+    return items.map(fixDbJobProperties);
   }
 
   /**
@@ -446,7 +500,29 @@ export class JobContext extends SubContext {
    * @returns a Query object
    */
   public async getJobHistoryStream(since: Date, limit: number): Promise<TypedQuery<JobHistoryItem>> {
-    let query = "SELECT * FROM job_history WHERE start < ? ORDER BY start DESC";
+    let query = `SELECT 
+    id,
+    deleteafterrun as "deleteAfterRun",
+    runafter as "runAfter",
+    arguments,
+    message,
+    context,
+    scheduled_at,
+    created,
+    updated,
+    deleted,
+    queries,
+    network_queries,
+    network_received,
+    network_send,
+    lagging,
+    duration,
+    type,
+    name,
+    start,
+    end,
+    result
+    FROM job_history WHERE start < ? ORDER BY start DESC`;
     const values = [since.toISOString()] as any[];
 
     if (limit >= 0) {
@@ -457,7 +533,29 @@ export class JobContext extends SubContext {
   }
 
   public async getJobHistory(): Promise<JobHistoryItem[]> {
-    return this.select("SELECT * FROM job_history ORDER BY start;");
+    return this.select(`SELECT 
+    id,
+    deleteafterrun as "deleteAfterRun",
+    runafter as "runAfter",
+    arguments,
+    message,
+    context,
+    scheduled_at,
+    created,
+    updated,
+    deleted,
+    queries,
+    network_queries,
+    network_received,
+    network_send,
+    lagging,
+    duration,
+    type,
+    name,
+    start,
+    end,
+    result
+    FROM job_history ORDER BY start;`);
   }
 
   /**
@@ -500,7 +598,32 @@ export class JobContext extends SubContext {
       "SELECT count(*) as total FROM job_history " + conditions,
       countValues,
     );
-    const items = await this.select<JobHistoryItem>("SELECT * FROM job_history " + conditions + limit, values);
+    const items = await this.select<JobHistoryItem>(
+      `SELECT 
+      id,
+      deleteafterrun as "deleteAfterRun",
+      runafter as "runAfter",
+      arguments,
+      message,
+      context,
+      scheduled_at,
+      created,
+      updated,
+      deleted,
+      queries,
+      network_queries,
+      network_received,
+      network_send,
+      lagging,
+      duration,
+      type,
+      name,
+      start,
+      end,
+      result
+      FROM job_history ${conditions}${limit}`,
+      values,
+    );
     const [{ total }] = await totalPromise;
 
     return {

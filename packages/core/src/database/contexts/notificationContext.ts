@@ -6,7 +6,7 @@ export class NotificationContext extends SubContext {
 
   public async insertNotification(notification: Insert<Notification>): Promise<Notification> {
     const result = await this.dmlQuery(
-      'INSERT INTO notifications ("title", "content", "date", "key", "type") VALUES (?,?,?,?,?) RETURNING id;',
+      "INSERT INTO notifications (title, content, date, key, type) VALUES (?,?,?,?,?) RETURNING id;",
       [notification.title, notification.content, notification.date, notification.key, notification.type],
     );
 
@@ -59,13 +59,13 @@ export class NotificationContext extends SubContext {
 
     if (read) {
       return this.select(
-        'SELECT n.*, true as "read" FROM notifications as n WHERE date > ? AND id IN (select id from notifications_read where uuid = ?) ORDER BY date desc' +
+        "SELECT n.*, true as read FROM notifications as n WHERE date > ? AND id IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
           limit,
         args,
       );
     } else {
       return this.select(
-        'SELECT n.*, false as "read" FROM notifications as n WHERE date > ? AND id NOT IN (select id from notifications_read where uuid = ?) ORDER BY date desc' +
+        "SELECT n.*, false as read FROM notifications as n WHERE date > ? AND id NOT IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
           limit,
         args,
       );

@@ -27,10 +27,12 @@ import { DatabaseError, MissingEntityError, ValidationError } from "../../error"
 export class MediumContext extends SubContext {
   public async getSpecificToc(id: number, link: string): VoidablePromise<FullMediumToc> {
     const tocs = await this.select<FullMediumToc>(
-      "SELECT id, medium_id as mediumId, link, " +
-        "countryOfOrigin, languageOfOrigin, author, title," +
-        "medium, artist, lang, stateOrigin, stateTL, series, universe " +
-        "FROM medium_toc WHERE medium_id = ? AND link = ?;",
+      `SELECT
+       id, medium_id as mediumId, link,
+       countryOfOrigin as "countryOfOrigin", languageOfOrigin as "languageOfOrigin",
+       author, title,medium, artist, lang, stateOrigin as "stateOrigin",
+       stateTL as "stateTL", series, universe
+       FROM medium_toc WHERE medium_id = ? AND link = ?;`,
       [id, link],
     );
     return tocs[0];
@@ -80,7 +82,7 @@ export class MediumContext extends SubContext {
   public getSimpleMedium<T extends MultiSingleNumber>(id: T): PromiseMultiSingle<T, SimpleMedium> {
     // TODO: 29.06.2019 replace with id IN (...)
     return promiseMultiSingle(id, async (mediumId) => {
-      const resultArray: any[] = await this.select("SELECT * FROM medium WHERE medium.id =?;", mediumId);
+      const resultArray: any[] = await this.select("SELECT * FROM medium WHERE medium.id=?;", mediumId);
       const result = resultArray[0];
 
       if (!result) {
@@ -88,15 +90,15 @@ export class MediumContext extends SubContext {
       }
       return {
         id: result.id,
-        countryOfOrigin: result.countryOfOrigin,
-        languageOfOrigin: result.languageOfOrigin,
+        countryOfOrigin: result.countryoforigin,
+        languageOfOrigin: result.languageoforigin,
         author: result.author,
         title: result.title,
         medium: result.medium,
         artist: result.artist,
         lang: result.lang,
-        stateOrigin: result.stateOrigin,
-        stateTL: result.stateTL,
+        stateOrigin: result.stateorigin,
+        stateTL: result.statetl,
         series: result.series,
         universe: result.universe,
       };
@@ -193,7 +195,7 @@ export class MediumContext extends SubContext {
         [mediumId, uuid],
       );
       const unReadResult = await this.select(
-        "SELECT * FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
+        "SELECT episode.id FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
           "AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) " +
           "ORDER BY totalIndex DESC, partialIndex DESC;",
         [mediumId, uuid],
@@ -202,15 +204,15 @@ export class MediumContext extends SubContext {
 
       return {
         id: result.id,
-        countryOfOrigin: result.countryOfOrigin,
-        languageOfOrigin: result.languageOfOrigin,
+        countryOfOrigin: result.countryoforigin,
+        languageOfOrigin: result.languageoforigin,
         author: result.author,
         title: result.title,
         medium: result.medium,
         artist: result.artist,
         lang: result.lang,
-        stateOrigin: result.stateOrigin,
-        stateTL: result.stateTL,
+        stateOrigin: result.stateorigin,
+        stateTL: result.statetl,
         series: result.series,
         universe: result.universe,
         parts: partsResult.map((packet: any) => packet.id),
@@ -223,10 +225,11 @@ export class MediumContext extends SubContext {
 
   public async getAllMediaFull(): Promise<TypedQuery<SimpleMedium>> {
     return this.queryStream(
-      "SELECT " +
-        "id, countryOfOrigin, languageOfOrigin, author, title," +
-        "medium, artist, lang, stateOrigin, stateTL, series, universe " +
-        "FROM medium",
+      `SELECT 
+      id, countryOfOrigin as "countryOfOrigin", languageOfOrigin as "languageOfOrigin",
+      author, title, medium, artist, lang, 
+      stateOrigin as "stateOrigin", stateTL as "stateTL", series, universe
+      FROM medium`,
     );
   }
 
@@ -239,10 +242,10 @@ export class MediumContext extends SubContext {
       uuid,
     );
     const tocs = await this.select<FullMediumToc>(
-      "SELECT id, medium_id as mediumId, link, " +
-        "countryOfOrigin, languageOfOrigin, author, title," +
-        "medium, artist, lang, stateOrigin, stateTL, series, universe " +
-        "FROM medium_toc;",
+      `SELECT id, medium_id as mediumId, link, countryOfOrigin as "countryOfOrigin",
+      languageOfOrigin as "languageOfOrigin", author, title, medium,
+      artist, lang, stateOrigin as "stateOrigin", stateTL as "stateTL", series, universe
+      FROM medium_toc;`,
     );
     const readStats = await readStatsPromise;
     const idMap = new Map<number, SecondaryMedium>();
@@ -458,20 +461,21 @@ export class MediumContext extends SubContext {
 
   public getMediumTocs(mediumId: number[]): Promise<FullMediumToc[]> {
     return this.queryInList(
-      "SELECT id, medium_id as mediumId, link, " +
-        "countryOfOrigin, languageOfOrigin, author, title," +
-        "medium, artist, lang, stateOrigin, stateTL, series, universe " +
-        "FROM medium_toc WHERE medium_id IN (??);",
+      `SELECT id, medium_id as mediumId, link, 
+      countryOfOrigin as "countryOfOrigin", languageOfOrigin as "languageOfOrigin",
+      author, title, medium, artist, lang, stateOrigin as "stateOrigin",
+      stateTL as "stateTL", series, universe
+      FROM medium_toc WHERE medium_id IN (??);`,
       [mediumId],
     ) as Promise<FullMediumToc[]>;
   }
 
   public getTocs(tocIds: number[]): Promise<FullMediumToc[]> {
     return this.queryInList(
-      "SELECT id, medium_id as mediumId, link, " +
-        "countryOfOrigin, languageOfOrigin, author, title," +
-        "medium, artist, lang, stateOrigin, stateTL, series, universe " +
-        "FROM medium_toc WHERE id IN (??);",
+      `SELECT id, medium_id as mediumId, link, countryOfOrigin as "countryOfOrigin",
+      languageOfOrigin as "languageOfOrigin", author, title, medium, artist, lang,
+      stateOrigin as "stateOrigin", stateTL as "stateTL", series, universe
+      FROM medium_toc WHERE id IN (??);`,
       [tocIds],
     ) as Promise<FullMediumToc[]>;
   }

@@ -164,7 +164,7 @@ export class InternalListContext extends SubContext {
         throw new ValidationError("Missing uuid");
       }
       const idResult = await this.select<{ id: number }>(
-        "SELECT id FROM reading_list WHERE \"name\" = 'Standard' AND user_uuid = ?;",
+        "SELECT id FROM reading_list WHERE name = 'Standard' AND user_uuid = ?;",
         uuid,
       );
       medium.listId = idResult[0].id;

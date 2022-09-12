@@ -17,17 +17,18 @@ export class CustomHookContext extends SubContext {
       "INSERT INTO custom_hook (name, state, hookState, comment) VALUES (?,?,?,?) ON CONFLICT DO NOTHING RETURNING id;",
       [value.name, value.state, value.hookState, value.comment],
     );
-    if (!result.rows.length || !Number.isInteger(result.rows[0].id) || result.rows[0].id === 0) {
-      throw new ValidationError(`invalid ID ${result.rows[0]?.id + ""}`);
+    const id = result.rows[0]?.id;
+
+    if (!id || !Number.isInteger(id) || id === 0) {
+      throw new ValidationError(`invalid ID ${id + ""}`);
     }
     storeModifications("custom_hook", "insert", result);
 
-    return { ...value, id: result.rows[0].id };
+    return { ...value, id };
   }
 
   public async getHooks(): Promise<CustomHook[]> {
-    const result = await this.query("SELECT id, name, state, updated_at, hookState, comment FROM custom_hook;");
-    return result.rows;
+    return this.select('SELECT id, name, state, updated_at, hookState as "hookState", comment FROM custom_hook;');
   }
 
   public async updateHook(value: CustomHook): Promise<CustomHook> {

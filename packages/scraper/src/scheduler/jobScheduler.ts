@@ -309,7 +309,7 @@ export class JobScheduler {
           if (value.interval < 60000) {
             value.interval = 60000;
           }
-          value.nextRun = new Date(value.lastRun.getTime() + value.interval);
+          value.nextRun = new Date(Date.now() + value.interval);
         }
         value.state = JobState.WAITING;
         return true;

@@ -126,9 +126,7 @@ export class UserContext extends SubContext {
    * the session key of the user for the ip.
    */
   public async userLoginStatus(ip: string, uuid?: Uuid, session?: string): Promise<boolean> {
-    const result = await this.query("SELECT * FROM user_log WHERE ip = ?;", ip);
-
-    const sessionRecord = result.rows[0];
+    const sessionRecord = await this.selectFirst<any>("SELECT * FROM user_log WHERE ip = ?;", ip);
 
     if (!sessionRecord) {
       return false;
@@ -165,9 +163,10 @@ export class UserContext extends SubContext {
   }
 
   public async getUser(uuid: Uuid, ip: string): Promise<User> {
-    const result = await this.query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
-
-    const sessionRecord = result.rows[0];
+    const sessionRecord = await this.selectFirst<any>("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [
+      uuid,
+      ip,
+    ]);
 
     if (!sessionRecord?.session_key) {
       throw new SessionError("user has no session");
