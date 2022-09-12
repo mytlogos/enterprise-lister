@@ -6,11 +6,11 @@ export class NotificationContext extends SubContext {
 
   public async insertNotification(notification: Insert<Notification>): Promise<Notification> {
     const result = await this.dmlQuery(
-      "INSERT INTO notifications (`title`, `content`, `date`, `key`, `type`) VALUES (?,?,?,?,?);",
+      'INSERT INTO notifications ("title", "content", "date", "key", "type") VALUES (?,?,?,?,?) RETURNING id;',
       [notification.title, notification.content, notification.date, notification.key, notification.type],
     );
 
-    notification.id = result.insertId;
+    notification.id = result.rows[0].id;
     return notification as Notification;
   }
 
@@ -19,7 +19,7 @@ export class NotificationContext extends SubContext {
       column: "id",
       value: notification.id,
     });
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
   public async updateNotification(notification: Notification): Promise<boolean> {
@@ -46,7 +46,7 @@ export class NotificationContext extends SubContext {
         value: notification.id,
       },
     );
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
   public async getNotifications(date: Date, uuid: Uuid, read: boolean, size?: number): Promise<UserNotification[]> {
@@ -58,14 +58,14 @@ export class NotificationContext extends SubContext {
     }
 
     if (read) {
-      return this.query(
-        "SELECT n.*, true as `read` FROM notifications as n WHERE date > ? AND id IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
+      return this.select(
+        'SELECT n.*, true as "read" FROM notifications as n WHERE date > ? AND id IN (select id from notifications_read where uuid = ?) ORDER BY date desc' +
           limit,
         args,
       );
     } else {
-      return this.query(
-        "SELECT n.*, false as `read` FROM notifications as n WHERE date > ? AND id NOT IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
+      return this.select(
+        'SELECT n.*, false as "read" FROM notifications as n WHERE date > ? AND id NOT IN (select id from notifications_read where uuid = ?) ORDER BY date desc' +
           limit,
         args,
       );
@@ -73,16 +73,19 @@ export class NotificationContext extends SubContext {
   }
 
   public async readNotification(id: Id, uuid: Uuid): Promise<boolean> {
-    const result = await this.dmlQuery("INSERT IGNORE INTO notifications_read (id, uuid) VALUES (?, ?)", [id, uuid]);
-    return result.affectedRows > 0;
+    const result = await this.dmlQuery(
+      "INSERT INTO notifications_read (id, uuid) VALUES (?, ?) ON CONFLICT DO NOTHING",
+      [id, uuid],
+    );
+    return result.rowCount > 0;
   }
 
   public async countNotifications(uuid: Uuid, read: boolean): Promise<number> {
     let result;
     if (read) {
-      result = await this.query("SELECT count(id) as count FROM notifications_read WHERE uuid = ?", uuid);
+      result = await this.select<any>("SELECT count(id) as count FROM notifications_read WHERE uuid = ?", uuid);
     } else {
-      result = await this.query(
+      result = await this.select<any>(
         "SELECT count(id) as count FROM notifications WHERE id not in (SELECT id as count FROM notifications_read WHERE uuid = ?)",
         uuid,
       );
@@ -92,9 +95,9 @@ export class NotificationContext extends SubContext {
 
   public async readAllNotifications(uuid: Uuid): Promise<boolean> {
     const result = await this.dmlQuery(
-      "INSERT IGNORE INTO notifications_read (id, uuid) SELECT id, ? FROM notifications",
+      "INSERT INTO notifications_read (id, uuid) SELECT id, ? FROM notifications ON CONFLICT DO NOTHING",
       uuid,
     );
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 }

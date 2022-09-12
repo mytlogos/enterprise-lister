@@ -21,10 +21,7 @@ export function sendResult(res: Response, promise: Promise<any>): void {
   promise
     .then((result) => {
       if (isQuery(result)) {
-        result
-          .stream({ objectMode: true, highWaterMark: 10 })
-          .pipe(stringify({ open: "[", close: "]" }))
-          .pipe(res);
+        result.pipe(stringify({ open: "[", close: "]" })).pipe(res);
       } else {
         res.json(result);
       }

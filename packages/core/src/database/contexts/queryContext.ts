@@ -1,4 +1,3 @@
-import mySql, { Connection } from "promise-mysql";
 import {
   Invalidation,
   MetaResult,
@@ -8,7 +7,6 @@ import {
   MultiSingleValue,
   Nullable,
   UnpackArray,
-  PromiseMultiSingle,
   Optional,
   PageInfo,
   Primitive,
@@ -17,10 +15,9 @@ import {
   QueryItems,
   QueryItemsResult,
 } from "../../types";
-import { getElseSet, getElseSetObj, ignore, multiSingle, promiseMultiSingle, batch } from "../../tools";
+import { getElseSet, getElseSetObj, multiSingle, promiseMultiSingle, batch } from "../../tools";
 import logger from "../../logger";
 import * as validate from "validate.js";
-import { Query, OkPacket } from "mysql";
 import { DatabaseContext } from "./databaseContext";
 import { UserContext } from "./userContext";
 import { ExternalUserContext } from "./externalUserContext";
@@ -41,6 +38,8 @@ import { AppEventContext } from "./appEventContext";
 import { CustomHookContext } from "./customHookContext";
 import { DatabaseError, NotImplementedError, UnsupportedError, ValidationError } from "../../error";
 import { NotificationContext } from "./notificationContext";
+import { ClientBase, QueryResult } from "pg";
+import QueryStream from "pg-query-stream";
 
 const database = "enterprise";
 
@@ -62,22 +61,40 @@ export interface Condition {
   value: any;
 }
 
-function emptyPacket() {
+function emptyPacket(): QueryResult<any> {
   return {
-    affectedRows: 0,
-    changedRows: 0,
-    fieldCount: 0,
-    insertId: 0,
-    message: "Not queried",
-    protocol41: false,
+    command: "",
+    fields: [],
+    oid: 0,
+    rowCount: 0,
+    rows: [],
   };
+}
+
+function validateQuery(query: string, parameter: any | any[]): [string, any[]] {
+  // replace the generic `?` placeholder with the correct indexed `$1` placeholder for pg package
+  let index = 1;
+  query = query.replaceAll("?", () => `$${index++}`);
+
+  if (parameter != null && !Array.isArray(parameter)) {
+    parameter = [parameter];
+  }
+
+  if (parameter ? parameter.length !== index - 1 : index !== 1) {
+    throw new DatabaseError(
+      `placeholder - parameter mismatch: ${index - 1} Placeholders but ${
+        (parameter?.length ?? 0) + ""
+      } Parameter: ${query}`,
+    );
+  }
+  return [query, parameter];
 }
 
 /**
  * A Class for consecutive queries on the same connection.
  */
 export class QueryContext implements ConnectionContext {
-  private readonly con: Connection;
+  private readonly con: ClientBase;
   private readonly subClassMap: Map<new (parentContext: QueryContext) => any, any> = new Map();
 
   private getSubInstanceLazy<T>(constructor: new (parentContext: QueryContext) => T): T {
@@ -144,29 +161,43 @@ export class QueryContext implements ConnectionContext {
     return this.getSubInstanceLazy(NotificationContext);
   }
 
-  public constructor(con: Connection) {
+  public constructor(con: ClientBase) {
     this.con = con;
   }
 
-  /**
-   *
-   */
-  public startTransaction(): EmptyPromise {
-    return this.query("START TRANSACTION;").then(ignore);
+  public escapeIdentifier(str: string) {
+    return this.con.escapeIdentifier(str);
+  }
+
+  private isAborted = false;
+
+  public markAborted() {
+    this.isAborted = true;
+  }
+
+  public aborted() {
+    return this.isAborted;
   }
 
   /**
    *
    */
-  public commit(): EmptyPromise {
-    return this.query("COMMIT;").then(ignore);
+  public async startTransaction(): EmptyPromise {
+    await this.query("START TRANSACTION;");
   }
 
   /**
    *
    */
-  public rollback(): EmptyPromise {
-    return this.query("ROLLBACK;").then(ignore);
+  public async commit(): EmptyPromise {
+    await this.query("COMMIT;");
+  }
+
+  /**
+   *
+   */
+  public async rollback(): EmptyPromise {
+    await this.query("ROLLBACK;");
   }
 
   /**
@@ -185,7 +216,7 @@ export class QueryContext implements ConnectionContext {
    */
   public async databaseExists(): Promise<boolean> {
     const databases = await this.query("SHOW DATABASES;");
-    return databases.find((data: { Database: string }) => data.Database === database) != null;
+    return databases.rows.find((data: { Database: string }) => data.Database === database) != null;
   }
 
   public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
@@ -193,11 +224,11 @@ export class QueryContext implements ConnectionContext {
       return Promise.reject(new ValidationError("Invalid Result: missing preliminary value"));
     }
     return promiseMultiSingle(result.result, async (value: MetaResult) => {
-      const resultArray: any[] = await this.query(
+      const resultArray = await this.query(
         "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
         [value.novel, value.chapter, value.chapIndex],
       );
-      if (resultArray[0]?.episode_id != null) {
+      if (resultArray.rows[0]?.episode_id != null) {
         return null;
       }
       // TODO implement
@@ -224,11 +255,11 @@ export class QueryContext implements ConnectionContext {
     if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
       throw new ValidationError("invalid link or key");
     }
-    const query: any[] = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
+    const query = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
     return {
       link,
       key,
-      values: query.map((value) => value.value).filter((value) => value),
+      values: query.rows.map((value) => value.value).filter((value) => value),
     };
   }
 
@@ -276,9 +307,9 @@ export class QueryContext implements ConnectionContext {
   }
 
   public async getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
-    const result: any[] = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
+    const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
     await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger.error(reason));
-    return result.map((value: any): Invalidation => {
+    return result.rows.map((value: any): Invalidation => {
       return {
         externalListId: value.external_list_id,
         externalUuid: value.external_uuid,
@@ -293,7 +324,7 @@ export class QueryContext implements ConnectionContext {
     });
   }
 
-  public async getInvalidatedStream(uuid: Uuid): Promise<Query> {
+  public async getInvalidatedStream(uuid: Uuid): Promise<QueryStream> {
     return this.queryStream(
       "SELECT " +
         "external_list_id as externalListId, external_uuid as externalUuid, medium_id as mediumId, " +
@@ -306,8 +337,8 @@ export class QueryContext implements ConnectionContext {
     });
   }
 
-  public clearInvalidationTable(): EmptyPromise {
-    return this.query("TRUNCATE user_data_invalidation");
+  public async clearInvalidationTable(): EmptyPromise {
+    await this.query("TRUNCATE user_data_invalidation");
   }
 
   /**
@@ -315,9 +346,11 @@ export class QueryContext implements ConnectionContext {
    * @param query
    * @param parameter
    */
-  public async query(query: string, parameter?: any | any[]): Promise<any> {
-    if (query.length > 20 && env.development) {
-      logger.debug(query.replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 80));
+  public async query(query: string, parameter?: any | any[]): Promise<QueryResult<any>> {
+    [query, parameter] = validateQuery(query, parameter);
+
+    if (env.development) {
+      logger.debug(query.replace(/\n+/g, "").replace(/\s+/g, " "));
     }
     const start = Date.now();
     let result;
@@ -325,6 +358,9 @@ export class QueryContext implements ConnectionContext {
       setContext("sql-query");
       result = await this.con.query(query, parameter);
       storeCount(StoreKey.QUERY_COUNT);
+    } catch (e) {
+      console.log(e);
+      throw e;
     } finally {
       removeContext("sql-query");
     }
@@ -342,7 +378,7 @@ export class QueryContext implements ConnectionContext {
    * @param query sql query
    * @param parameter parameter for the sql query
    */
-  public async dmlQuery(query: string, parameter?: any | any[]): Promise<OkPacket> {
+  public async dmlQuery(query: string, parameter?: any | any[]): Promise<QueryResult<any>> {
     return this.query(query, parameter);
   }
 
@@ -350,15 +386,15 @@ export class QueryContext implements ConnectionContext {
    * Deletes one or multiple entries from one specific table,
    * with only one conditional.
    */
-  public async delete(table: string, ...condition: Condition[]): Promise<OkPacket> {
+  public async delete(table: string, ...condition: Condition[]): Promise<QueryResult<any>> {
     if (!condition || (Array.isArray(condition) && !condition.length)) {
       return Promise.reject(new ValidationError("Invalid delete condition"));
     }
-    let query = `DELETE FROM ${mySql.escapeId(table)} WHERE `;
+    let query = `DELETE FROM ${this.escapeIdentifier(table)} WHERE `;
     const values: any[] = [];
 
     multiSingle(condition, (value: any, _, last) => {
-      query += `${mySql.escapeId(value.column)} = ?`;
+      query += `${this.escapeIdentifier(value.column)} = ?`;
       if (last) {
         query += ";";
       } else {
@@ -374,7 +410,7 @@ export class QueryContext implements ConnectionContext {
    * Updates data from the storage.
    * May return a empty OkPacket if no values are to be updated.
    */
-  public async update(table: string, cb: UpdateCallback, ...condition: Condition[]): Promise<OkPacket> {
+  public async update(table: string, cb: UpdateCallback, ...condition: Condition[]): Promise<QueryResult<any>> {
     if (!condition || (Array.isArray(condition) && !condition.length)) {
       return Promise.reject(new ValidationError("Invalid update condition"));
     }
@@ -389,11 +425,11 @@ export class QueryContext implements ConnectionContext {
     if (!updates.length) {
       return Promise.resolve(emptyPacket());
     }
-    let query = `UPDATE ${mySql.escapeId(table)}
+    let query = `UPDATE ${this.escapeIdentifier(table)}
                 SET ${updates.join(", ")}
                 WHERE `;
     multiSingle(condition, (value: any, _, last) => {
-      query += `${mySql.escapeId(value.column)} = ?`;
+      query += `${this.escapeIdentifier(value.column)} = ?`;
       if (last) {
         query += ";";
       } else {
@@ -408,7 +444,8 @@ export class QueryContext implements ConnectionContext {
     query: string,
     value: T,
     paramCallback: ParamCallback<T>,
-  ): PromiseMultiSingle<T, OkPacket> {
+    ignore = false,
+  ): Promise<QueryResult<any>> {
     if (!value || (Array.isArray(value) && !value.length)) {
       return Promise.resolve(Array.isArray(value) ? [] : emptyPacket()) as any;
     }
@@ -449,7 +486,7 @@ export class QueryContext implements ConnectionContext {
         valuesQueries += ",";
       }
     });
-    return this.query(`${query} ${valuesQueries};`, param);
+    return this.query(`${query} ${valuesQueries}${ignore ? " ON CONFLICT DO NOTHING" : ""};`, param);
   }
 
   /**
@@ -539,21 +576,28 @@ export class QueryContext implements ConnectionContext {
     if (!params.length) {
       throw new DatabaseError(`no params for '${query}'`);
     }
-    const result: any[][] = await Promise.all(
+    const result: Array<QueryResult<any>> = await Promise.all(
       params.map((param) => {
         const [placeholder, values] = param;
         const newQuery = query.replace("??", placeholder);
         return this.query(newQuery, values);
       }),
     );
-    return result.flat(1);
+    return result.reduce<any[]>((previous: any[], current) => {
+      previous.push(...current.rows);
+      return previous;
+    }, []);
   }
 
-  public queryStream(query: string, parameter?: any | any[]): Query {
-    if (query.length > 20 && env.development) {
+  public queryStream(query: string, parameter?: any | any[]): QueryStream {
+    [query, parameter] = validateQuery(query, parameter);
+
+    if (env.development) {
       logger.debug(`${query} - ${(parameter + "").replace(/\n+/g, "").replace(/\s+/g, " ").substring(0, 30)}`);
     }
-    return this.con.queryStream(query, parameter);
+
+    const stream = new QueryStream(query, parameter);
+    return this.con.query(stream);
   }
 
   public async getNew(uuid: Uuid, date = new Date(0)): Promise<NewData> {
@@ -597,7 +641,7 @@ export class QueryContext implements ConnectionContext {
     );
     const mediumInWaitPromise = this.query("SELECT title, medium, link FROM medium_in_wait WHERE updated_at > ?", date);
     const newsPromise = this.query(
-      "SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as `read` " +
+      'SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as "read" ' +
         "FROM news_board LEFT JOIN news_user ON id=news_id " +
         "WHERE (user_id IS NULL OR user_id = ?) AND updated_at > ?",
       [uuid, date],
@@ -610,18 +654,18 @@ export class QueryContext implements ConnectionContext {
       date,
     );
     return {
-      tocs: await tocPromise,
-      media: await mediumPromise,
-      releases: await episodeReleasePromise,
-      episodes: await episodePromise,
-      parts: await partPromise,
-      lists: await listPromise,
-      extLists: await exListPromise,
-      extUser: await exUserPromise,
-      mediaInWait: await mediumInWaitPromise,
-      news: await newsPromise.then((values: any[]) => {
-        values.forEach((value) => (value.read = value.read === 1));
-        return values;
+      tocs: (await tocPromise).rows,
+      media: (await mediumPromise).rows,
+      releases: (await episodeReleasePromise).rows,
+      episodes: (await episodePromise).rows,
+      parts: (await partPromise).rows,
+      lists: (await listPromise).rows,
+      extLists: (await exListPromise).rows,
+      extUser: (await exUserPromise).rows,
+      mediaInWait: (await mediumInWaitPromise).rows,
+      news: await newsPromise.then((result) => {
+        result.rows.forEach((value) => (value.read = value.read === 1));
+        return result.rows;
       }),
     };
   }
@@ -645,7 +689,7 @@ export class QueryContext implements ConnectionContext {
       "SELECT uuid, id FROM external_user LEFT JOIN external_reading_list ON uuid=user_uuid WHERE local_uuid=?",
       uuid,
     );
-    const tocPromise: Promise<Array<{ medium_id: number; count: number }>> = this.query(
+    const tocPromise: Promise<QueryResult<{ medium_id: number; count: number }>> = this.query(
       "SELECT medium_id, count(link) as count FROM medium_toc GROUP BY medium_id;",
     );
 
@@ -655,7 +699,7 @@ export class QueryContext implements ConnectionContext {
     const emptyPart = { episodeCount: 0, episodeSum: 0, releaseCount: 0 };
     const partMap = new Map();
 
-    for (const episode of episodes) {
+    for (const episode of episodes.rows) {
       partMap.set(episode.part_id, episode);
       delete episode.part_id;
     }
@@ -665,7 +709,7 @@ export class QueryContext implements ConnectionContext {
     const extLists = {};
     const extUser = {};
 
-    for (const toc of tocs) {
+    for (const toc of tocs.rows) {
       const medium = getElseSetObj(mediaStats, toc.medium_id, () => {
         return {
           tocs: 0,
@@ -674,19 +718,19 @@ export class QueryContext implements ConnectionContext {
       medium.tocs = toc.count;
     }
 
-    for (const part of parts) {
+    for (const part of parts.rows) {
       const mediumParts: any = getElseSetObj(media, part.medium_id, () => ({}));
       mediumParts[part.id] = getElseSet(partMap, part.id, () => emptyPart);
     }
 
-    for (const list of await listPromise) {
+    for (const list of (await listPromise).rows) {
       const listMedia: number[] = getElseSetObj(lists, list.id, () => []);
       if (list.medium_id != null) {
         listMedia.push(list.medium_id);
       }
     }
 
-    for (const list of await exListPromise) {
+    for (const list of (await exListPromise).rows) {
       const listMedia: number[] = getElseSetObj(extLists, list.id, () => []);
 
       if (list.medium_id != null) {
@@ -694,7 +738,7 @@ export class QueryContext implements ConnectionContext {
       }
     }
 
-    for (const user of await extUserPromise) {
+    for (const user of (await extUserPromise).rows) {
       const userLists: number[] = getElseSetObj(extUser, user.uuid, () => []);
       userLists.push(user.id);
     }

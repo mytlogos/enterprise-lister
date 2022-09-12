@@ -82,14 +82,14 @@ export class JobContext extends SubContext {
 
       if (statFilter.unit === "day") {
         filterColumn +=
-          "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60-HOUR(start)*3600, start) as timepoint,";
+          'TIMESTAMPADD(second, -SECOND("start")-MINUTE("start")*60-HOUR(start)*3600, start) as timepoint,';
       } else if (statFilter.unit === "hour") {
-        filterColumn += "TIMESTAMPADD(second, -SECOND(`start`)-MINUTE(`start`)*60, start) as timepoint,";
+        filterColumn += 'TIMESTAMPADD(second, -SECOND("start")-MINUTE("start")*60, start) as timepoint,';
       } else if (statFilter.unit === "minute") {
-        filterColumn += "TIMESTAMPADD(second, -SECOND(`start`), start) as timepoint,";
+        filterColumn += 'TIMESTAMPADD(second, -SECOND("start"), start) as timepoint,';
       }
     }
-    const values = await this.query(`
+    const values = await this.select<JobStats & TimeJobStats>(`
             SELECT 
             ${filterColumn}
             AVG(network_queries) as avgnetwork, 
@@ -109,8 +109,8 @@ export class JobContext extends SubContext {
             SUM(updated) as allupdate,
             SUM(created) as allcreate,
             SUM(deleted) as alldelete,
-            AVG(CASE WHEN \`result\` = 'failed' THEN 1 ELSE 0 END) as failed, 
-            AVG(CASE WHEN \`result\` = 'success' THEN 1 ELSE 0 END) as succeeded,
+            AVG(CASE WHEN "result" = 'failed' THEN 1 ELSE 0 END) as failed, 
+            AVG(CASE WHEN "result" = 'success' THEN 1 ELSE 0 END) as succeeded,
             AVG(queries) as queries${minMax ? "," : ""}
             ${minMax ? "MAX(queries) maxQ, " : ""} 
             ${minMax ? "MIN(CASE WHEN queries = 0 THEN NULL ELSE queries END) minQ" : ""} 
@@ -145,7 +145,7 @@ export class JobContext extends SubContext {
         "succeeded",
       ];
 
-      for (const value of values as Array<JobStats & TimeJobStats>) {
+      for (const value of values) {
         let match = tocJob.exec(value.name);
 
         let group = dateMapping.get(value.timepoint.getTime());
@@ -227,19 +227,19 @@ export class JobContext extends SubContext {
           value.value.domain[domain] = domainValue.value;
         }
 
-        values.push(value.value);
+        values.push(value.value as any);
       }
     }
-    return values;
+    return values as any[];
   }
 
   public async getJobsStatsSummary(): Promise<JobStatSummary[]> {
-    return this.query("SELECT * FROM job_stat_summary;");
+    return this.select("SELECT * FROM job_stat_summary;");
   }
 
   public async getJobDetails(id: number): Promise<JobDetails> {
-    const jobPromise: Promise<JobItem[]> = this.query("SELECT * FROM jobs WHERE id = ?", id);
-    const historyPromise: Promise<JobHistoryItem[]> = this.query(
+    const jobPromise: Promise<JobItem[]> = this.select("SELECT * FROM jobs WHERE id = ?", id);
+    const historyPromise: Promise<JobHistoryItem[]> = this.select(
       `
       SELECT * FROM job_history
       WHERE name = (SELECT name FROM job_history WHERE id = ? LIMIT 1)
@@ -278,7 +278,7 @@ export class JobContext extends SubContext {
     if (limit <= 0 || !limit) {
       limit = 50;
     }
-    return this.query(
+    return this.select(
       "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND job_state != 'disabled' order by nextRun LIMIT ?",
       limit,
     );
@@ -289,7 +289,7 @@ export class JobContext extends SubContext {
     if (limit) {
       values.push(limit);
     }
-    return this.query(
+    return this.select(
       "SELECT * FROM jobs " +
         "WHERE (nextRun IS NULL OR nextRun < NOW()) " +
         "AND state = 'waiting' AND job_state != 'disabled' " +
@@ -300,7 +300,7 @@ export class JobContext extends SubContext {
   }
 
   public async getAllJobs(): Promise<JobItem[]> {
-    return this.query("SELECT id, name, state, runningSince, nextRun, job_state, `interval`, type FROM jobs;");
+    return this.select('SELECT id, name, state, runningSince, nextRun, job_state, "interval", type FROM jobs;');
   }
 
   public getJobsById(jobIds: number[]): Promise<JobItem[]> {
@@ -323,12 +323,12 @@ export class JobContext extends SubContext {
   }
 
   public async getAfterJobs(id: number): Promise<JobItem[]> {
-    return this.query("SELECT * FROM jobs WHERE `runAfter` = ? AND `state` != 'running'", id);
+    return this.select('SELECT * FROM jobs WHERE "runAfter" = ? AND "state" != \'running\'', id);
   }
 
   public async addJobs<T extends MultiSingleValue<JobRequest>>(jobs: T): PromiseMultiSingle<T, JobItem> {
     const now = new Date();
-    const currentJobs: Array<{ id: number; name: string }> = await this.query("SELECT id, name FROM jobs");
+    const currentJobs = await this.select<{ id: number; name: string }>("SELECT id, name FROM jobs");
     return promiseMultiSingle(jobs, async (value: JobRequest): Promise<JobItem> => {
       let args = value.arguments;
       if (value.arguments && !isString(value.arguments)) {
@@ -349,17 +349,18 @@ export class JobContext extends SubContext {
         value.id = foundJob.id;
       } else {
         const result = await this.query(
-          "INSERT IGNORE INTO jobs " +
-            "(`type`, `name`, `state`, `interval`, `deleteAfterRun`, `runAfter`, `arguments`, `nextRun`, `job_state`) " +
-            "VALUES (?,?,?,?,?,?,?,?, 'enabled')",
+          "INSERT INTO jobs " +
+            '("type", "name", "state", "interval", "deleteAfterRun", "runAfter", "arguments", "nextRun", "job_state") ' +
+            "VALUES (?,?,?,?,?,?,?,?, 'enabled') ON CONFLICT DO NOTHING RETURNING id",
           [value.type, value.name, JobState.WAITING, value.interval, value.deleteAfterRun, runAfter, args, nextRun],
         );
+        const id = result.rows[0].id;
         // the only reason it should fail to insert is when its name constraint is violated
-        if (!result.insertId) {
+        if (!id) {
           throw new DatabaseError("could not add job: " + JSON.stringify(value) + " nor find it");
         } else {
           // @ts-expect-error
-          value.id = result.insertId;
+          value.id = id;
         }
         storeModifications("job", "insert", result);
       }
@@ -382,7 +383,7 @@ export class JobContext extends SubContext {
   public async removeJob(key: string | number): EmptyPromise {
     let result;
     if (isString(key)) {
-      result = await this.query("DELETE FROM jobs WHERE `name` = ?", key);
+      result = await this.query('DELETE FROM jobs WHERE "name" = ?', key);
     } else {
       result = await this.query("DELETE FROM jobs WHERE id = ?", key);
     }
@@ -434,7 +435,7 @@ export class JobContext extends SubContext {
   }
 
   public getJobsInState(state: JobState): Promise<JobItem[]> {
-    return this.query("SELECT * FROM jobs WHERE state = ? order by nextRun", state);
+    return this.select("SELECT * FROM jobs WHERE state = ? order by nextRun", state);
   }
 
   /**
@@ -456,7 +457,7 @@ export class JobContext extends SubContext {
   }
 
   public async getJobHistory(): Promise<JobHistoryItem[]> {
-    return this.query("SELECT * FROM job_history ORDER BY start;");
+    return this.select("SELECT * FROM job_history ORDER BY start;");
   }
 
   /**
@@ -495,9 +496,12 @@ export class JobContext extends SubContext {
     const limit = " LIMIT ?;";
     values.push(Math.max(Math.min(filter.limit, 1000), 5));
 
-    const totalPromise = this.query("SELECT count(*) as total FROM job_history " + conditions, countValues);
-    const items: JobHistoryItem[] = await this.query("SELECT * FROM job_history " + conditions + limit, values);
-    const [{ total }]: [{ total: number }] = await totalPromise;
+    const totalPromise = this.select<{ total: number }>(
+      "SELECT count(*) as total FROM job_history " + conditions,
+      countValues,
+    );
+    const items = await this.select<JobHistoryItem>("SELECT * FROM job_history " + conditions + limit, values);
+    const [{ total }] = await totalPromise;
 
     return {
       items,
@@ -522,9 +526,7 @@ export class JobContext extends SubContext {
         queryCount: store.get(StoreKey.QUERY_COUNT) || 0,
       };
 
-      let [item] = (await this.query("SELECT * FROM job_stat_summary WHERE name = ?", [
-        value.name,
-      ])) as JobStatSummary[];
+      let [item] = await this.select<JobStatSummary>("SELECT * FROM job_stat_summary WHERE name = ?", [value.name]);
 
       item ??= {
         name: value.name,

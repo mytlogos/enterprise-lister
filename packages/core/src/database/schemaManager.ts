@@ -43,6 +43,7 @@ export class SchemaManager {
     try {
       await this.migrate(context);
     } finally {
+      // FIXME: if transaction/migrate failed, then this will fail with a more confusing error, masking the original one
       await context.stopMigration();
     }
   }
@@ -59,15 +60,13 @@ export class SchemaManager {
   private async createMissing(context: DatabaseContext): EmptyPromise {
     logger.info("Check on missing database structures");
 
-    const tables: any[] = await context.getTables();
-
-    const enterpriseTableProperty = `Tables_in_${this.databaseName}`;
+    const tables = await context.getTablesPg();
 
     let tablesCreated = 0;
     // create tables which do not exist
     await Promise.all(
       this.tables
-        .filter((tableSchema) => !tables.find((table: any) => table[enterpriseTableProperty] === tableSchema.name))
+        .filter((tableSchema) => !tables.find((table) => table.tablename === tableSchema.name))
         .map(async (tableSchema) => {
           const schema = tableSchema.getTableSchema();
           await context.createTable(schema.name, schema.columns);
@@ -79,7 +78,7 @@ export class SchemaManager {
         }),
     );
 
-    const dbTriggers = await context.getTriggers();
+    const dbTriggers = await context.getTriggersPg();
 
     let triggerCreated = 0;
     let triggerDeleted = 0;

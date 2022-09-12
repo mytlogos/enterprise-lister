@@ -64,20 +64,20 @@ export class PartContext extends SubContext {
   }
 
   public async getMediumPartIds(mediumId: number): Promise<number[]> {
-    const result: any[] = await this.query("SELECT id FROM part WHERE medium_id = ?;", mediumId);
-    return result.map((value) => value.id);
+    const result = await this.query("SELECT id FROM part WHERE medium_id = ?;", mediumId);
+    return result.rows.map((value) => value.id);
   }
 
   /**
    * Returns all parts of an medium.
    */
   public async getMediumParts(mediumId: number, uuid?: Uuid): Promise<Part[]> {
-    const parts: any[] = await this.query("SELECT * FROM part WHERE medium_id = ?", mediumId);
+    const parts = await this.query("SELECT * FROM part WHERE medium_id = ?", mediumId);
 
     const idMap = new Map<number, FullPart>();
 
     // recreate shallow parts
-    const fullParts = parts.map((value) => {
+    const fullParts = parts.rows.map((value) => {
       const part = {
         id: value.id,
         totalIndex: value.totalIndex,
@@ -91,7 +91,7 @@ export class PartContext extends SubContext {
     });
     const episodesIds: MinEpisode[] = await this.queryInList(
       "SELECT id, part_id as partId FROM episode WHERE part_id IN (??);",
-      [parts.map((v) => v.id)],
+      [parts.rows.map((v) => v.id)],
     );
 
     if (episodesIds.length) {
@@ -284,10 +284,10 @@ export class PartContext extends SubContext {
 
     try {
       const result = await this.query(
-        "INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?);",
+        "INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?) RETURNING id;",
         [part.mediumId, part.title, part.totalIndex, part.partialIndex, partCombiIndex],
       );
-      partId = result.insertId;
+      partId = result.rows[0].id;
       storeModifications("part", "insert", result);
     } catch (e) {
       // do not catch if it isn't an duplicate key error
@@ -303,7 +303,7 @@ export class PartContext extends SubContext {
         part.mediumId,
         partCombiIndex,
       ]);
-      partId = result[0].id;
+      partId = result.rows[0].id;
     }
 
     if (!Number.isInteger(partId) || partId <= 0) {
@@ -366,7 +366,7 @@ export class PartContext extends SubContext {
       },
     );
     storeModifications("part", "update", result);
-    return result.changedRows > 0;
+    return result.rowCount > 0;
   }
 
   /**
@@ -379,17 +379,15 @@ export class PartContext extends SubContext {
 
   public createStandardPart(mediumId: number): Promise<ShallowPart> {
     const partName = "Non Indexed Volume";
-    return this.query("INSERT IGNORE INTO part (medium_id,title, totalIndex, combiIndex) VALUES (?,?,?,?);", [
-      mediumId,
-      partName,
-      -1,
-      -1,
-    ]).then((value): ShallowPart => {
+    return this.query(
+      "INSERT INTO part (medium_id,title, totalIndex, combiIndex) VALUES (?,?,?,?) ON CONFLICT DO NOTHING RETURNING id;",
+      [mediumId, partName, -1, -1],
+    ).then((value): ShallowPart => {
       storeModifications("part", "insert", value);
       return {
         totalIndex: -1,
         title: partName,
-        id: value.insertId,
+        id: value.rows[0].id,
         mediumId,
         episodes: [],
       };

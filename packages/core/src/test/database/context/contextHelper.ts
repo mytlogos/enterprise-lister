@@ -3,9 +3,9 @@ import * as storage from "../../../database/storages/storage";
 import { QueryContext } from "../../../database/contexts/queryContext";
 import { MediaType } from "../../../tools";
 import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "../../../types";
-import { escapeId, Query } from "mysql";
 import bcrypt from "bcryptjs";
 import { MissingEntityError } from "../../../error";
+import QueryStream from "pg-query-stream";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
   return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);
@@ -41,7 +41,7 @@ export async function setupTestDatabase(): EmptyPromise {
   await recreateStorage();
 }
 
-export function checkEmptyQuery(query: Query): EmptyPromise {
+export function checkEmptyQuery(query: QueryStream): EmptyPromise {
   return new Promise((resolve, reject) => {
     let rejected = false;
     query.on("result", () => {
@@ -60,12 +60,12 @@ export function checkEmptyQuery(query: Query): EmptyPromise {
   });
 }
 
-export function resultFromQuery(query: Query): Promise<any[]> {
+export function resultFromQuery(query: QueryStream): Promise<any[]> {
   return new Promise((resolve, reject) => {
     const rows: any[] = [];
     let rejected = false;
     query
-      .on("result", (row: unknown) => rows.push(row))
+      .on("data", (row: unknown) => rows.push(row))
       .on("error", (error) => {
         rejected = true;
         reject(error);
@@ -209,7 +209,7 @@ export function getDatabaseData(): [Record<string, User>, StaticData] {
 }
 
 export async function tearDownTestDatabase(): EmptyPromise {
-  return inContext((context) => context.query("DROP DATABASE enterprise_test;"));
+  await inContext((context) => context.query("DROP DATABASE enterprise_test;"));
 }
 
 export async function fillUserTable(): Promise<User[]> {
@@ -333,7 +333,8 @@ export async function fillUserEpisodeTable(): Promise<Progress[]> {
 }
 
 export async function dumpTable(table: string): Promise<any[]> {
-  return inContext((context) => context.query(`SELECT * FROM ${escapeId(table)};`));
+  const result = await inContext((context) => context.query(`SELECT * FROM ${context.escapeIdentifier(table)};`));
+  return result.rows;
 }
 
 export async function cleanUser(): EmptyPromise {

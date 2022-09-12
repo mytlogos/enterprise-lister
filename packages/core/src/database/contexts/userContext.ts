@@ -55,7 +55,7 @@ export class UserContext extends SubContext {
     }
     const user = await this.query("SELECT * FROM user WHERE name = ?;", userName);
     // if there is a result in array, userName is not new, so abort
-    if (user.length) {
+    if (user.rows.length) {
       return Promise.reject(new DuplicateEntityError(Errors.USER_EXISTS_ALREADY));
     }
     // if userName is new, proceed to register
@@ -90,13 +90,13 @@ export class UserContext extends SubContext {
     }
     const result = await this.query("SELECT * FROM user WHERE name = ?;", userName);
 
-    if (!result.length) {
+    if (!result.rows.length) {
       return Promise.reject(new MissingEntityError(Errors.USER_DOES_NOT_EXIST));
-    } else if (result.length !== 1) {
+    } else if (result.rows.length !== 1) {
       return Promise.reject(new DatabaseError("got multiple user for the same name"));
     }
 
-    const user = result[0];
+    const user = result.rows[0];
     const uuid = user.uuid;
 
     if (!(await verifyPassword(password, user.password, user.alg, user.salt))) {
@@ -128,7 +128,7 @@ export class UserContext extends SubContext {
   public async userLoginStatus(ip: string, uuid?: Uuid, session?: string): Promise<boolean> {
     const result = await this.query("SELECT * FROM user_log WHERE ip = ?;", ip);
 
-    const sessionRecord = result[0];
+    const sessionRecord = result.rows[0];
 
     if (!sessionRecord) {
       return false;
@@ -151,7 +151,7 @@ export class UserContext extends SubContext {
       ip,
     );
 
-    const userRecord = result[0];
+    const userRecord = result.rows[0];
 
     if (!userRecord || !ip || !userRecord.session_key || !userRecord.name || !userRecord.uuid) {
       return null;
@@ -167,7 +167,7 @@ export class UserContext extends SubContext {
   public async getUser(uuid: Uuid, ip: string): Promise<User> {
     const result = await this.query("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [uuid, ip]);
 
-    const sessionRecord = result[0];
+    const sessionRecord = result.rows[0];
 
     if (!sessionRecord?.session_key) {
       throw new SessionError("user has no session");
@@ -180,7 +180,7 @@ export class UserContext extends SubContext {
    * Logs a user out.
    */
   public logoutUser(uuid: Uuid, ip: string): Promise<boolean> {
-    return this.delete("user_log", { column: "ip", value: ip }).then((v) => v.affectedRows > 0);
+    return this.delete("user_log", { column: "ip", value: ip }).then((v) => v.rowCount > 0);
   }
 
   /**
@@ -234,7 +234,7 @@ export class UserContext extends SubContext {
     //  in case the deletion was unsuccessful, just 'ban' any further access to that account
     //  and delete it manually?
     const result = await this.delete("user", { column: "uuid", value: uuid });
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
   /**
@@ -278,7 +278,7 @@ export class UserContext extends SubContext {
         column: "uuid",
         value: uuid,
       },
-    ).then((value) => value.changedRows > 0);
+    ).then((value) => value.rowCount > 0);
   }
 
   /**
@@ -291,7 +291,7 @@ export class UserContext extends SubContext {
    */
   public async verifyPassword(uuid: Uuid, password: string): Promise<boolean> {
     const result = await this.query("SELECT password, alg, salt FROM user WHERE uuid = ?", uuid);
-    const user = result[0];
+    const user = result.rows[0];
     return verifyPassword(password, user.password, user.alg, user.salt);
   }
 
@@ -313,9 +313,9 @@ export class UserContext extends SubContext {
       session,
     };
     // query for user
-    const userPromise = this.query("SELECT * FROM user WHERE uuid = ?;", uuid).then((value: any[]) => {
+    const userPromise = this.query("SELECT * FROM user WHERE uuid = ?;", uuid).then((value) => {
       // add user metadata
-      user.name = value[0].name;
+      user.name = value.rows[0].name;
       user.uuid = uuid;
     });
     await userPromise;

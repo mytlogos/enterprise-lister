@@ -10,7 +10,8 @@ export class ScraperHookContext extends SubContext {
   }
 
   public async getAll(): Promise<ScraperHook[]> {
-    return this.query("SELECT id, name, state, message FROM scraper_hook");
+    const result = await this.query("SELECT id, name, state, message FROM scraper_hook");
+    return result.rows;
   }
 
   /**
@@ -57,7 +58,7 @@ export class ScraperHookContext extends SubContext {
       scraperHook.state,
     );
     storeModifications("job", "update", result);
-    return result.changedRows > 0;
+    return result.rowCount > 0;
   }
 
   /**
@@ -66,6 +67,6 @@ export class ScraperHookContext extends SubContext {
   public async deleteScraperHook(id: number): Promise<boolean> {
     const result = await this.delete("scraper_hook", { column: "id", value: id });
     storeModifications("scraper_hook", "delete", result);
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 }

@@ -1,9 +1,9 @@
-import { Connection } from "promise-mysql";
+import { ClientBase } from "pg";
 import { QueryContext } from "../contexts/queryContext";
 import { ConnectionContext } from "../databaseTypes";
 
 export type ContextCallback<T, C extends ConnectionContext> = (context: C) => Promise<T>;
-export type ContextProvider<C extends ConnectionContext> = (con: Connection) => C;
+export type ContextProvider<C extends ConnectionContext> = (con: ClientBase) => C;
 export const queryContextProvider: ContextProvider<QueryContext> = (con) => new QueryContext(con);
 
 /**

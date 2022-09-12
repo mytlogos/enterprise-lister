@@ -10,17 +10,18 @@ export class InternalListContext extends SubContext {
    * links it to the user of the uuid.
    */
   public async addList(uuid: Uuid, { name, medium }: MinList): Promise<List> {
-    const result = await this.query("INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)", [
+    const result = await this.query("INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?) RETURNING id", [
       uuid,
       name,
       medium,
     ]);
     storeModifications("list", "insert", result);
-    if (!Number.isInteger(result.insertId)) {
-      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId + ""}`);
+    const id = result.rows[0]?.id;
+    if (!Number.isInteger(id)) {
+      throw new DatabaseError(`insert failed, invalid ID: ${id + ""}`);
     }
     return {
-      id: result.insertId,
+      id,
       items: [],
       name,
       medium,
@@ -36,7 +37,7 @@ export class InternalListContext extends SubContext {
     const toLoadMedia: Set<number> = new Set();
     // TODO: 29.06.2019 replace with id IN (...)
     const lists = await promiseMultiSingle(listId, async (id: number) => {
-      const result = await this.query("SELECT * FROM reading_list WHERE id = ?;", id);
+      const result = await this.select<StorageList>("SELECT * FROM reading_list WHERE id = ?;", id);
       const list = await this.createShallowList(result[0]);
 
       for (const itemId of list.items) {
@@ -55,7 +56,10 @@ export class InternalListContext extends SubContext {
   public async getShallowList<T extends MultiSingleNumber>(listId: T, uuid: Uuid): PromiseMultiSingle<T, List> {
     // TODO: 29.06.2019 replace with id IN (...)
     return promiseMultiSingle(listId, async (id: number) => {
-      const result = await this.query("SELECT * FROM reading_list WHERE uuid = ? AND id = ?;", [uuid, id]);
+      const result = await this.select<StorageList>("SELECT * FROM reading_list WHERE uuid = ? AND id = ?;", [
+        uuid,
+        id,
+      ]);
       return this.createShallowList(result[0]);
     });
   }
@@ -76,7 +80,7 @@ export class InternalListContext extends SubContext {
       userUuid: storageList.user_uuid,
     };
 
-    const result = await this.query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
+    const result = await this.select("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
     list.items.push(...result.map((value: any) => value.medium_id));
 
     return list;
@@ -108,14 +112,14 @@ export class InternalListContext extends SubContext {
       },
     );
     storeModifications("list", "update", result);
-    return result.changedRows > 0;
+    return result.rowCount > 0;
   }
 
   /**
    * Deletes a single list irreversibly.
    */
   public async deleteList(listId: number, uuid: Uuid): Promise<boolean> {
-    const result = await this.query("SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?", [listId, uuid]);
+    const result = await this.select("SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?", [listId, uuid]);
 
     // first check if such a list does exist for the given user
     if (!result.length) {
@@ -128,7 +132,7 @@ export class InternalListContext extends SubContext {
     // lastly delete the list itself
     deleteResult = await this.delete("reading_list", { column: "id", value: listId });
     storeModifications("list", "delete", deleteResult);
-    return deleteResult.affectedRows > 0;
+    return deleteResult.rowCount > 0;
   }
 
   /**
@@ -136,10 +140,11 @@ export class InternalListContext extends SubContext {
    */
   public async getUserLists(uuid: Uuid): Promise<List[]> {
     // query all available lists for user
-    const result = await this.query("SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;", [uuid, uuid]);
+    const result = await this.select<StorageList>("SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;", [
+      uuid,
+    ]);
 
     // query a shallow list, so that only the id´s of their media is contained
-    // @ts-expect-error
     return Promise.all(result.map((value) => this.createShallowList(value)));
   }
 
@@ -158,23 +163,23 @@ export class InternalListContext extends SubContext {
       if (!uuid) {
         throw new ValidationError("Missing uuid");
       }
-      const idResult = await this.query(
-        "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",
+      const idResult = await this.select<{ id: number }>(
+        "SELECT id FROM reading_list WHERE \"name\" = 'Standard' AND user_uuid = ?;",
         uuid,
       );
       medium.listId = idResult[0].id;
     }
     const result = await this.multiInsert(
-      "INSERT IGNORE INTO list_medium (list_id, medium_id) VALUES",
+      "INSERT INTO list_medium (list_id, medium_id) VALUES",
       medium.id,
       (value) => [medium.listId, value],
+      true,
     );
     let added = false;
-    // @ts-expect-error
-    multiSingle(result, (value: OkPacket) => {
+    multiSingle(result, (value) => {
       storeModifications("list_item", "insert", value);
 
-      if (value.affectedRows > 0) {
+      if (value.rowCount > 0) {
         added = true;
       }
     });
@@ -210,7 +215,7 @@ export class InternalListContext extends SubContext {
         },
       );
       storeModifications("list_item", "delete", result);
-      return result.affectedRows > 0;
+      return result.rowCount > 0;
     });
     return Array.isArray(results) ? results.some((v) => v) : results;
   }

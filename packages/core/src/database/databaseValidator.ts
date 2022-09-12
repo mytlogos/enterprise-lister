@@ -677,7 +677,7 @@ const stateProcessorImpl: StateProcessorImpl = {
 
   async checkTableSchema(context: DatabaseContext): EmptyPromise {
     // display all current tables
-    const tables: any[] = await context.getTables();
+    const tables = await context.getTables();
 
     const enterpriseTableProperty = `Tables_in_${this.databaseName}`;
 

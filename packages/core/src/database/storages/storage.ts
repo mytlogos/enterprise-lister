@@ -1,4 +1,3 @@
-import mySql from "promise-mysql";
 import env from "../../env";
 import {
   Invalidation,
@@ -18,9 +17,8 @@ import {
 } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
-import { delay, isQuery, isString } from "../../tools";
+import { delay, isString } from "../../tools";
 import { SchemaManager } from "../schemaManager";
-import { Query } from "mysql";
 import { ContextCallback, ContextProvider, queryContextProvider } from "./storageTools";
 import { QueryContext } from "../contexts/queryContext";
 import { ConnectionContext } from "../databaseTypes";
@@ -42,6 +40,8 @@ import { CustomHookContext } from "../contexts/customHookContext";
 import { DatabaseContext } from "../contexts/databaseContext";
 import { DatabaseConnectionError } from "../../error";
 import { NotificationContext } from "../contexts/notificationContext";
+import { Pool, PoolClient, PoolConfig } from "pg";
+import QueryStream from "pg-query-stream";
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -79,7 +79,7 @@ export async function storageInContext<T, C extends ConnectionContext>(
     console.log(e);
     throw e;
   } finally {
-    if (isQuery(result)) {
+    if (result instanceof QueryStream) {
       result.on("end", () => con.release());
     } else {
       // release connection into the pool
@@ -89,13 +89,13 @@ export async function storageInContext<T, C extends ConnectionContext>(
   return result;
 }
 
-async function getConnection(pool: mySql.Pool): Promise<mySql.PoolConnection> {
+async function getConnection(pool: Pool): Promise<PoolClient> {
   let attempt = 0;
   const maxAttempts = 10;
 
   while (attempt < maxAttempts) {
     try {
-      return await pool.getConnection();
+      return await pool.connect();
     } catch (error: unknown) {
       // check if it is any network or mysql error
       if (typeof error === "object" && error && "code" in error) {
@@ -163,12 +163,11 @@ async function doTransaction<T, C extends ConnectionContext>(
     // let callback run with context
     result = await callback(context);
 
-    if (isQuery(result)) {
-      const query: Query = result;
+    if (result instanceof QueryStream) {
       let error = false;
       // TODO: 31.08.2019 returning query object does not allow normal error handling,
       //  maybe return own stream where the control is completely in my own hands
-      query
+      result
         .on("error", (err) => {
           error = true;
           if (transaction) {
@@ -186,20 +185,23 @@ async function doTransaction<T, C extends ConnectionContext>(
       await context.commit();
     }
   } catch (e) {
-    return await catchTransactionError(transaction, context, e, attempts, callback);
+    if (transaction) {
+      context.markAborted();
+    }
+    return catchTransactionError(transaction, context, e, attempts, callback);
   }
   return result;
 }
 
 class SqlPoolProvider {
   private remake = true;
-  private pool?: Promise<mySql.Pool>;
-  private config?: mySql.PoolConfig;
+  private pool?: Promise<Pool>;
+  private config?: PoolConfig;
   public running = false;
   public errorAtStart = false;
   public startPromise = Promise.resolve();
 
-  public provide(): Promise<mySql.Pool> {
+  public provide(): Promise<Pool> {
     if (!this.pool || this.remake) {
       this.remake = false;
       this.pool = this.createPool();
@@ -212,7 +214,7 @@ class SqlPoolProvider {
     this.errorAtStart = false;
   }
 
-  public useConfig(config: mySql.PoolConfig) {
+  public useConfig(config: PoolConfig) {
     this.config = { ...this.defaultConfig(), ...config };
     this.remake = true;
   }
@@ -270,45 +272,38 @@ class SqlPoolProvider {
     return this.config || this.defaultConfig();
   }
 
-  private async createPool(): Promise<mySql.Pool> {
+  private async createPool(): Promise<Pool> {
     // stop previous pool if available
     if (this.pool) {
       await this.stop();
     }
     const config = this.getConfig();
-    return mySql.createPool(config);
+    return new Pool(config);
   }
 
-  private defaultConfig(): mySql.PoolConfig {
+  private defaultConfig(): PoolConfig {
     return {
-      connectionLimit: env.dbConLimit,
+      max: env.dbConLimit,
       host: env.dbHost,
       user: env.dbUser,
       password: env.dbPassword,
-      // charset/collation of the current database and tables
-      charset: "utf8mb4",
       // we assume that the database exists already
       database: "enterprise",
       port: env.dbPort,
-      typeCast(field, next) {
-        if (field.type === "TINY" && field.length === 1) {
-          return field.string() === "1"; // 1 = true, 0 = false
-        } else {
-          return next();
-        }
+      log(...messages) {
+        logger.info(messages);
       },
     };
   }
 }
 
 const poolProvider = new SqlPoolProvider();
-// poolProvider.provide().catch(console.error);
 
 class SqlPoolConfigUpdater {
   /**
    * Creates new Mysql Connection Pool with the given Config.
    */
-  public update(config: Partial<mySql.PoolConfig>): void {
+  public update(config: Partial<PoolConfig>): void {
     poolProvider.useConfig(config);
   }
 
@@ -381,7 +376,7 @@ export class Storage {
   /**
    *
    */
-  public getInvalidatedStream(uuid: Uuid): Promise<Query> {
+  public getInvalidatedStream(uuid: Uuid): Promise<QueryStream> {
     return inContext((context) => context.getInvalidatedStream(uuid));
   }
 }

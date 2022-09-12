@@ -16,12 +16,12 @@ import bcrypt from "bcryptjs";
 import emojiRegex from "emoji-regex";
 import * as fs from "fs";
 import * as path from "path";
-import { Query } from "mysql";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { ParseError, ValidationError } from "./error";
 import { networkInterfaces } from "os";
+import QueryStream from "pg-query-stream";
 
 export function isAbortError(error: unknown): error is Error {
   return error instanceof Error && error.name === "AbortError";
@@ -876,13 +876,8 @@ export function findAbsoluteProjectDirPath(dir = process.cwd()): string {
   return dir;
 }
 
-export function isQuery(value: unknown): value is Query {
-  return (
-    typeof value === "object" &&
-    !!value &&
-    typeof (value as any).on === "function" &&
-    typeof (value as any).stream === "function"
-  );
+export function isQuery(value: unknown): value is QueryStream {
+  return value instanceof QueryStream;
 }
 
 /**

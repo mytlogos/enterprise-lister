@@ -1,5 +1,5 @@
 import { MediaType } from "./tools";
-import { FieldInfo, MysqlError, Query } from "mysql";
+import QueryStream from "pg-query-stream";
 
 export interface ExternalStorageUser {
   userUuid: Uuid;
@@ -1575,16 +1575,15 @@ export enum MilliTime {
   DAY = 86400000,
 }
 
-export interface TypedQuery<Packet = any> extends Query {
-  on(ev: "packet", callback: (packet: any) => void): Query;
-
-  on(ev: "result", callback: (row: Packet, index: number) => void): Query;
-
-  on(ev: "error", callback: (err: MysqlError) => void): Query;
-
-  on(ev: "fields", callback: (fields: FieldInfo[], index: number) => void): Query;
-
-  on(ev: "end", callback: () => void): Query;
+export interface TypedQuery<Packet = any> extends QueryStream {
+  on(event: "close", listener: () => void): this;
+  on(event: "end", listener: () => void): this;
+  on(event: "data", callback: (row: Packet) => void): this;
+  on(event: "error", listener: (err: Error) => void): this;
+  on(event: "pause", listener: () => void): this;
+  on(event: "readable", listener: () => void): this;
+  on(event: "resume", listener: () => void): this;
+  on(event: string | symbol, listener: (...args: any[]) => void): this;
 }
 
 /**

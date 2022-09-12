@@ -34,7 +34,7 @@ export class ExternalUserContext extends SubContext {
    * Adds an external user of an user to the storage.
    */
   public async addExternalUser(localUuid: Uuid, externalUser: ExternalUser): Promise<ExternalUser> {
-    let result = await this.query(
+    const result = await this.select(
       "SELECT * FROM external_user " + "WHERE name = ? " + "AND local_uuid = ? " + "AND service = ?",
       [externalUser.identifier, localUuid, externalUser.type],
     );
@@ -43,13 +43,13 @@ export class ExternalUserContext extends SubContext {
     }
     const uuid = uuidGenerator();
 
-    result = await this.query(
+    const insert = await this.query(
       "INSERT INTO external_user " + "(name, uuid, local_uuid, service, cookies) " + "VALUES (?,?,?,?,?);",
       [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies],
     );
-    storeModifications("external_user", "insert", result);
+    storeModifications("external_user", "insert", insert);
 
-    if (!result.affectedRows) {
+    if (!insert.rowCount) {
       return Promise.reject(new DatabaseError("Insert failed"));
     }
     externalUser.localUuid = localUuid;
@@ -82,7 +82,7 @@ export class ExternalUserContext extends SubContext {
     // finish by deleting external user itself
     result = await this.delete("external_user", { column: "uuid", value: externalUuid });
     storeModifications("external_user", "delete", result);
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
   /**
@@ -90,7 +90,7 @@ export class ExternalUserContext extends SubContext {
    */
   public async getExternalUser<T extends MultiSingleValue<Uuid>>(externalUuid: T): PromiseMultiSingle<T, ExternalUser> {
     return promiseMultiSingle(externalUuid, async (value) => {
-      const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
+      const resultArray: any[] = await this.select("SELECT * FROM external_user WHERE uuid = ?;", value);
       if (!resultArray.length) {
         throw new MissingEntityError("No result found for given uuid");
       }
@@ -102,7 +102,7 @@ export class ExternalUserContext extends SubContext {
    * Gets an external user with cookies, without items.
    */
   public async getExternalUserWithCookies(uuid: Uuid): Promise<ExternalStorageUser> {
-    const value = await this.query(
+    const value = await this.select<any>(
       "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
       uuid,
     );
@@ -118,7 +118,7 @@ export class ExternalUserContext extends SubContext {
    * Return all ExternalUser not scraped in the last seven days.
    */
   public async getScrapeExternalUser(): Promise<ExternalUser[]> {
-    const result = await this.query(
+    const result = await this.select(
       "SELECT uuid, local_uuid, service, cookies, name, last_scrape FROM external_user " +
         "WHERE last_scrape IS NULL OR last_scrape < TIMESTAMPADD(day, -7, now())",
     );
@@ -184,6 +184,6 @@ export class ExternalUserContext extends SubContext {
       { column: "uuid", value: externalUser.uuid },
     );
     storeModifications("external_user", "update", result);
-    return result.changedRows > 0;
+    return result.rowCount > 0;
   }
 }

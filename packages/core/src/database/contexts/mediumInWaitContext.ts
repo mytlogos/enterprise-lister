@@ -124,15 +124,16 @@ export class MediumInWaitContext extends SubContext {
         },
       );
       storeModifications("medium_in_wait", "delete", result);
-      return result.affectedRows > 0;
+      return result.rowCount > 0;
     }).then(ignore);
   }
 
   public async addMediumInWait(mediaInWait: MultiSingleValue<MediumInWait>): EmptyPromise {
     const results = await this.multiInsert(
-      "INSERT IGNORE INTO medium_in_wait (title, medium, link) VALUES ",
+      "INSERT INTO medium_in_wait (title, medium, link) VALUES ",
       mediaInWait,
       (value: any) => [value.title, value.medium, value.link],
+      true,
     );
     multiSingle(results, (result) => storeModifications("medium_in_wait", "insert", result));
   }

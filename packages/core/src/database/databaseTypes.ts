@@ -62,6 +62,10 @@ export interface ConnectionContext {
   commit(): EmptyPromise;
 
   rollback(): EmptyPromise;
+
+  markAborted(): void;
+
+  aborted(): boolean;
 }
 
 export interface ChangeUser {

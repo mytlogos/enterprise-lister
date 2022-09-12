@@ -24,29 +24,27 @@ export class NewsContext extends SubContext {
       if (!value.title || !value.date) {
         return Promise.reject(new ValidationError(`Invalid News: ${value.title}-${value.date + ""}`));
       }
-      let result = await this.query("INSERT IGNORE INTO news_board (title, link, date) VALUES (?,?,?);", [
-        value.title,
-        value.link,
-        value.date,
-      ]);
-      if (!Number.isInteger(result.insertId)) {
-        throw new DatabaseError(`failed insert, invalid ID ${result.insertId + ""}`);
+      const result = await this.query(
+        "INSERT INTO news_board (title, link, date) VALUES (?,?,?) ON CONFLICT DO NOTHING RETURNING *;",
+        [value.title, value.link, value.date],
+      );
+      if (!result.rows.length) {
+        throw new DatabaseError("failed insert");
       }
       storeModifications("news", "insert", result);
-      if (!result.affectedRows) {
+      if (!result.rowCount) {
         return;
       }
-      result = { ...value, id: result.insertId };
-      return result;
+      return result.rows[0];
     });
   }
 
   public getLatestNews(domain: string): Promise<News[]> {
-    return this.query("SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10", domain);
+    return this.select("SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10", domain);
   }
 
   public async getAll(uuid: Uuid): Promise<News[]> {
-    const newsResult: any[] = await this.query(
+    const newsResult: any[] = await this.select(
       "SELECT * FROM news_board LEFT JOIN " +
         "(SELECT news_id,1 AS read_news FROM news_user WHERE user_id=?) as news_user " +
         "ON news_user.news_id=news_board.id " +
@@ -116,7 +114,7 @@ export class NewsContext extends SubContext {
       }
       parameter.unshift(uuid);
     }
-    const newsResult: any[] = await this.query(query, parameter);
+    const newsResult: any[] = await this.select(query, parameter);
 
     return newsResult.map((value): News => {
       return {
@@ -139,14 +137,14 @@ export class NewsContext extends SubContext {
     );
     const result = await this.query("DELETE FROM news_board WHERE date < NOW() - INTERVAL 30 DAY;");
     storeModifications("news", "delete", result);
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
   /**
    * Marks these news as read for the given user.
    */
   public async markRead(uuid: Uuid, news: number[]): Promise<boolean> {
-    await this.multiInsert("INSERT IGNORE INTO news_user (user_id, news_id) VALUES", news, (value) => [uuid, value]);
+    await this.multiInsert("INSERT INTO news_user (user_id, news_id) VALUES", news, (value) => [uuid, value], true);
     return true;
   }
 
@@ -154,7 +152,7 @@ export class NewsContext extends SubContext {
    *
    */
   public async checkUnreadNewsCount(uuid: Uuid): Promise<number> {
-    const result = await this.query(
+    const result = await this.select<{ count: number }>(
       "SELECT COUNT(*) AS count FROM news_board WHERE id NOT IN " +
         "(SELECT news_id FROM news_user WHERE user_id = ?);",
       uuid,
@@ -166,7 +164,7 @@ export class NewsContext extends SubContext {
    *
    */
   public checkUnreadNews(uuid: Uuid): Promise<number[]> {
-    return this.query(
+    return this.select(
       "SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);",
       uuid,
     );
@@ -178,11 +176,11 @@ export class NewsContext extends SubContext {
   public async linkNewsToMedium(): Promise<boolean> {
     // TODO maybe implement this with a trigger
     const result = await this.query(
-      "INSERT IGNORE INTO news_medium (medium_id, news_id)" +
+      "INSERT INTO news_medium (medium_id, news_id)" +
         "SELECT medium.id, news_board.id FROM medium,news_board " +
-        "WHERE locate(medium.title, news_board.title) > 0",
+        "WHERE locate(medium.title, news_board.title) > 0 ON CONFLICT DO NOTHING",
     );
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
   /**
@@ -202,6 +200,6 @@ export class NewsContext extends SubContext {
         value: mediumId,
       });
     }
-    return this.delete("news_medium", ...columns).then((value) => value.affectedRows > 0);
+    return this.delete("news_medium", ...columns).then((value) => value.rowCount > 0);
   }
 }

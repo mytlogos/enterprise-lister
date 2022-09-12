@@ -4,17 +4,17 @@ import { SubContext } from "./subContext";
 export class AppEventContext extends SubContext {
   public async addAppEvent(event: AppEvent): Promise<AppEvent> {
     const newEvent = await this.query(
-      "INSERT INTO app_events (`program`, `date`, `type`) VALUES (?,?,?) RETURNING `id`, `program`, `date`, `type`",
+      'INSERT INTO app_events ("program", "date", "type") VALUES (?,?,?) RETURNING "id", "program", "date", "type"',
       [event.program, event.date, event.type],
     );
-    return newEvent[0];
+    return newEvent.rows[0];
   }
 
   public async updateAppEvent(event: AppEvent): Promise<void> {
     await this.update(
       "app_events",
       (updates, values) => {
-        updates.push("`date` = ?");
+        updates.push('"date" = ?');
         values.push(event.date);
       },
       {
@@ -61,11 +61,12 @@ export class AppEventContext extends SubContext {
       values.push(filter.toDate);
     }
 
-    return this.query(
+    const result = await this.query(
       `SELECT id, program, date, type FROM app_events${where.length ? " WHERE " + where.join(" AND ") : ""}${
         sort ? " ORDER BY " + sort : ""
       };`,
       values,
     );
+    return result.rows;
   }
 }

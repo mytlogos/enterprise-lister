@@ -13,21 +13,21 @@ export class CustomHookContext extends SubContext {
       value.state = JSON.stringify(value.state);
     }
 
-    let result = await this.query(
-      "INSERT IGNORE INTO custom_hook (name, state, hookState, comment) VALUES (?,?,?,?);",
+    const result = await this.query(
+      "INSERT INTO custom_hook (name, state, hookState, comment) VALUES (?,?,?,?) ON CONFLICT DO NOTHING RETURNING id;",
       [value.name, value.state, value.hookState, value.comment],
     );
-    if (!Number.isInteger(result.insertId) || result.insertId === 0) {
-      throw new ValidationError(`invalid ID ${result.insertId + ""}`);
+    if (!result.rows.length || !Number.isInteger(result.rows[0].id) || result.rows[0].id === 0) {
+      throw new ValidationError(`invalid ID ${result.rows[0]?.id + ""}`);
     }
     storeModifications("custom_hook", "insert", result);
 
-    result = { ...value, id: result.insertId };
-    return result;
+    return { ...value, id: result.rows[0].id };
   }
 
   public async getHooks(): Promise<CustomHook[]> {
-    return this.query("SELECT id, name, state, updated_at, hookState, comment FROM custom_hook;");
+    const result = await this.query("SELECT id, name, state, updated_at, hookState, comment FROM custom_hook;");
+    return result.rows;
   }
 
   public async updateHook(value: CustomHook): Promise<CustomHook> {
