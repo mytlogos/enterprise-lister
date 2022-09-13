@@ -14,6 +14,18 @@ import {
   NewData,
   QueryItems,
   QueryItemsResult,
+  DBEntity,
+  PureDisplayRelease,
+  PureEpisode,
+  MinPart,
+  SimpleMedium,
+  UserList,
+  PureExternalList,
+  PureExternalUser,
+  MediumInWait,
+  PureNews,
+  FullMediumToc,
+  TypedQuery,
 } from "../../types";
 import { getElseSet, getElseSetObj, multiSingle, promiseMultiSingle, batch, jsonReplacer } from "../../tools";
 import logger from "../../logger";
@@ -41,6 +53,14 @@ import { NotificationContext } from "./notificationContext";
 import { ClientBase, QueryResult } from "pg";
 import QueryStream from "pg-query-stream";
 import winston, { format } from "winston";
+import {
+  fullMediaTocFromDB,
+  minPartFromDB,
+  pureDisplayReleaseFromDB,
+  pureEpisodeFromDB,
+  pureExternalUserFromDB,
+  simpleMediumFromDB,
+} from "./contextHelper";
 
 const database = "enterprise";
 
@@ -227,8 +247,8 @@ export class QueryContext implements ConnectionContext {
    * Checks whether the main database exists currently.
    */
   public async databaseExists(): Promise<boolean> {
-    const databases = await this.query("SHOW DATABASES;");
-    return databases.rows.find((data: { Database: string }) => data.Database === database) != null;
+    const databases = await this.query<{ Database: string }>("SHOW DATABASES;");
+    return databases.rows.find((data) => data.database === database) != null;
   }
 
   public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
@@ -236,7 +256,7 @@ export class QueryContext implements ConnectionContext {
       return Promise.reject(new ValidationError("Invalid Result: missing preliminary value"));
     }
     return promiseMultiSingle(result.result, async (value: MetaResult) => {
-      const resultArray = await this.query(
+      const resultArray = await this.query<{ episode_id: number }>(
         "SELECT episode_id FROM result_episode WHERE novel=? AND (chapter=? OR chapIndex=?)",
         [value.novel, value.chapter, value.chapIndex],
       );
@@ -267,7 +287,10 @@ export class QueryContext implements ConnectionContext {
     if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
       throw new ValidationError("invalid link or key");
     }
-    const query = await this.query("SELECT value FROM page_info WHERE link=? AND keyString=?", [link, key]);
+    const query = await this.query<{ value: string }>("SELECT value FROM page_info WHERE link=? AND keyString=?", [
+      link,
+      key,
+    ]);
     return {
       link,
       key,
@@ -318,6 +341,9 @@ export class QueryContext implements ConnectionContext {
     throw new NotImplementedError("queueNewTocs not supported");
   }
 
+  /**
+   * @deprecated invalidation table should not be used anymore
+   */
   public async getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
     const result = await this.query("SELECT * FROM user_data_invalidation WHERE uuid=?", uuid);
     await this.query("DELETE FROM user_data_invalidation WHERE uuid=?;", uuid).catch((reason) => logger.error(reason));
@@ -336,7 +362,10 @@ export class QueryContext implements ConnectionContext {
     });
   }
 
-  public async getInvalidatedStream(uuid: Uuid): Promise<QueryStream> {
+  /**
+   * @deprecated invalidation table should not be used anymore
+   */
+  public async getInvalidatedStream(uuid: Uuid): Promise<TypedQuery> {
     return this.queryStream(
       "SELECT " +
         "external_list_id as externalListId, external_uuid as externalUuid, medium_id as mediumId, " +
@@ -349,6 +378,9 @@ export class QueryContext implements ConnectionContext {
     });
   }
 
+  /**
+   * @deprecated invalidation table should not be used anymore
+   */
   public async clearInvalidationTable(): EmptyPromise {
     await this.query("TRUNCATE user_data_invalidation");
   }
@@ -358,7 +390,7 @@ export class QueryContext implements ConnectionContext {
    * @param query
    * @param parameter
    */
-  public async query(query: string, parameter?: any | any[]): Promise<QueryResult<any>> {
+  public async query<T>(query: string, parameter?: any | any[]): Promise<QueryResult<DBEntity<T>>> {
     [query, parameter] = validateQuery(query, parameter);
 
     if (env.development) {
@@ -544,9 +576,9 @@ export class QueryContext implements ConnectionContext {
    * @param query the sql query string
    * @param value placeholder values
    */
-  public async queryInList(query: string, value: QueryInValue): Promise<any[]> {
+  public async queryInList(query: string, value: QueryInValue): Promise<QueryResult<any>> {
     if (!value || (Array.isArray(value) && !value.length)) {
-      return [];
+      return emptyPacket();
     }
 
     if (!Array.isArray(value)) {
@@ -571,7 +603,7 @@ export class QueryContext implements ConnectionContext {
       const [listParam, index] = listParams[0];
 
       if (!listParam.length) {
-        return [];
+        return emptyPacket();
       }
       batch(listParam, 100).forEach((param: any[]) => {
         const values = [
@@ -599,13 +631,14 @@ export class QueryContext implements ConnectionContext {
         return this.query(newQuery, values);
       }),
     );
-    return result.reduce<any[]>((previous: any[], current) => {
-      previous.push(...current.rows);
+    return result.reduce((previous, current) => {
+      previous.rowCount += current.rowCount;
+      previous.rows.push(...current.rows);
       return previous;
-    }, []);
+    });
   }
 
-  public queryStream(query: string, parameter?: any | any[]): QueryStream {
+  public queryStream<T>(query: string, parameter?: any | any[]): TypedQuery<DBEntity<T>> {
     [query, parameter] = validateQuery(query, parameter);
 
     if (env.development) {
@@ -624,12 +657,12 @@ export class QueryContext implements ConnectionContext {
   }
 
   public async getNew(uuid: Uuid, date = new Date(0)): Promise<NewData> {
-    const episodeReleasePromise = this.query(
+    const episodeReleasePromise = this.query<PureDisplayRelease>(
       "SELECT episode_id as episodeId, title, url, releaseDate, locked, toc_id as tocId " +
         "FROM episode_release WHERE updated_at > ?",
       date,
     );
-    const episodePromise = this.query(
+    const episodePromise = this.query<PureEpisode>(
       "SELECT episode.id, part_id as partId, totalIndex, partialIndex, " +
         "user_episode.progress, user_episode.read_date as readDate " +
         "FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id " +
@@ -637,39 +670,42 @@ export class QueryContext implements ConnectionContext {
         "AND (updated_at > ? OR read_date > ?)",
       [uuid, date, date],
     );
-    const partPromise = this.query(
+    const partPromise = this.query<MinPart>(
       "SELECT id, title, medium_id as mediumId, totalIndex, partialIndex FROM part WHERE updated_at > ?",
       date,
     );
-    const mediumPromise = this.query(
+    const mediumPromise = this.query<SimpleMedium>(
       "SELECT id, countryOfOrigin, languageOfOrigin, author, artist, title, " +
         "medium, lang, stateOrigin, stateTL, series, universe " +
         "FROM medium WHERE updated_at > ?",
       date,
     );
-    const listPromise = this.query("SELECT id, name, medium FROM reading_list WHERE user_uuid=? AND updated_at > ?", [
-      uuid,
-      date,
-    ]);
-    const exListPromise = this.query(
+    const listPromise = this.query<UserList>(
+      "SELECT id, name, medium FROM reading_list WHERE user_uuid=? AND updated_at > ?",
+      [uuid, date],
+    );
+    const exListPromise = this.query<PureExternalList>(
       "SELECT list.id, list.name, list.user_uuid as uuid, list.medium, list.url " +
         "FROM external_user INNER JOIN external_reading_list as list ON uuid=user_uuid " +
         "WHERE local_uuid=? AND list.updated_at > ?",
       [uuid, date],
     );
-    const exUserPromise = this.query(
+    const exUserPromise = this.query<PureExternalUser>(
       "SELECT name as identifier, uuid, service as type, local_uuid as localUuid " +
         "FROM external_user WHERE local_uuid = ? AND updated_at > ?",
       [uuid, date],
     );
-    const mediumInWaitPromise = this.query("SELECT title, medium, link FROM medium_in_wait WHERE updated_at > ?", date);
-    const newsPromise = this.query(
+    const mediumInWaitPromise = this.query<MediumInWait>(
+      "SELECT title, medium, link FROM medium_in_wait WHERE updated_at > ?",
+      date,
+    );
+    const newsPromise = this.query<PureNews>(
       "SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as read " +
         "FROM news_board LEFT JOIN news_user ON id=news_id " +
         "WHERE (user_id IS NULL OR user_id = ?) AND updated_at > ?",
       [uuid, date],
     );
-    const tocPromise = this.query(
+    const tocPromise = this.query<FullMediumToc>(
       "SELECT id, medium_id as mediumId, link, " +
         "countryOfOrigin, languageOfOrigin, author, title," +
         "medium, artist, lang, stateOrigin, stateTL, series, universe " +
@@ -677,42 +713,44 @@ export class QueryContext implements ConnectionContext {
       date,
     );
     return {
-      tocs: (await tocPromise).rows,
-      media: (await mediumPromise).rows,
-      releases: (await episodeReleasePromise).rows,
-      episodes: (await episodePromise).rows,
-      parts: (await partPromise).rows,
+      tocs: (await tocPromise).rows.map(fullMediaTocFromDB),
+      media: (await mediumPromise).rows.map(simpleMediumFromDB),
+      releases: (await episodeReleasePromise).rows.map(pureDisplayReleaseFromDB),
+      episodes: (await episodePromise).rows.map(pureEpisodeFromDB),
+      parts: (await partPromise).rows.map(minPartFromDB),
       lists: (await listPromise).rows,
       extLists: (await exListPromise).rows,
-      extUser: (await exUserPromise).rows,
+      extUser: (await exUserPromise).rows.map(pureExternalUserFromDB),
       mediaInWait: (await mediumInWaitPromise).rows,
-      news: await newsPromise.then((result) => {
-        result.rows.forEach((value) => (value.read = value.read === 1));
-        return result.rows;
-      }),
+      news: (await newsPromise).rows,
     };
   }
 
   public async getStat(uuid: Uuid): Promise<DataStats> {
-    const episodePromise = this.query(
+    const episodePromise = this.query<{
+      part_id: number;
+      episodeCount: number;
+      episodeSum: number;
+      releaseCount: number;
+    }>(
       "SELECT part_id, count(distinct episode.id) as episodeCount, sum(distinct episode.id) as episodeSum, count(url) as releaseCount " +
         "FROM episode LEFT JOIN episode_release ON episode.id=episode_release.episode_id " +
         "GROUP BY part_id",
     );
-    const partPromise = this.query("SELECT part.id, medium_id FROM part ");
-    const listPromise = this.query(
+    const partPromise = this.query<{ id: number; medium_id: number }>("SELECT part.id, medium_id FROM part ");
+    const listPromise = this.query<{ id: number; medium_id: number }>(
       "SELECT id, medium_id FROM reading_list LEFT JOIN list_medium ON reading_list.id=list_id WHERE user_uuid=?",
       uuid,
     );
-    const exListPromise = this.query(
+    const exListPromise = this.query<{ id: number; medium_id: number }>(
       "SELECT id, medium_id FROM external_user INNER JOIN external_reading_list ON uuid=user_uuid LEFT JOIN external_list_medium ON external_reading_list.id=list_id WHERE local_uuid=?",
       uuid,
     );
-    const extUserPromise = this.query(
+    const extUserPromise = this.query<{ id: number; uuid: string }>(
       "SELECT uuid, id FROM external_user LEFT JOIN external_reading_list ON uuid=user_uuid WHERE local_uuid=?",
       uuid,
     );
-    const tocPromise: Promise<QueryResult<{ medium_id: number; count: number }>> = this.query(
+    const tocPromise = this.query<{ medium_id: number; count: number }>(
       "SELECT medium_id, count(link) as count FROM medium_toc GROUP BY medium_id;",
     );
 
@@ -724,6 +762,7 @@ export class QueryContext implements ConnectionContext {
 
     for (const episode of episodes.rows) {
       partMap.set(episode.part_id, episode);
+      // @ts-expect-error
       delete episode.part_id;
     }
     const media = {};

@@ -215,6 +215,10 @@ async function processMediumNews(
     await episodeStorage.addEpisode(newEpisodes);
   }
   if (tocLink) {
-    await mediumStorage.addToc(mediumId, tocLink);
+    const links = await mediumStorage.getToc(mediumId);
+
+    if (!links.includes(tocLink)) {
+      await mediumStorage.addToc(mediumId, tocLink);
+    }
   }
 }

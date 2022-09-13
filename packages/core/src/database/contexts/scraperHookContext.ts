@@ -6,12 +6,11 @@ import { ValidationError } from "../../error";
 
 export class ScraperHookContext extends SubContext {
   public async getAllStream(): Promise<TypedQuery<ScraperHook>> {
-    return this.queryStream("SELECT id, name, state, message FROM scraper_hook");
+    return this.queryStream<ScraperHook>("SELECT id, name, state, message FROM scraper_hook");
   }
 
   public async getAll(): Promise<ScraperHook[]> {
-    const result = await this.query("SELECT id, name, state, message FROM scraper_hook");
-    return result.rows;
+    return this.select<ScraperHook>("SELECT id, name, state, message FROM scraper_hook");
   }
 
   /**

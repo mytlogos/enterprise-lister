@@ -14,6 +14,7 @@ import {
   NewData,
   QueryItems,
   QueryItemsResult,
+  TypedQuery,
 } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
@@ -40,8 +41,13 @@ import { CustomHookContext } from "../contexts/customHookContext";
 import { DatabaseContext } from "../contexts/databaseContext";
 import { DatabaseConnectionError } from "../../error";
 import { NotificationContext } from "../contexts/notificationContext";
-import { Pool, PoolClient, PoolConfig } from "pg";
-import QueryStream from "pg-query-stream";
+import { Pool, PoolClient, PoolConfig, types } from "pg";
+import { Readable } from "stream";
+
+// parse float by default
+types.setTypeParser(1700, parseFloat);
+// parse int8 as normal number instead of bigint
+types.setTypeParser(20, parseInt);
 
 function inContext<T>(callback: ContextCallback<T, QueryContext>, transaction = true) {
   return storageInContext(callback, (con) => queryContextProvider(con), transaction);
@@ -79,7 +85,7 @@ export async function storageInContext<T, C extends ConnectionContext>(
     console.log(e);
     throw e;
   } finally {
-    if (result instanceof QueryStream) {
+    if (result instanceof Readable) {
       result.on("end", () => con.release());
     } else {
       // release connection into the pool
@@ -163,7 +169,7 @@ async function doTransaction<T, C extends ConnectionContext>(
     // let callback run with context
     result = await callback(context);
 
-    if (result instanceof QueryStream) {
+    if (result instanceof Readable) {
       let error = false;
       // TODO: 31.08.2019 returning query object does not allow normal error handling,
       //  maybe return own stream where the control is completely in my own hands
@@ -376,7 +382,7 @@ export class Storage {
   /**
    *
    */
-  public getInvalidatedStream(uuid: Uuid): Promise<QueryStream> {
+  public getInvalidatedStream(uuid: Uuid): Promise<TypedQuery> {
     return inContext((context) => context.getInvalidatedStream(uuid));
   }
 }

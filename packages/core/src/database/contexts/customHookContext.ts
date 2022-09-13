@@ -1,7 +1,7 @@
 import { SubContext } from "./subContext";
 import { isInvalidId } from "../../tools";
 import { storeModifications } from "../sqlTools";
-import { CustomHook } from "@/types";
+import { CustomHook, Entity } from "@/types";
 import { ValidationError } from "../../error";
 
 export class CustomHookContext extends SubContext {
@@ -13,7 +13,7 @@ export class CustomHookContext extends SubContext {
       value.state = JSON.stringify(value.state);
     }
 
-    const result = await this.query(
+    const result = await this.query<Entity>(
       "INSERT INTO custom_hook (name, state, hookState, comment) VALUES (?,?,?,?) ON CONFLICT DO NOTHING RETURNING id;",
       [value.name, value.state, value.hookState, value.comment],
     );
@@ -28,7 +28,10 @@ export class CustomHookContext extends SubContext {
   }
 
   public async getHooks(): Promise<CustomHook[]> {
-    return this.select('SELECT id, name, state, updated_at, hookState as "hookState", comment FROM custom_hook;');
+    const hooks = await this.select<CustomHook>(
+      "SELECT id, name, state, updated_at, hookState, comment FROM custom_hook;",
+    );
+    return hooks.map((value) => ({ ...value, hookState: value.hookstate, hookstate: undefined }));
   }
 
   public async updateHook(value: CustomHook): Promise<CustomHook> {

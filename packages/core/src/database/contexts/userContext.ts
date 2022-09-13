@@ -88,15 +88,18 @@ export class UserContext extends SubContext {
     if (!userName || !password) {
       return Promise.reject(new ValidationError("missing username or password"));
     }
-    const result = await this.query("SELECT * FROM user WHERE name = ?;", userName);
+    const users = await this.select<{ uuid: string; password: string; alg: string; salt: string }>(
+      "SELECT * FROM user WHERE name = ?;",
+      userName,
+    );
 
-    if (!result.rows.length) {
+    if (!users.length) {
       return Promise.reject(new MissingEntityError(Errors.USER_DOES_NOT_EXIST));
-    } else if (result.rows.length !== 1) {
+    } else if (users.length !== 1) {
       return Promise.reject(new DatabaseError("got multiple user for the same name"));
     }
 
-    const user = result.rows[0];
+    const user = users[0];
     const uuid = user.uuid;
 
     if (!(await verifyPassword(password, user.password, user.alg, user.salt))) {
@@ -126,7 +129,10 @@ export class UserContext extends SubContext {
    * the session key of the user for the ip.
    */
   public async userLoginStatus(ip: string, uuid?: Uuid, session?: string): Promise<boolean> {
-    const sessionRecord = await this.selectFirst<any>("SELECT * FROM user_log WHERE ip = ?;", ip);
+    const sessionRecord = await this.selectFirst<{ session_key: string; user_uuid: string }>(
+      "SELECT * FROM user_log WHERE ip = ?;",
+      ip,
+    );
 
     if (!sessionRecord) {
       return false;
@@ -144,7 +150,7 @@ export class UserContext extends SubContext {
     if (!ip) {
       return null;
     }
-    const result = await this.query(
+    const result = await this.query<{ name: string; uuid: string; session_key: string }>(
       "SELECT name, uuid, session_key FROM user_log " + "INNER JOIN user ON user.uuid=user_log.user_uuid WHERE ip = ?;",
       ip,
     );
@@ -163,10 +169,10 @@ export class UserContext extends SubContext {
   }
 
   public async getUser(uuid: Uuid, ip: string): Promise<User> {
-    const sessionRecord = await this.selectFirst<any>("SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;", [
-      uuid,
-      ip,
-    ]);
+    const sessionRecord = await this.selectFirst<{ session_key: string; user_uuid: string }>(
+      "SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;",
+      [uuid, ip],
+    );
 
     if (!sessionRecord?.session_key) {
       throw new SessionError("user has no session");
@@ -289,7 +295,10 @@ export class UserContext extends SubContext {
    * @return {Promise<boolean>}
    */
   public async verifyPassword(uuid: Uuid, password: string): Promise<boolean> {
-    const result = await this.query("SELECT password, alg, salt FROM user WHERE uuid = ?", uuid);
+    const result = await this.query<{ password: string; alg: string; salt: string }>(
+      "SELECT password, alg, salt FROM user WHERE uuid = ?",
+      uuid,
+    );
     const user = result.rows[0];
     return verifyPassword(password, user.password, user.alg, user.salt);
   }
@@ -312,7 +321,7 @@ export class UserContext extends SubContext {
       session,
     };
     // query for user
-    const userPromise = this.query("SELECT * FROM user WHERE uuid = ?;", uuid).then((value) => {
+    const userPromise = this.query<{ name: string }>("SELECT name FROM user WHERE uuid = ?;", uuid).then((value) => {
       // add user metadata
       user.name = value.rows[0].name;
       user.uuid = uuid;

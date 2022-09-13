@@ -1,5 +1,14 @@
 import { SubContext } from "./subContext";
-import { List, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
+import {
+  List,
+  Uuid,
+  MultiSingleNumber,
+  MinList,
+  StorageList,
+  ListMedia,
+  PromiseMultiSingle,
+  Entity,
+} from "../../types";
 import { promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
@@ -10,11 +19,10 @@ export class InternalListContext extends SubContext {
    * links it to the user of the uuid.
    */
   public async addList(uuid: Uuid, { name, medium }: MinList): Promise<List> {
-    const result = await this.query("INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?) RETURNING id", [
-      uuid,
-      name,
-      medium,
-    ]);
+    const result = await this.query<Entity>(
+      "INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?) RETURNING id",
+      [uuid, name, medium],
+    );
     storeModifications("list", "insert", result);
     const id = result.rows[0]?.id;
     if (!Number.isInteger(id)) {

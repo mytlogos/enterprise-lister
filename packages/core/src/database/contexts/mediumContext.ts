@@ -18,24 +18,27 @@ import {
   MediumToc,
   TypedQuery,
   Id,
+  Entity,
 } from "../../types";
-import { count, getElseSet, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
+import { count, getElseSet, ignore, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
+import { fullMediaTocFromDB, simpleMediumFromDB } from "./contextHelper";
+import { pipeline, Transform } from "stream";
 
 export class MediumContext extends SubContext {
   public async getSpecificToc(id: number, link: string): VoidablePromise<FullMediumToc> {
     const tocs = await this.select<FullMediumToc>(
       `SELECT
        id, medium_id as mediumId, link,
-       countryOfOrigin as "countryOfOrigin", languageOfOrigin as "languageOfOrigin",
-       author, title,medium, artist, lang, stateOrigin as "stateOrigin",
-       stateTL as "stateTL", series, universe
+       countryOfOrigin, languageOfOrigin,
+       author, title,medium, artist, lang, stateOrigin,
+       stateTL, series, universe
        FROM medium_toc WHERE medium_id = ? AND link = ?;`,
       [id, link],
     );
-    return tocs[0];
+    return fullMediaTocFromDB(tocs[0]);
   }
 
   public async removeToc(tocLink: string): EmptyPromise {
@@ -54,7 +57,7 @@ export class MediumContext extends SubContext {
     if (!medium?.medium || !medium?.title) {
       return Promise.reject(new ValidationError(`Invalid Medium: ${medium?.title}-${medium?.medium}`));
     }
-    const result = await this.query("INSERT INTO medium(medium, title) VALUES (?,?) RETURNING id;", [
+    const result = await this.query<Entity>("INSERT INTO medium(medium, title) VALUES (?,?) RETURNING id;", [
       medium.medium,
       medium.title,
     ]);
@@ -108,7 +111,7 @@ export class MediumContext extends SubContext {
   public async getTocSearchMedia(): Promise<TocSearchMedium[]> {
     const result = await this.select<{ host?: string; mediumId: number; title: string; medium: number }>(
       // eslint-disable-next-line @typescript-eslint/quotes
-      'SELECT substring(episode_release.url, 1, locate("/",episode_release.url,9)) as host, ' +
+      "SELECT substring(episode_release.url, 1, 8 + strpos(substring(url from 9), '/')) as host, " +
         "medium.id as mediumId, medium.title, medium.medium " +
         "FROM medium " +
         "LEFT JOIN part ON part.medium_id=medium.id " +
@@ -119,7 +122,7 @@ export class MediumContext extends SubContext {
     const idMap = new Map<number, TocSearchMedium>();
     const tocSearchMedia = result
       .map((value) => {
-        const medium = idMap.get(value.mediumId);
+        const medium = idMap.get(value.mediumid);
         if (medium) {
           if (medium.hosts && value.host) {
             medium.hosts.push(value.host);
@@ -127,7 +130,7 @@ export class MediumContext extends SubContext {
           return false;
         }
         const searchMedium: TocSearchMedium = {
-          mediumId: value.mediumId,
+          mediumId: value.mediumid,
           hosts: [],
           synonyms: [],
           medium: value.medium,
@@ -136,7 +139,7 @@ export class MediumContext extends SubContext {
         if (value.host && searchMedium.hosts) {
           searchMedium.hosts.push(value.host);
         }
-        idMap.set(value.mediumId, searchMedium);
+        idMap.set(value.mediumid, searchMedium);
         return searchMedium;
       })
       .filter((value) => value) as any[] as TocSearchMedium[];
@@ -179,11 +182,11 @@ export class MediumContext extends SubContext {
   public getMedium<T extends MultiSingleNumber>(id: T, uuid: Uuid): PromiseMultiSingle<T, Medium> {
     // TODO: 29.06.2019 replace with id IN (...)
     return promiseMultiSingle(id, async (mediumId: number): Promise<Medium> => {
-      const result = await this.selectFirst<any>("SELECT * FROM medium WHERE medium.id=?;", mediumId);
+      const result = await this.selectFirst<SimpleMedium>("SELECT * FROM medium WHERE medium.id=?;", mediumId);
 
       const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
 
-      const currentReadResult = await this.selectFirst<any>(
+      const currentReadResult = await this.selectFirst<{ episode_id: number }>(
         "SELECT user_episode.episode_id FROM " +
           "(SELECT * FROM user_episode " +
           "WHERE episode_id IN (SELECT id from episode " +
@@ -224,13 +227,20 @@ export class MediumContext extends SubContext {
   }
 
   public async getAllMediaFull(): Promise<TypedQuery<SimpleMedium>> {
-    return this.queryStream(
+    const query = this.queryStream(
       `SELECT 
-      id, countryOfOrigin as "countryOfOrigin", languageOfOrigin as "languageOfOrigin",
+      id, countryOfOrigin, languageOfOrigin,
       author, title, medium, artist, lang, 
-      stateOrigin as "stateOrigin", stateTL as "stateTL", series, universe
+      stateOrigin, stateTL, series, universe
       FROM medium`,
     );
+    const transform = new Transform({
+      objectMode: true,
+      transform(chunk, _encoding, callback) {
+        callback(null, simpleMediumFromDB(chunk));
+      },
+    });
+    return pipeline(query, transform, ignore);
   }
 
   public async getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
@@ -242,28 +252,32 @@ export class MediumContext extends SubContext {
       uuid,
     );
     const tocs = await this.select<FullMediumToc>(
-      `SELECT id, medium_id as mediumId, link, countryOfOrigin as "countryOfOrigin",
-      languageOfOrigin as "languageOfOrigin", author, title, medium,
-      artist, lang, stateOrigin as "stateOrigin", stateTL as "stateTL", series, universe
+      `SELECT id, medium_id as mediumId, link, countryOfOrigin,
+      languageOfOrigin, author, title, medium,
+      artist, lang, stateOrigin, stateTL, series, universe
       FROM medium_toc;`,
     );
     const readStats = await readStatsPromise;
     const idMap = new Map<number, SecondaryMedium>();
 
     for (const value of readStats) {
-      const secondary = value as unknown as SecondaryMedium;
-      secondary.tocs = [];
+      const secondary: SecondaryMedium = {
+        id: value.id,
+        readEpisodes: value.readepisodes,
+        tocs: [],
+        totalEpisodes: value.totalepisode,
+      };
       idMap.set(value.id, secondary);
     }
 
     for (const toc of tocs) {
-      const secondary = getElseSet(idMap, toc.mediumId, () => ({
-        id: toc.mediumId,
+      const secondary = getElseSet(idMap, toc.mediumid, () => ({
+        id: toc.mediumid,
         readEpisodes: 0,
         totalEpisodes: 0,
         tocs: [],
       }));
-      secondary.tocs.push(toc);
+      secondary.tocs.push(fullMediaTocFromDB(toc));
     }
 
     return [...idMap.values()];
@@ -401,7 +415,7 @@ export class MediumContext extends SubContext {
       return [];
     }
     const synonymMap = new Map<number, { mediumId: number; synonym: string[] }>();
-    synonyms.forEach((value: any) => {
+    synonyms.rows.forEach((value: any) => {
       const synonym = getElseSet(synonymMap, value.medium_id, () => ({ mediumId: value.medium_id, synonym: [] }));
       synonym.synonym.push(value.synonym);
     });
@@ -446,9 +460,9 @@ export class MediumContext extends SubContext {
   }
 
   public async addToc(mediumId: number, link: string): Promise<number> {
-    const result = await this.query(
-      "INSERT INTO medium_toc (medium_id, link) VAlUES (?,?) ON CONFLICT DO NOTHING RETURNING id",
-      [mediumId, link],
+    const result = await this.query<Entity>(
+      "INSERT INTO medium_toc (medium_id, link, title, medium) VAlUES (?,?,?,?) RETURNING id",
+      [mediumId, link, "", 0],
     );
     storeModifications("toc", "insert", result);
     return result.rows[0].id;
@@ -459,25 +473,27 @@ export class MediumContext extends SubContext {
     return resultArray.map((value) => value.link).filter((value) => value);
   }
 
-  public getMediumTocs(mediumId: number[]): Promise<FullMediumToc[]> {
-    return this.queryInList(
+  public async getMediumTocs(mediumId: number[]): Promise<FullMediumToc[]> {
+    const result = await this.queryInList<FullMediumToc>(
       `SELECT id, medium_id as mediumId, link, 
-      countryOfOrigin as "countryOfOrigin", languageOfOrigin as "languageOfOrigin",
-      author, title, medium, artist, lang, stateOrigin as "stateOrigin",
-      stateTL as "stateTL", series, universe
+      countryOfOrigin, languageOfOrigin,
+      author, title, medium, artist, lang, stateOrigin,
+      stateTL, series, universe
       FROM medium_toc WHERE medium_id IN (??);`,
       [mediumId],
-    ) as Promise<FullMediumToc[]>;
+    );
+    return result.rows.map(fullMediaTocFromDB);
   }
 
-  public getTocs(tocIds: number[]): Promise<FullMediumToc[]> {
-    return this.queryInList(
-      `SELECT id, medium_id as mediumId, link, countryOfOrigin as "countryOfOrigin",
-      languageOfOrigin as "languageOfOrigin", author, title, medium, artist, lang,
-      stateOrigin as "stateOrigin", stateTL as "stateTL", series, universe
+  public async getTocs(tocIds: number[]): Promise<FullMediumToc[]> {
+    const result = await this.queryInList<FullMediumToc>(
+      `SELECT id, medium_id as mediumId, link, countryOfOrigin,
+      languageOfOrigin, author, title, medium, artist, lang,
+      stateOrigin, stateTL, series, universe
       FROM medium_toc WHERE id IN (??);`,
       [tocIds],
-    ) as Promise<FullMediumToc[]>;
+    );
+    return result.rows.map(fullMediaTocFromDB);
   }
 
   public async removeMediumToc(mediumId: number, link: string): Promise<boolean> {
@@ -513,7 +529,7 @@ export class MediumContext extends SubContext {
         " WHERE er.episode_id = e.id" +
         " AND e.part_id = p.id" +
         " AND p.medium_id = ?" +
-        " AND locate(?,er.url) > 0;",
+        " AND strpos(er.url, ?) > 0;",
       [mediumId, domain],
     );
     storeModifications("release", "delete", deletedReleaseResult);
@@ -553,13 +569,14 @@ export class MediumContext extends SubContext {
   }
 
   public getAllMediaTocs(): Promise<Array<{ link?: string; id: number }>> {
-    return this.select(
+    return this.select<{ link?: string; id: number }>(
       "SELECT medium.id, medium_toc.link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id",
     );
   }
 
-  public getAllTocs(): Promise<MediumToc[]> {
-    return this.select("SELECT medium_id as mediumId, link FROM medium_toc");
+  public async getAllTocs(): Promise<MediumToc[]> {
+    const items = await this.select<MediumToc>("SELECT medium_id as mediumId, link FROM medium_toc");
+    return items.map((value) => ({ link: value.link, mediumId: value.mediumid }));
   }
 
   public async mergeMedia(sourceMediumId: number, destMediumId: number): Promise<boolean> {
@@ -661,7 +678,7 @@ export class MediumContext extends SubContext {
         new ValidationError(`Invalid destination Medium: ${destMedium?.title}-${destMedium?.medium}`),
       );
     }
-    const result = await this.query(
+    const result = await this.query<Entity>(
       "INSERT INTO medium(medium, title) VALUES (?,?) ON CONFLICT DO NOTHING RETURNING id;",
       [destMedium.medium, destMedium.title],
     );
@@ -751,7 +768,7 @@ export class MediumContext extends SubContext {
         " AND part.medium_id = ?" +
         " AND dest_e.part_id = ?" +
         " AND src_e.combiIndex = dest_e.combiIndex" +
-        " AND locate(?,episode_release.url) > 0;",
+        " AND strpos(episode_release.url, ?) > 0;",
       [sourceMediumId, standardPartId, domain],
     );
     storeModifications("release", "update", updatedReleaseResult);

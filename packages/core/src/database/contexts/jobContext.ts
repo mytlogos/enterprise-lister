@@ -23,6 +23,7 @@ import {
   QueryJobHistory,
   Paginated,
   ScrapeName,
+  Entity,
 } from "../../types";
 import { isString, promiseMultiSingle, multiSingle, defaultNetworkTrack } from "../../tools";
 import logger from "../../logger";
@@ -31,6 +32,7 @@ import { escapeLike } from "../storages/storageTools";
 import { requireStore, StoreKey } from "../../asyncStorage";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, ValidationError } from "../../error";
+import { Transform } from "stream";
 
 interface CountValue<T> {
   count: number;
@@ -278,8 +280,8 @@ export class JobContext extends SubContext {
     return values as any[];
   }
 
-  public async getJobsStatsSummary(): Promise<JobStatSummary[]> {
-    return this.select("SELECT * FROM job_stat_summary;");
+  public getJobsStatsSummary(): Promise<JobStatSummary[]> {
+    return this.select<JobStatSummary>("SELECT * FROM job_stat_summary;");
   }
 
   public async getJobDetails(id: number): Promise<JobDetails> {
@@ -354,16 +356,16 @@ export class JobContext extends SubContext {
   }
 
   public async getJobsById(jobIds: number[]): Promise<JobItem[]> {
-    const items = await this.queryInList("SELECT * FROM jobs WHERE id IN (??);", [jobIds]);
-    return items.map(fixDbJobProperties);
+    const items = await this.queryInList<DBJobItem>("SELECT * FROM jobs WHERE id IN (??);", [jobIds]);
+    return items.rows.map(fixDbJobProperties);
   }
 
   public async getJobsByName(names: string[]): Promise<JobItem[]> {
-    const items = await this.queryInList(
+    const items = await this.queryInList<DBJobItem>(
       "SELECT * FROM jobs WHERE (nextRun IS NULL OR nextRun < NOW()) AND state = 'waiting' AND name IN (??);",
       [names],
     );
-    return items.map(fixDbJobProperties);
+    return items.rows.map(fixDbJobProperties);
   }
 
   public async stopJobs(): EmptyPromise {
@@ -401,7 +403,7 @@ export class JobContext extends SubContext {
         // @ts-expect-error
         value.id = foundJob.id;
       } else {
-        const result = await this.query(
+        const result = await this.query<Entity>(
           "INSERT INTO jobs " +
             "(type, name, state, interval, deleteAfterRun, runAfter, arguments, nextRun, job_state) " +
             "VALUES (?,?,?,?,?,?,?,?, 'enabled') ON CONFLICT DO NOTHING RETURNING id",
@@ -502,8 +504,8 @@ export class JobContext extends SubContext {
   public async getJobHistoryStream(since: Date, limit: number): Promise<TypedQuery<JobHistoryItem>> {
     let query = `SELECT 
     id,
-    deleteafterrun as "deleteAfterRun",
-    runafter as "runAfter",
+    deleteafterrun,
+    runafter,
     arguments,
     message,
     context,
@@ -520,7 +522,7 @@ export class JobContext extends SubContext {
     type,
     name,
     start,
-    end,
+    "end",
     result
     FROM job_history WHERE start < ? ORDER BY start DESC`;
     const values = [since.toISOString()] as any[];
@@ -529,14 +531,21 @@ export class JobContext extends SubContext {
       query += " LIMIT ?;";
       values.push(limit);
     }
-    return this.queryStream(query, values);
+    return this.queryStream(query, values).pipe(
+      new Transform({
+        objectMode: true,
+        transform(chunk, _encoding, callback) {
+          callback(null, fixDbJobHistoryProperties(chunk));
+        },
+      }),
+    );
   }
 
   public async getJobHistory(): Promise<JobHistoryItem[]> {
-    return this.select(`SELECT 
+    const items = await this.select<JobHistoryItem>(`SELECT 
     id,
-    deleteafterrun as "deleteAfterRun",
-    runafter as "runAfter",
+    deleteafterrun,
+    runafter,
     arguments,
     message,
     context,
@@ -553,9 +562,10 @@ export class JobContext extends SubContext {
     type,
     name,
     start,
-    end,
+    "end",
     result
     FROM job_history ORDER BY start;`);
+    return items.map(fixDbJobHistoryProperties);
   }
 
   /**
@@ -601,8 +611,8 @@ export class JobContext extends SubContext {
     const items = await this.select<JobHistoryItem>(
       `SELECT 
       id,
-      deleteafterrun as "deleteAfterRun",
-      runafter as "runAfter",
+      deleteafterrun,
+      runafter,
       arguments,
       message,
       context,
@@ -619,7 +629,7 @@ export class JobContext extends SubContext {
       type,
       name,
       start,
-      end,
+      "end",
       result
       FROM job_history ${conditions}${limit}`,
       values,
@@ -627,7 +637,7 @@ export class JobContext extends SubContext {
     const [{ total }] = await totalPromise;
 
     return {
-      items,
+      items: items.map(fixDbJobHistoryProperties),
       next: items[items.length - 1] && new Date(items[items.length - 1].start),
       total,
     };
@@ -756,11 +766,11 @@ export class JobContext extends SubContext {
 
       const insertColumns = keys.join(", ");
       const params = keys.map(() => "?").join(", ");
-      const updates = keys.map((key) => key + " = VALUES(" + key + ")").join(", ");
+      const updates = keys.map((key) => key + " = EXCLUDED." + key).join(", ");
       const values = keys.map((key) => item[key]);
 
       await this.query(
-        `INSERT INTO job_stat_summary (${insertColumns}) VALUES (${params}) ON DUPLICATE KEY UPDATE ${updates}`,
+        `INSERT INTO job_stat_summary (${insertColumns}) VALUES (${params}) ON CONFLICT (name) DO UPDATE SET ${updates}`,
         values,
       );
 
@@ -779,8 +789,11 @@ export class JobContext extends SubContext {
       const networkRequests = jobTrack.network.count || 0;
 
       return this.query(
-        "INSERT INTO job_history (id, type, name, deleteAfterRun, runAfter, scheduled_at, start, end, result, message, context, arguments, created, updated, deleted, queries, network_queries, network_received, network_send)" +
-          " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
+        `INSERT INTO job_history 
+        (
+          id, type, name, deleteAfterRun, runAfter, scheduled_at, start, "end", result, message,
+          context, arguments, created, updated, deleted, queries, network_queries, network_received, network_send
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`,
         [
           value.id,
           value.type,

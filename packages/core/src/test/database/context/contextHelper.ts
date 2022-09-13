@@ -2,10 +2,9 @@ import * as storageTools from "../../../database/storages/storageTools";
 import * as storage from "../../../database/storages/storage";
 import { QueryContext } from "../../../database/contexts/queryContext";
 import { MediaType } from "../../../tools";
-import { EmptyPromise, EpisodeRelease, SimpleEpisode } from "../../../types";
+import { EmptyPromise, EpisodeRelease, SimpleEpisode, TypedQuery } from "../../../types";
 import bcrypt from "bcryptjs";
 import { MissingEntityError } from "../../../error";
-import QueryStream from "pg-query-stream";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
   return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);
@@ -41,7 +40,7 @@ export async function setupTestDatabase(): EmptyPromise {
   await recreateStorage();
 }
 
-export function checkEmptyQuery(query: QueryStream): EmptyPromise {
+export function checkEmptyQuery(query: TypedQuery): EmptyPromise {
   return new Promise((resolve, reject) => {
     let rejected = false;
     query.on("result", () => {
@@ -60,7 +59,7 @@ export function checkEmptyQuery(query: QueryStream): EmptyPromise {
   });
 }
 
-export function resultFromQuery(query: QueryStream): Promise<any[]> {
+export function resultFromQuery(query: TypedQuery): Promise<any[]> {
   return new Promise((resolve, reject) => {
     const rows: any[] = [];
     let rejected = false;

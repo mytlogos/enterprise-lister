@@ -3,7 +3,7 @@ import { SubContext } from "./subContext";
 
 export class AppEventContext extends SubContext {
   public async addAppEvent(event: AppEvent): Promise<AppEvent> {
-    const newEvent = await this.query(
+    const newEvent = await this.query<AppEvent>(
       "INSERT INTO app_events (program, date, type) VALUES (?,?,?) RETURNING id, program, date, type",
       [event.program, event.date, event.type],
     );
@@ -61,12 +61,12 @@ export class AppEventContext extends SubContext {
       values.push(filter.toDate);
     }
 
-    const result = await this.query(
+    const result = await this.select<AppEvent>(
       `SELECT id, program, date, type FROM app_events${where.length ? " WHERE " + where.join(" AND ") : ""}${
         sort ? " ORDER BY " + sort : ""
       };`,
       values,
     );
-    return result.rows;
+    return result;
   }
 }

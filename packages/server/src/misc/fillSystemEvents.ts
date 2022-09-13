@@ -130,7 +130,6 @@ async function streamed() {
     await Promise.allSettled(promises);
     process.exit(0);
   });
-  jobs.start();
 }
 
 main();

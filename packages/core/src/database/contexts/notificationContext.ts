@@ -1,11 +1,11 @@
-import { Id, Insert, Notification, UserNotification, Uuid } from "@/types";
+import { Entity, Id, Insert, Notification, UserNotification, Uuid } from "@/types";
 import { SubContext } from "./subContext";
 
 export class NotificationContext extends SubContext {
   private readonly tableName = "notifications";
 
   public async insertNotification(notification: Insert<Notification>): Promise<Notification> {
-    const result = await this.dmlQuery(
+    const result = await this.dmlQuery<Entity>(
       "INSERT INTO notifications (title, content, date, key, type) VALUES (?,?,?,?,?) RETURNING id;",
       [notification.title, notification.content, notification.date, notification.key, notification.type],
     );
@@ -58,13 +58,13 @@ export class NotificationContext extends SubContext {
     }
 
     if (read) {
-      return this.select(
+      return this.select<UserNotification>(
         "SELECT n.*, true as read FROM notifications as n WHERE date > ? AND id IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
           limit,
         args,
       );
     } else {
-      return this.select(
+      return this.select<UserNotification>(
         "SELECT n.*, false as read FROM notifications as n WHERE date > ? AND id NOT IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
           limit,
         args,
@@ -83,9 +83,12 @@ export class NotificationContext extends SubContext {
   public async countNotifications(uuid: Uuid, read: boolean): Promise<number> {
     let result;
     if (read) {
-      result = await this.select<any>("SELECT count(id) as count FROM notifications_read WHERE uuid = ?", uuid);
+      result = await this.select<{ count: number }>(
+        "SELECT count(id) as count FROM notifications_read WHERE uuid = ?",
+        uuid,
+      );
     } else {
-      result = await this.select<any>(
+      result = await this.select<{ count: number }>(
         "SELECT count(id) as count FROM notifications WHERE id not in (SELECT id as count FROM notifications_read WHERE uuid = ?)",
         uuid,
       );

@@ -24,7 +24,7 @@ export class NewsContext extends SubContext {
       if (!value.title || !value.date) {
         return Promise.reject(new ValidationError(`Invalid News: ${value.title}-${value.date + ""}`));
       }
-      const result = await this.query(
+      const result = await this.query<News>(
         "INSERT INTO news_board (title, link, date) VALUES (?,?,?) ON CONFLICT DO NOTHING RETURNING *;",
         [value.title, value.link, value.date],
       );
@@ -40,7 +40,7 @@ export class NewsContext extends SubContext {
   }
 
   public getLatestNews(domain: string): Promise<News[]> {
-    return this.select("SELECT * FROM news_board WHERE locate(?, link) < 9 ORDER BY date DESC LIMIT 10", domain);
+    return this.select<News>("SELECT * FROM news_board WHERE strpos(link, ?) < 9 ORDER BY date DESC LIMIT 10", domain);
   }
 
   public async getAll(uuid: Uuid): Promise<News[]> {
@@ -164,8 +164,8 @@ export class NewsContext extends SubContext {
    *
    */
   public checkUnreadNews(uuid: Uuid): Promise<number[]> {
-    return this.select(
-      "SELECT * FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);",
+    return this.select<number>(
+      "SELECT id FROM news_board WHERE id NOT IN (SELECT news_id FROM news_user WHERE user_id = ?);",
       uuid,
     );
   }
@@ -178,7 +178,7 @@ export class NewsContext extends SubContext {
     const result = await this.query(
       "INSERT INTO news_medium (medium_id, news_id)" +
         "SELECT medium.id, news_board.id FROM medium,news_board " +
-        "WHERE locate(medium.title, news_board.title) > 0 ON CONFLICT DO NOTHING",
+        "WHERE strpos(news_board.title, medium.title) > 0 ON CONFLICT DO NOTHING",
     );
     return result.rowCount > 0;
   }

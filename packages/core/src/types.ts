@@ -1,5 +1,13 @@
 import { MediaType } from "./tools";
-import QueryStream from "pg-query-stream";
+import { Readable } from "stream";
+
+export type DBEntity<T> = {
+  [K in keyof T as Lowercase<string & K>]: T[K];
+};
+
+export interface Entity {
+  id: number;
+}
 
 export interface ExternalStorageUser {
   userUuid: Uuid;
@@ -1575,7 +1583,7 @@ export enum MilliTime {
   DAY = 86400000,
 }
 
-export interface TypedQuery<Packet = any> extends QueryStream {
+export interface TypedQuery<Packet = any> extends Readable {
   on(event: "close", listener: () => void): this;
   on(event: "end", listener: () => void): this;
   on(event: "data", callback: (row: Packet) => void): this;

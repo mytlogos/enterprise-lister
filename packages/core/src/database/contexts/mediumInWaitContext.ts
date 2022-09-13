@@ -95,7 +95,7 @@ export class MediumInWaitContext extends SubContext {
       whereFilter.push(`link like '%${escapeLike(search.title)}%'`);
       values.push(search.title);
     }
-    return this.queryStream(
+    return this.queryStream<MediumInWait>(
       `SELECT * FROM medium_in_wait${
         whereFilter.length ? " WHERE " + whereFilter.join(" AND ") : ""
       } ORDER BY title${limit}`,

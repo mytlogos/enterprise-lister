@@ -11,13 +11,13 @@ export class DatabaseContext extends SubContext {
   }
 
   public async getDatabaseVersion(): Promise<Array<{ version: number }>> {
-    const result = await this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
-    return result.rows[0];
+    const result = await this.select<{ version: number }>("SELECT version FROM enterprise_database_info LIMIT 1;");
+    return result;
   }
 
   public async getServerVersion(): Promise<[{ version: string }]> {
-    const result = await this.query("SELECT version() as version");
-    return result.rows[0];
+    const result = await this.select<{ version: string }>("SELECT version() as version");
+    return result as [any];
   }
 
   public async startMigration(): Promise<boolean> {
@@ -41,21 +41,33 @@ export class DatabaseContext extends SubContext {
   }
 
   public getTablesPg(): Promise<Array<{ schemaname: string; tablename: string }>> {
-    return this.select("select * from pg_catalog.pg_tables;");
+    return this.select<{ schemaname: string; tablename: string }>("select * from pg_catalog.pg_tables;");
   }
 
-  public getTriggers(): Promise<DbTrigger[]> {
-    return this.query("SHOW TRIGGERS;").then((value) => value.rows);
+  public async getTriggers(): Promise<DbTrigger[]> {
+    const items = await this.select<DbTrigger>("SHOW TRIGGERS;");
+    return items.map((value) => ({
+      Event: value.event,
+      Table: value.table,
+      Timing: value.timing,
+      Trigger: value.trigger,
+    }));
   }
 
-  public getTriggersPg(): Promise<DbTrigger[]> {
-    return this.select(`SELECT
-      action_timing as Timing,
-      trigger_schema as Table,
-      trigger_name as Trigger,
-      event_manipulation as Event
+  public async getTriggersPg(): Promise<DbTrigger[]> {
+    const items = await this.select<DbTrigger>(`SELECT
+      action_timing as timing,
+      trigger_schema as table,
+      trigger_name as trigger,
+      event_manipulation as event
     FROM 
       information_schema.triggers`);
+    return items.map((value) => ({
+      Event: value.event,
+      Table: value.table,
+      Timing: value.timing,
+      Trigger: value.trigger,
+    }));
   }
 
   public createTrigger(trigger: Trigger): Promise<any> {

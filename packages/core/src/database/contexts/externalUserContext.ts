@@ -7,36 +7,48 @@ import {
   DisplayExternalUser,
   TypedQuery,
   ExternalStorageUser,
+  DBEntity,
 } from "../../types";
 import { promiseMultiSingle } from "../../tools";
 import { v1 as uuidGenerator } from "uuid";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, DuplicateEntityError, MissingEntityError } from "../../error";
+import { Transform } from "stream";
+import { displayExternalUserFromDB } from "./contextHelper";
 
 export class ExternalUserContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<TypedQuery<DisplayExternalUser>> {
     const lists = await this.parentContext.externalListContext.getAll(uuid);
-    return this.queryStream(
+    return this.queryStream<DisplayExternalUser>(
       `SELECT
-      uuid, local_uuid as "localUuid", name as identifier, service as type
+      uuid, local_uuid as localUuid, name as identifier, service as type
       FROM external_user
       WHERE local_uuid = ?;`,
       uuid,
-    ).on("result", (row) => {
-      row.lists = [];
-      for (const list of lists) {
-        if (list.uuid === row.uuid) {
-          row.lists.push(list);
+    )
+      .on("result", (row) => {
+        row.lists = [];
+        for (const list of lists) {
+          if (list.uuid === row.uuid) {
+            row.lists.push(list);
+          }
         }
-      }
-    });
+      })
+      .pipe(
+        new Transform({
+          objectMode: true,
+          transform(chunk: DBEntity<DisplayExternalUser>, _encoding, callback) {
+            callback(null, displayExternalUserFromDB(chunk));
+          },
+        }),
+      );
   }
 
   /**
    * Adds an external user of an user to the storage.
    */
   public async addExternalUser(localUuid: Uuid, externalUser: ExternalUser): Promise<ExternalUser> {
-    const result = await this.select(`SELECT * FROM external_user WHERE name = ? AND local_uuid = ? AND service = ?`, [
+    const result = await this.select("SELECT * FROM external_user WHERE name = ? AND local_uuid = ? AND service = ?", [
       externalUser.identifier,
       localUuid,
       externalUser.type,
@@ -105,15 +117,15 @@ export class ExternalUserContext extends SubContext {
    * Gets an external user with cookies, without items.
    */
   public async getExternalUserWithCookies(uuid: Uuid): Promise<ExternalStorageUser> {
-    const value = await this.select<any>(
+    const value = await this.selectFirst<{ uuid: string; local_uuid: string; service: number; cookies: string }>(
       "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
       uuid,
     );
     return {
-      uuid: value[0].uuid,
-      userUuid: value[0].local_uuid,
-      type: value[0].service,
-      cookies: value[0].cookies,
+      uuid: value.uuid,
+      userUuid: value.local_uuid,
+      type: value.service,
+      cookies: value.cookies,
     };
   }
 

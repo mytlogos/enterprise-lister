@@ -1,5 +1,5 @@
 import { SubContext } from "./subContext";
-import { ExternalList, Id, Insert, Uuid } from "../../types";
+import { Entity, ExternalList, Id, Insert, Uuid } from "../../types";
 import { promiseMultiSingle, multiSingle } from "../../tools";
 import { storeModifications } from "../sqlTools";
 import { DatabaseError, ValidationError } from "../../error";
@@ -27,7 +27,7 @@ export class ExternalListContext extends SubContext {
    * @return {Promise<ExternalList>}
    */
   public async addExternalList(userUuid: Uuid, externalList: Insert<ExternalList>): Promise<ExternalList> {
-    const result = await this.query(
+    const result = await this.query<Entity>(
       "INSERT INTO external_reading_list " + "(name, user_uuid, medium, url) " + "VALUES(?,?,?,?) RETURNING id;",
       [externalList.name, userUuid, externalList.medium, externalList.url],
     );

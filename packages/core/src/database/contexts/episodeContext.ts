@@ -17,10 +17,10 @@ import {
   MultiSingleValue,
   Optional,
   Nullable,
-  UpdateMedium,
   TypedQuery,
   PureEpisode,
   DisplayRelease,
+  Entity,
 } from "../../types";
 import {
   checkIndices,
@@ -39,6 +39,14 @@ import { MysqlServerError } from "../mysqlError";
 import { escapeLike } from "../storages/storageTools";
 import { storeModifications, toSqlList } from "../sqlTools";
 import { DatabaseError, ValidationError } from "../../error";
+import { Transform } from "stream";
+import {
+  displayReleaseFromDB,
+  episodeReleaseFromDB,
+  mediumReleaseFromDB,
+  pureEpisodeFromDB,
+  simpleReleaseFromDB,
+} from "./contextHelper";
 
 export class EpisodeContext extends SubContext {
   /**
@@ -48,20 +56,34 @@ export class EpisodeContext extends SubContext {
   public async getAll(uuid: Uuid): Promise<TypedQuery<PureEpisode>> {
     return this.queryStream(
       `SELECT
-      episode.id, episode.partialIndex as "partialIndex", episode.totalIndex as "totalIndex", 
-      episode.combiIndex as "combiIndex", episode.part_id as "partId",
-      coalesce(progress, 0) as progress, read_date as "readDate"
+      episode.id, episode.partialIndex, episode.totalIndex, 
+      episode.combiIndex, episode.part_id as partId,
+      coalesce(progress, 0) as progress, read_date as readDate
       FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id AND user_uuid IS NULL OR user_uuid=?`,
       uuid,
+    ).pipe(
+      new Transform({
+        objectMode: true,
+        transform(chunk, _encoding, callback) {
+          callback(null, pureEpisodeFromDB(chunk));
+        },
+      }),
     );
   }
 
   public async getAllReleases(): Promise<TypedQuery<EpisodeRelease>> {
     return this.queryStream(
       `SELECT
-      episode_id as "episodeId", source_type as "sourceType", toc_id as "tocId",
-      releaseDate as "releaseDate", locked, url, title
+      episode_id, source_type, toc_id,
+      releaseDate, locked, url, title
       FROM episode_release`,
+    ).pipe(
+      new Transform({
+        objectMode: true,
+        transform(chunk, _encoding, callback) {
+          callback(null, episodeReleaseFromDB(chunk));
+        },
+      }),
     );
   }
 
@@ -101,8 +123,8 @@ export class EpisodeContext extends SubContext {
 
     const releasePromise = this.select<DisplayRelease>(
       `SELECT 
-      er.episode_id as "episodeId", er.title, er.url as link, 
-      er.releaseDate as date, er.locked, medium_id as "mediumId", progress
+      er.episode_id as episodeId, er.title, er.url as link, 
+      er.releaseDate as date, er.locked, medium_id as mediumId, progress
       FROM (
         SELECT * FROM episode_release 
         WHERE releaseDate < ? AND (?::text IS NULL OR releaseDate > ?)
@@ -126,22 +148,22 @@ export class EpisodeContext extends SubContext {
     const mediaIds: Set<number> = new Set();
 
     for (const release of releases) {
-      mediaIds.add(release.mediumId);
+      mediaIds.add(release.mediumid);
     }
     const media = (await mediaPromise).filter((value) => mediaIds.has(value.id));
 
     return {
       latest: latestReleaseResult ? new Date(latestReleaseResult.releasedate) : new Date(0),
       media,
-      releases,
+      releases: releases.map(displayReleaseFromDB),
     };
   }
 
   public async getMediumReleases(mediumId: number, uuid: Uuid): Promise<MediumRelease[]> {
-    return this.select(
+    const items = await this.select<MediumRelease>(
       `SELECT 
-      er.episode_id as "episodeId", er.title, er.url as link,
-      er.releaseDate as date, er.locked, episode.combiIndex as "combiIndex", progress
+      er.episode_id as episodeId, er.title, er.url as link,
+      er.releaseDate as date, er.locked, episode.combiIndex, progress
       FROM episode_release as er
       INNER JOIN episode ON episode.id=er.episode_id
       LEFT JOIN (
@@ -151,10 +173,11 @@ export class EpisodeContext extends SubContext {
       WHERE part.medium_id = ?;`,
       [uuid, mediumId],
     );
+    return items.map(mediumReleaseFromDB);
   }
 
   public async getAssociatedEpisode(url: string): Promise<number> {
-    const result: Array<Pick<UpdateMedium, "id">> = await this.select(
+    const result = await this.select<Entity>(
       "SELECT id FROM episode INNER JOIN episode_release ON episode.id=episode_release.episode_id WHERE url=?",
       url,
     );
@@ -173,7 +196,7 @@ export class EpisodeContext extends SubContext {
         "INNER JOIN episode ON episode.id=episode_release.episode_id " +
         "INNER JOIN part ON part.id=episode.part_id  " +
         "WHERE medium_id=? " +
-        "GROUP BY episode_id " +
+        "GROUP BY episode.id " +
         "ORDER BY episode.totalIndex DESC, episode.partialIndex DESC " +
         "LIMIT 5;",
       mediumId,
@@ -197,14 +220,13 @@ export class EpisodeContext extends SubContext {
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
       return [];
     }
-    const resultArray: Optional<any[]> = await this.queryInList(
-      "SELECT * FROM episode_release WHERE episode_id IN (??)",
-      [episodeId],
-    );
-    if (!resultArray?.length) {
+    const resultArray = await this.queryInList<any>("SELECT * FROM episode_release WHERE episode_id IN (??)", [
+      episodeId,
+    ]);
+    if (!resultArray.rows.length) {
       return [];
     }
-    return resultArray.map((value: any): EpisodeRelease => {
+    return resultArray.rows.map((value: any): EpisodeRelease => {
       return {
         episodeId: value.episode_id,
         sourceType: value.source_type,
@@ -221,14 +243,14 @@ export class EpisodeContext extends SubContext {
     if (!episodeId || (Array.isArray(episodeId) && !episodeId.length)) {
       return [];
     }
-    const resultArray: Optional<any[]> = await this.queryInList(
-      "SELECT * FROM episode_release WHERE locate(?, url) = 1 AND episode_id IN (??);",
+    const resultArray = await this.queryInList(
+      "SELECT * FROM episode_release WHERE strpos(url, ?) = 1 AND episode_id IN (??);",
       [host, episodeId],
     );
-    if (!resultArray?.length) {
+    if (!resultArray.rows.length) {
       return [];
     }
-    return resultArray.map((value: any): EpisodeRelease => {
+    return resultArray.rows.map((value: any): EpisodeRelease => {
       return {
         episodeId: value.episode_id,
         sourceType: value.source_type,
@@ -247,7 +269,7 @@ export class EpisodeContext extends SubContext {
       INNER JOIN episode as e ON e.id=er.episode_id
       INNER JOIN part as p ON p.id=e.part_id
       WHERE medium_id = ? 
-      AND locate(?, url) = 1
+      AND strpos(url, ?) = 1
       `,
       [mediumId, host],
     );
@@ -267,7 +289,7 @@ export class EpisodeContext extends SubContext {
   public async getPartsEpisodeIndices(
     partId: number | number[],
   ): Promise<Array<{ partId: number; episodes: number[] }>> {
-    const result: Optional<Array<{ part_id: number; combiindex: number }>> = await this.queryInList(
+    const result = await this.queryInList<{ part_id: number; combiindex: number }>(
       "SELECT part_id, combiIndex " + "FROM episode WHERE part_id IN (??)",
       [partId],
     );
@@ -275,7 +297,7 @@ export class EpisodeContext extends SubContext {
       return [];
     }
     const idMap = new Map<number, { partId: number; episodes: number[] }>();
-    result.forEach((value) => {
+    result.rows.forEach((value) => {
       const partValue = getElseSet(idMap, value.part_id, () => {
         return { partId: value.part_id, episodes: [] };
       });
@@ -364,8 +386,8 @@ export class EpisodeContext extends SubContext {
    * Defaults to zero if no entry is found.
    */
   public async getProgress(uuid: Uuid, episodeId: number): Promise<number> {
-    const result = await this.select<any>(
-      "SELECT * FROM user_episode " + "WHERE user_uuid = ? " + "AND episode_id = ?",
+    const result = await this.select<{ progress: number }>(
+      "SELECT progress FROM user_episode " + "WHERE user_uuid = ? " + "AND episode_id = ?",
       [uuid, episodeId],
     );
 
@@ -604,22 +626,25 @@ export class EpisodeContext extends SubContext {
     return releases;
   }
 
-  public getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]> {
-    return this.queryInList('SELECT episode_id as "episodeId", url FROM episode_release WHERE episode_id IN (??)', [
-      episodeIds,
-    ]) as Promise<SimpleRelease[]>;
+  public async getEpisodeLinks(episodeIds: number[]): Promise<SimpleRelease[]> {
+    const value = await this.queryInList<SimpleRelease>(
+      "SELECT episode_id as episodeId, url FROM episode_release WHERE episode_id IN (??)",
+      [episodeIds],
+    );
+    return value.rows.map(simpleReleaseFromDB);
   }
 
-  public getEpisodeLinksByMedium(mediumId: number): Promise<SimpleRelease[]> {
-    return this.select<SimpleRelease>(
+  public async getEpisodeLinksByMedium(mediumId: number): Promise<SimpleRelease[]> {
+    const items = await this.select<SimpleRelease>(
       `SELECT
-      episode_id as "episodeId", url
+      episode_id as episodeId, url
       FROM episode_release 
       inner join episode on episode.id=episode_release.episode_id 
       inner join part on part.id=episode.part_id
       WHERE medium_id = ?;`,
       mediumId,
     );
+    return items.map(simpleReleaseFromDB);
   }
 
   public getSourcedReleases(
@@ -664,12 +689,12 @@ export class EpisodeContext extends SubContext {
           INSERT INTO episode_release
           (episode_id, url, title, releaseDate, source_type, locked, toc_id) 
           VALUES ${"(?,?,?,?,?,?,?),".repeat(releaseBatch.length).slice(0, -1)}
-          ON DUPLICATE KEY UPDATE 
-          title = VALUES(title),
-          releaseDate = VALUES(releaseDate),
-          source_type = VALUES(source_type),
-          locked = VALUES(locked),
-          toc_id = VALUES(toc_id);
+          ON CONFLICT (episode_id, url) DO UPDATE SET 
+          title = EXCLUDED.title,
+          releaseDate = EXCLUDED.releaseDate,
+          source_type = EXCLUDED.source_type,
+          locked = EXCLUDED.locked,
+          toc_id = EXCLUDED.toc_id;
           `,
           params,
         );
@@ -707,8 +732,7 @@ export class EpisodeContext extends SubContext {
   public async getEpisodeContentData(chapterLink: string): Promise<EpisodeContentData> {
     const results = await this.selectFirst<EpisodeContentData>(
       `SELECT
-      episode_release.title as "episodeTitle", episode.combiIndex as index,
-      medium.title as "mediumTitle"
+      episode_release.title as episodeTitle, episode.combiIndex as index, medium.title as mediumTitle
       FROM episode_release 
       INNER JOIN episode ON episode.id=episode_release.episode_id 
       INNER JOIN part ON part.id=episode.part_id 
@@ -725,9 +749,9 @@ export class EpisodeContext extends SubContext {
       };
     }
     return {
-      episodeTitle: results.episodeTitle,
+      episodeTitle: results.episodetitle,
       index: results.index,
-      mediumTitle: results.mediumTitle,
+      mediumTitle: results.mediumtitle,
     };
   }
 
@@ -748,7 +772,7 @@ export class EpisodeContext extends SubContext {
       let insertId: Optional<number>;
       const episodeCombiIndex = episode.combiIndex == null ? combiIndex(episode) : episode.combiIndex;
       try {
-        const result = await this.query(
+        const result = await this.query<Entity>(
           "INSERT INTO episode " +
             "(part_id, totalIndex, partialIndex, combiIndex) " +
             "VALUES (?,?,?,?) RETURNING id;",
@@ -783,7 +807,7 @@ export class EpisodeContext extends SubContext {
         insertReleases.push(...episode.releases);
       }
       return {
-        id: insertId as number,
+        id: insertId,
         partId: episode.partId,
         partialIndex: episode.partialIndex,
         totalIndex: episode.totalIndex,
@@ -807,17 +831,17 @@ export class EpisodeContext extends SubContext {
    * Gets an episode from the storage.
    */
   public async getEpisode(id: number | number[], uuid: Uuid): Promise<Episode | Episode[]> {
-    const episodes: Optional<any[]> = await this.queryInList(
+    const episodes = await this.queryInList(
       "SELECT episode.*, ue.progress, ue.read_date FROM episode LEFT JOIN user_episode ue ON episode.id=ue.episode_id " +
         "WHERE (user_uuid IS NULL OR user_uuid=?) AND episode.id IN (??);",
       [uuid, id],
     );
-    if (!episodes?.length) {
+    if (!episodes.rows.length) {
       return [];
     }
     const idMap = new Map<number, any>();
     const releases = await this.getReleases(
-      episodes.map((value: any): number => {
+      episodes.rows.map((value: any): number => {
         idMap.set(value.id, value);
         return value.id;
       }),
@@ -833,7 +857,7 @@ export class EpisodeContext extends SubContext {
       }
       episode.releases.push(value);
     });
-    return episodes.map((episode) => {
+    return episodes.rows.map((episode: any) => {
       return {
         progress: episode.progress != null ? episode.progress : 0,
         readDate: episode.progress != null ? episode.read_date : null,
@@ -848,20 +872,24 @@ export class EpisodeContext extends SubContext {
   }
 
   public async getPartMinimalEpisodes(partId: number): Promise<Array<{ id: number; combiIndex: number }>> {
-    return this.select('SELECT id, combiIndex as "combiIndex" FROM episode WHERE part_id=?', partId);
+    const items = await this.select<{ id: number; combiIndex: number }>(
+      "SELECT id, combiIndex as combiIndex FROM episode WHERE part_id=?",
+      partId,
+    );
+    return items.map((value) => ({ id: value.id, combiIndex: value.combiindex }));
   }
 
   public async getPartEpisodePerIndex(partId: number, index: number | number[]): Promise<SimpleEpisode[]> {
-    const episodes: Optional<any[]> = await this.queryInList(
-      "SELECT * FROM episode WHERE part_id = ? AND combiIndex IN (??);",
-      [partId, index],
-    );
-    if (!episodes?.length) {
+    const episodes = await this.queryInList("SELECT * FROM episode WHERE part_id = ? AND combiIndex IN (??);", [
+      partId,
+      index,
+    ]);
+    if (!episodes.rows.length) {
       return [];
     }
     const availableIndices: number[] = [];
     const idMap = new Map<number, any>();
-    const episodeIds = episodes.map((value: any) => {
+    const episodeIds = episodes.rows.map((value: any) => {
       availableIndices.push(value.combiindex);
       idMap.set(value.id, value);
       return value.id;
@@ -882,11 +910,10 @@ export class EpisodeContext extends SubContext {
       if (!availableIndices.includes(value)) {
         const separateValue = separateIndex(value);
         checkIndices(separateValue);
-        episodes.push(separateValue);
+        episodes.rows.push(separateValue);
       }
     });
-    return episodes.map((value) => {
-      checkIndices(value);
+    return episodes.rows.map((value: any) => {
       return {
         id: value.id,
         partId,
@@ -906,7 +933,7 @@ export class EpisodeContext extends SubContext {
       episode.part_id,
       episode.combiindex as "combiIndex",
       episode.totalindex as "totalIndex",
-      episode.partialindex as "partialIndex",
+      episode.partialindex as "partialIndex"
       FROM episode
       INNER JOIN part ON part.id=episode.part_id
       WHERE medium_id = ?;
@@ -937,24 +964,24 @@ export class EpisodeContext extends SubContext {
     index: number | number[],
     ignoreRelease = false,
   ): Promise<SimpleEpisode | SimpleEpisode[]> {
-    const episodes: Optional<any[]> = await this.queryInList(
+    const episodes = await this.queryInList<any>(
       `SELECT 
       episode.id,
       episode.part_id,
       episode.combiindex as "combiIndex",
       episode.totalindex as "totalIndex",
-      episode.partialindex as "partialIndex",
+      episode.partialindex as "partialIndex"
       FROM episode 
       INNER JOIN part ON part.id=episode.part_id
       WHERE medium_id = ? AND episode.combiIndex IN (??);`,
       [mediumId, index],
     );
-    if (!episodes?.length) {
+    if (!episodes.rows.length) {
       return [];
     }
     const availableIndices: number[] = [];
     const idMap = new Map<number, any>();
-    const episodeIds = episodes.map((value: any) => {
+    const episodeIds = episodes.rows.map((value: any) => {
       availableIndices.push(value.combiIndex);
       idMap.set(value.id, value);
       return value.id;
@@ -974,10 +1001,10 @@ export class EpisodeContext extends SubContext {
     multiSingle(index, (value: number) => {
       if (!availableIndices.includes(value)) {
         const separateValue = separateIndex(value);
-        episodes.push(separateValue);
+        episodes.rows.push(separateValue);
       }
     });
-    return episodes.map((value) => {
+    return episodes.rows.map((value: any) => {
       checkIndices(value);
       return {
         id: value.id,
