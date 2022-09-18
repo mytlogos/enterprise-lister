@@ -1,5 +1,6 @@
 import { MediaType } from "./tools";
 import { Readable } from "stream";
+import { SimpleEpisodeReleases, SimpleJob, SimpleJobHistory } from "./database/databaseTypes";
 
 export type DBEntity<T> = {
   [K in keyof T as Lowercase<string & K>]: T[K];
@@ -90,7 +91,7 @@ export interface SimpleMedium {
   artist?: string;
   lang?: string;
   stateOrigin?: ReleaseState;
-  stateTL?: ReleaseState;
+  stateTl?: ReleaseState;
   series?: string;
   universe?: string;
 }
@@ -203,10 +204,10 @@ export type UpdateMedium = Partial<SimpleMedium> & {
  *             $ref: "#/components/schemas/Id"
  */
 export interface Medium extends SimpleMedium {
-  parts?: Id[];
-  latestReleased: Id[];
-  currentRead: Id;
-  unreadEpisodes: Id[];
+  parts?: readonly Id[];
+  latestReleased: readonly Id[];
+  currentRead: Id | null;
+  unreadEpisodes: readonly Id[];
 }
 
 export interface TocSearchMedium {
@@ -318,7 +319,7 @@ export interface MinPart extends Indexable {
  *             $ref: "#/components/schemas/Episode"
  */
 export interface Part extends MinPart {
-  episodes: Episode[] | Id[];
+  episodes: readonly SimpleEpisodeReleases[] | Id[];
 }
 
 /**
@@ -344,15 +345,16 @@ export interface Part extends MinPart {
  *             $ref: "#/components/schemas/SimpleEpisode"
  */
 export interface AddPart extends MinPart {
-  episodes: SimpleEpisode[];
+  episodes: SimpleEpisodeReleases[];
 }
 
 export interface FullPart extends Part {
-  episodes: Episode[];
+  episodes: SimpleEpisodeReleases[];
 }
 
+// @ts-expect-error
 export interface ShallowPart extends Part {
-  episodes: Id[];
+  episodes: readonly Id[];
 }
 
 /**
@@ -380,7 +382,7 @@ export interface ShallowPart extends Part {
 export interface SimpleEpisode extends Indexable {
   id: Id;
   partId: Id;
-  combiIndex?: number;
+  combiIndex: number;
   releases: EpisodeRelease[];
 }
 
@@ -477,9 +479,10 @@ export interface SimpleRelease {
  *           type: string
  */
 export interface EpisodeRelease extends SimpleRelease {
+  id: number;
   title: string;
   releaseDate: Date;
-  locked?: boolean;
+  locked: boolean;
   sourceType?: string;
   tocId?: Id;
 }
@@ -531,7 +534,7 @@ export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">;
 export interface DisplayRelease {
   episodeId: Id;
   title: string;
-  link: Link;
+  url: Link;
   mediumId: Id;
   locked?: boolean;
   date: Date;
@@ -539,8 +542,8 @@ export interface DisplayRelease {
 }
 
 export interface DisplayReleasesResponse {
-  releases: DisplayRelease[];
-  media: MinMedium[];
+  releases: readonly DisplayRelease[];
+  media: readonly MinMedium[];
   latest: Date;
 }
 
@@ -1131,6 +1134,12 @@ export type Json<T extends Record<string, any>> = {
 
 export type Primitive = string | number | boolean;
 
+export type ReadonlyNullish<T> = T extends null | undefined
+  ? T
+  : T extends unknown
+  ? Readonly<T> | null | undefined
+  : Readonly<T>;
+
 export interface Invalidation {
   mediumId?: Id;
   partId?: Id;
@@ -1185,7 +1194,11 @@ export type Link = string;
  */
 export type Id = number;
 
-export type Insert<T extends { id: Id }> = Omit<T, "id"> & Partial<Pick<T, "id">>;
+export type Insert<T extends { id: Id } | { uuid: Uuid }> = T extends { id: Id }
+  ? Omit<T, "id"> & Partial<Pick<T, "id">>
+  : T extends { uuid: Uuid }
+  ? Omit<T, "uuid"> & Partial<Pick<T, "uuid">>
+  : never;
 
 export enum ScrapeName {
   searchForToc = "searchForToc",
@@ -1257,14 +1270,9 @@ export interface JobItem {
   previousScheduledAt?: Date;
 }
 
-export interface JobRequest {
-  type: ScrapeName;
-  interval: number;
-  deleteAfterRun: boolean;
+export interface JobRequest
+  extends Pick<SimpleJob, "type" | "interval" | "deleteAfterRun" | "name" | "runAfter" | "arguments"> {
   runImmediately: boolean;
-  name?: string;
-  runAfter?: JobRequest | JobItem;
-  arguments?: string;
 }
 
 export interface BasicJobStats {
@@ -1501,7 +1509,7 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
 };
 
 export interface Paginated<T, K extends keyof T> {
-  items: T[];
+  items: readonly T[];
   next: T[K];
   total: number;
 }
@@ -1559,9 +1567,10 @@ export interface JobTrack {
  *              $ref: "#/components/schemas/JobHistoryItem"
  */
 export interface JobDetails {
-  job?: JobItem;
-  history: JobHistoryItem[];
+  job: SimpleJob | null;
+  history: readonly SimpleJobHistory[];
 }
+
 export type JobStatFilter = NamedJobStatFilter | TimeJobStatFilter;
 
 export interface NamedJobStatFilter {
@@ -1720,16 +1729,16 @@ export interface DataStats {
  *              $ref: "#/components/schemas/PureNews"
  */
 export interface NewData {
-  tocs: FullMediumToc[];
-  media: SimpleMedium[];
-  releases: PureDisplayRelease[];
-  episodes: PureEpisode[];
-  parts: MinPart[];
-  lists: UserList[];
-  extLists: PureExternalList[];
-  extUser: PureExternalUser[];
-  mediaInWait: MediumInWait[];
-  news: PureNews[];
+  tocs: readonly FullMediumToc[];
+  media: readonly SimpleMedium[];
+  releases: readonly PureDisplayRelease[];
+  episodes: readonly PureEpisode[];
+  parts: readonly MinPart[];
+  lists: readonly UserList[];
+  extLists: readonly PureExternalList[];
+  extUser: readonly PureExternalUser[];
+  mediaInWait: readonly MediumInWait[];
+  news: readonly PureNews[];
 }
 
 /**
@@ -1937,17 +1946,17 @@ export interface QueryItems {
 }
 
 export interface QueryItemsResult {
-  episodeReleases: EpisodeRelease[]; // by episode id
-  episodes: Episode[];
-  partEpisodes: Record<number, number[]>; // by part id
-  partReleases: Record<number, SimpleRelease[]>; // by part id
-  parts: Part[];
-  media: SimpleMedium[];
-  tocs: FullMediumToc[]; // by toc id
-  mediaTocs: FullMediumToc[]; // by medium id
-  mediaLists: List[];
-  externalMediaLists: ExternalList[];
-  externalUser: ExternalUser[];
+  episodeReleases: readonly EpisodeRelease[]; // by episode id
+  episodes: readonly Episode[];
+  partEpisodes: Readonly<Record<number, number[]>>; // by part id
+  partReleases: Readonly<Record<number, SimpleRelease[]>>; // by part id
+  parts: readonly Part[];
+  media: readonly SimpleMedium[];
+  tocs: readonly FullMediumToc[]; // by toc id
+  mediaTocs: readonly FullMediumToc[]; // by medium id
+  mediaLists: readonly List[];
+  externalMediaLists: readonly ExternalList[];
+  externalUser: readonly ExternalUser[];
 }
 
 export interface Notification {

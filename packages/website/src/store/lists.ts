@@ -3,6 +3,7 @@ import { HttpClient } from "../Httpclient";
 import { List } from "enterprise-core/src/types";
 import { defineStore } from "pinia";
 import { useExternalUserStore } from "./externaluser";
+import { useUserStore } from "./store";
 
 export const useListStore = defineStore("lists", {
   persist: true,
@@ -73,7 +74,10 @@ export const useListStore = defineStore("lists", {
         throw Error("Missing Type");
       }
 
-      const list = await HttpClient.createList({ list: { name: data.name, medium: data.medium } });
+      const userStore = useUserStore();
+      const list = await HttpClient.createList({
+        list: { name: data.name, medium: data.medium, userUuid: userStore.uuid },
+      });
       this.lists.push({ ...list, external: false });
     },
 

@@ -1,4 +1,4 @@
-import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
+import { episodeReleaseStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { Errors, getDate } from "enterprise-core/dist/tools";
 import { Router } from "express";
 import {
@@ -65,7 +65,7 @@ export const getAllEpisodes = createHandler((req) => {
 });
 
 export const getAllReleases = createHandler(() => {
-  return episodeStorage.getAllReleases();
+  return episodeReleaseStorage.getAllReleases();
 });
 
 export const getDisplayReleases = createHandler(
@@ -88,7 +88,7 @@ export const getDisplayReleases = createHandler(
       return Promise.reject(Errors.INVALID_INPUT);
     }
 
-    return episodeStorage.getDisplayReleases(
+    return episodeReleaseStorage.getDisplayReleases(
       latestDate,
       untilDate,
       read ?? null,

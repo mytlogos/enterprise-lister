@@ -3,7 +3,7 @@ import {
   databaseStorage,
   episodeStorage,
   jobStorage,
-  mediumStorage,
+  mediumTocStorage,
   notificationStorage,
   storage,
   userStorage,
@@ -26,7 +26,6 @@ import { jobsRouter } from "./jobs";
 import { getAllLists, listRouter } from "./list";
 import { mediumRouter } from "./medium";
 import { newsRouter } from "./news";
-import { processRouter } from "./process";
 import { crawlerRouter } from "./crawler";
 import { CrawlerStatus, DatabaseStatus, Status } from "../types";
 import os from "os";
@@ -153,14 +152,16 @@ export const addToc = createHandler(
       mediumId,
     };
     // TODO: directly request the scrape and insert immediately
-    await jobStorage.addJobs({
-      name: `${ScrapeName.oneTimeToc}-${toc}`,
-      type: ScrapeName.oneTimeToc,
-      runImmediately: true,
-      deleteAfterRun: true,
-      interval: -1,
-      arguments: JSON.stringify(tocRequest),
-    });
+    await jobStorage.addJobs([
+      {
+        name: `${ScrapeName.oneTimeToc}-${toc}`,
+        type: ScrapeName.oneTimeToc,
+        runImmediately: true,
+        deleteAfterRun: true,
+        interval: -1,
+        arguments: JSON.stringify(tocRequest),
+      },
+    ]);
     return true;
   },
   { body: addTocSchema },
@@ -195,7 +196,7 @@ export const search = createHandler(
 
 export const getStats = createHandler((req) => {
   const uuid = extractQueryParam(req, "uuid");
-  return storage.getStats(uuid);
+  return storage.getStat(uuid);
 });
 
 export const getNew = createHandler((req) => {
@@ -217,7 +218,7 @@ export const getToc = createHandler(
       media = [media];
     }
 
-    return mediumStorage.getMediumTocs(media);
+    return mediumTocStorage.getTocsByMediumIds(media);
   },
   { query: getTocSchema },
 );
@@ -225,7 +226,7 @@ export const getToc = createHandler(
 export const deleteToc = createHandler(
   (req) => {
     const { mediumId, link }: DeleteToc = req.body;
-    return mediumStorage.removeMediumToc(mediumId, link);
+    return mediumTocStorage.removeMediumToc(mediumId, link);
   },
   { body: deleteTocSchema },
 );
@@ -292,7 +293,7 @@ async function getDatabaseStatus(): Promise<DatabaseStatus> {
       status: "available",
       host: `${appConfig.dbHost}:${appConfig.dbPort}`,
       type: "mariadb",
-      version: dbVersion.version,
+      version: dbVersion,
     };
   } catch (error) {
     return {
@@ -898,7 +899,6 @@ export function userRouter(): Router {
   router.use("/hook", hooksRouter());
   router.use("/news", newsRouter());
   router.use("/list", listRouter());
-  router.use("/process", processRouter());
   router.use("/externalUser", externalUserRouter());
   router.use("/crawler", crawlerRouter());
   return router;

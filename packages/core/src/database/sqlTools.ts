@@ -11,7 +11,6 @@ interface Modification {
 export type QueryType = "select" | "update" | "insert" | "delete";
 export type ModificationKey =
   | "progress"
-  | "result_episode"
   | "medium"
   | "part"
   | "episode"

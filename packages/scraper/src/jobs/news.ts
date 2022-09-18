@@ -1,8 +1,11 @@
+import { SimpleEpisodeReleases, SimpleRelease } from "enterprise-core/dist/database/databaseTypes";
 import {
   mediumInWaitStorage,
   mediumStorage,
   episodeStorage,
   partStorage,
+  episodeReleaseStorage,
+  mediumTocStorage,
 } from "enterprise-core/dist/database/storages/storage";
 import { DatabaseError, MissingEntityError, ValidationError } from "enterprise-core/dist/error";
 import logger from "enterprise-core/dist/logger";
@@ -13,7 +16,6 @@ import {
   MediumInWait,
   Optional,
   LikeMedium,
-  SimpleEpisode,
   EpisodeRelease,
   News,
 } from "enterprise-core/dist/types";
@@ -22,7 +24,7 @@ import { sourceType } from "../externals/direct/undergroundScraper";
 import { getHook } from "../externals/hookManager";
 import { NewsScraper } from "../externals/types";
 
-export const scrapeNewsJob = async (name: string): Promise<NewsResult> => {
+export const scrapeNewsJob = async (name: string): Promise<Readonly<NewsResult>> => {
   const hook = getHook(name);
 
   if (!hook.newsAdapter) {
@@ -32,7 +34,7 @@ export const scrapeNewsJob = async (name: string): Promise<NewsResult> => {
   return scrapeNews(hook.newsAdapter);
 };
 
-export const scrapeNews = async (adapter: NewsScraper): Promise<NewsResult> => {
+export const scrapeNews = async (adapter: NewsScraper): Promise<Readonly<NewsResult>> => {
   if (!adapter.link || !validate.isString(adapter.link)) {
     throw new ValidationError("missing link on newsScraper");
   }
@@ -79,7 +81,7 @@ async function processMediumNews(
   title: string,
   type: MediaType,
   tocLink: Optional<string>,
-  potentialNews: EpisodeNews[],
+  potentialNews: readonly EpisodeNews[],
   update = false,
 ): Promise<MediumInWait | undefined> {
   const likeMedium: LikeMedium = await mediumStorage.getLikeMedium({ title, type });
@@ -91,7 +93,7 @@ async function processMediumNews(
     return;
   }
   const mediumId = likeMedium.medium.id;
-  const latestReleases: SimpleEpisode[] = await episodeStorage.getLatestReleases(mediumId);
+  const latestReleases = await episodeStorage.getLatestReleases(mediumId);
 
   const latestRelease = max(latestReleases, (previous, current) => {
     const maxPreviousRelease = max(previous.releases, "releaseDate");
@@ -107,7 +109,7 @@ async function processMediumNews(
     throw new DatabaseError(`could not create standard part for mediumId: '${mediumId}'`);
   }
 
-  let newEpisodeNews: EpisodeNews[];
+  let newEpisodeNews: readonly EpisodeNews[];
 
   if (latestRelease) {
     const oldReleases: EpisodeNews[] = [];
@@ -126,8 +128,9 @@ async function processMediumNews(
         title: value.episodeTitle,
         url: value.link,
         releaseDate: value.date,
-        locked: value.locked,
+        locked: !!value.locked,
         episodeId: 0,
+        id: 0,
       });
       return value.episodeIndex;
     });
@@ -149,7 +152,6 @@ async function processMediumNews(
         if (!value.id) {
           return episodeStorage
             .addEpisode({
-              id: 0,
               // @ts-expect-error
               partId: standardPart.id,
               partialIndex: value.partialIndex,
@@ -159,21 +161,22 @@ async function processMediumNews(
             .then(() => undefined);
         }
         release.episodeId = value.id;
-        return episodeStorage.addRelease(release).then(() => undefined);
+        return episodeReleaseStorage.addReleases([release]).then(() => undefined);
       });
       await Promise.all(promises);
     }
     if (update) {
-      const sourcedReleases = await episodeStorage.getSourcedReleases(sourceType, mediumId);
+      const sourcedReleases = await episodeReleaseStorage.getSourcedReleases(sourceType, mediumId);
       const toUpdateReleases = oldReleases
-        .map((value): EpisodeRelease => {
+        .map((value): SimpleRelease => {
           return {
             title: value.episodeTitle,
             url: value.link,
             releaseDate: value.date,
-            locked: value.locked,
+            locked: !!value.locked,
             sourceType,
             episodeId: 0,
+            id: 0,
           };
         })
         .filter((value) => {
@@ -186,22 +189,24 @@ async function processMediumNews(
           return foundRelease.url !== value.url;
         });
       if (toUpdateReleases.length) {
-        episodeStorage.updateRelease(toUpdateReleases).catch(logger.error);
+        episodeReleaseStorage.updateReleases(toUpdateReleases).catch(logger.error);
       }
     }
   } else {
     newEpisodeNews = potentialNews;
   }
-  const newEpisodes = newEpisodeNews.map((value): SimpleEpisode => {
+  const newEpisodes = newEpisodeNews.map((value): SimpleEpisodeReleases => {
     return {
       totalIndex: value.episodeTotalIndex,
       partialIndex: value.episodePartialIndex,
+      combiIndex: value.episodeIndex,
       releases: [
         {
+          id: 0,
           episodeId: 0,
           releaseDate: value.date,
           url: value.link,
-          locked: value.locked,
+          locked: !!value.locked,
           title: value.episodeTitle,
         },
       ],
@@ -215,10 +220,10 @@ async function processMediumNews(
     await episodeStorage.addEpisode(newEpisodes);
   }
   if (tocLink) {
-    const links = await mediumStorage.getToc(mediumId);
+    const links = await mediumTocStorage.getTocLinkByMediumId(mediumId);
 
     if (!links.includes(tocLink)) {
-      await mediumStorage.addToc(mediumId, tocLink);
+      await mediumTocStorage.addToc(mediumId, tocLink);
     }
   }
 }

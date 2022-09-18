@@ -10,7 +10,6 @@ import {
 import { isTocEpisode, isTocPart } from "../tools";
 import { ScrapeList, ScrapeMedium } from "../externals/listManager";
 import {
-  EpisodeRelease,
   ExternalList,
   Uuid,
   JobRequest,
@@ -19,12 +18,10 @@ import {
   MinPart,
   News,
   ScrapeName,
-  SimpleEpisode,
   SimpleMedium,
   EmptyPromise,
   Optional,
   NewsResult,
-  CombinedEpisode,
 } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import { ScrapeType, Toc, TocEpisode, TocPart, TocResult, ExternalListResult, ScrapeItem } from "../externals/types";
@@ -32,11 +29,13 @@ import * as validate from "validate.js";
 import { checkTocContent } from "../externals/scraperTools";
 import { DefaultJobScraper } from "./jobScheduler";
 import {
+  episodeReleaseStorage,
   episodeStorage,
   externalListStorage,
   externalUserStorage,
   jobStorage,
   mediumStorage,
+  mediumTocStorage,
   newsStorage,
   partStorage,
   storage,
@@ -47,6 +46,7 @@ import { MissingEntityError, ValidationError } from "enterprise-core/dist/error"
 import { DisabledHookError } from "../externals/hookManager";
 import { registerOnExitHandler } from "enterprise-core/dist/exit";
 import { remapMediumPart } from "../jobs/remapMediumParts";
+import { SimpleRelease, SimpleEpisode, SimpleEpisodeReleases } from "enterprise-core/dist/database/databaseTypes";
 
 const scraper = DefaultJobScraper;
 
@@ -54,7 +54,7 @@ const scraper = DefaultJobScraper;
 /**
  *
  */
-async function processNews({ link, rawNews }: NewsResult): EmptyPromise {
+async function processNews({ link, rawNews }: Readonly<NewsResult>): EmptyPromise {
   if (!link || !validate.isString(link)) {
     throw new ValidationError("link is not a string: " + typeof link);
   }
@@ -70,7 +70,7 @@ async function processNews({ link, rawNews }: NewsResult): EmptyPromise {
       rawNews.filter(async (value) => {
         const newsHash = (await Md5Hash.hash(value.title + value.date)).hash;
 
-        const index = newsPageInfo.values.findIndex((hash) => newsHash === hash);
+        const index = newsPageInfo.values.findIndex((hash: string) => newsHash === hash);
 
         if (index >= 0) {
           newsPageInfo.values.splice(index, 1);
@@ -98,7 +98,7 @@ async function processNews({ link, rawNews }: NewsResult): EmptyPromise {
   // await Storage.linkNewsToMedium();
 }
 
-async function feedHandler(result: NewsResult): EmptyPromise {
+async function feedHandler(result: Readonly<NewsResult>): EmptyPromise {
   result.rawNews.forEach((value) => {
     value.title = value.title.replace(/(\s|\n|\t)+/g, " ");
   });
@@ -129,7 +129,7 @@ async function getTocMedium(toc: Toc, uuid?: Uuid): Promise<MediumTocContent> {
   let medium: Optional<SimpleMedium>;
 
   if (toc.mediumId) {
-    medium = await mediumStorage.getSimpleMedium(toc.mediumId);
+    [medium] = await mediumStorage.getSimpleMedium([toc.mediumId]);
   } else {
     // get likemedium with similar title and same media type
     const likeMedium = await mediumStorage.getLikeMedium({ title: toc.title, type: toc.mediumType, link: "" });
@@ -147,23 +147,25 @@ async function getTocMedium(toc: Toc, uuid?: Uuid): Promise<MediumTocContent> {
       uuid,
     );
 
-    await mediumStorage.addToc(medium.id as number, toc.link);
+    await mediumTocStorage.addToc(medium.id as number, toc.link);
   }
   const mediumId = medium.id as number;
-  let currentToc = await mediumStorage.getSpecificToc(mediumId, toc.link);
+  let currentToc = await mediumTocStorage.getSpecificToc(mediumId, toc.link);
 
   // add toc if it does not still exist, instead of throwing an error
   currentToc ??= {
     link: toc.link,
     mediumId,
-    id: await mediumStorage.addToc(mediumId, toc.link),
+    medium: toc.mediumType,
+    title: toc.title,
+    id: await mediumTocStorage.addToc(mediumId, toc.link),
   };
 
   // TODO: how to handle multiple authors, artists?, json array, csv, own table?
   const author = toc.authors?.length ? toc.authors[0].name : undefined;
   const artist = toc.artists?.length ? toc.artists[0].name : undefined;
   // update toc specific values
-  await mediumStorage.updateMediumToc({
+  await mediumTocStorage.updateMediumToc({
     id: currentToc.id,
     title: toc.title,
     mediumId,
@@ -172,7 +174,7 @@ async function getTocMedium(toc: Toc, uuid?: Uuid): Promise<MediumTocContent> {
     author,
     artist,
     stateOrigin: toc.statusCOO,
-    stateTL: toc.statusTl,
+    stateTl: toc.statusTl,
     languageOfOrigin: toc.langCOO,
     lang: toc.langTL,
   });
@@ -231,16 +233,16 @@ interface TocPartMapping {
 }
 
 interface PartChanges {
-  newEpisodes: SimpleEpisode[];
-  newReleases: EpisodeRelease[];
-  updateReleases: EpisodeRelease[];
-  unchangedReleases: EpisodeRelease[];
+  newEpisodes: SimpleEpisodeReleases[];
+  newReleases: SimpleRelease[];
+  updateReleases: SimpleRelease[];
+  unchangedReleases: SimpleRelease[];
 }
 
 function partEpisodesReleaseChanges(
   value: TocPartMapping,
-  storageEpisodes: Readonly<CombinedEpisode[]>,
-  storageReleases: Readonly<EpisodeRelease[]>,
+  storageEpisodes: Readonly<SimpleEpisode[]>,
+  storageReleases: Readonly<SimpleRelease[]>,
 ): PartChanges {
   if (!value.part?.id) {
     throw new ValidationError(`something went wrong. got no part for tocPart ${value.tocPart.combiIndex}`);
@@ -275,7 +277,7 @@ function partEpisodesReleaseChanges(
   });
 
   const nonNewIndices: number[] = [];
-  const allEpisodes: SimpleEpisode[] = [...episodeMap.keys()]
+  const allEpisodes: SimpleEpisodeReleases[] = [...episodeMap.keys()]
     .filter((index) => {
       const notInStorage = episodes.every((episode) => combiIndex(episode) !== index || !episode.id);
 
@@ -285,8 +287,8 @@ function partEpisodesReleaseChanges(
       nonNewIndices.push(index);
       return false;
     })
-    .map((episodeIndex): SimpleEpisode => {
-      const episodeToc = episodeMap.get(episodeIndex);
+    .map((episodeCombiIndex): SimpleEpisodeReleases => {
+      const episodeToc = episodeMap.get(episodeCombiIndex);
 
       if (!episodeToc) {
         throw new ValidationError("something went wrong. got no value at this episode index");
@@ -297,12 +299,15 @@ function partEpisodesReleaseChanges(
         partId: value.part.id,
         totalIndex: episodeToc.tocEpisode.totalIndex,
         partialIndex: episodeToc.tocEpisode.partialIndex,
+        combiIndex: episodeCombiIndex,
         releases: [
           {
+            id: 0,
             episodeId: 0,
             title: episodeToc.tocEpisode.title,
             url: episodeToc.tocEpisode.url,
             releaseDate: getLatestDate(episodeToc.tocEpisode.releaseDate || new Date()),
+            locked: false,
           },
         ],
       };
@@ -338,16 +343,18 @@ function partEpisodesReleaseChanges(
         (release) => release.url === episodeValue.tocEpisode.url && release.episodeId === id,
       );
 
-      const tocRelease: EpisodeRelease = {
+      const tocRelease: SimpleRelease = {
         episodeId: id,
         releaseDate: getLatestDate(episodeValue.tocEpisode.releaseDate || new Date()),
         title: episodeValue.tocEpisode.title,
         url: episodeValue.tocEpisode.url,
-        locked: episodeValue.tocEpisode.locked,
+        locked: !!episodeValue.tocEpisode.locked,
         tocId: episodeValue.tocEpisode.tocId,
+        id: 0,
       };
 
       if (foundRelease) {
+        tocRelease.id = foundRelease.id;
         const date =
           foundRelease.releaseDate < tocRelease.releaseDate ? foundRelease.releaseDate : tocRelease.releaseDate;
 
@@ -371,9 +378,9 @@ function partEpisodesReleaseChanges(
   return result;
 }
 
-function filterToDeleteReleases(tocId: number, changes: PartChanges, releases: EpisodeRelease[]) {
-  const deleteReleases: EpisodeRelease[] = [];
-  const episodeReleasesMap = new Map<number, EpisodeRelease[]>();
+function filterToDeleteReleases(tocId: number, changes: PartChanges, releases: readonly SimpleRelease[]) {
+  const deleteReleases: SimpleRelease[] = [];
+  const episodeReleasesMap = new Map<number, SimpleRelease[]>();
 
   changes.newReleases.forEach((release) => {
     // map scraped toc
@@ -408,7 +415,7 @@ function filterToDeleteReleases(tocId: number, changes: PartChanges, releases: E
   return deleteReleases;
 }
 
-export async function saveToc(tocContent: MediumTocContent): EmptyPromise {
+export async function saveToc(tocContent: Readonly<MediumTocContent>): EmptyPromise {
   const mediumId = tocContent.medium.id as number;
   const tocParts = tocContent.parts;
 
@@ -483,7 +490,7 @@ export async function saveToc(tocContent: MediumTocContent): EmptyPromise {
     throw new ValidationError("invalid url for release: " + tocContent.url);
   }
 
-  const releases: EpisodeRelease[] = await episodeStorage.getMediumReleasesByHost(mediumId, exec[0]);
+  const releases = await episodeReleaseStorage.getMediumReleasesByHost(mediumId, exec[0]);
   const changes: PartChanges[] = [];
 
   for (const mapping of indexPartsMap.values()) {
@@ -501,13 +508,13 @@ export async function saveToc(tocContent: MediumTocContent): EmptyPromise {
   const deleteReleases = filterToDeleteReleases(tocContent.tocId, mergedChanges, releases);
 
   if (mergedChanges.newReleases.length) {
-    await episodeStorage.addRelease(mergedChanges.newReleases);
+    await episodeReleaseStorage.addReleases(mergedChanges.newReleases);
   }
   if (mergedChanges.updateReleases.length) {
-    await episodeStorage.updateRelease(mergedChanges.updateReleases);
+    await episodeReleaseStorage.updateReleases(mergedChanges.updateReleases);
   }
   if (deleteReleases.length) {
-    await episodeStorage.deleteRelease(deleteReleases);
+    await episodeReleaseStorage.deleteReleases(deleteReleases);
   }
   if (mergedChanges.newEpisodes.length) {
     await episodeStorage.addEpisode(mergedChanges.newEpisodes);
@@ -571,7 +578,7 @@ function getLatestDate(date: Date): Date {
   return lastRun;
 }
 
-async function addFeeds(feeds: string[]): EmptyPromise {
+async function addFeeds(feeds: readonly string[]): EmptyPromise {
   if (!feeds.length) {
     return;
   }
@@ -607,7 +614,7 @@ interface StoredMedium {
 /**
  *
  */
-async function processMedia(media: ScrapeMedium[], _listType: number, _userUuid: Uuid): Promise<LikeMedium[]> {
+async function processMedia(media: readonly ScrapeMedium[], _listType: number, _userUuid: Uuid): Promise<LikeMedium[]> {
   const likeMedia = media.map((value) => {
     return {
       title: value.title.text,
@@ -640,7 +647,7 @@ async function processMedia(media: ScrapeMedium[], _listType: number, _userUuid:
 
     if (likeMedium.medium?.id) {
       if (value.title.link) {
-        updateMediaPromises.push(mediumStorage.addToc(likeMedium.medium.id, value.title.link).then(ignore));
+        updateMediaPromises.push(mediumTocStorage.addToc(likeMedium.medium.id, value.title.link).then(ignore));
       }
       // TODO: 09.03.2020 episode Indices are not relative to the medium, which makes it unusable atm
       // if (value.current && ("partIndex" in value.current || "episodeIndex" in value.current)) {
@@ -669,7 +676,7 @@ async function processMedia(media: ScrapeMedium[], _listType: number, _userUuid:
           .then(async (value) => {
             if (value.id) {
               if (scrapeMedium.title.link) {
-                await mediumStorage.addToc(value.id, scrapeMedium.title.link);
+                await mediumTocStorage.addToc(value.id, scrapeMedium.title.link);
               }
             }
             return {
@@ -715,8 +722,9 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
           name: value.name,
           url: value.link,
           medium: value.medium,
-          items: value.media as number[],
+          userUuid: result.external.userUuid,
         })
+        .then((list) => externalListStorage.addItemsToList(value.media as number[], list.id))
         .catch((error) => logger.error(error)),
     ),
   );
@@ -754,7 +762,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
 
     promisePool.push(
       ...newMedia.map((mediumId: number) =>
-        externalListStorage.addItemToExternalList(externalList.id, mediumId).catch((error) => logger.error(error)),
+        externalListStorage.addItemToList(externalList.id, mediumId).catch((error) => logger.error(error)),
       ),
     );
   });
@@ -877,11 +885,11 @@ async function tocErrorHandler(error: Error) {
   try {
     if (error instanceof MissingResourceError) {
       logger.warn("toc will be removed", { reason: "resource was seemingly deleted", resource: error.resource });
-      await mediumStorage.removeToc(error.resource);
+      await mediumTocStorage.removeToc(error.resource);
       await jobStorage.removeJobLike("name", error.resource);
     } else if (error instanceof UrlError) {
       logger.warn("toc will be removed", { reason: "url is not what the scraper expected", url: error.url });
-      await mediumStorage.removeToc(error.url);
+      await mediumTocStorage.removeToc(error.url);
       await jobStorage.removeJobLike("name", error.url);
     } else if (error instanceof DisabledHookError) {
       logger.warn(error.message);

@@ -1,73 +1,45 @@
-import { SubContext } from "./subContext";
 import {
-  FullMediumToc,
   LikeMedium,
   LikeMediumQuery,
-  Medium,
-  SimpleMedium,
   Synonyms,
-  TocSearchMedium,
-  UpdateMedium,
   Uuid,
-  SecondaryMedium,
-  VoidablePromise,
-  EmptyPromise,
   PromiseMultiSingle,
   MultiSingleValue,
   MultiSingleNumber,
-  MediumToc,
   TypedQuery,
   Id,
-  Entity,
+  Insert,
+  TocSearchMedium,
+  Medium,
+  SecondaryMedium,
+  UpdateMedium,
 } from "../../types";
-import { count, getElseSet, ignore, isInvalidId, multiSingle, promiseMultiSingle } from "../../tools";
+import { count, getElseSet, multiSingle, promiseMultiSingle } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
-import { storeModifications } from "../sqlTools";
 import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
-import { fullMediaTocFromDB, simpleMediumFromDB } from "./contextHelper";
-import { pipeline, Transform } from "stream";
+import { QueryContext } from "./queryContext";
+import { entity, mediumSynonym, simpleMedium, SimpleMedium, softInsertEntity } from "../databaseTypes";
+import { sql } from "slonik";
 
-export class MediumContext extends SubContext {
-  public async getSpecificToc(id: number, link: string): VoidablePromise<FullMediumToc> {
-    const tocs = await this.select<FullMediumToc>(
-      `SELECT
-       id, medium_id as mediumId, link,
-       countryOfOrigin, languageOfOrigin,
-       author, title,medium, artist, lang, stateOrigin,
-       stateTL, series, universe
-       FROM medium_toc WHERE medium_id = ? AND link = ?;`,
-      [id, link],
-    );
-    return fullMediaTocFromDB(tocs[0]);
-  }
-
-  public async removeToc(tocLink: string): EmptyPromise {
-    const result: any[] = await this.select("SELECT medium_id FROM medium_toc WHERE link = ?", tocLink);
-    await Promise.all(
-      result.map((value) => {
-        return this.removeMediumToc(value.medium_id, tocLink);
-      }),
-    );
-  }
-
+export class MediumContext extends QueryContext {
   /**
    * Adds a medium to the storage.
    */
-  public async addMedium(medium: SimpleMedium, uuid?: Uuid): Promise<SimpleMedium> {
+  public async addMedium(medium: Insert<SimpleMedium>, uuid?: Uuid): Promise<SimpleMedium> {
+    simpleMedium.parse(medium);
+
     if (!medium?.medium || !medium?.title) {
       return Promise.reject(new ValidationError(`Invalid Medium: ${medium?.title}-${medium?.medium}`));
     }
-    const result = await this.query<Entity>("INSERT INTO medium(medium, title) VALUES (?,?) RETURNING id;", [
-      medium.medium,
-      medium.title,
-    ]);
-    const id = result.rows[0]?.id;
-    if (!Number.isInteger(id)) {
-      throw new DatabaseError(`insert failed, invalid ID: ${id + ""}`);
-    }
-    storeModifications("medium", "insert", result);
+    const id = await this.con.oneFirst(
+      sql.type(entity)`
+      INSERT INTO medium(medium, title)
+      VALUES (${medium.medium},${medium.title})
+      RETURNING id;`,
+    );
+    // FIXME: storeModifications("medium", "insert", result);
 
-    await this.parentContext.partContext.createStandardPart(id);
+    await this.partContext.createStandardPart(id);
 
     const newMedium = {
       ...medium,
@@ -77,52 +49,44 @@ export class MediumContext extends SubContext {
     // if it should be added to an list, do it right away
     if (uuid) {
       // add item to listId of medium or the standard list
-      await this.parentContext.internalListContext.addItemToList(newMedium, uuid);
+      await this.internalListContext.addItemsToList([newMedium.id], uuid);
     }
     return newMedium;
   }
 
-  public getSimpleMedium<T extends MultiSingleNumber>(id: T): PromiseMultiSingle<T, SimpleMedium> {
-    // TODO: 29.06.2019 replace with id IN (...)
-    return promiseMultiSingle(id, async (mediumId) => {
-      const resultArray: any[] = await this.select("SELECT * FROM medium WHERE medium.id=?;", mediumId);
-      const result = resultArray[0];
+  public async getSimpleMedium(ids: number[]): Promise<readonly SimpleMedium[]> {
+    const resultArray = await this.con.many(
+      sql.type(simpleMedium)`
+      SELECT id, country_of_origin, languageOfOrigin,
+      author, title, medium, artist, lang, state_origin,
+      state_tl, series, universe
+      FROM medium
+      WHERE id = ANY(${sql.array(ids, "int8")});`,
+    );
+    const requestedIds = new Set(ids);
+    const missingIds = resultArray.filter((medium) => !requestedIds.has(medium.id)).map((medium) => medium.id);
 
-      if (!result) {
-        throw new MissingEntityError(`Medium with id ${mediumId} does not exist`);
-      }
-      return {
-        id: result.id,
-        countryOfOrigin: result.countryoforigin,
-        languageOfOrigin: result.languageoforigin,
-        author: result.author,
-        title: result.title,
-        medium: result.medium,
-        artist: result.artist,
-        lang: result.lang,
-        stateOrigin: result.stateorigin,
-        stateTL: result.statetl,
-        series: result.series,
-        universe: result.universe,
-      };
-    });
+    if (missingIds.length) {
+      throw new MissingEntityError(`Media with ids ${JSON.stringify(missingIds)} do not exist`);
+    }
+    return resultArray;
   }
 
   public async getTocSearchMedia(): Promise<TocSearchMedium[]> {
-    const result = await this.select<{ host?: string; mediumId: number; title: string; medium: number }>(
+    const result = await this.con.many<{ host: string | null; mediumId: number; title: string; medium: number }>(
       // eslint-disable-next-line @typescript-eslint/quotes
-      "SELECT substring(episode_release.url, 1, 8 + strpos(substring(url from 9), '/')) as host, " +
-        "medium.id as mediumId, medium.title, medium.medium " +
-        "FROM medium " +
-        "LEFT JOIN part ON part.medium_id=medium.id " +
-        "LEFT JOIN episode ON part_id=part.id " +
-        "LEFT JOIN episode_release ON episode_release.episode_id=episode.id " +
-        "GROUP BY mediumId, host;",
+      sql`SELECT substring(episode_release.url, 1, 8 + strpos(substring(url from 9), '/')) as host,
+        medium.id as mediumId, medium.title, medium.medium
+        FROM medium
+        LEFT JOIN part ON part.medium_id=medium.id
+        LEFT JOIN episode ON part_id=part.id
+        LEFT JOIN episode_release ON episode_release.episode_id=episode.id
+        GROUP BY mediumId, host;`,
     );
     const idMap = new Map<number, TocSearchMedium>();
     const tocSearchMedia = result
       .map((value) => {
-        const medium = idMap.get(value.mediumid);
+        const medium = idMap.get(value.mediumId);
         if (medium) {
           if (medium.hosts && value.host) {
             medium.hosts.push(value.host);
@@ -130,7 +94,7 @@ export class MediumContext extends SubContext {
           return false;
         }
         const searchMedium: TocSearchMedium = {
-          mediumId: value.mediumid,
+          mediumId: value.mediumId,
           hosts: [],
           synonyms: [],
           medium: value.medium,
@@ -139,10 +103,10 @@ export class MediumContext extends SubContext {
         if (value.host && searchMedium.hosts) {
           searchMedium.hosts.push(value.host);
         }
-        idMap.set(value.mediumid, searchMedium);
+        idMap.set(value.mediumId, searchMedium);
         return searchMedium;
       })
-      .filter((value) => value) as any[] as TocSearchMedium[];
+      .filter((value): value is TocSearchMedium => !!value);
     const synonyms = await this.getSynonyms(tocSearchMedia.map((value) => value.mediumId));
 
     synonyms.forEach((value) => {
@@ -164,9 +128,15 @@ export class MediumContext extends SubContext {
   }
 
   public async getTocSearchMedium(id: number): Promise<TocSearchMedium> {
-    const resultArray: any[] = await this.select("SELECT * FROM medium WHERE medium.id =?;", id);
-    const result = resultArray[0];
-    const synonyms: Synonyms[] = await this.getSynonyms(id);
+    const result = await this.con.one(
+      sql.type(simpleMedium)`
+      SELECT id, country_of_origin, languageOfOrigin,
+      author, title, medium, artist, lang, state_origin,
+      state_tl, series, universe
+      FROM medium
+      WHERE medium.id =${id};`,
+    );
+    const synonyms: Synonyms[] = await this.getSynonyms([id]);
 
     return {
       mediumId: result.id,
@@ -182,110 +152,108 @@ export class MediumContext extends SubContext {
   public getMedium<T extends MultiSingleNumber>(id: T, uuid: Uuid): PromiseMultiSingle<T, Medium> {
     // TODO: 29.06.2019 replace with id IN (...)
     return promiseMultiSingle(id, async (mediumId: number): Promise<Medium> => {
-      const result = await this.selectFirst<SimpleMedium>("SELECT * FROM medium WHERE medium.id=?;", mediumId);
-
-      const latestReleasesResult = await this.parentContext.episodeContext.getLatestReleases(mediumId);
-
-      const currentReadResult = await this.selectFirst<{ episode_id: number }>(
-        "SELECT user_episode.episode_id FROM " +
-          "(SELECT * FROM user_episode " +
-          "WHERE episode_id IN (SELECT id from episode " +
-          "WHERE part_id IN (SELECT id FROM part " +
-          "WHERE medium_id=?))) as user_episode " +
-          "INNER JOIN episode ON user_episode.episode_id=episode.id " +
-          "WHERE user_uuid=? " +
-          "ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1",
-        [mediumId, uuid],
+      const result = await this.con.one(
+        sql.type(simpleMedium)`
+        SELECT id, country_of_origin, languageOfOrigin,
+        author, title, medium, artist, lang, state_origin,
+        state_tl, series, universe
+        FROM medium
+        WHERE medium.id=${mediumId}`,
       );
-      const unReadResult = await this.select(
-        "SELECT episode.id FROM episode WHERE part_id IN (SELECT id FROM part WHERE medium_id=?) " +
-          "AND id NOT IN (SELECT episode_id FROM user_episode WHERE user_uuid=?) " +
-          "ORDER BY totalIndex DESC, partialIndex DESC;",
-        [mediumId, uuid],
+
+      const latestReleasesResult = await this.episodeContext.getLatestReleases(mediumId);
+
+      const currentReadResult = await this.con.maybeOneFirst(
+        sql.type(entity)`
+        SELECT user_episode.episode_id as id
+        FROM (
+          SELECT episode_id FROM user_episode
+          WHERE episode_id IN (
+            SELECT id from episode
+            WHERE part_id IN (
+              SELECT id FROM part
+              WHERE medium_id=${mediumId}
+            )
+          )
+        ) as user_episode
+        INNER JOIN episode ON user_episode.episode_id=episode.id
+        WHERE user_uuid=${uuid}
+        ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1`,
       );
-      const partsResult = await this.select("SELECT id FROM part WHERE medium_id=?;", mediumId);
+      const unReadResult = await this.con.manyFirst(
+        sql.type(entity)`
+        SELECT episode.id as id
+        FROM episode
+        WHERE part_id IN (
+          SELECT id FROM part WHERE medium_id=${mediumId}
+        )
+        AND id NOT IN (
+          SELECT episode_id FROM user_episode WHERE user_uuid=${uuid}
+        )
+        ORDER BY totalIndex DESC, partialIndex DESC;`,
+      );
+      const partsResult = await this.con.manyFirst(sql.type(entity)`SELECT id FROM part WHERE medium_id=${mediumId};`);
 
       return {
-        id: result.id,
-        countryOfOrigin: result.countryoforigin,
-        languageOfOrigin: result.languageoforigin,
-        author: result.author,
-        title: result.title,
-        medium: result.medium,
-        artist: result.artist,
-        lang: result.lang,
-        stateOrigin: result.stateorigin,
-        stateTL: result.statetl,
-        series: result.series,
-        universe: result.universe,
-        parts: partsResult.map((packet: any) => packet.id),
-        currentRead: currentReadResult?.episode_id,
-        latestReleased: latestReleasesResult.map((packet: any) => packet.id),
-        unreadEpisodes: unReadResult.map((packet: any) => packet.id),
+        ...result,
+        parts: partsResult,
+        currentRead: currentReadResult,
+        latestReleased: latestReleasesResult.map((packet) => packet.id),
+        unreadEpisodes: unReadResult,
       };
     });
   }
 
   public async getAllMediaFull(): Promise<TypedQuery<SimpleMedium>> {
-    const query = this.queryStream(
-      `SELECT 
-      id, countryOfOrigin, languageOfOrigin,
+    return this.stream(
+      sql.type(simpleMedium)`SELECT 
+      id, country_of_origin, language_of_origin,
       author, title, medium, artist, lang, 
-      stateOrigin, stateTL, series, universe
+      state_origin, state_tl, series, universe
       FROM medium`,
     );
-    const transform = new Transform({
-      objectMode: true,
-      transform(chunk, _encoding, callback) {
-        callback(null, simpleMediumFromDB(chunk));
-      },
-    });
-    return pipeline(query, transform, ignore);
   }
 
   public async getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
-    const readStatsPromise = this.select<{ id: number; totalEpisode: number; readEpisodes: number }>(
-      "SELECT part.medium_id as id, COUNT(*) as totalEpisodes , COUNT(case when episode.id in (select episode_id from user_episode where ? = user_uuid and progress = 1) then 1 else null end) as readEpisodes " +
-        "FROM part " +
-        "INNER JOIN episode ON part.id=episode.part_id " +
-        "GROUP BY part.medium_id;",
-      uuid,
+    const readStatsPromise = this.con.many<{ id: number; totalEpisode: number; readEpisodes: number }>(
+      sql`
+      SELECT part.medium_id as id, COUNT(*) as totalEpisodes ,
+      COUNT(case when episode.id in (
+        select episode_id from user_episode where user_uuid = ${uuid} and progress = 1
+      ) then 1 else null end) as readEpisodes
+      FROM part
+      INNER JOIN episode ON part.id=episode.part_id
+      GROUP BY part.medium_id;`,
     );
-    const tocs = await this.select<FullMediumToc>(
-      `SELECT id, medium_id as mediumId, link, countryOfOrigin,
-      languageOfOrigin, author, title, medium,
-      artist, lang, stateOrigin, stateTL, series, universe
-      FROM medium_toc;`,
-    );
+    const tocs = await this.mediumTocContext.getTocs();
     const readStats = await readStatsPromise;
     const idMap = new Map<number, SecondaryMedium>();
 
     for (const value of readStats) {
       const secondary: SecondaryMedium = {
         id: value.id,
-        readEpisodes: value.readepisodes,
+        readEpisodes: value.readEpisodes,
         tocs: [],
-        totalEpisodes: value.totalepisode,
+        totalEpisodes: value.totalEpisode,
       };
       idMap.set(value.id, secondary);
     }
 
     for (const toc of tocs) {
-      const secondary = getElseSet(idMap, toc.mediumid, () => ({
-        id: toc.mediumid,
+      const secondary = getElseSet(idMap, toc.mediumId, () => ({
+        id: toc.mediumId,
         readEpisodes: 0,
         totalEpisodes: 0,
         tocs: [],
       }));
-      secondary.tocs.push(fullMediaTocFromDB(toc));
+      secondary.tocs.push(toc);
     }
 
     return [...idMap.values()];
   }
 
-  public async getAllMedia(): Promise<number[]> {
-    const result = await this.select<{ id: number }>("SELECT id FROM medium");
-    return result.map((value) => value.id);
+  public async getAllMedia(): Promise<readonly number[]> {
+    return this.con.manyFirst(sql.type(entity)`SELECT id FROM medium`);
   }
 
   /**
@@ -296,19 +264,22 @@ export class MediumContext extends SubContext {
       const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
       const escapedTitle = escapeLike(value.title, { singleQuotes: true });
 
-      let result: any[] = await this.select(
-        "SELECT id,medium FROM medium WHERE title LIKE ? OR id IN " +
-          "(SELECT medium_id FROM medium_toc WHERE medium_id IS NOT NULL AND link LIKE ?);",
-        [escapedTitle, escapedLinkQuery],
+      const result = await this.con.many(
+        sql`
+        SELECT id, medium
+        FROM medium
+        WHERE title LIKE ${escapedTitle} OR id IN (
+          SELECT medium_id
+          FROM medium_toc
+          WHERE link LIKE ${escapedLinkQuery}
+        )${value.type != null ? sql`medium = ${value.type}` : sql``}
+        LIMIT 1;`,
       );
 
-      if (value.type != null) {
-        result = result.filter((medium: any) => medium.medium === value.type);
-      }
       return {
-        medium: result[0],
+        medium: result[0] as unknown as LikeMedium["medium"],
         title: value.title,
-        link: value.link || "",
+        link: value.link ?? "",
       };
     });
   }
@@ -316,56 +287,8 @@ export class MediumContext extends SubContext {
   /**
    * Updates a medium from the storage.
    */
-  public async updateMediumToc(mediumToc: FullMediumToc): Promise<boolean> {
-    const keys: Array<keyof FullMediumToc> = [
-      "countryOfOrigin",
-      "languageOfOrigin",
-      "author",
-      "title",
-      "medium",
-      "artist",
-      "lang",
-      "stateOrigin",
-      "stateTL",
-      "series",
-      "universe",
-    ];
-
-    if (isInvalidId(mediumToc.mediumId) || !mediumToc.link) {
-      throw new ValidationError("invalid medium_id or link is invalid: " + JSON.stringify(mediumToc));
-    }
-    const conditions = [];
-
-    if (isInvalidId(mediumToc.id)) {
-      conditions.push({ column: "medium_id", value: mediumToc.mediumId });
-      conditions.push({ column: "link", value: mediumToc.link });
-    } else {
-      conditions.push({ column: "id", value: mediumToc.id });
-    }
-    const result = await this.update(
-      "medium_toc",
-      (updates, values) => {
-        for (const key of keys) {
-          const value = mediumToc[key];
-
-          if (value === null) {
-            updates.push(`${key} = NULL`);
-          } else if (value != null) {
-            updates.push(`${key} = ?`);
-            values.push(value);
-          }
-        }
-      },
-      ...conditions,
-    );
-    storeModifications("toc", "update", result);
-    return result.rowCount > 0;
-  }
-
-  /**
-   * Updates a medium from the storage.
-   */
   public async updateMedium(medium: UpdateMedium): Promise<boolean> {
+    // define updatable keys
     const keys: Array<keyof UpdateMedium> = [
       "countryOfOrigin",
       "languageOfOrigin",
@@ -375,7 +298,7 @@ export class MediumContext extends SubContext {
       "artist",
       "lang",
       "stateOrigin",
-      "stateTL",
+      "stateTl",
       "series",
       "universe",
     ];
@@ -391,39 +314,45 @@ export class MediumContext extends SubContext {
     }
     const result = await this.update(
       "medium",
-      (updates, values) => {
+      () => {
+        const updates = [];
         for (const key of keys) {
           const value = medium[key];
 
           if (value === null) {
-            updates.push(`${key} = NULL`);
+            updates.push(sql`${sql.identifier([key])} = NULL`);
           } else if (value != null) {
-            updates.push(`${key} = ?`);
-            values.push(value);
+            updates.push(sql`${sql.identifier([key])} = ${value}`);
           }
         }
+        return updates;
       },
       { column: "id", value: medium.id },
     );
-    storeModifications("medium", "update", result);
+    // FIXME: storeModifications("medium", "update", result);
     return result.rowCount > 0;
   }
 
-  public async getSynonyms(mediumId: number | number[]): Promise<Synonyms[]> {
-    const synonyms = await this.queryInList("SELECT * FROM medium_synonyms WHERE medium_id  IN (??);", [mediumId]);
+  public async getSynonyms(mediumId: number[]): Promise<Synonyms[]> {
+    const synonyms = await this.con.many(
+      sql.type(mediumSynonym)`
+      SELECT medium_id, synonym
+      FROM medium_synonyms
+      WHERE medium_id = ANY(${sql.array(mediumId, "int8")});`,
+    );
     if (!synonyms) {
       return [];
     }
     const synonymMap = new Map<number, { mediumId: number; synonym: string[] }>();
-    synonyms.rows.forEach((value: any) => {
+    synonyms.forEach((value: any) => {
       const synonym = getElseSet(synonymMap, value.medium_id, () => ({ mediumId: value.medium_id, synonym: [] }));
       synonym.synonym.push(value.synonym);
     });
     return [...synonymMap.values()];
   }
 
-  public removeSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
-    return promiseMultiSingle(synonyms, (value: Synonyms) => {
+  public async removeSynonyms(synonyms: Synonyms | Synonyms[]): Promise<boolean> {
+    await promiseMultiSingle(synonyms, (value: Synonyms) => {
       return promiseMultiSingle(value.synonym, async (item) => {
         const result = await this.delete(
           "medium_synonyms",
@@ -436,10 +365,11 @@ export class MediumContext extends SubContext {
             value: value.mediumId,
           },
         );
-        storeModifications("synonym", "delete", result);
+        // FIXME: storeModifications("synonym", "delete", result);
         return result.rowCount > 0;
       });
-    }).then(() => true);
+    });
+    return true;
   }
 
   public async addSynonyms<T extends MultiSingleValue<Synonyms>>(synonyms: T): Promise<boolean> {
@@ -449,134 +379,13 @@ export class MediumContext extends SubContext {
         params.push([value.mediumId, item]);
       });
     });
-    const result = await this.multiInsert(
-      "INSERT INTO medium_synonyms (medium_id, synonym) VALUES",
-      params,
-      (value) => value,
-      true,
+    await this.con.query(
+      sql`INSERT INTO medium_synonyms (medium_id, synonym)
+      SELECT * FROM ${sql.unnest(params, ["int8", "text"])}
+      ON CONFLICT DO NOTHING;`,
     );
-    multiSingle(result, (value) => storeModifications("synonym", "insert", value));
+    // FIXME: multiSingle(result, (value) => storeModifications("synonym", "insert", value));
     return true;
-  }
-
-  public async addToc(mediumId: number, link: string): Promise<number> {
-    const result = await this.query<Entity>(
-      "INSERT INTO medium_toc (medium_id, link, title, medium) VAlUES (?,?,?,?) RETURNING id",
-      [mediumId, link, "", 0],
-    );
-    storeModifications("toc", "insert", result);
-    return result.rows[0].id;
-  }
-
-  public async getToc(mediumId: number): Promise<string[]> {
-    const resultArray: any[] = await this.select("SELECT link FROM medium_toc WHERE medium_id=?", mediumId);
-    return resultArray.map((value) => value.link).filter((value) => value);
-  }
-
-  public async getMediumTocs(mediumId: number[]): Promise<FullMediumToc[]> {
-    const result = await this.queryInList<FullMediumToc>(
-      `SELECT id, medium_id as mediumId, link, 
-      countryOfOrigin, languageOfOrigin,
-      author, title, medium, artist, lang, stateOrigin,
-      stateTL, series, universe
-      FROM medium_toc WHERE medium_id IN (??);`,
-      [mediumId],
-    );
-    return result.rows.map(fullMediaTocFromDB);
-  }
-
-  public async getTocs(tocIds: number[]): Promise<FullMediumToc[]> {
-    const result = await this.queryInList<FullMediumToc>(
-      `SELECT id, medium_id as mediumId, link, countryOfOrigin,
-      languageOfOrigin, author, title, medium, artist, lang,
-      stateOrigin, stateTL, series, universe
-      FROM medium_toc WHERE id IN (??);`,
-      [tocIds],
-    );
-    return result.rows.map(fullMediaTocFromDB);
-  }
-
-  public async removeMediumToc(mediumId: number, link: string): Promise<boolean> {
-    const domainRegMatch = /https?:\/\/(.+?)(\/|$)/.exec(link);
-
-    if (!domainRegMatch) {
-      throw new ValidationError("Invalid link, Unable to extract Domain: " + link);
-    }
-
-    await this.parentContext.jobContext.removeJobLike("name", `toc-${mediumId}-${link}`);
-    const domain = domainRegMatch[1];
-
-    const releases = await this.parentContext.episodeContext.getEpisodeLinksByMedium(mediumId);
-    const episodeMap: Map<number, string[]> = new Map();
-    const valueCb = () => [];
-
-    for (const release of releases) {
-      getElseSet(episodeMap, release.episodeId, valueCb).push(release.url);
-    }
-    const removeEpisodesAfter: number[] = [];
-
-    for (const [episodeId, links] of episodeMap.entries()) {
-      const toMoveCount = count(links, (value) => value.includes(domain));
-
-      if (toMoveCount) {
-        if (links.length === toMoveCount) {
-          removeEpisodesAfter.push(episodeId);
-        }
-      }
-    }
-    const deletedReleaseResult = await this.query(
-      "DELETE er FROM episode_release as er, episode as e, part as p" +
-        " WHERE er.episode_id = e.id" +
-        " AND e.part_id = p.id" +
-        " AND p.medium_id = ?" +
-        " AND strpos(er.url, ?) > 0;",
-      [mediumId, domain],
-    );
-    storeModifications("release", "delete", deletedReleaseResult);
-
-    const deletedProgressResult = await this.queryInList(
-      "DELETE ue FROM user_episode as ue, episode as e, part as p" +
-        " WHERE ue.episode_id = e.id" +
-        " AND e.part_id = p.id" +
-        " AND p.medium_id = ?" +
-        " AND e.id IN (??);",
-      [mediumId, removeEpisodesAfter],
-    );
-    multiSingle(deletedProgressResult, (value) => storeModifications("progress", "delete", value));
-
-    const deletedResultResult = await this.queryInList(
-      "DELETE re FROM result_episode as re, episode as e, part as p" +
-        " WHERE re.episode_id = e.id" +
-        " AND e.part_id = p.id" +
-        " AND p.medium_id = ?" +
-        " AND e.id IN (??);",
-      [mediumId, removeEpisodesAfter],
-    );
-    multiSingle(deletedResultResult, (value) => storeModifications("result_episode", "delete", value));
-
-    const deletedEpisodesResult = await this.queryInList("DELETE FROM episode WHERE episode.id IN (??);", [
-      removeEpisodesAfter,
-    ]);
-    multiSingle(deletedEpisodesResult, (value) => storeModifications("episode", "delete", value));
-
-    const result = await this.delete(
-      "medium_toc",
-      { column: "medium_id", value: mediumId },
-      { column: "link", value: link },
-    );
-    storeModifications("toc", "delete", result);
-    return result.rowCount > 0;
-  }
-
-  public getAllMediaTocs(): Promise<Array<{ link?: string; id: number }>> {
-    return this.select<{ link?: string; id: number }>(
-      "SELECT medium.id, medium_toc.link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id",
-    );
-  }
-
-  public async getAllTocs(): Promise<MediumToc[]> {
-    const items = await this.select<MediumToc>("SELECT medium_id as mediumId, link FROM medium_toc");
-    return items.map((value) => ({ link: value.link, mediumId: value.mediumid }));
   }
 
   public async mergeMedia(sourceMediumId: number, destMediumId: number): Promise<boolean> {
@@ -589,85 +398,69 @@ export class MediumContext extends SubContext {
     // the tocs will be transferred and do not need to be moved manually here
     // transferring the tocs should remove any related jobs,
     // and toc jobs should be the only jobs related directly to an medium
-    const sourceTocs = await this.getToc(sourceMediumId);
-    const destTocs = await this.getToc(destMediumId);
+    const sourceTocs = await this.mediumTocContext.getTocLinkByMediumId(sourceMediumId);
+    const destTocs = await this.mediumTocContext.getTocLinkByMediumId(destMediumId);
 
     // transfer unknown tocs and all related episodes
     await Promise.all(
       sourceTocs
         .filter((toc) => !destTocs.includes(toc))
-        .map((toc) => this.transferToc(sourceMediumId, destMediumId, toc)),
+        .map((tocLink) => this.transferToc(sourceMediumId, destMediumId, tocLink)),
     );
 
     // remove all tocs of source
-    let result = await this.delete("medium_toc", { column: "medium_id", value: sourceMediumId });
-    storeModifications("toc", "delete", result);
+    await this.delete("medium_toc", { column: "medium_id", value: sourceMediumId });
+    // FIXME: storeModifications("toc", "delete", result);
 
-    result = await this.query("UPDATE list_medium SET medium_id=? WHERE medium_id=?", [destMediumId, sourceMediumId]);
-    storeModifications("list_item", "update", result);
+    await this.con.query(sql`UPDATE list_medium SET medium_id=${destMediumId} WHERE medium_id=${sourceMediumId}`);
+    // FIXME: storeModifications("list_item", "update", result);
 
-    result = await this.delete("list_medium", { column: "medium_id", value: sourceMediumId });
-    storeModifications("list_item", "delete", result);
+    await this.delete("list_medium", { column: "medium_id", value: sourceMediumId });
+    // FIXME: storeModifications("list_item", "delete", result);
 
-    result = await this.query("UPDATE external_list_medium SET medium_id=? WHERE medium_id=?", [
-      destMediumId,
-      sourceMediumId,
-    ]);
-    storeModifications("external_list_item", "update", result);
+    await this.con.query(
+      sql`UPDATE external_list_medium SET medium_id=${destMediumId} WHERE medium_id=${sourceMediumId}`,
+    );
+    // FIXME: storeModifications("external_list_item", "update", result);
 
-    result = await this.delete("external_list_medium", { column: "medium_id", value: sourceMediumId });
-    storeModifications("external_list_item", "delete", result);
+    await this.delete("external_list_medium", { column: "medium_id", value: sourceMediumId });
+    // FIXME: storeModifications("external_list_item", "delete", result);
 
-    result = await this.query("UPDATE medium_synonyms SET medium_id=? WHERE medium_id=?", [
-      destMediumId,
-      sourceMediumId,
-    ]);
-    storeModifications("synonym", "update", result);
+    await this.con.query(sql`UPDATE medium_synonyms SET medium_id=${destMediumId} WHERE medium_id=${sourceMediumId}`);
+    // FIXME: storeModifications("synonym", "update", result);
 
-    result = await this.delete("medium_synonyms", { column: "medium_id", value: sourceMediumId });
-    storeModifications("synonym", "delete", result);
+    await this.delete("medium_synonyms", { column: "medium_id", value: sourceMediumId });
+    // FIXME: storeModifications("synonym", "delete", result);
 
-    await this.query("UPDATE news_medium SET medium_id=? WHERE medium_id=?", [destMediumId, sourceMediumId]);
+    await this.con.query(sql`UPDATE news_medium SET medium_id=${destMediumId} WHERE medium_id=${sourceMediumId}`);
 
     await this.delete("news_medium", { column: "medium_id", value: sourceMediumId });
-    const deletedReleaseResult = await this.query(
-      "DELETE er FROM episode_release as er, episode as e, part as p" +
-        " WHERE er.episode_id = e.id" +
-        " AND e.part_id = p.id" +
-        " AND p.medium_id = ?",
-      sourceMediumId,
+    await this.con.query(
+      sql`DELETE er FROM episode_release as er, episode as e, part as p
+      WHERE er.episode_id = e.id
+      AND e.part_id = p.id
+      AND p.medium_id = ${sourceMediumId}`,
     );
-    storeModifications("release", "delete", deletedReleaseResult);
+    // FIXME: storeModifications("release", "delete", deletedReleaseResult);
 
-    const deletedProgressResult = await this.query(
-      "DELETE ue FROM user_episode as ue, episode as e, part as p" +
-        " WHERE ue.episode_id = e.id" +
-        " AND e.part_id = p.id" +
-        " AND p.medium_id = ?",
-      sourceMediumId,
+    await this.con.query(
+      sql`DELETE ue FROM user_episode as ue, episode as e, part as p
+        WHERE ue.episode_id = e.id
+        AND e.part_id = p.id
+        AND p.medium_id = ${sourceMediumId}`,
     );
-    storeModifications("progress", "delete", deletedProgressResult);
+    // FIXME: storeModifications("progress", "delete", deletedProgressResult);
 
-    const deletedResultResult = await this.query(
-      "DELETE re FROM result_episode as re, episode as e, part as p" +
-        " WHERE re.episode_id = e.id" +
-        " AND e.part_id = p.id" +
-        " AND p.medium_id = ?",
-      sourceMediumId,
+    await this.con.query(
+      sql`DELETE e FROM episode as e, part as p WHERE e.part_id = p.id AND p.medium_id = ${sourceMediumId}`,
     );
-    storeModifications("result_episode", "delete", deletedResultResult);
+    // FIXME: storeModifications("episode", "delete", deletedEpisodesResult);
 
-    const deletedEpisodesResult = await this.query(
-      "DELETE e FROM episode as e, part as p" + " WHERE e.part_id = p.id" + " AND p.medium_id = ?",
-      sourceMediumId,
-    );
-    storeModifications("episode", "delete", deletedEpisodesResult);
+    await this.con.query(sql`DELETE FROM part WHERE medium_id = ${sourceMediumId}`);
+    // FIXME: storeModifications("part", "delete", deletedPartResult);
 
-    const deletedPartResult = await this.query("DELETE FROM part" + " WHERE medium_id = ?", sourceMediumId);
-    storeModifications("part", "delete", deletedPartResult);
-
-    const deletedMediumResult = await this.query("DELETE FROM medium" + " WHERE id = ?", sourceMediumId);
-    storeModifications("medium", "delete", deletedMediumResult);
+    await this.con.query(sql`DELETE FROM medium WHERE medium_id = ${sourceMediumId}`);
+    // FIXME: storeModifications("medium", "delete", deletedMediumResult);
 
     return true;
   }
@@ -678,27 +471,23 @@ export class MediumContext extends SubContext {
         new ValidationError(`Invalid destination Medium: ${destMedium?.title}-${destMedium?.medium}`),
       );
     }
-    const result = await this.query<Entity>(
-      "INSERT INTO medium(medium, title) VALUES (?,?) ON CONFLICT DO NOTHING RETURNING id;",
-      [destMedium.medium, destMedium.title],
+    const id = await this.con.oneFirst(
+      sql.type(softInsertEntity)`
+      INSERT INTO medium(medium, title)
+      VALUES (${destMedium.medium},${destMedium.title})
+      ON CONFLICT DO NOTHING
+      RETURNING id;`,
     );
-    const id = result.rows[0].id;
-    if (!Number.isInteger(id)) {
-      throw new ValidationError(`insert failed, invalid ID: ${id + ""}`);
-    }
-    storeModifications("medium", "insert", result);
+
+    // FIXME: storeModifications("medium", "insert", result);
     let mediumId: number;
     // medium exists already if insertId == 0
     if (id === 0) {
-      const realMedium = await this.select<{
-        id: number;
-      }>("SELECT id FROM medium WHERE (medium, title) = (?,?);", [destMedium.medium, destMedium.title]);
-      if (!realMedium.length) {
-        throw new MissingEntityError("Expected a MediumId, but got nothing");
-      }
-      mediumId = realMedium[0].id;
+      mediumId = await this.con.oneFirst(
+        sql.type(entity)`SELECT id FROM medium WHERE (medium, title) = (${destMedium.medium},${destMedium.title});`,
+      );
     } else {
-      await this.parentContext.partContext.createStandardPart(id);
+      await this.partContext.createStandardPart(id);
       mediumId = id;
     }
     const success = await this.transferToc(sourceMediumId, mediumId, toc);
@@ -714,21 +503,19 @@ export class MediumContext extends SubContext {
 
     const domain = domainRegMatch[1];
 
-    await this.parentContext.jobContext.removeJobLike("name", `toc-${sourceMediumId}-${toc}`);
-    const standardPartId = await this.parentContext.partContext.getStandardPartId(destMediumId);
+    await this.jobContext.removeJobLike("name", `toc-${sourceMediumId}-${toc}`);
+    const standardPartId = await this.partContext.getStandardPartId(destMediumId);
 
     if (!standardPartId) {
       throw new DatabaseError("medium does not have a standard part");
     }
 
-    const updatedTocResult = await this.query("UPDATE medium_toc SET medium_id = ? WHERE (medium_id, link) = (?,?);", [
-      destMediumId,
-      sourceMediumId,
-      toc,
-    ]);
-    storeModifications("toc", "update", updatedTocResult);
+    await this.con.query(
+      sql`UPDATE medium_toc SET medium_id = ${destMediumId} WHERE (medium_id, link) = (${sourceMediumId},${toc});`,
+    );
+    // FIXME: storeModifications("toc", "update", updatedTocResult);
 
-    const releases = await this.parentContext.episodeContext.getEpisodeLinksByMedium(sourceMediumId);
+    const releases = await this.episodeReleaseContext.getEpisodeLinksByMedium(sourceMediumId);
     const episodeMap: Map<number, string[]> = new Map();
     const valueCb = () => [];
 
@@ -750,108 +537,70 @@ export class MediumContext extends SubContext {
       }
     }
     // add the episodes of the releases
-    const copyEpisodesResult = await this.queryInList(
-      "INSERT INTO episode" +
-        " (part_id, totalIndex, partialIndex, combiIndex, updated_at)" +
-        " SELECT ?, episode.totalIndex, episode.partialIndex, episode.combiIndex, episode.updated_at" +
-        " FROM episode INNER JOIN part ON part.id=episode.part_id" +
-        " WHERE part.medium_id = ? AND episode.id IN (??) ON CONFLICT DO NOTHING;",
-      [standardPartId, sourceMediumId, copyEpisodes],
+    await this.con.query(
+      sql`INSERT INTO episode
+        (part_id, total_index, partial_index, combi_index, updated_at)
+        SELECT ${standardPartId}, episode.total_index, episode.partial_index, episode.combi_index, episode.updated_at
+        FROM episode INNER JOIN part ON part.id=episode.part_id
+        WHERE part.medium_id = ${sourceMediumId} AND episode.id = ANY(${sql.array(copyEpisodes, "int8")})
+        ON CONFLICT DO NOTHING;`,
     );
-    multiSingle(copyEpisodesResult, (value) => storeModifications("episode", "insert", value));
+    // FIXME: multiSingle(copyEpisodesResult, (value) => storeModifications("episode", "insert", value));
 
-    const updatedReleaseResult = await this.query(
-      "UPDATE episode_release, episode as src_e, episode as dest_e, part" +
-        " SET episode_release.episode_id = dest_e.id" +
-        " WHERE episode_release.episode_id = src_e.id" +
-        " AND src_e.part_id = part.id" +
-        " AND part.medium_id = ?" +
-        " AND dest_e.part_id = ?" +
-        " AND src_e.combiIndex = dest_e.combiIndex" +
-        " AND strpos(episode_release.url, ?) > 0;",
-      [sourceMediumId, standardPartId, domain],
+    await this.con.query(
+      sql`UPDATE episode_release, episode as src_e, episode as dest_e, part
+        SET episode_release.episode_id = dest_e.id
+        WHERE episode_release.episode_id = src_e.id
+        AND src_e.part_id = part.id
+        AND part.medium_id = ${sourceMediumId}
+        AND dest_e.part_id = ${standardPartId}
+        AND src_e.combiIndex = dest_e.combiIndex
+        AND strpos(episode_release.url, ${domain}) > 0;`,
     );
-    storeModifications("release", "update", updatedReleaseResult);
+    // FIXME: storeModifications("release", "update", updatedReleaseResult);
 
-    const updatedProgressResult = await this.queryInList(
-      "UPDATE user_episode, episode as src_e, episode as dest_e, part" +
-        " SET user_episode.episode_id = dest_e.id" +
-        " WHERE user_episode.episode_id = src_e.id" +
-        " AND src_e.part_id = part.id" +
-        " AND part.medium_id = ?" +
-        " AND dest_e.part_id = ?" +
-        " AND src_e.combiIndex = dest_e.combiIndex" +
-        " AND src_e.id IN (??);",
-      [sourceMediumId, standardPartId, removeEpisodesAfter],
+    await this.con.query(
+      sql`UPDATE user_episode, episode as src_e, episode as dest_e, part
+        SET user_episode.episode_id = dest_e.id
+        WHERE user_episode.episode_id = src_e.id
+        AND src_e.part_id = part.id
+        AND part.medium_id = ${sourceMediumId}
+        AND dest_e.part_id = ${standardPartId}
+        AND src_e.combiIndex = dest_e.combiIndex
+        AND src_e.id = ANY(${sql.array(removeEpisodesAfter, "int8")});`,
     );
-    multiSingle(updatedProgressResult, (value) => storeModifications("progress", "update", value));
+    // FIXME: multiSingle(updatedProgressResult, (value) => storeModifications("progress", "update", value));
 
-    const updatedResultResult = await this.queryInList(
-      "UPDATE result_episode, episode as src_e, episode as dest_e, part" +
-        " SET result_episode.episode_id = dest_e.id" +
-        " WHERE result_episode.episode_id = src_e.id" +
-        " AND src_e.part_id = part.id" +
-        " AND part.medium_id = ?" +
-        " AND dest_e.part_id = ?" +
-        " AND src_e.combiIndex = dest_e.combiIndex" +
-        " AND src_e.id IN (??);",
-      [sourceMediumId, standardPartId, removeEpisodesAfter],
+    await this.con.query(
+      sql`DELETE FROM episode_release WHERE episode_id = ANY(${sql.array(removeEpisodesAfter, "int8")});`,
     );
-    multiSingle(updatedResultResult, (value) => storeModifications("result_episode", "update", value));
+    // FIXME: multiSingle(deletedReleasesResult, (value) => storeModifications("release", "delete", value));
 
-    const deletedReleasesResult = await this.queryInList("DELETE FROM episode_release" + " WHERE episode_id IN (??);", [
+    await this.con.query(
+      sql`DELETE FROM user_episode WHERE episode_id = ANY(${sql.array(removeEpisodesAfter, "int8")});`,
+    );
+    // FIXME: multiSingle(deletedUserEpisodesResult, (value) => storeModifications("progress", "delete", value));
+
+    await this.con.query(sql`DELETE FROM episode WHERE id = ANY(${sql.array(removeEpisodesAfter, "int8")});`, [
       removeEpisodesAfter,
     ]);
-    multiSingle(deletedReleasesResult, (value) => storeModifications("release", "delete", value));
-
-    const deletedUserEpisodesResult = await this.queryInList(
-      "DELETE FROM user_episode" + " WHERE episode_id IN (??);",
-      [removeEpisodesAfter],
-    );
-    multiSingle(deletedUserEpisodesResult, (value) => storeModifications("progress", "delete", value));
-
-    const deletedResultEpisodesResult = await this.queryInList(
-      "DELETE FROM result_episode" + " WHERE episode_id IN (??);",
-      [removeEpisodesAfter],
-    );
-    multiSingle(deletedResultEpisodesResult, (value) => storeModifications("result_episode", "delete", value));
-
-    const deletedEpisodesResult = await this.queryInList("DELETE FROM episode" + " WHERE id IN (??);", [
-      removeEpisodesAfter,
-    ]);
-    multiSingle(deletedEpisodesResult, (value) => storeModifications("episode", "delete", value));
+    // FIXME: multiSingle(deletedEpisodesResult, (value) => storeModifications("episode", "delete", value));
 
     const copiedOnlyEpisodes: number[] = copyEpisodes.filter((value) => !removeEpisodesAfter.includes(value));
-    const copiedProgressResult = await this.queryInList(
-      "INSERT INTO user_episode" +
-        " (user_uuid, episode_id, progress, read_date)" +
-        " SELECT user_episode.user_uuid, dest_e.id, user_episode.progress, user_episode.read_date" +
-        " FROM user_episode, episode as src_e, episode as dest_e, part" +
-        " WHERE user_episode.episode_id = src_e.id" +
-        " AND src_e.part_id = part.id" +
-        " AND part.medium_id = ?" +
-        " AND dest_e.part_id = ?" +
-        " AND src_e.combiIndex = dest_e.combiIndex" +
-        " AND src_e.id IN (??) ON CONFLICT DO NOTHING;",
-      [sourceMediumId, standardPartId, copiedOnlyEpisodes],
+    await this.con.query(
+      sql`INSERT INTO user_episode
+        (user_uuid, episode_id, progress, read_date)
+        SELECT user_episode.user_uuid, dest_e.id, user_episode.progress, user_episode.read_date
+        FROM user_episode, episode as src_e, episode as dest_e, part
+        WHERE user_episode.episode_id = src_e.id
+        AND src_e.part_id = part.id
+        AND part.medium_id = ${sourceMediumId}
+        AND dest_e.part_id = ${standardPartId}
+        AND src_e.combiIndex = dest_e.combiIndex
+        AND src_e.id = ANY(${sql.array(copiedOnlyEpisodes, "int8")})
+        ON CONFLICT DO NOTHING;`,
     );
-    multiSingle(copiedProgressResult, (value) => storeModifications("progress", "insert", value));
-
-    const copiedResultResult = await this.queryInList(
-      "INSERT INTO result_episode" +
-        " (novel, chapter, chapIndex, volIndex, volume, episode_id)" +
-        " SELECT result_episode.novel, result_episode.chapter, result_episode.chapIndex," +
-        " result_episode.volIndex, result_episode.volume, dest_e.id" +
-        " FROM result_episode, episode as src_e, episode as dest_e, part" +
-        " WHERE result_episode.episode_id = src_e.id" +
-        " AND src_e.part_id = part.id" +
-        " AND part.medium_id = ?" +
-        " AND dest_e.part_id = ?" +
-        " AND src_e.combiIndex = dest_e.combiIndex" +
-        " AND src_e.id IN (??) ON CONFLICT DO NOTHING;",
-      [sourceMediumId, standardPartId, copiedOnlyEpisodes],
-    );
-    multiSingle(copiedResultResult, (value) => storeModifications("result_episode", "insert", value));
+    // FIXME: multiSingle(copiedProgressResult, (value) => storeModifications("progress", "insert", value));
     return true;
   }
 }

@@ -6,6 +6,7 @@ import { DatabaseContext } from "./contexts/databaseContext";
 import logger from "../logger";
 import { EmptyPromise, Nullable } from "../types";
 import { MigrationError } from "../error";
+import { sql } from "slonik";
 
 export class SchemaManager {
   private databaseName = "";
@@ -72,13 +73,13 @@ export class SchemaManager {
           await context.createTable(schema.name, schema.columns);
           // sloppy fix to add a single row to the table, to get "startMigration" to work on empty table
           if (schema.name === "enterprise_database_info") {
-            await context.query("INSERT INTO enterprise_database_info (version) VALUES (0)");
+            await context.con.query(sql`INSERT INTO enterprise_database_info (version) VALUES (0)`);
           }
           tablesCreated++;
         }),
     );
 
-    const dbTriggers = await context.getTriggersPg();
+    const dbTriggers = [...(await context.getTriggersPg())];
 
     let triggerCreated = 0;
     let triggerDeleted = 0;
@@ -90,10 +91,10 @@ export class SchemaManager {
             const dbTrigger = dbTriggers[i];
 
             if (
-              equalsIgnore(dbTrigger.Trigger, trigger.name) &&
-              equalsIgnore(dbTrigger.Event, trigger.event) &&
-              equalsIgnore(dbTrigger.Timing, trigger.timing) &&
-              equalsIgnore(dbTrigger.Table, trigger.table)
+              equalsIgnore(dbTrigger.trigger, trigger.name) &&
+              equalsIgnore(dbTrigger.event, trigger.event) &&
+              equalsIgnore(dbTrigger.timing, trigger.timing) &&
+              equalsIgnore(dbTrigger.table, trigger.table)
             ) {
               dbTriggers.splice(i, 1);
               return false;
@@ -107,8 +108,8 @@ export class SchemaManager {
     // every trigger that is left over, is not in schema and ready to be dropped
     await Promise.all(
       dbTriggers
-        .filter((value) => this.tables.find((table) => table.name === value.Table))
-        .map((value) => context.dropTrigger(value.Trigger).then(() => triggerDeleted++)),
+        .filter((value) => this.tables.find((table) => table.name === value.table))
+        .map((value) => context.dropTrigger(value.trigger).then(() => triggerDeleted++)),
     );
     logger.info("db check missing", {
       created_trigger: triggerCreated,
@@ -121,8 +122,8 @@ export class SchemaManager {
     const versionResult = await context.getDatabaseVersion();
     let previousVersion = 0;
 
-    if (versionResult?.[0] && versionResult[0].version > 0) {
-      previousVersion = versionResult[0].version;
+    if (versionResult > 0) {
+      previousVersion = versionResult;
     }
 
     const currentVersion = this.dataBaseVersion;

@@ -3,7 +3,7 @@ import { NewsResult } from "enterprise-core/dist/types";
 import feedParserPromised from "feedparser-promised";
 import { checkLink } from "../externals/scraperTools";
 
-export const feed = async (feedLink: string): Promise<NewsResult> => {
+export const feed = async (feedLink: string): Promise<Readonly<NewsResult>> => {
   logger.info("scraping feed", { url: feedLink });
   const startTime = Date.now();
   // noinspection JSValidateTypes

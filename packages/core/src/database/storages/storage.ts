@@ -1,21 +1,5 @@
 import env from "../../env";
-import {
-  Invalidation,
-  MetaResult,
-  Result,
-  Uuid,
-  PropertyNames,
-  StringKeys,
-  PromiseFunctions,
-  EmptyPromise,
-  MultiSingleValue,
-  Nullable,
-  DataStats,
-  NewData,
-  QueryItems,
-  QueryItemsResult,
-  TypedQuery,
-} from "../../types";
+import { PropertyNames, StringKeys, PromiseFunctions, EmptyPromise } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
 import { delay, isString } from "../../tools";
@@ -35,14 +19,18 @@ import { InternalListContext } from "../contexts/internalListContext";
 import { ExternalUserContext } from "../contexts/externalUserContext";
 import { ExternalListContext } from "../contexts/externalListContext";
 import { ScraperHookContext } from "../contexts/scraperHookContext";
-import { SubContext } from "../contexts/subContext";
 import { AppEventContext } from "../contexts/appEventContext";
 import { CustomHookContext } from "../contexts/customHookContext";
 import { DatabaseContext } from "../contexts/databaseContext";
 import { DatabaseConnectionError } from "../../error";
 import { NotificationContext } from "../contexts/notificationContext";
-import { Pool, PoolClient, PoolConfig, types } from "pg";
+import { types } from "pg";
+import { ClientConfigurationInput, ConnectionOptions, createPool, DatabasePool, stringifyDsn } from "slonik";
 import { Readable } from "stream";
+import { GenericContext } from "../contexts/genericContext";
+import { createFieldNameTransformationInterceptor } from "slonik-interceptor-field-name-transformation";
+import { MediumTocContext } from "../contexts/mediumTocContext";
+import { EpisodeReleaseContext } from "../contexts/episodeReleaseContext";
 
 // parse float by default
 types.setTypeParser(1700, parseFloat);
@@ -75,58 +63,15 @@ export async function storageInContext<T, C extends ConnectionContext>(
     await poolProvider.startPromise;
   }
   const pool = await poolProvider.provide();
-  const con = await getConnection(pool);
-  const context = provider(con);
 
   let result;
   try {
-    result = await doTransaction(callback, context, transaction);
+    result = await pool.connect((con) => doTransaction(callback, provider(con), transaction));
   } catch (e) {
     console.log(e);
     throw e;
-  } finally {
-    if (result instanceof Readable) {
-      result.on("end", () => con.release());
-    } else {
-      // release connection into the pool
-      con.release();
-    }
   }
   return result;
-}
-
-async function getConnection(pool: Pool): Promise<PoolClient> {
-  let attempt = 0;
-  const maxAttempts = 10;
-
-  while (attempt < maxAttempts) {
-    try {
-      return await pool.connect();
-    } catch (error: unknown) {
-      // check if it is any network or mysql error
-      if (typeof error === "object" && error && "code" in error) {
-        const code = (error as any).code;
-
-        if (code === "ECONNREFUSED") {
-          logger.debug(`Database not up yet. Attempt ${attempt + 1}/${maxAttempts}`);
-          // the service may not be up right now, so wait
-          await delay(1000);
-        } else if (error instanceof Error) {
-          throw error;
-        } else {
-          throw Error(JSON.stringify(error));
-        }
-      } else {
-        console.log("Error rethrown");
-        // throw it is an unknown type of error
-        throw error;
-      }
-      attempt++;
-    }
-  }
-  throw new DatabaseConnectionError(
-    `Could not connect to Database, Maximum Attempts reached: ${attempt}/${maxAttempts}`,
-  );
 }
 
 async function catchTransactionError<T, C extends ConnectionContext>(
@@ -199,15 +144,18 @@ async function doTransaction<T, C extends ConnectionContext>(
   return result;
 }
 
+type ProviderConfig = ClientConfigurationInput & ConnectionOptions;
+type ProviderPool = DatabasePool;
+
 class SqlPoolProvider {
   private remake = true;
-  private pool?: Promise<Pool>;
-  private config?: PoolConfig;
+  private pool?: Promise<ProviderPool>;
+  private config?: ProviderConfig;
   public running = false;
   public errorAtStart = false;
   public startPromise = Promise.resolve();
 
-  public provide(): Promise<Pool> {
+  public provide(): Promise<ProviderPool> {
     if (!this.pool || this.remake) {
       this.remake = false;
       this.pool = this.createPool();
@@ -220,7 +168,7 @@ class SqlPoolProvider {
     this.errorAtStart = false;
   }
 
-  public useConfig(config: PoolConfig) {
+  public useConfig(config: ProviderConfig) {
     this.config = { ...this.defaultConfig(), ...config };
     this.remake = true;
   }
@@ -240,7 +188,7 @@ class SqlPoolProvider {
       this.running = true;
       try {
         const manager = new SchemaManager();
-        const database = this.getConfig().database;
+        const database = this.getConfig().databaseName;
 
         if (!database) {
           this.startPromise = Promise.reject(new Error("No database name defined"));
@@ -278,27 +226,49 @@ class SqlPoolProvider {
     return this.config || this.defaultConfig();
   }
 
-  private async createPool(): Promise<Pool> {
+  private async createPool(): Promise<ProviderPool> {
     // stop previous pool if available
     if (this.pool) {
       await this.stop();
     }
     const config = this.getConfig();
-    return new Pool(config);
+
+    return createPool(
+      stringifyDsn({
+        applicationName: "enterprise",
+        databaseName: config.databaseName,
+        host: config.host,
+        password: config.password,
+        port: config.port,
+        username: config.username,
+      }),
+      {
+        maximumPoolSize: config.maximumPoolSize,
+        interceptors: [
+          // transform snake_case columns to camelCase in QueryResult
+          createFieldNameTransformationInterceptor({
+            format: "CAMEL_CASE",
+          }),
+          {
+            afterQueryExecution(queryContext, query, result) {
+              console.log(queryContext, query, result);
+              return null;
+            },
+          },
+        ],
+      },
+    );
   }
 
-  private defaultConfig(): PoolConfig {
+  private defaultConfig(): ProviderConfig {
     return {
-      max: env.dbConLimit,
+      maximumPoolSize: env.dbConLimit,
       host: env.dbHost,
-      user: env.dbUser,
+      username: env.dbUser,
       password: env.dbPassword,
       // we assume that the database exists already
-      database: "enterprise",
+      databaseName: "enterprise",
       port: env.dbPort,
-      log(...messages) {
-        logger.info(messages);
-      },
     };
   }
 }
@@ -307,9 +277,9 @@ const poolProvider = new SqlPoolProvider();
 
 class SqlPoolConfigUpdater {
   /**
-   * Creates new Mysql Connection Pool with the given Config.
+   * Creates new Mysql Connection ProviderPool with the given Config.
    */
-  public update(config: Partial<PoolConfig>): void {
+  public update(config: Partial<ProviderConfig>): void {
     poolProvider.useConfig(config);
   }
 
@@ -327,77 +297,17 @@ class SqlPoolConfigUpdater {
 
 export const poolConfig = new SqlPoolConfigUpdater();
 
-export class Storage {
-  public getPageInfo(link: string, key: string): Promise<{ link: string; key: string; values: string[] }> {
-    return inContext((context) => context.getPageInfo(link, key));
-  }
-
-  public updatePageInfo(link: string, key: string, values: string[], toDeleteValues?: string[]): EmptyPromise {
-    return inContext((context) => context.updatePageInfo(link, key, values, toDeleteValues));
-  }
-
-  public removePageInfo(link: string, key?: string): EmptyPromise {
-    return inContext((context) => context.removePageInfo(link, key));
-  }
-
-  public queueNewTocs(): EmptyPromise {
-    return inContext((context) => context.queueNewTocs());
-  }
-
-  public getStats(uuid: Uuid): Promise<DataStats> {
-    return inContext((context) => context.getStat(uuid));
-  }
-
-  public getNew(uuid: Uuid, date?: Date): Promise<NewData> {
-    return inContext((context) => context.getNew(uuid, date));
-  }
-
-  public queryItems(uuid: Uuid, query: QueryItems): Promise<QueryItemsResult> {
-    return inContext((context) => context.queryItems(uuid, query));
-  }
-
-  /**
-   *
-   * @param result
-   */
-  public processResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
-    return inContext((context) => context.processResult(result));
-  }
-
-  /**
-   *
-   * @param result
-   */
-  public saveResult(result: Result): Promise<MultiSingleValue<Nullable<MetaResult>>> {
-    return inContext((context) => context.saveResult(result));
-  }
-
-  /**
-   *
-   */
-  public getInvalidated(uuid: Uuid): Promise<Invalidation[]> {
-    return inContext((context) => context.getInvalidated(uuid));
-  }
-
-  /**
-   *
-   */
-  public getInvalidatedStream(uuid: Uuid): Promise<TypedQuery> {
-    return inContext((context) => context.getInvalidatedStream(uuid));
-  }
-}
-
 /**
  * Property names of QueryContext whose type extends from SubContext.
  */
-type ContextName = PropertyNames<QueryContext, SubContext>;
-type ContextProxy<T extends SubContext, K extends StringKeys<T>> = new () => PromiseFunctions<T, K>;
+type ContextName = PropertyNames<QueryContext, QueryContext>;
+type ContextProxy<T extends QueryContext, K extends StringKeys<T>> = new () => PromiseFunctions<T, K>;
 
-function inContextGeneric<T, C extends SubContext>(callback: ContextCallback<T, C>, context: ContextName) {
+function inContextGeneric<T, C extends QueryContext>(callback: ContextCallback<T, C>, context: ContextName) {
   return storageInContext(callback, (con) => queryContextProvider(con)[context] as unknown as C, true);
 }
 
-export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T>>(
+export function ContextProxyFactory<T extends QueryContext, K extends StringKeys<T>>(
   contextName: ContextName,
   omitted: K[],
 ): ContextProxy<T, K> {
@@ -421,15 +331,12 @@ export function ContextProxyFactory<T extends SubContext, K extends StringKeys<T
   } as unknown as ContextProxy<T, K>;
 }
 
-export function SubContextProxyFactory<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(
+export function SubContextProxyFactory<T extends QueryContext, K extends StringKeys<T> = keyof QueryContext>(
   context: ContextName,
   omitted?: K[],
 ): ContextProxy<T, K> {
-  return ContextProxyFactory<T, K | keyof SubContext>(context, [
+  return ContextProxyFactory<T, K | keyof QueryContext>(context, [
     "commit",
-    "dmlQuery",
-    "parentContext",
-    "query",
     "rollback",
     "startTransaction",
     ...(omitted || []),
@@ -459,13 +366,12 @@ export function SubContextProxyFactory<T extends SubContext, K extends StringKey
  *
  * @param context the property name on QueryContext
  */
-export function createStorage<T extends SubContext, K extends StringKeys<T> = keyof SubContext>(
+export function createStorage<T extends QueryContext, K extends StringKeys<T> = keyof QueryContext>(
   context: ContextName,
 ): PromiseFunctions<T, K> {
   return new (SubContextProxyFactory<T, K>(context))();
 }
 
-export const storage = new Storage();
 export const databaseStorage = createStorage<DatabaseContext>("databaseContext");
 export const mediumStorage = createStorage<MediumContext>("mediumContext");
 export const partStorage = createStorage<PartContext>("partContext");
@@ -481,6 +387,9 @@ export const hookStorage = createStorage<ScraperHookContext>("scraperHookContext
 export const appEventStorage = createStorage<AppEventContext>("appEventContext");
 export const customHookStorage = createStorage<CustomHookContext>("customHookContext");
 export const notificationStorage = createStorage<NotificationContext>("notificationContext");
+export const episodeReleaseStorage = createStorage<EpisodeReleaseContext>("episodeReleaseContext");
+export const mediumTocStorage = createStorage<MediumTocContext>("mediumTocContext");
+export const storage = createStorage<GenericContext>("genericContext");
 
 /**
  *

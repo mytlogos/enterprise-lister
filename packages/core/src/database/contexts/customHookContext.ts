@@ -1,57 +1,46 @@
-import { SubContext } from "./subContext";
-import { isInvalidId } from "../../tools";
-import { storeModifications } from "../sqlTools";
-import { CustomHook, Entity } from "@/types";
 import { ValidationError } from "../../error";
+import { QueryContext } from "./queryContext";
+import { customHook, entity, CustomHook } from "../databaseTypes";
+import { sql } from "slonik";
+import { isString } from "validate.js";
 
-export class CustomHookContext extends SubContext {
-  public async addHook(value: CustomHook): Promise<CustomHook> {
+export class CustomHookContext extends QueryContext {
+  public async addHook(value: Readonly<CustomHook>): Promise<CustomHook> {
     if (value.id) {
       throw new ValidationError("Cannot add Hook with id already defined");
     }
-    if (typeof value.state === "object") {
-      value.state = JSON.stringify(value.state);
-    }
 
-    const result = await this.query<Entity>(
-      "INSERT INTO custom_hook (name, state, hookState, comment) VALUES (?,?,?,?) ON CONFLICT DO NOTHING RETURNING id;",
-      [value.name, value.state, value.hookState, value.comment],
+    const state = isString(value.state) ? JSON.parse(value.state) : value.hookState;
+
+    const id = await this.con.oneFirst(
+      sql.type(entity)`
+      INSERT INTO custom_hook (name, state, hookState, comment)
+      VALUES (${value.name},${sql.jsonb(state)},${value.hookState},${value.comment})
+      ON CONFLICT DO NOTHING RETURNING id;`,
     );
-    const id = result.rows[0]?.id;
 
-    if (!id || !Number.isInteger(id) || id === 0) {
-      throw new ValidationError(`invalid ID ${id + ""}`);
-    }
-    storeModifications("custom_hook", "insert", result);
+    // FIXME: storeModifications("custom_hook", "insert", result);
 
     return { ...value, id };
   }
 
-  public async getHooks(): Promise<CustomHook[]> {
-    const hooks = await this.select<CustomHook>(
-      "SELECT id, name, state, updated_at, hookState, comment FROM custom_hook;",
+  public async getHooks(): Promise<readonly CustomHook[]> {
+    return this.con.many(
+      sql.type(customHook)`SELECT id, name, state, updated_at, hook_state, comment FROM custom_hook;`,
     );
-    return hooks.map((value) => ({ ...value, hookState: value.hookstate, hookstate: undefined }));
   }
 
   public async updateHook(value: CustomHook): Promise<CustomHook> {
-    if (isInvalidId(value.id)) {
-      throw new ValidationError(`Invalid id: '${value.id}'`);
-    }
-    const updateResult = await this.update(
+    customHook.parse(value);
+    await this.update(
       "custom_hook",
-      (updates, values) => {
-        updates.push("comment = ?");
-        values.push(value.comment);
-
-        updates.push("hookState = ?");
-        values.push(value.hookState);
-
-        updates.push("name = ?");
-        values.push(value.name);
-
-        updates.push("state = ?");
-        values.push(value.state);
+      () => {
+        return [
+          sql`comment = ${value.comment}`,
+          sql`hook_state = ${value.name}`,
+          sql`name = ${value.name}`,
+          sql`state = ${value.state}`,
+        ];
       },
       {
         column: "id",
@@ -59,7 +48,7 @@ export class CustomHookContext extends SubContext {
       },
     );
 
-    storeModifications("custom_hook", "update", updateResult);
+    // FIXME storeModifications("custom_hook", "update", updateResult);
 
     return value;
   }

@@ -1,15 +1,10 @@
-import { SubContext } from "./subContext";
 import { SimpleUser, User, Uuid, Nullable, UpdateUser } from "../../types";
 import { allTypes, BcryptHash, Errors, Hasher, Hashes } from "../../tools";
 import { v1 as uuidGenerator, v4 as sessionGenerator } from "uuid";
-import {
-  CredentialError,
-  DatabaseError,
-  DuplicateEntityError,
-  MissingEntityError,
-  SessionError,
-  ValidationError,
-} from "../../error";
+import { CredentialError, DuplicateEntityError, SessionError, ValidationError } from "../../error";
+import { QueryContext } from "./queryContext";
+import { sql } from "slonik";
+import { simpleUser } from "../databaseTypes";
 
 /**
  * Checks whether the password equals to the given hash
@@ -24,7 +19,7 @@ import {
  * @return {boolean}
  * @private
  */
-const verifyPassword = (password: string, hash: string, alg: string, salt: string): Promise<boolean> => {
+const verifyPassword = (password: string, hash: string, alg: string, salt?: string): Promise<boolean> => {
   const hashAlgorithm = Hashes.find((value) => value.tag === alg);
 
   if (!hashAlgorithm) {
@@ -37,7 +32,7 @@ const verifyPassword = (password: string, hash: string, alg: string, salt: strin
 const StandardHash: Hasher = BcryptHash;
 const standardListName = "Standard";
 
-export class UserContext extends SubContext {
+export class UserContext extends QueryContext {
   /**
    * Registers an User if the userName is free.
    * Returns a Error Code if userName is already
@@ -53,9 +48,9 @@ export class UserContext extends SubContext {
     if (!userName || !password) {
       return Promise.reject(new ValidationError("missing username or password"));
     }
-    const user = await this.query("SELECT * FROM user WHERE name = ?;", userName);
-    // if there is a result in array, userName is not new, so abort
-    if (user.rows.length) {
+    const userExists = await this.con.exists(sql`SELECT name FROM user WHERE name = ${userName};`);
+    // userName is not new, so abort
+    if (userExists) {
       return Promise.reject(new DuplicateEntityError(Errors.USER_EXISTS_ALREADY));
     }
     // if userName is new, proceed to register
@@ -63,17 +58,14 @@ export class UserContext extends SubContext {
     const { salt, hash } = await StandardHash.hash(password);
 
     // insert the full user and loginUser right after
-    await this.query("INSERT INTO user (name, uuid, salt, alg, password) VALUES (?,?,?,?,?);", [
-      userName,
-      id,
-      salt,
-      StandardHash.tag,
-      hash,
-    ]);
+    await this.con.query(
+      sql`INSERT INTO user (name, uuid, salt, alg, password)
+      VALUES (${userName},${id},${salt ?? null},${StandardHash.tag},${hash});`,
+    );
 
     // every user gets a standard list for everything that got no list assigned
     // this standard list name 'Standard' is reserved for this purpose
-    await this.parentContext.internalListContext.addList(id, { name: standardListName, medium: allTypes() });
+    await this.internalListContext.addList({ name: standardListName, medium: allTypes(), userUuid: id });
 
     return this.loginUser(userName, password, ip);
   }
@@ -88,21 +80,13 @@ export class UserContext extends SubContext {
     if (!userName || !password) {
       return Promise.reject(new ValidationError("missing username or password"));
     }
-    const users = await this.select<{ uuid: string; password: string; alg: string; salt: string }>(
-      "SELECT * FROM user WHERE name = ?;",
-      userName,
+    const user = await this.con.one(
+      sql.type(simpleUser)`SELECT uuid, name, alg, password, salt FROM user WHERE name = ${userName};`,
     );
 
-    if (!users.length) {
-      return Promise.reject(new MissingEntityError(Errors.USER_DOES_NOT_EXIST));
-    } else if (users.length !== 1) {
-      return Promise.reject(new DatabaseError("got multiple user for the same name"));
-    }
-
-    const user = users[0];
     const uuid = user.uuid;
 
-    if (!(await verifyPassword(password, user.password, user.alg, user.salt))) {
+    if (!(await verifyPassword(password, user.password, user.alg, user.salt ?? undefined))) {
       return Promise.reject(new CredentialError(Errors.INVALID_CREDENTIALS));
     }
     // if there exists a session already for that device, remove it
@@ -112,12 +96,9 @@ export class UserContext extends SubContext {
     const session = sessionGenerator();
     const date = new Date().toISOString();
 
-    await this.query("INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (?,?,?,?);", [
-      uuid,
-      ip,
-      session,
-      date,
-    ]);
+    await this.con.query(
+      sql`INSERT INTO user_log (user_uuid, ip, session_key, acquisition_date) VALUES (${uuid},${ip},${session},${date});`,
+    );
 
     return this._getUser(uuid, session);
   }
@@ -129,19 +110,18 @@ export class UserContext extends SubContext {
    * the session key of the user for the ip.
    */
   public async userLoginStatus(ip: string, uuid?: Uuid, session?: string): Promise<boolean> {
-    const sessionRecord = await this.selectFirst<{ session_key: string; user_uuid: string }>(
-      "SELECT * FROM user_log WHERE ip = ?;",
-      ip,
+    const sessionRecord = await this.con.maybeOne<{ sessionKey: string; userUuid: string }>(
+      sql`SELECT user_uuid, session_key FROM user_log WHERE ip = ${ip};`,
     );
 
     if (!sessionRecord) {
       return false;
     }
 
-    const currentSession = sessionRecord.session_key;
+    const currentSession = sessionRecord.sessionKey;
 
     if (session) {
-      return session === currentSession && uuid === sessionRecord.user_uuid;
+      return session === currentSession && uuid === sessionRecord.userUuid;
     }
     return !!currentSession;
   }
@@ -150,35 +130,35 @@ export class UserContext extends SubContext {
     if (!ip) {
       return null;
     }
-    const result = await this.query<{ name: string; uuid: string; session_key: string }>(
-      "SELECT name, uuid, session_key FROM user_log " + "INNER JOIN user ON user.uuid=user_log.user_uuid WHERE ip = ?;",
-      ip,
+    const result = await this.con.query<{ name: string; uuid: string; sessionKey: string }>(
+      sql`SELECT name, uuid, session_key FROM user_log 
+      INNER JOIN user ON user.uuid=user_log.user_uuid
+      WHERE ip = ${ip};`,
     );
 
     const userRecord = result.rows[0];
 
-    if (!userRecord || !ip || !userRecord.session_key || !userRecord.name || !userRecord.uuid) {
+    if (!userRecord || !ip || !userRecord.sessionKey || !userRecord.name || !userRecord.uuid) {
       return null;
     }
 
     return {
       name: userRecord.name,
-      session: userRecord.session_key,
+      session: userRecord.sessionKey,
       uuid: userRecord.uuid,
     };
   }
 
   public async getUser(uuid: Uuid, ip: string): Promise<User> {
-    const sessionRecord = await this.selectFirst<{ session_key: string; user_uuid: string }>(
-      "SELECT * FROM user_log WHERE user_uuid = ? AND ip = ?;",
-      [uuid, ip],
+    const hasSession = await this.con.maybeOne<{ sessionKey: string }>(
+      sql`SELECT session_key FROM user_log WHERE user_uuid = ${uuid} AND ip = ${ip};`,
     );
 
-    if (!sessionRecord?.session_key) {
+    if (!hasSession) {
       throw new SessionError("user has no session");
     }
 
-    return this._getUser(uuid, sessionRecord.session_key);
+    return this._getUser(uuid, hasSession.sessionKey);
   }
 
   /**
@@ -204,29 +184,27 @@ export class UserContext extends SubContext {
     await this.delete("user_log", { column: "user_uuid", value: uuid });
 
     // delete reading lists contents
-    await this.query(
-      "DELETE FROM list_medium WHERE list_id in (SELECT id FROM reading_list WHERE user_uuid = ?);",
-      uuid,
+    await this.con.query(
+      sql`DELETE FROM list_medium WHERE list_id in (SELECT id FROM reading_list WHERE user_uuid = ${uuid});`,
     );
     // delete lists
     await this.delete("reading_list", { column: "user_uuid", value: uuid });
     // delete external reading lists contents
-    await this.query(
-      "DELETE FROM external_list_medium " +
-        "WHERE list_id " +
-        "IN (SELECT id FROM external_reading_list " +
-        "WHERE user_uuid " +
-        "IN (SELECT uuid FROM external_user " +
-        "WHERE local_uuid = ?));",
-      uuid,
+    await this.con.query(
+      sql`DELETE FROM external_list_medium
+        WHERE list_id IN (
+          SELECT id FROM external_reading_list
+          WHERE user_uuid IN (
+            SELECT uuid FROM external_user WHERE local_uuid = ${uuid}
+          )
+        );`,
     );
 
     // delete external lists
-    await this.query(
-      "DELETE FROM external_reading_list " +
-        "WHERE user_uuid " +
-        "IN (SELECT uuid FROM external_user WHERE local_uuid = ?);",
-      uuid,
+    await this.con.query(
+      sql`DELETE FROM external_reading_list
+      WHERE user_uuid
+      IN (SELECT uuid FROM external_user WHERE local_uuid = ${uuid});`,
     );
     // delete external user
     await this.delete("external_user", { column: "local_uuid", value: uuid });
@@ -256,10 +234,10 @@ export class UserContext extends SubContext {
     }
     return this.update(
       "user",
-      async (updates, values) => {
+      async () => {
+        const updates = [];
         if (user.name) {
-          updates.push("name = ?");
-          values.push(user.name);
+          updates.push(sql`name = ${user.name}`);
         }
 
         if (user.newPassword) {
@@ -269,15 +247,11 @@ export class UserContext extends SubContext {
           }
           const { salt, hash } = await StandardHash.hash(user.newPassword);
 
-          updates.push("alg = ?");
-          values.push(StandardHash.tag);
-
-          updates.push("salt = ?");
-          values.push(salt);
-
-          updates.push("password = ?");
-          values.push(hash);
+          updates.push(sql`alg = ${StandardHash.tag}`);
+          updates.push(sql`salt = ${salt ?? null}`);
+          updates.push(sql`password = ${hash}`);
         }
+        return updates;
       },
       {
         column: "uuid",
@@ -295,11 +269,9 @@ export class UserContext extends SubContext {
    * @return {Promise<boolean>}
    */
   public async verifyPassword(uuid: Uuid, password: string): Promise<boolean> {
-    const result = await this.query<{ password: string; alg: string; salt: string }>(
-      "SELECT password, alg, salt FROM user WHERE uuid = ?",
-      uuid,
+    const user = await this.con.one<{ password: string; alg: string; salt: string }>(
+      sql`SELECT password, alg, salt FROM user WHERE uuid = ${uuid}`,
     );
-    const user = result.rows[0];
     return verifyPassword(password, user.password, user.alg, user.salt);
   }
 
@@ -321,11 +293,13 @@ export class UserContext extends SubContext {
       session,
     };
     // query for user
-    const userPromise = this.query<{ name: string }>("SELECT name FROM user WHERE uuid = ?;", uuid).then((value) => {
-      // add user metadata
-      user.name = value.rows[0].name;
-      user.uuid = uuid;
-    });
+    const userPromise = this.con
+      .query<{ name: string }>(sql`SELECT name FROM user WHERE uuid = ${uuid};`)
+      .then((value) => {
+        // add user metadata
+        user.name = value.rows[0].name;
+        user.uuid = uuid;
+      });
     await userPromise;
     return user;
   }

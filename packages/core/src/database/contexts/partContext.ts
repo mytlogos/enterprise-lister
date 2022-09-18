@@ -1,122 +1,96 @@
-import { SubContext } from "./subContext";
 import {
   Episode,
   FullPart,
-  MinPart,
   Part,
   ShallowPart,
   Uuid,
-  MultiSingleNumber,
   VoidablePromise,
   SimpleRelease,
   TypedQuery,
   AddPart,
-  Entity,
 } from "../../types";
-import { combiIndex, getElseSetObj, hasPropType, multiSingle, separateIndex } from "../../tools";
-import { MysqlServerError } from "../mysqlError";
-import { storeModifications } from "../sqlTools";
-import { DatabaseError, MissingEntityError } from "../../error";
-import { Transform } from "stream";
-import { minPartFromDB } from "./contextHelper";
+import { combiIndex, getElseSetObj, multiSingle, separateIndex } from "../../tools";
+import { isDuplicateError, MissingEntityError } from "../../error";
+import { QueryContext } from "./queryContext";
+import { sql } from "slonik";
+import { entity, SimpleEpisodeReleases, simplePart, SimplePart } from "../databaseTypes";
 
 interface MinEpisode {
   id: number;
   partId: number;
 }
 
-interface DBPart {
-  id: number;
-  combiindex: number;
-  totalindex: number;
-  partialindex?: number;
-  title: string;
-  medium_id: number;
-}
-
-export class PartContext extends SubContext {
-  public async getAll(): Promise<TypedQuery<MinPart>> {
-    return this.queryStream<MinPart>(
-      `SELECT
-      id, totalIndex, partialIndex, title, medium_id as mediumId
+export class PartContext extends QueryContext {
+  public async getAll(): Promise<TypedQuery<SimplePart>> {
+    return this.stream(
+      sql.type(simplePart)`
+      SELECT id, total_index, partial_index, combi_index, title, medium_id
       FROM part`,
-    ).pipe(
-      new Transform({
-        objectMode: true,
-        transform(chunk, encoding, callback) {
-          callback(null, minPartFromDB(chunk));
-        },
-      }),
     );
   }
 
-  public async getStandardPartId(mediumId: number): VoidablePromise<number> {
-    const standardPartResult = await this.selectFirst<Entity>(
-      "SELECT id FROM part WHERE medium_id = ? AND totalIndex=-1",
-      mediumId,
+  public async getStandardPartId(mediumId: number): Promise<number | null> {
+    return this.con.maybeOneFirst(
+      sql.type(entity)`SELECT id FROM part WHERE medium_id = ${mediumId} AND totalIndex=-1`,
     );
-    return standardPartResult ? standardPartResult.id : undefined;
   }
 
   public async getStandardPart(mediumId: number): VoidablePromise<ShallowPart> {
-    const standardPartResult = await this.selectFirst<DBPart>(
-      "SELECT * FROM part WHERE medium_id = ? AND totalIndex=-1",
-      mediumId,
+    const standardPartResult = await this.con.maybeOne(
+      sql.type(simplePart)`SELECT id, total_index, partial_index, combi_index, title, medium_id
+      FROM part WHERE medium_id = ${mediumId} AND totalIndex=-1`,
     );
 
     if (!standardPartResult) {
       return;
     }
 
-    const episodesIds = await this.select<Entity>("SELECT id FROM episode WHERE part_id = ?", standardPartResult.id);
+    const episodesIds = await this.con.manyFirst(
+      sql.type(entity)`SELECT id FROM episode WHERE part_id = ${standardPartResult.id}`,
+    );
 
     const standardPart: ShallowPart = {
-      id: standardPartResult.id,
-      totalIndex: standardPartResult.totalindex,
-      partialIndex: standardPartResult.partialindex,
-      title: standardPartResult.title,
-      episodes: [],
-      mediumId: standardPartResult.medium_id,
+      ...standardPartResult,
+      episodes: episodesIds,
     };
-    episodesIds.forEach((value) => standardPart.episodes.push(value.id));
     return standardPart;
   }
 
-  public async getMediumPartIds(mediumId: number): Promise<number[]> {
-    const result = await this.query<Entity>("SELECT id FROM part WHERE medium_id = ?;", mediumId);
-    return result.rows.map((value) => value.id);
+  public async getMediumPartIds(mediumId: number): Promise<readonly number[]> {
+    return this.con.manyFirst(sql.type(entity)`SELECT id FROM part WHERE medium_id = ${mediumId};`);
   }
 
   /**
    * Returns all parts of an medium.
    */
-  public async getMediumParts(mediumId: number, uuid?: Uuid): Promise<Part[]> {
-    const parts = await this.query<DBPart>("SELECT * FROM part WHERE medium_id = ?", mediumId);
+  public async getMediumParts(mediumId: number, uuid?: Uuid): Promise<readonly Part[]> {
+    const parts = await this.con.many(
+      sql.type(simplePart)`
+      SELECT id, total_index, partial_index, combi_index, title, medium_id
+      FROM part WHERE medium_id = ${mediumId}`,
+    );
 
     const idMap = new Map<number, FullPart>();
 
     // recreate shallow parts
-    const fullParts = parts.rows.map((value) => {
+    const fullParts = parts.map((value) => {
       const part = {
-        id: value.id,
-        totalIndex: value.totalindex,
-        partialIndex: value.partialindex,
-        title: value.title,
+        ...value,
         episodes: [],
-        mediumId: value.medium_id,
       };
       idMap.set(value.id, part);
       return part;
     });
-    const episodesIds = await this.queryInList<MinEpisode>(
-      "SELECT id, part_id as partId FROM episode WHERE part_id IN (??);",
-      [parts.rows.map((v) => v.id)],
-    );
+    const episodesIds = (await this.con.many(
+      sql`SELECT id, part_id
+      FROM episode
+       WHERE part_id = ANY(${sql.array([...idMap.keys()], "int8")});`,
+    )) as unknown as readonly MinEpisode[];
 
-    if (episodesIds.rows.length) {
+    if (episodesIds.length) {
       if (uuid) {
-        const values = episodesIds.rows.map((episode: any): number => episode.id);
-        const episodes = await this.parentContext.episodeContext.getEpisode(values, uuid);
+        const values = episodesIds.map((episode: any): number => episode.id);
+        const episodes = await this.episodeContext.getEpisode(values, uuid);
         episodes.forEach((value) => {
           const part = idMap.get(value.partId);
           if (!part) {
@@ -127,11 +101,11 @@ export class PartContext extends SubContext {
           part.episodes.push(value);
         });
       } else {
-        episodesIds.rows.forEach((value) => {
-          const part = idMap.get(value.partid);
+        episodesIds.forEach((value) => {
+          const part = idMap.get(value.partId);
           if (!part) {
             throw new MissingEntityError(
-              `no part ${value.partid} found even though only available episodes were queried`,
+              `no part ${value.partId} found even though only available episodes were queried`,
             );
           }
           // @ts-expect-error
@@ -146,103 +120,83 @@ export class PartContext extends SubContext {
    * Returns all parts of an medium with specific totalIndex.
    * If there is no such part, it returns an object with only the totalIndex as property.
    */
-  public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: MultiSingleNumber): Promise<MinPart[]> {
-    const parts = await this.queryInList<DBPart>(
-      `SELECT 
-      id,
-      combiIndex,
-      totalIndex,
-      partialIndex,
-      medium_id
+  public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: number[]): Promise<readonly SimplePart[]> {
+    const parts = await this.con.many(
+      sql.type(simplePart)`SELECT id, total_index, partial_index, combi_index, title, medium_id
       FROM part
-      WHERE medium_id = ? AND combiIndex IN (??);`,
+      WHERE medium_id = ${mediumId} AND combiIndex = ANY(${sql.array(partCombiIndex, "int8")});`,
       [mediumId, partCombiIndex],
     );
-    if (!parts.rows.length) {
+    if (!parts.length) {
       return [];
     }
 
+    const result = [...parts];
+
     multiSingle(partCombiIndex, (combinedIndex: number) => {
-      if (parts.rows.every((part) => part.combiindex !== combinedIndex)) {
+      if (parts.every((part) => part.combiIndex !== combinedIndex)) {
         const separateValue = separateIndex(combinedIndex);
-        parts.rows.push({
+        result.push({
           id: 0,
-          combiindex: combinedIndex,
-          medium_id: 0,
-          totalindex: separateValue.totalIndex,
-          partialindex: separateValue.partialIndex,
+          combiIndex: combinedIndex,
+          mediumId: 0,
+          totalIndex: separateValue.totalIndex,
+          partialIndex: separateValue.partialIndex,
           title: "unknown",
         });
       }
     });
 
-    return parts.rows.map((value): MinPart => {
-      return {
-        id: value.id,
-        totalIndex: value.totalindex,
-        partialIndex: value.partialindex,
-        title: value.title,
-        mediumId: value.medium_id,
-      };
-    });
+    return result;
   }
 
   /**
    * Returns all parts of an medium.
    */
-  public async getParts<T extends MultiSingleNumber>(partId: T, uuid: Uuid, full = true): Promise<Part[]> {
-    const parts = await this.queryInList<DBPart>(
-      `SELECT 
-      id,
-      combiIndex,
-      totalIndex,
-      partialIndex,
-      medium_id
-      FROM part WHERE id IN (??);`,
-      [partId],
+  public async getParts(partId: number[], uuid: Uuid, full = true): Promise<Part[]> {
+    const parts = await this.con.many(
+      sql.type(simplePart)`SELECT id, total_index, partial_index, combi_index, title, medium_id
+      FROM part WHERE id = ANY(${sql.array(partId, "int8")});`,
     );
-    if (!parts.rows?.length) {
+    if (!parts.length) {
       return [];
     }
-    const partIdMap = new Map<number, any>();
-    const episodesResult = await this.queryInList<{ id: number; part_id: number }>(
-      "SELECT id, part_id FROM episode WHERE part_id IN (??);",
-      [
-        parts.rows.map((value) => {
-          partIdMap.set(value.id, value);
-          return value.id;
-        }),
-      ],
+    const partIdMap = new Map<number, number[] | Episode[]>();
+    const ids = parts.map((value) => {
+      partIdMap.set(value.id, []);
+      return value.id;
+    });
+    const episodesResult = await this.con.many<{ id: number; part_id: number }>(
+      sql`SELECT id, part_id FROM episode WHERE part_id = ANY(${sql.array(ids, "in8")});`,
     );
 
     if (full) {
-      const episodeIds = episodesResult.rows.map((value) => value.id);
-      const fullEpisodes = await this.parentContext.episodeContext.getEpisode(episodeIds, uuid);
+      const episodeIds = episodesResult.map((value) => value.id);
+      const fullEpisodes = await this.episodeContext.getEpisode(episodeIds, uuid);
       fullEpisodes.forEach((value) => {
-        const part = partIdMap.get(value.partId);
-        if (!part) {
+        const values = partIdMap.get(value.partId) as Episode[];
+        if (!values) {
           throw new MissingEntityError("missing part for queried episode");
         }
-        if (!part.episodes) {
-          part.episodes = [];
-        }
-        part.episodes.push(value);
+        values.push(value);
       });
     } else {
-      episodesResult.rows.forEach((value) => {
-        const part: Part = partIdMap.get(value.part_id);
-        (part.episodes as number[]).push(value.id);
+      episodesResult.forEach((value) => {
+        const values = partIdMap.get(value.part_id) as number[];
+        if (!values) {
+          throw new MissingEntityError("missing part for queried episode");
+        }
+        values.push(value.id);
       });
     }
-    return parts.rows.map((part) => {
+    return parts.map((part): Part => {
       return {
         id: part.id,
-        totalIndex: part.totalindex,
-        partialIndex: part.partialindex,
+        totalIndex: part.totalIndex,
+        partialIndex: part.partialIndex,
         title: part.title,
-        // @ts-expect-error
-        episodes: part.episodes ?? [],
-        mediumId: part.medium_id,
+        episodes: partIdMap.get(part.id) ?? [],
+        mediumId: part.mediumId,
       };
     });
   }
@@ -254,15 +208,15 @@ export class PartContext extends SubContext {
     if (!partIds.length) {
       return {};
     }
-    const episodesResult = await this.queryInList<MinEpisode>(
-      "SELECT id, part_id as partId FROM episode WHERE part_id IN (??);",
-      [partIds],
+    // @ts-expect-error
+    const episodesResult = await this.con.many<MinEpisode>(
+      sql`SELECT id, part_id FROM episode WHERE part_id = ANY(${sql.array(partIds, "int8")});`,
     );
 
     const result = {};
 
-    episodesResult.rows.forEach((value) => {
-      (getElseSetObj(result, value.partid, () => []) as number[]).push(value.id);
+    episodesResult.forEach((value) => {
+      (getElseSetObj(result, value.partId, () => []) as number[]).push(value.id);
     });
     for (const partId of partIds) {
       getElseSetObj(result, partId, () => []);
@@ -277,15 +231,18 @@ export class PartContext extends SubContext {
     if (!partIds.length) {
       return {};
     }
-    const episodesResult = await this.queryInList<SimpleRelease & { part_id: number }>(
-      "SELECT episode.id as episodeId, part_id, url FROM episode_release INNER JOIN episode ON episode.id = episode_id WHERE part_id IN (??);",
-      [partIds],
+    // @ts-expect-error
+    const episodesResult = await this.con.many<SimpleRelease & { partId: number }>(
+      sql`SELECT episode_id, url, part_id
+      FROM episode_release
+      INNER JOIN episode ON episode.id = episode_id
+      WHERE part_id = ANY(${sql.array(partIds, "int8")});`,
     );
 
     const result = {};
 
-    episodesResult.rows.forEach((value) => {
-      const items = getElseSetObj(result, value.part_id, () => []) as any[];
+    episodesResult.forEach((value) => {
+      const items = getElseSetObj(result, value.partId, () => []) as any[];
       // @ts-expect-error
       delete value.part_id;
       items.push(value);
@@ -297,20 +254,18 @@ export class PartContext extends SubContext {
     return result;
   }
 
-  public async getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<number[]> {
+  public async getOverLappingParts(standardId: number, nonStandardPartIds: number[]): Promise<readonly number[]> {
     if (!nonStandardPartIds.length) {
       return [];
     }
-    const results = await this.queryInList<{ part_id: number }>(
-      "SELECT part_id FROM episode WHERE combiIndex IN" +
-        "(SELECT combiIndex FROM episode WHERE part_id = ?) " +
-        "AND part_id IN (??) GROUP BY part_id;",
-      [standardId, nonStandardPartIds],
+    return this.con.manyFirst<{ partId: number }>(
+      sql`
+      SELECT part_id FROM episode WHERE combiIndex IN (
+        SELECT combiIndex FROM episode WHERE part_id = ${standardId}
+      ) 
+      AND part_id = ANY(${sql.array(nonStandardPartIds, "in8")})
+      GROUP BY part_id;`,
     );
-    if (!results) {
-      return [];
-    }
-    return results.rows.map((value) => value.part_id);
   }
 
   /**
@@ -318,39 +273,32 @@ export class PartContext extends SubContext {
    */
   public async addPart(part: AddPart): Promise<Part | FullPart> {
     if (part.totalIndex === -1) {
+      // @ts-expect-error
       return this.createStandardPart(part.mediumId);
     }
     let partId: number;
     const partCombiIndex = combiIndex(part);
 
     try {
-      const result = await this.query<Entity>(
-        "INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex) VALUES (?,?,?,?,?) RETURNING id;",
-        [part.mediumId, part.title, part.totalIndex, part.partialIndex, partCombiIndex],
+      partId = await this.con.oneFirst(
+        sql.type(entity)`INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex)
+        VALUES (
+          ${part.mediumId},${part.title ?? null},${part.totalIndex},${part.partialIndex ?? null},${partCombiIndex}
+        )
+        RETURNING id;`,
       );
-      partId = result.rows[0].id;
-      storeModifications("part", "insert", result);
+      // FIXME: storeModifications("part", "insert", result);
     } catch (e) {
       // do not catch if it isn't an duplicate key error
-      if (
-        !e ||
-        (hasPropType<number>(e, "errno") &&
-          e.errno !== MysqlServerError.ER_DUP_KEY &&
-          e.errno !== MysqlServerError.ER_DUP_ENTRY)
-      ) {
+      if (!e || !isDuplicateError(e)) {
         throw e;
       }
-      const result = await this.query<Entity>("SELECT id from part where medium_id=? and combiIndex=?", [
-        part.mediumId,
-        partCombiIndex,
-      ]);
-      partId = result.rows[0].id;
+      partId = await this.con.oneFirst(
+        sql.type(entity)`SELECT id from part where medium_id=${part.mediumId} and combiIndex=${partCombiIndex}`,
+      );
     }
 
-    if (!Number.isInteger(partId) || partId <= 0) {
-      throw new DatabaseError(`invalid ID ${partId}`);
-    }
-    let episodes: Episode[];
+    let episodes: readonly SimpleEpisodeReleases[];
 
     if (part.episodes?.length) {
       if (!Number.isInteger(part.episodes[0])) {
@@ -358,7 +306,8 @@ export class PartContext extends SubContext {
           episode.partId = partId;
           return episode;
         });
-        episodes = await this.parentContext.episodeContext.addEpisode(part.episodes);
+        // TODO: how to handle this?, also insert release? or separately?
+        episodes = await this.episodeContext.addEpisode(part.episodes);
       } else {
         episodes = [];
       }
@@ -381,32 +330,29 @@ export class PartContext extends SubContext {
   public async updatePart(part: Part): Promise<boolean> {
     const result = await this.update(
       "part",
-      (updates, values) => {
+      () => {
+        const updates = [];
         if (part.title) {
-          updates.push("title = ?");
-          values.push(part.title);
-        } else {
-          if (part.title === null) {
-            updates.push("title = NULL");
-          }
+          updates.push(sql`title = ${part.title}`);
+        } else if (part.title === null) {
+          updates.push(sql`title = NULL`);
         }
 
         if (part.partialIndex) {
-          updates.push("partialIndex = ?");
-          values.push(part.partialIndex);
+          updates.push(sql`tartialIndex = ${part.partialIndex ?? null}`);
         }
 
         if (part.totalIndex) {
-          updates.push("totalIndex = ?");
-          values.push(part.totalIndex);
+          updates.push(sql`totalIndex = ${part.totalIndex}`);
         }
+        return updates;
       },
       {
         column: "id",
         value: part.id,
       },
     );
-    storeModifications("part", "update", result);
+    // FIXME: storeModifications("part", "update", result);
     return result.rowCount > 0;
   }
 
@@ -418,20 +364,21 @@ export class PartContext extends SubContext {
     return false;
   }
 
-  public createStandardPart(mediumId: number): Promise<ShallowPart> {
+  public async createStandardPart(mediumId: number): Promise<ShallowPart> {
     const partName = "Non Indexed Volume";
-    return this.query<Entity>(
-      "INSERT INTO part (medium_id,title, totalIndex, combiIndex) VALUES (?,?,?,?) ON CONFLICT DO NOTHING RETURNING id;",
-      [mediumId, partName, -1, -1],
-    ).then((value): ShallowPart => {
-      storeModifications("part", "insert", value);
-      return {
-        totalIndex: -1,
-        title: partName,
-        id: value.rows[0].id,
-        mediumId,
-        episodes: [],
-      };
-    });
+    const id = await this.con.oneFirst(
+      sql.type(entity)`
+      INSERT INTO part (medium_id,title, totalIndex, combiIndex)
+      VALUES (${mediumId},${partName},-1,-1)
+      RETURNING id;`,
+    );
+    // FIXME: storeModifications("part", "insert", value);
+    return {
+      totalIndex: -1,
+      title: partName,
+      id,
+      mediumId,
+      episodes: [],
+    };
   }
 }

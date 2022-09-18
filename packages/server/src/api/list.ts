@@ -22,15 +22,15 @@ import { castQuery, createHandler, extractQueryParam } from "./apiTools";
 export const getList = createHandler(
   (req) => {
     const { listId, media, uuid } = castQuery<GetList>(req);
-    return internalListStorage.getList(listId, media || [], uuid);
+    return internalListStorage.getLists(listId, media ?? [], uuid);
   },
   { query: getListSchema },
 );
 
 export const postList = createHandler(
   (req) => {
-    const { uuid, list }: PostList = req.body;
-    return internalListStorage.addList(uuid, list);
+    const { list }: PostList = req.body;
+    return internalListStorage.addList(list);
   },
   { body: postListSchema },
 );
@@ -54,7 +54,7 @@ export const deleteList = createHandler(
 export const getListMedium = createHandler(
   (req) => {
     const { listId, media, uuid } = castQuery<GetListMedium>(req);
-    return internalListStorage.getList(listId, media, uuid);
+    return internalListStorage.getLists([listId], media, uuid);
   },
   { query: getListMediumSchema },
 );
@@ -62,15 +62,15 @@ export const getListMedium = createHandler(
 export const postListMedium = createHandler(
   (req) => {
     const { listId, mediumId, uuid } = req.body;
-    return internalListStorage.addItemToList({ listId, id: mediumId }, uuid);
+    return internalListStorage.addItemsToList(mediumId, uuid, listId);
   },
   { body: postListMediumSchema },
 );
 
 export const putListMedium = createHandler(
   (req) => {
-    const { oldListId, newListId, mediumId }: PutListMedium = req.body;
-    return internalListStorage.moveMedium(oldListId, newListId, mediumId);
+    const { oldListId, newListId, mediumId, uuid }: PutListMedium = req.body;
+    return internalListStorage.moveMedium(oldListId, newListId, mediumId, uuid);
   },
   { body: putListMediumSchema },
 );

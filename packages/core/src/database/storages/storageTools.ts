@@ -1,10 +1,12 @@
 import { ClientBase } from "pg";
+import { DatabaseConnection } from "slonik";
 import { QueryContext } from "../contexts/queryContext";
 import { ConnectionContext } from "../databaseTypes";
 
 export type ContextCallback<T, C extends ConnectionContext> = (context: C) => Promise<T>;
-export type ContextProvider<C extends ConnectionContext> = (con: ClientBase) => C;
-export const queryContextProvider: ContextProvider<QueryContext> = (con) => new QueryContext(con);
+export type ContextProvider<C extends ConnectionContext> = (con: DatabaseConnection) => C;
+export const queryContextProvider: ContextProvider<QueryContext> = (con) =>
+  new QueryContext({ connection: con, subClass: new Map() });
 
 /**
  * Escapes the Characters for an Like with the '|' char.

@@ -21,6 +21,8 @@
     "pg": "^8.8.0",
     "pg-query-stream": "^4.2.4",
     "promise-mysql": "^5.2.0",
+    "slonik": "^31.2.1",
+    "slonik-interceptor-field-name-transformation": "^1.6.5",
     "tslib": "^2.4.0",
     "uuid": "^9.0.0",
     "validate.js": "^0.13.1",

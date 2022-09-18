@@ -1,7 +1,7 @@
 import { DisplayReleaseItem, MediaType, SimpleMedium } from "../siteTypes";
 import { formatDate, remove } from "../init";
 import { HttpClient } from "../Httpclient";
-import { DisplayRelease, Id, List, MinMedium } from "enterprise-core/dist/types";
+import { Id, List, MinMedium } from "enterprise-core/dist/types";
 import { defineStore } from "pinia";
 import { useMediaStore } from "./media";
 import { useListStore } from "./lists";
@@ -146,7 +146,7 @@ export const useReleaseStore = defineStore("releases", {
         const mediaStore = useMediaStore();
 
         // insert fetched releases at the corresponding place
-        this.releases = response.releases.map((item: DisplayRelease): DisplayReleaseItem => {
+        this.releases = response.releases.map((item): DisplayReleaseItem => {
           if (!(item.date instanceof Date)) {
             item.date = new Date(item.date);
           }

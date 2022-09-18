@@ -1,7 +1,7 @@
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(19);
+const dataBaseBuilder = new DataBaseBuilder(1);
 
 dataBaseBuilder
   .getTableBuilder()
@@ -69,15 +69,15 @@ dataBaseBuilder
   .getTableBuilder()
   .setName("medium")
   .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("countryOfOrigin VARCHAR(200)")
-  .parseColumn("languageOfOrigin VARCHAR(200)")
+  .parseColumn("country_of_rigin VARCHAR(200)")
+  .parseColumn("language_of_origin VARCHAR(200)")
   .parseColumn("author VARCHAR(200)")
   .parseColumn("artist VARCHAR(200)")
   .parseColumn("title VARCHAR(200) NOT NULL")
   .parseColumn("medium INT NOT NULL")
   .parseColumn("lang VARCHAR(200)")
-  .parseColumn("stateOrigin INT")
-  .parseColumn("stateTL INT")
+  .parseColumn("state_origin INT")
+  .parseColumn("state_tl INT")
   .parseColumn("series VARCHAR(200)")
   .parseColumn("universe VARCHAR(200)")
   .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
@@ -100,15 +100,15 @@ dataBaseBuilder
   .parseColumn("medium_id INT UNSIGNED")
   .parseColumn("link VARCHAR(767) NOT NULL")
   .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("countryOfOrigin VARCHAR(200)")
-  .parseColumn("languageOfOrigin VARCHAR(200)")
+  .parseColumn("country_of_origin VARCHAR(200)")
+  .parseColumn("language_of_origin VARCHAR(200)")
   .parseColumn("author VARCHAR(200)")
   .parseColumn("artist VARCHAR(200)")
   .parseColumn("title VARCHAR(200) NOT NULL")
   .parseColumn("medium INT NOT NULL")
   .parseColumn("lang VARCHAR(200)")
-  .parseColumn("stateOrigin INT")
-  .parseColumn("stateTL INT")
+  .parseColumn("state_origin INT")
+  .parseColumn("state_tl INT")
   .parseColumn("series VARCHAR(200)")
   .parseColumn("universe VARCHAR(200)")
   .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
@@ -153,10 +153,10 @@ dataBaseBuilder
   .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
   .parseColumn("medium_id INT UNSIGNED NOT NULL")
   .parseColumn("title VARCHAR(200)")
-  .parseColumn("totalIndex INT NOT NULL")
-  .parseColumn("partialIndex INT")
+  .parseColumn("total_index INT NOT NULL")
+  .parseColumn("partial_index INT")
   // TODO: change default to coalesce(totalindex, 0) ...
-  .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT 0")
+  .parseColumn("combi_index DOUBLE NOT NULL DEFAULT 0")
   .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
   .parseMeta("PRIMARY KEY(id)")
   .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
@@ -168,10 +168,10 @@ dataBaseBuilder
   .setName("episode")
   .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
   .parseColumn("part_id INT UNSIGNED NOT NULL")
-  .parseColumn("totalIndex INT NOT NULL")
-  .parseColumn("partialIndex INT")
+  .parseColumn("total_index INT NOT NULL")
+  .parseColumn("partial_index INT")
   // TODO: change default to coalesce(totalindex, 0) ...
-  .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT 0")
+  .parseColumn("combi_index DOUBLE NOT NULL DEFAULT 0")
   .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
   .parseMeta("PRIMARY KEY(id)")
   .parseMeta("FOREIGN KEY(part_id) REFERENCES part(id)")
@@ -188,8 +188,8 @@ dataBaseBuilder
   .parseColumn("title TEXT NOT NULL")
   .parseColumn("url VARCHAR(767) NOT NULL")
   .parseColumn("source_type VARCHAR(200)")
-  .parseColumn("releaseDate DATETIME NOT NULL")
-  .parseColumn("locked BOOLEAN DEFAULT 0")
+  .parseColumn("release_date DATETIME NOT NULL")
+  .parseColumn("locked BOOLEAN NOT NULL DEFAULT 0")
   .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
   .parseMeta("PRIMARY KEY(id)")
   .parseMeta("UNIQUE (episode_id, url)")
@@ -207,22 +207,6 @@ dataBaseBuilder
   .parseMeta("PRIMARY KEY(user_uuid, episode_id)")
   .parseMeta("FOREIGN KEY(user_uuid) REFERENCES user(uuid)")
   .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("scrape_board")
-  .parseColumn("link VARCHAR(500) NOT NULL")
-  .parseColumn("next_scrape DATETIME NOT NULL")
-  .parseColumn("type INT UNSIGNED NOT NULL")
-  .parseColumn("uuid CHAR(36)")
-  .parseColumn("external_uuid CHAR(36)")
-  .parseColumn("info TEXT")
-  .parseColumn("medium_id INT UNSIGNED")
-  .parseMeta("PRIMARY KEY(link, type)")
-  .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
-  .parseMeta("FOREIGN KEY(external_uuid) REFERENCES external_user(uuid)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
   .build();
 
 dataBaseBuilder
@@ -254,30 +238,6 @@ dataBaseBuilder
   .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
   .parseMeta("FOREIGN KEY (news_id) REFERENCES news_board(id)")
   .parseMeta("PRIMARY KEY(news_id, medium_id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("meta_corrections")
-  .parseColumn("link VARCHAR(767) NOT NULL")
-  .parseColumn("replaced TEXT NOT NULL")
-  .parseColumn("startIndex INT UNSIGNED NOT NULL")
-  .parseColumn("endIndex INT UNSIGNED NOT NULL")
-  .parseColumn("fieldKey INT UNSIGNED NOT NULL")
-  .parseMeta("PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("result_episode")
-  .parseColumn("novel VARCHAR(300) NOT NULL")
-  .parseColumn("chapter VARCHAR(300)")
-  .parseColumn("chapIndex INT UNSIGNED")
-  .parseColumn("volIndex INT UNSIGNED")
-  .parseColumn("volume VARCHAR(300)")
-  .parseColumn("episode_id INT UNSIGNED NOT NULL")
-  .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
-  .parseMeta("PRIMARY KEY(novel, chapter, chapIndex)")
   .build();
 
 dataBaseBuilder
@@ -472,32 +432,5 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)"); */
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("user_data_invalidation")
-  .setInvalidationTable()
-  .parseColumn("uuid CHAR(36) NOT NULL")
-  .parseColumn("user_uuid BOOLEAN")
-  .parseColumn("news_id INT UNSIGNED ")
-  .parseColumn("medium_id INT UNSIGNED ")
-  .parseColumn("part_id INT UNSIGNED ")
-  .parseColumn("episode_id INT UNSIGNED ")
-  .parseColumn("list_id INT UNSIGNED ")
-  .parseColumn("external_list_id INT UNSIGNED ")
-  .parseColumn("external_uuid CHAR(36)")
-  .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
-  .parseMeta("FOREIGN KEY(news_id) REFERENCES news_board(id)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .parseMeta("FOREIGN KEY(part_id) REFERENCES part(id)")
-  .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
-  .parseMeta("FOREIGN KEY(list_id) REFERENCES reading_list(id)")
-  .parseMeta("FOREIGN KEY(external_list_id) REFERENCES external_reading_list(id)")
-  .parseMeta("FOREIGN KEY(external_uuid) REFERENCES external_user(uuid)")
-  .parseMeta(
-    "PRIMARY KEY(uuid, user_uuid, news_id, medium_id, part_id," +
-      "episode_id, list_id, external_list_id, external_uuid)",
-  )
-  .build();
 
 export const databaseSchema = dataBaseBuilder.build();

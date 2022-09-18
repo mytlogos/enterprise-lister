@@ -1,11 +1,11 @@
-import { mediumStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
+import { mediumStorage, episodeStorage, mediumTocStorage } from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
 import { getElseSet, hasMediaType, maxValue } from "enterprise-core/dist/tools";
-import { TocSearchMedium, JobRequest, ScrapeName, Optional } from "enterprise-core/dist/types";
+import { TocSearchMedium, JobRequest, ScrapeName } from "enterprise-core/dist/types";
 import { tocScraperEntries, tocDiscoveryEntries, getHooks } from "../externals/hookManager";
 
-export const checkTocsJob = async (): Promise<JobRequest[]> => {
-  const mediaTocs = await mediumStorage.getAllMediaTocs();
+export const checkTocsJob = async (): Promise<readonly JobRequest[]> => {
+  const mediaTocs = await mediumTocStorage.getAllMediaTocs();
   const tocSearchMedia = await mediumStorage.getTocSearchMedia();
   const mediaWithTocs: Map<number, string[]> = new Map();
 
@@ -67,7 +67,7 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
       }
     })
     .flat(2);
-  const newJobs2: Array<Optional<JobRequest[]>> = await Promise.all(promises);
+  const newJobs2 = await Promise.all(promises);
   return (
     [newJobs1, newJobs2]
       // flaten to one dimensional array
@@ -77,7 +77,11 @@ export const checkTocsJob = async (): Promise<JobRequest[]> => {
   );
 };
 
-function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: string[]): JobRequest[] {
+function searchTocJob(
+  id: number,
+  tocSearch?: Readonly<TocSearchMedium>,
+  availableTocs?: readonly string[],
+): readonly JobRequest[] {
   const consumed: RegExp[] = [];
 
   if (availableTocs) {
@@ -132,7 +136,7 @@ function searchTocJob(id: number, tocSearch?: TocSearchMedium, availableTocs?: s
       job.runImmediately = true;
       continue;
     }
-    job.runAfter = searchJobs[i - 1];
+    // FIXME: job.runAfter = searchJobs[i - 1];
   }
   return searchJobs;
 }

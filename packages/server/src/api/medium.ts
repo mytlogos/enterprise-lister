@@ -1,4 +1,9 @@
-import { mediumStorage, mediumInWaitStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
+import {
+  mediumStorage,
+  mediumInWaitStorage,
+  episodeStorage,
+  episodeReleaseStorage,
+} from "enterprise-core/dist/database/storages/storage";
 import logger from "enterprise-core/dist/logger";
 import { Errors, getDate } from "enterprise-core/dist/tools";
 import { MediumInWaitSearch } from "enterprise-core/dist/types";
@@ -69,8 +74,8 @@ export const putConsumeUnusedMedia = createHandler(
 
 export const postCreateFromUnusedMedia = createHandler(
   (req) => {
-    const { createMedium, tocsMedia, listId }: PostCreateFromUnusedMedia = req.body;
-    return mediumInWaitStorage.createFromMediaInWait(createMedium, tocsMedia, listId);
+    const { createMedium, tocsMedia, listId, uuid }: PostCreateFromUnusedMedia = req.body;
+    return mediumInWaitStorage.createFromMediaInWait(createMedium, uuid, tocsMedia, listId);
   },
   { body: postCreateFromUnusedMediaSchema },
 );
@@ -160,7 +165,7 @@ export const deleteProgress = createHandler(
 export const getMediumReleases = createHandler(
   (req) => {
     const { id, uuid } = castQuery<GetMediumReleases>(req);
-    return episodeStorage.getMediumReleases(id, uuid);
+    return episodeReleaseStorage.getMediumReleases(id, uuid);
   },
   { query: getMediumReleasesSchema },
 );

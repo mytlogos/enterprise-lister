@@ -4,13 +4,13 @@ import {
   AppEventProgram,
   AppEventType,
   Id,
+  Insert,
   JobHistoryResult,
   Json,
   Link,
   List,
   MediumInWait,
   MediumInWaitSearch,
-  MinList,
   QueryItems,
   ScrapeName,
   SimpleEpisode,
@@ -33,6 +33,8 @@ import {
   uuid,
   uuidArray,
 } from "enterprise-core/dist/validation";
+import { SimpleList, SimpleMedium as SimpleDBMedium } from "enterprise-core/dist/database/databaseTypes";
+import { MediaType } from "enterprise-core/dist/tools";
 
 export interface ReadNotification {
   id: Id;
@@ -350,7 +352,7 @@ export const simpleEpisodeSchema: JSONSchemaType<Json<SimpleEpisode>> = {
   properties: {
     id: id(),
     partId: id(),
-    combiIndex: { type: "integer", nullable: true },
+    combiIndex: { type: "integer" },
     totalIndex: { type: "integer" },
     partialIndex: { type: "integer", nullable: true },
     releases: {
@@ -358,11 +360,12 @@ export const simpleEpisodeSchema: JSONSchemaType<Json<SimpleEpisode>> = {
       items: {
         type: "object",
         properties: {
+          id: id(),
           episodeId: id(),
           url: link(),
           title: string(),
           releaseDate: string(),
-          locked: { type: "boolean", nullable: true },
+          locked: { type: "boolean" },
           sourceType: { type: "string", nullable: true },
           tocId: { type: "integer", nullable: true },
         },
@@ -551,16 +554,40 @@ export const simpleMediumSchema: JSONSchemaType<SimpleMedium> = {
     artist: { ...string(), nullable: true },
     lang: { ...string(), nullable: true },
     stateOrigin: { ...integer(), nullable: true },
-    stateTL: { ...integer(), nullable: true },
+    stateTl: { ...integer(), nullable: true },
     series: { ...string(), nullable: true },
     universe: { ...string(), nullable: true },
   },
   required: ["title", "medium"],
 };
 
+// eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
+// @ts-ignore
+export const simpleDBMediumSchema: JSONSchemaType<SimpleDBMedium> = {
+  type: "object",
+  properties: {
+    id: id(),
+    title: string(),
+    medium: {
+      type: "integer",
+      enum: [MediaType.AUDIO, MediaType.IMAGE, MediaType.VIDEO, MediaType.IMAGE],
+    },
+    countryOfOrigin: { ...string(), nullable: true },
+    languageOfOrigin: { ...string(), nullable: true },
+    author: { ...string(), nullable: true },
+    artist: { ...string(), nullable: true },
+    lang: { ...string(), nullable: true },
+    stateOrigin: { ...integer(), nullable: true },
+    stateTl: { ...integer(), nullable: true },
+    series: { ...string(), nullable: true },
+    universe: { ...string(), nullable: true },
+  },
+  required: ["title", "medium", "id"],
+};
+
 export interface PostSplitMedium {
   sourceId: Id;
-  destinationMedium: SimpleMedium;
+  destinationMedium: SimpleDBMedium;
   toc: Link;
 }
 
@@ -569,7 +596,7 @@ export const postSplitMediumSchema: JSONSchemaType<PostSplitMedium> = {
   type: "object",
   properties: {
     sourceId: id(),
-    destinationMedium: simpleMediumSchema,
+    destinationMedium: simpleDBMediumSchema,
     toc: link(),
   },
   required: ["destinationMedium", "toc", "sourceId"],
@@ -617,6 +644,7 @@ export interface PostCreateFromUnusedMedia {
   listId: Id;
   createMedium: MediumInWait;
   tocsMedia?: MediumInWait[];
+  uuid: Uuid;
 }
 
 export const postCreateFromUnusedMediaSchema: JSONSchemaType<PostCreateFromUnusedMedia> = {
@@ -626,8 +654,9 @@ export const postCreateFromUnusedMediaSchema: JSONSchemaType<PostCreateFromUnuse
     listId: id(),
     tocsMedia: { type: "array", items: MediumInWaitSchema, nullable: true },
     createMedium: MediumInWaitSchema,
+    uuid: uuid(),
   },
-  required: ["listId", "createMedium"],
+  required: ["listId", "createMedium", "uuid"],
 };
 
 export const getUnusedMediaSchema: JSONSchemaType<MediumInWaitSearch> = {
@@ -687,7 +716,7 @@ export const updateMediumSchema: JSONSchemaType<UpdateMedium> = {
     artist: { ...string(), nullable: true },
     lang: { ...string(), nullable: true },
     stateOrigin: { ...integer(), nullable: true },
-    stateTL: { ...integer(), nullable: true },
+    stateTl: { ...integer(), nullable: true },
     series: { ...string(), nullable: true },
     universe: { ...string(), nullable: true },
   },
@@ -938,18 +967,20 @@ export const getListSchema: JSONSchemaType<GetList> = {
 };
 
 export interface PostList {
-  list: MinList;
-  uuid: Uuid;
+  list: Insert<SimpleList>;
 }
 
 export const postListSchema: JSONSchemaType<PostList> = {
   $id: "/PostList",
   type: "object",
   properties: {
-    list: { type: "object", properties: { medium: integer(), name: string() }, required: ["medium", "name"] },
-    uuid: uuid(),
+    list: {
+      type: "object",
+      properties: { medium: integer(), name: string(), userUuid: uuid(), id: { ...id(), nullable: true } },
+      required: ["medium", "name"],
+    },
   },
-  required: ["list", "uuid"],
+  required: ["list"],
 };
 
 export interface PutList {

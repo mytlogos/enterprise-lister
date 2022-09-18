@@ -5,6 +5,8 @@ import { MediaType } from "../../../tools";
 import { EmptyPromise, EpisodeRelease, SimpleEpisode, TypedQuery } from "../../../types";
 import bcrypt from "bcryptjs";
 import { MissingEntityError } from "../../../error";
+import { SimpleRelease } from "../../../database/databaseTypes";
+import { sql } from "slonik";
 
 function inContext<T>(callback: storageTools.ContextCallback<T, QueryContext>, transaction = true) {
   return storage.storageInContext(callback, (con) => storageTools.queryContextProvider(con), transaction);
@@ -24,7 +26,7 @@ async function recreateStorage() {
 
 export async function setupTestDatabase(): EmptyPromise {
   // assume the enterprise_test already exists
-  storage.poolConfig.update({ database: "enterprise_test", host: "localhost" });
+  storage.poolConfig.update({ databaseName: "enterprise_test", host: "localhost" });
 
   // database setup finished if recreation is successful
   if (await recreateStorage()) {
@@ -35,8 +37,8 @@ export async function setupTestDatabase(): EmptyPromise {
   storage.poolConfig.update({ host: "localhost" });
   await recreateStorage();
 
-  await inContext((context) => context.query("CREATE DATABASE IF NOT EXISTS enterprise_test;"));
-  storage.poolConfig.update({ database: "enterprise_test", host: "localhost" });
+  await inContext((context) => context.con.query(sql`CREATE DATABASE IF NOT EXISTS enterprise_test;`));
+  storage.poolConfig.update({ databaseName: "enterprise_test", host: "localhost" });
   await recreateStorage();
 }
 
@@ -83,7 +85,7 @@ export function resultFromQuery(query: TypedQuery): Promise<any[]> {
 interface StaticData {
   media: Array<{ id: number; medium: MediaType }>;
   parts: Array<{ id: number; mediumId: number; totalIndex: number }>;
-  episodes: Array<{ id: number; partId: number; totalIndex: number; releases: EpisodeRelease[] }>;
+  episodes: Array<{ id: number; partId: number; totalIndex: number; combiIndex: number; releases: EpisodeRelease[] }>;
   releases: Array<{ url: string; episodeId: number; title: string; releaseDate: Date }>;
   media_in_waits: Array<{ id: number; medium: MediaType }>;
   news: Array<{ id: number; medium: MediaType }>;
@@ -111,6 +113,7 @@ const data: StaticData = {
       id: 1,
       partId: 1,
       totalIndex: 1,
+      combiIndex: 1,
       releases: [],
     },
   ],
@@ -208,13 +211,13 @@ export function getDatabaseData(): [Record<string, User>, StaticData] {
 }
 
 export async function tearDownTestDatabase(): EmptyPromise {
-  await inContext((context) => context.query("DROP DATABASE enterprise_test;"));
+  await inContext((context) => context.con.query(sql`DROP DATABASE enterprise_test;`));
 }
 
 export async function fillUserTable(): Promise<User[]> {
   const dummy = user[0];
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO user (name, uuid, password, alg) VALUES (?,?,?,?);", [
+    context.con.query(sql`INSERT IGNORE INTO user (name, uuid, password, alg) VALUES (?,?,?,?);`, [
       dummy.name,
       dummy.uuid,
       dummy.password,
@@ -234,7 +237,7 @@ export async function fillUserTable(): Promise<User[]> {
 export async function fillMediumTable(): EmptyPromise {
   const dummy = data.media[0];
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO medium (id, medium) VALUES (?,?);", [dummy.id, dummy.medium]),
+    context.con.query(sql`INSERT IGNORE INTO medium (id, medium) VALUES (?,?);`, [dummy.id, dummy.medium]),
   );
 
   if (!databaseData[1].media.find((value) => value.id === dummy.id)) {
@@ -246,7 +249,7 @@ export async function fillPartTable(): Promise<StaticData["parts"]> {
   await fillMediumTable();
   const dummy = data.parts[0];
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO part (id, medium_id, totalIndex) VALUES (?,?,?);", [
+    context.con.query(sql`INSERT IGNORE INTO part (id, medium_id, totalIndex) VALUES (?,?,?);`, [
       dummy.id,
       dummy.mediumId,
       dummy.totalIndex,
@@ -264,7 +267,7 @@ export async function fillEpisodeTable(): Promise<SimpleEpisode[]> {
   const dummy = data.episodes[0];
 
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO episode (id, part_id, totalIndex, combiIndex) VALUES (?,?,?,?);", [
+    context.con.query(sql`INSERT IGNORE INTO episode (id, part_id, totalIndex, combiIndex) VALUES (?,?,?,?);`, [
       dummy.id,
       dummy.partId,
       dummy.totalIndex,
@@ -278,24 +281,25 @@ export async function fillEpisodeTable(): Promise<SimpleEpisode[]> {
   return [dummy];
 }
 
-export async function fillEpisodeReleaseTable(): Promise<EpisodeRelease[]> {
+export async function fillEpisodeReleaseTable(): Promise<SimpleRelease[]> {
   await fillEpisodeTable();
-  const dummy = {
+  const dummy: SimpleRelease = {
     episodeId: 1,
     url: "https://my.url/release",
     title: "",
     releaseDate: new Date(),
+    locked: false,
+    id: 0,
   };
   // set ms part to 0, as this is not saved in database
   dummy.releaseDate.setMilliseconds(0);
 
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO episode_release (episode_id, url, title, releaseDate) VALUES (?,?,?,?);", [
-      dummy.episodeId,
-      dummy.url,
-      dummy.title,
-      dummy.releaseDate,
-    ]),
+    context.con.query(
+      sql`
+      INSERT IGNORE INTO episode_release (episode_id, url, title, releaseDate)
+      VALUES (${dummy.episodeId},${dummy.url},${dummy.title},${sql.timestamp(dummy.releaseDate)});`,
+    ),
   );
 
   if (!databaseData[1].releases.find((value) => value.episodeId === dummy.episodeId && value.url === dummy.url)) {
@@ -314,12 +318,13 @@ export async function fillUserEpisodeTable(): Promise<Progress[]> {
   dummy.readDate = now;
 
   await inContext((context) =>
-    context.query("INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress, read_date) VALUES (?,?,?,?);", [
-      dummy.uuid,
-      dummy.episodeId,
-      dummy.progress,
-      dummy.readDate,
-    ]),
+    context.con.query(
+      sql`
+      INSERT IGNORE INTO user_episode (user_uuid, episode_id, progress, read_date)
+      VALUES (
+        ${dummy.uuid},${dummy.episodeId},${dummy.progress},${dummy.readDate ? sql.timestamp(dummy.readDate) : null}
+      );`,
+    ),
   );
   if (
     !databaseData[0][user[0].uuid].progress.find(
@@ -332,37 +337,37 @@ export async function fillUserEpisodeTable(): Promise<Progress[]> {
 }
 
 export async function dumpTable(table: string): Promise<any[]> {
-  const result = await inContext((context) => context.query(`SELECT * FROM ${context.escapeIdentifier(table)};`));
-  return result.rows;
+  const result = await inContext((context) => context.con.query(sql`SELECT * FROM ${sql.identifier([table])};`));
+  return result.rows as any[];
 }
 
 export async function cleanUser(): EmptyPromise {
-  await inContext((context) => context.query("DELETE FROM user;"));
+  await inContext((context) => context.con.query(sql`DELETE FROM user;`));
   databaseData[0] = {};
 }
 
 export async function cleanUserEpisode(): EmptyPromise {
-  await inContext((context) => context.query("TRUNCATE user_episode;"));
+  await inContext((context) => context.con.query(sql`TRUNCATE user_episode;`));
   Object.values(databaseData[0]).forEach((value) => (value.progress = []));
 }
 
 export async function cleanEpisodeRelease(): EmptyPromise {
-  await inContext((context) => context.query("TRUNCATE episode_release;"));
+  await inContext((context) => context.con.query(sql`TRUNCATE episode_release;`));
   databaseData[1].releases = [];
 }
 
 export async function cleanEpisode(): EmptyPromise {
-  await inContext((context) => context.query("DELETE FROM episode;"));
+  await inContext((context) => context.con.query(sql`DELETE FROM episode;`));
   databaseData[1].episodes = [];
 }
 
 export async function cleanPart(): EmptyPromise {
-  await inContext((context) => context.query("DELETE FROM part;"));
+  await inContext((context) => context.con.query(sql`DELETE FROM part;`));
   databaseData[1].parts = [];
 }
 
 export async function cleanMedium(): EmptyPromise {
-  await inContext((context) => context.query("DELETE FROM medium;"));
+  await inContext((context) => context.con.query(sql`DELETE FROM medium;`));
   databaseData[1].media = [];
 }
 

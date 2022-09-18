@@ -1,4 +1,3 @@
-import { SubContext } from "./subContext";
 import {
   Medium,
   SimpleMedium,
@@ -7,16 +6,23 @@ import {
   MediumInWait,
   TypedQuery,
   MediumInWaitSearch,
+  Uuid,
 } from "../../types";
-import { equalsIgnore, ignore, promiseMultiSingle, sanitizeString, multiSingle } from "../../tools";
-import { storeModifications } from "../sqlTools";
+import { equalsIgnore, promiseMultiSingle, sanitizeString } from "../../tools";
 import { escapeLike } from "../storages/storageTools";
 import { DatabaseError } from "../../error";
+import { QueryContext } from "./queryContext";
+import { sql } from "slonik";
 
-export class MediumInWaitContext extends SubContext {
-  public async createFromMediaInWait(medium: MediumInWait, same?: MediumInWait[], listId?: number): Promise<Medium> {
+export class MediumInWaitContext extends QueryContext {
+  public async createFromMediaInWait(
+    medium: MediumInWait,
+    uuid: Uuid,
+    same?: MediumInWait[],
+    listId?: number,
+  ): Promise<Medium> {
     const title = sanitizeString(medium.title);
-    const newMedium: SimpleMedium = await this.parentContext.mediumContext.addMedium({
+    const newMedium: SimpleMedium = await this.mediumContext.addMedium({
       title,
       medium: medium.medium,
     });
@@ -31,7 +37,7 @@ export class MediumInWaitContext extends SubContext {
       await Promise.all(
         same
           .filter((value) => value && value.medium === medium.medium)
-          .map((value) => this.parentContext.mediumContext.addToc(id, value.link)),
+          .map((value) => this.mediumTocContext.addToc(id, value.link)),
       );
 
       const synonyms: string[] = same
@@ -39,19 +45,19 @@ export class MediumInWaitContext extends SubContext {
         .filter((value) => !equalsIgnore(value, medium.title));
 
       if (synonyms.length) {
-        await this.parentContext.mediumContext.addSynonyms({ mediumId: id, synonym: synonyms });
+        await this.mediumContext.addSynonyms({ mediumId: id, synonym: synonyms });
       }
       toDeleteMediaInWaits.push(...same);
     }
     if (listId) {
-      await this.parentContext.internalListContext.addItemToList({ id, listId });
+      await this.internalListContext.addItemsToList([id], uuid, listId);
     }
     if (medium.link) {
-      await this.parentContext.mediumContext.addToc(id, medium.link);
+      await this.mediumTocContext.addToc(id, medium.link);
     }
 
     await this.deleteMediaInWait(toDeleteMediaInWaits);
-    const parts = await this.parentContext.partContext.getMediumParts(id);
+    const parts = await this.partContext.getMediumParts(id);
     return {
       ...newMedium,
       parts: parts.map((value) => value.id),
@@ -65,41 +71,34 @@ export class MediumInWaitContext extends SubContext {
     if (!same?.length) {
       return false;
     }
-    await Promise.all(
-      same.filter((value) => value).map((value) => this.parentContext.mediumContext.addToc(mediumId, value.link)),
-    );
+    await Promise.all(same.filter((value) => value).map((value) => this.mediumTocContext.addToc(mediumId, value.link)));
 
     const synonyms: string[] = same.map((value) => sanitizeString(value.title));
 
-    await this.parentContext.mediumContext.addSynonyms({ mediumId, synonym: synonyms });
+    await this.mediumContext.addSynonyms({ mediumId, synonym: synonyms });
     await this.deleteMediaInWait(same);
     return true;
   }
 
   public async getMediaInWait(search?: MediumInWaitSearch): Promise<TypedQuery<MediumInWait>> {
-    const limit = search?.limit && search.limit > 0 ? ` LIMIT ${search.limit}` : "";
+    const limit = search?.limit && search.limit > 0 ? sql` LIMIT ${search.limit}` : sql``;
     const whereFilter = [];
-    const values = [];
 
     if (search?.medium) {
-      whereFilter.push("medium = ?");
-      values.push(search.medium);
+      whereFilter.push(sql`medium = ${search.medium}`);
     }
 
     if (search?.link && search.link !== "undefined") {
-      whereFilter.push(`link like '%${escapeLike(search.link)}%'`);
-      values.push(search.link);
+      whereFilter.push(sql`link like ${"%" + escapeLike(search.link) + "%"}`);
     }
 
     if (search?.title && search.title !== "undefined") {
-      whereFilter.push(`link like '%${escapeLike(search.title)}%'`);
-      values.push(search.title);
+      whereFilter.push(sql`title like ${"%" + escapeLike(search.title) + "%"}`);
     }
-    return this.queryStream<MediumInWait>(
-      `SELECT * FROM medium_in_wait${
-        whereFilter.length ? " WHERE " + whereFilter.join(" AND ") : ""
+    return this.stream(
+      sql`SELECT title, medium, link FROM medium_in_wait${
+        whereFilter.length ? sql` WHERE ${sql.join(whereFilter, sql` AND `)}` : sql``
       } ORDER BY title${limit}`,
-      values,
     );
   }
 
@@ -107,8 +106,8 @@ export class MediumInWaitContext extends SubContext {
     if (!mediaInWait) {
       return;
     }
-    return promiseMultiSingle(mediaInWait, async (value: MediumInWait) => {
-      const result = await this.delete(
+    await promiseMultiSingle(mediaInWait, async (value: MediumInWait) => {
+      await this.delete(
         "medium_in_wait",
         {
           column: "title",
@@ -123,25 +122,25 @@ export class MediumInWaitContext extends SubContext {
           value: value.link,
         },
       );
-      storeModifications("medium_in_wait", "delete", result);
-      return result.rowCount > 0;
-    }).then(ignore);
+      // FIXME: storeModifications("medium_in_wait", "delete", result);
+    });
   }
 
-  public async addMediumInWait(mediaInWait: MultiSingleValue<MediumInWait>): EmptyPromise {
-    const results = await this.multiInsert(
-      "INSERT INTO medium_in_wait (title, medium, link) VALUES ",
-      mediaInWait,
-      (value: any) => [value.title, value.medium, value.link],
-      true,
+  public async addMediumInWait(mediaInWait: readonly MediumInWait[]): EmptyPromise {
+    const values = mediaInWait.map((value) => [value.title, value.medium, value.link]);
+    await this.con.query(
+      sql`
+      INSERT INTO medium_in_wait (title, medium, link)
+      SELECT * FROM ${sql.unnest(values, ["text", "int8", "text"])}
+      ON CONFLICT DO NOTHING`,
     );
-    multiSingle(results, (result) => storeModifications("medium_in_wait", "insert", result));
+    // FIXME: multiSingle(results, (result) => storeModifications("medium_in_wait", "insert", result));
   }
 
   public async deleteUsedMediumInWait() {
-    const result = await this.dmlQuery(
-      "delete from medium_in_wait where (title, medium, link) in (select title, medium, link from medium_toc);",
+    await this.con.query(
+      sql`delete from medium_in_wait where (title, medium, link) in (select title, medium, link from medium_toc);`,
     );
-    storeModifications("medium_in_wait", "delete", result);
+    // FIXME: storeModifications("medium_in_wait", "delete", result);
   }
 }

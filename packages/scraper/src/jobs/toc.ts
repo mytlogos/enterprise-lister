@@ -6,7 +6,7 @@ import { tocScraperEntries } from "../externals/hookManager";
 import { TocRequest, TocResult, Toc, TocScraper } from "../externals/types";
 import { isTocPart } from "../tools";
 
-export const toc = async (value: TocRequest): Promise<TocResult> => {
+export const toc = async (value: Readonly<TocRequest>): Promise<Readonly<TocResult>> => {
   const result = await oneTimeToc(value);
   if (!result.tocs.length) {
     throw new ScraperError(`could not find toc for: url=${value.url} mediumId=${value.mediumId || ""}`);
@@ -18,7 +18,12 @@ export const toc = async (value: TocRequest): Promise<TocResult> => {
   };
 };
 
-export const oneTimeToc = async ({ url: link, uuid, mediumId, lastRequest }: TocRequest): Promise<TocResult> => {
+export const oneTimeToc = async ({
+  url: link,
+  uuid,
+  mediumId,
+  lastRequest,
+}: Readonly<TocRequest>): Promise<Readonly<TocResult>> => {
   logger.info("scraping one time toc", { url: link });
   const path = new URL(link).pathname;
 
