@@ -85,13 +85,13 @@ export const appEvent = z.object({
   type: z.enum(["end", "start"]),
 });
 
-export type AppEvent = z.infer<typeof appEvent>;
+export interface AppEvent extends z.infer<typeof appEvent> {}
 
 export const entity = z.object({
   id,
 });
 
-export type Entity = z.infer<typeof entity>;
+export interface Entity extends z.infer<typeof entity> {}
 
 /**
  * What one would get from select * from custom_hook;
@@ -105,7 +105,7 @@ export const customHook = z.object({
   comment: z.string(),
 });
 
-export type CustomHook = z.infer<typeof customHook>;
+export interface CustomHook extends z.infer<typeof customHook> {}
 
 export const dbTrigger = z.object({
   table: z.string().min(1),
@@ -114,14 +114,14 @@ export const dbTrigger = z.object({
   trigger: z.string().min(1),
 });
 
-export type DbTrigger = z.infer<typeof dbTrigger>;
+export interface DbTrigger extends z.infer<typeof dbTrigger> {}
 
 export const minimalRelease = z.object({
   episodeId: id,
   url: z.string().url(),
 });
 
-export type MinimalRelease = z.infer<typeof minimalRelease>;
+export interface MinimalRelease extends z.infer<typeof minimalRelease> {}
 
 /**
  * What one would get from select * from episode_release;
@@ -135,7 +135,7 @@ export const simpleRelease = minimalRelease.extend({
   tocId: z.number().int().min(1).optional(),
 });
 
-export type SimpleRelease = z.infer<typeof simpleRelease>;
+export interface SimpleRelease extends z.infer<typeof simpleRelease> {}
 
 export const displayRelease = minimalRelease.extend({
   title: z.string(),
@@ -145,7 +145,7 @@ export const displayRelease = minimalRelease.extend({
   progress: z.number().min(0).max(1),
 });
 
-export type DisplayRelease = z.infer<typeof displayRelease>;
+export interface DisplayRelease extends z.infer<typeof displayRelease> {}
 
 export const minimalMedium = z.object({
   title: z.string(),
@@ -153,7 +153,7 @@ export const minimalMedium = z.object({
   id,
 });
 
-export type MinimalMedium = z.infer<typeof minimalMedium>;
+export interface MinimalMedium extends z.infer<typeof minimalMedium> {}
 
 export const mediumRelease = minimalRelease.extend({
   title: z.string().min(1),
@@ -162,7 +162,7 @@ export const mediumRelease = minimalRelease.extend({
   date: z.date(),
 });
 
-export type MediumRelease = z.infer<typeof mediumRelease>;
+export interface MediumRelease extends z.infer<typeof mediumRelease> {}
 
 /**
  * What one would get from select * from episode;
@@ -175,26 +175,26 @@ export const simpleEpisode = z.object({
   partialIndex: z.number().int().optional(),
 });
 
-export type SimpleEpisode = z.infer<typeof simpleEpisode>;
+export interface SimpleEpisode extends z.infer<typeof simpleEpisode> {}
 
 export const simpleEpisodeReleases = simpleEpisode.extend({
   releases: z.array(simpleRelease),
 });
 
-export type SimpleEpisodeReleases = z.infer<typeof simpleEpisodeReleases>;
+export interface SimpleEpisodeReleases extends z.infer<typeof simpleEpisodeReleases> {}
 
 export const pureEpisode = simpleEpisode.extend({
   readDate: z.date().nullable(),
   progress: z.number().min(0).max(1),
 });
 
-export type PureEpisode = z.infer<typeof pureEpisode>;
+export interface PureEpisode extends z.infer<typeof pureEpisode> {}
 
 export const episode = pureEpisode.extend({
   releases: z.array(simpleRelease),
 });
 
-export type Episode = z.infer<typeof episode>;
+export interface Episode extends z.infer<typeof episode> {}
 
 export const episodeContentData = z.object({
   episodeTitle: z.string(),
@@ -202,11 +202,11 @@ export const episodeContentData = z.object({
   mediumTitle: z.string(),
 });
 
-export type EpisodeContentData = z.infer<typeof episodeContentData>;
+export interface EpisodeContentData extends z.infer<typeof episodeContentData> {}
 
 export const simpleReadEpisode = z.object({});
 
-export type SimpleReadEpisode = z.infer<typeof simpleReadEpisode>;
+export interface SimpleReadEpisode extends z.infer<typeof simpleReadEpisode> {}
 
 export const simpleExternalList = z.object({
   id,
@@ -216,13 +216,13 @@ export const simpleExternalList = z.object({
   url: z.string().url(),
 });
 
-export type SimpleExternalList = z.infer<typeof simpleExternalList>;
+export interface SimpleExternalList extends z.infer<typeof simpleExternalList> {}
 
 export const externalList = simpleExternalList.extend({
   items: z.array(id),
 });
 
-export type ExternalList = z.infer<typeof externalList>;
+export interface ExternalList extends z.infer<typeof externalList> {}
 
 export const simpleExternalUser = z.object({
   localUuid: z.string().uuid(),
@@ -233,7 +233,7 @@ export const simpleExternalUser = z.object({
   cookies: z.string().nullish().optional(),
 });
 
-export type SimpleExternalUser = z.infer<typeof simpleExternalUser>;
+export interface SimpleExternalUser extends z.infer<typeof simpleExternalUser> {}
 
 export const basicDisplayExternalUser = z.object({
   localUuid: z.string().uuid(),
@@ -242,19 +242,19 @@ export const basicDisplayExternalUser = z.object({
   type: z.number(),
 });
 
-export type BasicDisplayExternalUser = z.infer<typeof basicDisplayExternalUser>;
+export interface BasicDisplayExternalUser extends z.infer<typeof basicDisplayExternalUser> {}
 
 export const displayExternalUser = basicDisplayExternalUser.extend({
   lists: z.array(externalList),
 });
 
-export type DisplayExternalUser = z.infer<typeof displayExternalUser>;
+export interface DisplayExternalUser extends z.infer<typeof displayExternalUser> {}
 
 export const simpleExternalUserListed = simpleExternalUser.extend({
   lists: z.array(externalList),
 });
 
-export type SimpleExternalUserListed = z.infer<typeof simpleExternalUserListed>;
+export interface SimpleExternalUserListed extends z.infer<typeof simpleExternalUserListed> {}
 
 /**
  * What one would get from select * from part;
@@ -268,7 +268,7 @@ export const simplePart = z.object({
   partialIndex: z.number().int().optional(),
 });
 
-export type SimplePart = z.infer<typeof simplePart>;
+export interface SimplePart extends z.infer<typeof simplePart> {}
 
 export const simpleMedium = z.object({
   id,
@@ -285,7 +285,7 @@ export const simpleMedium = z.object({
   universe: z.string().optional(),
 });
 
-export type SimpleMedium = z.infer<typeof simpleMedium>;
+export interface SimpleMedium extends z.infer<typeof simpleMedium> {}
 
 export const simpleList = z.object({
   id,
@@ -294,7 +294,7 @@ export const simpleList = z.object({
   medium: z.number().min(0).int(),
 });
 
-export type SimpleList = z.infer<typeof simpleList>;
+export interface SimpleList extends z.infer<typeof simpleList> {}
 
 export const userList = z.object({
   id,
@@ -302,7 +302,7 @@ export const userList = z.object({
   name: z.string().min(1),
 });
 
-export type UserList = z.infer<typeof userList>;
+export interface UserList extends z.infer<typeof userList> {}
 
 export const mediumInWait = z.object({
   title: z.string(),
@@ -310,7 +310,7 @@ export const mediumInWait = z.object({
   link: z.string().url(),
 });
 
-export type MediumInWait = z.infer<typeof mediumInWait>;
+export interface MediumInWait extends z.infer<typeof mediumInWait> {}
 
 export const minimalMediumtoc = z.object({
   id,
@@ -318,7 +318,7 @@ export const minimalMediumtoc = z.object({
   link: z.string().url(),
 });
 
-export type MinimalMediumtoc = z.infer<typeof minimalMediumtoc>;
+export interface MinimalMediumtoc extends z.infer<typeof minimalMediumtoc> {}
 
 export const simpleMediumToc = minimalMediumtoc.extend({
   title: z.string().min(1),
@@ -334,7 +334,7 @@ export const simpleMediumToc = minimalMediumtoc.extend({
   universe: z.string().optional(),
 });
 
-export type SimpleMediumToc = z.infer<typeof simpleMediumToc>;
+export interface SimpleMediumToc extends z.infer<typeof simpleMediumToc> {}
 
 export const simpleJob = z.object({
   id,
@@ -352,7 +352,7 @@ export const simpleJob = z.object({
   arguments: z.string().optional(),
 });
 
-export type SimpleJob = z.infer<typeof simpleJob>;
+export interface SimpleJob extends z.infer<typeof simpleJob> {}
 
 export const simpleJobHistory = z.object({
   id,
@@ -377,7 +377,7 @@ export const simpleJobHistory = z.object({
   duration: z.number().int().optional(),
 });
 
-export type SimpleJobHistory = z.infer<typeof simpleJobHistory>;
+export interface SimpleJobHistory extends z.infer<typeof simpleJobHistory> {}
 
 export const simpleJobStatSummary = z.object({
   name: z.string().min(1),
@@ -414,27 +414,27 @@ export const simpleJobStatSummary = z.object({
   maxLagging: z.number().int(),
 });
 
-export type SimpleJobStatSummary = z.infer<typeof simpleJobStatSummary>;
+export interface SimpleJobStatSummary extends z.infer<typeof simpleJobStatSummary> {}
 
 export const mediumSynonym = z.object({
   id,
   synonym: z.string().min(1),
 });
 
-export type MediumSynonym = z.infer<typeof mediumSynonym>;
+export interface MediumSynonym extends z.infer<typeof mediumSynonym> {}
 
 export const linkValue = z.object({
   link: z.string().url(),
 });
 
-export type LinkValue = z.infer<typeof linkValue>;
+export interface LinkValue extends z.infer<typeof linkValue> {}
 
 // contrary to `entity`, also allow zero as id
 export const softInsertEntity = z.object({
   id: z.number().int().min(0),
 });
 
-export type SoftInsertEntity = z.infer<typeof softInsertEntity>;
+export interface SoftInsertEntity extends z.infer<typeof softInsertEntity> {}
 
 export const simpleNews = z.object({
   id,
@@ -444,13 +444,13 @@ export const simpleNews = z.object({
   date: z.date().nullish(),
 });
 
-export type SimpleNews = z.infer<typeof simpleNews>;
+export interface SimpleNews extends z.infer<typeof simpleNews> {}
 
 export const news = simpleNews.extend({
   read: z.boolean(),
 });
 
-export type News = z.infer<typeof news>;
+export interface News extends z.infer<typeof news> {}
 
 export const notification = z.object({
   id,
@@ -461,13 +461,13 @@ export const notification = z.object({
   type: z.string(),
 });
 
-export type Notification = z.infer<typeof notification>;
+export interface Notification extends z.infer<typeof notification> {}
 
 export const userNotification = notification.extend({
   read: z.boolean(),
 });
 
-export type UserNotification = z.infer<typeof userNotification>;
+export interface UserNotification extends z.infer<typeof userNotification> {}
 
 export const simpleScraperHook = z.object({
   id,
@@ -476,7 +476,7 @@ export const simpleScraperHook = z.object({
   message: z.string(),
 });
 
-export type SimpleScraperHook = z.infer<typeof simpleScraperHook>;
+export interface SimpleScraperHook extends z.infer<typeof simpleScraperHook> {}
 
 export const simpleUser = z.object({
   name: z.string(),
