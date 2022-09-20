@@ -425,7 +425,7 @@ CREATE TABLE IF NOT EXISTS list_medium (
 CREATE TABLE IF NOT EXISTS scraper_hook (
 	id bigserial NOT NULL,
 	"name" varchar(200) NOT NULL,
-	state varchar(200) NOT NULL,
+	enabled boolean NOT NULL,
 	message varchar(200) NOT NULL,
 	PRIMARY KEY (id),
 	UNIQUE(name)

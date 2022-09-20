@@ -10,12 +10,12 @@ export class CustomHookContext extends QueryContext {
       throw new ValidationError("Cannot add Hook with id already defined");
     }
 
-    const state = isString(value.state) ? JSON.parse(value.state) : value.hookState;
+    const state = isString(value.state) ? JSON.parse(value.state) : value.enabled;
 
     const id = await this.con.oneFirst(
       sql.type(entity)`
-      INSERT INTO custom_hook (name, state, hookState, comment)
-      VALUES (${value.name},${sql.jsonb(state)},${value.hookState},${value.comment})
+      INSERT INTO custom_hook (name, state, enabled, comment)
+      VALUES (${value.name},${sql.jsonb(state)},${value.enabled},${value.comment})
       ON CONFLICT DO NOTHING RETURNING id;`,
     );
 

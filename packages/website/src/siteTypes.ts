@@ -429,11 +429,6 @@ export interface MediumInWaitSearch {
   limit?: number;
 }
 
-export enum HookState {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
-}
-
 export type SelectorValueType = "json" | "regex" | "text";
 
 export type SelectorType = [SelectorValueType] | ["regex", "text"];

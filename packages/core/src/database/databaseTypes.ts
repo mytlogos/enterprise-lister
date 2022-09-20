@@ -1,6 +1,6 @@
 import { TableSchema } from "./tableSchema";
 import { DatabaseContext } from "./contexts/databaseContext";
-import { Uuid, EmptyPromise, HookState, ReleaseState, ScrapeName, JobState } from "../types";
+import { Uuid, EmptyPromise, ReleaseState, ScrapeName, JobState } from "../types";
 import z from "zod";
 import { MediaType } from "../tools";
 import { SqlSqlToken } from "slonik";
@@ -101,7 +101,7 @@ export const customHook = z.object({
   name: z.string().min(1),
   state: z.string().min(1),
   updatedAt: z.date().optional(),
-  hookState: z.nativeEnum(HookState),
+  enabled: z.boolean(),
   comment: z.string(),
 });
 
@@ -472,7 +472,7 @@ export interface UserNotification extends z.infer<typeof userNotification> {}
 export const simpleScraperHook = z.object({
   id,
   name: z.string().min(1),
-  state: z.string().min(1),
+  enabled: z.boolean(),
   message: z.string(),
 });
 

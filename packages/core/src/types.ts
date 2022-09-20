@@ -1787,7 +1787,7 @@ export interface MediumInWaitSearch {
 export interface ScraperHook {
   id: number;
   name: string;
-  state: string;
+  enabled: boolean;
   message: string;
 }
 
@@ -1917,17 +1917,12 @@ export type JobStatSummary = {
   | "lagging"
 >;
 
-export enum HookState {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
-}
-
 export interface CustomHook {
   id: number;
   name: string;
   state: string;
   updated_at?: Date;
-  hookState: HookState;
+  enabled: boolean;
   comment: string;
 }
 

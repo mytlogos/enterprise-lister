@@ -47,11 +47,6 @@ const nameHookMap = new Map<string, Hook>();
 const disabledHooks = new Set<string>();
 let timeoutId: NodeJS.Timeout | undefined;
 
-export enum HookState {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
-}
-
 function isHookConfigV2(config: HookConfig | HookConfigV2): config is HookConfigV2 {
   return "version" in config && config.version === 2;
 }
@@ -63,7 +58,7 @@ async function loadCustomHooks(): Promise<{ custom: Hook[]; disabled: Set<string
   const disabled = new Set<string>();
 
   for (const hookEntity of hooks) {
-    if (hookEntity.hookState === HookState.DISABLED) {
+    if (!hookEntity.enabled) {
       disabled.add(hookEntity.name);
       continue;
     }
@@ -109,10 +104,10 @@ async function loadRawHooks() {
         id: 0,
         message: "Newly discovered Hook",
         name: hook.name,
-        state: HookState.ENABLED,
+        enabled: true,
       });
     } else {
-      if (storageHooks[index].state === HookState.DISABLED) {
+      if (!storageHooks[index].enabled) {
         disableHook(hook);
       }
       // remove all found storage hooks, so we can remove the superflous ones

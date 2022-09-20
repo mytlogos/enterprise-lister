@@ -179,7 +179,7 @@ export class EpisodeReleaseContext extends QueryContext {
     return this.con.any(
       sql.type(simpleRelease)`
       INSERT INTO episode_release (episode_id, title, url, source_type, release_date, locked, toc_id) 
-      SELECT * FROM ${sql.unnest(insert, ["int8", "text", "text", "text", "timestamp", "boolean", "int8"])}
+      SELECT * FROM ${sql.unnest(insert, ["int8", "text", "text", "text", "timestamptz", "bool", "int8"])}
       ON CONFLICT DO NOTHING
       RETURNING episode_id, title, url, source_type, release_date, locked, toc_id;`,
     );
@@ -243,7 +243,7 @@ export class EpisodeReleaseContext extends QueryContext {
       sql`
       INSERT INTO episode_release
       (episode_id, title, url, source_type, release_date, locked, toc_id) 
-      SELECT * FROM ${sql.unnest(values, ["int8", "text", "text", "text", "timestamp", "boolean", "int8"])}
+      SELECT * FROM ${sql.unnest(values, ["int8", "text", "text", "text", "timestamptz", "bool", "int8"])}
       ON CONFLICT (episode_id, url) DO UPDATE SET 
       title = EXCLUDED.title,
       releaseDate = EXCLUDED.release_date,

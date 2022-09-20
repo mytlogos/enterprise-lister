@@ -7,11 +7,11 @@ import { simpleScraperHook } from "../databaseTypes";
 
 export class ScraperHookContext extends QueryContext {
   public async getAllStream(): Promise<TypedQuery<ScraperHook>> {
-    return this.stream<ScraperHook>(sql.type(simpleScraperHook)`SELECT id, name, state, message FROM scraper_hook`);
+    return this.stream<ScraperHook>(sql.type(simpleScraperHook)`SELECT id, name, enabled, message FROM scraper_hook`);
   }
 
   public async getAll(): Promise<readonly ScraperHook[]> {
-    return this.con.any(sql.type(simpleScraperHook)`SELECT id, name, state, message FROM scraper_hook`);
+    return this.con.any(sql.type(simpleScraperHook)`SELECT id, name, enabled, message FROM scraper_hook`);
   }
 
   /**
@@ -20,8 +20,8 @@ export class ScraperHookContext extends QueryContext {
   public async addScraperHook(scraperHook: Insert<ScraperHook>): Promise<void> {
     await this.con.query(
       sql`
-      INSERT INTO scraper_hook (name, state, message)
-      VALUES (${scraperHook.name},${scraperHook.state},${scraperHook.message});`,
+      INSERT INTO scraper_hook (name, enabled, message)
+      VALUES (${scraperHook.name},${scraperHook.enabled},${scraperHook.message});`,
     );
     // FIXME: storeModifications("scraper_hook", "insert", result);
   }
@@ -40,10 +40,10 @@ export class ScraperHookContext extends QueryContext {
         } else if (scraperHook.message === null) {
           throw new ValidationError("Cannot set the message of scraper_hook to null");
         }
-        if (scraperHook.state) {
-          updates.push(sql`state = ${scraperHook.state}`);
-        } else if (scraperHook.state === null) {
-          throw new ValidationError("Cannot set the state of scraper_hook to null");
+        if (scraperHook.enabled) {
+          updates.push(sql`enabled = ${scraperHook.enabled}`);
+        } else if (scraperHook.enabled === null) {
+          throw new ValidationError("Cannot set the enabled of scraper_hook to null");
         }
         return updates;
       },
@@ -54,7 +54,9 @@ export class ScraperHookContext extends QueryContext {
     );
     // FIXME: storeModifications("scraper_hook", "update", result);
     await this.con.query(
-      sql`UPDATE jobs SET job_state = ${scraperHook.state} WHERE name LIKE ${"%" + escapeLike(scraperHook.name) + "%"}`,
+      sql`UPDATE jobs SET job_enabled = ${scraperHook.enabled} WHERE name LIKE ${
+        "%" + escapeLike(scraperHook.name) + "%"
+      }`,
     );
     // FIXME: storeModifications("job", "update", result);
     return result.rowCount > 0;
