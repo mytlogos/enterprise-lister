@@ -11,6 +11,7 @@ import {
   MinimalRelease,
 } from "../databaseTypes";
 import { QueryContext } from "./queryContext";
+import { joinAnd } from "./helper";
 
 export class EpisodeReleaseContext extends QueryContext {
   public async getAllReleases(): Promise<TypedQuery<SimpleRelease>> {
@@ -33,7 +34,7 @@ export class EpisodeReleaseContext extends QueryContext {
     requiredMedia: number[],
   ): Promise<DisplayReleasesResponse> {
     const whereClause = [];
-    whereClause.push(read == null ? sql`1` : read ? sql`progress = 1` : sql`(progress IS NULL OR progress < 1)`);
+    whereClause.push(read == null ? sql`1` : read ? sql`progress >= 1` : sql`(progress IS NULL OR progress < 1)`);
 
     if (requiredLists.length) {
       const array = sql.array(requiredLists, "int8");
@@ -56,12 +57,10 @@ export class EpisodeReleaseContext extends QueryContext {
       additionalMainQueries.push(sql`part.medium_id != ALL(${array})`);
     }
 
-    const additionalMainQuery = additionalMainQueries.length
-      ? sql`AND ${sql.join(additionalMainQueries, sql` AND `)}`
-      : sql``;
+    const additionalMainQuery = additionalMainQueries.length ? sql`AND ${joinAnd(additionalMainQueries)}` : sql``;
     const lowerDateLimitQuery = untilDate ? sql`AND release_date > ${sql.timestamp(untilDate)}` : sql``;
 
-    const releasePromise = this.con.many(
+    const releasePromise = this.con.any(
       sql.type(displayRelease)`SELECT 
       er.episode_id as episodeId, er.title, er.url as link, 
       er.releaseDate as date, er.locked, medium_id as mediumId, progress
@@ -73,11 +72,11 @@ export class EpisodeReleaseContext extends QueryContext {
       INNER JOIN episode ON episode.id=er.episode_id 
       LEFT JOIN (SELECT * FROM user_episode WHERE user_uuid = ${uuid}) as ue ON episode.id=ue.episode_id
       INNER JOIN part ON part.id=part_id ${additionalMainQuery}
-      WHERE ${sql.join(whereClause, sql` AND `)}
+      WHERE ${joinAnd(whereClause)}
       LIMIT 500;`,
     );
 
-    const mediaPromise = this.con.many(sql.type(minimalMedium)`SELECT id, title, medium FROM medium;`);
+    const mediaPromise = this.con.any(sql.type(minimalMedium)`SELECT id, title, medium FROM medium;`);
 
     const latestReleaseResult = await this.con.oneFirst<{ releasedate: string }>(
       sql`SELECT releasedate FROM episode_release ORDER BY releaseDate LIMIT 1;`,
@@ -99,7 +98,7 @@ export class EpisodeReleaseContext extends QueryContext {
   }
 
   public async getMediumReleases(mediumId: number, uuid: Uuid): Promise<readonly MediumRelease[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(mediumRelease)`
       SELECT 
         er.episode_id, er.title, er.url as link,
@@ -122,7 +121,7 @@ export class EpisodeReleaseContext extends QueryContext {
       episodeId = [episodeId];
     }
 
-    const resultArray = await this.con.many(
+    const resultArray = await this.con.any(
       sql.type(simpleRelease)`
       SELECT episode_id, source_type, toc_id,
       release_date, locked, url, title
@@ -142,7 +141,7 @@ export class EpisodeReleaseContext extends QueryContext {
     if (!episodeId.length) {
       return [];
     }
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleRelease)`
       SELECT episode_id, source_type, toc_id,
       release_date, locked, url, title
@@ -152,7 +151,7 @@ export class EpisodeReleaseContext extends QueryContext {
   }
 
   public async getMediumReleasesByHost(mediumId: number, host: string): Promise<readonly SimpleRelease[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleRelease)`
       SELECT er.episode_id, er.source_type, er.toc_id,
       er.release_date, er.locked, er.url, er.title
@@ -177,7 +176,7 @@ export class EpisodeReleaseContext extends QueryContext {
     ]);
 
     // FIXME: multiSingle(results, (value) => storeModifications("release", "insert", value));
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleRelease)`
       INSERT INTO episode_release (episode_id, title, url, source_type, release_date, locked, toc_id) 
       SELECT * FROM ${sql.unnest(insert, ["int8", "text", "text", "text", "timestamp", "boolean", "int8"])}
@@ -187,7 +186,7 @@ export class EpisodeReleaseContext extends QueryContext {
   }
 
   public async getEpisodeLinks(episodeIds: number[]): Promise<readonly MinimalRelease[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(minimalRelease)`
       SELECT episode_id, url FROM episode_release
       WHERE episode_id = ANY(${sql.array(episodeIds, "int8")});`,
@@ -195,7 +194,7 @@ export class EpisodeReleaseContext extends QueryContext {
   }
 
   public async getEpisodeLinksByMedium(mediumId: number): Promise<readonly MinimalRelease[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(minimalRelease)`
       SELECT
         episode_id, url
@@ -210,7 +209,7 @@ export class EpisodeReleaseContext extends QueryContext {
     sourceType: string,
     mediumId: number,
   ): Promise<Array<{ sourceType: string; url: string; title: string; mediumId: number }>> {
-    const resultArray = await this.con.many(
+    const resultArray = await this.con.any(
       sql`
         SELECT url, episode_release.title
         FROM episode_release

@@ -10,7 +10,7 @@ export type UpdateExternalList = Partial<ExternalList> & { id: Id };
 export class ExternalListContext extends QueryContext {
   public async getAll(uuid: Uuid): Promise<ExternalList[]> {
     // FIXME: 03.03.2020 this query is invalid, really???
-    const result = await this.con.many(
+    const result = await this.con.any(
       sql`SELECT 
         el.id, el.user_uuid, el.name, el.medium, el.url
         FROM external_reading_list as el
@@ -126,7 +126,7 @@ export class ExternalListContext extends QueryContext {
    * Gets all external lists from the externalUser from the storage.
    */
   public async getExternalUserLists(uuid: Uuid): Promise<ExternalList[]> {
-    const result = await this.con.many(
+    const result = await this.con.any(
       sql`SELECT id, name, user_uuid, medium, url
       FROM external_reading_list
       WHERE user_uuid = ${uuid};`,

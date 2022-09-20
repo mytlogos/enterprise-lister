@@ -11,11 +11,12 @@ import {
   SimpleExternalUserListed,
 } from "../databaseTypes";
 import { sql } from "slonik";
+import { ExternalListContext } from "./externalListContext";
 
 export class ExternalUserContext extends QueryContext {
   public async getAll(uuid: Uuid): Promise<DisplayExternalUser[]> {
-    const lists = await this.externalListContext.getAll(uuid);
-    const users = await this.con.many(
+    const lists = await this.getContext(ExternalListContext).getAll(uuid);
+    const users = await this.con.any(
       sql.type(basicDisplayExternalUser)`
       SELECT
       uuid, local_uuid, identifier, type
@@ -100,7 +101,7 @@ export class ExternalUserContext extends QueryContext {
    * Gets an external user.
    */
   public async getExternalUser(externalUuid: Uuid[]): Promise<readonly SimpleExternalUserListed[]> {
-    const resultArray = await this.con.many(
+    const resultArray = await this.con.any(
       sql.type(basicDisplayExternalUser)`SELECT identifier, uuid, local_uuid, type, cookies
       FROM external_user WHERE uuid = ANY(${sql.array(externalUuid, "text")});`,
     );
@@ -126,7 +127,7 @@ export class ExternalUserContext extends QueryContext {
    * Return all ExternalUser not scraped in the last seven days.
    */
   public async getScrapeExternalUser(): Promise<readonly SimpleExternalUser[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleExternalUser)`
       SELECT uuid, local_uuid, type, cookies, identifier, last_scrape FROM external_user
       WHERE last_scrape IS NULL OR last_scrape < TIMESTAMPADD(day, -7, now())`,
@@ -138,7 +139,7 @@ export class ExternalUserContext extends QueryContext {
    *  shallow lists.
    */
   public async createShallowExternalUser(storageUser: BasicDisplayExternalUser): Promise<DisplayExternalUser> {
-    const lists = await this.externalListContext.getExternalUserLists(storageUser.uuid);
+    const lists = await this.getContext(ExternalListContext).getExternalUserLists(storageUser.uuid);
     const result = storageUser as DisplayExternalUser;
     result.lists = lists;
     return result;

@@ -11,7 +11,7 @@ export class ScraperHookContext extends QueryContext {
   }
 
   public async getAll(): Promise<readonly ScraperHook[]> {
-    return this.con.many(sql.type(simpleScraperHook)`SELECT id, name, state, message FROM scraper_hook`);
+    return this.con.any(sql.type(simpleScraperHook)`SELECT id, name, state, message FROM scraper_hook`);
   }
 
   /**

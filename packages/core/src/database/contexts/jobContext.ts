@@ -33,6 +33,7 @@ import {
   SimpleJobStatSummary,
   simpleJobStatSummary,
 } from "../databaseTypes";
+import { joinAnd, joinComma } from "./helper";
 
 interface CountValue<T> {
   count: number;
@@ -95,12 +96,12 @@ export class JobContext extends QueryContext {
       }
     }
     const empty = sql``;
-    const values = (await this.con.many(
+    const values = (await this.con.any(
       sql`
         SELECT 
             SELECT 
         SELECT 
-        ${sql.join(filterColumn, sql`,`)}
+        ${joinComma(filterColumn)}
         AVG(network_queries) as avgnetwork, 
             AVG(network_queries) as avgnetwork, 
         AVG(network_queries) as avgnetwork, 
@@ -134,7 +135,7 @@ export class JobContext extends QueryContext {
         ${minMax ? sql`MAX(queries) maxQ, ` : empty} 
         ${minMax ? sql`MIN(CASE WHEN queries = 0 THEN NULL ELSE queries END) minQ` : empty} 
         FROM job_history
-        ${groupBy.length ? sql`GROUP BY ${sql.join(groupBy, sql`, `)}` : empty};`,
+        ${groupBy.length ? sql`GROUP BY ${joinComma(groupBy)}` : empty};`,
     )) as unknown as Array<JobStats & TimeJobStats>;
 
     if (statFilter?.type === "timed") {
@@ -255,12 +256,12 @@ export class JobContext extends QueryContext {
 
   public getJobsStatsSummary(): Promise<readonly JobStatSummary[]> {
     // TODO: typing this beast
-    return this.con.many(sql`SELECT * FROM job_stat_summary;`);
+    return this.con.any(sql`SELECT * FROM job_stat_summary;`);
   }
 
   public async getJobDetails(id: number): Promise<JobDetails> {
     const jobPromise = this.con.maybeOne(sql.type(simpleJob)`SELECT * FROM jobs WHERE id = ${id}`);
-    const historyPromise = this.con.many(
+    const historyPromise = this.con.any(
       sql.type(simpleJobHistory)`
       SELECT
         id, name, type, start, "end", arguments, result, message, context,
@@ -302,7 +303,7 @@ export class JobContext extends QueryContext {
     if (limit <= 0 || !limit) {
       limit = 50;
     }
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJob)`
       SELECT id, type, name, state, interval, delete_after_run,
       running_since, run_after, last_run, next_run, arguments, enabled
@@ -312,7 +313,7 @@ export class JobContext extends QueryContext {
   }
 
   public async queryJobs({ limit }: JobQuery = {}): Promise<readonly SimpleJob[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJob)`
       SELECT id, type, name, state, interval, delete_after_run,
       running_since, run_after, last_run, next_run, arguments, enabled
@@ -325,7 +326,7 @@ export class JobContext extends QueryContext {
   }
 
   public async getAllJobs(): Promise<readonly SimpleJob[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJob)`
       SELECT id, type, name, state, interval, delete_after_run,
       running_since, run_after, last_run, next_run, arguments, enabled
@@ -334,7 +335,7 @@ export class JobContext extends QueryContext {
   }
 
   public async getJobsById(jobIds: readonly number[]): Promise<readonly SimpleJob[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJob)`
       SELECT id, type, name, state, interval, delete_after_run,
       running_since, run_after, last_run, next_run, arguments, enabled
@@ -344,7 +345,7 @@ export class JobContext extends QueryContext {
   }
 
   public async getJobsByName(names: readonly string[]): Promise<readonly SimpleJob[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJob)`
       SELECT id, type, name, state, interval, delete_after_run,
       running_since, run_after, last_run, next_run, arguments, enabled
@@ -354,7 +355,7 @@ export class JobContext extends QueryContext {
   }
 
   public async getJobsInState(state: JobState): Promise<readonly SimpleJob[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJob)`
       SELECT id, type, name, state, interval, delete_after_run,
       running_since, run_after, last_run, next_run, arguments, enabled
@@ -374,7 +375,7 @@ export class JobContext extends QueryContext {
   }
 
   public async getAfterJobs(id: number): Promise<readonly SimpleJob[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJob)`
       SELECT id, type, name, state, interval, delete_after_run,
       running_since, run_after, last_run, next_run, arguments, enabled
@@ -502,7 +503,7 @@ export class JobContext extends QueryContext {
   }
 
   public async getJobHistory(): Promise<readonly SimpleJobHistory[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleJobHistory)`
       SELECT 
       id, arguments, message, context, scheduled_at,
@@ -542,9 +543,9 @@ export class JobContext extends QueryContext {
     }
 
     const totalPromise = this.con.oneFirst<{ total: number }>(
-      sql`SELECT count(*) as total FROM job_history WHERE ${sql.join(conditions, sql` AND `)}`,
+      sql`SELECT count(*) as total FROM job_history WHERE ${joinAnd(conditions)}`,
     );
-    const items = await this.con.many(
+    const items = await this.con.any(
       sql.type(simpleJobHistory)`
       SELECT 
       id, arguments, message, context, scheduled_at,
@@ -552,7 +553,7 @@ export class JobContext extends QueryContext {
       network_queries, network_received, network_send,
       lagging, duration, type, name, start, "end", result
       FROM job_history
-      WHERE ${sql.join(conditions, sql` AND `)}
+      WHERE ${joinAnd(conditions)}
       ORDER BY start DESC
       LIMIT ${Math.max(Math.min(filter.limit, 1000), 5)}`,
     );
@@ -678,9 +679,9 @@ export class JobContext extends QueryContext {
     await this.con.query(
       sql`
       INSERT INTO job_stat_summary
-      (${sql.join(insertColumns, sql`,`)})
-      VALUES (${sql.join(insertValues, sql`,`)})
-      ON CONFLICT (name) DO UPDATE SET ${sql.join(updates, sql`,`)}`,
+      (${joinComma(insertColumns)})
+      VALUES (${joinComma(insertValues)})
+      ON CONFLICT (name) DO UPDATE SET ${joinComma(updates)}`,
     );
 
     const queries = jobTrack.queryCount;

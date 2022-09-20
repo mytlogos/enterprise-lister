@@ -14,6 +14,7 @@ import { isDuplicateError, MissingEntityError } from "../../error";
 import { QueryContext } from "./queryContext";
 import { sql } from "slonik";
 import { entity, SimpleEpisodeReleases, simplePart, SimplePart } from "../databaseTypes";
+import { EpisodeContext } from "./episodeContext";
 
 interface MinEpisode {
   id: number;
@@ -64,7 +65,7 @@ export class PartContext extends QueryContext {
    * Returns all parts of an medium.
    */
   public async getMediumParts(mediumId: number, uuid?: Uuid): Promise<readonly Part[]> {
-    const parts = await this.con.many(
+    const parts = await this.con.any(
       sql.type(simplePart)`
       SELECT id, total_index, partial_index, combi_index, title, medium_id
       FROM part WHERE medium_id = ${mediumId}`,
@@ -81,7 +82,7 @@ export class PartContext extends QueryContext {
       idMap.set(value.id, part);
       return part;
     });
-    const episodesIds = (await this.con.many(
+    const episodesIds = (await this.con.any(
       sql`SELECT id, part_id
       FROM episode
        WHERE part_id = ANY(${sql.array([...idMap.keys()], "int8")});`,
@@ -90,7 +91,7 @@ export class PartContext extends QueryContext {
     if (episodesIds.length) {
       if (uuid) {
         const values = episodesIds.map((episode: any): number => episode.id);
-        const episodes = await this.episodeContext.getEpisode(values, uuid);
+        const episodes = await this.getContext(EpisodeContext).getEpisode(values, uuid);
         episodes.forEach((value) => {
           const part = idMap.get(value.partId);
           if (!part) {
@@ -121,7 +122,7 @@ export class PartContext extends QueryContext {
    * If there is no such part, it returns an object with only the totalIndex as property.
    */
   public async getMediumPartsPerIndex(mediumId: number, partCombiIndex: number[]): Promise<readonly SimplePart[]> {
-    const parts = await this.con.many(
+    const parts = await this.con.any(
       sql.type(simplePart)`SELECT id, total_index, partial_index, combi_index, title, medium_id
       FROM part
       WHERE medium_id = ${mediumId} AND combiIndex = ANY(${sql.array(partCombiIndex, "int8")});`,
@@ -154,7 +155,7 @@ export class PartContext extends QueryContext {
    * Returns all parts of an medium.
    */
   public async getParts(partId: number[], uuid: Uuid, full = true): Promise<Part[]> {
-    const parts = await this.con.many(
+    const parts = await this.con.any(
       sql.type(simplePart)`SELECT id, total_index, partial_index, combi_index, title, medium_id
       FROM part WHERE id = ANY(${sql.array(partId, "int8")});`,
     );
@@ -166,13 +167,13 @@ export class PartContext extends QueryContext {
       partIdMap.set(value.id, []);
       return value.id;
     });
-    const episodesResult = await this.con.many<{ id: number; part_id: number }>(
+    const episodesResult = await this.con.any<{ id: number; part_id: number }>(
       sql`SELECT id, part_id FROM episode WHERE part_id = ANY(${sql.array(ids, "in8")});`,
     );
 
     if (full) {
       const episodeIds = episodesResult.map((value) => value.id);
-      const fullEpisodes = await this.episodeContext.getEpisode(episodeIds, uuid);
+      const fullEpisodes = await this.getContext(EpisodeContext).getEpisode(episodeIds, uuid);
       fullEpisodes.forEach((value) => {
         const values = partIdMap.get(value.partId) as Episode[];
         if (!values) {
@@ -209,7 +210,7 @@ export class PartContext extends QueryContext {
       return {};
     }
     // @ts-expect-error
-    const episodesResult = await this.con.many<MinEpisode>(
+    const episodesResult = await this.con.any<MinEpisode>(
       sql`SELECT id, part_id FROM episode WHERE part_id = ANY(${sql.array(partIds, "int8")});`,
     );
 
@@ -232,7 +233,7 @@ export class PartContext extends QueryContext {
       return {};
     }
     // @ts-expect-error
-    const episodesResult = await this.con.many<SimpleRelease & { partId: number }>(
+    const episodesResult = await this.con.any<SimpleRelease & { partId: number }>(
       sql`SELECT episode_id, url, part_id
       FROM episode_release
       INNER JOIN episode ON episode.id = episode_id
@@ -307,7 +308,7 @@ export class PartContext extends QueryContext {
           return episode;
         });
         // TODO: how to handle this?, also insert release? or separately?
-        episodes = await this.episodeContext.addEpisode(part.episodes);
+        episodes = await this.getContext(EpisodeContext).addEpisode(part.episodes);
       } else {
         episodes = [];
       }

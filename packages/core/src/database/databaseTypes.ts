@@ -1,16 +1,16 @@
 import { TableSchema } from "./tableSchema";
-import { Trigger } from "./trigger";
 import { DatabaseContext } from "./contexts/databaseContext";
 import { Uuid, EmptyPromise, HookState, ReleaseState, ScrapeName, JobState } from "../types";
 import z from "zod";
 import { MediaType } from "../tools";
+import { SqlSqlToken } from "slonik";
 
 export interface DatabaseSchema {
   readonly version: number;
-  readonly triggers: readonly Trigger[];
+  readonly triggers: ReadonlyArray<SqlSqlToken<any>>;
   readonly tables: readonly TableSchema[];
-  readonly mainTable: TableSchema;
   readonly migrations: readonly Migration[];
+  readonly procedures: ReadonlyArray<SqlSqlToken<any>>;
 }
 
 // for operations which alter things, like tables and cannot be done by simple insert or delete operations

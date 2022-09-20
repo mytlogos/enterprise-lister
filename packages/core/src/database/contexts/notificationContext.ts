@@ -54,7 +54,7 @@ export class NotificationContext extends QueryContext {
   ): Promise<readonly UserNotification[]> {
     const limit = size && size > 0 ? sql` LIMIT ${size}` : sql``;
 
-    return this.con.many(
+    return this.con.any(
       sql.type(userNotification)`
       SELECT n.title, n.content, n.date, n.key, n.type, ${read ? sql`true` : sql`false`} as read
       FROM notifications as n

@@ -4,6 +4,7 @@ import { MissingEntityError, ValidationError } from "../../error";
 import { QueryContext } from "./queryContext";
 import { sql } from "slonik";
 import { entity, SimpleList, simpleList } from "../databaseTypes";
+import { MediumContext } from "./mediumContext";
 
 export class InternalListContext extends QueryContext {
   /**
@@ -25,7 +26,7 @@ export class InternalListContext extends QueryContext {
   public async getLists(listId: number[], media: number[], uuid: Uuid): Promise<ListMedia> {
     const toLoadMedia: Set<number> = new Set();
 
-    const simpleLists = await this.con.many(
+    const simpleLists = await this.con.any(
       sql.type(simpleList)`
       SELECT id, name, medium, user_uuid
       FROM reading_list
@@ -45,13 +46,13 @@ export class InternalListContext extends QueryContext {
       }),
     );
 
-    const loadedMedia = await this.mediumContext.getMedium([...toLoadMedia], uuid);
+    const loadedMedia = await this.getContext(MediumContext).getMedium([...toLoadMedia], uuid);
 
     return { list: lists, media: loadedMedia };
   }
 
   public async getShallowList(listId: number[], uuid: Uuid): Promise<List[]> {
-    const result = await this.con.many(
+    const result = await this.con.any(
       sql.type(simpleList)`
       SELECT id, name, medium, user_uuid
       FROM reading_list
@@ -137,7 +138,7 @@ export class InternalListContext extends QueryContext {
    */
   public async getUserLists(uuid: Uuid): Promise<List[]> {
     // query all available lists for user
-    const result = await this.con.many(
+    const result = await this.con.any(
       sql.type(simpleList)`
       SELECT id, name, medium, user_uuid FROM reading_list WHERE reading_list.user_uuid = ${uuid};`,
     );

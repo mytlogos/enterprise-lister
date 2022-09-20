@@ -16,6 +16,7 @@ import {
   SimpleRelease,
 } from "../databaseTypes";
 import { sql } from "slonik";
+import { EpisodeReleaseContext } from "./episodeReleaseContext";
 
 export class EpisodeContext extends QueryContext {
   /**
@@ -46,7 +47,7 @@ export class EpisodeContext extends QueryContext {
    *
    */
   public async getLatestReleases(mediumId: number): Promise<SimpleEpisodeReleases[]> {
-    const resultArray = await this.con.many(
+    const resultArray = await this.con.any(
       sql.type(simpleEpisode)`
       SELECT episode.* FROM episode_release
       INNER JOIN episode ON episode.id=episode_release.episode_id
@@ -56,7 +57,7 @@ export class EpisodeContext extends QueryContext {
       ORDER BY episode.totalIndex DESC, episode.partialIndex DESC
       LIMIT 5;`,
     );
-    const releases = await this.episodeReleaseContext.getReleases(resultArray.map((value) => value.id));
+    const releases = await this.getContext(EpisodeReleaseContext).getReleases(resultArray.map((value) => value.id));
     const episodeMap = new Map<number, SimpleEpisodeReleases>();
 
     for (const episode of resultArray) {
@@ -77,7 +78,7 @@ export class EpisodeContext extends QueryContext {
   }
 
   public async getPartsEpisodeIndices(partId: number[]): Promise<Array<{ partId: number; episodes: number[] }>> {
-    const result = await this.con.many<{ part_id: number; combiindex: number }>(
+    const result = await this.con.any<{ part_id: number; combiindex: number }>(
       sql`SELECT part_id, combi_index FROM episode WHERE part_id = ANY(${sql.array(partId, "int8")});`,
     );
     if (!result) {
@@ -197,7 +198,7 @@ export class EpisodeContext extends QueryContext {
     // FIXME: storeModifications("episode", "insert", result);
     const values = episodes.map((value) => [value.partId, value.combiIndex, value.totalIndex, value.partialIndex]);
 
-    const insertedEpisodes = await this.con.many(
+    const insertedEpisodes = await this.con.any(
       sql.type(simpleEpisode)`INSERT INTO episode
       (part_id, combi_index, total_index, partial_index)
       SELECT * FROM ${sql.unnest(values, ["int8", "float8", "int8", "int8"])}
@@ -233,7 +234,7 @@ export class EpisodeContext extends QueryContext {
       insertReleases.push(...episode.releases);
     }
 
-    const insertedReleases = await this.episodeReleaseContext.addReleases(insertReleases);
+    const insertedReleases = await this.getContext(EpisodeReleaseContext).addReleases(insertReleases);
     const idReleaseMap = new Map<number, SimpleRelease[]>();
 
     for (const release of insertedReleases) {
@@ -252,7 +253,7 @@ export class EpisodeContext extends QueryContext {
    * Gets an episode from the storage.
    */
   public async getEpisode(id: number[], uuid: Uuid): Promise<Episode[]> {
-    const episodes = await this.con.many(
+    const episodes = await this.con.any(
       sql.type(pureEpisode)`
       SELECT e.id, e.part_id, e.combi_index, e.total_index, e.partial_index,
       coalesce(ue.progress, 0), ue.read_date
@@ -264,7 +265,9 @@ export class EpisodeContext extends QueryContext {
       return [];
     }
     const idMap = new Map<number, SimpleRelease[]>();
-    const releases = await this.episodeReleaseContext.getReleases(episodes.map((value): number => value.id));
+    const releases = await this.getContext(EpisodeReleaseContext).getReleases(
+      episodes.map((value): number => value.id),
+    );
 
     releases.forEach((value) => {
       getElseSet(idMap, value.episodeId, () => []).push(value);
@@ -284,7 +287,7 @@ export class EpisodeContext extends QueryContext {
   }
 
   public async getPartMinimalEpisodes(partId: number): Promise<ReadonlyArray<{ id: number; combiIndex: number }>> {
-    return this.con.many<{ id: number; combiIndex: number }>(
+    return this.con.any<{ id: number; combiIndex: number }>(
       sql`SELECT id, combi_index FROM episode WHERE part_id=${partId}`,
     );
   }
@@ -300,7 +303,7 @@ export class EpisodeContext extends QueryContext {
    * @returns an episode for each index
    */
   public async getPartEpisodePerIndex(partId: number, indices: number[]): Promise<readonly SimpleEpisodeReleases[]> {
-    const episodes = await this.con.many(
+    const episodes = await this.con.any(
       sql.type(simpleEpisode)`
       SELECT e.id, e.part_id, e.combi_index, e.total_index, e.partial_index
       FROM episode WHERE part_id = ${partId} AND combi_index = ANY(${sql.array(indices, "int8")});`,
@@ -313,7 +316,7 @@ export class EpisodeContext extends QueryContext {
   }
 
   public async getMediumEpisodes(mediumId: number): Promise<readonly SimpleEpisode[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleEpisode)`
       SELECT
       episode.id,
@@ -333,7 +336,7 @@ export class EpisodeContext extends QueryContext {
     indices: number[],
     ignoreRelease = false,
   ): Promise<readonly SimpleEpisodeReleases[]> {
-    const episodes = await this.con.many(
+    const episodes = await this.con.any(
       sql.type(simpleEpisode)`SELECT 
       episode.id,
       episode.part_id,
@@ -365,7 +368,7 @@ export class EpisodeContext extends QueryContext {
       return value.id;
     });
 
-    const releases = await this.episodeReleaseContext.getReleases(episodeIds);
+    const releases = await this.getContext(EpisodeReleaseContext).getReleases(episodeIds);
 
     const idMap = new Map<number, SimpleRelease[]>();
     releases.forEach((value) => getElseSet(idMap, value.episodeId, () => []).push(value));
@@ -433,7 +436,7 @@ export class EpisodeContext extends QueryContext {
     if (!oldPartId || !newPartId) {
       return false;
     }
-    const replaceIds = await this.con.many<{
+    const replaceIds = await this.con.any<{
       oldId: number;
       newId: number;
     }>(
@@ -558,7 +561,7 @@ export class EpisodeContext extends QueryContext {
   }
 
   public async getReadToday(uuid: Uuid): Promise<readonly SimpleReadEpisode[]> {
-    return this.con.many(
+    return this.con.any(
       sql`SELECT episode_id, read_date, progress
       FROM user_episode WHERE read_date > (NOW() - INTERVAL 1 DAY) AND user_uuid=${uuid};`,
     );

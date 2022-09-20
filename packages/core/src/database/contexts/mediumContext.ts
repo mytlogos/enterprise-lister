@@ -20,6 +20,12 @@ import { DatabaseError, MissingEntityError, ValidationError } from "../../error"
 import { QueryContext } from "./queryContext";
 import { entity, mediumSynonym, simpleMedium, SimpleMedium, softInsertEntity } from "../databaseTypes";
 import { sql } from "slonik";
+import { PartContext } from "./partContext";
+import { JobContext } from "./jobContext";
+import { EpisodeReleaseContext } from "./episodeReleaseContext";
+import { MediumTocContext } from "./mediumTocContext";
+import { EpisodeContext } from "./episodeContext";
+import { InternalListContext } from "./internalListContext";
 
 export class MediumContext extends QueryContext {
   /**
@@ -39,7 +45,7 @@ export class MediumContext extends QueryContext {
     );
     // FIXME: storeModifications("medium", "insert", result);
 
-    await this.partContext.createStandardPart(id);
+    await this.getContext(PartContext).createStandardPart(id);
 
     const newMedium = {
       ...medium,
@@ -49,13 +55,13 @@ export class MediumContext extends QueryContext {
     // if it should be added to an list, do it right away
     if (uuid) {
       // add item to listId of medium or the standard list
-      await this.internalListContext.addItemsToList([newMedium.id], uuid);
+      await this.getContext(InternalListContext).addItemsToList([newMedium.id], uuid);
     }
     return newMedium;
   }
 
   public async getSimpleMedium(ids: number[]): Promise<readonly SimpleMedium[]> {
-    const resultArray = await this.con.many(
+    const resultArray = await this.con.any(
       sql.type(simpleMedium)`
       SELECT id, country_of_origin, languageOfOrigin,
       author, title, medium, artist, lang, state_origin,
@@ -73,7 +79,7 @@ export class MediumContext extends QueryContext {
   }
 
   public async getTocSearchMedia(): Promise<TocSearchMedium[]> {
-    const result = await this.con.many<{ host: string | null; mediumId: number; title: string; medium: number }>(
+    const result = await this.con.any<{ host: string | null; mediumId: number; title: string; medium: number }>(
       // eslint-disable-next-line @typescript-eslint/quotes
       sql`SELECT substring(episode_release.url, 1, 8 + strpos(substring(url from 9), '/')) as host,
         medium.id as mediumId, medium.title, medium.medium
@@ -161,7 +167,7 @@ export class MediumContext extends QueryContext {
         WHERE medium.id=${mediumId}`,
       );
 
-      const latestReleasesResult = await this.episodeContext.getLatestReleases(mediumId);
+      const latestReleasesResult = await this.getContext(EpisodeContext).getLatestReleases(mediumId);
 
       const currentReadResult = await this.con.maybeOneFirst(
         sql.type(entity)`
@@ -215,7 +221,7 @@ export class MediumContext extends QueryContext {
   }
 
   public async getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
-    const readStatsPromise = this.con.many<{ id: number; totalEpisode: number; readEpisodes: number }>(
+    const readStatsPromise = this.con.any<{ id: number; totalEpisode: number; readEpisodes: number }>(
       sql`
       SELECT part.medium_id as id, COUNT(*) as totalEpisodes ,
       COUNT(case when episode.id in (
@@ -225,7 +231,7 @@ export class MediumContext extends QueryContext {
       INNER JOIN episode ON part.id=episode.part_id
       GROUP BY part.medium_id;`,
     );
-    const tocs = await this.mediumTocContext.getTocs();
+    const tocs = await this.getContext(MediumTocContext).getTocs();
     const readStats = await readStatsPromise;
     const idMap = new Map<number, SecondaryMedium>();
 
@@ -264,7 +270,7 @@ export class MediumContext extends QueryContext {
       const escapedLinkQuery = escapeLike(value.link || "", { noRightBoundary: true });
       const escapedTitle = escapeLike(value.title, { singleQuotes: true });
 
-      const result = await this.con.many(
+      const result = await this.con.any(
         sql`
         SELECT id, medium
         FROM medium
@@ -334,7 +340,7 @@ export class MediumContext extends QueryContext {
   }
 
   public async getSynonyms(mediumId: number[]): Promise<Synonyms[]> {
-    const synonyms = await this.con.many(
+    const synonyms = await this.con.any(
       sql.type(mediumSynonym)`
       SELECT medium_id, synonym
       FROM medium_synonyms
@@ -398,8 +404,8 @@ export class MediumContext extends QueryContext {
     // the tocs will be transferred and do not need to be moved manually here
     // transferring the tocs should remove any related jobs,
     // and toc jobs should be the only jobs related directly to an medium
-    const sourceTocs = await this.mediumTocContext.getTocLinkByMediumId(sourceMediumId);
-    const destTocs = await this.mediumTocContext.getTocLinkByMediumId(destMediumId);
+    const sourceTocs = await this.getContext(MediumTocContext).getTocLinkByMediumId(sourceMediumId);
+    const destTocs = await this.getContext(MediumTocContext).getTocLinkByMediumId(destMediumId);
 
     // transfer unknown tocs and all related episodes
     await Promise.all(
@@ -487,7 +493,7 @@ export class MediumContext extends QueryContext {
         sql.type(entity)`SELECT id FROM medium WHERE (medium, title) = (${destMedium.medium},${destMedium.title});`,
       );
     } else {
-      await this.partContext.createStandardPart(id);
+      await this.getContext(PartContext).createStandardPart(id);
       mediumId = id;
     }
     const success = await this.transferToc(sourceMediumId, mediumId, toc);
@@ -503,8 +509,8 @@ export class MediumContext extends QueryContext {
 
     const domain = domainRegMatch[1];
 
-    await this.jobContext.removeJobLike("name", `toc-${sourceMediumId}-${toc}`);
-    const standardPartId = await this.partContext.getStandardPartId(destMediumId);
+    await this.getContext(JobContext).removeJobLike("name", `toc-${sourceMediumId}-${toc}`);
+    const standardPartId = await this.getContext(PartContext).getStandardPartId(destMediumId);
 
     if (!standardPartId) {
       throw new DatabaseError("medium does not have a standard part");
@@ -515,7 +521,7 @@ export class MediumContext extends QueryContext {
     );
     // FIXME: storeModifications("toc", "update", updatedTocResult);
 
-    const releases = await this.episodeReleaseContext.getEpisodeLinksByMedium(sourceMediumId);
+    const releases = await this.getContext(EpisodeReleaseContext).getEpisodeLinksByMedium(sourceMediumId);
     const episodeMap: Map<number, string[]> = new Map();
     const valueCb = () => [];
 

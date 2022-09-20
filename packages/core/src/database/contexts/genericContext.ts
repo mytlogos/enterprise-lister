@@ -15,6 +15,14 @@ import {
   simpleRelease,
   userList,
 } from "../databaseTypes";
+import { EpisodeReleaseContext } from "./episodeReleaseContext";
+import { EpisodeContext } from "./episodeContext";
+import { PartContext } from "./partContext";
+import { InternalListContext } from "./internalListContext";
+import { MediumContext } from "./mediumContext";
+import { MediumTocContext } from "./mediumTocContext";
+import { ExternalUserContext } from "./externalUserContext";
+import { ExternalListContext } from "./externalListContext";
 
 /**
  * Query Methods which do not pertain to a single particular entity.
@@ -74,12 +82,12 @@ export class GenericContext extends QueryContext {
   public async getNew(uuid: Uuid, date = new Date(0)): Promise<NewData> {
     const sqlTimestamp = sql.timestamp(date);
 
-    const episodeReleasePromise = this.con.many(
+    const episodeReleasePromise = this.con.any(
       sql.type(simpleRelease)`
       SELECT id, episode_id, title, url, release_date, locked, toc_id, source_type
       FROM episode_release WHERE updated_at > ${sqlTimestamp};`,
     );
-    const episodePromise = this.con.many(
+    const episodePromise = this.con.any(
       sql.type(pureEpisode)`
         SELECT episode.id, part_id, total_index, partial_index,
         user_episode.progress, user_episode.read_date
@@ -88,42 +96,42 @@ export class GenericContext extends QueryContext {
         WHERE (user_episode.user_uuid IS NULL OR user_episode.user_uuid = ${uuid})
         AND (updated_at > ${sqlTimestamp} OR read_date > ${sqlTimestamp});`,
     );
-    const partPromise = this.con.many(
+    const partPromise = this.con.any(
       sql.type(simplePart)`
       SELECT id, title, medium_id, total_index, partial_index, combi_index
       FROM part WHERE updated_at > ${sqlTimestamp};`,
     );
 
-    const mediumPromise = this.con.many(
+    const mediumPromise = this.con.any(
       sql.type(simpleMedium)`SELECT 
         id, country_of_origin, language_of_origin, author, artist, title,
         medium, lang, state_origin, state_tl, series, universe
         FROM medium WHERE updated_at > ${sqlTimestamp}`,
     );
-    const listPromise = this.con.many(
+    const listPromise = this.con.any(
       sql.type(userList)`
       SELECT id, name, medium FROM reading_list WHERE user_uuid=${uuid} AND updated_at > ${sqlTimestamp};`,
     );
-    const exListPromise = this.con.many(
+    const exListPromise = this.con.any(
       sql.type(simpleExternalList)`
       SELECT list.id, list.name, list.user_uuid, list.medium, list.url
       FROM external_user INNER JOIN external_reading_list as list ON uuid=user_uuid
       WHERE local_uuid=${uuid} AND list.updated_at > ${sqlTimestamp};`,
     );
-    const exUserPromise = this.con.many(
+    const exUserPromise = this.con.any(
       sql.type(basicDisplayExternalUser)`
       SELECT identifier, uuid, type, local_uuid
       FROM external_user WHERE local_uuid = ${uuid} AND updated_at > ${sqlTimestamp}`,
     );
-    const mediumInWaitPromise = this.con.many(
+    const mediumInWaitPromise = this.con.any(
       sql.type(mediumInWait)`SELECT title, medium, link FROM medium_in_wait WHERE updated_at > ${sqlTimestamp}`,
     );
-    const newsPromise = this.con.many<any>(
-      sql`SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN 0 ELSE 1 END as read
+    const newsPromise = this.con.any<any>(
+      sql`SELECT id, title, link, date, CASE WHEN user_id IS NULL THEN false ELSE true END as read
         FROM news_board LEFT JOIN news_user ON id=news_id
         WHERE (user_id IS NULL OR user_id = ${uuid}) AND updated_at > ${sqlTimestamp}`,
     );
-    const tocPromise = this.con.many(
+    const tocPromise = this.con.any(
       sql.type(simpleMediumToc)`
       SELECT id, medium_id, link, country_of_origin, language_of_origin, author, artist, title,
       medium, lang, state_origin, state_tl, series, universe
@@ -247,17 +255,17 @@ export class GenericContext extends QueryContext {
       episodes,
       episodeReleases,
     ] = await Promise.all([
-      this.externalUserContext.getExternalUser(query.externalUser),
-      Promise.all(query.externalMediaLists.map((id) => this.externalListContext.getExternalList(id))),
-      this.internalListContext.getShallowList(query.mediaLists, uuid),
-      this.mediumTocContext.getTocsByMediumIds(query.mediaTocs),
-      this.mediumTocContext.getTocsByIds(query.tocs),
-      this.mediumContext.getSimpleMedium(query.media),
-      this.partContext.getParts(query.parts, uuid, false),
-      this.partContext.getPartReleases(query.partReleases),
-      this.partContext.getPartItems(query.partEpisodes),
-      this.episodeContext.getEpisode(query.episodes, uuid),
-      this.episodeReleaseContext.getReleases(query.episodeReleases),
+      this.getContext(ExternalUserContext).getExternalUser(query.externalUser),
+      Promise.all(query.externalMediaLists.map((id) => this.getContext(ExternalListContext).getExternalList(id))),
+      this.getContext(InternalListContext).getShallowList(query.mediaLists, uuid),
+      this.getContext(MediumTocContext).getTocsByMediumIds(query.mediaTocs),
+      this.getContext(MediumTocContext).getTocsByIds(query.tocs),
+      this.getContext(MediumContext).getSimpleMedium(query.media),
+      this.getContext(PartContext).getParts(query.parts, uuid, false),
+      this.getContext(PartContext).getPartReleases(query.partReleases),
+      this.getContext(PartContext).getPartItems(query.partEpisodes),
+      this.getContext(EpisodeContext).getEpisode(query.episodes, uuid),
+      this.getContext(EpisodeReleaseContext).getReleases(query.episodeReleases),
     ]);
 
     return {

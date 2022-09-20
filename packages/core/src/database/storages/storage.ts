@@ -1,11 +1,11 @@
 import env from "../../env";
-import { PropertyNames, StringKeys, PromiseFunctions, EmptyPromise } from "../../types";
+import { StringKeys, PromiseFunctions, EmptyPromise } from "../../types";
 import logger from "../../logger";
 import { databaseSchema } from "../databaseSchema";
 import { delay, isString } from "../../tools";
 import { SchemaManager } from "../schemaManager";
 import { ContextCallback, ContextProvider, queryContextProvider } from "./storageTools";
-import { QueryContext } from "../contexts/queryContext";
+import { ContextConstructor, QueryContext } from "../contexts/queryContext";
 import { ConnectionContext } from "../databaseTypes";
 import { MysqlServerError } from "../mysqlError";
 import { MediumContext } from "../contexts/mediumContext";
@@ -66,7 +66,7 @@ export async function storageInContext<T, C extends ConnectionContext>(
 
   let result;
   try {
-    result = await pool.connect((con) => doTransaction(callback, provider(con), transaction));
+    result = await pool.transaction((con) => callback(provider(con)));
   } catch (e) {
     console.log(e);
     throw e;
@@ -195,13 +195,14 @@ class SqlPoolProvider {
           return;
         }
         manager.initTableSchema(databaseSchema, database);
-        this.startPromise = inContext((context) => manager.checkTableSchema(context.databaseContext), true).catch(
-          (error) => {
-            logger.error(error);
-            this.errorAtStart = true;
-            return Promise.reject(new Error("Database error occurred while starting"));
-          },
-        );
+        this.startPromise = inContext(
+          (context) => manager.checkTableSchema(context.getContext(DatabaseContext)),
+          true,
+        ).catch((error) => {
+          logger.error(error);
+          this.errorAtStart = true;
+          return Promise.reject(new Error("Database error occurred while starting"));
+        });
       } catch (e) {
         this.errorAtStart = true;
         logger.error(e);
@@ -250,8 +251,12 @@ class SqlPoolProvider {
             format: "CAMEL_CASE",
           }),
           {
+            queryExecutionError(_queryContext, query, error, notices) {
+              console.log(query, error, notices);
+              return null;
+            },
             afterQueryExecution(queryContext, query, result) {
-              console.log(queryContext, query, result);
+              // console.log(queryContext, query, result);
               return null;
             },
           },
@@ -297,18 +302,14 @@ class SqlPoolConfigUpdater {
 
 export const poolConfig = new SqlPoolConfigUpdater();
 
-/**
- * Property names of QueryContext whose type extends from SubContext.
- */
-type ContextName = PropertyNames<QueryContext, QueryContext>;
 type ContextProxy<T extends QueryContext, K extends StringKeys<T>> = new () => PromiseFunctions<T, K>;
 
-function inContextGeneric<T, C extends QueryContext>(callback: ContextCallback<T, C>, context: ContextName) {
-  return storageInContext(callback, (con) => queryContextProvider(con)[context] as unknown as C, true);
+function inContextGeneric<T, C extends QueryContext>(callback: ContextCallback<T, C>, context: ContextConstructor<C>) {
+  return storageInContext(callback, (con) => queryContextProvider(con).getContext(context), true);
 }
 
 export function ContextProxyFactory<T extends QueryContext, K extends StringKeys<T>>(
-  contextName: ContextName,
+  contextConstructor: ContextConstructor<T>,
   omitted: K[],
 ): ContextProxy<T, K> {
   const hiddenProps: K[] = [...omitted];
@@ -324,7 +325,7 @@ export function ContextProxyFactory<T extends QueryContext, K extends StringKeys
             };
           }
           // @ts-expect-error
-          return (...args: any[]) => inContextGeneric<any, T>((context) => context[prop](...args), contextName);
+          return (...args: any[]) => inContextGeneric<any, T>((context) => context[prop](...args), contextConstructor);
         },
       },
     );
@@ -332,7 +333,7 @@ export function ContextProxyFactory<T extends QueryContext, K extends StringKeys
 }
 
 export function SubContextProxyFactory<T extends QueryContext, K extends StringKeys<T> = keyof QueryContext>(
-  context: ContextName,
+  context: ContextConstructor<T>,
   omitted?: K[],
 ): ContextProxy<T, K> {
   return ContextProxyFactory<T, K | keyof QueryContext>(context, [
@@ -367,29 +368,29 @@ export function SubContextProxyFactory<T extends QueryContext, K extends StringK
  * @param context the property name on QueryContext
  */
 export function createStorage<T extends QueryContext, K extends StringKeys<T> = keyof QueryContext>(
-  context: ContextName,
+  context: ContextConstructor<T>,
 ): PromiseFunctions<T, K> {
   return new (SubContextProxyFactory<T, K>(context))();
 }
 
-export const databaseStorage = createStorage<DatabaseContext>("databaseContext");
-export const mediumStorage = createStorage<MediumContext>("mediumContext");
-export const partStorage = createStorage<PartContext>("partContext");
-export const episodeStorage = createStorage<EpisodeContext>("episodeContext");
-export const newsStorage = createStorage<NewsContext>("newsContext");
-export const mediumInWaitStorage = createStorage<MediumInWaitContext>("mediumInWaitContext");
-export const userStorage = createStorage<UserContext>("userContext");
-export const jobStorage = createStorage<JobContext>("jobContext");
-export const internalListStorage = createStorage<InternalListContext>("internalListContext");
-export const externalUserStorage = createStorage<ExternalUserContext>("externalUserContext");
-export const externalListStorage = createStorage<ExternalListContext>("externalListContext");
-export const hookStorage = createStorage<ScraperHookContext>("scraperHookContext");
-export const appEventStorage = createStorage<AppEventContext>("appEventContext");
-export const customHookStorage = createStorage<CustomHookContext>("customHookContext");
-export const notificationStorage = createStorage<NotificationContext>("notificationContext");
-export const episodeReleaseStorage = createStorage<EpisodeReleaseContext>("episodeReleaseContext");
-export const mediumTocStorage = createStorage<MediumTocContext>("mediumTocContext");
-export const storage = createStorage<GenericContext>("genericContext");
+export const databaseStorage = createStorage(DatabaseContext);
+export const mediumStorage = createStorage(MediumContext);
+export const partStorage = createStorage(PartContext);
+export const episodeStorage = createStorage(EpisodeContext);
+export const newsStorage = createStorage(NewsContext);
+export const mediumInWaitStorage = createStorage(MediumInWaitContext);
+export const userStorage = createStorage(UserContext);
+export const jobStorage = createStorage(JobContext);
+export const internalListStorage = createStorage(InternalListContext);
+export const externalUserStorage = createStorage(ExternalUserContext);
+export const externalListStorage = createStorage(ExternalListContext);
+export const hookStorage = createStorage(ScraperHookContext);
+export const appEventStorage = createStorage(AppEventContext);
+export const customHookStorage = createStorage(CustomHookContext);
+export const notificationStorage = createStorage(NotificationContext);
+export const episodeReleaseStorage = createStorage(EpisodeReleaseContext);
+export const mediumTocStorage = createStorage(MediumTocContext);
+export const storage = createStorage(GenericContext);
 
 /**
  *

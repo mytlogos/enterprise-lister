@@ -11,6 +11,8 @@ import {
   simpleMediumToc,
 } from "../databaseTypes";
 import { QueryContext } from "./queryContext";
+import { EpisodeReleaseContext } from "./episodeReleaseContext";
+import { JobContext } from "./jobContext";
 
 function selectAllColumns() {
   return sql`SELECT id, medium_id, link, country_of_origin,
@@ -38,7 +40,7 @@ export class MediumTocContext extends QueryContext {
   }
 
   public getTocs(): Promise<readonly SimpleMediumToc[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleMediumToc)`
       ${selectAllColumns()};`,
     );
@@ -111,16 +113,14 @@ export class MediumTocContext extends QueryContext {
   }
 
   public async getTocsByMediumIds(mediumId: number[]): Promise<readonly SimpleMediumToc[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleMediumToc)`
       ${selectAllColumns()} WHERE medium_id = ANY(${sql.array(mediumId, "int8")});`,
     );
   }
 
   public getTocsByIds(tocIds: number[]): Promise<readonly SimpleMediumToc[]> {
-    return this.con.many(
-      sql.type(simpleMediumToc)`${selectAllColumns()} WHERE id = ANY(${sql.array(tocIds, "int8")});`,
-    );
+    return this.con.any(sql.type(simpleMediumToc)`${selectAllColumns()} WHERE id = ANY(${sql.array(tocIds, "int8")});`);
   }
 
   public async removeMediumToc(mediumId: number, link: string): Promise<boolean> {
@@ -130,10 +130,10 @@ export class MediumTocContext extends QueryContext {
       throw new ValidationError("Invalid link, Unable to extract Domain: " + link);
     }
 
-    await this.jobContext.removeJobLike("name", `toc-${mediumId}-${link}`);
+    await this.getContext(JobContext).removeJobLike("name", `toc-${mediumId}-${link}`);
     const domain = domainRegMatch[1];
 
-    const releases = await this.episodeReleaseContext.getEpisodeLinksByMedium(mediumId);
+    const releases = await this.getContext(EpisodeReleaseContext).getEpisodeLinksByMedium(mediumId);
     const episodeMap: Map<number, string[]> = new Map();
     const valueCb = () => [];
 
@@ -179,12 +179,12 @@ export class MediumTocContext extends QueryContext {
   }
 
   public getAllMediaTocs(): Promise<ReadonlyArray<{ link?: string; id: number }>> {
-    return this.con.many<{ link?: string; id: number }>(
+    return this.con.any<{ link?: string; id: number }>(
       sql`SELECT medium.id, medium_toc.link FROM medium LEFT JOIN medium_toc ON medium.id=medium_toc.medium_id`,
     );
   }
 
   public async getAllTocs(): Promise<readonly MinimalMediumtoc[]> {
-    return this.con.many(sql.type(minimalMediumtoc)`SELECT id, medium_id, link FROM medium_toc;`);
+    return this.con.any(sql.type(minimalMediumtoc)`SELECT id, medium_id, link FROM medium_toc;`);
   }
 }

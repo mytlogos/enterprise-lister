@@ -25,7 +25,7 @@ export class CustomHookContext extends QueryContext {
   }
 
   public async getHooks(): Promise<readonly CustomHook[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(customHook)`SELECT id, name, state, updated_at, hook_state, comment FROM custom_hook;`,
     );
   }

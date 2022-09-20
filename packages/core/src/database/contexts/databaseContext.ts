@@ -3,6 +3,7 @@ import { QueryContext } from "./queryContext";
 import { EmptyPromise } from "../../types";
 import { dbTrigger, DbTrigger } from "../databaseTypes";
 import { sql } from "slonik";
+import { joinIdentifier } from "./helper";
 
 const database = "enterprise";
 
@@ -18,11 +19,13 @@ export class DatabaseContext extends QueryContext {
   }
 
   public async startMigration(): Promise<boolean> {
-    return this.con.query(sql`UPDATE enterprise_database_info SET migrating=1;`).then((value) => value.rowCount === 1);
+    const value = await this.con.query(sql`UPDATE enterprise_database_info SET migrating=false;`);
+    return value.rowCount === 1;
   }
 
   public async stopMigration(): Promise<boolean> {
-    return this.con.query(sql`UPDATE enterprise_database_info SET migrating=0;`).then((value) => value.rowCount === 1);
+    const value = await this.con.query(sql`UPDATE enterprise_database_info SET migrating=false;`);
+    return value.rowCount === 1;
   }
 
   public async updateDatabaseVersion(version: number): EmptyPromise {
@@ -34,21 +37,21 @@ export class DatabaseContext extends QueryContext {
   }
 
   public getTables(): Promise<readonly any[]> {
-    return this.con.many(sql`SHOW TABLES;`);
+    return this.con.any(sql`SHOW TABLES;`);
   }
 
   public getTablesPg(): Promise<ReadonlyArray<{ schemaname: string; tablename: string }>> {
-    return this.con.many<{ schemaname: string; tablename: string }>(
+    return this.con.any<{ schemaname: string; tablename: string }>(
       sql`select schemaname, tablename from pg_catalog.pg_tables;`,
     );
   }
 
   public async getTriggers(): Promise<readonly DbTrigger[]> {
-    return this.con.many(sql.type(dbTrigger)`SHOW TRIGGERS;`);
+    return this.con.any(sql.type(dbTrigger)`SHOW TRIGGERS;`);
   }
 
   public async getTriggersPg(): Promise<readonly DbTrigger[]> {
-    return this.con.many<DbTrigger>(sql`
+    return this.con.any<DbTrigger>(sql`
     SELECT
       action_timing as timing,
       trigger_schema as table,
@@ -57,6 +60,24 @@ export class DatabaseContext extends QueryContext {
     FROM 
       information_schema.triggers
     `);
+  }
+
+  public async getIndices(): Promise<ReadonlyArray<{ tableName: string; indexName: string; columnNames: string[] }>> {
+    return this.con.any(sql`
+      select
+        t.relname as table_name,
+        i.relname as index_name,
+        array_agg(a.attname)  as column_names
+      from
+        pg_catalog.pg_class t
+      join pg_catalog.pg_attribute a on t.oid    =      a.attrelid 
+      join pg_catalog.pg_index ix    on t.oid    =     ix.indrelid
+      join pg_catalog.pg_class i     on a.attnum = any(ix.indkey)
+                                    and i.oid    =     ix.indexrelid
+      join pg_catalog.pg_namespace n on n.oid    =      t.relnamespace
+      where t.relkind = 'r' and n.nspname = 'public'
+      group by t.relname, i.relname;
+  `);
   }
 
   public createTrigger(trigger: Trigger): Promise<any> {
@@ -103,7 +124,7 @@ export class DatabaseContext extends QueryContext {
     const index = sql.identifier([indexName]);
     const table = sql.identifier([tableName]);
 
-    await this.con.query(sql`CREATE UNIQUE INDEX IF NOT EXISTS ${index} ON ${table} (${sql.identifier(columns)});`);
+    await this.con.query(sql`CREATE UNIQUE INDEX IF NOT EXISTS ${index} ON ${table} (${joinIdentifier(columns)});`);
   }
 
   public async dropIndex(tableName: string, indexName: string): EmptyPromise {
@@ -126,7 +147,7 @@ export class DatabaseContext extends QueryContext {
     const index = sql.identifier([indexName]);
     const table = sql.identifier([tableName]);
 
-    await this.con.query(sql`CREATE INDEX IF NOT EXISTS ${index} ON ${table} (${sql.identifier(columns)});`);
+    await this.con.query(sql`CREATE INDEX IF NOT EXISTS ${index} ON ${table} (${joinIdentifier(columns)});`);
   }
 
   public async addForeignKey(
@@ -161,7 +182,7 @@ export class DatabaseContext extends QueryContext {
 
   public async addPrimaryKey(tableName: string, ...columns: string[]): EmptyPromise {
     const table = this.escapeIdentifier(tableName);
-    const primaryColumns = sql.identifier(columns);
+    const primaryColumns = joinIdentifier(columns);
 
     await this.con.query(sql`ALTER TABLE ${table} ADD PRIMARY KEY (${primaryColumns})`);
   }

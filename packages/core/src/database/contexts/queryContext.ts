@@ -1,34 +1,18 @@
 import { EmptyPromise, Primitive, DBEntity, TypedQuery } from "../../types";
 import { getElseSet, ignore } from "../../tools";
-import { DatabaseContext } from "./databaseContext";
-import { UserContext } from "./userContext";
-import { ExternalUserContext } from "./externalUserContext";
-import { InternalListContext } from "./internalListContext";
-import { ExternalListContext } from "./externalListContext";
-import { NewsContext } from "./newsContext";
-import { EpisodeContext } from "./episodeContext";
-import { MediumContext } from "./mediumContext";
-import { PartContext } from "./partContext";
-import { JobContext } from "./jobContext";
-import { MediumInWaitContext } from "./mediumInWaitContext";
-import { ConnectionContext } from "../databaseTypes";
-import { ScraperHookContext } from "./scraperHookContext";
-import { AppEventContext } from "./appEventContext";
-import { CustomHookContext } from "./customHookContext";
 import { ValidationError } from "../../error";
-import { NotificationContext } from "./notificationContext";
-import { GenericContext } from "./genericContext";
 import {
   DatabaseConnection,
+  DatabaseTransactionConnection,
   QueryResult,
   QueryResultRow,
   sql,
   TaggedTemplateLiteralInvocation,
   ValueExpression,
 } from "slonik";
-import { EpisodeReleaseContext } from "./episodeReleaseContext";
 import { Duplex, pipeline } from "stream";
-import { MediumTocContext } from "./mediumTocContext";
+import { ConnectionContext } from "../databaseTypes";
+import { joinAnd, joinComma } from "./helper";
 
 const database = "enterprise";
 
@@ -62,10 +46,12 @@ function emptyPacket(): QueryResult<any> {
   };
 }
 
-interface ContextConfig {
-  connection: DatabaseConnection;
+export interface ContextConfig {
+  connection: DatabaseConnection | DatabaseTransactionConnection;
   subClass: Map<new (parentContext: ContextConfig) => any, any>;
 }
+
+export type ContextConstructor<T> = new (context: ContextConfig) => T;
 
 /**
  * A Class for consecutive queries on the same connection.
@@ -73,84 +59,12 @@ interface ContextConfig {
 export class QueryContext implements ConnectionContext {
   private readonly contextConfig: ContextConfig;
 
-  private getSubInstanceLazy<T>(constructor: new (context: ContextConfig) => T): T {
-    return getElseSet(this.contextConfig.subClass, constructor, () => new constructor(this.contextConfig));
-  }
-
-  public get databaseContext(): DatabaseContext {
-    return this.getSubInstanceLazy(DatabaseContext);
-  }
-
-  public get userContext(): UserContext {
-    return this.getSubInstanceLazy(UserContext);
-  }
-
-  public get partContext(): PartContext {
-    return this.getSubInstanceLazy(PartContext);
-  }
-
-  public get mediumContext(): MediumContext {
-    return this.getSubInstanceLazy(MediumContext);
-  }
-
-  public get episodeContext(): EpisodeContext {
-    return this.getSubInstanceLazy(EpisodeContext);
-  }
-
-  public get newsContext(): NewsContext {
-    return this.getSubInstanceLazy(NewsContext);
-  }
-
-  public get externalListContext(): ExternalListContext {
-    return this.getSubInstanceLazy(ExternalListContext);
-  }
-
-  public get externalUserContext(): ExternalUserContext {
-    return this.getSubInstanceLazy(ExternalUserContext);
-  }
-
-  public get internalListContext(): InternalListContext {
-    return this.getSubInstanceLazy(InternalListContext);
-  }
-
-  public get jobContext(): JobContext {
-    return this.getSubInstanceLazy(JobContext);
-  }
-
-  public get mediumInWaitContext(): MediumInWaitContext {
-    return this.getSubInstanceLazy(MediumInWaitContext);
-  }
-
-  public get scraperHookContext(): ScraperHookContext {
-    return this.getSubInstanceLazy(ScraperHookContext);
-  }
-
-  public get appEventContext(): AppEventContext {
-    return this.getSubInstanceLazy(AppEventContext);
-  }
-
-  public get customHookContext(): CustomHookContext {
-    return this.getSubInstanceLazy(CustomHookContext);
-  }
-
-  public get notificationContext(): NotificationContext {
-    return this.getSubInstanceLazy(NotificationContext);
-  }
-
-  public get genericContext(): GenericContext {
-    return this.getSubInstanceLazy(GenericContext);
-  }
-
-  public get episodeReleaseContext(): EpisodeReleaseContext {
-    return this.getSubInstanceLazy(EpisodeReleaseContext);
-  }
-
-  public get mediumTocContext(): MediumTocContext {
-    return this.getSubInstanceLazy(MediumTocContext);
-  }
-
   public constructor(context: ContextConfig) {
     this.contextConfig = context;
+  }
+
+  public getContext<T>(constructor: ContextConstructor<T>): T {
+    return getElseSet(this.contextConfig.subClass, constructor, () => new constructor(this.contextConfig));
   }
 
   public escapeIdentifier(str: string) {
@@ -207,7 +121,7 @@ export class QueryContext implements ConnectionContext {
     return databases.rows.find((data) => data.database === database) != null;
   }
 
-  public get con(): DatabaseConnection {
+  public get con(): DatabaseConnection | DatabaseTransactionConnection {
     return this.contextConfig.connection;
   }
 
@@ -228,11 +142,10 @@ export class QueryContext implements ConnectionContext {
     if (!condition || (Array.isArray(condition) && !condition.length)) {
       return Promise.reject(new ValidationError("Invalid delete condition"));
     }
-    const query = sql`DELETE FROM ${this.escapeIdentifier(table)} WHERE ${sql.join(
+    const query = sql`DELETE FROM ${this.escapeIdentifier(table)} WHERE ${joinAnd(
       condition.map((value) => {
         return sql`${sql.identifier([value.column])} = ${value.value}`;
       }),
-      sql` AND `,
     )};`;
 
     // @ts-expect-error
@@ -258,9 +171,8 @@ export class QueryContext implements ConnectionContext {
       return Promise.resolve(emptyPacket());
     }
 
-    const query = sql`UPDATE ${sql.identifier([table])} SET ${sql.join(valueExpressions, sql`, `)} WHERE ${sql.join(
+    const query = sql`UPDATE ${sql.identifier([table])} SET ${joinComma(valueExpressions)} WHERE ${joinAnd(
       condition.map((value) => sql`${sql.identifier([value.column])} = ${value.value}`),
-      sql` AND `,
     )};`;
 
     return this.con.query(query) as Promise<QueryResult<DBEntity<T>>>;

@@ -5,6 +5,7 @@ import { CredentialError, DuplicateEntityError, SessionError, ValidationError } 
 import { QueryContext } from "./queryContext";
 import { sql } from "slonik";
 import { simpleUser } from "../databaseTypes";
+import { InternalListContext } from "./internalListContext";
 
 /**
  * Checks whether the password equals to the given hash
@@ -65,7 +66,11 @@ export class UserContext extends QueryContext {
 
     // every user gets a standard list for everything that got no list assigned
     // this standard list name 'Standard' is reserved for this purpose
-    await this.internalListContext.addList({ name: standardListName, medium: allTypes(), userUuid: id });
+    await this.getContext(InternalListContext).addList({
+      name: standardListName,
+      medium: allTypes(),
+      userUuid: id,
+    });
 
     return this.loginUser(userName, password, ip);
   }

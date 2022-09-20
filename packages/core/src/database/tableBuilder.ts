@@ -4,6 +4,7 @@ import { TableSchema } from "./tableSchema";
 import { ColumnSchema } from "./columnSchema";
 import { parseDataColumn, parseForeignKey, parsePrimaryKey, parseUnique } from "./tableParser";
 import { SchemaError } from "../error";
+import { sql } from "slonik";
 
 export class TableBuilder {
   private readonly columns: ColumnSchema[] = [];
@@ -11,7 +12,7 @@ export class TableBuilder {
   private main?: boolean;
   private readonly invalidationColumn?: string;
   private readonly databaseBuilder: DataBaseBuilder;
-  private readonly stubTable = new TableSchema([], "");
+  private readonly stubTable = new TableSchema([], "", sql``);
   private readonly uniqueIndices: ColumnSchema[][] = [];
 
   public constructor(databaseBuilder: DataBaseBuilder) {
@@ -69,12 +70,7 @@ export class TableBuilder {
     if (!this.name) {
       throw new SchemaError("table has no name");
     }
-    const table = new TableSchema(
-      [...this.columns, ...this.stubTable.columns],
-      this.name,
-      this.main,
-      this.uniqueIndices,
-    );
+    const table = new TableSchema([...this.columns, ...this.stubTable.columns], this.name, sql``, this.uniqueIndices);
     table.columns.forEach((value) => (value.table = table));
     return table;
   }

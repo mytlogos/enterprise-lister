@@ -1,6 +1,7 @@
 import { sql } from "slonik";
 import { AppEventFilter } from "../../types";
 import { appEvent, AppEvent } from "../databaseTypes";
+import { joinAnd, joinIdentifier } from "./helper";
 import { QueryContext } from "./queryContext";
 
 export class AppEventContext extends QueryContext {
@@ -54,10 +55,10 @@ export class AppEventContext extends QueryContext {
       whereFilter.push(sql`program = ANY(${array})`);
     }
 
-    const whereClause = whereFilter.length ? sql` WHERE ${sql.join(whereFilter, sql` AND `)}` : sql``;
-    const orderClause = filter.sortOrder?.length ? sql` ORDER BY ${sql.identifier(filter.sortOrder)}` : sql``;
+    const whereClause = whereFilter.length ? sql` WHERE ${joinAnd(whereFilter)}` : sql``;
+    const orderClause = filter.sortOrder?.length ? sql` ORDER BY ${joinIdentifier(filter.sortOrder)}` : sql``;
 
-    return this.con.many(
+    return this.con.any(
       sql.type(appEvent)`
       SELECT id, program, date, type FROM app_events${whereClause}${orderClause};`,
     );

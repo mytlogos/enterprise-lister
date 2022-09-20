@@ -13,6 +13,11 @@ import { escapeLike } from "../storages/storageTools";
 import { DatabaseError } from "../../error";
 import { QueryContext } from "./queryContext";
 import { sql } from "slonik";
+import { MediumTocContext } from "./mediumTocContext";
+import { MediumContext } from "./mediumContext";
+import { PartContext } from "./partContext";
+import { InternalListContext } from "./internalListContext";
+import { joinAnd } from "./helper";
 
 export class MediumInWaitContext extends QueryContext {
   public async createFromMediaInWait(
@@ -22,7 +27,7 @@ export class MediumInWaitContext extends QueryContext {
     listId?: number,
   ): Promise<Medium> {
     const title = sanitizeString(medium.title);
-    const newMedium: SimpleMedium = await this.mediumContext.addMedium({
+    const newMedium: SimpleMedium = await this.getContext(MediumContext).addMedium({
       title,
       medium: medium.medium,
     });
@@ -37,7 +42,7 @@ export class MediumInWaitContext extends QueryContext {
       await Promise.all(
         same
           .filter((value) => value && value.medium === medium.medium)
-          .map((value) => this.mediumTocContext.addToc(id, value.link)),
+          .map((value) => this.getContext(MediumTocContext).addToc(id, value.link)),
       );
 
       const synonyms: string[] = same
@@ -45,19 +50,19 @@ export class MediumInWaitContext extends QueryContext {
         .filter((value) => !equalsIgnore(value, medium.title));
 
       if (synonyms.length) {
-        await this.mediumContext.addSynonyms({ mediumId: id, synonym: synonyms });
+        await this.getContext(MediumContext).addSynonyms({ mediumId: id, synonym: synonyms });
       }
       toDeleteMediaInWaits.push(...same);
     }
     if (listId) {
-      await this.internalListContext.addItemsToList([id], uuid, listId);
+      await this.getContext(InternalListContext).addItemsToList([id], uuid, listId);
     }
     if (medium.link) {
-      await this.mediumTocContext.addToc(id, medium.link);
+      await this.getContext(MediumTocContext).addToc(id, medium.link);
     }
 
     await this.deleteMediaInWait(toDeleteMediaInWaits);
-    const parts = await this.partContext.getMediumParts(id);
+    const parts = await this.getContext(PartContext).getMediumParts(id);
     return {
       ...newMedium,
       parts: parts.map((value) => value.id),
@@ -71,11 +76,13 @@ export class MediumInWaitContext extends QueryContext {
     if (!same?.length) {
       return false;
     }
-    await Promise.all(same.filter((value) => value).map((value) => this.mediumTocContext.addToc(mediumId, value.link)));
+    await Promise.all(
+      same.filter((value) => value).map((value) => this.getContext(MediumTocContext).addToc(mediumId, value.link)),
+    );
 
     const synonyms: string[] = same.map((value) => sanitizeString(value.title));
 
-    await this.mediumContext.addSynonyms({ mediumId, synonym: synonyms });
+    await this.getContext(MediumContext).addSynonyms({ mediumId, synonym: synonyms });
     await this.deleteMediaInWait(same);
     return true;
   }
@@ -97,7 +104,7 @@ export class MediumInWaitContext extends QueryContext {
     }
     return this.stream(
       sql`SELECT title, medium, link FROM medium_in_wait${
-        whereFilter.length ? sql` WHERE ${sql.join(whereFilter, sql` AND `)}` : sql``
+        whereFilter.length ? sql` WHERE ${joinAnd(whereFilter)}` : sql``
       } ORDER BY title${limit}`,
     );
   }

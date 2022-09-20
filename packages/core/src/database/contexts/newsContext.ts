@@ -19,7 +19,7 @@ export class NewsContext extends QueryContext {
       return [value.title, value.link, value.date ? sql.timestamp(value.date) : null];
     });
 
-    const result = await this.con.many(
+    const result = await this.con.any(
       sql.type(simpleNews)`
       INSERT INTO news_board (title, link, date)
       SELECT * FROM ${sql.unnest(values, ["text", "text", "timestamptz"])}
@@ -30,13 +30,13 @@ export class NewsContext extends QueryContext {
   }
 
   public getLatestNews(domain: string): Promise<readonly SimpleNews[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(simpleNews)`SELECT * FROM news_board WHERE strpos(link, ${domain}) < 9 ORDER BY date DESC LIMIT 10`,
     );
   }
 
   public async getAll(uuid: Uuid): Promise<readonly News[]> {
-    return this.con.many(
+    return this.con.any(
       sql.type(news)`
       SELECT news_board.id, news_board.title, news_board.link, news_board.id, news_user.read
       FROM news_board
@@ -103,7 +103,7 @@ export class NewsContext extends QueryContext {
         )
         ORDER BY date DESC LIMIT 100`;
     }
-    return this.con.many(query);
+    return this.con.any(query);
   }
 
   /**
