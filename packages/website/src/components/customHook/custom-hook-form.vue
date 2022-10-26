@@ -125,7 +125,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { CustomHook, HookState } from "enterprise-core/dist/types";
+import { CustomHook } from "enterprise-core/dist/types";
 import { HookConfig } from "enterprise-scraper/dist/externals/custom/types";
 import { computed, PropType, reactive, toRef, watch } from "vue";
 import ScraperConfig from "./scraper-config.vue";
@@ -149,7 +149,7 @@ const logger = new Logger("custom-hook-form");
 
 const data = reactive({
   name: props.hook.name,
-  enabled: props.hook.hookState ? props.hook.hookState === HookState.ENABLED : true,
+  enabled: props.hook.enabled,
   comment: props.hook.comment,
   baseUrl: props.config.base,
   medium: MediaType.TEXT,
@@ -165,7 +165,7 @@ const hookModel = computed((): CustomHook => {
     ...props.hook,
     name: data.name,
     comment: data.comment,
-    hookState: data.enabled ? HookState.ENABLED : HookState.DISABLED,
+    enabled: data.enabled,
   };
 });
 
@@ -214,7 +214,7 @@ watch(
     if (newValue.comment !== data.comment) {
       data.comment = newValue.comment;
     }
-    const enabled = newValue.hookState === HookState.ENABLED;
+    const enabled = newValue.enabled;
     if (enabled !== data.enabled) {
       data.enabled = enabled;
     }

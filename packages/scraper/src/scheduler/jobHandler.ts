@@ -724,7 +724,7 @@ async function updateDatabase({ removedLists, result, addedLists, renamedLists, 
           medium: value.medium,
           userUuid: result.external.userUuid,
         })
-        .then((list) => externalListStorage.addItemsToList(value.media as number[], list.id))
+        .then((list) => externalListStorage.addItemsToList(value.media as number[], list.id, result.external.userUuid))
         .catch((error) => logger.error(error)),
     ),
   );

@@ -29,7 +29,7 @@ export class MediumTocContext extends QueryContext {
   }
 
   public async removeToc(tocLink: string): EmptyPromise {
-    const result = await this.con.manyFirst(
+    const result = await this.con.anyFirst(
       sql.type(entity)`SELECT medium_id as id FROM medium_toc WHERE link = ${tocLink}`,
     );
     await Promise.all(
@@ -109,7 +109,7 @@ export class MediumTocContext extends QueryContext {
   }
 
   public async getTocLinkByMediumId(mediumId: number): Promise<readonly string[]> {
-    return this.con.manyFirst(sql.type(linkValue)`SELECT link FROM medium_toc WHERE medium_id=${mediumId}`);
+    return this.con.anyFirst(sql.type(linkValue)`SELECT link FROM medium_toc WHERE medium_id=${mediumId}`);
   }
 
   public async getTocsByMediumIds(mediumId: number[]): Promise<readonly SimpleMediumToc[]> {

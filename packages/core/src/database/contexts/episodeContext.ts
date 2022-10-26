@@ -27,7 +27,7 @@ export class EpisodeContext extends QueryContext {
     return this.stream(
       sql.type(pureEpisode)`SELECT
       episode.id, episode.partial_index, episode.total_index,
-      episode.combi_index, episode.part_id as partId,
+      episode.combi_index, episode.part_id,
       coalesce(progress, 0) as progress, read_date
       FROM episode LEFT JOIN user_episode ON episode.id=user_episode.episode_id AND user_uuid IS NULL OR user_uuid=${uuid}`,
     );
@@ -54,7 +54,7 @@ export class EpisodeContext extends QueryContext {
       INNER JOIN part ON part.id=episode.part_id 
       WHERE medium_id=${mediumId}
       GROUP BY episode.id
-      ORDER BY episode.totalIndex DESC, episode.partialIndex DESC
+      ORDER BY episode.total_index DESC, episode.partial_index DESC
       LIMIT 5;`,
     );
     const releases = await this.getContext(EpisodeReleaseContext).getReleases(resultArray.map((value) => value.id));
@@ -452,7 +452,7 @@ export class EpisodeContext extends QueryContext {
       ON oldEpisode.combi_index=newEpisode.combi_index`,
     );
 
-    const changePartIds = await this.con.manyFirst(
+    const changePartIds = await this.con.anyFirst(
       sql.type(entity)`
       SELECT id FROM episode
       WHERE combi_index IN (SELECT combi_index FROM episode WHERE part_id = ${newPartId})
@@ -537,13 +537,13 @@ export class EpisodeContext extends QueryContext {
   }
 
   public async getChapterIndices(mediumId: number): Promise<readonly number[]> {
-    return this.con.manyFirst<{ combiIndex: number }>(
+    return this.con.anyFirst<{ combiIndex: number }>(
       sql`SELECT episode.combi_index FROM episode INNER JOIN part ON episode.part_id=part.id WHERE medium_id=${mediumId}`,
     );
   }
 
   public async getAllChapterLinks(mediumId: number): Promise<readonly string[]> {
-    return this.con.manyFirst<{ url: string }>(
+    return this.con.anyFirst<{ url: string }>(
       sql`SELECT url FROM episode
         INNER JOIN episode_release ON episode.id=episode_release.episode_id
         INNER JOIN part ON episode.part_id=part.id WHERE medium_id=${mediumId}`,
@@ -551,7 +551,7 @@ export class EpisodeContext extends QueryContext {
   }
 
   public async getUnreadChapter(uuid: Uuid): Promise<readonly number[]> {
-    return this.con.manyFirst(
+    return this.con.anyFirst(
       sql.type(entity)`
       SELECT id FROM episode WHERE id NOT IN
       (

@@ -16,7 +16,7 @@ export class NewsContext extends QueryContext {
   public async addNews(news: ReadonlyArray<Insert<SimpleNews>>): Promise<readonly SimpleNews[]> {
     // an empty link may be the result of a faulty link (e.g. a link which leads to 404 error)
     const values = news.map((value) => {
-      return [value.title, value.link, value.date ? sql.timestamp(value.date) : null];
+      return [value.title, value.link, value.date ? value.date.toISOString() : null];
     });
 
     const result = await this.con.any(
@@ -147,7 +147,7 @@ export class NewsContext extends QueryContext {
    *
    */
   public checkUnreadNews(uuid: Uuid): Promise<readonly number[]> {
-    return this.con.manyFirst(
+    return this.con.anyFirst(
       sql.type(entity)`SELECT id FROM news_board WHERE id NOT IN (
         SELECT news_id FROM news_user WHERE user_id = ${uuid}
       );`,

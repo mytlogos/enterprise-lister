@@ -11,7 +11,7 @@ import { getHook as getOpenLibraryHook } from "./direct/openLibraryScraper";
 import { ContentDownloader, Hook, NewsScraper, SearchScraper, TocScraper, TocSearchScraper } from "./types";
 import { customHookStorage, hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { getListManagerHooks } from "./listManager";
-import { MediaType } from "enterprise-core/dist/tools";
+import { isString, MediaType } from "enterprise-core/dist/tools";
 import { HookConfig } from "./custom/types";
 import { HookConfig as HookConfigV2 } from "./customv2/types";
 import { createHook as createHookV2 } from "./customv2";
@@ -63,11 +63,16 @@ async function loadCustomHooks(): Promise<{ custom: Hook[]; disabled: Set<string
       continue;
     }
     let hookConfig: HookConfig | HookConfigV2;
-    try {
-      hookConfig = JSON.parse(hookEntity.state);
-    } catch (error) {
-      logger.warn("Could not parse HookState of CustomHook", { hook_name: hookEntity.name });
-      continue;
+
+    if (isString(hookEntity.state)) {
+      try {
+        hookConfig = JSON.parse(hookEntity.state);
+      } catch (error) {
+        logger.warn("Could not parse HookConfig of CustomHook", { hook_name: hookEntity.name });
+        continue;
+      }
+    } else {
+      hookConfig = hookEntity.state as unknown as HookConfig | HookConfigV2;
     }
 
     let customHook;

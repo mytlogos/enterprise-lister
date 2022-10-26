@@ -32,21 +32,21 @@ export class PartContext extends QueryContext {
 
   public async getStandardPartId(mediumId: number): Promise<number | null> {
     return this.con.maybeOneFirst(
-      sql.type(entity)`SELECT id FROM part WHERE medium_id = ${mediumId} AND totalIndex=-1`,
+      sql.type(entity)`SELECT id FROM part WHERE medium_id = ${mediumId} AND total_index=-1`,
     );
   }
 
   public async getStandardPart(mediumId: number): VoidablePromise<ShallowPart> {
     const standardPartResult = await this.con.maybeOne(
       sql.type(simplePart)`SELECT id, total_index, partial_index, combi_index, title, medium_id
-      FROM part WHERE medium_id = ${mediumId} AND totalIndex=-1`,
+      FROM part WHERE medium_id = ${mediumId} AND total_index=-1`,
     );
 
     if (!standardPartResult) {
       return;
     }
 
-    const episodesIds = await this.con.manyFirst(
+    const episodesIds = await this.con.anyFirst(
       sql.type(entity)`SELECT id FROM episode WHERE part_id = ${standardPartResult.id}`,
     );
 
@@ -58,7 +58,7 @@ export class PartContext extends QueryContext {
   }
 
   public async getMediumPartIds(mediumId: number): Promise<readonly number[]> {
-    return this.con.manyFirst(sql.type(entity)`SELECT id FROM part WHERE medium_id = ${mediumId};`);
+    return this.con.anyFirst(sql.type(entity)`SELECT id FROM part WHERE medium_id = ${mediumId};`);
   }
 
   /**
@@ -259,7 +259,7 @@ export class PartContext extends QueryContext {
     if (!nonStandardPartIds.length) {
       return [];
     }
-    return this.con.manyFirst<{ partId: number }>(
+    return this.con.anyFirst<{ partId: number }>(
       sql`
       SELECT part_id FROM episode WHERE combiIndex IN (
         SELECT combiIndex FROM episode WHERE part_id = ${standardId}
@@ -282,7 +282,7 @@ export class PartContext extends QueryContext {
 
     try {
       partId = await this.con.oneFirst(
-        sql.type(entity)`INSERT INTO part (medium_id, title, totalIndex, partialIndex, combiIndex)
+        sql.type(entity)`INSERT INTO part (medium_id, title, total_index, partial_index, combi_index)
         VALUES (
           ${part.mediumId},${part.title ?? null},${part.totalIndex},${part.partialIndex ?? null},${partCombiIndex}
         )
@@ -340,11 +340,15 @@ export class PartContext extends QueryContext {
         }
 
         if (part.partialIndex) {
-          updates.push(sql`tartialIndex = ${part.partialIndex ?? null}`);
+          updates.push(sql`partial_index = ${part.partialIndex ?? null}`);
         }
 
         if (part.totalIndex) {
-          updates.push(sql`totalIndex = ${part.totalIndex}`);
+          updates.push(sql`total_index = ${part.totalIndex}`);
+        }
+
+        if (part.totalIndex || part.partialIndex) {
+          updates.push(sql`combi_index = ${combiIndex(part)}`);
         }
         return updates;
       },
@@ -369,7 +373,7 @@ export class PartContext extends QueryContext {
     const partName = "Non Indexed Volume";
     const id = await this.con.oneFirst(
       sql.type(entity)`
-      INSERT INTO part (medium_id,title, totalIndex, combiIndex)
+      INSERT INTO part (medium_id,title, total_index, combi_index)
       VALUES (${mediumId},${partName},-1,-1)
       RETURNING id;`,
     );

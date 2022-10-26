@@ -86,22 +86,18 @@ export class JobContext extends QueryContext {
 
       if (statFilter.unit === "day") {
         filterColumn.push(sql`name`);
-        filterColumn.push(
-          sql`TIMESTAMPADD(second, -SECOND(start)-MINUTE(start)*60-HOUR(start)*3600, start) as timepoint`,
-        );
+        filterColumn.push(sql`date_trunc('day', start) as timepoint`);
       } else if (statFilter.unit === "hour") {
-        filterColumn.push(sql`TIMESTAMPADD(second, -SECOND(start)-MINUTE(start)*60, start) as timepoint`);
+        filterColumn.push(sql`date_trunc('hour', start) as timepoint`);
       } else if (statFilter.unit === "minute") {
-        filterColumn.push(sql`TIMESTAMPADD(second, -SECOND(start), start) as timepoint`);
+        filterColumn.push(sql`date_trunc('minute', start) as timepoint`);
       }
     }
     const empty = sql``;
     const values = (await this.con.any(
       sql`
         SELECT 
-            SELECT 
-        SELECT 
-        ${joinComma(filterColumn)}
+        ${filterColumn.length ? sql`${joinComma(filterColumn)},` : sql``}
         AVG(network_queries) as avgnetwork, 
             AVG(network_queries) as avgnetwork, 
         AVG(network_queries) as avgnetwork, 
@@ -700,7 +696,7 @@ export class JobContext extends QueryContext {
         context, arguments, created, updated, deleted, queries, network_queries, network_received, network_send
       ) VALUES (
         ${job.id},${job.name},${job.name},${scheduledAt ? sql.timestamp(scheduledAt) : null},
-        ${runningSince},${sql.timestamp(finished)},${result},${message},${""},${args ?? null},
+        ${runningSince},${sql.timestamp(finished)},${result},${sql.jsonb(message)},${""},${args ?? null},
         ${created},${updated},${deleted},${queries},${networkRequests},${networkReceived},${networkSend}
       );`,
     );

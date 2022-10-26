@@ -69,7 +69,7 @@ export class InternalListContext extends QueryContext {
       throw new ValidationError("Missing List Name");
     }
 
-    const result = await this.con.manyFirst(
+    const result = await this.con.anyFirst(
       sql.type(entity)`SELECT medium_id as id FROM list_medium WHERE list_id = ${storageList.id};`,
     );
     return {
@@ -115,12 +115,12 @@ export class InternalListContext extends QueryContext {
    * Deletes a single list irreversibly.
    */
   public async deleteList(listId: number, uuid: Uuid): Promise<boolean> {
-    const result = await this.con.manyFirst(
+    const exists = await this.con.exists(
       sql.type(entity)`SELECT id FROM reading_list WHERE id = ${listId} AND user_uuid = ${uuid}`,
     );
 
     // first check if such a list does exist for the given user
-    if (!result.length) {
+    if (!exists) {
       return Promise.reject(new MissingEntityError(`List ${listId}-${uuid} does not exist`));
     }
     // first remove all links between a list and their media

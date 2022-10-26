@@ -83,17 +83,17 @@ export interface MinMedium {
  */
 export interface SimpleMedium {
   id?: Id;
-  countryOfOrigin?: string;
-  languageOfOrigin?: string;
-  author?: string;
   title: string;
   medium: MediaType;
-  artist?: string;
-  lang?: string;
-  stateOrigin?: ReleaseState;
-  stateTl?: ReleaseState;
-  series?: string;
-  universe?: string;
+  countryOfOrigin?: string | null;
+  languageOfOrigin?: string | null;
+  author?: string | null;
+  artist?: string | null;
+  lang?: string | null;
+  stateOrigin?: ReleaseState | null;
+  stateTl?: ReleaseState | null;
+  series?: string | null;
+  universe?: string | null;
 }
 
 /**
@@ -269,7 +269,7 @@ export interface ExtractedIndex {
 
 export interface Indexable {
   totalIndex: number;
-  partialIndex?: number;
+  partialIndex?: number | null;
 }
 
 /**
@@ -483,8 +483,8 @@ export interface EpisodeRelease extends SimpleRelease {
   title: string;
   releaseDate: Date;
   locked: boolean;
-  sourceType?: string;
-  tocId?: Id;
+  sourceType?: string | null;
+  tocId?: Id | null;
 }
 
 /**
@@ -788,8 +788,8 @@ export interface ExternalUser {
   identifier: string;
   type: number;
   lists: ExternalList[];
-  lastScrape?: Date;
-  cookies?: Nullable<string>;
+  lastScrape?: Date | null;
+  cookies?: string | null;
 }
 
 /**

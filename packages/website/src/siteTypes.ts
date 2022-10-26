@@ -409,13 +409,6 @@ export interface CustomHookStore {
   hooks: Record<number, CustomHook>;
 }
 
-export interface ScraperHook {
-  id: number;
-  name: string;
-  state: string;
-  message: string;
-}
-
 export interface MediumInWait {
   title: string;
   medium: MediaType;

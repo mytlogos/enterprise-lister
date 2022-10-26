@@ -18,7 +18,6 @@ import {
   TimeBucket,
   MediaType,
   SearchResult,
-  ScraperHook,
   MediumInWait,
   MediumInWaitSearch,
   Part,
@@ -34,7 +33,7 @@ import {
   PostList,
   PostListMedium,
 } from "enterprise-server/dist/validation";
-import { CustomHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
+import { CustomHook, ScraperHook, Id, Notification, Nullable, Paginated, SimpleUser } from "enterprise-core/dist/types";
 import qs from "qs";
 import { useUserStore } from "./store/store";
 

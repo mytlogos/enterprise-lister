@@ -38,10 +38,10 @@ export class EpisodeReleaseContext extends QueryContext {
 
     if (requiredLists.length) {
       const array = sql.array(requiredLists, "int8");
-      whereClause.push(sql`part.medium_id IN (SELECT medium_id FROM list_medium WHERE list_id = ANY(${array})`);
+      whereClause.push(sql`part.medium_id IN (SELECT medium_id FROM list_medium WHERE list_id = ANY(${array}))`);
     } else if (ignoredLists.length) {
       const array = sql.array(ignoredLists, "int8");
-      whereClause.push(sql`part.medium_id NOT IN (SELECT medium_id FROM list_medium WHERE list_id = ANY(${array})`);
+      whereClause.push(sql`part.medium_id NOT IN (SELECT medium_id FROM list_medium WHERE list_id = ANY(${array}))`);
     }
 
     // part of the join condition
@@ -62,12 +62,12 @@ export class EpisodeReleaseContext extends QueryContext {
 
     const releasePromise = this.con.any(
       sql.type(displayRelease)`SELECT 
-      er.episode_id as episodeId, er.title, er.url as link, 
-      er.releaseDate as date, er.locked, medium_id as mediumId, progress
+      er.id, er.episode_id, er.title, er.url, 
+      er.release_date as date, er.locked, medium_id, coalesce(progress, 0) as progress
       FROM (
         SELECT * FROM episode_release 
-        WHERE releaseDate < ${sql.timestamp(latestDate)}${lowerDateLimitQuery}
-        ORDER BY releaseDate DESC LIMIT 10000
+        WHERE release_date < ${sql.timestamp(latestDate)}${lowerDateLimitQuery}
+        ORDER BY release_date DESC LIMIT 10000
       ) as er
       INNER JOIN episode ON episode.id=er.episode_id 
       LEFT JOIN (SELECT * FROM user_episode WHERE user_uuid = ${uuid}) as ue ON episode.id=ue.episode_id
@@ -78,10 +78,16 @@ export class EpisodeReleaseContext extends QueryContext {
 
     const mediaPromise = this.con.any(sql.type(minimalMedium)`SELECT id, title, medium FROM medium;`);
 
-    const latestReleaseResult = await this.con.oneFirst<{ releasedate: string }>(
-      sql`SELECT releasedate FROM episode_release ORDER BY releaseDate LIMIT 1;`,
+    const latestReleaseResult = await this.con.oneFirst<{ releaseDate: string }>(
+      sql`SELECT release_date FROM episode_release ORDER BY release_date LIMIT 1;`,
     );
-    const releases = await releasePromise;
+    let releases;
+    // eslint-disable-next-line no-useless-catch
+    try {
+      releases = await releasePromise;
+    } catch (error) {
+      throw error;
+    }
 
     const mediaIds: Set<number> = new Set();
 
@@ -101,7 +107,7 @@ export class EpisodeReleaseContext extends QueryContext {
     return this.con.any(
       sql.type(mediumRelease)`
       SELECT 
-        er.episode_id, er.title, er.url as link,
+        er.episode_id, er.title, er.url,
         er.release_date as date, er.locked, episode.combi_index, progress
       FROM episode_release as er
       INNER JOIN episode ON episode.id=er.episode_id
@@ -123,7 +129,7 @@ export class EpisodeReleaseContext extends QueryContext {
 
     const resultArray = await this.con.any(
       sql.type(simpleRelease)`
-      SELECT episode_id, source_type, toc_id,
+      SELECT id, episode_id, source_type, toc_id,
       release_date, locked, url, title
       FROM episode_release
       WHERE episode_id = ANY(${sql.array(episodeId, "int8")});`,
@@ -143,7 +149,7 @@ export class EpisodeReleaseContext extends QueryContext {
     }
     return this.con.any(
       sql.type(simpleRelease)`
-      SELECT episode_id, source_type, toc_id,
+      SELECT id, episode_id, source_type, toc_id,
       release_date, locked, url, title
       FROM episode_release
       WHERE strpos(url, ${host}) = 1 AND episode_id = ANY(${sql.array(episodeId, "int8")});`,
@@ -153,7 +159,7 @@ export class EpisodeReleaseContext extends QueryContext {
   public async getMediumReleasesByHost(mediumId: number, host: string): Promise<readonly SimpleRelease[]> {
     return this.con.any(
       sql.type(simpleRelease)`
-      SELECT er.episode_id, er.source_type, er.toc_id,
+      SELECT er.id, er.episode_id, er.source_type, er.toc_id,
       er.release_date, er.locked, er.url, er.title
       FROM episode_release as er
       INNER JOIN episode as e ON e.id=er.episode_id
@@ -170,7 +176,7 @@ export class EpisodeReleaseContext extends QueryContext {
       value.title,
       value.url,
       value.sourceType,
-      value.releaseDate,
+      value.releaseDate.toISOString(),
       value.locked,
       value.tocId,
     ]);
@@ -234,7 +240,7 @@ export class EpisodeReleaseContext extends QueryContext {
       value.title,
       value.url,
       value.sourceType,
-      value.releaseDate,
+      value.releaseDate.toISOString(),
       value.locked,
       value.tocId,
     ]);
@@ -246,7 +252,7 @@ export class EpisodeReleaseContext extends QueryContext {
       SELECT * FROM ${sql.unnest(values, ["int8", "text", "text", "text", "timestamptz", "bool", "int8"])}
       ON CONFLICT (episode_id, url) DO UPDATE SET 
       title = EXCLUDED.title,
-      releaseDate = EXCLUDED.release_date,
+      release_date = EXCLUDED.release_date,
       source_type = EXCLUDED.source_type,
       locked = EXCLUDED.locked,
       toc_id = EXCLUDED.toc_id;

@@ -3,7 +3,7 @@ import { promiseMultiSingle } from "../../tools";
 import { QueryContext } from "./queryContext";
 import { sql } from "slonik";
 import { entity, ExternalList, simpleExternalList, SimpleExternalList } from "../databaseTypes";
-import { isString } from "validate.js";
+import { DatabaseError } from "../../error";
 
 export type UpdateExternalList = Partial<ExternalList> & { id: Id };
 
@@ -113,8 +113,8 @@ export class ExternalListContext extends QueryContext {
    * @return {Promise<ExternalList>}
    */
   public async createShallowExternalList(storageList: SimpleExternalList): Promise<ExternalList> {
-    const result = await this.con.manyFirst(
-      sql.type(entity)`SELECT id FROM external_list_medium WHERE list_id = ${storageList.id};`,
+    const result = await this.con.anyFirst(
+      sql.type(entity)`SELECT medium_id as id FROM external_list_medium WHERE list_id = ${storageList.id};`,
     );
     return {
       ...storageList,
@@ -149,16 +149,17 @@ export class ExternalListContext extends QueryContext {
    * If no listId is available it selects the
    * 'Standard' List of the given user and adds it there.
    */
-  public async addItemsToList(mediumIds: number[], listIdOrUuid: Uuid | number): Promise<boolean> {
-    // if list_ident is not a number,
-    // then take it as uuid from user and get the standard listId of 'Standard' list
-    let listId: number;
-    if (isString(listIdOrUuid)) {
-      listId = await this.con.oneFirst(
-        sql.type(entity)`SELECT id FROM reading_list WHERE name = 'Standard' AND user_uuid = ${listIdOrUuid};`,
-      );
-    } else {
-      listId = listIdOrUuid as number;
+  public async addItemsToList(mediumIds: number[], listId: number, uuid: Uuid): Promise<boolean> {
+    const ownsList = await this.con.exists(
+      sql.type(entity)`
+      SELECT id
+      FROM external_reading_list as el
+      INNER JOIN external_user as eu ON el.user_uuid=eu.uuid
+      WHERE eu.local_uuid = ${uuid};`,
+    );
+
+    if (!ownsList) {
+      throw new DatabaseError("uuid does not own list");
     }
 
     const values = mediumIds.map((value) => [listId, value]);

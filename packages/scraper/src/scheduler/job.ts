@@ -197,7 +197,7 @@ export class Job {
     await this.emit("after");
 
     const item = this.currentItem;
-    const previousScheduledAt = item.nextRun;
+    const previousScheduledAt = item.nextRun ?? undefined;
 
     if (item.deleteAfterRun) {
       await jobStorage.removeFinishedJob(item, end, previousScheduledAt);

@@ -25,7 +25,16 @@ import { DatabaseContext } from "../contexts/databaseContext";
 import { DatabaseConnectionError } from "../../error";
 import { NotificationContext } from "../contexts/notificationContext";
 import { types } from "pg";
-import { ClientConfigurationInput, ConnectionOptions, createPool, DatabasePool, stringifyDsn } from "slonik";
+import {
+  ClientConfigurationInput,
+  ConnectionOptions,
+  createBigintTypeParser,
+  createIntervalTypeParser,
+  createNumericTypeParser,
+  createPool,
+  DatabasePool,
+  stringifyDsn,
+} from "slonik";
 import { Readable } from "stream";
 import { GenericContext } from "../contexts/genericContext";
 import { createFieldNameTransformationInterceptor } from "slonik-interceptor-field-name-transformation";
@@ -66,7 +75,10 @@ export async function storageInContext<T, C extends ConnectionContext>(
 
   let result;
   try {
-    result = await pool.transaction((con) => callback(provider(con)));
+    result = await pool.transaction(async (con) => {
+      const result = await callback(provider(con));
+      return result;
+    });
   } catch (e) {
     console.log(e);
     throw e;
@@ -261,6 +273,30 @@ class SqlPoolProvider {
             },
           },
         ],
+        typeParsers: [
+          createBigintTypeParser(),
+          createNumericTypeParser(),
+          createIntervalTypeParser(),
+          {
+            name: "timestamp",
+            parse(value) {
+              return new Date(value + " UTC");
+            },
+          },
+          {
+            name: "timestamptz",
+            parse(value) {
+              return new Date(value);
+            },
+          },
+          {
+            name: "date",
+            parse(value) {
+              return new Date(value);
+            },
+          },
+        ],
+        captureStackTrace: true,
       },
     );
   }

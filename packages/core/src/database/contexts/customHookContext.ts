@@ -10,7 +10,7 @@ export class CustomHookContext extends QueryContext {
       throw new ValidationError("Cannot add Hook with id already defined");
     }
 
-    const state = isString(value.state) ? JSON.parse(value.state) : value.enabled;
+    const state = isString(value.state) ? JSON.parse(value.state as string) : value.enabled;
 
     const id = await this.con.oneFirst(
       sql.type(entity)`
@@ -26,7 +26,8 @@ export class CustomHookContext extends QueryContext {
 
   public async getHooks(): Promise<readonly CustomHook[]> {
     return this.con.any(
-      sql.type(customHook)`SELECT id, name, state, updated_at, hook_state, comment FROM custom_hook;`,
+      sql.type(customHook)`
+      SELECT id, name, state, updated_at, enabled, comment FROM custom_hook;`,
     );
   }
 
@@ -37,9 +38,9 @@ export class CustomHookContext extends QueryContext {
       () => {
         return [
           sql`comment = ${value.comment}`,
-          sql`hook_state = ${value.name}`,
+          sql`enabled = ${value.enabled}`,
           sql`name = ${value.name}`,
-          sql`state = ${value.state}`,
+          sql`state = ${sql.jsonb(value.state)}`,
         ];
       },
       {

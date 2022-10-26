@@ -75,6 +75,12 @@ export interface NewsItemRequest {
 
 const id = z.number().int().min(1);
 
+// Copied from https://github.com/colinhacks/zod#json-type
+const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+type Literal = z.infer<typeof literalSchema>;
+type Json = Literal | { [key: string]: Json } | Json[];
+const jsonSchema: z.ZodType<Json> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]));
+
 /**
  * What one would get from select * from app_events;
  */
@@ -99,7 +105,7 @@ export interface Entity extends z.infer<typeof entity> {}
 export const customHook = z.object({
   id,
   name: z.string().min(1),
-  state: z.string().min(1),
+  state: jsonSchema,
   updatedAt: z.date().optional(),
   enabled: z.boolean(),
   comment: z.string(),
@@ -131,8 +137,8 @@ export const simpleRelease = minimalRelease.extend({
   title: z.string().min(1),
   releaseDate: z.date(),
   locked: z.boolean(),
-  sourceType: z.string().optional(),
-  tocId: z.number().int().min(1).optional(),
+  sourceType: z.string().nullish(),
+  tocId: z.number().int().min(1).nullish(),
 });
 
 export interface SimpleRelease extends z.infer<typeof simpleRelease> {}
@@ -158,7 +164,7 @@ export interface MinimalMedium extends z.infer<typeof minimalMedium> {}
 export const mediumRelease = minimalRelease.extend({
   title: z.string().min(1),
   combiIndex: z.number(),
-  locked: z.boolean().optional(),
+  locked: z.boolean(),
   date: z.date(),
 });
 
@@ -172,7 +178,7 @@ export const simpleEpisode = z.object({
   partId: id,
   combiIndex: z.number(),
   totalIndex: z.number().int(),
-  partialIndex: z.number().int().optional(),
+  partialIndex: z.number().int().nullish(),
 });
 
 export interface SimpleEpisode extends z.infer<typeof simpleEpisode> {}
@@ -229,8 +235,8 @@ export const simpleExternalUser = z.object({
   uuid: z.string().uuid(),
   identifier: z.string().min(1),
   type: z.number(),
-  lastScrape: z.date().optional(),
-  cookies: z.string().nullish().optional(),
+  lastScrape: z.date().nullish(),
+  cookies: z.string().nullish().nullish(),
 });
 
 export interface SimpleExternalUser extends z.infer<typeof simpleExternalUser> {}
@@ -265,7 +271,7 @@ export const simplePart = z.object({
   title: z.string(),
   combiIndex: z.number(),
   totalIndex: z.number().int(),
-  partialIndex: z.number().int().optional(),
+  partialIndex: z.number().int().nullish(),
 });
 
 export interface SimplePart extends z.infer<typeof simplePart> {}
@@ -274,15 +280,15 @@ export const simpleMedium = z.object({
   id,
   title: z.string().min(1),
   medium: z.nativeEnum(MediaType),
-  countryOfOrigin: z.string().optional(),
-  languageOfOrigin: z.string().optional(),
-  author: z.string().optional(),
-  artist: z.string().optional(),
-  lang: z.string().optional(),
-  stateOrigin: z.nativeEnum(ReleaseState).optional(),
-  stateTl: z.nativeEnum(ReleaseState).optional(),
-  series: z.string().optional(),
-  universe: z.string().optional(),
+  countryOfOrigin: z.string().nullish(),
+  languageOfOrigin: z.string().nullish(),
+  author: z.string().nullish(),
+  artist: z.string().nullish(),
+  lang: z.string().nullish(),
+  stateOrigin: z.nativeEnum(ReleaseState).nullish(),
+  stateTl: z.nativeEnum(ReleaseState).nullish(),
+  series: z.string().nullish(),
+  universe: z.string().nullish(),
 });
 
 export interface SimpleMedium extends z.infer<typeof simpleMedium> {}
@@ -321,17 +327,17 @@ export const minimalMediumtoc = z.object({
 export interface MinimalMediumtoc extends z.infer<typeof minimalMediumtoc> {}
 
 export const simpleMediumToc = minimalMediumtoc.extend({
-  title: z.string().min(1),
-  medium: z.nativeEnum(MediaType),
-  countryOfOrigin: z.string().optional(),
-  languageOfOrigin: z.string().optional(),
-  author: z.string().optional(),
-  artist: z.string().optional(),
-  lang: z.string().optional(),
-  stateOrigin: z.nativeEnum(ReleaseState).optional(),
-  stateTl: z.nativeEnum(ReleaseState).optional(),
-  series: z.string().optional(),
-  universe: z.string().optional(),
+  title: z.string(),
+  medium: z.nativeEnum(MediaType).or(z.literal(0)),
+  countryOfOrigin: z.string().nullish(),
+  languageOfOrigin: z.string().nullish(),
+  author: z.string().nullish(),
+  artist: z.string().nullish(),
+  lang: z.string().nullish(),
+  stateOrigin: z.nativeEnum(ReleaseState).nullish(),
+  stateTl: z.nativeEnum(ReleaseState).nullish(),
+  series: z.string().nullish(),
+  universe: z.string().nullish(),
 });
 
 export interface SimpleMediumToc extends z.infer<typeof simpleMediumToc> {}
@@ -346,10 +352,10 @@ export const simpleJob = z.object({
   interval: z.number().int().min(60000),
   // TODO: maybe remove this column, i dont need it either way
   runAfter: z.number().int().nullish(),
-  runningSince: z.date().optional(),
-  nextRun: z.date().optional(),
-  lastRun: z.date().optional(),
-  arguments: z.string().optional(),
+  runningSince: z.date().nullish(),
+  nextRun: z.date().nullish(),
+  lastRun: z.date().nullish(),
+  arguments: z.string().nullish(),
 });
 
 export interface SimpleJob extends z.infer<typeof simpleJob> {}
@@ -358,12 +364,12 @@ export const simpleJobHistory = z.object({
   id,
   name: z.string().min(1),
   type: z.nativeEnum(ScrapeName),
-  arguments: z.string().optional(),
-  scheduledAt: z.date().optional(),
+  arguments: z.string().nullish(),
+  scheduledAt: z.date().nullish(),
   start: z.date(),
   end: z.date(),
   result: z.enum(["warning", "failed", "success"]),
-  message: z.string().min(1),
+  message: jsonSchema,
   context: z.string(),
   created: z.number().int(),
   updated: z.number().int(),

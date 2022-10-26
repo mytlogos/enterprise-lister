@@ -570,7 +570,7 @@ export const simpleDBMediumSchema: JSONSchemaType<SimpleDBMedium> = {
     title: string(),
     medium: {
       type: "integer",
-      enum: [MediaType.AUDIO, MediaType.IMAGE, MediaType.VIDEO, MediaType.IMAGE],
+      enum: [MediaType.AUDIO, MediaType.IMAGE, MediaType.VIDEO, MediaType.TEXT],
     },
     countryOfOrigin: { ...string(), nullable: true },
     languageOfOrigin: { ...string(), nullable: true },

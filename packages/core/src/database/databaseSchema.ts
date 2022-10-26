@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS job_history (
 	"end" timestamptz NOT NULL,
 	arguments text NULL,
 	"result" varchar(100) NOT NULL,
-	message text NOT NULL,
+	message jsonb NOT NULL,
 	context text NOT NULL,
 	scheduled_at timestamptz NOT NULL,
 	created int8 NOT NULL DEFAULT '0'::bigint,

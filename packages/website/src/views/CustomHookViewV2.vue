@@ -67,7 +67,6 @@ import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
 import type { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
 import { HttpClient } from "../Httpclient";
 import { reactive, watchEffect } from "vue";
-import { HookState } from "../siteTypes";
 import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/v2/custom-hook-form-v2.vue";
 import { clone, Logger } from "../init";
@@ -113,7 +112,7 @@ const data = reactive<Data>({
     id: 0,
     name: "",
     comment: "",
-    hookState: HookState.ENABLED,
+    enabled: true,
     state: "",
   },
   createResult: undefined,
@@ -190,7 +189,7 @@ function load() {
   }
 }
 
-function cleanEmptySelectors(record?: Record<string, any>, ignore: string[]) {
+function cleanEmptySelectors(record: Record<string, any> | undefined, ignore: string[]) {
   if (!record) {
     return;
   }

@@ -63,7 +63,7 @@ export class MediumContext extends QueryContext {
   public async getSimpleMedium(ids: number[]): Promise<readonly SimpleMedium[]> {
     const resultArray = await this.con.any(
       sql.type(simpleMedium)`
-      SELECT id, country_of_origin, languageOfOrigin,
+      SELECT id, country_of_origin, language_of_origin,
       author, title, medium, artist, lang, state_origin,
       state_tl, series, universe
       FROM medium
@@ -82,12 +82,12 @@ export class MediumContext extends QueryContext {
     const result = await this.con.any<{ host: string | null; mediumId: number; title: string; medium: number }>(
       // eslint-disable-next-line @typescript-eslint/quotes
       sql`SELECT substring(episode_release.url, 1, 8 + strpos(substring(url from 9), '/')) as host,
-        medium.id as mediumId, medium.title, medium.medium
+        medium.id as medium_id, medium.title, medium.medium
         FROM medium
         LEFT JOIN part ON part.medium_id=medium.id
         LEFT JOIN episode ON part_id=part.id
         LEFT JOIN episode_release ON episode_release.episode_id=episode.id
-        GROUP BY mediumId, host;`,
+        GROUP BY medium_id, host;`,
     );
     const idMap = new Map<number, TocSearchMedium>();
     const tocSearchMedia = result
@@ -136,7 +136,7 @@ export class MediumContext extends QueryContext {
   public async getTocSearchMedium(id: number): Promise<TocSearchMedium> {
     const result = await this.con.one(
       sql.type(simpleMedium)`
-      SELECT id, country_of_origin, languageOfOrigin,
+      SELECT id, country_of_origin, language_of_origin,
       author, title, medium, artist, lang, state_origin,
       state_tl, series, universe
       FROM medium
@@ -160,7 +160,7 @@ export class MediumContext extends QueryContext {
     return promiseMultiSingle(id, async (mediumId: number): Promise<Medium> => {
       const result = await this.con.one(
         sql.type(simpleMedium)`
-        SELECT id, country_of_origin, languageOfOrigin,
+        SELECT id, country_of_origin, language_of_origin,
         author, title, medium, artist, lang, state_origin,
         state_tl, series, universe
         FROM medium
@@ -181,12 +181,12 @@ export class MediumContext extends QueryContext {
               WHERE medium_id=${mediumId}
             )
           )
+          AND user_uuid=${uuid}
         ) as user_episode
         INNER JOIN episode ON user_episode.episode_id=episode.id
-        WHERE user_uuid=${uuid}
-        ORDER BY totalIndex DESC, partialIndex DESC LIMIT 1`,
+        ORDER BY total_index DESC, partial_index DESC LIMIT 1`,
       );
-      const unReadResult = await this.con.manyFirst(
+      const unReadResult = await this.con.anyFirst(
         sql.type(entity)`
         SELECT episode.id as id
         FROM episode
@@ -196,9 +196,9 @@ export class MediumContext extends QueryContext {
         AND id NOT IN (
           SELECT episode_id FROM user_episode WHERE user_uuid=${uuid}
         )
-        ORDER BY totalIndex DESC, partialIndex DESC;`,
+        ORDER BY total_index DESC, partial_index DESC;`,
       );
-      const partsResult = await this.con.manyFirst(sql.type(entity)`SELECT id FROM part WHERE medium_id=${mediumId};`);
+      const partsResult = await this.con.anyFirst(sql.type(entity)`SELECT id FROM part WHERE medium_id=${mediumId};`);
 
       return {
         ...result,
@@ -223,10 +223,10 @@ export class MediumContext extends QueryContext {
   public async getAllSecondary(uuid: Uuid): Promise<SecondaryMedium[]> {
     const readStatsPromise = this.con.any<{ id: number; totalEpisode: number; readEpisodes: number }>(
       sql`
-      SELECT part.medium_id as id, COUNT(*) as totalEpisodes ,
+      SELECT part.medium_id as id, COUNT(*) as total_episodes ,
       COUNT(case when episode.id in (
         select episode_id from user_episode where user_uuid = ${uuid} and progress = 1
-      ) then 1 else null end) as readEpisodes
+      ) then 1 else null end) as read_episodes
       FROM part
       INNER JOIN episode ON part.id=episode.part_id
       GROUP BY part.medium_id;`,
@@ -259,7 +259,7 @@ export class MediumContext extends QueryContext {
   }
 
   public async getAllMedia(): Promise<readonly number[]> {
-    return this.con.manyFirst(sql.type(entity)`SELECT id FROM medium`);
+    return this.con.anyFirst(sql.type(entity)`SELECT id FROM medium`);
   }
 
   /**

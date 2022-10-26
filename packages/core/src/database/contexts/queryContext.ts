@@ -1,5 +1,5 @@
 import { EmptyPromise, Primitive, DBEntity, TypedQuery } from "../../types";
-import { getElseSet, ignore } from "../../tools";
+import { getElseSet } from "../../tools";
 import { ValidationError } from "../../error";
 import {
   DatabaseConnection,
@@ -10,9 +10,9 @@ import {
   TaggedTemplateLiteralInvocation,
   ValueExpression,
 } from "slonik";
-import { Duplex, pipeline } from "stream";
 import { ConnectionContext } from "../databaseTypes";
 import { joinAnd, joinComma } from "./helper";
+import { Readable } from "stream";
 
 const database = "enterprise";
 
@@ -126,9 +126,12 @@ export class QueryContext implements ConnectionContext {
   }
 
   public async stream<T>(query: TaggedTemplateLiteralInvocation): Promise<TypedQuery<T>> {
-    const resultStream = new Duplex({ objectMode: true });
-    this.con.stream(query, (stream) => pipeline(stream, resultStream, ignore));
-    return resultStream;
+    // FIXME: it does not seem possible to return a stream from within:
+    // pool.transaction((con) => new Promise(resolve => con.stream(query, resolve)))
+    // this will never resolve because the library is shit for streaming
+    // so fake it, and just get all data in memory
+    const result = await this.con.any(query);
+    return Readable.from(result);
   }
 
   /**

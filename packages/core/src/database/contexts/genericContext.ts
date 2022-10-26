@@ -32,7 +32,7 @@ export class GenericContext extends QueryContext {
     if (!validate.isString(link) || !link || !key || !validate.isString(key)) {
       throw new ValidationError("invalid link or key");
     }
-    const query = await this.con.manyFirst<{ value: string }>(
+    const query = await this.con.anyFirst<{ value: string }>(
       sql`SELECT value FROM page_info WHERE link=${link} AND key_string=${key}`,
     );
     return {
