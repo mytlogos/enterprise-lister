@@ -1,3 +1,10 @@
+## [2.24.1](https://github.com/mytlogos/enterprise-lister/compare/v2.24.0...v2.24.1) (2022-10-26)
+
+
+### Bug Fixes
+
+* chromium browser not found ([a5f396e](https://github.com/mytlogos/enterprise-lister/commit/a5f396eea978974b896c8701181001e68247fe60))
+
 # [2.24.0](https://github.com/mytlogos/enterprise-lister/compare/v2.23.0...v2.24.0) (2022-10-26)
 
 
