@@ -4,7 +4,7 @@ ARG PROJECT_VERSION
 
 RUN apk add --no-cache chromium wget curl grep unzip
 RUN export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-RUN export PUPPETEER_EXECUTABLE_PATH=$(which chromium)
+RUN export PUPPETEER_EXECUTABLE_PATH=$(which chromium-browser)
 
 WORKDIR /code
 COPY prepare-docker.sh ./
