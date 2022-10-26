@@ -36,6 +36,7 @@ interface Config {
   development: boolean;
   stopScrapeEvents: boolean;
   lokiUrl?: string;
+  disableFileLogging: boolean;
 }
 
 /**
@@ -55,6 +56,8 @@ const appConfig: Config = {
   development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",
   stopScrapeEvents: !!Number(process.env.stopScrapeEvents || config.parsed.stopScrapeEvents),
   lokiUrl: process.env.lokiUrl || config.parsed.lokiUrl,
+  disableFileLogging:
+    ((process.env.disableFileLogging || config.parsed.disableFileLogging) ?? "").toLocaleLowerCase() === "true",
 };
 
 const optionalVars = new Set(["lokiUrl"] as Array<keyof Config>);

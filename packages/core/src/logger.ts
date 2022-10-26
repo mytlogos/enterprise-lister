@@ -70,17 +70,6 @@ const logger = winston.createLogger({
     new winston.transports.Console(),
   ],
   transports: [
-    //
-    // - Write to all logs with level `info` and below to `combined.log`
-    // - Write all logs error (and below) to `error.log`.
-    //
-    new DailyRotateFile({
-      filename: `${filePrefix}combined.log-%DATE%`,
-    }),
-    new DailyRotateFile({
-      filename: `${filePrefix}error.log-%DATE%`,
-      level: "error",
-    }),
     new winston.transports.Console({
       format: format.combine(
         format.colorize(),
@@ -94,6 +83,24 @@ const logger = winston.createLogger({
     }),
   ],
 });
+
+if (!env.disableFileLogging) {
+  //
+  // - Write to all logs with level `info` and below to `combined.log`
+  // - Write all logs error (and below) to `error.log`.
+  //
+  logger.add(
+    new DailyRotateFile({
+      filename: `${filePrefix}combined.log-%DATE%`,
+    }),
+  );
+  logger.add(
+    new DailyRotateFile({
+      filename: `${filePrefix}error.log-%DATE%`,
+      level: "error",
+    }),
+  );
+}
 
 if (env.lokiUrl) {
   logger.add(
