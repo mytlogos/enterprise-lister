@@ -1,3 +1,15 @@
+# [2.23.0](https://github.com/mytlogos/enterprise-lister/compare/v2.22.1...v2.23.0) (2022-10-26)
+
+
+### Bug Fixes
+
+* add missing property ([069c79c](https://github.com/mytlogos/enterprise-lister/commit/069c79c90ae1bb36e73911c568dbbfa78abd8e2f))
+
+
+### Features
+
+* add option to disable file logging ([ef2360c](https://github.com/mytlogos/enterprise-lister/commit/ef2360c04a7f4de023591470aa9150f606ec03c1))
+
 ## [2.22.1](https://github.com/mytlogos/enterprise-lister/compare/v2.22.0...v2.22.1) (2022-09-10)
 
 
