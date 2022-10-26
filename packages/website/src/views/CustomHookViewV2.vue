@@ -65,9 +65,9 @@ import "prismjs/components/prism-core";
 import "prismjs/components/prism-json";
 import "prismjs/themes/prism-twilight.css"; // import syntax highlighting styles
 import type { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
+import type { CustomHook } from "enterprise-core/src/database/databaseTypes";
 import { HttpClient } from "../Httpclient";
 import { reactive, watchEffect } from "vue";
-import { CustomHook } from "enterprise-core/dist/types";
 import CustomHookForm from "../components/customHook/v2/custom-hook-form-v2.vue";
 import { clone, Logger } from "../init";
 import { validateHookConfig } from "enterprise-scraper/dist/externals/customv2/validation";
@@ -169,11 +169,13 @@ function load() {
     const hookStore = useHookStore();
     // simple but stupid way to clone the hook, firefox went off alone in 94 and introduced "structuredClone" (with Node 17 support at data time)
     // when there is wider support, maybe use that, else if lodash is ever used use that cloneDeep
-    data.hook = clone(hookStore.hooks[props.id]);
+    // eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
+    // @ts-ignore
+    data.hook = clone(hookStore.hooks[props.id]) as CustomHook;
 
     // only set value if it is a valid config
     try {
-      const hookConfig = JSON.parse(data.hook.state);
+      const hookConfig = data.hook.state as any;
       const result = validateHookConfig(hookConfig);
 
       if (result.valid) {
@@ -223,7 +225,7 @@ function save() {
     const result = validateHookConfig(cloned);
 
     if (result.valid) {
-      data.hook.state = JSON.stringify(cloned);
+      data.hook.state = cloned as any;
       data.invalid = [];
     } else {
       data.invalid = result.errors.map((v) => v.message);

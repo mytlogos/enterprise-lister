@@ -60,12 +60,10 @@ async function fetch() {
   const [hooks, customHooks] = await Promise.all([HttpClient.getHooks(), HttpClient.getCustomHooks()]);
 
   hooks.sort((a, b) => {
-    const compare = a.state.localeCompare(b.state);
-    return compare || a.name.localeCompare(b.name);
+    return a.enabled === b.enabled ? a.name.localeCompare(b.name) : a.enabled ? -1 : 1;
   });
   customHooks.sort((a, b) => {
-    const compare = a.state.localeCompare(b.state);
-    return compare || a.name.localeCompare(b.name);
+    return a.enabled === b.enabled ? a.name.localeCompare(b.name) : a.enabled ? -1 : 1;
   });
   data.hooks = hooks;
   data.customHooks = customHooks;
@@ -89,10 +87,15 @@ function isCustomItemActive(item: CustomHook): boolean {
 
 function getHookEditRouterName(item: CustomHook) {
   let hookConfig: any;
-  try {
-    hookConfig = JSON.parse(item.state);
-  } catch (error) {
-    return;
+
+  if (typeof item.state === "string") {
+    try {
+      hookConfig = JSON.parse(item.state);
+    } catch (error) {
+      return;
+    }
+  } else {
+    hookConfig = item.state;
   }
 
   if ("version" in hookConfig && hookConfig.version === 2) {
