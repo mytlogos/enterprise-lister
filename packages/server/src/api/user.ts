@@ -369,6 +369,7 @@ const getStatus = createHandler(async (): Promise<Status> => {
         measure: appConfig.measure,
         development: appConfig.development,
         stopScrapeEvents: appConfig.stopScrapeEvents,
+        disableFileLogging: appConfig.disableFileLogging,
       },
     },
   };
