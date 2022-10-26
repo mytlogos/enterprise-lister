@@ -1,3 +1,10 @@
+# [2.24.0](https://github.com/mytlogos/enterprise-lister/compare/v2.23.0...v2.24.0) (2022-10-26)
+
+
+### Features
+
+* update dependencies ([3751058](https://github.com/mytlogos/enterprise-lister/commit/37510586ca9002156002ebd61a8c40ff31a5d02c))
+
 # [2.23.0](https://github.com/mytlogos/enterprise-lister/compare/v2.22.1...v2.23.0) (2022-10-26)
 
 
