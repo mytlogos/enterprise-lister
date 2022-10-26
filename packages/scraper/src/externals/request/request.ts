@@ -404,7 +404,7 @@ export class Requestor {
           if (networkTrack) {
             networkTrack.retryCount++;
           }
-          const retryAfterValue = error.response?.headers?.["retry-after"];
+          const retryAfterValue = error.response?.headers?.["retry-after"] ?? "";
           const retryAfterSeconds = Number.parseInt(retryAfterValue);
 
           if (Number.isInteger(retryAfterSeconds) && retryAfterSeconds > 0) {

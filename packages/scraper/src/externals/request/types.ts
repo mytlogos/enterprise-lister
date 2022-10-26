@@ -1,3 +1,4 @@
+import type { AxiosResponseHeaders, ParamsSerializerOptions, RawAxiosResponseHeaders } from "axios";
 import type { CheerioAPI } from "cheerio";
 
 export interface BasicCredentials {
@@ -73,9 +74,7 @@ export interface TransitionalOptions {
 
 export type RequestHeaders = Record<string, string>;
 
-export type ResponseHeaders = Record<string, string> & {
-  "set-cookie"?: string[];
-};
+export type ResponseHeaders = RawAxiosResponseHeaders | AxiosResponseHeaders;
 
 export interface RequestConfig<D> extends BasicRequestConfig<D> {
   url: string;
@@ -89,7 +88,7 @@ export interface BasicRequestConfig<D> {
   baseURL?: string;
   headers?: RequestHeaders;
   params?: any;
-  paramsSerializer?: (params: any) => string;
+  paramsSerializer?: ParamsSerializerOptions;
   data?: D;
   timeout?: number;
   timeoutErrorMessage?: string;
