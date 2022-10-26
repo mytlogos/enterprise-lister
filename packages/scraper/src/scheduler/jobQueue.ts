@@ -9,7 +9,7 @@ import { Job } from "./job";
 
 const queueChannel = channel("enterprise-jobqueue");
 
-function createJobMessage(store: Map<string, any>) {
+function createJobMessage(store: ReadonlyMap<string, any>) {
   const message = {
     modifications: store.get("modifications") || {},
     queryCount: store.get("queryCount") || 0,
@@ -199,7 +199,7 @@ export class JobQueue {
    * @param job the jobInfo of the job to remove
    * @return boolean true if there was a job removed from the active or waiting queue
    */
-  public removeJob(job: Job): boolean {
+  public removeJob(job: Readonly<Job>): boolean {
     const predicate = (value: InternJob) => value.job.id === job.id;
     return removeLike(this.waitingJobs, predicate) || removeLike(this.activeJobs, predicate);
   }
@@ -278,7 +278,7 @@ export class JobQueue {
    *
    * @return Array<OutsideJob> an array of the internal jobs.
    */
-  public getJobs(): OutsideJob[] {
+  public getJobs(): ReadonlyArray<Readonly<OutsideJob>> {
     const jobs = [];
     for (const job of this.activeJobs) {
       jobs.push({
@@ -485,7 +485,7 @@ export class JobQueue {
 }
 
 interface InternJob {
-  readonly job: Job;
+  readonly job: Readonly<Job>;
   startRun?: number;
   running?: boolean;
   active: boolean;

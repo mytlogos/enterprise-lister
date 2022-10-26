@@ -1,436 +1,474 @@
+import { sql } from "slonik";
 import { DataBaseBuilder } from "./databaseBuilder";
 import { Migrations } from "./migrations";
 
-const dataBaseBuilder = new DataBaseBuilder(19);
+const dataBaseBuilder = new DataBaseBuilder(1);
+
+dataBaseBuilder.setAutoUpdatedAt(true);
+dataBaseBuilder.addProcedure(sql`
+CREATE OR REPLACE FUNCTION trigger_set_update_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+`);
 
 dataBaseBuilder
-  .getTableBuilder()
-  .setName("user")
-  .setMain()
-  .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
-  .parseColumn("uuid CHAR(36) NOT NULL")
-  .parseColumn("salt VARCHAR(200)")
-  .parseColumn("password VARCHAR(200) NOT NULL")
-  .parseColumn("alg VARCHAR(100) NOT NULL")
-  .parseMeta("PRIMARY KEY(uuid)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("external_user")
-  .parseColumn("name VARCHAR(200) NOT NULL")
-  .parseColumn("uuid CHAR(36) NOT NULL")
-  .parseColumn("local_uuid CHAR(36) NOT NULL")
-  .parseColumn("service INT NOT NULL")
-  .parseColumn("cookies TEXT")
-  .parseColumn("last_scrape DATETIME")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(uuid)")
-  .parseMeta("FOREIGN KEY(local_uuid) REFERENCES user(uuid)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("user_log")
-  .parseColumn("user_uuid CHAR(36) NOT NULL")
-  .parseColumn("ip VARCHAR(100)")
-  .parseColumn("session_key CHAR(36)")
-  .parseColumn("acquisition_date VARCHAR(40)")
-  .parseMeta("PRIMARY KEY(session_key)")
-  .parseMeta("FOREIGN KEY(user_uuid) REFERENCES user(uuid)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("reading_list")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("name VARCHAR(200) NOT NULL")
-  .parseColumn("user_uuid CHAR(36) NOT NULL")
-  .parseColumn("medium INT NOT NULL")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .parseMeta("FOREIGN KEY(user_uuid) REFERENCES user(uuid)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("external_reading_list")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("name VARCHAR(200) NOT NULL")
-  .parseColumn("user_uuid CHAR(36) NOT NULL")
-  .parseColumn("medium INT NOT NULL")
-  .parseColumn("url VARCHAR(200) NOT NULL")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .parseMeta("FOREIGN KEY(user_uuid) REFERENCES external_user(uuid)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("medium")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("countryOfOrigin VARCHAR(200)")
-  .parseColumn("languageOfOrigin VARCHAR(200)")
-  .parseColumn("author VARCHAR(200)")
-  .parseColumn("artist VARCHAR(200)")
-  .parseColumn("title VARCHAR(200) NOT NULL")
-  .parseColumn("medium INT NOT NULL")
-  .parseColumn("lang VARCHAR(200)")
-  .parseColumn("stateOrigin INT")
-  .parseColumn("stateTL INT")
-  .parseColumn("series VARCHAR(200)")
-  .parseColumn("universe VARCHAR(200)")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .parseMeta("UNIQUE(title, medium)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("medium_synonyms")
-  .parseColumn("medium_id INT UNSIGNED")
-  .parseColumn("synonym VARCHAR(200) NOT NULL")
-  .parseMeta("PRIMARY KEY(medium_id, synonym)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("medium_toc")
-  .parseColumn("medium_id INT UNSIGNED")
-  .parseColumn("link VARCHAR(767) NOT NULL")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("countryOfOrigin VARCHAR(200)")
-  .parseColumn("languageOfOrigin VARCHAR(200)")
-  .parseColumn("author VARCHAR(200)")
-  .parseColumn("artist VARCHAR(200)")
-  .parseColumn("title VARCHAR(200) NOT NULL")
-  .parseColumn("medium INT NOT NULL")
-  .parseColumn("lang VARCHAR(200)")
-  .parseColumn("stateOrigin INT")
-  .parseColumn("stateTL INT")
-  .parseColumn("series VARCHAR(200)")
-  .parseColumn("universe VARCHAR(200)")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .parseMeta("UNIQUE(medium_id, link)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("medium_in_wait")
-  .parseColumn("title VARCHAR(180) NOT NULL")
-  .parseColumn("medium INT NOT NULL")
-  .parseColumn("link VARCHAR(767) NOT NULL")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(title, medium, link(500))")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("list_medium")
-  .parseColumn("list_id INT UNSIGNED NOT NULL")
-  .parseColumn("medium_id INT UNSIGNED NOT NULL")
-  .parseMeta("PRIMARY KEY(list_id, medium_id)")
-  .parseMeta("FOREIGN KEY(list_id) REFERENCES reading_list(id)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("external_list_medium")
-  .parseColumn("list_id INT UNSIGNED NOT NULL")
-  .parseColumn("medium_id INT UNSIGNED NOT NULL")
-  .parseMeta("PRIMARY KEY(list_id, medium_id)")
-  .parseMeta("FOREIGN KEY(list_id) REFERENCES external_reading_list(id)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("part")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("medium_id INT UNSIGNED NOT NULL")
-  .parseColumn("title VARCHAR(200)")
-  .parseColumn("totalIndex INT NOT NULL")
-  .parseColumn("partialIndex INT")
-  // TODO: change default to coalesce(totalindex, 0) ...
-  .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT 0")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .parseMeta("UNIQUE(medium_id, combiIndex)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("episode")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("part_id INT UNSIGNED NOT NULL")
-  .parseColumn("totalIndex INT NOT NULL")
-  .parseColumn("partialIndex INT")
-  // TODO: change default to coalesce(totalindex, 0) ...
-  .parseColumn("combiIndex DOUBLE NOT NULL DEFAULT 0")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .parseMeta("FOREIGN KEY(part_id) REFERENCES part(id)")
-  .parseMeta("UNIQUE(part_id, combiIndex)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("episode_release")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("episode_id INT UNSIGNED NOT NULL")
-  // TODO: look through all ~35000 releases without toc_id and set this to "not null" if possible
-  .parseColumn("toc_id INT UNSIGNED")
-  .parseColumn("title TEXT NOT NULL")
-  .parseColumn("url VARCHAR(767) NOT NULL")
-  .parseColumn("source_type VARCHAR(200)")
-  .parseColumn("releaseDate DATETIME NOT NULL")
-  .parseColumn("locked BOOLEAN DEFAULT 0")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .parseMeta("UNIQUE (episode_id, url)")
-  .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
-  .parseMeta("FOREIGN KEY(toc_id) REFERENCES medium_toc(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("user_episode")
-  .parseColumn("user_uuid CHAR(36) NOT NULL")
-  .parseColumn("episode_id INT UNSIGNED NOT NULL")
-  .parseColumn("progress FLOAT UNSIGNED NOT NULL")
-  .parseColumn("read_date DATETIME NOT NULL DEFAULT NOW()")
-  .parseMeta("PRIMARY KEY(user_uuid, episode_id)")
-  .parseMeta("FOREIGN KEY(user_uuid) REFERENCES user(uuid)")
-  .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("scrape_board")
-  .parseColumn("link VARCHAR(500) NOT NULL")
-  .parseColumn("next_scrape DATETIME NOT NULL")
-  .parseColumn("type INT UNSIGNED NOT NULL")
-  .parseColumn("uuid CHAR(36)")
-  .parseColumn("external_uuid CHAR(36)")
-  .parseColumn("info TEXT")
-  .parseColumn("medium_id INT UNSIGNED")
-  .parseMeta("PRIMARY KEY(link, type)")
-  .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
-  .parseMeta("FOREIGN KEY(external_uuid) REFERENCES external_user(uuid)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("news_board")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("title TEXT NOT NULL")
-  .parseColumn("link VARCHAR(700) UNIQUE NOT NULL")
-  .parseColumn("date DATETIME NOT NULL")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY (id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("news_user")
-  .parseColumn("news_id INT UNSIGNED NOT NULL")
-  .parseColumn("user_id CHAR(36) NOT NULL")
-  .parseMeta("FOREIGN KEY (user_id) REFERENCES user(uuid)")
-  .parseMeta("FOREIGN KEY (news_id) REFERENCES news_board(id)")
-  .parseMeta("PRIMARY KEY (news_id, user_id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("news_medium")
-  .parseColumn("news_id INT UNSIGNED NOT NULL")
-  .parseColumn("medium_id INT UNSIGNED NOT NULL")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .parseMeta("FOREIGN KEY (news_id) REFERENCES news_board(id)")
-  .parseMeta("PRIMARY KEY(news_id, medium_id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("meta_corrections")
-  .parseColumn("link VARCHAR(767) NOT NULL")
-  .parseColumn("replaced TEXT NOT NULL")
-  .parseColumn("startIndex INT UNSIGNED NOT NULL")
-  .parseColumn("endIndex INT UNSIGNED NOT NULL")
-  .parseColumn("fieldKey INT UNSIGNED NOT NULL")
-  .parseMeta("PRIMARY KEY (link(367), replaced(367), startIndex, endIndex)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("result_episode")
-  .parseColumn("novel VARCHAR(300) NOT NULL")
-  .parseColumn("chapter VARCHAR(300)")
-  .parseColumn("chapIndex INT UNSIGNED")
-  .parseColumn("volIndex INT UNSIGNED")
-  .parseColumn("volume VARCHAR(300)")
-  .parseColumn("episode_id INT UNSIGNED NOT NULL")
-  .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
-  .parseMeta("PRIMARY KEY(novel, chapter, chapIndex)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("page_info")
-  .parseColumn("link VARCHAR(767) NOT NULL")
-  .parseColumn("keyString VARCHAR(200) NOT NULL")
-  .parseColumn("value TEXT NOT NULL")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("enterprise_database_info")
-  .parseColumn("version INT UNSIGNED NOT NULL")
-  .parseColumn("migrating BOOLEAN NOT NULL DEFAULT 0")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("jobs")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("type VARCHAR(200) NOT NULL")
-  .parseColumn("name VARCHAR(200) UNIQUE")
-  .parseColumn("state VARCHAR(200) NOT NULL")
-  .parseColumn("job_state VARCHAR(200) NOT NULL")
-  .parseColumn("interval INT NOT NULL")
-  .parseColumn("deleteAfterRun INT NOT NULL")
-  .parseColumn("runAfter INT")
-  .parseColumn("runningSince DATETIME")
-  .parseColumn("lastRun DATETIME")
-  .parseColumn("nextRun DATETIME")
-  .parseColumn("arguments TEXT")
-  .parseMeta("PRIMARY KEY(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("job_history")
-  .parseColumn("id INT UNSIGNED NOT NULL")
-  .parseColumn("type VARCHAR(200) NOT NULL")
-  .parseColumn("name VARCHAR(200) NOT NULL")
-  .parseColumn("deleteAfterRun BOOLEAN NOT NULL")
-  .parseColumn("runAfter INT")
-  .parseColumn("scheduled_at DATETIME NOT NULL")
-  .parseColumn("start DATETIME NOT NULL")
-  .parseColumn("end DATETIME NOT NULL")
-  .parseColumn("result VARCHAR(100) NOT NULL")
-  .parseColumn("message VARCHAR(200) NOT NULL")
-  .parseColumn("context TEXT NOT NULL")
-  .parseColumn("created INT NOT NULL DEFAULT 0")
-  .parseColumn("updated INT NOT NULL DEFAULT 0")
-  .parseColumn("deleted INT NOT NULL DEFAULT 0")
-  .parseColumn("queries INT NOT NULL DEFAULT 0")
-  .parseColumn("network_queries INT NOT NULL DEFAULT 0")
-  .parseColumn("network_received INT NOT NULL DEFAULT 0")
-  .parseColumn("network_send INT NOT NULL DEFAULT 0")
-  // .parseColumn("duration INT NOT NULL AS (end - start) PERSISTENT") // currently not supported in parseColumn
-  // .parseColumn("lagging INT NOT NULL AS (start - scheduled_at) PERSISTENT") // currently not supported in parseColumn
-  .parseColumn("arguments TEXT")
-  .parseMeta("PRIMARY KEY(id, start)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("scraper_hook")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
-  .parseColumn("state VARCHAR(200) NOT NULL")
-  .parseColumn("message VARCHAR(200) NOT NULL")
-  .parseMeta("PRIMARY KEY(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("custom_hook")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("name VARCHAR(200) NOT NULL UNIQUE")
-  .parseColumn("hookState VARCHAR(200) NOT NULL")
-  .parseColumn("comment TEXT NOT NULL")
-  .parseColumn("state TEXT NOT NULL")
-  .parseColumn("updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
-  .parseMeta("PRIMARY KEY(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("app_events")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("program VARCHAR(200) NOT NULL")
-  .parseColumn("date DATETIME NOT NULL")
-  .parseColumn("type VARCHAR(200) NOT NULL")
-  .parseMeta("PRIMARY KEY(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("job_stat_summary")
-  .parseColumn("name VARCHAR(200) NOT NULL")
-  .parseColumn("type VARCHAR(200) NOT NULL")
-  .parseColumn("count INT NOT NULL")
-  .parseColumn("failed INT NOT NULL")
-  .parseColumn("succeeded INT NOT NULL")
-  .parseColumn("network_requests INT NOT NULL")
-  .parseColumn("min_network_requests INT NOT NULL")
-  .parseColumn("max_network_requests INT NOT NULL")
-  .parseColumn("network_send INT NOT NULL")
-  .parseColumn("min_network_send INT NOT NULL")
-  .parseColumn("max_network_send INT NOT NULL")
-  .parseColumn("network_received INT NOT NULL")
-  .parseColumn("min_network_received INT NOT NULL")
-  .parseColumn("max_network_received INT NOT NULL")
-  .parseColumn("duration INT NOT NULL")
-  .parseColumn("min_duration INT NOT NULL")
-  .parseColumn("max_duration INT NOT NULL")
-  .parseColumn("lagging INT NOT NULL")
-  .parseColumn("min_lagging INT NOT NULL")
-  .parseColumn("max_lagging INT NOT NULL")
-  .parseColumn("updated INT NOT NULL")
-  .parseColumn("min_updated INT NOT NULL")
-  .parseColumn("max_updated INT NOT NULL")
-  .parseColumn("created INT NOT NULL")
-  .parseColumn("min_created INT NOT NULL")
-  .parseColumn("max_created INT NOT NULL")
-  .parseColumn("deleted INT NOT NULL")
-  .parseColumn("min_deleted INT NOT NULL")
-  .parseColumn("max_deleted INT NOT NULL")
-  .parseColumn("sql_queries INT NOT NULL")
-  .parseColumn("min_sql_queries INT NOT NULL")
-  .parseColumn("max_sql_queries INT NOT NULL")
-  .parseMeta("PRIMARY KEY(name)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("notifications")
-  .parseColumn("id INT UNSIGNED NOT NULL AUTO_INCREMENT")
-  .parseColumn("title VARCHAR(200) NOT NULL")
-  .parseColumn("content VARCHAR(500) NOT NULL")
-  .parseColumn("date DATETIME NOT NULL")
-  .parseColumn("type VARCHAR(200) NOT NULL")
-  .parseColumn("key VARCHAR(200) NOT NULL")
-  .parseMeta("PRIMARY KEY(id)")
-  .build();
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("notifications_read")
-  .parseColumn("id INT UNSIGNED NOT NULL")
-  .parseColumn("uuid CHAR(36) NOT NULL")
-  .parseMeta("PRIMARY KEY(id, uuid)")
-  .parseMeta("FOREIGN KEY (uuid) REFERENCES user(uuid)")
-  .parseMeta("FOREIGN KEY (id) REFERENCES notifications(id)")
-  .build();
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS app_events (
+	id bigserial NOT NULL,
+	"program" varchar(200) NOT NULL,
+	"date" timestamptz NOT NULL,
+	"type" varchar(200) NOT NULL,
+	PRIMARY KEY (id)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS custom_hook (
+	id bigserial NOT NULL,
+	"name" varchar(200) NOT NULL,
+	state jsonb NOT NULL,
+	enabled bool NOT NULL,
+	"comment" text NOT NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	UNIQUE("name")
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS enterprise_database_info (
+	"version" int8 NOT NULL,
+	migrating bool NOT NULL DEFAULT false
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS "user" (
+	"name" varchar(200) NOT NULL,
+	uuid bpchar(36) NOT NULL,
+	salt varchar(200) NULL DEFAULT NULL::character varying,
+	"password" varchar(200) NOT NULL,
+	alg varchar(100) NOT NULL,
+	PRIMARY KEY (uuid),
+	UNIQUE(name)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS medium (
+	id bigserial NOT NULL,
+	title varchar(200) NOT NULL,
+	medium int4 NOT NULL,
+	country_of_origin varchar(200) NULL DEFAULT NULL::character varying,
+	language_of_origin varchar(200) NULL DEFAULT NULL::character varying,
+	author varchar(200) NULL DEFAULT NULL::character varying,
+	artist varchar(200) NULL DEFAULT NULL::character varying,
+	lang varchar(200) NULL DEFAULT NULL::character varying,
+	state_origin int8 NULL,
+	state_tl int8 NULL,
+	series varchar(200) NULL DEFAULT NULL::character varying,
+	universe varchar(200) NULL DEFAULT NULL::character varying,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	UNIQUE(title, medium)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS medium_toc (
+	id bigserial NOT NULL,
+	medium_id int8 NOT NULL,
+	link varchar(767) NOT NULL,
+	title varchar(200) NOT NULL,
+	medium int8 NOT NULL,
+	country_of_origin varchar(200) NULL DEFAULT NULL::character varying,
+	language_of_origin varchar(200) NULL DEFAULT NULL::character varying,
+	author varchar(200) NULL DEFAULT NULL::character varying,
+	artist varchar(200) NULL DEFAULT NULL::character varying,
+	lang varchar(200) NULL DEFAULT NULL::character varying,
+	state_origin int8 NULL,
+	state_tl int8 NULL,
+	series varchar(200) NULL DEFAULT NULL::character varying,
+	universe varchar(200) NULL DEFAULT NULL::character varying,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	UNIQUE(link, medium_id)
+);
+`,
+    { indices: [["medium_id"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS part (
+	id bigserial NOT NULL,
+	medium_id int8 NOT NULL,
+	title varchar(200) NULL DEFAULT NULL::character varying,
+	combi_index float8 NOT NULL,
+	total_index int8 NOT NULL,
+	partial_index int8 NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	FOREIGN KEY (medium_id) REFERENCES medium(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	UNIQUE(medium_id, combi_index)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS episode (
+	id bigserial NOT NULL,
+	part_id int8 NOT NULL,
+	total_index int8 NOT NULL,
+	partial_index int8 NULL,
+	combi_index float8 NOT NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	FOREIGN KEY (part_id) REFERENCES part(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	UNIQUE(part_id, combi_index)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS episode_release (
+	id bigserial NOT NULL,
+	episode_id int8 NOT NULL,
+	url varchar(767) NOT NULL,
+	title text NOT NULL,
+	source_type varchar(200) NULL DEFAULT NULL::character varying,
+	release_date timestamptz NULL,
+	"locked" bool NOT NULL DEFAULT false,
+	toc_id int8 NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	FOREIGN KEY (episode_id) REFERENCES episode(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	FOREIGN KEY (toc_id) REFERENCES medium_toc(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	UNIQUE(episode_id, url)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS external_user (
+	identifier varchar(200) NOT NULL,
+	uuid bpchar(36) NOT NULL,
+	local_uuid bpchar(36) NOT NULL,
+	"type" int8 NOT NULL,
+	cookies text NULL,
+	last_scrape timestamptz NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (uuid),
+	FOREIGN KEY (local_uuid) REFERENCES "user"(uuid) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["local_uuid"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS external_reading_list (
+	id bigserial NOT NULL,
+	"name" varchar(200) NOT NULL,
+	user_uuid bpchar(36) NOT NULL,
+	medium int8 NOT NULL,
+	url varchar(200) NOT NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	FOREIGN KEY (user_uuid) REFERENCES external_user(uuid) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["user_uuid"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS external_list_medium (
+	list_id int8 NOT NULL,
+	medium_id int8 NOT NULL,
+	PRIMARY KEY (list_id, medium_id),
+	FOREIGN KEY (list_id) REFERENCES external_reading_list(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	FOREIGN KEY (medium_id) REFERENCES medium(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["medium_id"], ["list_id"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS job_history (
+	id int8 NOT NULL,
+	"type" varchar(200) NOT NULL,
+	"name" varchar(200) NOT NULL,
+	"start" timestamptz NOT NULL,
+	"end" timestamptz NOT NULL,
+	arguments text NULL,
+	"result" varchar(100) NOT NULL,
+	message jsonb NOT NULL,
+	context text NOT NULL,
+	scheduled_at timestamptz NOT NULL,
+	created int8 NOT NULL DEFAULT '0'::bigint,
+	updated int8 NOT NULL DEFAULT '0'::bigint,
+	deleted int8 NOT NULL DEFAULT '0'::bigint,
+	queries int8 NOT NULL DEFAULT '0'::bigint,
+	network_queries int8 NOT NULL DEFAULT '0'::bigint,
+	network_received int8 NOT NULL DEFAULT '0'::bigint,
+	network_send int8 NOT NULL DEFAULT '0'::bigint,
+	lagging int8 GENERATED ALWAYS AS (extract(epoch from "start" - "scheduled_at")) STORED,
+	duration int8 GENERATED ALWAYS AS (extract(epoch from "end" - "start")) STORED,
+	PRIMARY KEY (id, start)
+);
+`,
+    { indices: [["end"], ["name"], ["result"], ["start"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS job_stat_summary (
+	"name" varchar(200) NOT NULL,
+	"type" varchar(200) NOT NULL,
+	count int8 NOT NULL,
+	failed int8 NOT NULL,
+	succeeded int8 NOT NULL,
+	network_requests int8 NOT NULL,
+	min_network_requests int8 NOT NULL,
+	max_network_requests int8 NOT NULL,
+	network_send int8 NOT NULL,
+	min_network_send int8 NOT NULL,
+	max_network_send int8 NOT NULL,
+	network_received int8 NOT NULL,
+	min_network_received int8 NOT NULL,
+	max_network_received int8 NOT NULL,
+	duration int8 NOT NULL,
+	min_duration int8 NOT NULL,
+	max_duration int8 NOT NULL,
+	lagging int8 NOT NULL,
+	min_lagging int8 NOT NULL,
+	max_lagging int8 NOT NULL,
+	updated int8 NOT NULL,
+	min_updated int8 NOT NULL,
+	max_updated int8 NOT NULL,
+	created int8 NOT NULL,
+	min_created int8 NOT NULL,
+	max_created int8 NOT NULL,
+	deleted int8 NOT NULL,
+	min_deleted int8 NOT NULL,
+	max_deleted int8 NOT NULL,
+	sql_queries int8 NOT NULL,
+	min_sql_queries int8 NOT NULL,
+	max_sql_queries int8 NOT NULL,
+	PRIMARY KEY (name)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS jobs (
+	id bigserial NOT NULL,
+	"type" varchar(200) NOT NULL,
+	"name" varchar(200) NOT NULL,
+	state varchar(200) NOT NULL,
+	"interval" int8 NOT NULL,
+	delete_after_run bool NOT NULL,
+	running_since timestamptz NULL,
+	run_after int8 NULL,
+	last_run timestamptz NULL,
+	next_run timestamptz NULL,
+	arguments text NULL,
+	enabled bool NOT NULL,
+	PRIMARY KEY (id),
+	UNIQUE(name)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS medium_in_wait (
+	title varchar(180) NOT NULL,
+	medium int4 NOT NULL,
+	link varchar(767) NOT NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (title, medium, link)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS medium_synonyms (
+	medium_id int8 NOT NULL,
+	synonym varchar(200) NOT NULL,
+	PRIMARY KEY (medium_id, synonym),
+	FOREIGN KEY (medium_id) REFERENCES medium(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS news_board (
+	id bigserial NOT NULL,
+	title text NOT NULL,
+	link varchar(700) NOT NULL,
+	"date" timestamptz NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	UNIQUE(link)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS news_medium (
+	news_id int8 NOT NULL,
+	medium_id int8 NOT NULL,
+	PRIMARY KEY (news_id, medium_id),
+	FOREIGN KEY (medium_id) REFERENCES medium(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	FOREIGN KEY (news_id) REFERENCES news_board(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["medium_id"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS news_user (
+	news_id int8 NOT NULL,
+	user_id bpchar(36) NOT NULL,
+	PRIMARY KEY (news_id, user_id),
+	FOREIGN KEY (user_id) REFERENCES "user"(uuid) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	FOREIGN KEY (news_id) REFERENCES news_board(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["user_id"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS notifications (
+	id bigserial NOT NULL,
+	title varchar(200) NOT NULL,
+	"content" varchar(500) NOT NULL,
+	"date" timestamptz NOT NULL,
+	"type" varchar(200) NOT NULL,
+	"key" varchar(200) NOT NULL,
+	PRIMARY KEY (id)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS notifications_read (
+	id int8 NOT NULL,
+	uuid bpchar(36) NOT NULL,
+	PRIMARY KEY (id, uuid),
+	FOREIGN KEY (id) REFERENCES notifications(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	FOREIGN KEY (uuid) REFERENCES "user"(uuid) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["uuid"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS page_info (
+	link varchar(767) NOT NULL,
+	key_string varchar(200) NOT NULL,
+	value text NOT NULL
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS part (
+	id bigserial NOT NULL,
+	medium_id int8 NOT NULL,
+	title varchar(200) NULL DEFAULT NULL::character varying,
+	combi_index float8 NOT NULL,
+	total_index int8 NOT NULL,
+	partial_index int8 NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	FOREIGN KEY (medium_id) REFERENCES medium(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	UNIQUE(medium_id, combi_index)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS reading_list (
+	id bigserial NOT NULL,
+	"name" varchar(200) NOT NULL,
+	user_uuid bpchar(36) NULL DEFAULT NULL::bpchar,
+	medium int8 NOT NULL,
+	updated_at timestamptz NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (id),
+	FOREIGN KEY (user_uuid) REFERENCES "user"(uuid) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["user_uuid"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS list_medium (
+	list_id int8 NOT NULL,
+	medium_id int8 NOT NULL,
+	PRIMARY KEY (list_id, medium_id),
+	FOREIGN KEY (list_id) REFERENCES reading_list(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	FOREIGN KEY (medium_id) REFERENCES medium(id) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["medium_id"]] },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS scraper_hook (
+	id bigserial NOT NULL,
+	"name" varchar(200) NOT NULL,
+	enabled boolean NOT NULL,
+	message varchar(200) NOT NULL,
+	PRIMARY KEY (id),
+	UNIQUE(name)
+);
+`,
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS user_episode (
+	id bigserial NOT NULL,
+	user_uuid bpchar(36) NOT NULL,
+	episode_id int8 NOT NULL,
+	progress float8 NOT NULL,
+	read_date timestamptz NOT NULL,
+	PRIMARY KEY (id),
+	FOREIGN KEY (user_uuid) REFERENCES "user"(uuid) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	FOREIGN KEY (episode_id) REFERENCES episode(id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+	UNIQUE(episode_id, user_uuid)
+);
+`,
+    {
+      indices: [
+        ["episode_id"],
+        ["episode_id", "user_uuid", "progress"],
+        ["episode_id", "progress"],
+        ["progress"],
+        ["user_uuid", "progress"],
+      ],
+    },
+  )
+  .addTable(
+    sql`
+CREATE TABLE IF NOT EXISTS user_log (
+	user_uuid bpchar(36) NULL DEFAULT NULL::bpchar,
+	ip varchar(255) NULL DEFAULT NULL::character varying,
+	session_key varchar(255) NOT NULL,
+	acquisition_date varchar(40) NULL DEFAULT NULL::character varying,
+	PRIMARY KEY (session_key),
+	FOREIGN KEY (user_uuid) REFERENCES "user"(uuid) ON DELETE RESTRICT ON UPDATE RESTRICT
+);
+`,
+    { indices: [["user_uuid"]] },
+  );
 
 dataBaseBuilder.addMigrations(...Migrations);
 
@@ -472,32 +510,5 @@ dataBaseBuilder.getTableBuilder()
     .parseColumn("uuid CHAR(36) NOT NULL UNIQUE")
     .parseColumn("stringified_settings TEXT")
     .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)"); */
-
-dataBaseBuilder
-  .getTableBuilder()
-  .setName("user_data_invalidation")
-  .setInvalidationTable()
-  .parseColumn("uuid CHAR(36) NOT NULL")
-  .parseColumn("user_uuid BOOLEAN")
-  .parseColumn("news_id INT UNSIGNED ")
-  .parseColumn("medium_id INT UNSIGNED ")
-  .parseColumn("part_id INT UNSIGNED ")
-  .parseColumn("episode_id INT UNSIGNED ")
-  .parseColumn("list_id INT UNSIGNED ")
-  .parseColumn("external_list_id INT UNSIGNED ")
-  .parseColumn("external_uuid CHAR(36)")
-  .parseMeta("FOREIGN KEY(uuid) REFERENCES user(uuid)")
-  .parseMeta("FOREIGN KEY(news_id) REFERENCES news_board(id)")
-  .parseMeta("FOREIGN KEY(medium_id) REFERENCES medium(id)")
-  .parseMeta("FOREIGN KEY(part_id) REFERENCES part(id)")
-  .parseMeta("FOREIGN KEY(episode_id) REFERENCES episode(id)")
-  .parseMeta("FOREIGN KEY(list_id) REFERENCES reading_list(id)")
-  .parseMeta("FOREIGN KEY(external_list_id) REFERENCES external_reading_list(id)")
-  .parseMeta("FOREIGN KEY(external_uuid) REFERENCES external_user(uuid)")
-  .parseMeta(
-    "PRIMARY KEY(uuid, user_uuid, news_id, medium_id, part_id," +
-      "episode_id, list_id, external_list_id, external_uuid)",
-  )
-  .build();
 
 export const databaseSchema = dataBaseBuilder.build();

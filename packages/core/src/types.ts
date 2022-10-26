@@ -1,5 +1,14 @@
 import { MediaType } from "./tools";
-import { FieldInfo, MysqlError, Query } from "mysql";
+import { Readable } from "stream";
+import { SimpleEpisodeReleases, SimpleJob, SimpleJobHistory } from "./database/databaseTypes";
+
+export type DBEntity<T> = {
+  [K in keyof T as Lowercase<string & K>]: T[K];
+};
+
+export interface Entity {
+  id: number;
+}
 
 export interface ExternalStorageUser {
   userUuid: Uuid;
@@ -74,17 +83,17 @@ export interface MinMedium {
  */
 export interface SimpleMedium {
   id?: Id;
-  countryOfOrigin?: string;
-  languageOfOrigin?: string;
-  author?: string;
   title: string;
   medium: MediaType;
-  artist?: string;
-  lang?: string;
-  stateOrigin?: ReleaseState;
-  stateTL?: ReleaseState;
-  series?: string;
-  universe?: string;
+  countryOfOrigin?: string | null;
+  languageOfOrigin?: string | null;
+  author?: string | null;
+  artist?: string | null;
+  lang?: string | null;
+  stateOrigin?: ReleaseState | null;
+  stateTl?: ReleaseState | null;
+  series?: string | null;
+  universe?: string | null;
 }
 
 /**
@@ -195,10 +204,10 @@ export type UpdateMedium = Partial<SimpleMedium> & {
  *             $ref: "#/components/schemas/Id"
  */
 export interface Medium extends SimpleMedium {
-  parts?: Id[];
-  latestReleased: Id[];
-  currentRead: Id;
-  unreadEpisodes: Id[];
+  parts?: readonly Id[];
+  latestReleased: readonly Id[];
+  currentRead: Id | null;
+  unreadEpisodes: readonly Id[];
 }
 
 export interface TocSearchMedium {
@@ -260,7 +269,7 @@ export interface ExtractedIndex {
 
 export interface Indexable {
   totalIndex: number;
-  partialIndex?: number;
+  partialIndex?: number | null;
 }
 
 /**
@@ -310,7 +319,7 @@ export interface MinPart extends Indexable {
  *             $ref: "#/components/schemas/Episode"
  */
 export interface Part extends MinPart {
-  episodes: Episode[] | Id[];
+  episodes: readonly SimpleEpisodeReleases[] | Id[];
 }
 
 /**
@@ -336,15 +345,16 @@ export interface Part extends MinPart {
  *             $ref: "#/components/schemas/SimpleEpisode"
  */
 export interface AddPart extends MinPart {
-  episodes: SimpleEpisode[];
+  episodes: SimpleEpisodeReleases[];
 }
 
 export interface FullPart extends Part {
-  episodes: Episode[];
+  episodes: SimpleEpisodeReleases[];
 }
 
+// @ts-expect-error
 export interface ShallowPart extends Part {
-  episodes: Id[];
+  episodes: readonly Id[];
 }
 
 /**
@@ -372,7 +382,7 @@ export interface ShallowPart extends Part {
 export interface SimpleEpisode extends Indexable {
   id: Id;
   partId: Id;
-  combiIndex?: number;
+  combiIndex: number;
   releases: EpisodeRelease[];
 }
 
@@ -469,11 +479,12 @@ export interface SimpleRelease {
  *           type: string
  */
 export interface EpisodeRelease extends SimpleRelease {
+  id: number;
   title: string;
   releaseDate: Date;
-  locked?: boolean;
-  sourceType?: string;
-  tocId?: Id;
+  locked: boolean;
+  sourceType?: string | null;
+  tocId?: Id | null;
 }
 
 /**
@@ -523,7 +534,7 @@ export type PureDisplayRelease = Omit<EpisodeRelease, "sourceType" | "tocId">;
 export interface DisplayRelease {
   episodeId: Id;
   title: string;
-  link: Link;
+  url: Link;
   mediumId: Id;
   locked?: boolean;
   date: Date;
@@ -531,8 +542,8 @@ export interface DisplayRelease {
 }
 
 export interface DisplayReleasesResponse {
-  releases: DisplayRelease[];
-  media: MinMedium[];
+  releases: readonly DisplayRelease[];
+  media: readonly MinMedium[];
   latest: Date;
 }
 
@@ -777,8 +788,8 @@ export interface ExternalUser {
   identifier: string;
   type: number;
   lists: ExternalList[];
-  lastScrape?: Date;
-  cookies?: Nullable<string>;
+  lastScrape?: Date | null;
+  cookies?: string | null;
 }
 
 /**
@@ -1123,6 +1134,12 @@ export type Json<T extends Record<string, any>> = {
 
 export type Primitive = string | number | boolean;
 
+export type ReadonlyNullish<T> = T extends null | undefined
+  ? T
+  : T extends unknown
+  ? Readonly<T> | null | undefined
+  : Readonly<T>;
+
 export interface Invalidation {
   mediumId?: Id;
   partId?: Id;
@@ -1177,7 +1194,11 @@ export type Link = string;
  */
 export type Id = number;
 
-export type Insert<T extends { id: Id }> = Omit<T, "id"> & Partial<Pick<T, "id">>;
+export type Insert<T extends { id: Id } | { uuid: Uuid }> = T extends { id: Id }
+  ? Omit<T, "id"> & Partial<Pick<T, "id">>
+  : T extends { uuid: Uuid }
+  ? Omit<T, "uuid"> & Partial<Pick<T, "uuid">>
+  : never;
 
 export enum ScrapeName {
   searchForToc = "searchForToc",
@@ -1249,14 +1270,9 @@ export interface JobItem {
   previousScheduledAt?: Date;
 }
 
-export interface JobRequest {
-  type: ScrapeName;
-  interval: number;
-  deleteAfterRun: boolean;
+export interface JobRequest
+  extends Pick<SimpleJob, "type" | "interval" | "deleteAfterRun" | "name" | "runAfter" | "arguments"> {
   runImmediately: boolean;
-  name?: string;
-  runAfter?: JobRequest | JobItem;
-  arguments?: string;
 }
 
 export interface BasicJobStats {
@@ -1493,7 +1509,7 @@ export type JobHistoryItem = Pick<JobItem, "id" | "type" | "name" | "deleteAfter
 };
 
 export interface Paginated<T, K extends keyof T> {
-  items: T[];
+  items: readonly T[];
   next: T[K];
   total: number;
 }
@@ -1551,9 +1567,10 @@ export interface JobTrack {
  *              $ref: "#/components/schemas/JobHistoryItem"
  */
 export interface JobDetails {
-  job?: JobItem;
-  history: JobHistoryItem[];
+  job: SimpleJob | null;
+  history: readonly SimpleJobHistory[];
 }
+
 export type JobStatFilter = NamedJobStatFilter | TimeJobStatFilter;
 
 export interface NamedJobStatFilter {
@@ -1575,16 +1592,15 @@ export enum MilliTime {
   DAY = 86400000,
 }
 
-export interface TypedQuery<Packet = any> extends Query {
-  on(ev: "packet", callback: (packet: any) => void): Query;
-
-  on(ev: "result", callback: (row: Packet, index: number) => void): Query;
-
-  on(ev: "error", callback: (err: MysqlError) => void): Query;
-
-  on(ev: "fields", callback: (fields: FieldInfo[], index: number) => void): Query;
-
-  on(ev: "end", callback: () => void): Query;
+export interface TypedQuery<Packet = any> extends Readable {
+  on(event: "close", listener: () => void): this;
+  on(event: "end", listener: () => void): this;
+  on(event: "data", callback: (row: Packet) => void): this;
+  on(event: "error", listener: (err: Error) => void): this;
+  on(event: "pause", listener: () => void): this;
+  on(event: "readable", listener: () => void): this;
+  on(event: "resume", listener: () => void): this;
+  on(event: string | symbol, listener: (...args: any[]) => void): this;
 }
 
 /**
@@ -1713,16 +1729,16 @@ export interface DataStats {
  *              $ref: "#/components/schemas/PureNews"
  */
 export interface NewData {
-  tocs: FullMediumToc[];
-  media: SimpleMedium[];
-  releases: PureDisplayRelease[];
-  episodes: PureEpisode[];
-  parts: MinPart[];
-  lists: UserList[];
-  extLists: PureExternalList[];
-  extUser: PureExternalUser[];
-  mediaInWait: MediumInWait[];
-  news: PureNews[];
+  tocs: readonly FullMediumToc[];
+  media: readonly SimpleMedium[];
+  releases: readonly PureDisplayRelease[];
+  episodes: readonly PureEpisode[];
+  parts: readonly MinPart[];
+  lists: readonly UserList[];
+  extLists: readonly PureExternalList[];
+  extUser: readonly PureExternalUser[];
+  mediaInWait: readonly MediumInWait[];
+  news: readonly PureNews[];
 }
 
 /**
@@ -1771,7 +1787,7 @@ export interface MediumInWaitSearch {
 export interface ScraperHook {
   id: number;
   name: string;
-  state: string;
+  enabled: boolean;
   message: string;
 }
 
@@ -1901,17 +1917,12 @@ export type JobStatSummary = {
   | "lagging"
 >;
 
-export enum HookState {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
-}
-
 export interface CustomHook {
   id: number;
   name: string;
   state: string;
   updated_at?: Date;
-  hookState: HookState;
+  enabled: boolean;
   comment: string;
 }
 
@@ -1930,17 +1941,17 @@ export interface QueryItems {
 }
 
 export interface QueryItemsResult {
-  episodeReleases: EpisodeRelease[]; // by episode id
-  episodes: Episode[];
-  partEpisodes: Record<number, number[]>; // by part id
-  partReleases: Record<number, SimpleRelease[]>; // by part id
-  parts: Part[];
-  media: SimpleMedium[];
-  tocs: FullMediumToc[]; // by toc id
-  mediaTocs: FullMediumToc[]; // by medium id
-  mediaLists: List[];
-  externalMediaLists: ExternalList[];
-  externalUser: ExternalUser[];
+  episodeReleases: readonly EpisodeRelease[]; // by episode id
+  episodes: readonly Episode[];
+  partEpisodes: Readonly<Record<number, number[]>>; // by part id
+  partReleases: Readonly<Record<number, SimpleRelease[]>>; // by part id
+  parts: readonly Part[];
+  media: readonly SimpleMedium[];
+  tocs: readonly FullMediumToc[]; // by toc id
+  mediaTocs: readonly FullMediumToc[]; // by medium id
+  mediaLists: readonly List[];
+  externalMediaLists: readonly ExternalList[];
+  externalUser: readonly ExternalUser[];
 }
 
 export interface Notification {

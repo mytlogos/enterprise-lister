@@ -1,6 +1,6 @@
 import { HttpClient } from "../Httpclient";
-import { CustomHook } from "enterprise-core/dist/types";
 import { defineStore } from "pinia";
+import { CustomHook } from "enterprise-core/dist/database/databaseTypes";
 
 export const useHookStore = defineStore("hooks", {
   persist: true,

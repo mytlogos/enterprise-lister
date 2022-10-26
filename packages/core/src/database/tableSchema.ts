@@ -1,35 +1,30 @@
-import { InvalidationType } from "./databaseTypes";
 import { ColumnSchema } from "./columnSchema";
 import { SchemaError } from "../error";
+import { SqlSqlToken } from "slonik";
 
 export class TableSchema {
   public readonly columns: ColumnSchema[];
   public readonly foreignKeys: ColumnSchema[];
   public readonly primaryKeys: ColumnSchema[];
   public readonly name: string;
-  public readonly invalidations: Array<{ type: InvalidationType; table: TableSchema }> = [];
-  public readonly main: boolean;
-  public readonly invalidationColumn?: string;
-  public readonly invalidationTable: boolean;
   public readonly uniqueIndices: ColumnSchema[][];
-  public mainDependent?: boolean;
+  public readonly indices: string[][];
+  public readonly schema: Readonly<SqlSqlToken<any>>;
 
   public constructor(
     columns: ColumnSchema[],
     name: string,
-    main = false,
-    invalidationCol?: string,
-    invalidTable = false,
+    tableSchema: SqlSqlToken<any>,
     uniqueIndices: ColumnSchema[][] = [],
+    indices: string[][] = [],
   ) {
     this.columns = columns;
     this.primaryKeys = this.columns.filter((value) => value.primaryKey);
     this.foreignKeys = this.columns.filter((value) => value.foreignKey);
     this.uniqueIndices = uniqueIndices;
     this.name = name;
-    this.main = main;
-    this.invalidationColumn = invalidationCol;
-    this.invalidationTable = invalidTable;
+    this.indices = indices;
+    this.schema = tableSchema;
   }
 
   public getTableSchema(): { name: string; columns: string[] } {
@@ -91,7 +86,7 @@ export class TableSchema {
     return { name: this.name, columns: schemata };
   }
 
-  public getSchema(): string {
+  public getGeneratedSchema(): string {
     const tableSchema = this.getTableSchema();
     return `CREATE TABLE ${this.name} (${tableSchema.columns.join(", ")});`;
   }

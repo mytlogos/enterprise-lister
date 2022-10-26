@@ -95,7 +95,6 @@ describe("testing tool.js", () => {
       it(`should always return true if same string - '${hashTool.tag}'`, async () => {
         for (const testString of testStrings) {
           const hash = await hashTool.hash(testString);
-          // @ts-expect-error
           await expect(hashTool.equals(testString, hash.hash, hash.salt)).resolves.toBe(true);
         }
       });
@@ -680,15 +679,19 @@ describe("testing tool.js", () => {
       const now = new Date();
 
       const testRelease = {
+        id: 1,
         episodeId: 1,
         releaseDate: now,
         title: "none",
         url: "google.de",
+        locked: false,
       };
       // should always equals itself
       expect(tools.equalsRelease(testRelease, testRelease)).toBe(true);
       expect(
         tools.equalsRelease(testRelease, {
+          id: 1,
+          locked: false,
           episodeId: 1,
           releaseDate: now,
           title: "none",
@@ -697,6 +700,7 @@ describe("testing tool.js", () => {
       ).toBe(true);
       expect(
         tools.equalsRelease(testRelease, {
+          id: 1,
           episodeId: 1,
           releaseDate: now,
           title: "none",
@@ -707,6 +711,7 @@ describe("testing tool.js", () => {
 
       expect(
         tools.equalsRelease(testRelease, {
+          id: 1,
           episodeId: 1,
           releaseDate: now,
           title: "none",

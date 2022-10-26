@@ -1,6 +1,6 @@
 import { RestResponseError } from "../errors";
 import logger from "enterprise-core/dist/logger";
-import { isQuery, Errors, isError, isString } from "enterprise-core/dist/tools";
+import { Errors, ignore, isError, isString } from "enterprise-core/dist/tools";
 import { Handler, NextFunction, Request, Response } from "express";
 import stringify from "stringify-stream";
 import { ValidationError } from "enterprise-core/dist/error";
@@ -8,6 +8,7 @@ import { JSONSchemaType } from "enterprise-core/dist/validation";
 import { Validator } from "express-json-validator-middleware";
 import addFormats from "ajv-formats";
 import * as validationSchemata from "../validation";
+import { pipeline, Readable } from "stream";
 
 export function castQuery<T extends Record<string, any>>(req: Request): T {
   return req.query as T;
@@ -20,11 +21,8 @@ export function stopper(_req: Request, _res: Response, next: NextFunction): any 
 export function sendResult(res: Response, promise: Promise<any>): void {
   promise
     .then((result) => {
-      if (isQuery(result)) {
-        result
-          .stream({ objectMode: true, highWaterMark: 10 })
-          .pipe(stringify({ open: "[", close: "]" }))
-          .pipe(res);
+      if (result instanceof Readable) {
+        pipeline(result, stringify({ open: "[", close: "]" }), res, ignore);
       } else {
         res.json(result);
       }

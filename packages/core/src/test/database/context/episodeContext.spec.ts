@@ -1,7 +1,7 @@
 import * as tools from "../../../tools";
 import { internetTester } from "../../../internetTester";
 import * as storage from "../../../database/storages/storage";
-import { episodeStorage } from "../../../database/storages/storage";
+import { episodeStorage, episodeReleaseStorage } from "../../../database/storages/storage";
 import {
   setupTestDatabase,
   checkEmptyQuery,
@@ -17,7 +17,8 @@ import {
   getMediumOfEpisode,
   getEpisode,
 } from "./contextHelper";
-import { EpisodeRelease, ReadEpisode, SimpleRelease } from "../../../types";
+import { ReadEpisode } from "../../../types";
+import { SimpleRelease } from "../../../database/databaseTypes";
 
 jest.setTimeout(60000);
 
@@ -39,10 +40,10 @@ describe("episodeContext", () => {
   describe("getDisplayReleases", () => {
     it("should not throw, when using valid parameters", async () => {
       await expect(
-        episodeStorage.getDisplayReleases(new Date(), new Date(), true, "12", [], [], [], []),
+        episodeReleaseStorage.getDisplayReleases(new Date(), new Date(), true, "12", [], [], [], []),
       ).resolves.toBeDefined();
       await expect(
-        episodeStorage.getDisplayReleases(new Date(), null, null, "12", [], [], [], []),
+        episodeReleaseStorage.getDisplayReleases(new Date(), null, null, "12", [], [], [], []),
       ).resolves.toBeDefined();
     });
   });
@@ -114,7 +115,7 @@ describe("episodeContext", () => {
   describe("getAllReleases", () => {
     it("should not throw", async () => {
       // TODO: write better test
-      await expect(episodeStorage.getAllReleases()).resolves.toBeDefined();
+      await expect(episodeReleaseStorage.getAllReleases()).resolves.toBeDefined();
     });
   });
 
@@ -123,7 +124,7 @@ describe("episodeContext", () => {
       await fillEpisodeReleaseTable();
       const mediumId = getDatabaseData()[1].media[0].id;
       const uuid = Object.keys(getDatabaseData()[0])[0];
-      const result = await episodeStorage.getMediumReleases(mediumId, uuid);
+      const result = await episodeReleaseStorage.getMediumReleases(mediumId, uuid);
       expect(result.length).toBeGreaterThan(0);
     });
   });
@@ -156,7 +157,7 @@ describe("episodeContext", () => {
   describe("getReleases", () => {
     it("should not throw when using valid parameters", async () => {
       const values = await fillEpisodeReleaseTable();
-      const result = await episodeStorage.getReleases(values.map((release) => release.episodeId));
+      const result = await episodeReleaseStorage.getReleases(values.map((release) => release.episodeId));
       expect(values.length).toBe(result.length);
     });
   });
@@ -164,7 +165,7 @@ describe("episodeContext", () => {
   describe("getReleasesByHost", () => {
     it("should not throw when using valid parameters", async () => {
       const values = await fillEpisodeReleaseTable();
-      const result = await episodeStorage.getReleasesByHost(values[0].episodeId, values[0].url);
+      const result = await episodeReleaseStorage.getReleasesByHost([values[0].episodeId], values[0].url);
       expect(result.length).toBeGreaterThan(0);
     });
   });
@@ -173,7 +174,7 @@ describe("episodeContext", () => {
     it("should not throw when using valid parameters", async () => {
       const [value] = await fillEpisodeReleaseTable();
       const medium = getMediumOfEpisode(value.episodeId);
-      const result = await episodeStorage.getMediumReleasesByHost(medium.id, value.url);
+      const result = await episodeReleaseStorage.getMediumReleasesByHost(medium.id, value.url);
       expect(result.length).toBeGreaterThan(0);
     });
   });
@@ -198,16 +199,6 @@ describe("episodeContext", () => {
       await expect(episodeStorage.removeProgress(value.uuid, value.episodeId)).resolves.toBe(true);
       await expect(episodeStorage.getProgress(value.uuid, value.episodeId)).resolves.toBe(0);
       await expect(episodeStorage.removeProgress(value.uuid, value.episodeId)).resolves.toBe(false);
-    });
-  });
-
-  /**
-   * Sets the progress of an user in regard to an episode with one or multiple progressResult objects.
-   */
-  describe("setProgress", () => {
-    it("should not throw when using valid parameters", async () => {
-      // FIXME remove this test and the whole method
-      await expect(episodeStorage.setProgress("", [])).resolves.toBeUndefined();
     });
   });
 
@@ -238,25 +229,17 @@ describe("episodeContext", () => {
     });
   });
 
-  /**
-   * Marks an Episode as read and adds it into Storage if the episode does not exist yet.
-   */
-  describe("markEpisodeRead", () => {
-    it("should not throw when using valid parameters", async () => {
-      // FIXME remote this test and the whole method
-      await expect(episodeStorage.markEpisodeRead("", { result: [], url: "", accept: true })).resolves.toBeUndefined();
-    });
-  });
   describe("addRelease", () => {
     it("should not throw when using valid parameters", async () => {
       const [episode] = await fillEpisodeTable();
-      const release: EpisodeRelease = {
+      const release = {
         episodeId: episode.id,
         releaseDate: new Date(),
         title: "hi",
         url: "https://book.url/test/",
+        locked: false,
       };
-      await expect(episodeStorage.addRelease(release)).resolves.toEqual(release);
+      await expect(episodeReleaseStorage.addReleases([release])).resolves.toEqual(release);
     });
   });
 
@@ -264,7 +247,7 @@ describe("episodeContext", () => {
     it("should not throw when using valid parameters", async () => {
       const [release] = await fillEpisodeReleaseTable();
       const medium = getMediumOfEpisode(release.episodeId);
-      const result = await episodeStorage.getEpisodeLinksByMedium(medium.id);
+      const result = await episodeReleaseStorage.getEpisodeLinksByMedium(medium.id);
       expect(result).toContainEqual({ episodeId: release.episodeId, url: release.url });
     });
   });
@@ -272,25 +255,27 @@ describe("episodeContext", () => {
   describe("getSourcedReleases", () => {
     it("should not throw when using valid parameters", async () => {
       // TODO: write better test
-      await expect(episodeStorage.getSourcedReleases("", 0)).resolves.toBeDefined();
+      await expect(episodeReleaseStorage.getSourcedReleases("", 0)).resolves.toBeDefined();
     });
   });
 
   describe("updateRelease", () => {
     it("should not throw when using valid parameters", async () => {
       const [episode] = await fillEpisodeTable();
-      const release: EpisodeRelease = {
+      const release: SimpleRelease = {
+        id: 0,
         episodeId: episode.id,
         releaseDate: new Date(),
         title: "hi",
         url: "https://book.url/test/",
+        locked: false,
       };
       release.releaseDate.setMilliseconds(0);
 
       // FIXME: currently getReleases returns null values for properties which do not contain the null type
       // either allow null, or remove keys with null values
-      await episodeStorage.addRelease(release);
-      await expect(episodeStorage.getReleases(release.episodeId)).resolves.toEqual([
+      await episodeReleaseStorage.addReleases([release]);
+      await expect(episodeReleaseStorage.getReleases([release.episodeId])).resolves.toEqual([
         {
           ...release,
           sourceType: null,
@@ -302,8 +287,10 @@ describe("episodeContext", () => {
       release.releaseDate.setHours(release.releaseDate.getHours() - 1);
       release.sourceType = "2";
       release.title = "2";
-      await expect(episodeStorage.updateRelease(release)).resolves.toBeUndefined();
-      await expect(episodeStorage.getReleases(release.episodeId)).resolves.toEqual([{ ...release, tocId: null }]);
+      await expect(episodeReleaseStorage.updateReleases([release])).resolves.toBeUndefined();
+      await expect(episodeReleaseStorage.getReleases([release.episodeId])).resolves.toEqual([
+        { ...release, tocId: null },
+      ]);
     });
   });
 
@@ -311,16 +298,16 @@ describe("episodeContext", () => {
     it("should not throw when using valid parameters", async () => {
       const [release] = await fillEpisodeReleaseTable();
 
-      await expect(episodeStorage.getReleases(release.episodeId)).resolves.toContainEqual({
+      await expect(episodeReleaseStorage.getReleases([release.episodeId])).resolves.toContainEqual({
         ...release,
         sourceType: null,
         tocId: null,
         locked: false,
       });
 
-      await expect(episodeStorage.deleteRelease(release)).resolves.toBeUndefined();
+      await expect(episodeReleaseStorage.deleteReleases([release])).resolves.toBeUndefined();
 
-      await expect(episodeStorage.getReleases(release.episodeId)).resolves.not.toContainEqual({
+      await expect(episodeReleaseStorage.getReleases([release.episodeId])).resolves.not.toContainEqual({
         ...release,
         sourceType: null,
         tocId: null,
@@ -349,10 +336,11 @@ describe("episodeContext", () => {
       const episode = {
         id: 0,
         partId: 1,
-        releases: [],
         totalIndex: 0,
+        combiIndex: 0,
+        releases: [],
       };
-      const firstResult = await episodeStorage.addEpisode(episode);
+      const [firstResult] = await episodeStorage.addEpisode([episode]);
       expect(firstResult.id).not.toBe(episode.id);
       expect(firstResult).toEqual({
         ...episode,
@@ -360,8 +348,9 @@ describe("episodeContext", () => {
         combiIndex: episode.totalIndex,
         progress: 0,
         readDate: null,
+        releases: [],
       });
-      const secondResult = await episodeStorage.addEpisode(episode);
+      const [secondResult] = await episodeStorage.addEpisode([episode]);
       expect(secondResult.id).not.toBe(episode.id);
       expect(secondResult.id).toBeGreaterThan(firstResult.id);
       expect(secondResult).toEqual({
@@ -382,7 +371,7 @@ describe("episodeContext", () => {
       // for this test both episode and progress must have the same id
       expect(episode.id).toBe(progress.episodeId);
 
-      await expect(episodeStorage.getEpisode(progress.episodeId, progress.uuid)).resolves.toEqual([
+      await expect(episodeStorage.getEpisode([progress.episodeId], progress.uuid)).resolves.toEqual([
         {
           ...episode,
           combiIndex: episode.totalIndex,
@@ -410,7 +399,7 @@ describe("episodeContext", () => {
   describe("getPartEpisodePerIndex", () => {
     it("should not throw when using valid parameters", async () => {
       const [episode] = await fillEpisodeTable();
-      await expect(episodeStorage.getPartEpisodePerIndex(episode.partId, episode.totalIndex)).resolves.toEqual([
+      await expect(episodeStorage.getPartEpisodePerIndex(episode.partId, [episode.totalIndex])).resolves.toEqual([
         {
           ...episode,
           partialIndex: null,
@@ -425,7 +414,7 @@ describe("episodeContext", () => {
       const [episode] = await fillEpisodeTable();
       const medium = getMediumOfEpisode(episode.id);
 
-      await expect(episodeStorage.getMediumEpisodePerIndex(medium.id, episode.totalIndex)).resolves.toEqual([
+      await expect(episodeStorage.getMediumEpisodePerIndex(medium.id, [episode.totalIndex])).resolves.toEqual([
         {
           ...episode,
           partialIndex: null,
@@ -444,15 +433,16 @@ describe("episodeContext", () => {
       const episode = {
         id: 0,
         partId: part.id,
-        releases: [],
         totalIndex: 0,
+        combiIndex: 0,
+        releases: [],
       };
       await expect(episodeStorage.updateEpisode(episode)).resolves.toBe(false);
-      const result = await episodeStorage.addEpisode(episode);
+      const [result] = await episodeStorage.addEpisode([episode]);
       episode.id = result.id;
       episode.totalIndex = 1;
       await expect(episodeStorage.updateEpisode(episode)).resolves.toBe(true);
-      await expect(episodeStorage.getEpisode(episode.id, "")).resolves.toEqual([
+      await expect(episodeStorage.getEpisode([episode.id], "")).resolves.toEqual([
         {
           ...episode,
           combiIndex: episode.totalIndex,
@@ -480,7 +470,7 @@ describe("episodeContext", () => {
   describe("deleteEpisode", () => {
     it("should not throw when using valid parameters", async () => {
       const [episode] = await fillEpisodeTable();
-      await expect(episodeStorage.getEpisode(episode.id, "")).resolves.toEqual([
+      await expect(episodeStorage.getEpisode([episode.id], "")).resolves.toEqual([
         {
           ...episode,
           combiIndex: episode.totalIndex,
@@ -490,7 +480,7 @@ describe("episodeContext", () => {
         },
       ]);
       await expect(episodeStorage.deleteEpisode(episode.id)).resolves.toBeDefined();
-      await expect(episodeStorage.getEpisode(episode.id, "")).resolves.toEqual([]);
+      await expect(episodeStorage.getEpisode([episode.id], "")).resolves.toEqual([]);
     });
   });
 
@@ -517,7 +507,7 @@ describe("episodeContext", () => {
       const [episode] = await fillEpisodeTable();
 
       await expect(episodeStorage.getUnreadChapter(user.uuid)).resolves.toEqual([episode.id]);
-      await episodeStorage.addProgress(user.uuid, episode.id, 1, null);
+      await episodeStorage.addProgress(user.uuid, [episode.id], 1, null);
       await expect(episodeStorage.getUnreadChapter(user.uuid)).resolves.toEqual([]);
     });
   });
@@ -531,7 +521,7 @@ describe("episodeContext", () => {
       const date = new Date();
       date.setMilliseconds(0);
 
-      await episodeStorage.addProgress(user.uuid, episode.id, 1, date);
+      await episodeStorage.addProgress(user.uuid, [episode.id], 1, date);
       await expect(episodeStorage.getReadToday(user.uuid)).resolves.toStrictEqual<ReadEpisode[]>([
         {
           episodeId: episode.id,
@@ -564,7 +554,7 @@ describe("episodeContext", () => {
     it("should not throw when using valid parameters", async () => {
       const [release] = await fillEpisodeReleaseTable();
 
-      await expect(episodeStorage.getEpisodeLinks([release.episodeId])).resolves.toEqual<SimpleRelease[]>([
+      await expect(episodeReleaseStorage.getEpisodeLinks([release.episodeId])).resolves.toEqual([
         {
           episodeId: release.episodeId,
           url: release.url,
@@ -583,16 +573,16 @@ describe("episodeContext", () => {
         {
           id: 0,
           partId: episode.partId,
-          releases: [],
           totalIndex: episode.totalIndex + 1,
           combiIndex: episode.totalIndex + 1,
+          releases: [],
         },
         {
           id: 0,
           partId: episode.partId,
-          releases: [],
           totalIndex: episode.totalIndex + 2,
           combiIndex: episode.totalIndex + 2,
+          releases: [],
         },
       ]);
 

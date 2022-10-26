@@ -1,10 +1,13 @@
-import { Connection } from "promise-mysql";
+import { DatabaseConnection, DatabaseTransactionConnection } from "slonik";
 import { QueryContext } from "../contexts/queryContext";
 import { ConnectionContext } from "../databaseTypes";
 
 export type ContextCallback<T, C extends ConnectionContext> = (context: C) => Promise<T>;
-export type ContextProvider<C extends ConnectionContext> = (con: Connection) => C;
-export const queryContextProvider: ContextProvider<QueryContext> = (con) => new QueryContext(con);
+export type ContextProvider<C extends ConnectionContext> = (
+  con: DatabaseConnection | DatabaseTransactionConnection,
+) => C;
+export const queryContextProvider: ContextProvider<QueryContext> = (con) =>
+  new QueryContext({ connection: con, subClass: new Map() });
 
 /**
  * Escapes the Characters for an Like with the '|' char.

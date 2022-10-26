@@ -1,4 +1,4 @@
-import { mediumStorage, storage } from "enterprise-core/dist/database/storages/storage";
+import { mediumTocStorage, storage } from "enterprise-core/dist/database/storages/storage";
 import { EmptyPromise, JobRequest, MilliTime, ScrapeName } from "enterprise-core/dist/types";
 import { TocRequest } from "../externals/types";
 
@@ -8,7 +8,7 @@ export const queueTocs = async (): EmptyPromise => {
 
 export const queueTocsJob = async (): Promise<JobRequest[]> => {
   // TODO: 02.09.2019 a perfect candidate to use stream on
-  const tocs = await mediumStorage.getAllTocs();
+  const tocs = await mediumTocStorage.getAllTocs();
   return tocs.map((value): JobRequest => {
     const tocRequest: TocRequest = { mediumId: value.mediumId, url: value.link };
     return {

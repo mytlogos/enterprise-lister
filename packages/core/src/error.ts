@@ -1,3 +1,5 @@
+import { DatabaseError as PgDatabaseError } from "pg";
+
 export class ParseError extends Error {
   public constructor(message: string) {
     super(message);
@@ -116,4 +118,8 @@ export class ConfigurationError extends Error {
     this.name = this.constructor.name;
     Error.captureStackTrace(this, ConfigurationError);
   }
+}
+
+export function isDuplicateError(params: unknown): params is PgDatabaseError {
+  return params instanceof PgDatabaseError && params.code === "23505"; // unique violation
 }

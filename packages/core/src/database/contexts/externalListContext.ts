@@ -1,74 +1,61 @@
-import { SubContext } from "./subContext";
-import { ExternalList, Id, Insert, Uuid } from "../../types";
-import { promiseMultiSingle, multiSingle } from "../../tools";
-import { storeModifications } from "../sqlTools";
-import { OkPacket } from "mysql";
-import { DatabaseError, ValidationError } from "../../error";
+import { Id, Insert, Uuid } from "../../types";
+import { promiseMultiSingle } from "../../tools";
+import { QueryContext } from "./queryContext";
+import { sql } from "slonik";
+import { entity, ExternalList, simpleExternalList, SimpleExternalList } from "../databaseTypes";
+import { DatabaseError } from "../../error";
 
 export type UpdateExternalList = Partial<ExternalList> & { id: Id };
 
-export class ExternalListContext extends SubContext {
+export class ExternalListContext extends QueryContext {
   public async getAll(uuid: Uuid): Promise<ExternalList[]> {
-    // FIXME: 03.03.2020 this query is invalid
-    const result = await this.query(
-      "SELECT el.id, el.user_uuid as uuid, el.name, el.medium, el.url " +
-        "FROM external_reading_list as el " +
-        "INNER JOIN external_user as eu ON el.user_uuid=eu.uuid " +
-        "WHERE eu.local_uuid = ?;",
-      uuid,
+    // FIXME: 03.03.2020 this query is invalid, really???
+    const result = await this.con.any(
+      sql`SELECT 
+        el.id, el.user_uuid, el.name, el.medium, el.url
+        FROM external_reading_list as el
+        INNER JOIN external_user as eu ON el.user_uuid=eu.uuid
+        WHERE eu.local_uuid = ${uuid};`,
     );
     return Promise.all(result.map((value: any) => this.createShallowExternalList(value)));
   }
 
   /**
    * Adds an external list of an user to the storage.
-   *
-   * @param {string} userUuid
-   * @param {ExternalList} externalList
-   * @return {Promise<ExternalList>}
    */
-  public async addExternalList(userUuid: Uuid, externalList: Insert<ExternalList>): Promise<ExternalList> {
-    const result = await this.query(
-      "INSERT INTO external_reading_list " + "(name, user_uuid, medium, url) " + "VALUES(?,?,?,?);",
-      [externalList.name, userUuid, externalList.medium, externalList.url],
+  public async addExternalList(
+    externalUserUuid: Uuid,
+    externalList: Insert<SimpleExternalList>,
+  ): Promise<SimpleExternalList> {
+    return this.con.one(
+      sql.type(simpleExternalList)`
+      INSERT INTO external_reading_list (name, user_uuid, medium, url)
+      VALUES(${externalList.name},${externalUserUuid},${externalList.medium},${externalList.url})
+      RETURNING id, name, user_uuid, medium, url;`,
     );
-    storeModifications("external_list", "insert", result);
-    const insertId = result.insertId;
-
-    if (!Number.isInteger(insertId)) {
-      throw new DatabaseError(`invalid ID ${insertId + ""}`);
-    }
-
-    return {
-      id: insertId,
-      name: externalList.name,
-      medium: externalList.medium,
-      url: externalList.url,
-      items: [],
-    };
   }
 
   /**
    * Updates an external list.
    */
   public async updateExternalList(externalList: UpdateExternalList): Promise<boolean> {
-    const result = await this.update(
+    await this.update(
       "external_reading_list",
-      (updates, values) => {
+      () => {
+        const updates = [];
         if (externalList.medium) {
-          updates.push("medium = ?");
-          values.push(externalList.medium);
+          updates.push(sql`medium = ${externalList.medium}`);
         }
 
         if (externalList.name) {
-          updates.push("name = ?");
-          values.push(externalList.name);
+          updates.push(sql`name = ${externalList.name}`);
         }
+        return updates;
       },
       { column: "user_uuid", value: externalList.id },
     );
-    storeModifications("external_list", "delete", result);
-    return result.changedRows > 0;
+    // FIXME: storeModifications("external_list", "delete", result);
+    return false;
   }
 
   /**
@@ -78,14 +65,14 @@ export class ExternalListContext extends SubContext {
     // TODO: 29.06.2019 replace with id IN (...) and list_id IN (...)
     const results = await promiseMultiSingle(externalListId, async (item) => {
       // first delete any references of externalList: list-media links
-      let result = await this.delete("external_list_medium", {
+      await this.delete("external_list_medium", {
         column: "list_id",
         value: item,
       });
-      storeModifications("external_list_item", "delete", result);
+      // FIXME: storeModifications("external_list_item", "delete", result);
 
       // then delete list itself
-      result = await this.delete(
+      await this.delete(
         "external_reading_list",
         {
           column: "user_uuid",
@@ -96,8 +83,8 @@ export class ExternalListContext extends SubContext {
           value: item,
         },
       );
-      storeModifications("external_list", "delete", result);
-      return result.affectedRows > 0;
+      // FIXME: storeModifications("external_list", "delete", result);
+      return false;
     });
     return Array.isArray(results) ? results.some((v) => v) : results;
   }
@@ -109,8 +96,13 @@ export class ExternalListContext extends SubContext {
    * @return {Promise<ExternalList>}
    */
   public async getExternalList(id: number): Promise<ExternalList> {
-    const result = await this.query("SELECT * FROM external_reading_list WHERE id = ?", id);
-    return this.createShallowExternalList(result[0]);
+    const result = await this.con.one(
+      sql.type(simpleExternalList)`
+      SELECT id, name, user_uuid, medium, url
+      FROM external_reading_list
+      WHERE id = ${id}`,
+    );
+    return this.createShallowExternalList(result);
   }
 
   /**
@@ -120,20 +112,24 @@ export class ExternalListContext extends SubContext {
    * @param {ExternalList} storageList
    * @return {Promise<ExternalList>}
    */
-  public async createShallowExternalList(storageList: ExternalList): Promise<ExternalList> {
-    const result = await this.query("SELECT * FROM external_list_medium WHERE list_id = ?;", storageList.id);
-    storageList.items = result.map((value: any) => value.medium_id);
-    // TODO return input or copy object?
-    return storageList;
+  public async createShallowExternalList(storageList: SimpleExternalList): Promise<ExternalList> {
+    const result = await this.con.anyFirst(
+      sql.type(entity)`SELECT medium_id as id FROM external_list_medium WHERE list_id = ${storageList.id};`,
+    );
+    return {
+      ...storageList,
+      items: [...result],
+    };
   }
 
   /**
    * Gets all external lists from the externalUser from the storage.
    */
   public async getExternalUserLists(uuid: Uuid): Promise<ExternalList[]> {
-    const result = await this.query(
-      "SELECT id, name, user_uuid as uuid, medium, url" + " FROM external_reading_list WHERE user_uuid = ?;",
-      uuid,
+    const result = await this.con.any(
+      sql`SELECT id, name, user_uuid, medium, url
+      FROM external_reading_list
+      WHERE user_uuid = ${uuid};`,
     );
     return Promise.all(result.map((value: any) => this.createShallowExternalList(value)));
   }
@@ -141,13 +137,10 @@ export class ExternalListContext extends SubContext {
   /**
    * Adds a medium to an external list in the storage.
    */
-  public async addItemToExternalList(listId: number, mediumId: number): Promise<boolean> {
-    const result = await this.query("INSERT INTO external_list_medium " + "(list_id, medium_id) " + "VALUES (?,?)", [
-      listId,
-      mediumId,
-    ]);
-    storeModifications("external_list_item", "insert", result);
-    return result.affectedRows > 0;
+  public async addItemToList(listId: number, mediumId: number): Promise<boolean> {
+    await this.con.query(sql`INSERT INTO external_list_medium (list_id, medium_id) VALUES (${listId},${mediumId});`);
+    // FIXME: storeModifications("external_list_item", "insert", result);
+    return false;
   }
 
   /**
@@ -156,41 +149,43 @@ export class ExternalListContext extends SubContext {
    * If no listId is available it selects the
    * 'Standard' List of the given user and adds it there.
    */
-  public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: Uuid): Promise<boolean> {
-    // if list_ident is not a number,
-    // then take it as uuid from user and get the standard listId of 'Standard' list
-    if (medium.listId == null || !Number.isInteger(medium.listId)) {
-      if (!uuid) {
-        throw new ValidationError("missing uuid parameter");
-      }
-      const idResult = await this.query(
-        "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",
-        uuid,
-      );
-      medium.listId = idResult[0].id;
-    }
-    const result = await this.multiInsert(
-      "INSERT IGNORE INTO external_list_medium (list_id, medium_id) VALUES",
-      medium.id,
-      (value) => [medium.listId, value],
+  public async addItemsToList(mediumIds: number[], listId: number, uuid: Uuid): Promise<boolean> {
+    const ownsList = await this.con.exists(
+      sql.type(entity)`
+      SELECT id
+      FROM external_reading_list as el
+      INNER JOIN external_user as eu ON el.user_uuid=eu.uuid
+      WHERE eu.local_uuid = ${uuid};`,
     );
-    let added = false;
 
-    multiSingle(result, (value: OkPacket) => {
-      storeModifications("external_list_item", "insert", value);
+    if (!ownsList) {
+      throw new DatabaseError("uuid does not own list");
+    }
 
-      if (value.affectedRows > 0) {
-        added = true;
-      }
-    });
-    return added;
+    const values = mediumIds.map((value) => [listId, value]);
+
+    await this.con.query(
+      sql`INSERT INTO external_list_medium (list_id, medium_id)
+      SELECT * FROM ${sql.unnest(values, ["int8", "in8"])}
+      ON CONFLICT DO NOTHING;`,
+    );
+    // let added = false;
+
+    // multiSingle(result, (value) => {
+    //   // FIXME: storeModifications("external_list_item", "insert", value);
+
+    //   if (value.rowCount > 0) {
+    //     added = true;
+    //   }
+    // });
+    return false;
   }
 
   /**
    * Removes an item from an external list.
    */
-  public removeMedium(listId: number, mediumId: number | number[]): Promise<boolean> {
-    return promiseMultiSingle(mediumId, async (value) => {
+  public async removeMedium(listId: number, mediumId: number | number[]): Promise<boolean> {
+    const changed = await promiseMultiSingle(mediumId, async (value) => {
       const result = await this.delete(
         "external_list_medium",
         {
@@ -202,8 +197,9 @@ export class ExternalListContext extends SubContext {
           value,
         },
       );
-      storeModifications("external_list_item", "delete", result);
-      return result.affectedRows > 0;
-    }).then(() => true);
+      // FIXME: storeModifications("external_list_item", "delete", result);
+      return result.rowCount > 0;
+    });
+    return Array.isArray(changed) ? changed.reduce((p, c) => p || c) : changed;
   }
 }

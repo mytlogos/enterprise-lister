@@ -1,5 +1,6 @@
+import { SimpleJob, SimpleRelease } from "enterprise-core/dist/database/databaseTypes";
 import * as storage from "enterprise-core/dist/database/storages/storage";
-import { EpisodeRelease, JobItem, JobRequest, JobState, ScrapeName, MediumToc } from "enterprise-core/dist/types";
+import { JobRequest, ScrapeName, MediumToc } from "enterprise-core/dist/types";
 
 async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: MediumToc[]) {
   const domainMatch = domainReg.exec(toc.link);
@@ -22,9 +23,10 @@ async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: 
   }
   const partIds = await storage.partStorage.getMediumParts(id);
   const episodeIds: number[] = partIds.flatMap((value) => value.episodes as number[]);
-  const mediumReleases = await storage.episodeStorage.getReleases(episodeIds);
+  const mediumReleases = await storage.episodeReleaseStorage.getReleases(episodeIds);
 
-  const episodeMap: Map<number, EpisodeRelease[]> = new Map();
+  const episodeMap: Map<number, SimpleRelease[]> = new Map();
+
   for (const release of mediumReleases) {
     const releaseDomainMatch = domainReg.exec(release.url);
     if (!releaseDomainMatch) {
@@ -37,12 +39,13 @@ async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: 
       if (!episodeMap.has(release.episodeId)) {
         episodeMap.set(release.episodeId, []);
       }
-      const links = episodeMap.get(release.episodeId) as EpisodeRelease[];
+      const links = episodeMap.get(release.episodeId) as SimpleRelease[];
       links.push(release);
     }
   }
-  const deleteReleases = [];
-  const updateToHttpsReleases = [];
+
+  const deleteReleases: SimpleRelease[] = [];
+  const updateToHttpsReleases: SimpleRelease[] = [];
 
   for (const [, releases] of episodeMap.entries()) {
     if (releases.length > 1) {
@@ -76,18 +79,17 @@ async function updateReleaseProtocol(domainReg: RegExp, toc: MediumToc, values: 
 
 async function updateHttps(): Promise<Change> {
   const httpsOnly = ["http://novelfull.com"];
-  const jobItems = await storage.jobStorage.getJobsInState(JobState.WAITING);
-  jobItems.push(...(await storage.jobStorage.getJobsInState(JobState.RUNNING)));
-  const allTocs: MediumToc[] = await storage.mediumStorage.getAllTocs();
+  const jobItems = await storage.jobStorage.getAllJobs();
+  const allTocs = await storage.mediumTocStorage.getAllTocs();
 
   const tocMap: Map<string, MediumToc[]> = new Map();
   const regExp = /https?:\/\/(.+)/;
   const domainReg = /https?:\/\/(.+?)(\/|$)/;
 
-  const removeJobs: JobItem[] = [];
-  const addJobs: JobItem[] = [];
-  const addReleases: EpisodeRelease[] = [];
-  const removeReleases: EpisodeRelease[] = [];
+  const removeJobs: SimpleJob[] = [];
+  const addJobs: SimpleJob[] = [];
+  const addReleases: SimpleRelease[] = [];
+  const removeReleases: SimpleRelease[] = [];
   const removeTocs: MediumToc[] = [];
   const addTocs: MediumToc[] = [];
 
@@ -262,12 +264,12 @@ async function updateHttps(): Promise<Change> {
 }
 
 interface Change {
-  addJobs: JobItem[];
+  addJobs: SimpleJob[];
   removeTocs: MediumToc[];
   addTocs: MediumToc[];
-  removeReleases: EpisodeRelease[];
-  removeJobs: JobItem[];
-  addReleases: EpisodeRelease[];
+  removeReleases: SimpleRelease[];
+  removeJobs: SimpleJob[];
+  addReleases: SimpleRelease[];
 }
 
 async function executeChange(changes: Change) {
@@ -288,12 +290,12 @@ async function executeChange(changes: Change) {
     });
   }
   await storage.jobStorage.addJobs(jobRequests);
-  await Promise.all(changes.addTocs.map((value) => storage.mediumStorage.addToc(value.mediumId, value.link)));
-  await storage.episodeStorage.addRelease(changes.addReleases);
-  await Promise.all(changes.removeReleases.map((value) => storage.episodeStorage.deleteRelease(value)));
+  await Promise.all(changes.addTocs.map((value) => storage.mediumTocStorage.addToc(value.mediumId, value.link)));
+  await storage.episodeReleaseStorage.addReleases(changes.addReleases);
+  await Promise.all(changes.removeReleases.map((value) => storage.episodeReleaseStorage.deleteReleases([value])));
   await storage.jobStorage.removeJobs(changes.removeJobs);
   const removeTocLinks = [...new Set(changes.removeTocs.map((value) => value.link))];
-  await Promise.all(removeTocLinks.map((value) => storage.mediumStorage.removeToc(value)));
+  await Promise.all(removeTocLinks.map((value) => storage.mediumTocStorage.removeToc(value)));
 }
 
 async function makeChanges() {

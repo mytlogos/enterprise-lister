@@ -2,15 +2,7 @@ import { ScraperHelper } from "../externals/scraperTools";
 import { JobQueue, OutsideJob } from "./jobQueue";
 import { getElseSet, isString, maxValue, removeLike, stringify } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
-import {
-  JobItem,
-  JobRequest,
-  JobState,
-  MilliTime,
-  ScrapeName,
-  EmptyPromise,
-  Optional,
-} from "enterprise-core/dist/types";
+import { JobRequest, JobState, MilliTime, ScrapeName, EmptyPromise, Optional } from "enterprise-core/dist/types";
 import { jobStorage, notificationStorage } from "enterprise-core/dist/database/storages/storage";
 import * as dns from "dns";
 import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
@@ -21,19 +13,20 @@ import { channel } from "diagnostics_channel";
 import { SchedulingStrategy, Strategies } from "./scheduling";
 import { gracefulShutdown } from "enterprise-core/dist/exit";
 import { createJob, Job } from "./job";
+import { SimpleJob } from "enterprise-core/dist/database/databaseTypes";
 
 const missingConnections = new Set<Date>();
 const jobChannel = channel("enterprise-jobs");
 
 export class JobScheduler {
   public automatic = true;
-  public filter: undefined | ((item: JobItem) => boolean);
+  public filter: undefined | ((item: Readonly<SimpleJob>) => boolean);
 
   private readonly helper = new ScraperHelper();
   private readonly queue = new JobQueue({ maxActive: 50 });
   private fetching = false;
   private paused = true;
-  private readonly jobMap = new Map<number | string, Job>();
+  private readonly jobMap = new Map<number | string, Readonly<Job>>();
 
   /**
    * Jobs of currently queued or running jobs
@@ -187,14 +180,14 @@ export class JobScheduler {
    * Mainly for test purposes
    * @param jobIds
    */
-  public async runJobs(...jobIds: number[]): EmptyPromise {
+  public async runJobs(...jobIds: readonly number[]): EmptyPromise {
     logger.info("start fetching jobs", {
       running: this.queue.runningJobs,
       schedulable: this.queue.schedulableJobs,
       total: this.queue.totalJobs,
     });
     const jobs = await jobStorage.getJobsById(jobIds);
-    this.processJobItems(jobs);
+    this.processSimpleJobs(jobs);
     logger.info("fetched jobs", {
       running: this.queue.runningJobs,
       schedulable: this.queue.schedulableJobs,
@@ -202,7 +195,7 @@ export class JobScheduler {
     });
   }
 
-  public async addJobs(...jobs: JobRequest[]): EmptyPromise {
+  public async addJobs(...jobs: readonly JobRequest[]): EmptyPromise {
     let waitForOtherRequest: JobRequest[] = [];
     const addJobs = jobs.filter((value) => {
       if (value.runAfter) {
@@ -217,7 +210,7 @@ export class JobScheduler {
       await jobStorage.addJobs(addJobs);
       addJobs.length = 0;
       waitForOtherRequest = waitForOtherRequest.filter((value) => {
-        if (isJobItem(value.runAfter)) {
+        if (isSimpleJob(value.runAfter)) {
           addJobs.push(value);
           return false;
         } else {
@@ -231,7 +224,7 @@ export class JobScheduler {
     }
   }
 
-  public getJobs(): OutsideJob[] {
+  public getJobs(): readonly OutsideJob[] {
     return this.queue.getJobs();
   }
 
@@ -252,7 +245,7 @@ export class JobScheduler {
     });
   }
 
-  private addDependant(jobsMap: Map<ScrapeJob, Job[]>): void {
+  private addDependant(jobsMap: ReadonlyMap<ScrapeJob, readonly Job[]>): void {
     for (const [key, value] of jobsMap.entries()) {
       for (const job of value) {
         // skip jobs which are already known to be running/queued
@@ -274,10 +267,10 @@ export class JobScheduler {
   }
 
   private async checkCurrentVsStorage() {
-    const runningJobs: JobItem[] = await jobStorage.getJobsInState(JobState.RUNNING);
+    const runningJobs = await jobStorage.getJobsInState(JobState.RUNNING);
 
     // jobs which are marked as running in storage, while not running
-    const invalidJobs: JobItem[] = [];
+    const invalidJobs: SimpleJob[] = [];
 
     const jobs = this.queue.getJobs();
     const currentlyRunningJobIds = new Set();
@@ -294,7 +287,7 @@ export class JobScheduler {
     if (invalidJobs.length) {
       // TODO: what to do with these variables?
       const identifier = [];
-      const removeJobs: JobItem[] = [];
+      const removeJobs: SimpleJob[] = [];
       const updateJobs = invalidJobs.filter((value) => {
         identifier.push(value.name ? value.name : value.id);
 
@@ -309,7 +302,7 @@ export class JobScheduler {
           if (value.interval < 60000) {
             value.interval = 60000;
           }
-          value.nextRun = new Date(value.lastRun.getTime() + value.interval);
+          value.nextRun = new Date(Date.now() + value.interval);
         }
         value.state = JobState.WAITING;
         return true;
@@ -381,7 +374,7 @@ export class JobScheduler {
   }
 
   private async checkRunningStorageJobs() {
-    const runningJobs: JobItem[] = await jobStorage.getJobsInState(JobState.RUNNING);
+    const runningJobs = await jobStorage.getJobsInState(JobState.RUNNING);
     const twoHoursAgo = new Date();
     twoHoursAgo.setHours(twoHoursAgo.getHours() - 2);
 
@@ -419,11 +412,11 @@ export class JobScheduler {
       schedulable: this.queue.schedulableJobs,
       total: this.queue.totalJobs,
     });
-    const jobs: JobItem[] = await this.schedulingStrategy(
+    const jobs = await this.schedulingStrategy(
       this.queue,
       this.jobs.map((job) => job.currentItem),
     );
-    this.processJobItems(jobs);
+    this.processSimpleJobs(jobs);
     logger.info("fetched jobs", {
       running: this.queue.runningJobs,
       schedulable: this.queue.schedulableJobs,
@@ -432,7 +425,7 @@ export class JobScheduler {
     this.fetching = false;
   }
 
-  private processJobItems(items: JobItem[]) {
+  private processSimpleJobs(items: readonly SimpleJob[]) {
     const jobMap = new Map<ScrapeJob, Job[]>();
     items.forEach((value) => {
       const job = createJob(value);
@@ -528,12 +521,12 @@ export class JobScheduler {
       removeLike(this.jobs, (value) => value.id === item.id);
       this.jobMap.delete(item.id);
       const newJobs = await jobStorage.getAfterJobs(item.id);
-      this.processJobItems(newJobs);
+      this.processSimpleJobs(newJobs);
     });
   }
 }
 
-function isJobItem(value: any): value is JobItem {
+function isSimpleJob(value: any): value is SimpleJob {
   return value?.id;
 }
 

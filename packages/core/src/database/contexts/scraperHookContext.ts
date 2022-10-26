@@ -1,63 +1,65 @@
-import { SubContext } from "./subContext";
-import { ScraperHook, TypedQuery } from "../../types";
-import { storeModifications } from "../sqlTools";
+import { Insert, ScraperHook, TypedQuery } from "../../types";
 import { escapeLike } from "../storages/storageTools";
 import { ValidationError } from "../../error";
+import { QueryContext } from "./queryContext";
+import { sql } from "slonik";
+import { simpleScraperHook } from "../databaseTypes";
 
-export class ScraperHookContext extends SubContext {
+export class ScraperHookContext extends QueryContext {
   public async getAllStream(): Promise<TypedQuery<ScraperHook>> {
-    return this.queryStream("SELECT id, name, state, message FROM scraper_hook");
+    return this.stream<ScraperHook>(sql.type(simpleScraperHook)`SELECT id, name, enabled, message FROM scraper_hook`);
   }
 
-  public async getAll(): Promise<ScraperHook[]> {
-    return this.query("SELECT id, name, state, message FROM scraper_hook");
+  public async getAll(): Promise<readonly ScraperHook[]> {
+    return this.con.any(sql.type(simpleScraperHook)`SELECT id, name, enabled, message FROM scraper_hook`);
   }
 
   /**
    * Adds a scraper_hook of an medium to the storage.
    */
-  public async addScraperHook(scraperHook: ScraperHook): Promise<void> {
-    const result = await this.query("INSERT INTO scraper_hook (id, name, state, message) VALUES (?,?,?,?);", [
-      scraperHook.id,
-      scraperHook.name,
-      scraperHook.state,
-      scraperHook.message,
-    ]);
-    storeModifications("scraper_hook", "insert", result);
+  public async addScraperHook(scraperHook: Insert<ScraperHook>): Promise<void> {
+    await this.con.query(
+      sql`
+      INSERT INTO scraper_hook (name, enabled, message)
+      VALUES (${scraperHook.name},${scraperHook.enabled},${scraperHook.message});`,
+    );
+    // FIXME: storeModifications("scraper_hook", "insert", result);
   }
 
   /**
    * Updates a scraperHook.
    */
   public async updateScraperHook(scraperHook: ScraperHook): Promise<boolean> {
-    let result = await this.update(
+    const result = await this.update(
       "scraper_hook",
-      (updates, values) => {
+      () => {
+        const updates = [];
+
         if (scraperHook.message) {
-          updates.push("message = ?");
-          values.push(scraperHook.message);
+          updates.push(sql`message = ${scraperHook.message}`);
         } else if (scraperHook.message === null) {
           throw new ValidationError("Cannot set the message of scraper_hook to null");
         }
-        if (scraperHook.state) {
-          updates.push("state = ?");
-          values.push(scraperHook.state);
-        } else if (scraperHook.state === null) {
-          throw new ValidationError("Cannot set the state of scraper_hook to null");
+        if (scraperHook.enabled) {
+          updates.push(sql`enabled = ${scraperHook.enabled}`);
+        } else if (scraperHook.enabled === null) {
+          throw new ValidationError("Cannot set the enabled of scraper_hook to null");
         }
+        return updates;
       },
       {
         column: "id",
         value: scraperHook.id,
       },
     );
-    storeModifications("scraper_hook", "update", result);
-    result = await this.query(
-      `UPDATE jobs SET job_state = ? WHERE name LIKE '%${escapeLike(scraperHook.name)}%'`,
-      scraperHook.state,
+    // FIXME: storeModifications("scraper_hook", "update", result);
+    await this.con.query(
+      sql`UPDATE jobs SET job_enabled = ${scraperHook.enabled} WHERE name LIKE ${
+        "%" + escapeLike(scraperHook.name) + "%"
+      }`,
     );
-    storeModifications("job", "update", result);
-    return result.changedRows > 0;
+    // FIXME: storeModifications("job", "update", result);
+    return result.rowCount > 0;
   }
 
   /**
@@ -65,7 +67,7 @@ export class ScraperHookContext extends SubContext {
    */
   public async deleteScraperHook(id: number): Promise<boolean> {
     const result = await this.delete("scraper_hook", { column: "id", value: id });
-    storeModifications("scraper_hook", "delete", result);
-    return result.affectedRows > 0;
+    // FIXME: storeModifications("scraper_hook", "delete", result);
+    return result.rowCount > 0;
   }
 }

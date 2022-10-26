@@ -25,7 +25,9 @@ export async function searchForToc(item: TocSearchMedium, searcher: TocSearchScr
 
   const pageInfoKey = "search" + item.mediumId;
   const result = await storage.getPageInfo(link, pageInfoKey);
-  const dates = result.values.map((value) => new Date(value)).filter((value) => !Number.isNaN(value.getDate()));
+  const dates: Date[] = result.values
+    .map((value: string) => new Date(value))
+    .filter((value: Date) => !Number.isNaN(value.getDate()));
   const maxDate = maxValue(dates);
 
   if (maxDate && maxDate.toDateString() === new Date().toDateString()) {

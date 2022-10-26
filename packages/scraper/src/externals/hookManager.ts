@@ -1,4 +1,4 @@
-import { CustomHook as CustomHookEntity, EmptyPromise } from "enterprise-core/dist/types";
+import { EmptyPromise } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import { getHook as getWWHook } from "./direct/wuxiaworldScraper";
 import { getHook as getGogoAnimeHook } from "./direct/gogoAnimeScraper";
@@ -11,7 +11,7 @@ import { getHook as getOpenLibraryHook } from "./direct/openLibraryScraper";
 import { ContentDownloader, Hook, NewsScraper, SearchScraper, TocScraper, TocSearchScraper } from "./types";
 import { customHookStorage, hookStorage } from "enterprise-core/dist/database/storages/storage";
 import { getListManagerHooks } from "./listManager";
-import { MediaType, multiSingle } from "enterprise-core/dist/tools";
+import { isString, MediaType } from "enterprise-core/dist/tools";
 import { HookConfig } from "./custom/types";
 import { HookConfig as HookConfigV2 } from "./customv2/types";
 import { createHook as createHookV2 } from "./customv2";
@@ -47,32 +47,32 @@ const nameHookMap = new Map<string, Hook>();
 const disabledHooks = new Set<string>();
 let timeoutId: NodeJS.Timeout | undefined;
 
-export enum HookState {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
-}
-
 function isHookConfigV2(config: HookConfig | HookConfigV2): config is HookConfigV2 {
   return "version" in config && config.version === 2;
 }
 
 async function loadCustomHooks(): Promise<{ custom: Hook[]; disabled: Set<string> }> {
-  const hooks: CustomHookEntity[] = await customHookStorage.getHooks();
+  const hooks = await customHookStorage.getHooks();
 
   const loadedCustomHooks: Hook[] = [];
   const disabled = new Set<string>();
 
   for (const hookEntity of hooks) {
-    if (hookEntity.hookState === HookState.DISABLED) {
+    if (!hookEntity.enabled) {
       disabled.add(hookEntity.name);
       continue;
     }
     let hookConfig: HookConfig | HookConfigV2;
-    try {
-      hookConfig = JSON.parse(hookEntity.state);
-    } catch (error) {
-      logger.warn("Could not parse HookState of CustomHook", { hook_name: hookEntity.name });
-      continue;
+
+    if (isString(hookEntity.state)) {
+      try {
+        hookConfig = JSON.parse(hookEntity.state);
+      } catch (error) {
+        logger.warn("Could not parse HookConfig of CustomHook", { hook_name: hookEntity.name });
+        continue;
+      }
+    } else {
+      hookConfig = hookEntity.state as unknown as HookConfig | HookConfigV2;
     }
 
     let customHook;
@@ -99,7 +99,7 @@ async function loadCustomHooks(): Promise<{ custom: Hook[]; disabled: Set<string
 
 async function loadRawHooks() {
   const hooks = getRawHooks();
-  const storageHooks = await hookStorage.getAll();
+  const storageHooks = [...(await hookStorage.getAll())];
 
   for (const hook of hooks) {
     const index = storageHooks.findIndex((value) => hook.name === value.name);
@@ -109,10 +109,10 @@ async function loadRawHooks() {
         id: 0,
         message: "Newly discovered Hook",
         name: hook.name,
-        state: HookState.ENABLED,
+        enabled: true,
       });
     } else {
-      if (storageHooks[index].state === HookState.DISABLED) {
+      if (!storageHooks[index].enabled) {
         disableHook(hook);
       }
       // remove all found storage hooks, so we can remove the superflous ones
@@ -186,8 +186,8 @@ function disableHook(hook: Hook): Hook {
   return hook;
 }
 
-function registerHooks(hook: Hook[] | Hook): void {
-  multiSingle(hook, (value: Hook) => {
+function registerHooks(hooks: readonly Hook[]): void {
+  hooks.forEach((value: Hook) => {
     if (!value.name) {
       throw new ValidationError("hook without name!");
     }

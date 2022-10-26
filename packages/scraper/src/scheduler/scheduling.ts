@@ -1,18 +1,18 @@
-import { JobItem } from "enterprise-core/dist/types";
 import { jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { getElseSet, stringify } from "enterprise-core/dist/tools";
 import { JobQueue } from "./jobQueue";
 import { getQueueKey } from "../externals/queueRequest";
 import { writeFile } from "fs/promises";
 import { ValidationError } from "enterprise-core/dist/error";
+import { SimpleJob } from "enterprise-core/dist/database/databaseTypes";
 
-export type SchedulingStrategy = (queue: JobQueue, items: JobItem[]) => Promise<JobItem[]>;
+export type SchedulingStrategy = (queue: Readonly<JobQueue>, items: SimpleJob[]) => Promise<readonly SimpleJob[]>;
 
 function create<T extends Record<string, SchedulingStrategy>>(value: T): T {
   return value;
 }
 
-function firstComeFirstServed(): Promise<JobItem[]> {
+function firstComeFirstServed(): Promise<readonly SimpleJob[]> {
   return jobStorage.getJobs();
 }
 
@@ -26,8 +26,8 @@ const UNKNOWN_QUEUE = "UNKNOWN";
  * @param items jobs to group
  * @returns a mapping of request queue key to the jobs
  */
-function getRequestQueueShare(items: JobItem[]): Map<string, JobItem[]> {
-  const countingMap = new Map<string, JobItem[]>();
+function getRequestQueueShare(items: readonly SimpleJob[]): Map<string, SimpleJob[]> {
+  const countingMap = new Map<string, SimpleJob[]>();
 
   for (const item of items) {
     if (!item) {
@@ -62,7 +62,10 @@ function getRequestQueueShare(items: JobItem[]): Map<string, JobItem[]> {
  * @param currentItems jobs which are currently running or queued
  * @returns array of ordered jobs to queue
  */
-async function requestQueueBalanced(queue: JobQueue, currentItems: JobItem[]): Promise<JobItem[]> {
+async function requestQueueBalanced(
+  queue: Readonly<JobQueue>,
+  currentItems: readonly SimpleJob[],
+): Promise<readonly SimpleJob[]> {
   // grouping of current items
   const currentShares = getRequestQueueShare(currentItems);
 
@@ -85,7 +88,7 @@ async function requestQueueBalanced(queue: JobQueue, currentItems: JobItem[]): P
   }
 
   // for debugging purpose only
-  const futureOnlyShares = new Map<string, JobItem[]>([...futureShares.keys()].map((key) => [key, []]));
+  const futureOnlyShares = new Map<string, SimpleJob[]>([...futureShares.keys()].map((key) => [key, []]));
 
   // number of items to queue
   const maximumSchedulableJobs = Math.max(queue.maxActive - queue.queuedJobs, 0);
@@ -156,7 +159,7 @@ async function requestQueueBalanced(queue: JobQueue, currentItems: JobItem[]): P
  * @param queue current used queue
  * @returns a baseline of jobs per minute, maxed at the maximum of the queue
  */
-async function calculateBaseLine(queue: JobQueue): Promise<number> {
+async function calculateBaseLine(queue: Readonly<JobQueue>): Promise<number> {
   const allJobs = await jobStorage.getAllJobs();
   const averageJobsPerMinute = allJobs.reduce((previous, current) => {
     if (!current.interval) {
@@ -192,7 +195,10 @@ let previousBaseLineCalculation = 0;
  *
  * Do not prefer jobs of queue {@link UNKNOWN_QUEUE} over known queues.
  */
-async function jobsQueueForcedBalance(queue: JobQueue, currentItems: JobItem[]): Promise<JobItem[]> {
+async function jobsQueueForcedBalance(
+  queue: Readonly<JobQueue>,
+  currentItems: readonly SimpleJob[],
+): Promise<readonly SimpleJob[]> {
   const now = Date.now();
   // tolerate a delay 10% of the interval
   const delayTolerance = 0.1;

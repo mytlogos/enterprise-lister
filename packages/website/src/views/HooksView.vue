@@ -46,9 +46,8 @@
 
 <script lang="ts" setup>
 import { HttpClient } from "../Httpclient";
-import { ScraperHook, HookState } from "../siteTypes";
 import { reactive } from "vue";
-import { CustomHook } from "enterprise-core/dist/types";
+import { CustomHook, ScraperHook } from "enterprise-core/dist/types";
 
 const data = reactive({
   hooks: [] as ScraperHook[],
@@ -61,39 +60,42 @@ async function fetch() {
   const [hooks, customHooks] = await Promise.all([HttpClient.getHooks(), HttpClient.getCustomHooks()]);
 
   hooks.sort((a, b) => {
-    const compare = a.state.localeCompare(b.state);
-    return compare || a.name.localeCompare(b.name);
+    return a.enabled === b.enabled ? a.name.localeCompare(b.name) : a.enabled ? -1 : 1;
   });
   customHooks.sort((a, b) => {
-    const compare = a.state.localeCompare(b.state);
-    return compare || a.name.localeCompare(b.name);
+    return a.enabled === b.enabled ? a.name.localeCompare(b.name) : a.enabled ? -1 : 1;
   });
   data.hooks = hooks;
   data.customHooks = customHooks;
 }
 async function toggleHook(item: ScraperHook) {
-  const newState = item.state === HookState.DISABLED ? HookState.ENABLED : HookState.DISABLED;
-  await HttpClient.updateHook({ ...item, state: newState });
-  item.state = newState;
+  const newState = !item.enabled;
+  await HttpClient.updateHook({ ...item, enabled: newState });
+  item.enabled = newState;
 }
 function isItemActive(item: ScraperHook): boolean {
-  return item.state === HookState.ENABLED;
+  return item.enabled;
 }
 async function toggleCustomHook(item: CustomHook) {
-  const newState = item.hookState === HookState.DISABLED ? HookState.ENABLED : HookState.DISABLED;
-  await HttpClient.updateCustomHook({ ...item, hookState: newState });
-  item.hookState = newState;
+  const newState = !item.enabled;
+  await HttpClient.updateCustomHook({ ...item, enabled: newState });
+  item.enabled = newState;
 }
 function isCustomItemActive(item: CustomHook): boolean {
-  return item.hookState === HookState.ENABLED;
+  return item.enabled;
 }
 
 function getHookEditRouterName(item: CustomHook) {
   let hookConfig: any;
-  try {
-    hookConfig = JSON.parse(item.state);
-  } catch (error) {
-    return;
+
+  if (typeof item.state === "string") {
+    try {
+      hookConfig = JSON.parse(item.state);
+    } catch (error) {
+      return;
+    }
+  } else {
+    hookConfig = item.state;
   }
 
   if ("version" in hookConfig && hookConfig.version === 2) {

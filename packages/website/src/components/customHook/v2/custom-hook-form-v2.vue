@@ -124,7 +124,7 @@
   </p-dialog>
 </template>
 <script lang="ts" setup>
-import { CustomHook, HookState } from "enterprise-core/dist/types";
+import { CustomHook } from "enterprise-core/dist/types";
 import { validateHookConfig } from "enterprise-scraper/dist/externals/customv2/validation";
 import { HookConfig } from "enterprise-scraper/dist/externals/customv2/types";
 import { computed, PropType, reactive, toRef, watch, watchEffect } from "vue";
@@ -160,10 +160,10 @@ const data = reactive({
 });
 const enabled = computed({
   get() {
-    return data.hookModel.hookState ? props.hook.hookState === HookState.ENABLED : true;
+    return data.hookModel.enabled;
   },
   set(value: boolean) {
-    data.hookModel.hookState = value ? HookState.ENABLED : HookState.DISABLED;
+    data.hookModel.enabled = value;
   },
 });
 

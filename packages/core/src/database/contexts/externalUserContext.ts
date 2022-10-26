@@ -1,59 +1,64 @@
-import { SubContext } from "./subContext";
-import {
-  ExternalUser,
-  Uuid,
-  MultiSingleValue,
-  PromiseMultiSingle,
-  DisplayExternalUser,
-  TypedQuery,
-  ExternalStorageUser,
-} from "../../types";
-import { promiseMultiSingle } from "../../tools";
+import { Uuid, Insert } from "../../types";
 import { v1 as uuidGenerator } from "uuid";
-import { storeModifications } from "../sqlTools";
-import { DatabaseError, DuplicateEntityError, MissingEntityError } from "../../error";
+import { DuplicateEntityError, MissingEntityError } from "../../error";
+import { QueryContext } from "./queryContext";
+import {
+  BasicDisplayExternalUser,
+  basicDisplayExternalUser,
+  DisplayExternalUser,
+  simpleExternalUser,
+  SimpleExternalUser,
+  SimpleExternalUserListed,
+} from "../databaseTypes";
+import { sql } from "slonik";
+import { ExternalListContext } from "./externalListContext";
 
-export class ExternalUserContext extends SubContext {
-  public async getAll(uuid: Uuid): Promise<TypedQuery<DisplayExternalUser>> {
-    const lists = await this.parentContext.externalListContext.getAll(uuid);
-    return this.queryStream(
-      "SELECT uuid, local_uuid as localUuid, name as identifier, service as type FROM external_user " +
-        "WHERE local_uuid = ?;",
-      uuid,
-    ).on("result", (row) => {
-      row.lists = [];
+export class ExternalUserContext extends QueryContext {
+  public async getAll(uuid: Uuid): Promise<DisplayExternalUser[]> {
+    const lists = await this.getContext(ExternalListContext).getAll(uuid);
+    const users = await this.con.any(
+      sql.type(basicDisplayExternalUser)`
+      SELECT
+      uuid, local_uuid, identifier, type
+      FROM external_user
+      WHERE local_uuid = ${uuid};`,
+    );
+
+    return users.map((user): DisplayExternalUser => {
+      const value = user as DisplayExternalUser;
+      value.lists = [];
       for (const list of lists) {
-        if (list.uuid === row.uuid) {
-          row.lists.push(list);
+        if (list.userUuid === user.uuid) {
+          value.lists.push(list);
         }
       }
+      return value;
     });
   }
 
   /**
    * Adds an external user of an user to the storage.
    */
-  public async addExternalUser(localUuid: Uuid, externalUser: ExternalUser): Promise<ExternalUser> {
-    let result = await this.query(
-      "SELECT * FROM external_user " + "WHERE name = ? " + "AND local_uuid = ? " + "AND service = ?",
-      [externalUser.identifier, localUuid, externalUser.type],
+  public async addExternalUser(localUuid: Uuid, externalUser: Insert<SimpleExternalUser>): Promise<SimpleExternalUser> {
+    const result = await this.con.exists(
+      sql`SELECT uuid FROM external_user
+      WHERE identifier = ${externalUser.identifier} AND local_uuid = ${localUuid} AND type = ${externalUser.type}`,
     );
-    if (result.length) {
+    if (result) {
       throw new DuplicateEntityError("Duplicate ExternalUser");
     }
     const uuid = uuidGenerator();
 
-    result = await this.query(
-      "INSERT INTO external_user " + "(name, uuid, local_uuid, service, cookies) " + "VALUES (?,?,?,?,?);",
-      [externalUser.identifier, uuid, localUuid, externalUser.type, externalUser.cookies],
+    await this.con.query(
+      sql`
+      INSERT INTO external_user (identifier, uuid, local_uuid, type, cookies)
+      VALUES (${externalUser.identifier},${uuid},${localUuid},${externalUser.type},${externalUser.cookies ?? null});`,
     );
-    storeModifications("external_user", "insert", result);
 
-    if (!result.affectedRows) {
-      return Promise.reject(new DatabaseError("Insert failed"));
-    }
+    // FIXME: storeModifications("external_user", "insert", insert);
+
     externalUser.localUuid = localUuid;
-    return externalUser;
+    return externalUser as SimpleExternalUser;
   }
 
   /**
@@ -65,125 +70,108 @@ export class ExternalUserContext extends SubContext {
     // because deleting top-down
     // would violate the foreign keys restraints
 
-    // first delete list - medium links
-    let result = await this.query(
-      "DELETE FROM external_list_medium " +
-        "WHERE list_id " +
-        "IN (SELECT id FROM external_reading_list " +
-        "WHERE user_uuid =?);",
-      externalUuid,
+    const ownsExternalUser = await this.con.exists(
+      sql`SELECT uuid from external_user WHERE uuid = ${externalUuid} AND user_uuid = ${userUuid}`,
     );
-    storeModifications("external_list_item", "delete", result);
+
+    if (!ownsExternalUser) {
+      throw Error("trying to delete unowned externalUser");
+    }
+
+    // first delete list - medium links
+    await this.con.query(
+      sql`DELETE FROM external_list_medium
+      WHERE list_id
+      IN (SELECT id FROM external_reading_list
+      WHERE user_uuid =${externalUuid});`,
+    );
+    // FIXME: storeModifications("external_list_item", "delete", result);
 
     // proceed to delete lists of external user
-    result = await this.delete("external_reading_list", { column: "user_uuid", value: externalUuid });
-    storeModifications("external_list", "delete", result);
+    await this.delete("external_reading_list", { column: "user_uuid", value: externalUuid });
+    // FIXME: storeModifications("external_list", "delete", result);
 
     // finish by deleting external user itself
-    result = await this.delete("external_user", { column: "uuid", value: externalUuid });
-    storeModifications("external_user", "delete", result);
-    return result.affectedRows > 0;
+    await this.delete("external_user", { column: "uuid", value: externalUuid });
+    // FIXME: storeModifications("external_user", "delete", result);
+    return false;
   }
 
   /**
    * Gets an external user.
    */
-  public async getExternalUser<T extends MultiSingleValue<Uuid>>(externalUuid: T): PromiseMultiSingle<T, ExternalUser> {
-    return promiseMultiSingle(externalUuid, async (value) => {
-      const resultArray: any[] = await this.query("SELECT * FROM external_user WHERE uuid = ?;", value);
-      if (!resultArray.length) {
-        throw new MissingEntityError("No result found for given uuid");
-      }
-      return this.createShallowExternalUser(resultArray[0]);
-    });
+  public async getExternalUser(externalUuid: Uuid[]): Promise<readonly SimpleExternalUserListed[]> {
+    const resultArray = await this.con.any(
+      sql.type(basicDisplayExternalUser)`SELECT identifier, uuid, local_uuid, type, cookies
+      FROM external_user WHERE uuid = ANY(${sql.array(externalUuid, "text")});`,
+    );
+    if (resultArray.length !== externalUuid.length) {
+      throw new MissingEntityError("missing queried externalUser");
+    }
+    return Promise.all(resultArray.map((user) => this.createShallowExternalUser(user)));
   }
 
   /**
    * Gets an external user with cookies, without items.
    */
-  public async getExternalUserWithCookies(uuid: Uuid): Promise<ExternalStorageUser> {
-    const value = await this.query(
-      "SELECT uuid, local_uuid, service, cookies FROM external_user WHERE uuid = ?;",
-      uuid,
+  public async getSimpleExternalUser(uuid: Uuid): Promise<SimpleExternalUser> {
+    return this.con.one(
+      sql.type(simpleExternalUser)`
+      SELECT uuid, local_uuid, identifier, type, last_scrape, cookies
+      FROM external_user
+      WHERE uuid = ${uuid};`,
     );
-    return {
-      uuid: value[0].uuid,
-      userUuid: value[0].local_uuid,
-      type: value[0].service,
-      cookies: value[0].cookies,
-    };
   }
 
   /**
    * Return all ExternalUser not scraped in the last seven days.
    */
-  public async getScrapeExternalUser(): Promise<ExternalUser[]> {
-    const result = await this.query(
-      "SELECT uuid, local_uuid, service, cookies, name, last_scrape FROM external_user " +
-        "WHERE last_scrape IS NULL OR last_scrape < TIMESTAMPADD(day, -7, now())",
+  public async getScrapeExternalUser(): Promise<readonly SimpleExternalUser[]> {
+    return this.con.any(
+      sql.type(simpleExternalUser)`
+      SELECT uuid, local_uuid, type, cookies, identifier, last_scrape FROM external_user
+      WHERE last_scrape IS NULL OR last_scrape < TIMESTAMPADD(day, -7, now())`,
     );
-
-    return result.map((value: any): ExternalUser => {
-      return {
-        uuid: value.uuid,
-        localUuid: value.local_uuid,
-        type: value.service,
-        cookies: value.cookies,
-        identifier: value.name,
-        lastScrape: value.last_scrape && new Date(value.last_scrape),
-        lists: [],
-      };
-    });
   }
 
   /**
    *  Creates a ExternalUser with
    *  shallow lists.
    */
-  public async createShallowExternalUser(storageUser: {
-    name: string;
-    uuid: Uuid;
-    service: number;
-    local_uuid: Uuid;
-  }): Promise<ExternalUser> {
-    const externalUser: ExternalUser = {
-      identifier: storageUser.name,
-      uuid: storageUser.uuid,
-      type: storageUser.service,
-      lists: [],
-      localUuid: storageUser.local_uuid,
-    };
-    externalUser.lists = await this.parentContext.externalListContext.getExternalUserLists(externalUser.uuid);
-    return externalUser;
+  public async createShallowExternalUser(storageUser: BasicDisplayExternalUser): Promise<DisplayExternalUser> {
+    const lists = await this.getContext(ExternalListContext).getExternalUserLists(storageUser.uuid);
+    const result = storageUser as DisplayExternalUser;
+    result.lists = lists;
+    return result;
   }
 
   /**
    * Updates an external user.
    */
-  public async updateExternalUser(externalUser: ExternalUser): Promise<boolean> {
-    const result = await this.update(
+  public async updateExternalUser(externalUser: SimpleExternalUser): Promise<boolean> {
+    await this.update(
       "external_user",
-      (updates, values) => {
+      () => {
+        const updates = [];
+
         if (externalUser.identifier) {
-          updates.push("name = ?");
-          values.push(externalUser.identifier);
+          updates.push(sql`identifier = ${externalUser.identifier}`);
         }
 
         if (externalUser.lastScrape) {
-          updates.push("last_scrape = ?");
-          values.push(externalUser.lastScrape);
+          updates.push(sql`last_scrape = ${externalUser.lastScrape ? sql.date(externalUser.lastScrape) : null}`);
         }
 
         if (externalUser.cookies) {
-          updates.push("cookies = ?");
-          values.push(externalUser.cookies);
+          updates.push(sql`cookies = ${externalUser.cookies}`);
         } else if (externalUser.cookies == null) {
-          updates.push("cookies = NULL");
+          updates.push(sql`cookies = NULL`);
         }
+        return updates;
       },
       { column: "uuid", value: externalUser.uuid },
     );
-    storeModifications("external_user", "update", result);
-    return result.changedRows > 0;
+    // FIXME: storeModifications("external_user", "update", result);
+    return false;
   }
 }

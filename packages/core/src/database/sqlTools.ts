@@ -1,4 +1,4 @@
-import { OkPacket } from "mysql";
+import { QueryResult } from "pg";
 import { getStore, StoreKey } from "../asyncStorage";
 import { getElseSet, getElseSetObj } from "../tools";
 
@@ -11,7 +11,6 @@ interface Modification {
 export type QueryType = "select" | "update" | "insert" | "delete";
 export type ModificationKey =
   | "progress"
-  | "result_episode"
   | "medium"
   | "part"
   | "episode"
@@ -35,8 +34,8 @@ export type ModificationKey =
  *
  * @param key
  */
-export function storeModifications(key: ModificationKey, queryType: QueryType, result: OkPacket): void {
-  if (!result.affectedRows || (!result.changedRows && queryType === "update")) {
+export function storeModifications(key: ModificationKey, queryType: QueryType, result: QueryResult<any>): void {
+  if (!result.rowCount) {
     return;
   }
   const store = getStore();
@@ -50,11 +49,11 @@ export function storeModifications(key: ModificationKey, queryType: QueryType, r
   });
 
   if (queryType === "delete") {
-    modification.deleted += result.affectedRows;
+    modification.deleted += result.rowCount;
   } else if (queryType === "insert") {
-    modification.created += result.affectedRows;
+    modification.created += result.rowCount;
   } else if (queryType === "update") {
-    modification.updated += result.changedRows;
+    modification.updated += result.rowCount;
   }
 }
 

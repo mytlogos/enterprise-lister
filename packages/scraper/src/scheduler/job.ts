@@ -1,10 +1,11 @@
 import { channel } from "diagnostics_channel";
 import { runAsync, Store, StoreKey } from "enterprise-core/dist/asyncStorage";
+import { SimpleJob } from "enterprise-core/dist/database/databaseTypes";
 import { jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { JobError } from "enterprise-core/dist/error";
 import logger from "enterprise-core/dist/logger";
 import { defaultNetworkTrack, stringify } from "enterprise-core/dist/tools";
-import { JobItem, JobState, Optional, ScrapeName } from "enterprise-core/dist/types";
+import { JobState, Optional, ScrapeName } from "enterprise-core/dist/types";
 import { EndJobChannelMessage, StartJobChannelMessage } from "../externals/types";
 import { scrapeMapping } from "./scrapeJobs";
 
@@ -20,7 +21,7 @@ type EventListener = {
   [K in keyof Events]: Array<Events[K]>;
 };
 
-export function createJob(item: JobItem): Job | undefined {
+export function createJob(item: Readonly<SimpleJob>): Job | undefined {
   let args: Optional<any>;
 
   switch (item.type) {
@@ -81,9 +82,9 @@ export class Job {
   private status: JobStatus = "waiting";
   private readonly events: EventListener = Object.create(null);
   private startRun = 0;
-  public readonly currentItem: JobItem;
+  public readonly currentItem: SimpleJob;
 
-  public constructor(private readonly job: () => any | Promise<any>, private readonly original: JobItem) {
+  public constructor(private readonly job: () => any | Promise<any>, private readonly original: SimpleJob) {
     this.store.set(StoreKey.ABORT, this.controller.signal);
 
     if (original.lastRun) {
@@ -196,21 +197,20 @@ export class Job {
     await this.emit("after");
 
     const item = this.currentItem;
+    const previousScheduledAt = item.nextRun ?? undefined;
 
     if (item.deleteAfterRun) {
-      await jobStorage.removeJobs(item, end);
+      await jobStorage.removeFinishedJob(item, end, previousScheduledAt);
     } else {
       item.lastRun = new Date();
-      item.previousScheduledAt = item.nextRun;
-
       if (item.interval > 0) {
         if (item.interval < 60000) {
           item.interval = 60000;
         }
-        item.nextRun = new Date(item.lastRun.getTime() + item.interval);
+        item.nextRun = new Date(Date.now() + item.interval);
       }
       item.state = JobState.WAITING;
-      await jobStorage.updateJobs(item, end);
+      await jobStorage.updateFinishedJob(item, end, previousScheduledAt);
     }
     logger.info("Job finished now", { job_name: item.name, job_id: item.id });
 

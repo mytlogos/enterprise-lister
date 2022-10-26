@@ -1,7 +1,7 @@
 import { externalUserStorage, jobStorage } from "enterprise-core/dist/database/storages/storage";
 import { factory } from "enterprise-scraper/dist/externals/listManager";
 import { Errors } from "enterprise-core/dist/tools";
-import { DisplayExternalUser, ExternalUser, ScrapeName } from "enterprise-core/dist/types";
+import { Insert, ScrapeName } from "enterprise-core/dist/types";
 import { Router } from "express";
 import { castQuery, createHandler, extractQueryParam } from "./apiTools";
 import { ValidationError } from "enterprise-core/dist/error";
@@ -15,14 +15,19 @@ import {
   RefreshExternalUser,
   refreshExternalUserSchema,
 } from "../validation";
+import {
+  BasicDisplayExternalUser,
+  DisplayExternalUser,
+  SimpleExternalUser,
+} from "enterprise-core/dist/database/databaseTypes";
 
-function toDisplayExternalUser(value: ExternalUser): DisplayExternalUser {
+function toDisplayExternalUser(value: BasicDisplayExternalUser): DisplayExternalUser {
   return {
     identifier: value.identifier,
-    lists: value.lists,
     localUuid: value.localUuid,
     type: value.type,
     uuid: value.uuid,
+    lists: [],
   };
 }
 
@@ -44,9 +49,8 @@ export const postExternalUser = createHandler(
     if (!valid) {
       throw new ValidationError(Errors.INVALID_DATA);
     }
-    const addExternalUser: ExternalUser = {
+    const addExternalUser: Insert<SimpleExternalUser> = {
       identifier: externalUser.identifier,
-      lists: [],
       localUuid: uuid,
       type: externalUser.type,
       uuid: "",
@@ -81,21 +85,23 @@ export const refreshExternalUser = createHandler(
   async (req) => {
     const { externalUuid } = castQuery<RefreshExternalUser>(req);
 
-    const externalUserWithCookies = await externalUserStorage.getExternalUserWithCookies(externalUuid);
+    const externalUserWithCookies = await externalUserStorage.getSimpleExternalUser(externalUuid);
 
-    await jobStorage.addJobs({
-      type: ScrapeName.oneTimeUser,
-      interval: -1,
-      deleteAfterRun: true,
-      runImmediately: true,
-      name: `${ScrapeName.oneTimeUser}-${externalUserWithCookies.uuid}`,
-      arguments: JSON.stringify({
-        link: externalUserWithCookies.uuid,
-        userId: externalUserWithCookies.userUuid,
-        externalUserId: externalUserWithCookies.uuid,
-        info: externalUserWithCookies.cookies,
-      }),
-    });
+    await jobStorage.addJobs([
+      {
+        type: ScrapeName.oneTimeUser,
+        interval: -1,
+        deleteAfterRun: true,
+        runImmediately: true,
+        name: `${ScrapeName.oneTimeUser}-${externalUserWithCookies.uuid}`,
+        arguments: JSON.stringify({
+          link: externalUserWithCookies.uuid,
+          userId: externalUserWithCookies.localUuid,
+          externalUserId: externalUserWithCookies.uuid,
+          info: externalUserWithCookies.cookies,
+        }),
+      },
+    ]);
     return true;
   },
   { query: refreshExternalUserSchema },

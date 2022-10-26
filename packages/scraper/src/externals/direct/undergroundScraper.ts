@@ -1,12 +1,18 @@
 import { EpisodeContent, Hook, NewsScrapeResult } from "../types";
-import { EpisodeRelease, News, SimpleEpisode, EmptyPromise, VoidablePromise } from "enterprise-core/dist/types";
+import { News, SimpleEpisode, EmptyPromise, VoidablePromise } from "enterprise-core/dist/types";
 import logger from "enterprise-core/dist/logger";
 import { max, MediaType, sanitizeString } from "enterprise-core/dist/tools";
-import { episodeStorage, mediumStorage, partStorage } from "enterprise-core/dist/database/storages/storage";
+import {
+  episodeReleaseStorage,
+  episodeStorage,
+  mediumStorage,
+  partStorage,
+} from "enterprise-core/dist/database/storages/storage";
 import request from "../request";
 import { ScraperError } from "../errors";
 import { scraperLog, LogType, getText } from "./directTools";
 import { storeHookName } from "../scraperTools";
+import { SimpleRelease } from "enterprise-core/dist/database/databaseTypes";
 
 export const sourceType = "qidian_underground";
 
@@ -140,15 +146,17 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
       }
     });
 
-    const sourcedReleases = await episodeStorage.getSourcedReleases(sourceType, mediumId);
+    const sourcedReleases = await episodeReleaseStorage.getSourcedReleases(sourceType, mediumId);
     const toUpdateReleases = oldReleases
-      .map((value): EpisodeRelease => {
+      .map((value): SimpleRelease => {
         return {
           title: value.title,
           url: value.link,
           releaseDate: value.date,
           sourceType,
           episodeId: 0,
+          id: 0,
+          locked: false,
         };
       })
       .filter((value) => {
@@ -161,7 +169,7 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
         return foundRelease.url !== value.url;
       });
     if (toUpdateReleases.length) {
-      episodeStorage.updateRelease(toUpdateReleases).catch(logger.error);
+      episodeReleaseStorage.updateReleases(toUpdateReleases).catch(logger.error);
     }
   } else {
     news = potentialNews;
@@ -175,13 +183,16 @@ async function processMediumNews(mediumTitle: string, potentialNews: News[]): Em
     const totalIndex = Number(exec[1]);
     return {
       totalIndex,
+      combiIndex: totalIndex,
       releases: [
         {
+          id: 0,
           episodeId: 0,
           sourceType,
           releaseDate: value.date,
           url: value.link,
           title: value.title,
+          locked: false,
         },
       ],
       id: 0,

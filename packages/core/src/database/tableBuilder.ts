@@ -3,27 +3,20 @@ import { ColumnBuilder } from "./columnBuilder";
 import { TableSchema } from "./tableSchema";
 import { ColumnSchema } from "./columnSchema";
 import { parseDataColumn, parseForeignKey, parsePrimaryKey, parseUnique } from "./tableParser";
-import { InvalidationType } from "./databaseTypes";
 import { SchemaError } from "../error";
+import { sql } from "slonik";
 
 export class TableBuilder {
   private readonly columns: ColumnSchema[] = [];
   private name?: string;
   private main?: boolean;
-  private invalidationTable?: boolean;
   private readonly invalidationColumn?: string;
   private readonly databaseBuilder: DataBaseBuilder;
-  private readonly stubTable = new TableSchema([], "");
-  private readonly invalidations: Array<{ type: InvalidationType; table?: string }> = [];
+  private readonly stubTable = new TableSchema([], "", sql``);
   private readonly uniqueIndices: ColumnSchema[][] = [];
 
   public constructor(databaseBuilder: DataBaseBuilder) {
     this.databaseBuilder = databaseBuilder;
-  }
-
-  public setInvalidationTable(): this {
-    this.invalidationTable = true;
-    return this;
   }
 
   public parseColumn(column: string): this {
@@ -73,25 +66,12 @@ export class TableBuilder {
     return this;
   }
 
-  public addInvalidation(type: InvalidationType, tableName?: string): this {
-    this.invalidations.push({ type, table: tableName });
-    return this;
-  }
-
   public build(): TableSchema {
     if (!this.name) {
       throw new SchemaError("table has no name");
     }
-    const table = new TableSchema(
-      [...this.columns, ...this.stubTable.columns],
-      this.name,
-      this.main,
-      this.invalidationColumn,
-      this.invalidationTable,
-      this.uniqueIndices,
-    );
+    const table = new TableSchema([...this.columns, ...this.stubTable.columns], this.name, sql``, this.uniqueIndices);
     table.columns.forEach((value) => (value.table = table));
-    this.databaseBuilder.addTable(table, this.invalidations);
     return table;
   }
 }

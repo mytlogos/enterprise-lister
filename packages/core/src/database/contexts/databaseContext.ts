@@ -1,93 +1,137 @@
-import { ignore } from "../../tools";
 import { Trigger } from "../trigger";
-import mySql from "promise-mysql";
-import { DbTrigger, QueryContext } from "./queryContext";
-import { SubContext } from "./subContext";
+import { QueryContext } from "./queryContext";
 import { EmptyPromise } from "../../types";
+import { dbTrigger, DbTrigger } from "../databaseTypes";
+import { sql } from "slonik";
+import { joinIdentifier } from "./helper";
 
 const database = "enterprise";
 
-export class DatabaseContext extends SubContext {
-  public constructor(parentContext: QueryContext) {
-    super(parentContext);
+export class DatabaseContext extends QueryContext {
+  public async getDatabaseVersion(): Promise<number> {
+    return this.con.oneFirst<{ version: number }>(
+      sql`SELECT version FROM enterprise_database_info ORDER BY version DESC LIMIT 1;`,
+    );
   }
 
-  public getDatabaseVersion(): Promise<Array<{ version: number }>> {
-    return this.query("SELECT version FROM enterprise_database_info LIMIT 1;");
-  }
-
-  public getServerVersion(): Promise<[{ version: string }]> {
-    return this.query("SELECT version() as version");
+  public async getServerVersion(): Promise<string> {
+    return this.con.oneFirst<{ version: string }>(sql`SELECT version()`);
   }
 
   public async startMigration(): Promise<boolean> {
-    return (
-      this.query("UPDATE enterprise_database_info SET migrating=1;")
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        .then((value) => value && value.changedRows === 1)
-    );
+    const value = await this.con.query(sql`UPDATE enterprise_database_info SET migrating=false;`);
+    return value.rowCount === 1;
   }
 
   public async stopMigration(): Promise<boolean> {
-    return (
-      this.query("UPDATE enterprise_database_info SET migrating=0;")
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        .then((value) => value && value.changedRows === 1)
-    );
+    const value = await this.con.query(sql`UPDATE enterprise_database_info SET migrating=false;`);
+    return value.rowCount === 1;
   }
 
   public async updateDatabaseVersion(version: number): EmptyPromise {
-    return this.query("UPDATE enterprise_database_info SET version=?;", version).then(ignore);
+    await this.con.query(sql`UPDATE enterprise_database_info SET version=${version};`);
   }
 
-  public createDatabase(): EmptyPromise {
-    return this.query(`CREATE DATABASE ${database};`).then(ignore);
+  public async createDatabase(): EmptyPromise {
+    await this.con.query(sql`CREATE DATABASE ${sql.identifier([database])};`);
   }
 
-  public getTables(): Promise<any[]> {
-    return this.query("SHOW TABLES;") as Promise<any[]>;
+  public getTables(): Promise<readonly any[]> {
+    return this.con.any(sql`SHOW TABLES;`);
   }
 
-  public getTriggers(): Promise<DbTrigger[]> {
-    return this.query("SHOW TRIGGERS;") as Promise<DbTrigger[]>;
+  public getTablesPg(): Promise<ReadonlyArray<{ schemaname: string; tablename: string }>> {
+    return this.con.any<{ schemaname: string; tablename: string }>(
+      sql`select schemaname, tablename from pg_catalog.pg_tables;`,
+    );
+  }
+
+  public async getTriggers(): Promise<readonly DbTrigger[]> {
+    return this.con.any(sql.type(dbTrigger)`SHOW TRIGGERS;`);
+  }
+
+  public async getTriggersPg(): Promise<readonly DbTrigger[]> {
+    return this.con.any<DbTrigger>(sql`
+    SELECT
+      action_timing as timing,
+      trigger_schema as table,
+      trigger_name as trigger,
+      event_manipulation as event
+    FROM 
+      information_schema.triggers
+    `);
+  }
+
+  public async getIndices(): Promise<ReadonlyArray<{ tableName: string; indexName: string; columnNames: string[] }>> {
+    return this.con.any(sql`
+      select
+        t.relname as table_name,
+        i.relname as index_name,
+        array_agg(a.attname)  as column_names
+      from
+        pg_catalog.pg_class t
+      join pg_catalog.pg_attribute a on t.oid    =      a.attrelid 
+      join pg_catalog.pg_index ix    on t.oid    =     ix.indrelid
+      join pg_catalog.pg_class i     on a.attnum = any(ix.indkey)
+                                    and i.oid    =     ix.indexrelid
+      join pg_catalog.pg_namespace n on n.oid    =      t.relnamespace
+      where t.relkind = 'r' and n.nspname = 'public'
+      group by t.relname, i.relname;
+  `);
   }
 
   public createTrigger(trigger: Trigger): Promise<any> {
     const schema = trigger.createSchema();
-    return this.query(schema);
+    return this.con.query(sql.literalValue(schema));
   }
 
-  public dropTrigger(trigger: string): EmptyPromise {
-    return this.query(`DROP TRIGGER IF EXISTS ${mySql.escapeId(trigger)};`).then(ignore);
+  public async dropTrigger(trigger: string): EmptyPromise {
+    await this.con.query(sql`DROP TRIGGER IF EXISTS ${sql.identifier([trigger])};`);
   }
 
-  public createTable(table: string, columns: string[]): EmptyPromise {
-    return this.query(`CREATE TABLE ${mySql.escapeId(table)} (${columns.join(", ")});`).then(ignore);
+  public async createTable(table: string, columns: string[]): EmptyPromise {
+    // FIXME: this will probably not work
+    await this.con.query(sql`CREATE TABLE ${sql.identifier([table])} (${sql.literalValue(columns.join(", "))});`);
   }
 
-  public addColumn(tableName: string, columnDefinition: string): EmptyPromise {
-    return this.query(`ALTER TABLE ${tableName} ADD COLUMN ${columnDefinition};`).then(ignore);
+  public async addColumn(tableName: string, columnDefinition: string): EmptyPromise {
+    // FIXME: this will probably not work
+    await this.con.query(
+      sql`ALTER TABLE ${sql.identifier([tableName])} ADD COLUMN ${sql.literalValue(columnDefinition)};`,
+    );
   }
 
-  public alterColumn(tableName: string, columnDefinition: string): EmptyPromise {
-    return this.query(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnDefinition};`).then(ignore);
+  public async alterColumn(tableName: string, columnDefinition: string): EmptyPromise {
+    await this.con.query(
+      sql`ALTER TABLE ${sql.identifier([tableName])} MODIFY COLUMN ${sql.literalValue(columnDefinition)};`,
+    );
   }
 
-  public changeColumn(tableName: string, oldName: string, newName: string, columnDefinition: string): EmptyPromise {
-    return this.query(`ALTER TABLE ${tableName} CHANGE COLUMN ${oldName} ${newName} ${columnDefinition};`).then(ignore);
+  public async changeColumn(
+    tableName: string,
+    oldName: string,
+    newName: string,
+    columnDefinition: string,
+  ): EmptyPromise {
+    await this.con.query(
+      sql`
+      ALTER TABLE ${sql.identifier([tableName])}
+      CHANGE COLUMN ${sql.identifier([oldName])} ${sql.identifier([newName])} ${sql.literalValue(columnDefinition)};`,
+    );
   }
 
-  public addUnique(tableName: string, indexName: string, ...columns: string[]): EmptyPromise {
-    columns = columns.map((value) => mySql.escapeId(value));
-    const index = mySql.escapeId(indexName);
-    const table = mySql.escapeId(tableName);
-    return this.query(`CREATE UNIQUE INDEX ${index} ON ${table} (${columns.join(", ")});`).then(ignore);
+  public async addUnique(tableName: string, indexName: string, ...columns: string[]): EmptyPromise {
+    const index = sql.identifier([indexName]);
+    const table = sql.identifier([tableName]);
+
+    await this.con.query(sql`CREATE UNIQUE INDEX IF NOT EXISTS ${index} ON ${table} (${joinIdentifier(columns)});`);
   }
 
-  public dropIndex(tableName: string, indexName: string): EmptyPromise {
-    const index = mySql.escapeId(indexName);
-    const table = mySql.escapeId(tableName);
-    return this.query(`DROP INDEX IF EXISTS ${index} ON ${table};`).then(ignore);
+  public async dropIndex(tableName: string, indexName: string): EmptyPromise {
+    const index = sql.identifier([indexName]);
+    const table = sql.identifier([tableName]);
+
+    await this.con.query(sql`DROP INDEX IF EXISTS ${index} ON ${table};`);
   }
 
   /**
@@ -97,16 +141,16 @@ export class DatabaseContext extends SubContext {
    *
    * @param tableName the table to create the index on
    * @param indexName the name for the index
-   * @param columnNames the columns the index should be build for
+   * @param columns the columns the index should be build for
    */
-  public addIndex(tableName: string, indexName: string, columnNames: string[]): EmptyPromise {
-    const index = mySql.escapeId(indexName);
-    const table = mySql.escapeId(tableName);
-    const columns = columnNames.map((name) => mySql.escapeId(name)).join(",");
-    return this.query(`CREATE INDEX IF NOT EXISTS ${index} ON ${table} (${columns});`).then(ignore);
+  public async addIndex(tableName: string, indexName: string, columns: string[]): EmptyPromise {
+    const index = sql.identifier([indexName]);
+    const table = sql.identifier([tableName]);
+
+    await this.con.query(sql`CREATE INDEX IF NOT EXISTS ${index} ON ${table} (${joinIdentifier(columns)});`);
   }
 
-  public addForeignKey(
+  public async addForeignKey(
     tableName: string,
     constraintName: string,
     column: string,
@@ -115,37 +159,37 @@ export class DatabaseContext extends SubContext {
     onDelete?: string,
     onUpdate?: string,
   ): EmptyPromise {
-    const index = mySql.escapeId(column);
-    const table = mySql.escapeId(tableName);
-    const refTable = mySql.escapeId(referencedTable);
-    const refColumn = mySql.escapeId(referencedColumn);
-    const name = mySql.escapeId(constraintName);
-    let query = `ALTER TABLE ${table} ADD FOREIGN KEY ${name} (${index}) REFERENCES ${refTable} (${refColumn})`;
+    const index = this.escapeIdentifier(column);
+    const table = this.escapeIdentifier(tableName);
+    const refTable = this.escapeIdentifier(referencedTable);
+    const refColumn = this.escapeIdentifier(referencedColumn);
+    const name = this.escapeIdentifier(constraintName);
 
-    if (onDelete) {
-      query += " ON DELETE " + onDelete;
-    }
-    if (onUpdate) {
-      query += " ON UPDATE " + onUpdate;
-    }
-    return this.query(query + ";").then(ignore);
+    const onUpdateAction = onUpdate ? sql` ON UPDATE ${sql.literalValue(onUpdate)}` : sql``;
+    const onDeleteAction = onDelete ? sql` ON DELETE ${sql.literalValue(onDelete)}` : sql``;
+
+    await this.con.query(sql`
+      ALTER TABLE ${table} 
+      ADD FOREIGN KEY ${name} (${index}) REFERENCES ${refTable} (${refColumn})${onUpdateAction}${onDeleteAction};`);
   }
 
-  public dropForeignKey(tableName: string, indexName: string): EmptyPromise {
-    const index = mySql.escapeId(indexName);
-    const table = mySql.escapeId(tableName);
-    return this.query(`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`).then(ignore);
+  public async dropForeignKey(tableName: string, indexName: string): EmptyPromise {
+    const index = this.escapeIdentifier(indexName);
+    const table = this.escapeIdentifier(tableName);
+
+    await this.con.query(sql`ALTER TABLE ${table} DROP FOREIGN KEY ${index}`);
   }
 
-  public addPrimaryKey(tableName: string, ...columns: string[]): EmptyPromise {
-    columns = columns.map((value) => mySql.escapeId(value));
+  public async addPrimaryKey(tableName: string, ...columns: string[]): EmptyPromise {
+    const table = this.escapeIdentifier(tableName);
+    const primaryColumns = joinIdentifier(columns);
 
-    const table = mySql.escapeId(tableName);
-    return this.query(`ALTER TABLE ${table} ADD PRIMARY KEY (${columns.join(", ")})`).then(ignore);
+    await this.con.query(sql`ALTER TABLE ${table} ADD PRIMARY KEY (${primaryColumns})`);
   }
 
-  public dropPrimaryKey(tableName: string): EmptyPromise {
-    const table = mySql.escapeId(tableName);
-    return this.query(`ALTER TABLE ${table} DROP PRIMARY KEY`).then(ignore);
+  public async dropPrimaryKey(tableName: string): EmptyPromise {
+    const table = this.escapeIdentifier(tableName);
+
+    await this.con.query(sql`ALTER TABLE ${table} DROP PRIMARY KEY`);
   }
 }

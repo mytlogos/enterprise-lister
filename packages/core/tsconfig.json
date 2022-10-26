@@ -20,11 +20,6 @@
       "jest",
     ],
     "outDir": "./dist/",
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    }
   },
   "include": [
     "src/**/*.ts",

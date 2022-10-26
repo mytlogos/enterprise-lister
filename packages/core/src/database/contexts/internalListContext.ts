@@ -1,85 +1,84 @@
-import { SubContext } from "./subContext";
-import { List, Uuid, MultiSingleNumber, MinList, StorageList, ListMedia, PromiseMultiSingle } from "../../types";
-import { promiseMultiSingle, multiSingle } from "../../tools";
-import { storeModifications } from "../sqlTools";
-import { DatabaseError, MissingEntityError, ValidationError } from "../../error";
+import { List, Uuid, ListMedia, Id, Insert } from "../../types";
+import { promiseMultiSingle } from "../../tools";
+import { MissingEntityError, ValidationError } from "../../error";
+import { QueryContext } from "./queryContext";
+import { sql } from "slonik";
+import { entity, SimpleList, simpleList } from "../databaseTypes";
+import { MediumContext } from "./mediumContext";
 
-export class InternalListContext extends SubContext {
+export class InternalListContext extends QueryContext {
   /**
    * Adds a list to the storage and
    * links it to the user of the uuid.
    */
-  public async addList(uuid: Uuid, { name, medium }: MinList): Promise<List> {
-    const result = await this.query("INSERT INTO reading_list (user_uuid, name, medium) VALUES (?,?,?)", [
-      uuid,
-      name,
-      medium,
-    ]);
-    storeModifications("list", "insert", result);
-    if (!Number.isInteger(result.insertId)) {
-      throw new DatabaseError(`insert failed, invalid ID: ${result.insertId + ""}`);
-    }
-    return {
-      id: result.insertId,
-      items: [],
-      name,
-      medium,
-      userUuid: uuid,
-    };
+  public async addList({ name, medium, userUuid }: Insert<SimpleList>): Promise<SimpleList> {
+    return this.con.one(
+      sql.type(simpleList)`
+      INSERT INTO reading_list (user_uuid, name, medium)
+      VALUES (${userUuid},${name},${medium}) RETURNING id, name, medium, user_uuid`,
+    );
   }
 
   /**
    * Returns all mediums of a list with
    * the list_id.
    */
-  public async getList<T extends MultiSingleNumber>(listId: T, media: number[], uuid: Uuid): Promise<ListMedia> {
+  public async getLists(listId: number[], media: number[], uuid: Uuid): Promise<ListMedia> {
     const toLoadMedia: Set<number> = new Set();
-    // TODO: 29.06.2019 replace with id IN (...)
-    const lists = await promiseMultiSingle(listId, async (id: number) => {
-      const result = await this.query("SELECT * FROM reading_list WHERE id = ?;", id);
-      const list = await this.createShallowList(result[0]);
 
-      for (const itemId of list.items) {
-        if (!media.includes(itemId)) {
-          toLoadMedia.add(itemId);
+    const simpleLists = await this.con.any(
+      sql.type(simpleList)`
+      SELECT id, name, medium, user_uuid
+      FROM reading_list
+      WHERE id = ANY(${sql.array(listId, "int8")});`,
+    );
+
+    const lists = await Promise.all(
+      simpleLists.map(async (item) => {
+        const list = await this.createShallowList(item);
+
+        for (const itemId of list.items) {
+          if (!media.includes(itemId)) {
+            toLoadMedia.add(itemId);
+          }
         }
-      }
-      return list;
-    });
+        return list;
+      }),
+    );
 
-    const loadedMedia = await this.parentContext.mediumContext.getMedium([...toLoadMedia], uuid);
+    const loadedMedia = await this.getContext(MediumContext).getMedium([...toLoadMedia], uuid);
 
     return { list: lists, media: loadedMedia };
   }
 
-  public async getShallowList<T extends MultiSingleNumber>(listId: T, uuid: Uuid): PromiseMultiSingle<T, List> {
-    // TODO: 29.06.2019 replace with id IN (...)
-    return promiseMultiSingle(listId, async (id: number) => {
-      const result = await this.query("SELECT * FROM reading_list WHERE uuid = ? AND id = ?;", [uuid, id]);
-      return this.createShallowList(result[0]);
-    });
+  public async getShallowList(listId: number[], uuid: Uuid): Promise<List[]> {
+    const result = await this.con.any(
+      sql.type(simpleList)`
+      SELECT id, name, medium, user_uuid
+      FROM reading_list
+      WHERE uuid = ${uuid} AND id = ANY(${sql.array(listId, "int8")});`,
+    );
+    return Promise.all(result.map((list) => this.createShallowList(list)));
   }
 
   /**
    * Recreates a list from storage.
    */
-  public async createShallowList(storageList: StorageList): Promise<List> {
+  public async createShallowList(storageList: SimpleList): Promise<List> {
     if (!storageList.name) {
       throw new ValidationError("Missing List Name");
     }
 
-    const list: List = {
-      items: [],
+    const result = await this.con.anyFirst(
+      sql.type(entity)`SELECT medium_id as id FROM list_medium WHERE list_id = ${storageList.id};`,
+    );
+    return {
+      items: [...result],
       name: storageList.name,
       medium: storageList.medium,
       id: storageList.id,
-      userUuid: storageList.user_uuid,
+      userUuid: storageList.userUuid,
     };
-
-    const result = await this.query("SELECT medium_id FROM list_medium WHERE list_id = ?", storageList.id);
-    list.items.push(...result.map((value: any) => value.medium_id));
-
-    return list;
   }
 
   /**
@@ -91,44 +90,47 @@ export class InternalListContext extends SubContext {
     }
     const result = await this.update(
       "reading_list",
-      (updates, values) => {
+      () => {
+        const updates = [];
+
         if (list.name) {
-          updates.push("name = ?");
-          values.push(list.name);
+          updates.push(sql`name = ${list.name}`);
         }
 
         if (list.medium) {
-          updates.push("medium = ?");
-          values.push(list.medium);
+          updates.push(sql`medium = ${list.medium}`);
         }
+        return updates;
       },
       {
         column: "id",
         value: list.id,
       },
     );
-    storeModifications("list", "update", result);
-    return result.changedRows > 0;
+    // FIXME: storeModifications("list", "update", result);
+    return result.rowCount > 0;
   }
 
   /**
    * Deletes a single list irreversibly.
    */
   public async deleteList(listId: number, uuid: Uuid): Promise<boolean> {
-    const result = await this.query("SELECT id FROM reading_list WHERE id = ? AND user_uuid = ?", [listId, uuid]);
+    const exists = await this.con.exists(
+      sql.type(entity)`SELECT id FROM reading_list WHERE id = ${listId} AND user_uuid = ${uuid}`,
+    );
 
     // first check if such a list does exist for the given user
-    if (!result.length) {
+    if (!exists) {
       return Promise.reject(new MissingEntityError(`List ${listId}-${uuid} does not exist`));
     }
     // first remove all links between a list and their media
-    let deleteResult = await this.delete("list_medium", { column: "list_id", value: listId });
-    storeModifications("list_item", "delete", deleteResult);
+    await this.delete("list_medium", { column: "list_id", value: listId });
+    // FIXME: storeModifications("list_item", "delete", deleteResult);
 
     // lastly delete the list itself
-    deleteResult = await this.delete("reading_list", { column: "id", value: listId });
-    storeModifications("list", "delete", deleteResult);
-    return deleteResult.affectedRows > 0;
+    await this.delete("reading_list", { column: "id", value: listId });
+    // FIXME: storeModifications("list", "delete", deleteResult);
+    return false;
   }
 
   /**
@@ -136,10 +138,12 @@ export class InternalListContext extends SubContext {
    */
   public async getUserLists(uuid: Uuid): Promise<List[]> {
     // query all available lists for user
-    const result = await this.query("SELECT * FROM reading_list WHERE reading_list.user_uuid = ?;", [uuid, uuid]);
+    const result = await this.con.any(
+      sql.type(simpleList)`
+      SELECT id, name, medium, user_uuid FROM reading_list WHERE reading_list.user_uuid = ${uuid};`,
+    );
 
     // query a shallow list, so that only the id´s of their media is contained
-    // @ts-expect-error
     return Promise.all(result.map((value) => this.createShallowList(value)));
   }
 
@@ -149,36 +153,45 @@ export class InternalListContext extends SubContext {
    * If no listId is available it selects the
    * 'Standard' List of the given user and adds it there.
    */
-  public async addItemToList(medium: { id: number | number[]; listId?: number }, uuid?: Uuid): Promise<boolean> {
+  public async addItemsToList(mediumIds: number[], uuid: Uuid, targetListId?: Id): Promise<boolean> {
     // TODO: 27.02.2020 use uuid to check that listId is owned by uuid
 
+    let listId: number;
     // if list_ident is not a number,
     // then take it as uuid from user and get the standard listId of 'Standard' list
-    if (medium.listId == null || !Number.isInteger(medium.listId)) {
-      if (!uuid) {
-        throw new ValidationError("Missing uuid");
-      }
-      const idResult = await this.query(
-        "SELECT id FROM reading_list WHERE `name` = 'Standard' AND user_uuid = ?;",
-        uuid,
+    if (!targetListId) {
+      const idResult = await this.con.oneFirst(
+        sql.type(entity)`SELECT id FROM reading_list WHERE name = 'Standard' AND user_uuid = ${uuid};`,
       );
-      medium.listId = idResult[0].id;
-    }
-    const result = await this.multiInsert(
-      "INSERT IGNORE INTO list_medium (list_id, medium_id) VALUES",
-      medium.id,
-      (value) => [medium.listId, value],
-    );
-    let added = false;
-    // @ts-expect-error
-    multiSingle(result, (value: OkPacket) => {
-      storeModifications("list_item", "insert", value);
+      listId = idResult;
+    } else {
+      const ownedByUuid = await this.con.exists(
+        sql`SELECT 1 FROM reading_list WHERE id = ${targetListId} AND user_uuid = ${uuid};`,
+      );
 
-      if (value.affectedRows > 0) {
-        added = true;
+      if (!ownedByUuid) {
+        throw Error("cannot add item to list it does not own");
       }
-    });
-    return added;
+
+      listId = targetListId;
+    }
+    const values = mediumIds.map((mediumId) => [listId, mediumId]);
+
+    await this.con.query(
+      sql`
+      INSERT INTO list_medium (list_id, medium_id)
+      SELECT * FROM ${sql.unnest(values, ["int8", "int8"])}
+      ON CONFLICT DO NOTHING`,
+    );
+    // FIXME: let added = false;
+    // multiSingle(result, (value) => {
+    //   storeModifications("list_item", "insert", value);
+
+    //   if (value.rowCount > 0) {
+    //     added = true;
+    //   }
+    // });
+    return false;
   }
 
   /**
@@ -186,11 +199,11 @@ export class InternalListContext extends SubContext {
    *
    * @return {Promise<boolean>}
    */
-  public async moveMedium(oldListId: number, newListId: number, mediumId: number | number[]): Promise<boolean> {
+  public async moveMedium(oldListId: number, newListId: number, mediumIds: number[], uuid: Uuid): Promise<boolean> {
     // first remove medium from old list
-    await this.removeMedium(oldListId, mediumId);
+    await this.removeMedium(oldListId, mediumIds);
     // add item to new list
-    return this.addItemToList({ listId: newListId, id: mediumId });
+    return this.addItemsToList(mediumIds, uuid, newListId);
   }
 
   /**
@@ -209,8 +222,8 @@ export class InternalListContext extends SubContext {
           value,
         },
       );
-      storeModifications("list_item", "delete", result);
-      return result.affectedRows > 0;
+      // FIXME: storeModifications("list_item", "delete", result);
+      return result.rowCount > 0;
     });
     return Array.isArray(results) ? results.some((v) => v) : results;
   }

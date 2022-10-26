@@ -44,8 +44,6 @@ export class TriggerBuilder {
     if (!this._name || !this._body || !this._table || !this._event || !this._timing) {
       throw new SchemaError("invalid trigger");
     }
-    const trigger = new Trigger(this._name, this._timing, this._event, this._table, this._body);
-    this.databaseBuilder.addTrigger(trigger);
-    return trigger;
+    return new Trigger(this._name, this._timing, this._event, this._table, this._body);
   }
 }

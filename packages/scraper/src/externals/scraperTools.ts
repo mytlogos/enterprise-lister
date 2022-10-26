@@ -5,7 +5,7 @@ import logger from "enterprise-core/dist/logger";
 import { ContentDownloader, DownloadContent, EpisodeContent, Hook, Toc, TocContent } from "./types";
 import { Cache } from "enterprise-core/dist/cache";
 import env from "enterprise-core/dist/env";
-import { episodeStorage } from "enterprise-core/dist/database/storages/storage";
+import { episodeReleaseStorage, episodeStorage } from "enterprise-core/dist/database/storages/storage";
 import { MissingResourceError } from "./errors";
 import {
   episodeDownloaderEntries,
@@ -167,7 +167,7 @@ export async function search(title: string, medium: number): Promise<SearchResul
     .filter((value) => value) as unknown as SearchResult[];
 }
 
-export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadContent[]> {
+export async function downloadEpisodes(episodes: readonly Episode[]): Promise<DownloadContent[]> {
   await checkHooks();
   const entries = episodeDownloaderEntries();
 
@@ -228,7 +228,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
           e instanceof MissingResourceError ||
           (hasProp(e, "statusCode") && e.statusCode && (e.statusCode === 410 || e.statusCode === 404))
         ) {
-          episodeStorage.deleteRelease(release).catch(logger.error);
+          episodeReleaseStorage.deleteReleases([release]).catch(logger.error);
         } else {
           logger.error(e);
         }
@@ -240,7 +240,7 @@ export async function downloadEpisodes(episodes: Episode[]): Promise<DownloadCon
       episodeContents = episodeContents.filter((value) => {
         if (value.locked && value.index === combiIndex(episode)) {
           release.locked = true;
-          episodeStorage.updateRelease(release).catch(logger.error);
+          episodeReleaseStorage.updateReleases([release]).catch(logger.error);
           return false;
         }
         return value.content.filter((s) => s).length;

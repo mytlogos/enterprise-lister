@@ -10,32 +10,33 @@ import {
   Indexable,
   ExtractedIndex,
   NetworkTrack,
+  ReadonlyNullish,
 } from "./types";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import emojiRegex from "emoji-regex";
 import * as fs from "fs";
 import * as path from "path";
-import { Query } from "mysql";
 import { validate as validateUuid } from "uuid";
 import { isNumber } from "validate.js";
 import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { ParseError, ValidationError } from "./error";
 import { networkInterfaces } from "os";
+import QueryStream from "pg-query-stream";
 
 export function isAbortError(error: unknown): error is Error {
   return error instanceof Error && error.name === "AbortError";
 }
 
-export function isNumberOrArray(value: number | any[]): boolean {
+export function isNumberOrArray(value: number | readonly any[]): boolean {
   return Array.isArray(value) ? !!value.length : Number.isInteger(value);
 }
 
-export function isInvalidId(id: unknown): boolean {
+export function isInvalidId(id: ReadonlyNullish<unknown>): boolean {
   return !Number.isInteger(id) || (id as number) < 1;
 }
 
-export function toArray(value: string): Nullable<any[]> {
+export function toArray(value: string): Nullable<readonly any[]> {
   try {
     return JSON.parse(value);
   } catch (error) {
@@ -43,7 +44,7 @@ export function toArray(value: string): Nullable<any[]> {
   }
 }
 
-export function isInvalidSimpleMedium(value: unknown): boolean {
+export function isInvalidSimpleMedium(value: ReadonlyNullish<unknown>): boolean {
   if (typeof value !== "object" || !value) {
     return true;
   }
@@ -59,7 +60,7 @@ export function isInvalidSimpleMedium(value: unknown): boolean {
   );
 }
 
-export function remove<T>(array: T[], item: T): boolean {
+export function remove<T extends ReadonlyNullish<unknown>>(array: T[], item: T): boolean {
   const index = array.indexOf(item);
   if (index < 0) {
     return false;
@@ -68,7 +69,7 @@ export function remove<T>(array: T[], item: T): boolean {
   return true;
 }
 
-export function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean {
+export function removeLike<T extends ReadonlyNullish<unknown>>(array: T[], equals: (item: T) => boolean): boolean {
   const index = array.findIndex((value) => equals(value));
   if (index < 0) {
     return false;
@@ -79,7 +80,7 @@ export function removeLike<T>(array: T[], equals: (item: T) => boolean): boolean
 
 export type ArrayCallback<T> = (value: T, index: number) => void;
 
-export function forEachArrayLike<T>(arrayLike: ArrayLike<T>, callback: ArrayCallback<T>, start = 0): void {
+export function forEachArrayLike<T>(arrayLike: Readonly<ArrayLike<T>>, callback: ArrayCallback<T>, start = 0): void {
   for (let i = start; i < arrayLike.length; i++) {
     callback(arrayLike[i], i);
   }
@@ -135,7 +136,11 @@ export function multiSingle<T, R>(item: T, cb: multiSingleCallback<UnpackArray<T
  * @param item item or items to add to the array
  * @param allowNull if a null-ish item value can be added to the array
  */
-export function addMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean): void {
+export function addMultiSingle<T extends ReadonlyNullish<unknown>>(
+  array: T[],
+  item: T | T[],
+  allowNull?: boolean,
+): void {
   if (item != null || allowNull) {
     if (Array.isArray(item)) {
       array.push(...item);
@@ -153,7 +158,11 @@ export function addMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean
  * @param item item or items to remove from the array
  * @param allowNull if a null-ish item value can be removed from the array
  */
-export function removeMultiSingle<T>(array: T[], item: T | T[], allowNull?: boolean): void {
+export function removeMultiSingle<T extends ReadonlyNullish<unknown>>(
+  array: T[],
+  item: T | T[],
+  allowNull?: boolean,
+): void {
   if (item != null || allowNull) {
     if (Array.isArray(item)) {
       item.forEach((value) => remove(array, value));
@@ -172,7 +181,7 @@ export function removeMultiSingle<T>(array: T[], item: T | T[], allowNull?: bool
  * @param key a key value for the map
  * @param valueCb value supplier if no non-null-ish value is mapped to the key
  */
-export function getElseSet<K, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
+export function getElseSet<K extends ReadonlyNullish<unknown>, V>(map: Map<K, V>, key: K, valueCb: () => V): V {
   let value = map.get(key);
   if (value == null) {
     value = valueCb();
@@ -198,7 +207,10 @@ export function getElseSetObj<K extends string | number, V>(map: Record<K, V>, k
  * @param array array to filter all duplicates out
  * @param isEqualCb alternative predicate determining if two values are equal
  */
-export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) => boolean): T[] {
+export function unique<T extends ReadonlyNullish<unknown>>(
+  array: ArrayLike<T>,
+  isEqualCb?: (value: T, other: T) => boolean,
+): T[] {
   const uniques: T[] = [];
 
   if (isEqualCb) {
@@ -231,7 +243,12 @@ export function unique<T>(array: ArrayLike<T>, isEqualCb?: (value: T, other: T) 
  * @param start startIndex of the search (inclusively), a number greater than zero
  * @param end endIndex of the search (exclusively), a number smaller or equal to the length of the array-like
  */
-export function some<T>(array: ArrayLike<T>, predicate: Predicate<T>, start = 0, end = array.length): boolean {
+export function some<T extends ReadonlyNullish<unknown>>(
+  array: ArrayLike<T>,
+  predicate: Predicate<T>,
+  start = 0,
+  end = array.length,
+): boolean {
   if (start < 0 || end > array.length) {
     throw RangeError(`Invalid Search Range, Valid: 0-${array.length}, Given: ${start}-${end}`);
   }
@@ -281,7 +298,7 @@ export function contains(s1: string, s2: string): boolean {
  *
  * @param array array to count the value occurrences of
  */
-export function countOccurrence<T>(array: T[]): Map<T, number> {
+export function countOccurrence<T extends ReadonlyNullish<unknown>>(array: readonly T[]): ReadonlyMap<T, number> {
   const occurrenceMap: Map<T, number> = new Map();
   for (const value of array) {
     const counted = occurrenceMap.get(value) ?? 0;
@@ -290,9 +307,9 @@ export function countOccurrence<T>(array: T[]): Map<T, number> {
   return occurrenceMap;
 }
 
-export type Predicate<T> = (value: T, index: number) => boolean;
+export type Predicate<T extends ReadonlyNullish<unknown>> = (value: T, index: number) => boolean;
 
-export function count<T>(array: T[], condition: Predicate<T>): number {
+export function count<T extends ReadonlyNullish<unknown>>(array: readonly T[], condition: Predicate<T>): number {
   let countNumber = 0;
   for (let i = 0; i < array.length; i++) {
     if (condition(array[i], i)) {
@@ -302,9 +319,9 @@ export function count<T>(array: T[], condition: Predicate<T>): number {
   return countNumber;
 }
 
-export type Comparator<T> = (previous: T, current: T) => number;
+export type Comparator<T extends ReadonlyNullish<unknown>> = (previous: T, current: T) => number;
 
-function createComparator<T>(key: keyof T): Comparator<T> {
+function createComparator<T extends ReadonlyNullish<unknown>>(key: keyof T): Comparator<T> {
   // @ts-expect-error
   return (previousValue: T, currentValue: T) => previousValue[key] - currentValue[key];
 }
@@ -319,7 +336,10 @@ function createComparator<T>(key: keyof T): Comparator<T> {
  * @param array array to inspect
  * @param comparator field comparator or value comparator to compare values with
  */
-export function max<T>(array: T[], comparator: keyof T | Comparator<T>): Optional<T> {
+export function max<T extends ReadonlyNullish<unknown>>(
+  array: readonly T[],
+  comparator: keyof T | Comparator<T>,
+): Optional<T> {
   if (!array.length) {
     return;
   }
@@ -339,7 +359,7 @@ export function max<T>(array: T[], comparator: keyof T | Comparator<T>): Optiona
  *
  * @param array array to inspect
  */
-export function maxValue<T>(array: T[]): Optional<T> {
+export function maxValue<T extends number | Date>(array: readonly T[]): Optional<T> {
   if (!array.length) {
     return;
   }
@@ -355,7 +375,7 @@ export function maxValue<T>(array: T[]): Optional<T> {
  *
  * @param array array to inspect
  */
-export function minValue<T>(array: T[]): Optional<T> {
+export function minValue<T extends number | Date>(array: readonly T[]): Optional<T> {
   if (!array.length) {
     return;
   }
@@ -374,7 +394,10 @@ export function minValue<T>(array: T[]): Optional<T> {
  * @param array array to inspect
  * @param comparator field comparator or value comparator to compare values with
  */
-export function min<T>(array: T[], comparator: keyof T | Comparator<T>): Optional<T> {
+export function min<T extends ReadonlyNullish<unknown>>(
+  array: readonly T[],
+  comparator: keyof T | Comparator<T>,
+): Optional<T> {
   if (!array.length) {
     return;
   }
@@ -448,7 +471,10 @@ export const delay = setTimeoutPromise;
  * @param firstRelease first release
  * @param secondRelease second release
  */
-export function equalsRelease(firstRelease?: EpisodeRelease, secondRelease?: EpisodeRelease): boolean {
+export function equalsRelease(
+  firstRelease?: Readonly<EpisodeRelease>,
+  secondRelease?: Readonly<EpisodeRelease>,
+): boolean {
   return (
     // eslint-disable-next-line eqeqeq
     firstRelease == secondRelease ||
@@ -485,7 +511,7 @@ export function stringify(object: unknown): string {
   });
 }
 
-export function jsonReplacer(key: unknown, value: unknown): unknown {
+export function jsonReplacer(_key: unknown, value: ReadonlyNullish<unknown>): unknown {
   if (value instanceof Error) {
     const error: any = {};
 
@@ -549,7 +575,7 @@ export function isString(value: unknown): value is string {
  *
  * @param s string to parse
  */
-export function stringToNumberList(s: string): number[] {
+export function stringToNumberList(s: string): readonly number[] {
   s = s.trim();
   if (!s.startsWith("[") || !s.endsWith("]")) {
     return [];
@@ -568,9 +594,9 @@ interface Hash {
 export interface Hasher {
   tag: string;
 
-  hash(text: string, saltLength?: number): Promise<Hash>;
+  hash(text: string, saltLength?: number): Promise<Readonly<Hash>>;
 
-  equals(text: string, hash: string, salt: string): Promise<boolean>;
+  equals(text: string, hash: string, salt?: string): Promise<boolean>;
 }
 
 interface ShaHasher extends Hasher {
@@ -608,7 +634,7 @@ export const ShaHash: ShaHasher = {
   /**
    * Checks whether the text hashes to the same hash.
    */
-  equals(text, hash, salt) {
+  equals(text, hash, salt: string) {
     return promisify(() => this.innerHash(text, salt) === hash);
   },
 };
@@ -725,7 +751,7 @@ export function promisify<T>(callback: () => T): Promise<T> {
  *
  * @param value object to combine
  */
-export function combiIndex(value: Indexable): number {
+export function combiIndex(value: Readonly<Indexable>): number {
   const combi = Number(`${value.totalIndex}.${value.partialIndex || 0}`);
   if (Number.isNaN(combi)) {
     throw new ParseError(`invalid argument: total: '${value.totalIndex}', partial: '${value.partialIndex + ""}'`);
@@ -740,7 +766,7 @@ export function combiIndex(value: Indexable): number {
  *
  * @param value value to check the Indices from
  */
-export function checkIndices(value: Indexable): void {
+export function checkIndices(value: Readonly<Indexable>): void {
   if (value.totalIndex == null || value.totalIndex < -1 || !Number.isInteger(value.totalIndex)) {
     throw new ValidationError("invalid toc content, totalIndex invalid");
   }
@@ -750,11 +776,11 @@ export function checkIndices(value: Indexable): void {
 }
 
 export function extractIndices(
-  groups: string[],
+  groups: readonly string[],
   allPosition: number,
   totalPosition: number,
   partialPosition: number,
-): Nullable<ExtractedIndex> {
+): Nullable<Readonly<ExtractedIndex>> {
   const whole = Number(groups[allPosition]);
 
   if (Number.isNaN(whole)) {
@@ -779,7 +805,7 @@ const indexRegex = /(-?\d+)(\.(\d+))?/;
  *
  * @param value the number to separate
  */
-export function separateIndex(value: number): Indexable {
+export function separateIndex(value: number): Readonly<Indexable> {
   if (!isNumber(value)) {
     throw new TypeError("not a number");
   }
@@ -876,13 +902,8 @@ export function findAbsoluteProjectDirPath(dir = process.cwd()): string {
   return dir;
 }
 
-export function isQuery(value: unknown): value is Query {
-  return (
-    typeof value === "object" &&
-    !!value &&
-    typeof (value as any).on === "function" &&
-    typeof (value as any).stream === "function"
-  );
+export function isQuery(value: ReadonlyNullish<unknown>): value is QueryStream {
+  return value instanceof QueryStream;
 }
 
 /**
@@ -894,7 +915,7 @@ export function isQuery(value: unknown): value is Query {
  *
  * @param value value to validate as an uuid
  */
-export function validUuid(value: unknown): value is Uuid {
+export function validUuid(value: ReadonlyNullish<unknown>): value is Uuid {
   return isString(value) && value.length === 36 && validateUuid(value);
 }
 
@@ -907,7 +928,10 @@ export function getDate(value: string): Nullable<Date> {
  * Return 0 <= i <= array.length such that !pred(array[i - 1]) && pred(array[i]).
  * From Stackoverflow: https://stackoverflow.com/a/41956372
  */
-export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number {
+export function binarySearch<T extends ReadonlyNullish<unknown>>(
+  array: readonly T[],
+  pred: (value: T) => boolean,
+): number {
   let lo = -1;
   let hi = array.length;
   while (1 + lo < hi) {
@@ -929,7 +953,7 @@ export function binarySearch<T>(array: T[], pred: (value: T) => boolean): number
  * @param array the array to batch
  * @param batchSize the maximum size of a batch
  */
-export function batch<T>(array: T[], batchSize: number): T[][] {
+export function batch<T>(array: readonly T[], batchSize: number): T[][] {
   const batches = [];
   let currentBatch = [];
 

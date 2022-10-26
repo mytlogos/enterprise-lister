@@ -1,16 +1,20 @@
-import { Id, Insert, Notification, UserNotification, Uuid } from "@/types";
-import { SubContext } from "./subContext";
+import { Id, Insert, Uuid } from "../../types";
+import { sql } from "slonik";
+import { entity, Notification, userNotification, UserNotification } from "../databaseTypes";
+import { QueryContext } from "./queryContext";
 
-export class NotificationContext extends SubContext {
+export class NotificationContext extends QueryContext {
   private readonly tableName = "notifications";
 
   public async insertNotification(notification: Insert<Notification>): Promise<Notification> {
-    const result = await this.dmlQuery(
-      "INSERT INTO notifications (`title`, `content`, `date`, `key`, `type`) VALUES (?,?,?,?,?);",
-      [notification.title, notification.content, notification.date, notification.key, notification.type],
+    notification.id = await this.con.oneFirst(
+      sql.type(entity)`INSERT INTO notifications (title, content, date, key, type)
+      VALUES (
+        ${notification.title},${notification.content},${sql.timestamp(notification.date)},
+        ${notification.key},${notification.type}
+      )
+      RETURNING id;`,
     );
-
-    notification.id = result.insertId;
     return notification as Notification;
   }
 
@@ -19,82 +23,72 @@ export class NotificationContext extends SubContext {
       column: "id",
       value: notification.id,
     });
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
   public async updateNotification(notification: Notification): Promise<boolean> {
     const result = await this.update(
       this.tableName,
-      (updates, values) => {
-        updates.push("title = ?");
-        values.push(notification.title);
-
-        updates.push("content = ?");
-        values.push(notification.content);
-
-        updates.push("date = ?");
-        values.push(notification.date);
-
-        updates.push("key = ?");
-        values.push(notification.key);
-
-        updates.push("type = ?");
-        values.push(notification.type);
+      () => {
+        const updates = [];
+        updates.push(sql`title = ${notification.title}`);
+        updates.push(sql`content = ${notification.content}`);
+        updates.push(sql`date = ${sql.timestamp(notification.date)}`);
+        updates.push(sql`key = ${notification.key}`);
+        updates.push(sql`type = ${notification.type}`);
+        return updates;
       },
       {
         column: "id",
         value: notification.id,
       },
     );
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 
-  public async getNotifications(date: Date, uuid: Uuid, read: boolean, size?: number): Promise<UserNotification[]> {
-    const args = [date, uuid] as any[];
-    const limit = size && size > 0 ? " LIMIT ?" : "";
+  public async getNotifications(
+    date: Date,
+    uuid: Uuid,
+    read: boolean,
+    size?: number,
+  ): Promise<readonly UserNotification[]> {
+    const limit = size && size > 0 ? sql` LIMIT ${size}` : sql``;
 
-    if (limit) {
-      args.push(size);
-    }
-
-    if (read) {
-      return this.query(
-        "SELECT n.*, true as `read` FROM notifications as n WHERE date > ? AND id IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
-          limit,
-        args,
-      );
-    } else {
-      return this.query(
-        "SELECT n.*, false as `read` FROM notifications as n WHERE date > ? AND id NOT IN (select id from notifications_read where uuid = ?) ORDER BY date desc" +
-          limit,
-        args,
-      );
-    }
+    return this.con.any(
+      sql.type(userNotification)`
+      SELECT n.title, n.content, n.date, n.key, n.type, ${read ? sql`true` : sql`false`} as read
+      FROM notifications as n
+      WHERE date > ${sql.timestamp(date)} AND id ${read ? sql`NOT ` : sql``}IN (
+        select id from notifications_read where uuid = ${uuid}
+      ) ORDER BY date desc${limit}`,
+    );
   }
 
   public async readNotification(id: Id, uuid: Uuid): Promise<boolean> {
-    const result = await this.dmlQuery("INSERT IGNORE INTO notifications_read (id, uuid) VALUES (?, ?)", [id, uuid]);
-    return result.affectedRows > 0;
+    await this.con.query(
+      sql`INSERT INTO notifications_read (id, uuid)
+      VALUES (${id}, ${uuid})
+      ON CONFLICT DO NOTHING`,
+    );
+    return false;
   }
 
   public async countNotifications(uuid: Uuid, read: boolean): Promise<number> {
-    let result;
     if (read) {
-      result = await this.query("SELECT count(id) as count FROM notifications_read WHERE uuid = ?", uuid);
+      return this.con.oneFirst<{ count: number }>(
+        sql`SELECT count(id) as count FROM notifications_read WHERE uuid = ${uuid}`,
+      );
     } else {
-      result = await this.query(
-        "SELECT count(id) as count FROM notifications WHERE id not in (SELECT id as count FROM notifications_read WHERE uuid = ?)",
-        uuid,
+      return this.con.oneFirst<{ count: number }>(
+        sql`SELECT count(id) as count FROM notifications WHERE id not in (SELECT id as count FROM notifications_read WHERE uuid = ${uuid})`,
       );
     }
-    return result[0].count;
   }
 
   public async readAllNotifications(uuid: Uuid): Promise<boolean> {
-    const result = await this.dmlQuery(
-      "INSERT IGNORE INTO notifications_read (id, uuid) SELECT id, ? FROM notifications",
-      uuid,
+    const result = await this.con.query(
+      sql`INSERT INTO notifications_read (id, uuid) SELECT id, ${uuid} FROM notifications ON CONFLICT DO NOTHING`,
     );
-    return result.affectedRows > 0;
+    return result.rowCount > 0;
   }
 }

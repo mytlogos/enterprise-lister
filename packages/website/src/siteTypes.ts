@@ -409,13 +409,6 @@ export interface CustomHookStore {
   hooks: Record<number, CustomHook>;
 }
 
-export interface ScraperHook {
-  id: number;
-  name: string;
-  state: string;
-  message: string;
-}
-
 export interface MediumInWait {
   title: string;
   medium: MediaType;
@@ -427,11 +420,6 @@ export interface MediumInWaitSearch {
   medium?: MediaType;
   link?: string;
   limit?: number;
-}
-
-export enum HookState {
-  ENABLED = "enabled",
-  DISABLED = "disabled",
 }
 
 export type SelectorValueType = "json" | "regex" | "text";
