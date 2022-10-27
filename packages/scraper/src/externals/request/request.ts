@@ -11,7 +11,7 @@ import { handleCloudflare } from "./cloudflare";
 import { CloudflareHandlerError, RequestError } from "./error";
 import { ClientRequest } from "http";
 import puppeteer from "puppeteer-extra";
-import { HTTPRequest, HTTPResponse, Protocol, Browser, Page } from "puppeteer";
+import { HTTPRequest, HTTPResponse, Protocol, Browser, Page, executablePath } from "puppeteer";
 import puppeteerStealthPlugin from "puppeteer-extra-plugin-stealth";
 import { getStoreValue, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { channel } from "diagnostics_channel";
@@ -132,6 +132,7 @@ class BrowserGetter {
     // disable-gpu for headless environments, e.g. docker
     this.#puppeteerBrowser ??= puppeteer.launch({
       args: minimalArgs,
+      executablePath: executablePath(),
     });
     return this.#puppeteerBrowser;
   }
