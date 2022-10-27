@@ -1,3 +1,10 @@
+## [2.24.2](https://github.com/mytlogos/enterprise-lister/compare/v2.24.1...v2.24.2) (2022-10-27)
+
+
+### Bug Fixes
+
+* **scraper:** fix puppeteer chromium not found ([b771e55](https://github.com/mytlogos/enterprise-lister/commit/b771e55df128857f5dd7698e13c51e4d0c5f2352))
+
 ## [2.24.1](https://github.com/mytlogos/enterprise-lister/compare/v2.24.0...v2.24.1) (2022-10-26)
 
 
