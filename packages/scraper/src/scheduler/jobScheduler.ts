@@ -1,4 +1,4 @@
-import { ScraperHelper } from "../externals/scraperTools";
+import { getHookNames, ScraperHelper } from "../externals/scraperTools";
 import { JobQueue, OutsideJob } from "./jobQueue";
 import { getElseSet, isString, maxValue, removeLike, stringify } from "enterprise-core/dist/tools";
 import logger from "enterprise-core/dist/logger";
@@ -10,10 +10,13 @@ import {
   ScrapeName,
   EmptyPromise,
   Optional,
+  Id,
+  Insert,
+  Notification,
 } from "enterprise-core/dist/types";
 import { jobStorage, notificationStorage } from "enterprise-core/dist/database/storages/storage";
+import env from "enterprise-core/dist/env";
 import * as dns from "dns";
-import { getStore, StoreKey } from "enterprise-core/dist/asyncStorage";
 import { StartJobChannelMessage } from "../externals/types";
 import { getNewsAdapter, load } from "../externals/hookManager";
 import { ScrapeJob, scrapeMapping } from "./scrapeJobs";
@@ -25,6 +28,37 @@ import { createJob, Job } from "./job";
 const missingConnections = new Set<Date>();
 const jobChannel = channel("enterprise-jobs");
 
+interface JobTypeFailures {
+  jobFailures: Map<Id, number>;
+  failing: boolean;
+}
+
+interface HookFailureStat {
+  jobTypeJobFailures: Map<ScrapeName, JobTypeFailures>;
+  failing: boolean;
+}
+
+interface NotificationConfig {
+  // number of consecutive failures to count job as failed
+  jobFailed: number;
+  // number of absolute different job failures to count scraper type as failed
+  jobTypeFailedAbsolute: number;
+  // percentage of different job failures to count scraper type as failed
+  jobTypeFailedPerc: number;
+  // number of failed job types to count as failed
+  scraperHookJobTypeFailed: number;
+  // when to notify of failure
+  jobNotifyFailure: number;
+  // if enabled, notifies on recovery
+  enableRecovered: boolean;
+  // if enabled, notifies on recovery
+  enableRecoveredHook: boolean;
+  // if enabled, notifies on recovery
+  enableRecoveredJobType: boolean;
+  // if enabled, notifies on recovery
+  enableRecoveredJob: boolean;
+}
+
 export class JobScheduler {
   public automatic = true;
   public filter: undefined | ((item: JobItem) => boolean);
@@ -34,6 +68,7 @@ export class JobScheduler {
   private fetching = false;
   private paused = true;
   private readonly jobMap = new Map<number | string, Job>();
+  private readonly hookFailureMap = new Map<string, HookFailureStat>();
 
   /**
    * Jobs of currently queued or running jobs
@@ -42,9 +77,21 @@ export class JobScheduler {
   private readonly nameIdList: Array<[number, string]> = [];
   private intervalId: Optional<NodeJS.Timeout>;
   private readonly schedulingStrategy: SchedulingStrategy;
+  private readonly notificationConfig: NotificationConfig;
 
   public constructor() {
     this.schedulingStrategy = Strategies.JOBS_QUEUE_FORCED_BALANCED;
+    this.notificationConfig = {
+      jobFailed: env.jobFailed ?? 2,
+      jobTypeFailedAbsolute: env.jobTypeFailedAbsolute ?? 10,
+      jobTypeFailedPerc: env.jobTypeFailedPerc ?? 0.5,
+      scraperHookJobTypeFailed: env.scraperHookJobTypeFailed ?? 2,
+      jobNotifyFailure: env.jobNotifyFailure ?? 5,
+      enableRecovered: env.enableRecovered,
+      enableRecoveredHook: env.enableRecoveredHook,
+      enableRecoveredJob: env.enableRecoveredJob,
+      enableRecoveredJobType: env.enableRecoveredJobType,
+    };
   }
 
   public on(event: string, callback: (value: any) => undefined | EmptyPromise): void {
@@ -450,6 +497,131 @@ export class JobScheduler {
     this.addDependant(jobMap);
   }
 
+  private async handleErrorNotification(error: Readonly<Error> | undefined, job: Readonly<Job>) {
+    const hookNames = getHookNames(job.jobStore);
+    const defaultHookFailures = (): HookFailureStat => ({
+      failing: false,
+      jobTypeJobFailures: new Map(),
+    });
+    const defaultJobTypeFailure = (): JobTypeFailures => ({
+      failing: false,
+      jobFailures: new Map(),
+    });
+
+    for (const hookName of hookNames) {
+      const hookFailures = getElseSet(this.hookFailureMap, hookName, defaultHookFailures);
+      const jobTypeFailures = getElseSet(hookFailures.jobTypeJobFailures, job.currentItem.type, defaultJobTypeFailure);
+      let jobFailures = jobTypeFailures.jobFailures.get(job.id) ?? 0;
+      let jobRecovered = false;
+      const previousJobFailures = jobFailures;
+
+      if (error) {
+        jobFailures++;
+      } else {
+        jobRecovered = this.notificationConfig.jobNotifyFailure >= jobFailures;
+        jobFailures = 0;
+      }
+      jobTypeFailures.jobFailures.set(job.id, jobFailures);
+
+      let jobTypeFailedJobs = 0;
+
+      for (const failures of jobTypeFailures.jobFailures.values()) {
+        if (failures > this.notificationConfig.jobFailed) {
+          jobTypeFailedJobs++;
+        }
+      }
+
+      const typePercentageFailed =
+        jobTypeFailures.jobFailures.size > 0 ? jobTypeFailedJobs / jobTypeFailures.jobFailures.size : 0;
+
+      const jobTypeFailed =
+        this.notificationConfig.jobTypeFailedAbsolute >= jobTypeFailedJobs ||
+        typePercentageFailed >= this.notificationConfig.jobTypeFailedPerc;
+
+      const jobTypeFailingChange = jobTypeFailed !== jobTypeFailures.failing;
+      jobTypeFailures.failing = jobTypeFailed;
+
+      let jobTypesFailing = 0;
+
+      for (const jobTypeFailure of hookFailures.jobTypeJobFailures.values()) {
+        if (jobTypeFailure.failing) {
+          jobTypesFailing++;
+        }
+      }
+
+      const scraperFailed = jobTypesFailing >= this.notificationConfig.scraperHookJobTypeFailed;
+      const scraperFailureChange = scraperFailed !== hookFailures.failing;
+      hookFailures.failing = scraperFailed;
+
+      let notification: Optional<Insert<Notification>>;
+
+      if (scraperFailureChange) {
+        if (scraperFailed) {
+          notification = {
+            title: `Hook '${hookName}' is failing`,
+            content: `${jobTypesFailing} failing Job Types`,
+            date: new Date(),
+            key: "hook-" + hookName,
+            type: "error",
+          };
+        } else if (this.notificationConfig.enableRecovered || this.notificationConfig.enableRecoveredHook) {
+          notification = {
+            title: `Hook '${hookName}' has recovered`,
+            content: `${jobTypesFailing} failing Job Types`,
+            date: new Date(),
+            key: "hook-" + hookName,
+            type: "recovery",
+          };
+        }
+      } else if (jobTypeFailingChange) {
+        if (scraperFailed) {
+          notification = {
+            title: `Job Type '${job.currentItem.type}' of Hook '${hookName}' is failing`,
+            content: `${jobTypeFailedJobs} failing Jobs, Rate: ${(typePercentageFailed * 100).toFixed()}%`,
+            date: new Date(),
+            key: `hook-${hookName}-type-${job.currentItem.type}`,
+            type: "error",
+          };
+        } else if (this.notificationConfig.enableRecovered || this.notificationConfig.enableRecoveredJobType) {
+          notification = {
+            title: `Job Type '${job.currentItem.type}' of Hook '${hookName}' is failing`,
+            content: `${jobTypeFailedJobs} failing Jobs, Rate: ${(typePercentageFailed * 100).toFixed()}%`,
+            date: new Date(),
+            key: `hook-${hookName}-type-${job.currentItem.type}`,
+            type: "recovery",
+          };
+        }
+        // notify failures for single jobs, but only if the job type itself is not failing
+      } else if (jobFailures === this.notificationConfig.jobNotifyFailure && !jobTypeFailures.failing) {
+        notification = {
+          title: `Job '${job.currentItem.name}' is failing`,
+          content: error?.message?.slice(0, 700) ?? "unknown message",
+          date: new Date(),
+          key: `job-${job.id}`,
+          type: "error",
+        };
+        // notify job recovery if enabled, does not need to check for jobType Recovery as it is
+        // covered by the `jobTypeFailingChange` else-if branch
+      } else if (
+        jobRecovered &&
+        this.notificationConfig.enableRecovered &&
+        this.notificationConfig.enableRecoveredJob
+      ) {
+        notification = {
+          title: `Job '${job.currentItem.name}' has recovered`,
+          content: `Recovered after ${previousJobFailures} Failures`,
+          date: new Date(),
+          key: `job-${job.id}`,
+          type: "recovery",
+        };
+      }
+
+      if (notification) {
+        await notificationStorage.insertNotification(notification).catch(logger.error);
+      }
+    }
+  }
+
   private queueEmittableJob(jobType: ScrapeJob, job: Job) {
     this.queue.addJob(job);
     job.once("done", async (error, result) => {
@@ -459,21 +631,7 @@ export class JobScheduler {
       }
 
       if (error) {
-        const store = getStore();
-
-        if (store) {
-          const jobLabel = store.get(StoreKey.LABEL) ?? { job_name: "unknown", job_id: 0 };
-
-          await notificationStorage
-            .insertNotification({
-              title: `Job Error for '${jobLabel.job_name}'`,
-              content: error.message.slice(0, 700),
-              date: new Date(),
-              key: "job-" + jobLabel.job_id,
-              type: "error",
-            })
-            .catch(logger.error);
-        }
+        this.handleErrorNotification(error, job);
         await this.helper.emit(jobType.event + ":error", error);
       } else {
         await this.helper.emit(jobType.event, result);
@@ -487,6 +645,8 @@ export class JobScheduler {
     this.queue.addJob(job);
 
     job.once("done", async (error, result: undefined | JobRequest | JobRequest[]) => {
+      this.handleErrorNotification(error, job);
+
       if (error) {
         logger.error(error);
         return;

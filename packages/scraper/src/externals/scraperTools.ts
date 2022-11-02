@@ -374,3 +374,21 @@ export function storeHookName(hookName: string) {
     track.hooksUsed.push(hookName);
   }
 }
+
+/**
+ * Get hookNames of used hooks from the asyncStorage.
+ */
+export function getHookNames(store?: ReturnType<typeof getStore>): readonly string[] {
+  if (!store) {
+    store = getStore();
+  }
+
+  if (store) {
+    const track = store.get(StoreKey.NETWORK);
+
+    if (track) {
+      return track.hooksUsed;
+    }
+  }
+  return [];
+}

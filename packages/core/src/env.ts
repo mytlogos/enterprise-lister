@@ -37,6 +37,31 @@ interface Config {
   stopScrapeEvents: boolean;
   lokiUrl?: string;
   disableFileLogging: boolean;
+  enableRecovered: boolean;
+  enableRecoveredHook: boolean;
+  enableRecoveredJob: boolean;
+  enableRecoveredJobType: boolean;
+  jobFailed: number | undefined;
+  jobTypeFailedAbsolute: number | undefined;
+  jobTypeFailedPerc: number | undefined;
+  scraperHookJobTypeFailed: number | undefined;
+  jobNotifyFailure: number | undefined;
+}
+
+function toBoolean(value: string | undefined): boolean {
+  if (!value) {
+    return false;
+  }
+  return value.toLocaleLowerCase() === "true";
+}
+
+function toNumber(value: unknown): number | undefined {
+  const number = Number(value);
+
+  if (Number.isNaN(number)) {
+    return undefined;
+  }
+  return number;
 }
 
 /**
@@ -56,11 +81,26 @@ const appConfig: Config = {
   development: (process.env.NODE_ENV || config.parsed.NODE_ENV) !== "production",
   stopScrapeEvents: !!Number(process.env.stopScrapeEvents || config.parsed.stopScrapeEvents),
   lokiUrl: process.env.lokiUrl || config.parsed.lokiUrl,
-  disableFileLogging:
-    ((process.env.disableFileLogging || config.parsed.disableFileLogging) ?? "").toLocaleLowerCase() === "true",
+  disableFileLogging: toBoolean(process.env.disableFileLogging || config.parsed.disableFileLogging),
+  enableRecovered: toBoolean(process.env.enableRecovered || config.parsed.enableRecovered),
+  enableRecoveredHook: toBoolean(process.env.enableRecoveredHook || config.parsed.enableRecoveredHook),
+  enableRecoveredJob: toBoolean(process.env.enableRecoveredJob || config.parsed.enableRecoveredJob),
+  enableRecoveredJobType: toBoolean(process.env.enableRecoveredJobType || config.parsed.enableRecoveredJobType),
+  jobFailed: toNumber(process.env.jobFailed || config.parsed.jobFailed),
+  jobTypeFailedAbsolute: toNumber(process.env.jobTypeFailedAbsolute || config.parsed.jobTypeFailedAbsolute),
+  jobTypeFailedPerc: toNumber(process.env.jobTypeFailedPerc || config.parsed.jobTypeFailedPerc),
+  scraperHookJobTypeFailed: toNumber(process.env.scraperHookJobTypeFailed || config.parsed.scraperHookJobTypeFailed),
+  jobNotifyFailure: toNumber(process.env.jobNotifyFailure || config.parsed.jobNotifyFailure),
 };
 
-const optionalVars = new Set(["lokiUrl"] as Array<keyof Config>);
+const optionalVars = new Set<keyof Config>([
+  "lokiUrl",
+  "jobFailed",
+  "jobTypeFailedAbsolute",
+  "jobTypeFailedPerc",
+  "scraperHookJobTypeFailed",
+  "jobNotifyFailure",
+]);
 
 // this should not output sensitive information
 for (const [key, value] of Object.entries(appConfig)) {
