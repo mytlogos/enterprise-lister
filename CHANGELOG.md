@@ -1,3 +1,15 @@
+# [2.25.0](https://github.com/mytlogos/enterprise-lister/compare/v2.24.2...v2.25.0) (2022-11-02)
+
+
+### Bug Fixes
+
+* **server:** add missing config ([52ba499](https://github.com/mytlogos/enterprise-lister/commit/52ba499a487d27091a95cef13680903b8e31c4ec))
+
+
+### Features
+
+* **scraper:** improve notification handling ([0fe9162](https://github.com/mytlogos/enterprise-lister/commit/0fe9162fd33f1aef844eaa530d3a63dbc5fc3774))
+
 ## [2.24.2](https://github.com/mytlogos/enterprise-lister/compare/v2.24.1...v2.24.2) (2022-10-27)
 
 
